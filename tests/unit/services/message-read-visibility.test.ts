@@ -213,3 +213,45 @@ describe('soft-deleted message read visibility', () => {
     expect(cachePut).toHaveBeenCalledWith('latest_msg:conv-1', expect.any(String), expect.anything())
   })
 })
+
+describe('identical created_at ordering', () => {
+  const tied = ['t1', 't2', 't3', 't4', 't5']
+  beforeEach(() => {
+    const insert = sqlite.prepare(`INSERT INTO messages
+      (id, conversation_id, sender_type, content, message_type, created_at)
+      VALUES (?, 'conv-1', 'agent', 'tied', 'text', '2026-10-13T00:00:10Z')`)
+    for (const id of tied) insert.run(id)
+  })
+
+  it('pages across a tied timestamp boundary without skipping or duplicating', async () => {
+    const seen: string[] = []
+    let before = ''
+    for (let guard = 0; guard < 20; guard++) {
+      const page = await load(`?limit=2${before ? `&before=${before}` : ''}`)
+      if (page.messages.length === 0) break
+      seen.push(...page.messages.map(message => message.id))
+      before = page.messages[page.messages.length - 1].id
+    }
+    expect(seen).toEqual(['t5', 't4', 't3', 't2', 't1', 'm5', 'm4', 'm2', 'm1'])
+  })
+
+  it('uses a tied message as a cursor anchor with the id tiebreak', async () => {
+    expect((await load('?before=t3')).messages.map(message => message.id))
+      .toEqual(['t2', 't1', 'm5', 'm4', 'm2', 'm1'])
+  })
+
+  it('returns a single latest message per conversation on a timestamp tie', async () => {
+    const rows = sqlite.prepare(`
+      SELECT m.id FROM messages m
+      INNER JOIN (
+        SELECT conversation_id, MAX(created_at) AS max_created_at FROM messages
+        WHERE conversation_id IN ('conv-1') AND deleted_at IS NULL GROUP BY conversation_id
+      ) latest ON m.conversation_id = latest.conversation_id AND m.created_at = latest.max_created_at
+      WHERE m.deleted_at IS NULL`).all()
+    expect(rows.length).toBe(5) // sanity: the join alone ties
+    const response = await conversationQueriesHandler.request('/', {}, env)
+    const list = await response.json() as { data: Array<{ lastMessage: { id: string } }> }
+    expect(response.status).toBe(200)
+    expect(list.data[0].lastMessage.id).toBe('t5')
+  })
+})

@@ -611,6 +611,17 @@ conversationQueriesHandler.get('/', jwtAuth, async (c) => {
           ) latest ON m.conversation_id = latest.conversation_id
                   AND m.created_at = latest.max_created_at
           WHERE m.deleted_at IS NULL
+            -- Tie-break: when several visible messages share the latest
+            -- created_at, keep only the one with the greatest id so each
+            -- conversation yields exactly one row. Only evaluated for rows
+            -- already at the max timestamp (about one per conversation).
+            AND NOT EXISTS (
+              SELECT 1 FROM messages m2
+              WHERE m2.conversation_id = m.conversation_id
+                AND m2.created_at = m.created_at
+                AND m2.deleted_at IS NULL
+                AND m2.id > m.id
+            )
         `;
 
         try {

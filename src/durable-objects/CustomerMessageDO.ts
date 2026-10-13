@@ -6,7 +6,7 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { DurableObject } from 'cloudflare:workers';
 import type { Bindings } from '../types';
-import { eq, lt, desc, and, inArray } from 'drizzle-orm';
+import { eq, lt, desc, and, or, inArray, type SQL } from 'drizzle-orm';
 import { createDbClient } from '../db/drizzle-factory';
 import { notDeletedMessage } from '../db/message-conditions';
 import { messages, fileAttachments, conversations, customers, agents } from '../db/schema';
@@ -142,59 +142,38 @@ export class CustomerMessageDO extends DurableObject<Bindings> {
       try {
         const db = createDbClient(this.env.DB);
 
-        let fetchedMessages;
+        // Total order: (created_at DESC, id DESC). created_at alone is not
+        // unique (bulk inserts, broadcast write-back, same-second events), so
+        // the id tiebreak keeps pages disjoint and gapless. The cursor is the
+        // tuple-aware mirror of that order.
+        const visibleInConversation = and(eq(messages.conversationId, conversationId), notDeletedMessage);
+        let cursorCondition: SQL | undefined;
 
-        // If before is specified, fetch messages before that timestamp
         if (before) {
           // Keep deleted cursor anchors so pagination does not restart at latest.
           // The anchor must belong to this conversation.
           const beforeMessage = await db
-            .select()
+            .select({ id: messages.id, createdAt: messages.createdAt })
             .from(messages)
             .where(and(eq(messages.id, before), eq(messages.conversationId, conversationId)))
             .limit(1);
 
-          if (beforeMessage.length > 0) {
-            const beforeTimestamp = beforeMessage[0].createdAt;
-            // Only fetch if we have a valid timestamp
-            if (beforeTimestamp) {
-              fetchedMessages = await db
-                .select()
-                .from(messages)
-                .where(and(
-                  eq(messages.conversationId, conversationId),
-                  notDeletedMessage,
-                  lt(messages.createdAt, beforeTimestamp)
-                ))
-                .orderBy(desc(messages.createdAt))
-                .limit(limit);
-            } else {
-              // Fallback if timestamp is null
-              fetchedMessages = await db
-                .select()
-                .from(messages)
-                .where(and(eq(messages.conversationId, conversationId), notDeletedMessage))
-                .orderBy(desc(messages.createdAt))
-                .limit(limit);
-            }
-          } else {
-            // If 'before' message not found, just fetch latest
-            fetchedMessages = await db
-              .select()
-              .from(messages)
-              .where(and(eq(messages.conversationId, conversationId), notDeletedMessage))
-              .orderBy(desc(messages.createdAt))
-              .limit(limit);
+          const anchor = beforeMessage[0];
+          // A missing anchor or null timestamp falls back to the latest page.
+          if (anchor?.createdAt) {
+            cursorCondition = or(
+              lt(messages.createdAt, anchor.createdAt),
+              and(eq(messages.createdAt, anchor.createdAt), lt(messages.id, anchor.id))
+            );
           }
-        } else {
-          // Fetch latest messages
-          fetchedMessages = await db
-            .select()
-            .from(messages)
-            .where(and(eq(messages.conversationId, conversationId), notDeletedMessage))
-            .orderBy(desc(messages.createdAt))
-            .limit(limit);
         }
+
+        const fetchedMessages = await db
+          .select()
+          .from(messages)
+          .where(cursorCondition ? and(visibleInConversation, cursorCondition) : visibleInConversation)
+          .orderBy(desc(messages.createdAt), desc(messages.id))
+          .limit(limit);
 
         console.log(`[CustomerMessageDO] Fetched ${fetchedMessages.length} messages`);
 
