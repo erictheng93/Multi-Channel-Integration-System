@@ -72,6 +72,7 @@ monitoring/
 archive/
 nul
 test-results/
+playwright-report/
 test-results.json
 coverage/
 coverage-report.json
