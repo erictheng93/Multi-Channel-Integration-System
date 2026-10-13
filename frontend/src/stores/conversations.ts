@@ -40,6 +40,10 @@ export const useConversationsStore = defineStore('conversations', () => {
   const loadingMore = ref(false) // Pagination
 
   const error = ref<string | null>(null)
+  // Persistent list-load failure. Unlike `error` (toast, auto-cleared after 5s) this
+  // stays until the next load attempt starts or succeeds, so the list view can show
+  // a failure state instead of the misleading empty state.
+  const loadError = ref<string | null>(null)
   const messagesLoading = ref(false)
   const sendingMessage = ref(false)
   const optimisticMessages = ref<Message[]>([])
@@ -378,6 +382,7 @@ export const useConversationsStore = defineStore('conversations', () => {
     loading,
     updating,
     error,
+    loadError,
     filters,
     pagination,
     handleError,
@@ -413,6 +418,7 @@ export const useConversationsStore = defineStore('conversations', () => {
 
     loading.value = true
     error.value = null
+    loadError.value = null
 
     try {
       const cleanFilters: Record<string, unknown> = {}
@@ -469,9 +475,11 @@ export const useConversationsStore = defineStore('conversations', () => {
         pagination.value = paginationData
       } else {
         handleError(response.error, '獲取對話列表失敗')
+        if (conversations.value.length === 0) { loadError.value = error.value ?? '載入對話失敗' }
       }
     } catch (err) {
       handleError(err, '網路錯誤，無法載入對話列表')
+      if (conversations.value.length === 0) { loadError.value = error.value ?? '載入對話失敗' }
     } finally {
       loading.value = false
       refreshing.value = false
@@ -809,6 +817,7 @@ export const useConversationsStore = defineStore('conversations', () => {
     loading,
     loadingMore,
     error,
+    loadError,
     messagesLoading,
     sendingMessage,
     optimisticMessages,
