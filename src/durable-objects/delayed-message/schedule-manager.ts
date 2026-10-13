@@ -90,7 +90,7 @@ export function collectReadyMessages(
 
 export interface BatchResultsDeps {
   logger: SchedulerLogger;
-  addToDeadLetterQueue: (message: PendingMessage, reason: unknown) => Promise<unknown>;
+  addToDeadLetterQueue: (message: PendingMessage, reason: unknown) => Promise<boolean>;
 }
 
 /**
@@ -103,10 +103,11 @@ export async function processBatchResults(
   messages: PendingMessage[],
   results: PromiseSettledResult<void>[],
   deps: BatchResultsDeps
-): Promise<void> {
+): Promise<Map<string, boolean>> {
   let successCount = 0;
   let failureCount = 0;
-  const dlqPromises: Promise<unknown>[] = [];
+  const dlqPromises: Promise<void>[] = [];
+  const recordedInDlq = new Map<string, boolean>();
 
   results.forEach((result, index) => {
     const message = messages[index];
@@ -117,7 +118,9 @@ export async function processBatchResults(
       failureCount++;
       const reason = result.reason ?? new Error('Unknown rejection reason');
 
-      dlqPromises.push(deps.addToDeadLetterQueue(message, reason));
+      dlqPromises.push(deps.addToDeadLetterQueue(message, reason).then(recorded => {
+        recordedInDlq.set(message.id, recorded);
+      }));
 
       deps.logger.error('Message send failed', reason, {
         messageId: message.id,
@@ -135,6 +138,7 @@ export async function processBatchResults(
     failureCount,
     totalProcessed: successCount + failureCount,
   });
+  return recordedInDlq;
 }
 
 // ---------------------------------------------------------------------------

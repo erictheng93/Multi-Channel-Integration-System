@@ -7,7 +7,7 @@ vi.mock('../../../src/modules/conversations/services/message-delivery-service', 
 
 import { DelayedMessageScheduler } from '../../../src/durable-objects/DelayedMessageScheduler'
 
-function harness(extra: Array<[string, unknown]> = []) {
+function harness(extra: Array<[string, unknown]> = [], failDlq = false) {
   let alarm: number | null = null
   let ready = Promise.resolve()
   const values = new Map<string, unknown>([['msg:m1', {
@@ -18,11 +18,14 @@ function harness(extra: Array<[string, unknown]> = []) {
     id: { toString: () => 'do-1' },
     blockConcurrencyWhile(fn: () => Promise<void>) { ready = fn() },
     storage: {
-      async get(key: string) { return values.get(key) },
-      async put(key: string, value: unknown) { values.set(key, value) },
+      async get(key: string) { return structuredClone(values.get(key)) },
+      async put(key: string, value: unknown) {
+        if (failDlq && key.startsWith('dlq:')) throw new Error('DLQ storage unavailable')
+        values.set(key, structuredClone(value))
+      },
       async delete(key: string | string[]) { for (const k of [key].flat()) values.delete(k) },
       async list({ prefix }: { prefix: string }) {
-        return new Map([...values].filter(([k]) => k.startsWith(prefix)))
+        return structuredClone(new Map([...values].filter(([k]) => k.startsWith(prefix))))
       },
       async getAlarm() { return alarm },
       async setAlarm(value: number) { alarm = value },
@@ -32,6 +35,10 @@ function harness(extra: Array<[string, unknown]> = []) {
   const scheduler = new DelayedMessageScheduler(state as any, {} as any)
   return {
     ready: () => ready, alarm: () => alarm, values,
+    async restart() {
+      new DelayedMessageScheduler(state as any, {} as any)
+      await ready
+    },
     async fire() {
       if (alarm !== null) vi.setSystemTime(Math.max(Date.now(), alarm))
       alarm = null
@@ -66,6 +73,28 @@ describe('DelayedMessageScheduler alarm chain', () => {
     await h.fire()
     expect(h.alarm()).toBeNull()
     expect(h.values.has('msg:m1')).toBe(false)
+  })
+
+  it('retains the failed message when every DLQ write fails and stops retrying', async () => {
+    vi.useFakeTimers()
+    deliver.mockRejectedValue(new Error('infra down'))
+    const h = harness([], true)
+    await h.ready()
+    let runs = 0
+    do {
+      const firing = h.fire()
+      await vi.runAllTimersAsync()
+      await firing
+      runs++
+    } while (h.alarm() !== null && runs < 10)
+    expect(runs).toBe(4)
+    expect(h.alarm()).toBeNull()
+    expect(h.values.has('dlq:m1')).toBe(false)
+    expect(h.values.get('msg:m1')).toMatchObject({ status: 'failed', retryCount: 4 })
+    await h.restart()
+    expect(h.values.get('msg:m1')).toMatchObject({ status: 'failed' })
+    expect(h.alarm()).toBeNull()
+    vi.restoreAllMocks()
   })
 
   it('drops failed copies already in the DLQ and expired DLQ entries on cold start', async () => {
