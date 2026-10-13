@@ -429,19 +429,18 @@ describe('Webhook Async Optimization', () => {
       expect(activityCalled || deferCalledForActivity).toBe(true);
     });
 
-    it('should call defer for notifications', async () => {
+    it('should not raise a per-message new-conversation notification', async () => {
+      // The notification belongs to conversation creation (findOrCreateConversation); the
+      // handler used to fire it for every message, costing a DB row and a DO request per user.
       const deferFn = vi.fn();
       const env = createMockEnv();
       const event = createLineTextEvent();
+      mockTriggerNewConversationNotification.mockClear();
 
       await processLineMessage(env as any, event as any, deferFn);
+      await Promise.all(deferFn.mock.calls.map((call: unknown[]) => call[0]));
 
-      // Notification trigger should happen (either directly or via defer)
-      const notificationCalled = mockTriggerNewConversationNotification.mock.calls.length > 0;
-      const deferCalledForNotification = deferFn.mock.calls.some(
-        (call: unknown[]) => call[0] != null
-      );
-      expect(notificationCalled || deferCalledForNotification).toBe(true);
+      expect(mockTriggerNewConversationNotification).not.toHaveBeenCalled();
     });
 
     it('should call defer for media processing when mediaData exists', async () => {
