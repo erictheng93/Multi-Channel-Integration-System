@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Hono } from 'hono'
-import { metricsMiddleware } from '../../../src/middleware/metrics'
+import { metricsMiddleware, __resetMetricsBatchForTest } from '../../../src/middleware/metrics'
 import { MetricsCollectorDO } from '../../../src/durable-objects/MetricsCollectorDO'
 import { LatestMessageCache } from '../../../src/services/latest-message-cache'
 import { LatestMessageCacheCoordinator } from '../../../src/durable-objects/LatestMessageCacheCoordinator'
@@ -44,25 +44,67 @@ async function snapshot(collector: MetricsCollectorDO) {
 afterEach(() => vi.useRealTimers())
 
 describe('metrics resource boundary', () => {
-  it('uses route templates and one bucket for unmatched alphabetic paths', async () => {
-    const paths: string[] = []
+  function middlewareApp() {
+    const calls: Array<{ url: string; samples: Array<{ path: string }> }> = []
     const pending: Promise<unknown>[] = []
     const app = new Hono<any>()
     app.use('/api/*', metricsMiddleware)
     app.get('/api/conversations/:id', c => c.text('ok'))
+    app.get('/api/ping', c => c.text('ok'))
     const env = { METRICS_COLLECTOR: {
       idFromName: () => 'global',
-      get: () => ({ fetch: async (_url: string, init: RequestInit) => {
-        paths.push(JSON.parse(init.body as string).path)
+      get: () => ({ fetch: async (url: string, init: RequestInit) => {
+        calls.push({ url, samples: JSON.parse(init.body as string).samples })
         return new Response('{}')
       } }),
     } }
+    const hit = (path: string) => app.fetch(new Request(`http://worker${path}`), env,
+      { waitUntil: (p: Promise<unknown>) => pending.push(p), passThroughOnException() {} })
+    return { calls, hit, settle: () => Promise.all(pending) }
+  }
+
+  it('uses route templates and one bucket for unmatched alphabetic paths', async () => {
+    vi.useFakeTimers()
+    __resetMetricsBatchForTest()
+    const { calls, hit, settle } = middlewareApp()
     for (const path of ['/api/arbitrary-alpha', '/api/arbitrary-beta', '/api/conversations/alice']) {
-      await app.fetch(new Request(`http://worker${path}`), env,
-        { waitUntil: (p: Promise<unknown>) => pending.push(p), passThroughOnException() {} })
+      await hit(path)
+      vi.setSystemTime(Date.now() + 31_000) // past the batch interval: each request flushes
     }
-    await Promise.all(pending)
-    expect(paths).toEqual(['/api/:unknown', '/api/:unknown', '/api/conversations/:id'])
+    await settle()
+    expect(calls.flatMap(c => c.samples.map(s => s.path)))
+      .toEqual(['/api/:unknown', '/api/:unknown', '/api/conversations/:id'])
+    expect(calls.every(c => c.url.endsWith('/ingest-batch'))).toBe(true)
+  })
+
+  it('sends the first request at once, then one batch per interval instead of one call per request', async () => {
+    vi.useFakeTimers()
+    __resetMetricsBatchForTest()
+    const { calls, hit, settle } = middlewareApp()
+    await hit('/api/ping')
+    await settle()
+    expect(calls).toHaveLength(1)
+
+    for (let i = 0; i < 25; i++) await hit('/api/ping')
+    await settle()
+    expect(calls).toHaveLength(1) // 25 requests inside the interval cost no DO call
+
+    vi.setSystemTime(Date.now() + 31_000)
+    await hit('/api/ping')
+    await settle()
+    expect(calls).toHaveLength(2)
+    expect(calls[1].samples).toHaveLength(26)
+  })
+
+  it('flushes early when a batch is full so memory stays bounded', async () => {
+    vi.useFakeTimers()
+    __resetMetricsBatchForTest()
+    const { calls, hit, settle } = middlewareApp()
+    await hit('/api/ping') // first request flushes at once
+    for (let i = 0; i < 200; i++) await hit('/api/ping')
+    await settle()
+    expect(calls).toHaveLength(2)
+    expect(calls[1].samples).toHaveLength(200)
   })
 
   it('caps distinct keys while retaining request totals and persists before acknowledging ingest', async () => {
@@ -73,10 +115,9 @@ describe('metrics resource boundary', () => {
     const data = await snapshot(collector)
     expect(Object.keys(data.endpoints).length).toBeLessThanOrEqual(512)
     expect(data.global.totalRequests).toBe(650)
-    // One small write per ingest, plus startedAt once.
-    expect(state.writes()).toBe(651)
-    await collector.alarm()
-    expect([...state.values.keys()].some(k => k.startsWith('m:'))).toBe(true)
+    // One small write per ingest call.
+    expect(state.writes()).toBe(650)
+    expect(state.values.has('metricsState')).toBe(true)
     const restored = new MetricsCollectorDO(state.state, {} as any)
     await state.ready()
     expect((await snapshot(restored)).global.totalRequests).toBe(650)
@@ -103,21 +144,17 @@ describe('metrics resource boundary', () => {
     expect(Object.keys((await snapshot(collector)).endpoints).length).toBeLessThanOrEqual(512)
   })
 
-  it('arms the flush alarm only on ingest and never re-arms it when idle', async () => {
+  it('never arms an alarm: persistence happens per call, not from a timer', async () => {
     const state = storageState()
-    const collector = new MetricsCollectorDO(state.state, { CACHE: { put: async () => {} } } as any)
+    const collector = new MetricsCollectorDO(state.state, {} as any)
     await state.ready()
-    expect(state.alarm()).toBeNull()
     await ingest(collector, '/api/test')
-    expect(state.alarm()).not.toBeNull()
-    state.consumeAlarm()
-    await collector.alarm()
     expect(state.alarm()).toBeNull()
-    await ingest(collector, '/api/test')
-    expect(state.alarm()).not.toBeNull()
+    await collector.alarm() // a leftover alarm from an older deployment
+    expect(state.alarm()).toBeNull()
   })
 
-  it('keeps every persisted value tiny and far under the 128 KiB limit at the endpoint cap', async () => {
+  it('keeps the persisted snapshot far under the 128 KiB storage value limit at the endpoint cap', async () => {
     const { serialize } = await import('node:v8')
     const state = storageState()
     const collector = new MetricsCollectorDO(state.state, { CACHE: { put: async () => {} } } as any)
@@ -125,10 +162,7 @@ describe('metrics resource boundary', () => {
     for (let i = 0; i < 511; i++) {
       for (let j = 0; j < 200; j++) await ingest(collector, `/api/route-${i}`, { responseTimeMs: j * 7 })
     }
-    await collector.alarm()
-    const sizes = [...state.values].filter(([k]) => k.startsWith('m:')).map(([, v]) => serialize(v).length)
-    expect(sizes.length).toBeGreaterThan(500)
-    expect(Math.max(...sizes)).toBeLessThan(4 * 1024)
+    expect(serialize(state.values.get('metricsState')).length).toBeLessThan(128 * 1024)
   })
 
   it('rejects invalid status values instead of creating unbounded nested counters', async () => {

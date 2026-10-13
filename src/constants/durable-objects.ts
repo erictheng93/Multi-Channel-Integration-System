@@ -99,6 +99,9 @@ export const METRICS_COLLECTOR_ROUTES = {
   /** Ingest metric data points */
   INGEST: '/ingest',
 
+  /** Ingest a batch of metric data points (what the Worker sends) */
+  INGEST_BATCH: '/ingest-batch',
+
   /** Get aggregated metrics */
   METRICS: '/metrics',
 
