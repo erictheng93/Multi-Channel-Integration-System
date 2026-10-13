@@ -17,6 +17,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import type {
   WebSocketClient} from '../websocketClient';
+import { authenticatedFetch } from '@/api/authenticatedFetch'
 import {
   createWebSocketClient,
   getGlobalWebSocketClient,
@@ -254,6 +255,22 @@ describe('WebSocketClient', () => {
 
       expect(client.connectionState.value).toBe('connected')
       expect(client.isConnected.value).toBe(true)
+    })
+
+    it('連接時不發出任何 HTTP 預檢請求 (audit W7)', async () => {
+      vi.mocked(authenticatedFetch).mockClear()
+      const fetchSpy = vi.spyOn(globalThis, 'fetch')
+      const client = createTrackedClient({
+        url: 'ws://localhost:8787/websocket'
+      })
+
+      await client.connect()
+      await waitForWebSocket()
+
+      expect(client.connectionState.value).toBe('connected')
+      expect(authenticatedFetch).not.toHaveBeenCalled()
+      expect(fetchSpy).not.toHaveBeenCalled()
+      fetchSpy.mockRestore()
     })
 
     it('應該使用正確的 URL 連接', async () => {
