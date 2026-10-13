@@ -244,6 +244,7 @@ defineExpose({
 @media (pointer: coarse) {
   .modal-close-btn {
     width: 44px;
+    min-width: 44px;
     height: 44px;
   }
 }
