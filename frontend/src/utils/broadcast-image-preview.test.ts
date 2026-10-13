@@ -1,9 +1,18 @@
-import { describe, expect, it, vi } from 'vitest'
-import { encodeUnderLimit, scaleToFit, PREVIEW_MAX_BYTES } from './broadcast-image-preview'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import {
+  createBroadcastPreview,
+  encodeUnderLimit,
+  scaleToFit,
+  PREVIEW_MAX_BYTES,
+} from './broadcast-image-preview'
 
 const blobOf = (bytes: number) => new Blob([new Uint8Array(bytes)], { type: 'image/jpeg' })
 
 describe('scaleToFit', () => {
+  it('clamps extreme aspect ratios to at least one pixel', () => {
+    expect(scaleToFit(10000, 1)).toEqual({ width: 1024, height: 1 })
+    expect(scaleToFit(1, 10000)).toEqual({ width: 1, height: 1024 })
+  })
   it('keeps small images unchanged', () => {
     expect(scaleToFit(800, 600)).toEqual({ width: 800, height: 600 })
   })
@@ -11,6 +20,43 @@ describe('scaleToFit', () => {
   it('scales the long edge down to 1024 preserving ratio', () => {
     expect(scaleToFit(4000, 2000)).toEqual({ width: 1024, height: 512 })
     expect(scaleToFit(1500, 3000)).toEqual({ width: 512, height: 1024 })
+  })
+})
+
+describe('createBroadcastPreview resource lifetime', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+    vi.unstubAllGlobals()
+  })
+
+  it.each(['context', 'draw', 'encode', 'success'])('closes the bitmap after %s', async stage => {
+    const close = vi.fn()
+    vi.stubGlobal(
+      'createImageBitmap',
+      vi.fn(async () => ({ width: 20, height: 10, close }))
+    )
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(
+      stage === 'context'
+        ? null
+        : ({
+            fillRect: vi.fn(),
+            drawImage: vi.fn(() => {
+              if (stage === 'draw') {
+                throw new Error('draw failed')
+              }
+            }),
+          } as unknown as CanvasRenderingContext2D)
+    )
+    vi.spyOn(HTMLCanvasElement.prototype, 'toBlob').mockImplementation(callback => {
+      callback(stage === 'encode' ? null : blobOf(100))
+    })
+    const result = createBroadcastPreview(new File(['image'], 'a.png', { type: 'image/png' }))
+    if (stage === 'success') {
+      await expect(result).resolves.toMatchObject({ name: 'preview-a.jpg' })
+    } else {
+      await expect(result).rejects.toThrow()
+    }
+    expect(close).toHaveBeenCalledTimes(1)
   })
 })
 
