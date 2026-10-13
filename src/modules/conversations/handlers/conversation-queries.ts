@@ -305,6 +305,7 @@ conversationQueriesHandler.get('/:id', jwtAuth, async (c) => {
         SELECT id as messageId, content, created_at as createdAt, sender_type as senderType, message_type as messageType
         FROM messages
         WHERE conversation_id = ?
+          AND deleted_at IS NULL
         ORDER BY created_at DESC
         LIMIT 1
       `).bind(conversationId).first<LatestConversationMessageRow>();
@@ -605,9 +606,11 @@ conversationQueriesHandler.get('/', jwtAuth, async (c) => {
             SELECT conversation_id, MAX(created_at) as max_created_at
             FROM messages
             WHERE conversation_id IN (${placeholders})
+              AND deleted_at IS NULL
             GROUP BY conversation_id
           ) latest ON m.conversation_id = latest.conversation_id
                   AND m.created_at = latest.max_created_at
+          WHERE m.deleted_at IS NULL
         `;
 
         try {

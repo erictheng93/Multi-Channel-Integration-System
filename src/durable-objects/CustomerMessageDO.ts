@@ -8,6 +8,7 @@ import { DurableObject } from 'cloudflare:workers';
 import type { Bindings } from '../types';
 import { eq, lt, desc, and, inArray } from 'drizzle-orm';
 import { createDbClient } from '../db/drizzle-factory';
+import { notDeletedMessage } from '../db/message-conditions';
 import { messages, fileAttachments, conversations, customers, agents } from '../db/schema';
 import { nowISO, nowMs } from '@/utils/timestamp'
 import { getPublicFileUrl, getSignedDownloadUrl } from '@/utils/file-url';
@@ -145,11 +146,12 @@ export class CustomerMessageDO extends DurableObject<Bindings> {
 
         // If before is specified, fetch messages before that timestamp
         if (before) {
-          // Get the timestamp of the 'before' message
+          // Keep deleted cursor anchors so pagination does not restart at latest.
+          // The anchor must belong to this conversation.
           const beforeMessage = await db
             .select()
             .from(messages)
-            .where(eq(messages.id, before))
+            .where(and(eq(messages.id, before), eq(messages.conversationId, conversationId)))
             .limit(1);
 
           if (beforeMessage.length > 0) {
@@ -161,6 +163,7 @@ export class CustomerMessageDO extends DurableObject<Bindings> {
                 .from(messages)
                 .where(and(
                   eq(messages.conversationId, conversationId),
+                  notDeletedMessage,
                   lt(messages.createdAt, beforeTimestamp)
                 ))
                 .orderBy(desc(messages.createdAt))
@@ -170,7 +173,7 @@ export class CustomerMessageDO extends DurableObject<Bindings> {
               fetchedMessages = await db
                 .select()
                 .from(messages)
-                .where(eq(messages.conversationId, conversationId))
+                .where(and(eq(messages.conversationId, conversationId), notDeletedMessage))
                 .orderBy(desc(messages.createdAt))
                 .limit(limit);
             }
@@ -179,7 +182,7 @@ export class CustomerMessageDO extends DurableObject<Bindings> {
             fetchedMessages = await db
               .select()
               .from(messages)
-              .where(eq(messages.conversationId, conversationId))
+              .where(and(eq(messages.conversationId, conversationId), notDeletedMessage))
               .orderBy(desc(messages.createdAt))
               .limit(limit);
           }
@@ -188,7 +191,7 @@ export class CustomerMessageDO extends DurableObject<Bindings> {
           fetchedMessages = await db
             .select()
             .from(messages)
-            .where(eq(messages.conversationId, conversationId))
+            .where(and(eq(messages.conversationId, conversationId), notDeletedMessage))
             .orderBy(desc(messages.createdAt))
             .limit(limit);
         }
