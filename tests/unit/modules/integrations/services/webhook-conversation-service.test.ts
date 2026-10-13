@@ -479,7 +479,12 @@ describe('webhook-conversation-service', () => {
       );
     });
 
-    it('should trigger cache update after successful save', async () => {
+    it('does not call the latest-message coordinator (its cache has no readers)', async () => {
+      const { LatestMessageJobQueue } = await import(
+        '@/workers/latest-message-worker'
+      );
+      vi.mocked(LatestMessageJobQueue).mockClear();
+
       await saveMessage(
         mockEnv,
         'conv-1',
@@ -492,10 +497,7 @@ describe('webhook-conversation-service', () => {
         'line'
       );
 
-      const { LatestMessageJobQueue } = await import(
-        '@/workers/latest-message-worker'
-      );
-      expect(LatestMessageJobQueue).toHaveBeenCalledWith(mockEnv);
+      expect(LatestMessageJobQueue).not.toHaveBeenCalled();
     });
 
     it('should update conversation timestamps only after message insert succeeds', async () => {
@@ -516,30 +518,6 @@ describe('webhook-conversation-service', () => {
         lastMessageAt: '2026-03-09T12:00:00.000Z',
         updatedAt: '2026-03-09T12:00:00.000Z',
       });
-    });
-
-    it('should not fail when cache update throws', async () => {
-      const { LatestMessageJobQueue } = await import(
-        '@/workers/latest-message-worker'
-      );
-      vi.mocked(LatestMessageJobQueue).mockImplementationOnce(() => ({
-        updateLatestMessage: vi.fn().mockRejectedValue(new Error('cache fail')),
-      }));
-
-      // Should NOT throw
-      const result = await saveMessage(
-        mockEnv,
-        'conv-1',
-        1,
-        'Hello',
-        'text',
-        'msg-1',
-        null,
-        null,
-        'line'
-      );
-
-      expect(result).toBe('mock-uuid-1234');
     });
 
     it('should throw when DB insert fails', async () => {
