@@ -3,9 +3,8 @@
 // Created by: WebSocket Migration Developer
 
 import { ref, type Ref } from 'vue'
-import { authenticatedFetch } from '@/api/authenticatedFetch'
 import { useAuthStore } from '@/stores/auth'
-import { getWebSocketUrl, getBackendUrl } from '@/config/runtime'
+import { getWebSocketUrl } from '@/config/runtime'
 import { createLogger } from '@/utils/logger'
 
 const log = createLogger('WebSocketClient')
@@ -204,6 +203,8 @@ export class WebSocketClient {
     return authStore.isAuthenticated || authStore.validateSession()
   }
 
+  // 只檢查 session 與 token 刷新；不再呼叫 /api/websocket/health (audit W7)，
+  // 連線失敗由 upgrade / onclose 本身回報。
   private async performPreConnectionChecks(): Promise<{success: boolean, error?: string, details?: string}> {
     const checks = []
     const authStore = useAuthStore()
@@ -228,48 +229,6 @@ export class WebSocketClient {
         }
       } else {
         checks.push('Session refresh not required')
-      }
-
-      // 檢查 3: 網路連接性預檢（可選）
-      try {
-        // 使用 Vite proxy 在開發模式，避免 CORS 問題
-        // 開發模式使用相對 URL (通過 Vite proxy)，生產模式使用完整 URL
-        const healthUrl = import.meta.env.DEV
-          ? '/api/websocket/health'
-          : `${getBackendUrl()}/api/websocket/health`
-
-        // Create AbortController for timeout handling
-        // eslint-disable-next-line no-undef
-        const controller = new AbortController()
-        const timeoutId = setTimeout(() => controller.abort(), 5000) // 5 second timeout
-
-        const response = await authenticatedFetch(healthUrl, {
-          method: 'GET',
-          signal: controller.signal
-        })
-
-        clearTimeout(timeoutId)
-
-        if (response.ok) {
-          const healthData = await response.json()
-          // Fix: Check correct nested path with fallback for backward compatibility
-          const isWebSocketEnabled = healthData.configuration?.websocketEnabled ??
-                                     healthData.websocketEnabled ??
-                                     false
-          if (isWebSocketEnabled) {
-            checks.push('WebSocket service available')
-          } else {
-            return { success: false, error: 'WebSocket service disabled on server' }
-          }
-        } else {
-          // Health check failed, but we'll continue anyway as it's not critical
-          this.log(`Health check failed with status ${response.status}, continuing anyway`)
-          checks.push('Health check skipped (non-critical failure)')
-        }
-      } catch (healthError) {
-        // Health check is optional, don't fail the entire pre-check
-        this.log(`Health check failed: ${healthError}, continuing anyway`)
-        checks.push('Health check skipped (connection error)')
       }
 
       return {
