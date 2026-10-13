@@ -61,8 +61,6 @@ export class BatchQueueManager {
 
   // Memory leak prevention
   private readonly MAX_QUEUE_SIZE = 1000;
-  private readonly METRICS_RESET_INTERVAL = 3600000; // 1 hour
-  private metricsResetTimer: ReturnType<typeof setTimeout> | null = null;
   private isDestroyed = false;
 
   private logger: Logger;
@@ -84,9 +82,8 @@ export class BatchQueueManager {
     };
 
     this.flushCallback = flushCallback ?? null;
-
-    // Schedule periodic metrics reset
-    this.scheduleMetricsReset();
+    // No periodic timer here: this class is constructed inside Durable Objects, where a
+    // pending (self-renewing) setTimeout keeps the object resident and bills duration.
   }
 
   /**
@@ -219,11 +216,6 @@ export class BatchQueueManager {
       this.batchTimer = null;
     }
 
-    if (this.metricsResetTimer) {
-      clearTimeout(this.metricsResetTimer);
-      this.metricsResetTimer = null;
-    }
-
     // Flush remaining events before destruction
     if (this.batchQueue.length > 0) {
       this.logger.warn('Destroying service with queued events', undefined, {
@@ -279,34 +271,5 @@ export class BatchQueueManager {
         droppedEvents: eventsToSend.length
       });
     }
-  }
-
-  private scheduleMetricsReset(): void {
-    if (this.metricsResetTimer) {
-      clearTimeout(this.metricsResetTimer);
-    }
-
-    this.metricsResetTimer = setTimeout(() => {
-      if (!this.isDestroyed) {
-        this.resetMetrics();
-        this.scheduleMetricsReset();
-      }
-    }, this.METRICS_RESET_INTERVAL);
-  }
-
-  private resetMetrics(): void {
-    const oldMetrics = { ...this.metrics };
-
-    this.metrics = {
-      totalEvents: 0,
-      batchedEvents: 0,
-      immediateEvents: 0,
-      batchesSent: 0,
-      avgBatchSize: oldMetrics.avgBatchSize // Keep rolling average
-    };
-
-    this.logger.info('Metrics reset (hourly)', undefined, {
-      previousMetrics: oldMetrics
-    });
   }
 }
