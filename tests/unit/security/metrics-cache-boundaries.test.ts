@@ -15,8 +15,13 @@ function storageState(initial: Record<string, unknown> = {}) {
     storage: {
       async get(key: string) { return values.get(key) },
       async put(key: string, value: unknown) { writes++; values.set(key, value) },
+      async delete(key: string | string[]) { for (const k of [key].flat()) values.delete(k) },
+      async list({ prefix }: { prefix: string }) {
+        return new Map([...values].filter(([k]) => k.startsWith(prefix)))
+      },
       async getAlarm() { return alarm },
       async setAlarm(value: number) { alarm = value },
+      async deleteAlarm() { alarm = null },
       async deleteAll() { values.clear(); alarm = null },
     },
   }
@@ -60,7 +65,7 @@ describe('metrics resource boundary', () => {
     expect(paths).toEqual(['/api/:unknown', '/api/:unknown', '/api/conversations/:id'])
   })
 
-  it('caps distinct keys while retaining request totals and persists only at the alarm', async () => {
+  it('caps distinct keys while retaining request totals and persists before acknowledging ingest', async () => {
     const state = storageState()
     const collector = new MetricsCollectorDO(state.state, { CACHE: { put: async () => {} } } as any)
     await state.ready()
@@ -68,9 +73,10 @@ describe('metrics resource boundary', () => {
     const data = await snapshot(collector)
     expect(Object.keys(data.endpoints).length).toBeLessThanOrEqual(512)
     expect(data.global.totalRequests).toBe(650)
-    expect(state.writes()).toBe(0)
+    // One small write per ingest, plus startedAt once.
+    expect(state.writes()).toBe(651)
     await collector.alarm()
-    expect(state.values.has('metricsState')).toBe(true)
+    expect([...state.values.keys()].some(k => k.startsWith('m:'))).toBe(true)
     const restored = new MetricsCollectorDO(state.state, {} as any)
     await state.ready()
     expect((await snapshot(restored)).global.totalRequests).toBe(650)
@@ -111,7 +117,7 @@ describe('metrics resource boundary', () => {
     expect(state.alarm()).not.toBeNull()
   })
 
-  it('keeps the persisted snapshot under the 128 KiB storage value limit at the endpoint cap', async () => {
+  it('keeps every persisted value tiny and far under the 128 KiB limit at the endpoint cap', async () => {
     const { serialize } = await import('node:v8')
     const state = storageState()
     const collector = new MetricsCollectorDO(state.state, { CACHE: { put: async () => {} } } as any)
@@ -120,7 +126,9 @@ describe('metrics resource boundary', () => {
       for (let j = 0; j < 200; j++) await ingest(collector, `/api/route-${i}`, { responseTimeMs: j * 7 })
     }
     await collector.alarm()
-    expect(serialize(state.values.get('metricsState')).length).toBeLessThan(128 * 1024)
+    const sizes = [...state.values].filter(([k]) => k.startsWith('m:')).map(([, v]) => serialize(v).length)
+    expect(sizes.length).toBeGreaterThan(500)
+    expect(Math.max(...sizes)).toBeLessThan(4 * 1024)
   })
 
   it('rejects invalid status values instead of creating unbounded nested counters', async () => {
