@@ -1,8 +1,15 @@
 /**
- * MetricsCollectorDO - In-memory API metrics accumulator
+ * MetricsCollectorDO - API metrics accumulator
  *
- * Receives per-request metric data points, maintains running counters,
- * and periodically flushes snapshots to KV for dashboard consumption.
+ * Receives metric data points (the Worker sends them in batches), maintains running
+ * counters and serves them on GET /metrics.
+ *
+ * Cost model (a single global instance, so every call is billed):
+ * - The Worker batches samples, so this object is called per batch, not per request.
+ * - A call persists ONE value (all endpoint counters, latency samples left out) before
+ *   it answers; a cold start reads that one value back.
+ * - No alarm and no KV flush: nothing ever read the hourly KV snapshot, so the
+ *   per-minute alarm chain and its KV writes were pure cost.
  */
 
 import type { DurableObjectState } from '@cloudflare/workers-types';
@@ -68,19 +75,14 @@ const ENDPOINT_METADATA: Record<string, { category: string; description: string 
 // Max recent response times to keep per endpoint (for percentile calculations)
 const MAX_RECENT_RESPONSE_TIMES = 200;
 
-// How often to flush to KV (ms)
-const FLUSH_INTERVAL_MS = 60_000;
+/** Upper bound for one /ingest-batch call (the Worker never sends more than this). */
+const MAX_BATCH_SAMPLES = 200;
 
 const MAX_ENDPOINTS = 512;
 const ENDPOINT_RETENTION_MS = 86_400_000;
 const OVERFLOW_KEY = 'OTHER:/api/:overflow';
 
-const ENDPOINT_PREFIX = 'm:';
-const STARTED_AT_KEY = 'startedAt';
-/** Single-value snapshot written by the previous design; migrated once on load. */
-const LEGACY_STATE_KEY = 'metricsState';
-/** DurableObjectStorage.delete() accepts at most 128 keys per call. */
-const STORAGE_BATCH = 128;
+const STATE_KEY = 'metricsState';
 const HTTP_METHODS = new Set(['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS', 'CONNECT', 'TRACE']);
 
 /**
@@ -88,15 +90,11 @@ const HTTP_METHODS = new Set(['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', '
  */
 export class MetricsCollectorDO {
   private state: DurableObjectState;
-  private env: Bindings;
   private metrics: Map<string, EndpointMetrics> = new Map();
   private startedAt: number = Date.now();
-  private flushScheduled = false;
-  private startedAtPersisted = false;
 
-  constructor(state: DurableObjectState, env: Bindings) {
+  constructor(state: DurableObjectState, _env: Bindings) {
     this.state = state;
-    this.env = env;
 
     this.state.blockConcurrencyWhile(async () => {
       await this.loadFromStorage();
@@ -105,96 +103,60 @@ export class MetricsCollectorDO {
 
   // =================== Storage ===================
 
-  // Storage layout: one small value per endpoint (`m:<key>`) plus `startedAt`.
-  // An ingest rewrites only the endpoint it touched, so a write never grows with the
-  // number of tracked endpoints and stays far below the 128 KiB value limit. Samples are
-  // left out of storage; the percentile windows refill from live traffic after a restart.
+  // Storage layout: ONE value with every endpoint's counters. The object is called once per
+  // batch, so a call costs one small write and a cold start one small read; a key per
+  // endpoint would need a list() of every endpoint on each cold start. Latency samples are
+  // left out, which keeps the value far below the 128 KiB limit even at the endpoint cap;
+  // the percentile windows refill from live traffic after a restart.
   private async loadFromStorage(): Promise<void> {
     try {
-      const stored = await this.state.storage.list<EndpointMetrics>({ prefix: ENDPOINT_PREFIX });
-      for (const [storageKey, endpoint] of stored) {
-        this.metrics.set(storageKey.slice(ENDPOINT_PREFIX.length), endpoint);
-      }
-
-      // One-time migration of the previous single-value snapshot.
-      const legacy = await this.state.storage.get<{
+      const stored = await this.state.storage.get<{
         metrics: Array<[string, EndpointMetrics]>;
         startedAt: number;
-      }>(LEGACY_STATE_KEY);
-      if (legacy) {
-        const migrated = legacy.metrics.slice(-MAX_ENDPOINTS).filter(([key]) => !this.metrics.has(key));
-        for (const [key, endpoint] of migrated) this.metrics.set(key, endpoint);
-        for (let i = 0; i < migrated.length; i += STORAGE_BATCH) {
-          await Promise.all(migrated.slice(i, i + STORAGE_BATCH)
-            .map(([key, endpoint]) => this.persistEndpoint(key, endpoint)));
+      }>(STATE_KEY);
+
+      if (stored) {
+        this.metrics = new Map(stored.metrics.slice(-MAX_ENDPOINTS));
+        for (const endpoint of this.metrics.values()) {
+          endpoint.lastRequestAt = Math.min(endpoint.lastRequestAt, Date.now());
+          endpoint.recentResponseTimes = endpoint.recentResponseTimes.slice(-MAX_RECENT_RESPONSE_TIMES);
+          endpoint.statusCodes = Object.fromEntries(Object.entries(endpoint.statusCodes)
+            .filter(([status]) => /^\d{3}$/.test(status) && Number(status) >= 100 && Number(status) <= 599));
         }
-        await this.state.storage.put(STARTED_AT_KEY, legacy.startedAt);
-        await this.state.storage.delete([LEGACY_STATE_KEY]);
-      }
-
-      for (const endpoint of this.metrics.values()) {
-        endpoint.lastRequestAt = Math.min(endpoint.lastRequestAt, Date.now());
-        endpoint.recentResponseTimes = (endpoint.recentResponseTimes ?? []).slice(-MAX_RECENT_RESPONSE_TIMES);
-        endpoint.statusCodes = Object.fromEntries(Object.entries(endpoint.statusCodes ?? {})
-          .filter(([status]) => /^\d{3}$/.test(status) && Number(status) >= 100 && Number(status) <= 599));
-      }
-
-      const removed = this.pruneExpiredEndpoints();
-      // Bound a restored map and keep one slot free for the overflow bucket, so every
-      // accepted request still contributes to the totals.
-      const limit = this.metrics.has(OVERFLOW_KEY) ? MAX_ENDPOINTS : MAX_ENDPOINTS - 1;
-      for (const key of [...this.metrics.keys()]) {
-        if (this.metrics.size <= limit) break;
-        if (key === OVERFLOW_KEY) continue;
-        this.metrics.delete(key);
-        removed.push(key);
-      }
-      await this.removeFromStorage(removed);
-
-      const startedAt = await this.state.storage.get<number>(STARTED_AT_KEY);
-      if (typeof startedAt === 'number') {
-        this.startedAt = startedAt;
-        this.startedAtPersisted = true;
-      }
-      if (this.metrics.size > 0) {
+        this.pruneExpiredEndpoints();
+        if (this.metrics.size === MAX_ENDPOINTS && !this.metrics.has(OVERFLOW_KEY)) {
+          this.metrics.delete(this.metrics.keys().next().value!);
+        }
+        this.startedAt = stored.startedAt;
         console.log(`[MetricsCollectorDO] Restored ${this.metrics.size} endpoint metrics from storage`);
+        return;
+      }
+
+      // An interim release kept one key per endpoint (m:<key>). The counters are
+      // approximate, so those leftovers are dropped instead of migrated.
+      const leftovers = await this.state.storage.list({ prefix: 'm:', limit: 1 });
+      if (leftovers.size > 0) {
+        await this.state.storage.deleteAll();
       }
     } catch (error) {
       console.error('[MetricsCollectorDO] Failed to load from storage:', error);
     }
   }
 
-  private async persistEndpoint(key: string, endpoint: EndpointMetrics): Promise<void> {
-    await this.state.storage.put(ENDPOINT_PREFIX + key, { ...endpoint, recentResponseTimes: [] });
+  private async persistToStorage(): Promise<void> {
+    await this.state.storage.put(STATE_KEY, {
+      metrics: Array.from(this.metrics, ([key, endpoint]) => [key, { ...endpoint, recentResponseTimes: [] }]),
+      startedAt: this.startedAt,
+    });
   }
 
-  private async removeFromStorage(keys: string[]): Promise<void> {
-    for (let i = 0; i < keys.length; i += STORAGE_BATCH) {
-      await this.state.storage.delete(keys.slice(i, i + STORAGE_BATCH).map((key) => ENDPOINT_PREFIX + key));
-    }
-  }
-
-  /** Drops expired endpoints from memory; returns their keys so storage can follow. */
-  private pruneExpiredEndpoints(): string[] {
+  private pruneExpiredEndpoints(): void {
     const cutoff = Date.now() - ENDPOINT_RETENTION_MS;
-    const removed: string[] = [];
     for (const [key, endpoint] of this.metrics) {
       if (!Number.isFinite(endpoint.lastRequestAt) || endpoint.lastRequestAt <= cutoff) {
         this.metrics.delete(key);
-        removed.push(key);
       }
     }
-    return removed;
-  }
-
-  // Armed only by ingest, so an idle collector never wakes.
-  private async scheduleFlush(): Promise<void> {
-    if (this.flushScheduled) return;
-    if (await this.state.storage.getAlarm() === null) {
-      // Stop condition: alarm() never re-arms; the next ingest arms the next dashboard flush.
-      await this.state.storage.setAlarm(Date.now() + FLUSH_INTERVAL_MS);
-    }
-    this.flushScheduled = true;
   }
 
   // =================== Fetch Handler ===================
@@ -206,6 +168,8 @@ export class MetricsCollectorDO {
       switch (url.pathname) {
         case '/ingest':
           return await this.handleIngest(request);
+        case '/ingest-batch':
+          return await this.handleIngestBatch(request);
         case '/metrics':
           return this.handleGetMetrics();
         case '/reset':
@@ -235,25 +199,22 @@ export class MetricsCollectorDO {
 
   // =================== Route Handlers ===================
 
-  private async handleIngest(request: Request): Promise<Response> {
-    const payload = (await request.json()) as IngestPayload;
-
+  /** Validates and applies one sample in memory; null when the sample is invalid. */
+  private record(
+    payload: IngestPayload
+  ): { key: string; endpoint: EndpointMetrics } | null {
     const { method, path, statusCode, responseTimeMs } = payload ?? {};
     if (typeof method !== 'string' || !method || method.length > 16 ||
         typeof path !== 'string' || !path.startsWith('/api/') || path.length > 512 ||
         !Number.isInteger(statusCode) || statusCode < 100 || statusCode > 599 ||
         typeof responseTimeMs !== 'number' || !Number.isFinite(responseTimeMs) || responseTimeMs < 0) {
-      return new Response(
-        JSON.stringify({ success: false, error: 'Invalid metric fields' }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      );
+      return null;
     }
 
     const normalizedMethod = method.toUpperCase();
     let key = `${HTTP_METHODS.has(normalizedMethod) ? normalizedMethod : 'OTHER'}:${path}`;
-    let pruned: string[] = [];
     if (!this.metrics.has(key)) {
-      pruned = this.pruneExpiredEndpoints();
+      this.pruneExpiredEndpoints();
       // Reserve one slot for overflow so every accepted request still contributes to totals.
       if (this.metrics.size >= MAX_ENDPOINTS - 1) key = OVERFLOW_KEY;
     }
@@ -292,19 +253,42 @@ export class MetricsCollectorDO {
       endpoint.recentResponseTimes.shift();
     }
 
-    // Write only the touched endpoint before acknowledging: eviction before the dashboard
-    // flush must not discard acknowledged increments, and the write stays one small value.
-    await this.persistEndpoint(key, endpoint);
-    if (!this.startedAtPersisted) {
-      await this.state.storage.put(STARTED_AT_KEY, this.startedAt);
-      this.startedAtPersisted = true;
+    return { key, endpoint };
+  }
+
+  private json(body: unknown, status = 200): Response {
+    return new Response(JSON.stringify(body), {
+      status,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
+  private async handleIngest(request: Request): Promise<Response> {
+    const recorded = this.record((await request.json()) as IngestPayload);
+    if (!recorded) {
+      return this.json({ success: false, error: 'Invalid metric fields' }, 400);
     }
-    await this.removeFromStorage(pruned);
-    await this.scheduleFlush();
-    return new Response(
-      JSON.stringify({ success: true, key, requestCount: endpoint.requestCount }),
-      { headers: { 'Content-Type': 'application/json' } }
-    );
+    // Durable before the answer: eviction must not discard an acknowledged increment.
+    await this.persistToStorage();
+    return this.json({ success: true, key: recorded.key, requestCount: recorded.endpoint.requestCount });
+  }
+
+  /** The Worker sends samples in batches so this object is billed per batch, not per request. */
+  private async handleIngestBatch(request: Request): Promise<Response> {
+    const body = (await request.json()) as { samples?: IngestPayload[] };
+    const samples = Array.isArray(body?.samples) ? body.samples.slice(0, MAX_BATCH_SAMPLES) : null;
+    if (!samples) {
+      return this.json({ success: false, error: 'samples must be an array' }, 400);
+    }
+
+    let accepted = 0;
+    for (const sample of samples) {
+      if (this.record(sample)) accepted++;
+    }
+    if (accepted > 0) {
+      await this.persistToStorage(); // one write for the whole batch
+    }
+    return this.json({ success: true, accepted, rejected: samples.length - accepted });
   }
 
   private handleGetMetrics(): Response {
@@ -319,9 +303,6 @@ export class MetricsCollectorDO {
     this.startedAt = Date.now();
     await this.state.storage.deleteAll();
     await this.state.storage.deleteAlarm();
-    // No pending dashboard flush remains; the next ingest may arm a fresh alarm.
-    this.flushScheduled = false;
-    this.startedAtPersisted = false;
 
     return new Response(
       JSON.stringify({ success: true, message: 'Metrics reset' }),
@@ -395,26 +376,7 @@ export class MetricsCollectorDO {
 
   // =================== Alarm Handler ===================
 
-  // Chain stops by itself: no re-arm here; the next ingest arms the next flush.
-  async alarm(): Promise<void> {
-    this.flushScheduled = false; // the alarm that fired is consumed
-    try {
-      // Expired endpoints leave storage at the flush, the one place that already runs periodically.
-      await this.removeFromStorage(this.pruneExpiredEndpoints());
-      const snapshot = this.buildSnapshot();
-      const hourBucket = Math.floor(Date.now() / 3_600_000);
-      const kvKey = `metrics:snapshot:${hourBucket}`;
-
-      await this.env.CACHE.put(kvKey, JSON.stringify(snapshot), {
-        expirationTtl: 86_400, // 24h TTL
-      });
-
-      console.log(
-        `[MetricsCollectorDO] Flushed snapshot to KV key=${kvKey}, endpoints=${this.metrics.size}, requests=${snapshot.global.totalRequests}`
-      );
-
-    } catch (error) {
-      console.error('[MetricsCollectorDO] Alarm flush error:', error);
-    }
-  }
+  // This object arms no alarm. An alarm armed by an earlier release may still be pending in
+  // storage; it fires once here, does nothing and is not re-armed, so that chain ends.
+  async alarm(): Promise<void> {}
 }

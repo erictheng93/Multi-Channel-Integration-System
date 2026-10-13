@@ -16,6 +16,26 @@ const SKIP_PATHS = [
   '/robots.txt',
 ];
 
+/** Samples waiting for the next batch send (module scope: one batch per isolate). */
+interface MetricSample {
+  method: string;
+  path: string;
+  statusCode: number;
+  responseTimeMs: number;
+  timestamp: number;
+}
+let pending: MetricSample[] = [];
+let lastFlushAt = 0;
+const FLUSH_INTERVAL_MS = 30_000;
+/** Must not exceed MAX_BATCH_SAMPLES in MetricsCollectorDO. */
+const MAX_BATCH_SAMPLES = 200;
+
+/** Test hook: forget the batching state of this isolate. */
+export function __resetMetricsBatchForTest(): void {
+  pending = [];
+  lastFlushAt = 0;
+}
+
 /**
  * Normalize a URL path by replacing dynamic segments with `:id`.
  * - UUIDs (8-4-4-4-12 hex format)
@@ -71,28 +91,33 @@ export async function metricsMiddleware(
       .at(-1)?.path ?? '/api/:unknown';
     const timestamp = Date.now();
 
-    // Send metrics to MetricsCollectorDO non-blocking
-    c.executionCtx.waitUntil(
-      (async () => {
-        try {
-          const doId = c.env.METRICS_COLLECTOR.idFromName('global');
-          const stub = c.env.METRICS_COLLECTOR.get(doId);
-          await stub.fetch('http://metrics-collector/ingest', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              method,
-              path: normalizedPath,
-              statusCode,
-              responseTimeMs,
-              timestamp,
-            }),
-          });
-        } catch (err) {
-          log.warn('Failed to send metrics to DO', { error: String(err) });
-        }
-      })(),
-    );
+    // The collector is one global Durable Object that is billed per call, so samples are
+    // batched in this isolate and sent once per interval (or when the batch is full).
+    // ponytail: an isolate recycled before its next flush drops at most one interval of
+    // samples; these counters are approximate by design, and the first request of every
+    // isolate is sent at once, so a quiet system loses nothing.
+    pending.push({ method, path: normalizedPath, statusCode, responseTimeMs, timestamp });
+    const now = Date.now();
+    if (pending.length >= MAX_BATCH_SAMPLES || now - lastFlushAt >= FLUSH_INTERVAL_MS) {
+      const samples = pending;
+      pending = [];
+      lastFlushAt = now;
+      c.executionCtx.waitUntil(
+        (async () => {
+          try {
+            const doId = c.env.METRICS_COLLECTOR.idFromName('global');
+            const stub = c.env.METRICS_COLLECTOR.get(doId);
+            await stub.fetch('http://metrics-collector/ingest-batch', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ samples }),
+            });
+          } catch (err) {
+            log.warn('Failed to send metrics to DO', { error: String(err) });
+          }
+        })(),
+      );
+    }
   } catch (err) {
     // Metrics must NEVER break a request
     log.error('Metrics middleware error', { error: String(err) });
