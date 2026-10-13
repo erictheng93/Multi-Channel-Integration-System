@@ -221,6 +221,11 @@ export const PLATFORM_MESSAGE_LIMITS = {
   SYSTEM: 10000,
 } as const;
 
+/**
+ * LINE previewImageUrl size limit (1MB); larger previews render as broken images client-side.
+ */
+export const LINE_PREVIEW_IMAGE_MAX_BYTES = 1024 * 1024;
+
 // ============================================================================
 // 數量和頻率限制
 // ============================================================================

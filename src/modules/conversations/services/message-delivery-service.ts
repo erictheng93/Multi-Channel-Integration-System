@@ -15,7 +15,7 @@ import { WebSocketBroadcastService } from '@/services/websocket-broadcast-servic
 import { nowISO, nowMs } from '@/utils/timestamp';
 import { createContextLogger } from '@/utils/logger';
 import { getSignedFileUrl, PERSISTENT_ATTACHMENT_URL_TTL_SECONDS } from '@/utils/file-url';
-import { BROADCAST_PREVIEW_MAX_BYTES } from '@modules/broadcast/services/broadcast-content';
+import { LINE_PREVIEW_IMAGE_MAX_BYTES } from '@/constants/limits';
 
 const log = createContextLogger('MessageDeliveryService');
 
@@ -204,7 +204,7 @@ export class MessageDeliveryService {
                   // Use native LINE image message (直接顯示圖片，可儲存/分享)
                   // The original doubles as previewImageUrl (LINE caps it at 1MB). Real-device
                   // tests (issue #61) did not reproduce broken previews; keep a trail if one is reported.
-                  if ((attachment.fileSize ?? 0) > BROADCAST_PREVIEW_MAX_BYTES) {
+                  if ((attachment.fileSize ?? 0) > LINE_PREVIEW_IMAGE_MAX_BYTES) {
                     log.warn('Image over 1MB sent as its own previewImageUrl', {
                       attachmentId: attachment.id,
                       fileSize: attachment.fileSize,
