@@ -249,7 +249,6 @@ export const DURABLE_OBJECT_CLASSES = [
   'CustomerConversationDO',
   'CustomerMessageDO',
   'RateLimiterDO',
-  'MetricsCollectorDO',
 ] as const;
 
 /**

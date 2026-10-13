@@ -355,7 +355,6 @@ Multi_Channel_Integration_System/
 │ │   ├── user-connection-security.ts
 │ │   ├── user-connection-state.ts
 │ │   ├── user-subscription-manager.ts
-│ │   ├── MetricsCollectorDO.ts                       # 即時指標收集 (v4)
 │ │   └── (LockCoordinator → src/services/distributed-lock-service.ts)
 │ ├── services/ # 40+ 共用服務
 │ ├── middleware/ # Auth, CORS 等中介層

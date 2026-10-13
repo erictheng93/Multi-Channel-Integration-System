@@ -166,11 +166,6 @@ class_name = "CustomerMessageDO"
 name = "RATE_LIMITER"
 class_name = "RateLimiterDO"
 
-# MetricsCollector - Aggregates API request metrics in memory
-[[durable_objects.bindings]]
-name = "METRICS_COLLECTOR"
-class_name = "MetricsCollectorDO"
-
 # =================== DURABLE OBJECTS MIGRATIONS ===================
 
 # Initial migration - Original Durable Objects (v1 - DO NOT MODIFY!)
@@ -214,6 +209,12 @@ new_sqlite_classes = ["RateLimiterDO"]
 [[migrations]]
 tag = "v6"
 new_classes = ["MetricsCollectorDO"]
+
+# Migration v7 - Delete MetricsCollectorDO (API metrics subsystem removed).
+# This deletes the class's stored metrics. They were approximate and unused.
+[[migrations]]
+tag = "v7"
+deleted_classes = ["MetricsCollectorDO"]
 
 # =================== DEPLOYMENT ENVIRONMENT POLICY ===================
 #

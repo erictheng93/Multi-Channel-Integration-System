@@ -49,7 +49,7 @@ System 模組看「系統整體生死」，Monitoring 模組看「每個元件�
 
 ## 6. 涉及的 Durable Objects
 
-- **`MetricsCollectorDO`** — 主要資料源（即時指標累加器）
+- `MetricsCollectorDO` 與 `metricsMiddleware`（每端點 API 指標收集）已移除（migration v7）；`api-status` 的 `endpoints` 固定為空
 - **`RateLimiterDO`** — middleware 引用，請求節流
 
 ## 7. 邊界案例與小細節
@@ -63,10 +63,10 @@ System 模組看「系統整體生死」，Monitoring 模組看「每個元件�
 
 | 症狀 | 排查方向 |
 |---|---|
-| metrics 都是 0 | `MetricsCollectorDO` 是否正常 ingest（middleware 有沒有掛上） |
+| 端點 metrics 都是 0 | 預期行為：API 指標收集已移除，不再有資料來源 |
 | 斷路器跳閘 | 看為何觸發，確認原因排除後再 reset |
 | degraded 一直回不來 | 個別 DO 實例可能還在啟動中 |
 
 ---
 
-**相關模組**：[system](./system.md)、[analytics](./analytics.md)、`MetricsCollectorDO`（見 `docs/CURRENT_STATUS.md`）
+**相關模組**：[system](./system.md)、[analytics](./analytics.md)
