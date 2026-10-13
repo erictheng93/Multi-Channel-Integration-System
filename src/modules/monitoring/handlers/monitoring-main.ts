@@ -17,63 +17,26 @@ const logger = createLogger({ service: 'Monitoring-API' });
 // =================== 健康檢查端點 ===================
 
 /**
- * 系統整體健康檢查
+ * 公開存活檢查（liveness）
  * GET /api/monitoring/health
  * Public endpoint - 不需要認證
+ *
+ * 這個端點沒有認證，任何人都能反覆呼叫，所以它絕不能觸發 Durable Object 請求：
+ * 之前每次呼叫都會對 MessageBroadcaster / 各 ConversationRoom / UserConnection
+ * 逐一探測，等於讓外部流量直接轉成 DO 帳單。這裡只回報行程內狀態（circuit breaker）。
+ * 需要實際探測 DO 時，使用管理員端點 POST /api/monitoring/health-check。
  */
-monitoringHandler.get('/health', async (c) => {
-  try {
-    const monitor = createDOMonitor(c.env);
-    const stats = await monitor.performHealthCheck();
-    const circuitBreaker = getCircuitBreaker();
-    circuitBreaker.setEnv(c.env);
+monitoringHandler.get('/health', (c) => {
+  const circuitBreaker = getCircuitBreaker();
+  const breakerState = circuitBreaker.getState();
 
-    const health = {
-      status: stats.healthyInstances >= stats.totalInstances * 0.7 ? 'healthy' : 'degraded',
-      timestamp: nowMs(),
-      components: {
-        durableObjects: {
-          status: stats.unhealthyInstances === 0 ? 'healthy' : 'degraded',
-          totalInstances: stats.totalInstances,
-          healthyInstances: stats.healthyInstances,
-          degradedInstances: stats.degradedInstances,
-          unhealthyInstances: stats.unhealthyInstances
-        },
-        circuitBreaker: {
-          status: circuitBreaker.getState(),
-          stats: circuitBreaker.getStats()
-        },
-        alerts: {
-          active: stats.activeAlerts,
-          total: stats.totalAlerts
-        }
-      },
-      summary: {
-        totalInstances: stats.totalInstances,
-        instancesByType: stats.instancesByType,
-        lastUpdate: stats.lastUpdate
-      }
-    };
-
-    const statusCode = health.status === 'healthy' ? HTTP_STATUS.OK : 207; // 207 Multi-Status
-
-    logger.info('Health check completed', undefined, {
-      status: health.status,
-      totalInstances: stats.totalInstances,
-      activeAlerts: stats.activeAlerts
-    });
-
-    return c.json(health, statusCode);
-
-  } catch (error) {
-    logger.error('Health check failed', error);
-
-    return c.json({
-      status: 'error',
-      error: error instanceof Error ? error.message : 'Unknown error',
-      timestamp: nowMs()
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
-  }
+  return c.json({
+    status: breakerState === 'OPEN' ? 'degraded' : 'healthy',
+    timestamp: nowMs(),
+    components: {
+      circuitBreaker: { status: breakerState }
+    }
+  }, breakerState === 'OPEN' ? 207 : HTTP_STATUS.OK);
 });
 
 /**
