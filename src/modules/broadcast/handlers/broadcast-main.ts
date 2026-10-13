@@ -115,8 +115,7 @@ broadcastRouter.get('/:id/recipients', async (c) => {
   }
 
   const service = new BroadcastService(createDbClient(c.env.DB), c.env);
-  const broadcast = await service.getById(c.req.param('id'));
-  if (!broadcast) {
+  if (!await service.exists(c.req.param('id'))) {
     return errorResponse(c, { code: 'NOT_FOUND', message: 'Broadcast not found' }, 404);
   }
 
