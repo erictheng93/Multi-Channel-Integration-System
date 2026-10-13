@@ -143,7 +143,6 @@ export async function processFacebookMessage(env: Bindings, messaging: FacebookM
     // =================== DEFERRED: Non-critical tasks via waitUntil ===================
     const convId = conversation!.id;
     const convTeamId = conversation!.assignedTeamId;
-    const userDisplayName = user.displayName || 'Facebook User';
     const customerId = user.id;
 
     // A. WebSocket broadcast (without file_attachments)
@@ -217,23 +216,9 @@ export async function processFacebookMessage(env: Bindings, messaging: FacebookM
       }
     })());
 
-    // F. Notifications
-    if (convTeamId) {
-      defer((async () => {
-        try {
-          const { triggerNewConversationNotification } = await import('@/utils/notification-trigger');
-          await triggerNewConversationNotification(env, {
-            conversationId: convId,
-            customerName: userDisplayName,
-            platform: 'Facebook',
-            messagePreview: messageContent.substring(0, 100),
-            teamId: convTeamId ?? undefined
-          });
-        } catch (err) {
-          log.warn('Facebook Webhook: Deferred notification failed', { error: err instanceof Error ? err.message : String(err) });
-        }
-      })());
-    }
+    // F. Notifications: no per-message "new conversation" notification. It used to fire for every
+    // message of a team-assigned conversation (never for a new one, which has no team yet), costing
+    // one notification row and one UserConnection request per target user per message.
 
     logSecurely('Facebook', userId, messageContent.length);
   } catch (error) {

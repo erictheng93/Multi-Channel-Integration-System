@@ -266,7 +266,6 @@ export async function processLineMessage(env: Bindings, event: LineEvent, defer:
     // =================== DEFERRED: Non-critical tasks via waitUntil ===================
     const convId = conversation!.id;
     const convTeamId = conversation!.assignedTeamId;
-    const userDisplayName = user.displayName || 'LINE User';
     const customerId = user.id;
 
     // A. WebSocket broadcast (includes metadata for immediate file/media rendering)
@@ -345,21 +344,10 @@ export async function processLineMessage(env: Bindings, event: LineEvent, defer:
       }
     })());
 
-    // F. Notifications
-    defer((async () => {
-      try {
-        const { triggerNewConversationNotification } = await import('@/utils/notification-trigger');
-        await triggerNewConversationNotification(env, {
-          conversationId: convId,
-          customerName: userDisplayName,
-          platform: 'LINE',
-          messagePreview: messageContent,
-          teamId: convTeamId ?? undefined
-        });
-      } catch (err) {
-        log.warn('LINE Webhook: Deferred notification failed', { error: err instanceof Error ? err.message : String(err) });
-      }
-    })());
+    // F. Notifications: the "new conversation" notification is raised once, when the conversation
+    // is created (findOrCreateConversation). Firing it here as well made every inbound message
+    // insert one notification row per target user and one UserConnection request per user, and
+    // sent a duplicate for the very first message.
 
     logSecurely('LINE', userId, messageContent.length);
   } catch (error) {
