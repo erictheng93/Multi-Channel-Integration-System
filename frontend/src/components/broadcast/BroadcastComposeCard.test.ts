@@ -4,10 +4,12 @@ import BroadcastComposeCard from './BroadcastComposeCard.vue'
 import type * as BroadcastsApi from '@/api/broadcasts'
 
 const upload = vi.hoisted(() => vi.fn())
+const cleanup = vi.hoisted(() => vi.fn())
 enableAutoUnmount(afterEach)
 vi.mock('@/api/broadcasts', async importOriginal => ({
   ...(await importOriginal<typeof BroadcastsApi>()),
   uploadBroadcastImage: upload,
+  cleanupBroadcastImage: cleanup,
 }))
 
 const preview = { total: 3, byPlatform: { line: 3, facebook: 0 }, sendable: 3, skipped: [] }
@@ -37,8 +39,32 @@ async function pick(wrapper: ReturnType<typeof mountCard>, files: File[]) {
 }
 
 describe('BroadcastComposeCard images', () => {
+  it.each(['remove', 'unmount'])('reclaims uploads that complete after %s', async action => {
+    let resolveUpload!: (_value: BroadcastsApi.BroadcastAttachmentInput) => void
+    upload.mockImplementationOnce(
+      () =>
+        new Promise(resolve => {
+          resolveUpload = resolve
+        })
+    )
+    const wrapper = mountCard()
+    await pick(wrapper, [image('1.jpg')])
+    if (action === 'remove') {
+      await wrapper.find('button[aria-label="移除圖片 1"]').trigger('click')
+    } else {
+      wrapper.unmount()
+    }
+    expect(cleanup).not.toHaveBeenCalled()
+    resolveUpload({ attachmentId: 'late-original', previewAttachmentId: 'late-preview' })
+    await flushPromises()
+    expect(cleanup).toHaveBeenCalledExactlyOnceWith({
+      attachmentId: 'late-original',
+      previewAttachmentId: 'late-preview',
+    })
+  })
   beforeEach(() => {
     upload.mockReset()
+    cleanup.mockReset().mockResolvedValue(undefined)
     upload.mockImplementation(async (file: File) => ({
       attachmentId: `a-${file.name}`,
       previewAttachmentId: `p-${file.name}`,
@@ -141,6 +167,10 @@ describe('BroadcastComposeCard images', () => {
     expect(wrapper.findAll('.image-tile')).toHaveLength(0)
     expect(document.activeElement).toBe(wrapper.find('input[type="file"]').element)
     expect(URL.revokeObjectURL).toHaveBeenCalledTimes(2)
+    expect(cleanup.mock.calls).toEqual([
+      [{ attachmentId: 'a-1.jpg', previewAttachmentId: 'p-1.jpg' }],
+      [{ attachmentId: 'a-2.jpg', previewAttachmentId: 'p-2.jpg' }],
+    ])
   })
 
   it('announces uploading and errors and blocks even text broadcasts with an error tile', async () => {
