@@ -37,6 +37,24 @@ describe('assertBroadcastAttachments', () => {
     expect(() => assertBroadcastAttachments([pair(1)], [row('img-1')], 'agent-1')).toThrow(/preview not found/);
   });
 
+  it.each([
+    ['original missing', [row('prev-1')], 'ATTACHMENT_NOT_FOUND'],
+    ['preview not owned', [row('img-1'), row('prev-1', { uploadedBy: 'agent-2' })], 'ATTACHMENT_NOT_OWNED'],
+    ['preview already bound', [row('img-1'), row('prev-1', { messageId: 'msg-1' })], 'ATTACHMENT_ALREADY_BOUND'],
+    ['preview bad MIME', [row('img-1'), row('prev-1', { mimeType: 'image/gif' })], 'ATTACHMENT_BAD_MIME'],
+    ['original too large', [row('img-1', { fileSize: 10 * MB + 1 }), row('prev-1')], 'ATTACHMENT_TOO_LARGE'],
+    ['preview too large', [row('img-1'), row('prev-1', { fileSize: MB + 1 })], 'ATTACHMENT_TOO_LARGE'],
+  ])('rejects %s with a structured error code', (_name, rows, code) => {
+    expect(() => assertBroadcastAttachments([pair(1)], rows, 'agent-1'))
+      .toThrow(expect.objectContaining({ code, status: 422 }));
+  });
+
+  it('accepts originals at exactly 10MB and previews at exactly 1MB', () => {
+    expect(() => assertBroadcastAttachments([pair(1)], [
+      row('img-1', { fileSize: 10 * MB }), row('prev-1', { fileSize: MB }),
+    ], 'agent-1')).not.toThrow();
+  });
+
   it('rejects uploads owned by someone else', () => {
     const rows = [row('img-1', { uploadedBy: 'agent-2' }), row('prev-1')];
     expect(() => assertBroadcastAttachments([pair(1)], rows, 'agent-1')).toThrow(/not uploaded by you/);
