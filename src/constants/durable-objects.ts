@@ -93,26 +93,6 @@ export const DELAYED_MESSAGE_ROUTES = {
 } as const;
 
 /**
- * MetricsCollector Durable Object 路由
- */
-export const METRICS_COLLECTOR_ROUTES = {
-  /** Ingest metric data points */
-  INGEST: '/ingest',
-
-  /** Ingest a batch of metric data points (what the Worker sends) */
-  INGEST_BATCH: '/ingest-batch',
-
-  /** Get aggregated metrics */
-  METRICS: '/metrics',
-
-  /** Reset all metrics */
-  RESET: '/reset',
-
-  /** Health check */
-  HEALTH: '/health',
-} as const;
-
-/**
  * 所有 Durable Objects 路由的聯合類型
  */
 export type DurableObjectRoute =
@@ -120,8 +100,7 @@ export type DurableObjectRoute =
   | typeof CACHE_COORDINATOR_ROUTES[keyof typeof CACHE_COORDINATOR_ROUTES]
   | typeof CONVERSATION_ROOM_ROUTES[keyof typeof CONVERSATION_ROOM_ROUTES]
   | typeof USER_CONNECTION_ROUTES[keyof typeof USER_CONNECTION_ROUTES]
-  | typeof DELAYED_MESSAGE_ROUTES[keyof typeof DELAYED_MESSAGE_ROUTES]
-  | typeof METRICS_COLLECTOR_ROUTES[keyof typeof METRICS_COLLECTOR_ROUTES];
+  | typeof DELAYED_MESSAGE_ROUTES[keyof typeof DELAYED_MESSAGE_ROUTES];
 
 /**
  * 構建 Durable Object 內部 fetch URL
@@ -161,7 +140,6 @@ export function isValidDORoute(route: string): boolean {
     ...Object.values(CONVERSATION_ROOM_ROUTES),
     ...Object.values(USER_CONNECTION_ROUTES),
     ...Object.values(DELAYED_MESSAGE_ROUTES),
-    ...Object.values(METRICS_COLLECTOR_ROUTES),
   ];
 
   return allRoutes.includes(route);
