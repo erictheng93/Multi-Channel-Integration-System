@@ -109,7 +109,6 @@ describe('ConfigGenerator Service - Integration Tests', () => {
       expect(config).toContain('name = "USER_CONNECTION"');
       expect(config).toContain('name = "MESSAGE_BROADCASTER"');
       expect(config).toContain('name = "DELAYED_MESSAGE_SCHEDULER"');
-      expect(config).toContain('name = "METRICS_COLLECTOR"');
     });
 
     it('should include environment variables section', () => {

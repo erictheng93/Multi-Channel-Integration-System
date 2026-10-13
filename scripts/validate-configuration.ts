@@ -125,7 +125,6 @@ function checkWranglerConfig(): void {
       'CUSTOMER_CONVERSATION_DO',
       'CUSTOMER_MESSAGE_DO',
       'RATE_LIMITER',
-      'METRICS_COLLECTOR',
     ];
 
     for (const binding of requiredDurableObjects) {

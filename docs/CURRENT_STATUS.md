@@ -47,7 +47,7 @@
 | 即時通訊 | `websocket`, `realtime`, `collaboration`, `notifications` |
 | 系統與營運 | `system`, `monitoring`, `analytics`, `reports`, `activities`, `queue`, `file-management` |
 
-### Durable Objects (10 個，位於 `src/durable-objects/` + `src/services/`)
+### Durable Objects (9 個，位於 `src/durable-objects/` + `src/services/`)
 
 | Class Name (wrangler 綁定) | 實作檔案 | 用途 |
 |---|---|---|
@@ -60,7 +60,6 @@
 | `CustomerConversationDO` | `durable-objects/CustomerConversationDO.ts` | 客戶側對話狀態（Chat Project 啟發） |
 | `CustomerMessageDO` | `durable-objects/CustomerMessageDO.ts` | 客戶側訊息流 |
 | `RateLimiterDO` | `durable-objects/RateLimiterDO.ts` | 全域 API 速率限制 |
-| `MetricsCollectorDO` | `durable-objects/MetricsCollectorDO.ts` | 即時效能指標收集（v4 新增） |
 
 > **DO 命名小注**：`DelayedMessageScheduler` 透過 `src/index.ts:846` 用 alias 對外暴露為 `DelayedMessageBuffer`，以維持 `wrangler.toml` 既有綁定不破壞遷移狀態。
 
@@ -100,7 +99,7 @@ JWT payload 包含 `primaryTeamId`、`allowedTeamIds[]`、`teamRoles{teamId: rol
 | 通知 | 桌面 / 瀏覽器 / WebSocket 即時推送 |
 | 報表與分析 | 16 種報表類型、樣本資料生成器、團隊 / 渠道維度 |
 | 系統設定 | 訊息佇列、快取、會話、平台連線、備份還原 |
-| 監控 | API 健康檢查、效能指標、MetricsCollectorDO |
+| 監控 | API 健康檢查（D1/KV/R2 探測 + 渠道檢查）；每端點 API 指標收集（MetricsCollectorDO）已移除 |
 | 活動日誌 | 完整操作追蹤 + WebSocket 即時推送 |
 | 自助部署 | `web-installer/` 視覺化部署工具 |
 

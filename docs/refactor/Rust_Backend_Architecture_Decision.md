@@ -12,7 +12,7 @@
 現有後端技術棧(Cloudflare 全託管、serverless):
 
 - 運算:Cloudflare Workers(Hono)
-- 即時/有狀態協調:**10 個 Durable Objects**(`ConversationRoom`、`UserConnection`、`MessageBroadcaster`、`LockCoordinator`、`RateLimiterDO`、`MetricsCollectorDO` 等)
+- 即時/有狀態協調:**9 個 Durable Objects**(`ConversationRoom`、`UserConnection`、`MessageBroadcaster`、`LockCoordinator`、`RateLimiterDO` 等)
 - 資料庫:D1(SQLite)+ Drizzle ORM
 - 快取/儲存/佇列:KV / R2 / Cloudflare Queues
 - 前端:Vue 3 + TypeScript,部署於 Cloudflare Pages

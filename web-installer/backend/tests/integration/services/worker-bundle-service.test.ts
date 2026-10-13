@@ -27,7 +27,6 @@ describe('WorkerBundleService', () => {
     expect(names).toContain('CACHE');
     expect(names).toContain('R2_BUCKET');
     expect(names).toContain('LINE_MESSAGE_QUEUE');
-    expect(names).toContain('METRICS_COLLECTOR');
     expect(names).not.toContain('SESSION_KV');
     expect(names).not.toContain('CACHE_KV');
     expect(names).not.toContain('FILE_STORAGE');

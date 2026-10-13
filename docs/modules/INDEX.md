@@ -94,6 +94,5 @@ claude/       ← Claude Code 開發指引
 | `CustomerConversationDO` | customer-conversations |
 | `CustomerMessageDO` | customer-conversations, file-management |
 | `RateLimiterDO` | monitoring (middleware) |
-| `MetricsCollectorDO` | monitoring, analytics |
 
 > 完整 DO 對應與綁定名 ↔ 實作檔差異說明見 `docs/CURRENT_STATUS.md` §2。
