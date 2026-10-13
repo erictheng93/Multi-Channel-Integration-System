@@ -9,7 +9,8 @@ import { nowMs } from '@/utils/timestamp'
  * - Each counted request writes ONLY its own entry (`rl:<clientId>`) before the
  *   response is returned, so eviction can never roll a client's quota back and no
  *   write ever grows with the number of tracked clients
- * - A single alarm removes expired entries; it never re-arms itself
+ * - No alarm: expired entries are dropped on every cold start and whenever the entry
+ *   count passes MAX_ENTRIES, so an idle object costs nothing
  * - Per-client rate limiting within a shard
  *
  * DO ID Strategy: `ratelimit:${endpoint}:${ipPrefix}`
@@ -81,7 +82,7 @@ export class RateLimiterDO implements DurableObject {
   // In-memory rate limit state (fast access)
   private rateLimits = new Map<string, RateLimitEntry>();
 
-  // Statistics (informational; persisted by the cleanup alarm, not per request)
+  // Statistics (informational, in memory only; persisting them would cost a write per request)
   private stats = {
     totalRequests: 0,
     blockedRequests: 0,
@@ -91,8 +92,6 @@ export class RateLimiterDO implements DurableObject {
 
   // Configuration
   private readonly ENTRY_TTL_MS = 600000; // 10 minutes TTL for inactive entries
-  private readonly CLEANUP_DELAY_MS = 600000; // one cleanup per TTL, armed only by activity
-  private cleanupScheduled = false;
   private readonly MAX_ENTRIES = 10000; // Maximum entries before forced cleanup
 
 
@@ -140,7 +139,9 @@ export class RateLimiterDO implements DurableObject {
         // A 429 changes no counter, so only counted (allowed) requests are written.
         if (response.status !== 429) {
           await this.state.storage.put(ENTRY_PREFIX + body.clientId, this.rateLimits.get(body.clientId));
-          await this.scheduleCleanup();
+          if (this.rateLimits.size > this.MAX_ENTRIES) {
+            await this.removeFromStorage(this.cleanupExpiredEntries());
+          }
         }
         return response;
       }
@@ -303,9 +304,8 @@ export class RateLimiterDO implements DurableObject {
     this.stats.totalRequests = 0;
     this.stats.blockedRequests = 0;
     await this.removeFromStorage(ids);
-    // Nothing is left to clean up, so no alarm should stay pending.
+    // Cancel an alarm that an earlier release may have left pending.
     await this.state.storage.deleteAlarm();
-    this.cleanupScheduled = false;
 
     return new Response(JSON.stringify({
       success: true,
@@ -339,11 +339,6 @@ export class RateLimiterDO implements DurableObject {
             .map(([clientId, entry]) => this.state.storage.put(ENTRY_PREFIX + clientId, entry)));
         }
         await this.state.storage.delete([LEGACY_SNAPSHOT_KEY]);
-      }
-
-      const storedStats = await this.state.storage.get<typeof this.stats>('stats');
-      if (storedStats) {
-        this.stats = { ...this.stats, ...storedStats, startTime: nowMs() };
       }
 
       // Cold start is a cleanup point for entries that expired while the object was evicted.
@@ -395,21 +390,7 @@ export class RateLimiterDO implements DurableObject {
     return removedIds;
   }
 
-  // Timers would block hibernation; activity arms one cleanup alarm instead.
-  private async scheduleCleanup(): Promise<void> {
-    if (this.cleanupScheduled) return;
-    if (await this.state.storage.getAlarm() === null) {
-      // Stop condition: alarm() never re-arms; the next counted request arms the next cleanup.
-      await this.state.storage.setAlarm(Date.now() + this.CLEANUP_DELAY_MS);
-    }
-    this.cleanupScheduled = true;
-  }
-
-  async alarm(): Promise<void> {
-    this.cleanupScheduled = false; // the alarm that fired is consumed
-    await this.removeFromStorage(this.cleanupExpiredEntries());
-    const persistedAt = nowMs();
-    await this.state.storage.put('stats', { ...this.stats, lastPersist: persistedAt });
-    this.stats.lastPersist = persistedAt;
-  }
+  // This object arms no alarm. An alarm armed by an earlier release may still be pending in
+  // storage; it fires once here, does nothing and is not re-armed, so that chain ends.
+  async alarm(): Promise<void> {}
 }
