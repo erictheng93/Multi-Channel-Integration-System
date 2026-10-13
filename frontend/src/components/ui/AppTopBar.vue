@@ -43,7 +43,17 @@
     border-bottom: 1px solid var(--gray-200);
   }
 
+  .breadcrumb {
+    flex: 1;
+    min-width: 0;
+    margin-right: var(--space-2);
+  }
+
   .breadcrumb-item {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
     font-weight: 600;
     font-size: 1.125rem;
     color: var(--gray-900);
@@ -51,6 +61,7 @@
 
   .top-bar-actions {
     display: flex;
+    flex-shrink: 0;
     align-items: center;
     gap: var(--space-4);
   }
@@ -79,6 +90,10 @@
   /* The fixed hamburger (44px at left 12px) sits inside the bar, so reserve its width
      and make the bar tall enough to center it. */
   @media (max-width: 768px) {
+    .top-bar-actions {
+      gap: var(--space-2);
+    }
+
     .top-bar {
       min-height: 60px;
       padding: var(--space-2) var(--space-4) var(--space-2) 68px;
