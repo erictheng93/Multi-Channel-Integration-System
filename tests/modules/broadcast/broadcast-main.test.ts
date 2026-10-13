@@ -6,6 +6,9 @@ import { BroadcastServiceError } from '@/modules/broadcast/types';
 const mocks = vi.hoisted(() => ({
   preview: vi.fn(),
   create: vi.fn(),
+  exists: vi.fn(),
+  listRecipients: vi.fn(),
+  getById: vi.fn(),
 }));
 
 vi.mock('@/middleware/auth', () => ({
@@ -28,6 +31,9 @@ vi.mock('@modules/broadcast/services/broadcast-service', () => ({
     return {
       preview: mocks.preview,
       create: mocks.create,
+      exists: mocks.exists,
+      listRecipients: mocks.listRecipients,
+      getById: mocks.getById,
     };
   }),
 }));
@@ -96,6 +102,27 @@ describe('broadcast preview route', () => {
 
     expect(response.status).toBe(422);
     expect(mocks.preview).not.toHaveBeenCalled();
+  });
+});
+
+describe('broadcast recipient existence check', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('uses exists without loading or signing attachments on each page', async () => {
+    mocks.exists.mockResolvedValue(true);
+    mocks.listRecipients.mockResolvedValue({ items: [], page: 2, total: 0 });
+    const response = await broadcastRouter.request('/b-1/recipients?page=2&status=sent', {}, { DB: {} } as Bindings);
+    expect(response.status).toBe(200);
+    expect(mocks.exists).toHaveBeenCalledWith('b-1');
+    expect(mocks.listRecipients).toHaveBeenCalledWith('b-1', 2, 20, 'sent');
+    expect(mocks.getById).not.toHaveBeenCalled();
+  });
+
+  it('returns 404 without listing recipients for missing or deleted broadcasts', async () => {
+    mocks.exists.mockResolvedValue(false);
+    const response = await broadcastRouter.request('/missing/recipients', {}, { DB: {} } as Bindings);
+    expect(response.status).toBe(404);
+    expect(mocks.listRecipients).not.toHaveBeenCalled();
   });
 });
 
