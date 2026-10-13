@@ -49,6 +49,10 @@ export class UserConnection implements DurableObject {
   private userId: string;
   private ready: Promise<void>;
   private accessCheckDeadline: number | null = null;
+  /** Alarm time last written by this instance; undefined = unknown (cold start), null = none pending. */
+  private armedAlarmAt: number | null | undefined = undefined;
+  /** Consecutive deferred access checks. In memory: eviction resets it, buying only a few bounded retries. */
+  private accessCheckFailures = 0;
 
   // Sub-module delegates
   private readonly stateManager = new UserConnectionStateManager();
@@ -515,6 +519,7 @@ export class UserConnection implements DurableObject {
   }
 
   async alarm(): Promise<void> {
+    this.armedAlarmAt = null; // the alarm that fired is consumed
     await this.ready;
     const nowSec = Math.floor(Date.now() / 1000);
     const expiredConnections = this.stateManager.getAllConnections().filter((connection) => {
@@ -560,15 +565,37 @@ export class UserConnection implements DurableObject {
       this.accessCheckDeadline = null;
       await this.state.storage.delete('accessCheckDeadline');
     }
+    // Cold start: learn the persisted alarm with a cheap read so unchanged state costs no write.
+    if (this.armedAlarmAt === undefined) {
+      this.armedAlarmAt = (await this.state.storage.getAlarm()) ?? null;
+    }
     if (nextTokenExp === undefined && !this.accessCheckDeadline) {
-      await this.state.storage.deleteAlarm();
+      if (this.armedAlarmAt !== null) {
+        this.armedAlarmAt = null;
+        await this.state.storage.deleteAlarm();
+      }
       return;
     }
 
-    await this.state.storage.setAlarm(Math.max(Date.now(), Math.min(
+    const now = Date.now();
+    const deadline = Math.min(
       nextTokenExp === undefined ? Infinity : nextTokenExp * 1000,
       this.accessCheckDeadline ?? Infinity
-    )));
+    );
+    // An already-expired deadline fires immediately and alarm() removes the expired
+    // sockets / runs the access check before re-arming; leave it armed instead of re-writing "now".
+    if (deadline <= now && this.armedAlarmAt !== null && this.armedAlarmAt <= now) return;
+    const target = Math.max(now, deadline);
+    if (target === this.armedAlarmAt) return;
+    // Re-arm stop condition: only while a connection holds a token expiry or an access check is stored;
+    // alarm() clears expired state first, so an expired deadline is not re-armed forever.
+    this.armedAlarmAt = target;
+    try {
+      await this.state.storage.setAlarm(target);
+    } catch (error) {
+      this.armedAlarmAt = undefined;
+      throw error;
+    }
   }
 
   private async handleTrackRoom(request: Request): Promise<Response> {
@@ -610,6 +637,7 @@ export class UserConnection implements DurableObject {
       }
     }
     const auth = new WebSocketAuthService(this.env as unknown as Bindings);
+    let deferredError: unknown;
     let deferred = false;
     for (const conversationId of this.subscriptionManager.subscribedConversations) {
       try {
@@ -617,16 +645,22 @@ export class UserConnection implements DurableObject {
           this.subscriptionManager.removeSubscription(conversationId);
         }
       } catch (error) {
-        deferred = await this.deferAccessCheck(error);
+        deferred = true;
+        deferredError = error;
       }
     }
     await this.subscriptionManager.persistSubscriptions(this.state.storage);
-    return deferred;
+    if (deferred) return this.deferAccessCheck(deferredError); // once per run: one failure, one backoff step
+    this.accessCheckFailures = 0;
+    return false;
   }
 
-  private async deferAccessCheck(error: unknown): Promise<true> {
+  private async deferAccessCheck(error: unknown): Promise<boolean> {
     console.error('[UserConnection] Access check unavailable, retrying later:', error);
-    this.accessCheckDeadline = Date.now() + 30000;
+    // Backoff 30s, 60s, 120s, 240s then the normal 5 min cadence (cap), so an outage is a bounded number of short wakes.
+    this.accessCheckFailures = Math.min(this.accessCheckFailures + 1, 16);
+    const delay = Math.min(30000 * 2 ** (this.accessCheckFailures - 1), 300000);
+    this.accessCheckDeadline = Date.now() + delay;
     await this.state.storage.put('accessCheckDeadline', this.accessCheckDeadline);
     return true;
   }

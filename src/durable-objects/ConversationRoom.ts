@@ -117,6 +117,7 @@ export class ConversationRoom implements DurableObject {
       // Storage optimization
       messageDirty: false,
       storageFlushDeadline: null,
+      alarmAt: undefined, // unknown on cold start; scheduleNextAlarm seeds it from getAlarm()
 
       // Configuration constants
       MAX_CONNECTIONS: maxConnections,

@@ -24,7 +24,14 @@ import type { Bindings } from '@/types';
  * - Inactive connection cleanup
  * - HTTP API handlers for connect/disconnect/participants/metrics
  */
+/** Access-check retry policy while D1 is unavailable. */
+const ACCESS_CHECK_RETRY_BASE_MS = 30000;
+const ACCESS_CHECK_INTERVAL_MS = 300000; // the normal revalidation cadence, unchanged
+
 export class RoomConnectionManager {
+  /** Consecutive deferred access checks (in memory, see evictUnauthorizedConnections). */
+  private accessCheckFailures = 0;
+
   constructor(
     private ctx: RoomContext,
     private helpers: RoomHelpers,
@@ -326,8 +333,19 @@ export class RoomConnectionManager {
       if (!decisions.get(connection.userId)) revoked.push(connection);
     }
     if (deferred) {
-      this.ctx.accessCheckDeadline = Date.now() + 30000;
+      // Backoff 30s, 60s, 120s, 240s then the normal 5 min cadence (cap = ACCESS_CHECK_INTERVAL_MS),
+      // so a long D1 outage costs a bounded number of short-interval wakes. The counter is in
+      // memory: eviction resets it, which only buys a few more bounded retries.
+      this.accessCheckFailures = Math.min(this.accessCheckFailures + 1, 16);
+      const delay = Math.min(
+        ACCESS_CHECK_RETRY_BASE_MS * 2 ** (this.accessCheckFailures - 1),
+        ACCESS_CHECK_INTERVAL_MS
+      );
+      this.ctx.accessCheckDeadline = Date.now() + delay;
       await this.ctx.state.storage.put('accessCheckDeadline', this.ctx.accessCheckDeadline);
+    } else {
+      // Every checked user got a definite answer: reset the retry budget.
+      this.accessCheckFailures = 0;
     }
     // Close every revoked device before removeConnection emits any user_left events.
     for (const connection of revoked) {
