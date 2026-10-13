@@ -571,7 +571,7 @@ export class DelayedMessageScheduler implements DurableObject {
     const results = await Promise.allSettled(sendPromises);
 
     // 3. Process batch results
-    await processBatchResults(readyMessages, results, {
+    const recordedInDlq = await processBatchResults(readyMessages, results, {
       logger: this.logger,
       addToDeadLetterQueue: (msg, reason) => addToDeadLetterQueue(msg, reason, deps),
     });
@@ -582,8 +582,15 @@ export class DelayedMessageScheduler implements DurableObject {
       if (this.pendingMessages.get(msg.id)?.status !== 'pending') continue;
       msg.retryCount = (msg.retryCount ?? 0) + 1;
       if (msg.retryCount > MAX_RETRY_ATTEMPTS) {
-        this.pendingMessages.delete(msg.id); // already recorded in the DLQ
-        await this.state.storage.delete(`msg:${msg.id}`);
+        if (recordedInDlq.get(msg.id) === true) {
+          await this.state.storage.delete(`msg:${msg.id}`);
+        } else {
+          // Preserve the only durable copy, but stop the bounded delivery alarm chain.
+          msg.status = 'failed';
+          msg.failureReason = 'Delivery retries exhausted and DLQ write failed';
+          await this.state.storage.put(`msg:${msg.id}`, msg);
+        }
+        this.pendingMessages.delete(msg.id);
       } else {
         msg.scheduledAt = Date.now() + BY_REF_RETRY_DELAY_MS * msg.retryCount;
         await this.state.storage.put(`msg:${msg.id}`, msg);
