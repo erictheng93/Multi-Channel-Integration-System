@@ -171,7 +171,7 @@ export async function findOrCreateConversation(
     );
 
     // Trigger notification OUTSIDE the lock (non-critical, reduces lock hold time)
-    if (platform === 'line' && conversation) {
+    if (conversation) {
       try {
         const { triggerNewConversationNotification } = await import('@/utils/notification-trigger');
         await triggerNewConversationNotification(env, {
