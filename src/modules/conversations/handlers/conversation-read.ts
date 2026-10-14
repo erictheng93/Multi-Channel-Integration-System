@@ -110,9 +110,12 @@ conversationReadHandler.put('/:id/unread', jwtAuth, async (c) => {
     }
 
     // Recompute the unread count with the same formula as conversation-queries.ts:
-    // "Unread" = customer messages after MAX(last_agent_reply, last_read_at).
+    // "Unread" = customer messages after
+    // MAX(last_agent_reply, last_read_at, conversations.unread_floor_at).
     // last_read_at was just cleared for this agent, so the threshold collapses
-    // to the last agent reply — which stays global by design (decision A-1).
+    // to the last agent reply (global by design, decision A-1) and the floor
+    // that close recorded, so a reopened conversation does not resurrect the
+    // messages that piled up before it was closed.
     // Threshold subqueries reference the bound id (not m.conversation_id) so
     // they are uncorrelated and evaluated once, not per message row.
     const unreadResult = await c.env.DB.prepare(`
@@ -121,14 +124,20 @@ conversationReadHandler.put('/:id/unread', jwtAuth, async (c) => {
       WHERE m.conversation_id = ?
         AND m.sender_type = 'customer'
         AND m.deleted_at IS NULL
-        AND m.created_at > COALESCE(
-          (SELECT MAX(m2.created_at) FROM messages m2
-           WHERE m2.conversation_id = ?
-           AND m2.sender_type IN ('agent', 'system')
-           AND m2.deleted_at IS NULL),
-          '1970-01-01'
+        AND m.created_at > MAX(
+          COALESCE(
+            (SELECT MAX(m2.created_at) FROM messages m2
+             WHERE m2.conversation_id = ?
+             AND m2.sender_type IN ('agent', 'system')
+             AND m2.deleted_at IS NULL),
+            '1970-01-01'
+          ),
+          COALESCE(
+            (SELECT c2.unread_floor_at FROM conversations c2 WHERE c2.id = ?),
+            '1970-01-01'
+          )
         )
-    `).bind(conversationId, conversationId).first<{ unreadCount: number }>();
+    `).bind(conversationId, conversationId, conversationId).first<{ unreadCount: number }>();
 
     // Manual override just set above: floor the effective count at 1 so the
     // conversation shows as unread even when the derived count is 0

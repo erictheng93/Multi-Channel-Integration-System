@@ -130,14 +130,14 @@ describe('conversation unread handler', () => {
     expect(handlerMocks.insertValues).not.toHaveBeenCalled();
   });
 
-  // The threshold is MAX(last_agent_reply, last_read_at) and mark-unread just
-  // cleared this agent's last_read_at, so the recount only needs the
-  // conversation id twice. A third bound id would mean the query is still
-  // reading the retired global conversations.last_read_at column.
-  it('recounts against the global last agent reply only', async () => {
+  // The threshold is MAX(last_agent_reply, last_read_at, unread_floor_at) and
+  // mark-unread just cleared this agent's last_read_at, so the recount binds the
+  // conversation id for the agent-reply and floor subqueries plus the outer
+  // filter. Real SQL is covered in conversation-read-unread-floor.test.ts.
+  it('recounts against the last agent reply and the unread floor', async () => {
     await markUnread();
 
-    expect(handlerMocks.prepareBind).toHaveBeenCalledWith('conv-1', 'conv-1');
+    expect(handlerMocks.prepareBind).toHaveBeenCalledWith('conv-1', 'conv-1', 'conv-1');
   });
 
   it('returns 403 without mutating when permission is denied', async () => {
