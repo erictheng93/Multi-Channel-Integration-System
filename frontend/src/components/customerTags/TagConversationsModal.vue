@@ -148,6 +148,7 @@ import { XIcon, MessageCircleIcon, ExternalLinkIcon } from '@/components/icons'
 import { getTagConversations } from '@/api/tags'
 import type { Tag } from '@/types/tag'
 import type { TagConversation } from '@/api/tags'
+import { getConversationStatusLabel, type ConversationStatus } from '@/constants/conversation-status'
 
 // ==================== Props & Emits ====================
 
@@ -221,7 +222,7 @@ onUnmounted(() => {
 // ==================== Helpers ====================
 
 function statusLabel(status: string): string {
-  return status === 'active' ? '進行中' : status === 'closed' ? '已關閉' : status
+  return getConversationStatusLabel(status as ConversationStatus)
 }
 
 function platformLabel(platform: string): string {

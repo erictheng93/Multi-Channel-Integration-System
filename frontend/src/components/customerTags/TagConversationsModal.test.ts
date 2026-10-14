@@ -214,14 +214,14 @@ describe('TagConversationsModal', () => {
       expect(badge.classes()).toContain('status-active')
     })
 
-    it('renders closed status badge with 已關閉 label', async () => {
+    it('renders closed status badge with 已結案 label', async () => {
       mockGetTagConversations.mockResolvedValue(makeApiResponse([
         makeConversation({ status: 'closed' }),
       ]))
       const wrapper = await openModal()
       await flushPromises()
       const badge = wrapper.find('.status-badge')
-      expect(badge.text()).toBe('已關閉')
+      expect(badge.text()).toBe('已結案')
       expect(badge.classes()).toContain('status-closed')
     })
 
