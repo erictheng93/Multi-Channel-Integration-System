@@ -16,6 +16,7 @@
 
 import { describe, it, expect, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
+import { nextTick } from 'vue'
 import ConversationDesktopTable from '@/components/conversations/ConversationDesktopTable.vue'
 import type { Conversation } from '@/types'
 
@@ -293,6 +294,56 @@ describe('ConversationDesktopTable.vue', () => {
       const conv = createConversation({ unreadCount: 2 })
       const wrapper = mountTable([conv])
       expect(wrapper.find('.read-badge').attributes('aria-label')).toBe('未讀 2 則訊息')
+    })
+  })
+
+  describe('Selection mode', () => {
+    const list = [createConversation({ id: 'c1' }), createConversation({ id: 'c2' })]
+
+    function mountSelecting(selected: string[] = []) {
+      return mount(ConversationDesktopTable, {
+        props: { conversations: list, selectionMode: true, selectedIds: new Set(selected) },
+        global: { stubs: { TransitionGroup: false } }
+      })
+    }
+
+    it('renders no checkboxes outside selection mode', () => {
+      const wrapper = mountTable(list)
+      expect(wrapper.findAll('input[type="checkbox"]')).toHaveLength(0)
+      expect(wrapper.findAll('th')).toHaveLength(7)
+    })
+
+    it('renders a checkbox column (header + one per row) in selection mode', () => {
+      const wrapper = mountSelecting(['c1'])
+      const boxes = wrapper.findAll('input[type="checkbox"]')
+      expect(boxes).toHaveLength(3)
+      expect(wrapper.findAll('th')).toHaveLength(8)
+      expect(boxes[0].attributes('aria-label')).toBe('全選本頁對話')
+      expect((boxes[1].element as HTMLInputElement).checked).toBe(true)
+      expect((boxes[2].element as HTMLInputElement).checked).toBe(false)
+    })
+
+    it('row click toggles selection instead of emitting select', async () => {
+      const wrapper = mountSelecting()
+      await wrapper.findAll('.conversation-row')[1].trigger('click')
+      expect(wrapper.emitted('toggle-select')).toEqual([['c2']])
+      expect(wrapper.emitted('select')).toBeUndefined()
+    })
+
+    it('header checkbox emits toggle-select-all and is indeterminate when partially selected', async () => {
+      const wrapper = mountSelecting(['c1'])
+      await nextTick()
+      const header = wrapper.findAll('input[type="checkbox"]')[0]
+      expect((header.element as HTMLInputElement).indeterminate).toBe(true)
+      await header.trigger('change')
+      expect(wrapper.emitted('toggle-select-all')).toHaveLength(1)
+    })
+
+    it('header checkbox is checked when every row is selected', () => {
+      const wrapper = mountSelecting(['c1', 'c2'])
+      const header = wrapper.findAll('input[type="checkbox"]')[0].element as HTMLInputElement
+      expect(header.checked).toBe(true)
+      expect(header.indeterminate).toBe(false)
     })
   })
 })

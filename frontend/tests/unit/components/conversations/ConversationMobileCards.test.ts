@@ -303,3 +303,26 @@ describe('ConversationMobileCards.vue', () => {
     })
   })
 })
+
+describe('ConversationMobileCards.vue selection mode', () => {
+  const list = [
+    { id: 'c1', userId: 'u1', status: 'active', unreadCount: 0, updatedAt: 1 },
+    { id: 'c2', userId: 'u2', status: 'closed', unreadCount: 0, updatedAt: 1 }
+  ] as unknown as Conversation[]
+
+  it('shows checkboxes only in selection mode and toggles on card click', async () => {
+    const off = mount(ConversationMobileCards, { props: { conversations: list } })
+    expect(off.findAll('input[type="checkbox"]')).toHaveLength(0)
+
+    const on = mount(ConversationMobileCards, {
+      props: { conversations: list, selectionMode: true, selectedIds: new Set(['c2']) }
+    })
+    const boxes = on.findAll('input[type="checkbox"]')
+    expect(boxes).toHaveLength(2)
+    expect((boxes[1].element as HTMLInputElement).checked).toBe(true)
+
+    await on.findAll('.conversation-card')[0].trigger('click')
+    expect(on.emitted('toggle-select')).toEqual([['c1']])
+    expect(on.emitted('select')).toBeUndefined()
+  })
+})

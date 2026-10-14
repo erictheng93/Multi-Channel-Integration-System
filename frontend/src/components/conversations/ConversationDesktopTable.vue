@@ -3,6 +3,21 @@
     <table class="conversations-table">
       <thead>
         <tr>
+          <th
+            v-if="selectionMode"
+            class="select-col"
+          >
+            <label class="select-hit">
+              <input
+                ref="selectAllRef"
+                type="checkbox"
+                class="select-checkbox"
+                aria-label="全選本頁對話"
+                :checked="allSelected"
+                @change="$emit('toggle-select-all')"
+              >
+            </label>
+          </th>
           <!-- 讀取狀態欄：表頭視覺留白（Apple Mail 慣例），保留螢幕閱讀器文字 -->
           <th class="read-col">
             <span class="sr-only">讀取狀態</span>
@@ -36,10 +51,30 @@
           v-for="(conversation, index) in conversations"
           :key="conversation.id"
           class="conversation-row"
-          :class="{ 'has-unread': conversation.unreadCount > 0 }"
+          :class="{
+            'has-unread': conversation.unreadCount > 0,
+            'is-selected': selectionMode && selectedIds.has(conversation.id)
+          }"
           :style="{ animationDelay: `${index * 50}ms` }"
-          @click="$emit('select', conversation.id)"
+          @click="handleRowClick(conversation.id)"
         >
+          <td
+            v-if="selectionMode"
+            class="select-cell"
+          >
+            <label
+              class="select-hit"
+              @click.stop
+            >
+              <input
+                type="checkbox"
+                class="select-checkbox"
+                :aria-label="`選取 ${getCustomerName(conversation)} 的對話`"
+                :checked="selectedIds.has(conversation.id)"
+                @change="$emit('toggle-select', conversation.id)"
+              >
+            </label>
+          </td>
           <td class="read-cell">
             <span
               class="read-badge"
@@ -99,16 +134,49 @@
 </template>
 
 <script setup lang="ts">
+import { computed, ref, watchEffect } from 'vue'
 import type { Conversation } from '@/types'
 import { convertEmojiForConversationList } from '@/utils/layered-emoji-processor'
 
-defineProps<{
+const props = withDefaults(defineProps<{
   conversations: Conversation[]
+  selectionMode?: boolean
+  selectedIds?: ReadonlySet<string>
+}>(), {
+  selectionMode: false,
+  selectedIds: () => new Set<string>()
+})
+
+const emit = defineEmits<{
+  select: [id: string]
+  'toggle-select': [id: string]
+  'toggle-select-all': []
 }>()
 
-defineEmits<{
-  select: [id: string]
-}>()
+const selectAllRef = ref<HTMLInputElement | null>(null)
+
+const selectedOnPage = computed(
+  () => props.conversations.filter(c => props.selectedIds.has(c.id)).length
+)
+const allSelected = computed(
+  () => props.conversations.length > 0 && selectedOnPage.value === props.conversations.length
+)
+
+// indeterminate 只能透過 DOM property 設定
+watchEffect(() => {
+  if (selectAllRef.value) {
+    selectAllRef.value.indeterminate = selectedOnPage.value > 0 && !allSelected.value
+  }
+}, { flush: 'post' })
+
+// 選取模式下，點擊整列切換選取而非導覽
+const handleRowClick = (id: string) => {
+  if (props.selectionMode) {
+    emit('toggle-select', id)
+  } else {
+    emit('select', id)
+  }
+}
 
 interface LegacyConversationFields {
   customer_name?: string
@@ -275,6 +343,34 @@ const getAssignedTo = (conversation: Conversation) => {
 .conversation-row:nth-child(3) { --animation-duration: 0.5s; }
 .conversation-row:nth-child(4) { --animation-duration: 0.6s; }
 .conversation-row:nth-child(5) { --animation-duration: 0.7s; }
+
+/* Selection column */
+.select-col,
+.select-cell {
+  width: 56px;
+  padding-right: 0 !important;
+}
+
+.select-hit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  margin: -12px 0;
+  cursor: pointer;
+}
+
+.select-checkbox {
+  width: 20px;
+  height: 20px;
+  accent-color: #007AFF;
+  cursor: pointer;
+}
+
+.conversation-row.is-selected {
+  background: #EAF3FF;
+}
 
 /* Table Column Widths */
 .read-col { width: 72px; }

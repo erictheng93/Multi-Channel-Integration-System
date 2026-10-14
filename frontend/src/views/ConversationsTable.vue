@@ -6,6 +6,16 @@
           <div class="header-top">
             <h1>對話管理</h1>
             <div class="header-actions">
+              <button
+                type="button"
+                class="btn btn-secondary btn-sm selection-toggle"
+                :class="{ 'is-active': selectionMode }"
+                :aria-pressed="selectionMode"
+                :disabled="displayedConversations.length === 0 && !selectionMode"
+                @click="toggleSelectionMode"
+              >
+                {{ selectionMode ? '完成' : '選取' }}
+              </button>
               <RefreshButton
                 :loading="loading || isUpdating"
                 @refresh="refreshConversations"
@@ -75,16 +85,64 @@
             <!-- Desktop Table View -->
             <ConversationDesktopTable
               :conversations="displayedConversations"
+              :selection-mode="selectionMode"
+              :selected-ids="selectedIds"
               @select="goToConversation"
+              @toggle-select="toggleSelect"
+              @toggle-select-all="toggleSelectAll"
             />
 
             <!-- Mobile Card View -->
             <ConversationMobileCards
               :conversations="displayedConversations"
+              :selection-mode="selectionMode"
+              :selected-ids="selectedIds"
               @select="goToConversation"
+              @toggle-select="toggleSelect"
             />
           </div>
         </div>
+
+        <!-- 批量操作列 -->
+        <Transition name="bulk-bar">
+          <div
+            v-if="selectionMode && selectedIds.size > 0"
+            class="bulk-action-bar"
+            role="toolbar"
+            aria-label="批量操作"
+          >
+            <span class="bulk-count">已選 {{ selectedIds.size }} 筆</span>
+            <span
+              v-if="overLimit"
+              class="bulk-limit"
+              role="status"
+            >最多 {{ BULK_LIMIT }} 筆</span>
+            <button
+              type="button"
+              class="btn btn-primary btn-sm"
+              :disabled="!canClose || overLimit || bulkBusy"
+              @click="runBulk(true)"
+            >
+              結案
+            </button>
+            <button
+              type="button"
+              class="btn btn-secondary btn-sm"
+              :disabled="!canReopen || overLimit || bulkBusy"
+              @click="runBulk(false)"
+            >
+              重新開啟
+            </button>
+            <button
+              type="button"
+              class="btn btn-secondary btn-sm"
+              :disabled="bulkBusy"
+              @click="clearSelection"
+            >
+              取消
+            </button>
+          </div>
+        </Transition>
       </div>
     </ErrorBoundary>
   </AppLayout>
@@ -99,6 +157,7 @@ import { useRouter } from 'vue-router'
 import { useConversationsStore } from '@/stores/conversations'
 import { useConversationFilters } from '@/composables/conversation/useConversationFilters'
 import { useDebounce } from '@/composables/useDebounce'
+import { useToast } from '@/composables/useToast'
 import { tagCacheService } from '@/services/tagCacheService'
 import type { ConversationFilters as ConversationFiltersType } from '@/types'
 
@@ -153,6 +212,75 @@ const displayedConversations = computed(() => {
   }
   return result
 })
+
+// ==================== 批量選取 ====================
+const BULK_LIMIT = 100
+const { showSuccess, showError } = useToast()
+
+const selectionMode = ref(false)
+const selectedIds = ref<Set<string>>(new Set())
+const bulkBusy = ref(false)
+
+const selectedConversations = computed(() =>
+  displayedConversations.value.filter(c => selectedIds.value.has(c.id))
+)
+const canClose = computed(() => selectedConversations.value.some(c => c.status !== 'closed'))
+const canReopen = computed(() => selectedConversations.value.some(c => c.status === 'closed'))
+const overLimit = computed(() => selectedIds.value.size > BULK_LIMIT)
+
+function clearSelection() {
+  selectedIds.value = new Set()
+}
+
+function toggleSelectionMode() {
+  selectionMode.value = !selectionMode.value
+  if (!selectionMode.value) { clearSelection() }
+}
+
+function toggleSelect(id: string) {
+  const next = new Set(selectedIds.value)
+  if (next.has(id)) { next.delete(id) } else { next.add(id) }
+  selectedIds.value = next
+}
+
+function toggleSelectAll() {
+  const pageIds = displayedConversations.value.map(c => c.id)
+  const allSelected = pageIds.length > 0 && pageIds.every(id => selectedIds.value.has(id))
+  const next = new Set(selectedIds.value)
+  for (const id of pageIds) {
+    if (allSelected) { next.delete(id) } else { next.add(id) }
+  }
+  selectedIds.value = next
+}
+
+// 篩選 / 換頁後，移除已不在目前列表中的選取
+watch(displayedConversations, (list) => {
+  if (selectedIds.value.size === 0) { return }
+  const visible = new Set(list.map(c => c.id))
+  const kept = Array.from(selectedIds.value).filter(id => visible.has(id))
+  if (kept.length !== selectedIds.value.size) {
+    selectedIds.value = new Set(kept)
+  }
+})
+
+async function runBulk(closed: boolean) {
+  if (bulkBusy.value || overLimit.value || selectedIds.value.size === 0) { return }
+  bulkBusy.value = true
+  try {
+    const count = await conversationsStore.bulkSetConversationsClosed(
+      Array.from(selectedIds.value),
+      closed
+    )
+    if (count === null) {
+      showError(conversationsStore.error || (closed ? '批量結案失敗' : '批量重新開啟失敗'))
+      return
+    }
+    showSuccess(closed ? `已結案 ${count} 筆對話` : `已重新開啟 ${count} 筆對話`)
+    clearSelection()
+  } finally {
+    bulkBusy.value = false
+  }
+}
 
 // Watch debounced API filters and fetch from API
 watch(debouncedApiFilters, (newFilters) => {
@@ -439,6 +567,63 @@ onUnmounted(() => {
 @keyframes spin {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
+}
+
+/* Selection toggle (layout only; button look comes from global .btn) */
+.selection-toggle.is-active {
+  background: #007AFF;
+  color: #FFFFFF;
+}
+
+/* Floating bulk action bar */
+.bulk-action-bar {
+  position: fixed;
+  left: 50%;
+  bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%);
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  max-width: calc(100vw - 32px);
+  padding: 8px 12px 8px 20px;
+  border-radius: 9999px;
+  background: rgb(255 255 255 / 0.8);
+  -webkit-backdrop-filter: blur(24px);
+  backdrop-filter: blur(24px);
+  box-shadow: 0 4px 16px rgb(0 0 0 / 0.06);
+}
+
+.bulk-count {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1C1C1E;
+  white-space: nowrap;
+  margin-right: 0.25rem;
+}
+
+.bulk-limit {
+  font-size: 12px;
+  color: #FF3B30;
+  white-space: nowrap;
+}
+
+.bulk-bar-enter-active,
+.bulk-bar-leave-active {
+  transition: opacity 0.25s ease-out, transform 0.25s ease-out;
+}
+
+.bulk-bar-enter-from,
+.bulk-bar-leave-to {
+  opacity: 0;
+  transform: translateX(-50%) translateY(16px);
+}
+
+@media (max-width: 480px) {
+  .bulk-action-bar {
+    gap: 0.25rem;
+    padding: 6px 8px 6px 14px;
+  }
 }
 
 /* Reduced motion */
