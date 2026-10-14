@@ -236,16 +236,28 @@ describe('ConversationMobileCards.vue', () => {
   })
 
   describe('Unread indicator', () => {
-    it('should show unread dot when conversation has unreadCount > 0', () => {
-      const conv = createConversation({ unreadCount: 3 })
-      const wrapper = mountCards([conv])
-      expect(wrapper.find('.unread-dot').exists()).toBe(true)
+    it('should show a red 未讀 badge with the count when unreadCount > 1', () => {
+      const wrapper = mountCards([createConversation({ unreadCount: 3 })])
+      const badge = wrapper.find('.read-badge')
+      expect(badge.classes()).toContain('unread')
+      expect(badge.text()).toBe('未讀 3')
     })
 
-    it('should not show unread dot when unreadCount is 0', () => {
-      const conv = createConversation({ unreadCount: 0 })
-      const wrapper = mountCards([conv])
-      expect(wrapper.find('.unread-dot').exists()).toBe(false)
+    it('should show 已讀 when there is nothing unread', () => {
+      const wrapper = mountCards([createConversation({ unreadCount: 0 })])
+      expect(wrapper.find('.read-badge').text()).toBe('已讀')
+    })
+
+    it('should show a muted 結案 badge instead of 已讀 for closed conversations', () => {
+      const wrapper = mountCards([createConversation({ unreadCount: 0, status: 'closed' })])
+      const badge = wrapper.find('.read-badge')
+      expect(badge.classes()).toContain('closed')
+      expect(badge.text()).toBe('結案')
+    })
+
+    it('should still show 未讀 on a closed conversation with unread messages', () => {
+      const wrapper = mountCards([createConversation({ unreadCount: 1, status: 'closed' })])
+      expect(wrapper.find('.read-badge').text()).toBe('未讀')
     })
 
     it('should add has-unread class to card when unread', () => {

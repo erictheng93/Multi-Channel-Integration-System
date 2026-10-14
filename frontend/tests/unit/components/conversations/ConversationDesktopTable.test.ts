@@ -55,13 +55,15 @@ describe('ConversationDesktopTable.vue', () => {
     it('should render a table with correct column headers', () => {
       const wrapper = mountTable([])
       const headers = wrapper.findAll('th')
-      expect(headers).toHaveLength(6)
-      expect(headers[0].text()).toBe('客戶')
-      expect(headers[1].text()).toBe('平台')
-      expect(headers[2].text()).toBe('狀態')
-      expect(headers[3].text()).toBe('最後訊息')
-      expect(headers[4].text()).toBe('負責人')
-      expect(headers[5].text()).toBe('更新時間')
+      expect(headers).toHaveLength(7)
+      // 讀取狀態欄表頭視覺留白，只有螢幕閱讀器文字
+      expect(headers[0].find('.sr-only').text()).toBe('讀取狀態')
+      expect(headers[1].text()).toBe('客戶')
+      expect(headers[2].text()).toBe('平台')
+      expect(headers[3].text()).toBe('狀態')
+      expect(headers[4].text()).toBe('最後訊息')
+      expect(headers[5].text()).toBe('負責人')
+      expect(headers[6].text()).toBe('更新時間')
     })
 
     it('should render no rows when conversations is empty', () => {
@@ -251,16 +253,28 @@ describe('ConversationDesktopTable.vue', () => {
   })
 
   describe('Unread indicator', () => {
-    it('should show unread dot when conversation has unreadCount > 0', () => {
-      const conv = createConversation({ unreadCount: 3 })
-      const wrapper = mountTable([conv])
-      expect(wrapper.find('.unread-dot').exists()).toBe(true)
+    it('should show a red 未讀 badge with the count when unreadCount > 1', () => {
+      const wrapper = mountTable([createConversation({ unreadCount: 3 })])
+      const badge = wrapper.find('.read-badge')
+      expect(badge.classes()).toContain('unread')
+      expect(badge.text()).toBe('未讀 3')
     })
 
-    it('should not show unread dot when unreadCount is 0', () => {
-      const conv = createConversation({ unreadCount: 0 })
-      const wrapper = mountTable([conv])
-      expect(wrapper.find('.unread-dot').exists()).toBe(false)
+    it('should show 已讀 when there is nothing unread', () => {
+      const wrapper = mountTable([createConversation({ unreadCount: 0 })])
+      expect(wrapper.find('.read-badge').text()).toBe('已讀')
+    })
+
+    it('should show a muted 結案 badge instead of 已讀 for closed conversations', () => {
+      const wrapper = mountTable([createConversation({ unreadCount: 0, status: 'closed' })])
+      const badge = wrapper.find('.read-badge')
+      expect(badge.classes()).toContain('closed')
+      expect(badge.text()).toBe('結案')
+    })
+
+    it('should still show 未讀 on a closed conversation with unread messages', () => {
+      const wrapper = mountTable([createConversation({ unreadCount: 1, status: 'closed' })])
+      expect(wrapper.find('.read-badge').text()).toBe('未讀')
     })
 
     it('should add has-unread class to row when unread', () => {
@@ -275,12 +289,10 @@ describe('ConversationDesktopTable.vue', () => {
       expect(wrapper.find('.conversation-row').classes()).not.toContain('has-unread')
     })
 
-    it('should include sr-only text for accessibility', () => {
+    it('should label the badge with the unread count for accessibility', () => {
       const conv = createConversation({ unreadCount: 2 })
       const wrapper = mountTable([conv])
-      const srOnly = wrapper.find('.sr-only')
-      expect(srOnly.exists()).toBe(true)
-      expect(srOnly.text()).toContain('未讀')
+      expect(wrapper.find('.read-badge').attributes('aria-label')).toBe('未讀 2 則訊息')
     })
   })
 })
