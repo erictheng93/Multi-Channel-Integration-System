@@ -44,18 +44,43 @@ test.describe('responsive layout sweep', () => {
     await page?.close()
   })
 
-  /** Opens the first conversation this account can see (or E2E_CONVERSATION_CUSTOMER's); false when there is none. */
+  /**
+   * Opens the first conversation this account can see, or E2E_CONVERSATION_CUSTOMER's (the row whose
+   * name matches exactly; the backend filter is a substring match). false when there is none; throws
+   * when the requested customer is not in the list.
+   */
   async function openFirstConversation(): Promise<boolean> {
     await spaNavigate(page, '/conversations')
     if (TARGET_CUSTOMER) {
       const input = page.getByPlaceholder('輸入客戶名稱...')
       if (!(await input.isVisible())) { await page.locator('.filter-trigger').click() }
+      // The input and the table each debounce 300ms, then the list is refetched with customerName.
+      const filtered = page.waitForResponse((res) => {
+        const url = new URL(res.url())
+        return (
+          res.request().method() === 'GET' &&
+          url.pathname.endsWith('/conversations') &&
+          url.searchParams.get('customerName') === TARGET_CUSTOMER
+        )
+      }, { timeout: 15_000 })
       await input.fill(TARGET_CUSTOMER)
-      await page.waitForTimeout(1_500) // 300ms debounce + list refetch
+      await filtered
+      // The table keeps its stale rows until the response renders, so wait for the exact match.
+      const exact = page
+        .locator('.conversation-row:visible, .conversation-card:visible')
+        .filter({ has: page.locator('.customer-name').getByText(TARGET_CUSTOMER, { exact: true }) })
+        .first()
+      try {
+        await exact.waitFor({ state: 'visible', timeout: 10_000 })
+      } catch {
+        throw new Error(`E2E_CONVERSATION_CUSTOMER "${TARGET_CUSTOMER}": no conversation with exactly this customer name is visible to this account`)
+      }
+      await exact.click()
+    } else {
+      const row = await waitForFirstConversation(page)
+      if (!row) { return false }
+      await row.click()
     }
-    const row = await waitForFirstConversation(page)
-    if (!row) { return false }
-    await row.click()
     await page.waitForURL(/\/conversations\/.+/)
     await page.locator('.header-actions').first().waitFor({ timeout: 10_000 })
     return true
