@@ -690,6 +690,48 @@ export const useConversationsStore = defineStore('conversations', () => {
     }
   }
 
+  // 結案 / 重新開啟（optimistic UI：先改本地狀態，失敗則回滾）
+  const setConversationClosed = async (conversationId: string, closed: boolean): Promise<boolean> => {
+    if (!conversationId) { return false }
+
+    const target = conversations.value.find(c => c.id === conversationId)
+      ?? (currentConversation.value?.id === conversationId ? currentConversation.value : undefined)
+    const previousStatus = target?.status
+    const optimisticStatus: Conversation['status'] = closed
+      ? 'closed'
+      : (target?.assignedTeamId ? 'assigned' : 'active')
+
+    if (previousStatus) {
+      updateConversationStatus(conversationId, { status: optimisticStatus })
+    }
+
+    const rollback = () => {
+      if (previousStatus) {
+        updateConversationStatus(conversationId, { status: previousStatus })
+      }
+    }
+
+    try {
+      const response = closed
+        ? await conversationApi.closeConversation(conversationId)
+        : await conversationApi.reopenConversation(conversationId)
+
+      if (response.success) {
+        if (response.data?.status) {
+          updateConversationStatus(conversationId, { status: response.data.status })
+        }
+        return true
+      }
+      rollback()
+      handleError(response.error, closed ? '結案失敗' : '重新開啟失敗')
+      return false
+    } catch (err) {
+      rollback()
+      handleError(err, closed ? '網路錯誤，結案失敗' : '網路錯誤，重新開啟失敗')
+      return false
+    }
+  }
+
   const loadMore = async () => {
     if (pagination.value.page >= pagination.value.totalPages) { return }
     await fetchConversations(filters.value, pagination.value.page + 1, true)
@@ -847,6 +889,7 @@ export const useConversationsStore = defineStore('conversations', () => {
     unassignConversation,
     markAsRead,
     markAsUnread,
+    setConversationClosed,
     loadMore,
     loadMoreConversations,
     refresh,
