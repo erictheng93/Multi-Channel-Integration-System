@@ -1,14 +1,15 @@
 // 對話指派處理器
-// Handles: POST /:id/assign, POST /:id/unassign, POST /:id/transfer
+// Handles: POST /:id/assign, POST /:id/unassign, POST /:id/transfer, POST /:id/close, POST /:id/reopen
 
 import { Hono, type Context } from 'hono';
 import { HTTP_STATUS } from '@/constants/http-status';
 import { globalErrorHandler } from '@/core/error-handler';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { createDbClient } from '@/db/drizzle-factory';
 import { conversations, customers, teams, customerNameSql } from '@/db/schema';
 import type { Bindings } from '@/types';
 import { PermissionService } from '@/services/permission-service';
+import { getConversationVisibilityCondition } from '@/services/conversation-visibility';
 import { jwtAuth } from '@/middleware/auth';
 import { WebSocketBroadcastService } from '@/services/websocket-broadcast-service';
 import { createContextLogger } from '@/utils/logger';
@@ -656,5 +657,73 @@ conversationAssignmentHandler.post('/:id/transfer', jwtAuth, async (c) => {
     return globalErrorHandler.handleError(c, error);
   }
 });
+
+// 結案 / 重新開啟：看得到此對話的客服都能操作（可見性規則同列表），不需要 assign 權限
+async function setConversationClosed(c: Context<{ Bindings: Bindings }>, closed: boolean) {
+  try {
+    const user = c.get('user');
+    const conversationId = c.req.param('id')!;
+    const drizzleDb = createDbClient(c.env.DB);
+
+    const [conv] = await drizzleDb
+      .select()
+      .from(conversations)
+      .where(and(eq(conversations.id, conversationId), getConversationVisibilityCondition(user)))
+      .limit(1);
+
+    if (!conv) {
+      return c.json({ error: 'Conversation not found' }, HTTP_STATUS.NOT_FOUND);
+    }
+
+    // 已是目標狀態：冪等回傳，避免 reopen 把 in-progress 等狀態改掉
+    if ((conv.status === 'closed') === closed) {
+      return c.json({ success: true, data: conv, timestamp: nowISO() });
+    }
+
+    // 重新開啟時依指派狀態回到 assigned / active，與 assign / unassign 的狀態語意一致
+    const status = closed ? 'closed' : (conv.assignedTeamId ? 'assigned' : 'active');
+    const timestamp = nowISO();
+    const closedAt = closed ? timestamp : null;
+
+    const capture = new ActivityCapture(c.env.DB);
+    await c.env.DB.batch([
+      capture.buildIrreversibleLog({
+        ...activityMeta(c, user),
+        action: closed ? ACTIVITY_ACTIONS.CONVERSATION_CLOSE : ACTIVITY_ACTIONS.CONVERSATION_REOPEN,
+        resourceType: RESOURCE_TYPES.CONVERSATION,
+        resourceId: conversationId,
+        details: { previousStatus: conv.status, status },
+        reason: closed ? 'Undo by reopening the conversation' : 'Undo by closing the conversation'
+      }),
+      c.env.DB
+        .prepare('UPDATE conversations SET status = ?, closed_at = ?, updated_at = ? WHERE id = ?')
+        .bind(status, closedAt, timestamp, conversationId)
+    ]);
+
+    try {
+      const broadcastService = new WebSocketBroadcastService(c.env);
+      await broadcastService.broadcastConversationEvent({
+        type: 'conversation_status_changed',
+        conversationId,
+        userId: String(user.id),
+        data: { status, timestamp },
+        priority: 'normal'
+      });
+    } catch (broadcastError) {
+      log.warn('WebSocket: Status change broadcast failed, continuing', { error: broadcastError instanceof Error ? broadcastError.message : String(broadcastError) });
+    }
+
+    return c.json({
+      success: true,
+      data: { ...conv, status, closedAt, updatedAt: timestamp },
+      timestamp: nowISO()
+    });
+  } catch (error) {
+    return globalErrorHandler.handleError(c, error);
+  }
+}
+
+conversationAssignmentHandler.post('/:id/close', jwtAuth, (c) => setConversationClosed(c, true));
+conversationAssignmentHandler.post('/:id/reopen', jwtAuth, (c) => setConversationClosed(c, false));
 
 export default conversationAssignmentHandler;

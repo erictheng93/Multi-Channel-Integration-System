@@ -53,6 +53,8 @@ conversationsMainHandler.get('/info', (c) => {
         'POST /:id/assign - Assign conversation to team',
         'POST /:id/unassign - Unassign conversation',
         'POST /:id/transfer - Transfer conversation between teams',
+        'POST /:id/close - Close conversation (已結案)',
+        'POST /:id/reopen - Reopen closed conversation',
         'GET /:id/tags - Get conversation tags',
         'POST /:id/tags - Add tags to conversation',
         'DELETE /:id/tags - Remove tags from conversation',
@@ -74,7 +76,7 @@ conversationsMainHandler.get('/info', (c) => {
 // Priority 1: /bulk (literal path before /:id patterns)
 conversationsMainHandler.route('/', conversationBulkHandler);
 
-// Priority 2: /:id/assign, /:id/unassign, /:id/transfer
+// Priority 2: /:id/assign, /:id/unassign, /:id/transfer, /:id/close, /:id/reopen
 conversationsMainHandler.route('/', conversationAssignmentHandler);
 
 // Priority 3: /:id/tags (GET/POST/DELETE)
