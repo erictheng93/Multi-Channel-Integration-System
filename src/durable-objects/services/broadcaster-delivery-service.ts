@@ -295,15 +295,27 @@ export class BroadcasterDeliveryService {
   }
 
   async deliverToUser(userId: string, events: QueuedEvent[]): Promise<number> {
+    return (await this.deliverToUserWithPresence(userId, events)).delivered;
+  }
+
+  /**
+   * Deliver to one user and report how many live sockets the UserConnection had.
+   * `connections` is undefined when the callee did not report it (older deploy).
+   *
+   * The registry (ctx.userConnections) holds ONLINE users only and is maintained by
+   * /register-connection and /unregister-connection, so a stub created here for an
+   * unregistered user (e.g. a D1 team member) is deliberately NOT cached in it.
+   */
+  private async deliverToUserWithPresence(
+    userId: string,
+    events: QueuedEvent[]
+  ): Promise<{ delivered: number; connections?: number }> {
     try {
       let userStub = this.ctx.userConnections.get(userId);
 
       if (!userStub) {
         const id = this.env.USER_CONNECTION.idFromName(userId);
         userStub = this.env.USER_CONNECTION.get(id);
-        if (userStub) {
-          this.ctx.userConnections.set(userId, userStub);
-        }
       }
 
       if (!userStub) {
@@ -317,8 +329,11 @@ export class BroadcasterDeliveryService {
       }));
 
       if (response.ok) {
-        const result = await response.json() as { deliveredCount?: number };
-        return result.deliveredCount || events.length;
+        const result = await response.json() as { deliveredCount?: number; connections?: number };
+        return {
+          delivered: result.deliveredCount || events.length,
+          connections: typeof result.connections === 'number' ? result.connections : undefined
+        };
       } else {
         throw new Error(`HTTP ${response.status}`);
       }
@@ -425,15 +440,20 @@ export class BroadcasterDeliveryService {
         }
       });
 
-      // Broadcast to all active user connections
+      // Broadcast to all active user connections; users that report zero live
+      // sockets are stale registry entries and are pruned after the fan-out.
+      const staleUserIds: string[] = [];
       const userPromises = Array.from(this.ctx.userConnections.entries()).map(async ([userId, _stub]) => {
         try {
           console.log(`[MessageBroadcaster] Delivering to user: ${userId}`);
           const visible = events.filter(event => contexts.has(event) &&
             (contexts.get(event) === null || recipients.get(contexts.get(event)!)?.has(String(userId))));
-          const result = visible.length ? await this.deliverToUser(userId, visible) : 0;
-          console.log(`[MessageBroadcaster] Delivered to user ${userId}: ${result} events`);
-          return result;
+          if (!visible.length) return 0;
+          const { delivered, connections } = await this.deliverToUserWithPresence(userId, visible);
+          // Missing `connections` means unknown (older UserConnection): keep the entry.
+          if (connections === 0) staleUserIds.push(userId);
+          console.log(`[MessageBroadcaster] Delivered to user ${userId}: ${delivered} events`);
+          return delivered;
         } catch (error) {
           log.error('Global user delivery error', { userId, error: error instanceof Error ? error.message : String(error) });
           return 0;
@@ -446,6 +466,14 @@ export class BroadcasterDeliveryService {
           totalDelivered += result.value;
         }
       });
+
+      let pruned = false;
+      for (const userId of staleUserIds) {
+        pruned = this.ctx.userConnections.delete(userId) || pruned;
+      }
+      if (pruned) {
+        await this.helpers.persistConnectionIds();
+      }
 
       console.log(`[MessageBroadcaster] Global broadcast complete: ${totalDelivered} total deliveries`);
       return totalDelivered;
