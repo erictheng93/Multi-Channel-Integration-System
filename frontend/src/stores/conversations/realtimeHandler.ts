@@ -103,6 +103,11 @@ export function createRealtimeHandler(deps: RealtimeHandlerDeps) {
       if (activeFilters.value.status) { cleanFilters.status = activeFilters.value.status }
       if (activeFilters.value.platform) { cleanFilters.platform = activeFilters.value.platform }
       if (activeFilters.value.teamId) { cleanFilters.teamId = activeFilters.value.teamId }
+      if (activeFilters.value.search) { cleanFilters.search = activeFilters.value.search }
+      if (activeFilters.value.tagIds && activeFilters.value.tagIds.length > 0) { cleanFilters.tagIds = activeFilters.value.tagIds }
+      if (activeFilters.value.customerName) { cleanFilters.customerName = activeFilters.value.customerName }
+      if (activeFilters.value.updatedAfter) { cleanFilters.updatedAfter = activeFilters.value.updatedAfter }
+      if (activeFilters.value.updatedBefore) { cleanFilters.updatedBefore = activeFilters.value.updatedBefore }
 
       const response = await conversationApi.list({
         page: 1,
