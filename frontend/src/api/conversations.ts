@@ -421,6 +421,7 @@ export const conversationApi = {
     operation: string;
     affectedCount: number;
     conversationIds: string[];
+    statuses?: Record<string, string>;
   }>> => {
     if (conversationIds.length === 0) {
       return { success: false, error: '至少需要選擇一個對話' };
@@ -442,6 +443,7 @@ export const conversationApi = {
     operation: string;
     affectedCount: number;
     conversationIds: string[];
+    statuses?: Record<string, string>;
   }>> => {
     return conversationApi.bulkOperation('close', conversationIds);
   },
@@ -453,6 +455,7 @@ export const conversationApi = {
     operation: string;
     affectedCount: number;
     conversationIds: string[];
+    statuses?: Record<string, string>;
   }>> => {
     return conversationApi.bulkOperation('reopen', conversationIds);
   },
@@ -468,6 +471,7 @@ export const conversationApi = {
     operation: string;
     affectedCount: number;
     conversationIds: string[];
+    statuses?: Record<string, string>;
   }>> => {
     return conversationApi.bulkOperation('assign', conversationIds, options);
   },
@@ -482,6 +486,7 @@ export const conversationApi = {
     operation: string;
     affectedCount: number;
     conversationIds: string[];
+    statuses?: Record<string, string>;
   }>> => {
     return conversationApi.bulkOperation('add_tags', conversationIds, { tagIds });
   },
@@ -496,6 +501,7 @@ export const conversationApi = {
     operation: string;
     affectedCount: number;
     conversationIds: string[];
+    statuses?: Record<string, string>;
   }>> => {
     return conversationApi.bulkOperation('remove_tags', conversationIds, { tagIds });
   },
