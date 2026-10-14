@@ -23,6 +23,7 @@ export interface RealtimeHandlerDeps {
   lastUpdateTime: Ref<Date | null>
   activeFilters: Ref<ConversationFilters>
   error: Ref<string | null>
+  loadError: Ref<string | null>
 
   // Store helper functions
   updateConversationFromWebSocketMessage: (
@@ -58,6 +59,7 @@ export function createRealtimeHandler(deps: RealtimeHandlerDeps) {
     lastUpdateTime,
     activeFilters,
     error,
+    loadError,
     updateConversationFromWebSocketMessage,
     updateConversationStatus,
     updateConversationsIncrementally,
@@ -123,6 +125,9 @@ export function createRealtimeHandler(deps: RealtimeHandlerDeps) {
         // 使用智能增量更新
         updateConversationsIncrementally(conversationList, true)
         lastUpdateTime.value = new Date()
+        // A successful refresh supersedes an earlier fetch failure, otherwise a now-empty
+        // list would keep showing the error instead of the valid empty state.
+        loadError.value = null
 
         // 更新统计信息
         stats.value = computeStatsFromConversations(conversationList)
