@@ -29,7 +29,7 @@ function setup() {
   const ctx = {
     env: { DB: { prepare: (query: string) => ({ bind: (...params: unknown[]) => ({
       all: async () => ({ results: db.prepare(query).all(...params) })
-    }) }) } }, userConnections: users, conversationRooms: rooms
+    }) }) } }, userConnections: users, userRegistrationGen: new Map(), conversationRooms: rooms
   } as unknown as BroadcasterContext
   const delivery = new BroadcasterDeliveryService(ctx, new BroadcasterHelpers(ctx), {} as never)
   const event = (conversationId?: string) => ({ id: 'event', type: 'new_message' as const,
