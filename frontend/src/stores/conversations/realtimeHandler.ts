@@ -99,6 +99,7 @@ export function createRealtimeHandler(deps: RealtimeHandlerDeps) {
     try {
       // Build query params respecting activeFilters so polling doesn't overwrite filtered views
       const cleanFilters: Record<string, unknown> = {}
+      if (activeFilters.value.scope) { cleanFilters.scope = activeFilters.value.scope }
       if (activeFilters.value.status) { cleanFilters.status = activeFilters.value.status }
       if (activeFilters.value.platform) { cleanFilters.platform = activeFilters.value.platform }
       if (activeFilters.value.teamId) { cleanFilters.teamId = activeFilters.value.teamId }
@@ -210,11 +211,16 @@ export function createRealtimeHandler(deps: RealtimeHandlerDeps) {
             }
           }
 
+          // 列表裡沒有這筆、但它變成未結案（例如客戶傳訊自動重新開啟）→ 需要重新抓取，
+          // 讓它出現在「處理中」分頁（對話頁的 currentConversation 仍照常直接更新）
+          const reopenedOutsideList = Boolean(status && status !== 'closed') &&
+            !conversations.value.some(c => c.id === conversationId)
           if (Object.keys(updates).length > 0) {
             updateConversationStatus(conversationId, updates)
             lastUpdateTime.value = new Date()
             frontendLogger.debug(`[ConversationsStore] Direct status update for ${conversationId}`, { assignedTeamName })
-          } else {
+          }
+          if (reopenedOutsideList || Object.keys(updates).length === 0) {
             pollConversations()
           }
         } else {

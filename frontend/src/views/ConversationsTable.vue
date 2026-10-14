@@ -22,6 +22,32 @@
               />
             </div>
           </div>
+          <!-- 分頁籤：預設「處理中」，已結案的對話不佔據最顯眼的位置 -->
+          <div
+            class="scope-tabs"
+            role="tablist"
+            aria-label="對話分類"
+          >
+            <button
+              v-for="tab in SCOPE_TABS"
+              :key="tab.value"
+              type="button"
+              role="tab"
+              class="scope-tab"
+              :class="{ active: scope === tab.value }"
+              :aria-selected="scope === tab.value"
+              @click="scope = tab.value"
+            >
+              {{ tab.label }}
+            </button>
+          </div>
+          <p
+            v-if="isSearching"
+            class="scope-hint"
+            role="status"
+          >
+            搜尋時會一併顯示已結案的對話
+          </p>
           <ConversationFilters
             :filters="filterComposable.filters.value"
             :available-tags="availableTags"
@@ -73,7 +99,7 @@
             <div class="no-data-content">
               <div class="no-data-icon" />
               <div class="no-data-text">
-                暫無對話記錄
+                {{ emptyText }}
               </div>
             </div>
           </div>
@@ -187,8 +213,27 @@ async function loadAvailableTags() {
   }
 }
 
+// 分頁籤（處理中 / 已結案 / 全部）。不放進 filterComposable：「清除篩選」不應該切換分頁
+type ConversationScope = NonNullable<ConversationFiltersType['scope']>
+const SCOPE_TABS: ReadonlyArray<{ value: ConversationScope; label: string; empty: string }> = [
+  { value: 'open', label: '處理中', empty: '沒有處理中的對話' },
+  { value: 'closed', label: '已結案', empty: '沒有已結案的對話' },
+  { value: 'all', label: '全部', empty: '暫無對話記錄' }
+]
+const scope = ref<ConversationScope>('open')
+
+// 有搜尋字時一律搜「全部」：找舊客戶不該因為對話已結案而查無結果（未結案仍排在前面）
+const isSearching = computed(() => {
+  const f = filterComposable.filters.value
+  return Boolean(f.customerName?.trim() || f.search?.trim() || f.lastMessageSearch?.trim())
+})
+const effectiveScope = computed<ConversationScope>(() => (isSearching.value ? 'all' : scope.value))
+const emptyText = computed(() => isSearching.value
+  ? '找不到符合的對話（已包含已結案）'
+  : SCOPE_TABS.find(t => t.value === scope.value)?.empty ?? '暫無對話記錄')
+
 // Debounced API filters — triggers store fetch on change
-const apiFilters = computed(() => filterComposable.getApiFilters())
+const apiFilters = computed(() => ({ ...filterComposable.getApiFilters(), scope: effectiveScope.value }))
 const debouncedApiFilters = useDebounce(apiFilters, 300)
 
 // 平滑載入動畫系統
@@ -203,7 +248,12 @@ const conversations = computed(() => conversationsStore.conversations)
 
 // 平滑載入系統：顯示的對話列表（僅 lastMessageSearch 為 client-side 篩選）
 const displayedConversations = computed(() => {
-  let result = conversations.value
+  // 分頁籤也在前端套用：結案 / 重新開啟後列即時滑出，不必等重新抓取
+  let result = effectiveScope.value === 'open'
+    ? conversations.value.filter(c => c.status !== 'closed')
+    : effectiveScope.value === 'closed'
+      ? conversations.value.filter(c => c.status === 'closed')
+      : conversations.value
   const lastMsgSearch = filterComposable.filters.value.lastMessageSearch?.trim().toLowerCase()
   if (lastMsgSearch) {
     result = result.filter(c => {
@@ -338,7 +388,7 @@ const performSmoothUpdate = async () => {
   frontendLogger.debug('[ConversationsTable] Starting smooth update...')
 
   try {
-    await conversationsStore.fetchConversations(filterComposable.getApiFilters() as ConversationFiltersType)
+    await conversationsStore.fetchConversations(apiFilters.value as ConversationFiltersType)
 
     // 短暫的視覺反饋
     await nextTick()
@@ -379,7 +429,9 @@ onMounted(async () => {
   // - 如果有緩存數據：立即顯示，背景靜默更新（只顯示更新指示器，非全屏載入）
   // - 如果無緩存數據：顯示載入狀態
   try {
-    await conversationsStore.loadWithCache(filterComposable.getApiFilters() as ConversationFiltersType)
+    // 即時事件觸發的輪詢讀 activeFilters；先設好，避免首次輪詢不帶 scope 而抓回已結案
+    conversationsStore.setActiveFilters(apiFilters.value as ConversationFiltersType)
+    await conversationsStore.loadWithCache(apiFilters.value as ConversationFiltersType)
   } catch (error) {
     console.error('載入對話失敗:', error)
     // 即使載入失敗，也不要讓頁面白屏
@@ -412,6 +464,51 @@ onUnmounted(() => {
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
   display: flex;
   flex-direction: column;
+}
+
+.scope-tabs {
+  display: inline-flex;
+  align-self: flex-start;
+  gap: 2px;
+  margin: 0.75rem 1.5rem 0;
+  padding: 3px;
+  border-radius: 9999px;
+  background: #F2F2F7;
+}
+
+.scope-tab {
+  min-height: 32px;
+  padding: 0 16px;
+  border: none;
+  border-radius: 9999px;
+  background: transparent;
+  color: #8E8E93;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s ease-out, color 0.2s ease-out, box-shadow 0.2s ease-out;
+}
+
+.scope-tab:hover {
+  color: #1C1C1E;
+}
+
+.scope-tab.active {
+  background: #FFFFFF;
+  color: #1C1C1E;
+  font-weight: 600;
+  box-shadow: 0 1px 4px rgb(0 0 0 / 0.08);
+}
+
+.scope-hint {
+  margin: 0.5rem 1.5rem 0;
+  font-size: 13px;
+  color: #8E8E93;
+}
+
+.scope-tab:focus-visible {
+  outline: 2px solid #007AFF;
+  outline-offset: 2px;
 }
 
 .header-top {
@@ -659,6 +756,14 @@ onUnmounted(() => {
 
 /* Responsive */
 @media (max-width: 768px) {
+  .scope-tabs {
+    margin: 0.75rem 1rem 0;
+  }
+
+  .scope-tab {
+    min-height: 44px;
+  }
+
   .header-top {
     padding: 0.75rem 1rem;
   }

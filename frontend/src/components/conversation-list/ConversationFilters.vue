@@ -206,9 +206,6 @@
               <option value="pending">
                 待處理
               </option>
-              <option value="closed">
-                已結案
-              </option>
             </select>
           </div>
 

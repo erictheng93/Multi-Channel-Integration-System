@@ -123,6 +123,7 @@ export function createCacheStrategy(deps: CacheStrategyDeps) {
       frontendLogger.debug(`[ConversationsStore] ${wasFromCache ? 'Background' : 'Initial'} API call`)
 
       const cleanFilters: Record<string, unknown> = {}
+      if (cacheFilters.scope) { cleanFilters.scope = cacheFilters.scope }
       if (cacheFilters.status) { cleanFilters.status = cacheFilters.status }
       if (cacheFilters.platform) { cleanFilters.platform = cacheFilters.platform }
       if (cacheFilters.teamId) { cleanFilters.teamId = cacheFilters.teamId }
