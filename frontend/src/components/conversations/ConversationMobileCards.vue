@@ -8,12 +8,28 @@
         v-for="(conversation, index) in conversations"
         :key="conversation.id"
         class="conversation-card"
-        :class="{ 'has-unread': conversation.unreadCount > 0 }"
+        :class="{
+          'has-unread': conversation.unreadCount > 0,
+          'is-selected': selectionMode && selectedIds.has(conversation.id)
+        }"
         :style="{ animationDelay: `${index * 50}ms` }"
-        @click="$emit('select', conversation.id)"
+        @click="handleCardClick(conversation.id)"
       >
         <div class="conv-card-header">
           <div class="customer-info">
+            <label
+              v-if="selectionMode"
+              class="select-hit"
+              @click.stop
+            >
+              <input
+                type="checkbox"
+                class="select-checkbox"
+                :aria-label="`選取 ${getCustomerName(conversation)} 的對話`"
+                :checked="selectedIds.has(conversation.id)"
+                @change="$emit('toggle-select', conversation.id)"
+              >
+            </label>
             <span
               class="read-badge"
               :class="readBadge(conversation).cls"
@@ -73,13 +89,28 @@
 import type { Conversation } from '@/types'
 import { convertEmojiForConversationList } from '@/utils/layered-emoji-processor'
 
-defineProps<{
+const props = withDefaults(defineProps<{
   conversations: Conversation[]
+  selectionMode?: boolean
+  selectedIds?: ReadonlySet<string>
+}>(), {
+  selectionMode: false,
+  selectedIds: () => new Set<string>()
+})
+
+const emit = defineEmits<{
+  select: [id: string]
+  'toggle-select': [id: string]
 }>()
 
-defineEmits<{
-  select: [id: string]
-}>()
+// 選取模式下，點擊整張卡片切換選取而非導覽
+const handleCardClick = (id: string) => {
+  if (props.selectionMode) {
+    emit('toggle-select', id)
+  } else {
+    emit('select', id)
+  }
+}
 
 interface LegacyConversationFields {
   customer_name?: string
@@ -228,6 +259,28 @@ const getAssignedTo = (conversation: Conversation) => {
 
 .conversation-card-move {
   transition: transform 0.3s ease;
+}
+
+.select-hit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  margin: -10px 0 -10px -10px;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.select-checkbox {
+  width: 22px;
+  height: 22px;
+  accent-color: #007AFF;
+  cursor: pointer;
+}
+
+.conversation-card.is-selected {
+  background: #EAF3FF;
 }
 
 .conv-card-header {

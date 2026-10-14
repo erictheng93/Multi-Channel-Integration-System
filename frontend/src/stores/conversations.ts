@@ -732,6 +732,60 @@ export const useConversationsStore = defineStore('conversations', () => {
     }
   }
 
+  // 批量結案 / 重新開啟（optimistic UI）：只送出需要變更的 id，失敗則全部回滾。
+  // 回傳實際變更筆數；失敗回傳 null。
+  const bulkSetConversationsClosed = async (ids: string[], closed: boolean): Promise<number | null> => {
+    const previous = new Map<string, Conversation['status']>()
+    for (const id of ids) {
+      const target = conversations.value.find(c => c.id === id)
+      if (!target || previous.has(id)) { continue }
+      const needsChange = closed ? target.status !== 'closed' : target.status === 'closed'
+      if (needsChange) { previous.set(id, target.status) }
+    }
+
+    const changedIds = Array.from(previous.keys())
+    if (changedIds.length === 0) { return 0 }
+
+    for (const id of changedIds) {
+      const target = conversations.value.find(c => c.id === id)
+      const optimisticStatus: Conversation['status'] = closed
+        ? 'closed'
+        : (target?.assignedTeamId ? 'assigned' : 'active')
+      updateConversationStatus(id, { status: optimisticStatus })
+    }
+
+    const rollback = () => {
+      for (const [id, status] of previous) {
+        updateConversationStatus(id, { status })
+      }
+    }
+
+    try {
+      const response = closed
+        ? await conversationApi.bulkClose(changedIds)
+        : await conversationApi.bulkReopen(changedIds)
+
+      if (response.success) {
+        const statuses = response.data?.statuses
+        if (statuses) {
+          for (const [id, status] of Object.entries(statuses)) {
+            if (previous.has(id)) {
+              updateConversationStatus(id, { status: status as Conversation['status'] })
+            }
+          }
+        }
+        return response.data?.affectedCount ?? changedIds.length
+      }
+      rollback()
+      handleError(response.error, closed ? '批量結案失敗' : '批量重新開啟失敗')
+      return null
+    } catch (err) {
+      rollback()
+      handleError(err, closed ? '網路錯誤，批量結案失敗' : '網路錯誤，批量重新開啟失敗')
+      return null
+    }
+  }
+
   const loadMore = async () => {
     if (pagination.value.page >= pagination.value.totalPages) { return }
     await fetchConversations(filters.value, pagination.value.page + 1, true)
@@ -890,6 +944,7 @@ export const useConversationsStore = defineStore('conversations', () => {
     markAsRead,
     markAsUnread,
     setConversationClosed,
+    bulkSetConversationsClosed,
     loadMore,
     loadMoreConversations,
     refresh,
