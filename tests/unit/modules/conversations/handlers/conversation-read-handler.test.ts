@@ -172,6 +172,15 @@ describe('conversation unread handler', () => {
     expect(handlerMocks.insertValues).not.toHaveBeenCalled();
   });
 
+  it('returns 409 without mutating when the conversation is closed', async () => {
+    handlerMocks.selectGet.mockResolvedValueOnce({ id: 'conv-1', status: 'closed' });
+
+    const response = await markUnread();
+
+    expect(response.status).toBe(409);
+    expect(handlerMocks.insertValues).not.toHaveBeenCalled();
+  });
+
   it('floors unreadCount at 1 when the derived count is 0 (agent sent the last message)', async () => {
     handlerMocks.prepareFirst.mockResolvedValueOnce({ unreadCount: 0 });
 
