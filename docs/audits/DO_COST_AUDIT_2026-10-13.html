@@ -201,7 +201,7 @@ footer { margin-top: 56px; padding-top: 16px; border-top: 1px solid var(--grid);
 </div>
 
 <div class="tiles">
-  <div class="tile"><div class="k">已部署的修正</div><div class="v">10 支 PR</div><div class="s">#90 #91 #93 #94 #100–#104</div></div>
+  <div class="tile"><div class="k">已部署的修正</div><div class="v">10 支 PR</div><div class="s">#90 #91 #93 #94 #100–#104 #108</div></div>
   <div class="tile"><div class="k">實測月用量（7 日平均 × 30）</div><div class="v">$0 超額</div><div class="s">約 133k 請求 / 21k GB-s / 118k 寫入，皆在免費額度內</div></div>
   <div class="tile"><div class="k">最大 GB-s 來源</div><div class="v">DelayedMessageBuffer</div><div class="s">113–1,249 GB-s / 日，每次投遞常駐 15–45 分鐘，與 W1 計時器吻合</div></div>
   <div class="tile"><div class="k">待處理殘留</div><div class="v">0 項急件</div><div class="s"><code>__warmup__</code> 已移除（#108）；collaboration 清理排入 #107</div></div>
@@ -222,7 +222,7 @@ footer { margin-top: 56px; padding-top: 16px; border-top: 1px solid var(--grid);
 <tr><td>2c</td><td>停止對 ConversationRoom 廣播（W5）</td><td><span class="chip warn">已部署・待量測</span></td><td class="num">#102</td><td>實測 8 天連線數皆為 0；class 與 binding 保留，可回退</td></tr>
 <tr><td>2d</td><td>連線前不打 health 預檢（W7）</td><td><span class="chip warn">已部署・待量測</span></td><td class="num">#101</td><td>原本 1 次預檢在伺服器端扇出 3 個 DO</td></tr>
 <tr><td>—</td><td>MessageBroadcaster 在線名單去污染（W3 另一半）</td><td><span class="chip warn">已部署・待量測</span></td><td class="num">#103</td><td>見 0.2</td></tr>
-<tr><td>—</td><td>刪除未認證的 <code>__warmup__</code> middleware（W2 殘留，W6 同類）</td><td><span class="chip warn">已部署・待量測</span></td><td class="num">#108</td><td>Worker 2025470b。觸發入口已驗證關閉（見 0.3）；D1／KV 用量變化併入 10-15／16 量測</td></tr>
+<tr><td>—</td><td>刪除未認證的 <code>__warmup__</code> middleware（W2 殘留，W6 同類）</td><td><span class="chip warn">已部署・待量測</span></td><td class="num">#108</td><td>Worker 2025470b。觸發入口已驗證關閉（見 0.3）；D1／KV 用量變化併入 10-15／16 量測。web installer 內建 bundle 原先仍含此入口，已重新產生並加上 guard 測試；已用舊 bundle 安裝的客戶 Worker 需重新部署才會關閉</td></tr>
 <tr><td>3a-B</td><td>UserConnection 訂閱有變才寫</td><td><span class="chip warn">已部署・待量測</span></td><td class="num">#100</td><td>每次 alarm 少 1 次 storage put</td></tr>
 <tr><td>3a-A / 3a-C</td><td>權限複查週期拉長 / 改事件驅動</td><td><span class="chip info">待處理・不做</span></td><td></td><td>有行為取捨，而用量在免費額度內，省下約 $0</td></tr>
 <tr><td>3b</td><td>團隊廣播只送在線者</td><td><span class="chip info">待處理・暫緩</span></td><td></td><td>先看 #103 上線後 registry 大小是否與實測連線數一致</td></tr>
