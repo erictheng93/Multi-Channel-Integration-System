@@ -452,6 +452,8 @@ const getAssignedTo = (conversation: Conversation) => {
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  /* line-clamp does not ellipsize an unbreakable string (URL, long ID); wrap it instead of cutting it */
+  overflow-wrap: anywhere;
 }
 
 .conv-card-footer {
