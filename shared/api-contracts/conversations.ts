@@ -58,9 +58,13 @@ export interface RawConversationData {
   markedUnreadAt?: string | null
 }
 
+/** 列表分頁籤：open = 處理中（非已結案）、closed = 已結案、all = 全部（未結案在前） */
+export type ConversationListScope = 'open' | 'closed' | 'all'
+
 export interface ConversationListParams {
   page?: number
   pageSize?: number
+  scope?: ConversationListScope
   status?: ConversationStatusForApi | ''
   platform?: Platform
   teamId?: number
@@ -158,6 +162,9 @@ export function buildConversationQuery(params: ConversationListParams | Conversa
   }
   if (listParams.pageSize !== undefined) {
     queryParams.append('pageSize', listParams.pageSize.toString())
+  }
+  if (listParams.scope) {
+    queryParams.append('scope', listParams.scope)
   }
   if (listParams.status) {
     queryParams.append('status', listParams.status)
