@@ -1167,20 +1167,37 @@ describe('Conversation Handlers Integration Tests', () => {
       expect(body.error).toContain('Permission denied');
     });
 
-    test('returns validation error for close/reopen operations (deprecated)', async () => {
+    test('bulk close closes visible conversations and broadcasts each new status', async () => {
       const res = await makeRequest(app, '/api/conversations/bulk', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          operation: 'close',
-          conversationIds: ['conv-001'],
-          data: {},
-        }),
+        body: JSON.stringify({ operation: 'close', conversationIds: ['conv-001'] }),
       });
       const body = (await res.json()) as any;
 
-      expect(res.status).toBe(422);
-      expect(body.success).toBe(false);
+      expect(res.status).toBe(200);
+      expect(body.data.statuses).toEqual({ 'conv-001': 'closed' });
+      expect(body.data.affectedCount).toBe(1);
+      expect(env.DB.batch).toHaveBeenCalledTimes(1);
+      expect(handlerSpies.broadcastConversationEvent).toHaveBeenCalledWith(expect.objectContaining({
+        type: 'conversation_status_changed',
+        conversationId: 'conv-001',
+        data: expect.objectContaining({ status: 'closed' }),
+      }));
+    });
+
+    test('bulk reopen skips conversations that are not closed', async () => {
+      const res = await makeRequest(app, '/api/conversations/bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ operation: 'reopen', conversationIds: ['conv-001'] }),
+      });
+      const body = (await res.json()) as any;
+
+      expect(res.status).toBe(200);
+      expect(body.data.statuses).toEqual({});
+      expect(body.data.affectedCount).toBe(0);
+      expect(env.DB.batch).not.toHaveBeenCalled();
     });
 
     test('returns validation error for assign without teamId', async () => {
