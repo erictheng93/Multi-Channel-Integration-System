@@ -99,11 +99,12 @@ export function createConversationUnreadCountQuery(conversationIds: string[]): s
         FROM (
           SELECT
             c.id as id,
-            CASE WHEN rs.marked_unread_at IS NOT NULL THEN 1 ELSE 0 END as manuallyUnread,
-            MAX(
+            -- 已結案的對話對所有客服都算 0 未讀（新訊息會自動重新開啟，不會漏看）
+            CASE WHEN c.status <> 'closed' AND rs.marked_unread_at IS NOT NULL THEN 1 ELSE 0 END as manuallyUnread,
+            CASE WHEN c.status = 'closed' THEN '9999-12-31' ELSE MAX(
               COALESCE(la.last_agent_at, '1970-01-01'),
               COALESCE(rs.last_read_at, '1970-01-01')
-            ) as unread_threshold
+            ) END as unread_threshold
           FROM conversations c
           LEFT JOIN conversation_read_states rs
             ON rs.conversation_id = c.id
@@ -185,6 +186,7 @@ conversationQueriesHandler.get('/stats', jwtAuth, async (c) => {
       WITH visible AS (
         SELECT
           conversation.id AS id,
+          conversation.status AS status,
           read_state.last_read_at AS last_read_at,
           read_state.marked_unread_at AS marked_unread_at
         FROM conversations AS conversation
@@ -208,11 +210,12 @@ conversationQueriesHandler.get('/stats', jwtAuth, async (c) => {
         FROM (
           SELECT
             visible.id,
-            CASE WHEN visible.marked_unread_at IS NOT NULL THEN 1 ELSE 0 END as manuallyUnread,
-            MAX(
+            -- 已結案的對話不計入未讀總數（與列表一致）
+            CASE WHEN visible.status <> 'closed' AND visible.marked_unread_at IS NOT NULL THEN 1 ELSE 0 END as manuallyUnread,
+            CASE WHEN visible.status = 'closed' THEN '9999-12-31' ELSE MAX(
               COALESCE(last_agent.last_agent_at, '1970-01-01'),
               COALESCE(visible.last_read_at, '1970-01-01')
-            ) as unread_threshold
+            ) END as unread_threshold
           FROM visible
           LEFT JOIN (
             SELECT message.conversation_id, MAX(message.created_at) as last_agent_at
@@ -372,6 +375,10 @@ conversationQueriesHandler.get('/:id', jwtAuth, async (c) => {
     // this agent marked unread stays unread even when an agent sent the last
     // message (derived count 0). Cleared by mark-as-read.
     unreadCount = applyManualUnreadFloor(unreadCount, manuallyUnread);
+    // 已結案的對話對所有客服都算 0 未讀（與列表 / 統計一致）
+    if (result.conversations.status === 'closed') {
+      unreadCount = 0;
+    }
 
     const displayContent = lastMessageData ? getDisplayContent(lastMessageData.content, lastMessageData.messageType) : null;
 
