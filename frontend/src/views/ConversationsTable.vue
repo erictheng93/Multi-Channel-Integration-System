@@ -264,8 +264,13 @@ const scopedConversations = computed(() =>
 
 // 列因狀態轉換滑出分頁後，若伺服器還有更多，補抓一次填滿頁面
 let refillTimer: ReturnType<typeof setTimeout> | null = null
-watch(scopedConversations, (list, prev) => {
-  if (!prev || effectiveScope.value === 'all' || conversationsStore.pagination.totalPages <= 1) { return }
+watch(() => [effectiveScope.value, scopedConversations.value] as const, ([scope, list], [prevScope, prev]) => {
+  // 換分頁不是狀態轉換：debounced 篩選 watcher 會負責抓取，這裡取消待補抓並跳過，避免重複請求
+  if (scope !== prevScope) {
+    if (refillTimer) { clearTimeout(refillTimer); refillTimer = null }
+    return
+  }
+  if (scope === 'all' || conversationsStore.pagination.totalPages <= 1) { return }
   const kept = new Set(list.map(c => c.id))
   const loaded = new Set(conversations.value.map(c => c.id))
   // 只算「仍在列表、但已不屬於本分頁」的列；換分頁 / 重新抓取造成的消失不會觸發
