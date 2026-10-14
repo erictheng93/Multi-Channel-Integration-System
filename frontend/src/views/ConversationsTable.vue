@@ -158,6 +158,7 @@ import { useConversationsStore } from '@/stores/conversations'
 import { useConversationFilters } from '@/composables/conversation/useConversationFilters'
 import { useDebounce } from '@/composables/useDebounce'
 import { useToast } from '@/composables/useToast'
+import { useConfirmDialog } from '@/composables/useConfirmDialog'
 import { tagCacheService } from '@/services/tagCacheService'
 import type { ConversationFilters as ConversationFiltersType } from '@/types'
 
@@ -216,6 +217,7 @@ const displayedConversations = computed(() => {
 // ==================== 批量選取 ====================
 const BULK_LIMIT = 100
 const { showSuccess, showError } = useToast()
+const { showConfirm } = useConfirmDialog()
 
 const selectionMode = ref(false)
 const selectedIds = ref<Set<string>>(new Set())
@@ -265,6 +267,20 @@ watch(displayedConversations, (list) => {
 
 async function runBulk(closed: boolean) {
   if (bulkBusy.value || overLimit.value || selectedIds.value.size === 0) { return }
+  // 結案後未讀會歸零（對所有客服），批量時可能沒看過最後一句 → 有未讀就先確認
+  if (closed) {
+    const unreadCount = selectedConversations.value.filter(c => c.status !== 'closed' && c.unreadCount > 0).length
+    if (unreadCount > 0) {
+      const confirmed = await showConfirm({
+        title: '仍要結案嗎？',
+        message: `其中 ${unreadCount} 筆有未讀訊息，結案後所有客服都不會再看到未讀提示。`,
+        type: 'warning',
+        confirmText: '結案',
+        cancelText: '取消'
+      })
+      if (!confirmed) { return }
+    }
+  }
   bulkBusy.value = true
   try {
     const count = await conversationsStore.bulkSetConversationsClosed(

@@ -86,8 +86,8 @@
            （即使最後一則訊息是客服傳送，後端也會將未讀數下限設為 1） -->
       <button
         class="header-action-btn"
-        :disabled="!conversation"
-        title="標示為未讀"
+        :disabled="!conversation || isClosed"
+        :title="isClosed ? '已結案的對話不會顯示未讀' : '標示為未讀'"
         @click="$emit('markUnread')"
       >
         <MailIcon :size="18" />
