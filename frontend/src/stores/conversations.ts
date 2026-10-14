@@ -719,9 +719,14 @@ export const useConversationsStore = defineStore('conversations', () => {
     }
 
     const rollback = () => {
-      if (previousStatus) {
-        updateConversationStatus(conversationId, { status: previousStatus, unreadCount: previousUnread })
-      }
+      if (!previousStatus) { return }
+      const current = conversations.value.find(c => c.id === conversationId)
+        ?? (currentConversation.value?.id === conversationId ? currentConversation.value : undefined)
+      // 請求期間 WebSocket 已推進狀態（例如客戶新訊息自動重新開啟）→ 以較新的狀態為準，不回滾
+      if (current && current.status !== optimisticStatus) { return }
+      // 只在仍是樂觀的 0 時還原未讀數；請求期間即時推進的未讀數保留
+      const unreadCount = closed && current && current.unreadCount > 0 ? current.unreadCount : previousUnread
+      updateConversationStatus(conversationId, { status: previousStatus, unreadCount })
     }
 
     try {
@@ -770,7 +775,11 @@ export const useConversationsStore = defineStore('conversations', () => {
 
     const rollback = () => {
       for (const [id, state] of previous) {
-        updateConversationStatus(id, state)
+        const current = conversations.value.find(c => c.id === id)
+        // 結案後已被即時事件重新開啟 → 保留較新的狀態；未讀數同理
+        if (current && closed && current.status !== 'closed') { continue }
+        const unreadCount = closed && current && current.unreadCount > 0 ? current.unreadCount : state.unreadCount
+        updateConversationStatus(id, { status: state.status, unreadCount })
       }
     }
 

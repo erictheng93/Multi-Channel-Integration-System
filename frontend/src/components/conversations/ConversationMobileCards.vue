@@ -9,7 +9,7 @@
         :key="conversation.id"
         class="conversation-card"
         :class="{
-          'has-unread': conversation.unreadCount > 0,
+          'has-unread': conversation.status !== 'closed' && conversation.unreadCount > 0,
           'is-selected': selectionMode && selectedIds.has(conversation.id)
         }"
         :style="{ animationDelay: `${index * 50}ms` }"
@@ -38,7 +38,7 @@
               {{ readBadge(conversation).text }}
             </span>
             <span
-              v-if="conversation.unreadCount > 0"
+              v-if="conversation.status !== 'closed' && conversation.unreadCount > 0"
               class="sr-only"
             >
               未讀 {{ conversation.unreadCount }} 則訊息
