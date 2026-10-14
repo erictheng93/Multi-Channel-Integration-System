@@ -39,6 +39,7 @@ export class MessageBroadcaster implements DurableObject {
   private highPriorityQueue: unknown[] = [];
   private conversationRooms = new Map<string, DurableObjectStub>();
   private userConnections = new Map<string, DurableObjectStub>();
+  private userRegistrationGen = new Map<string, number>();
   private targetFilters = new Map<string, WebSocketSubscription[]>();
   private locks = new Map<string, DistributedLock>();
   private distributionStats: DistributionStats = {
@@ -85,6 +86,7 @@ export class MessageBroadcaster implements DurableObject {
       highPriorityQueue: this.highPriorityQueue,
       conversationRooms: this.conversationRooms,
       userConnections: this.userConnections,
+      userRegistrationGen: this.userRegistrationGen,
       targetFilters: this.targetFilters,
       locks: this.locks,
       stats: this.distributionStats,

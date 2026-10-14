@@ -21,6 +21,7 @@ function setup(registered: Record<string, FakeStub>, local: Record<string, FakeS
     state: { storage: { put } },
     stats: { activeConnections: Object.keys(registered).length },
     userConnections,
+    userRegistrationGen: new Map<string, number>(),
     conversationRooms: new Map()
   } as unknown as BroadcasterContext
   const helpers = new BroadcasterHelpers(ctx)
@@ -66,15 +67,14 @@ describe('MessageBroadcaster registry holds online users only', () => {
 
   it('does not prune a user who re-registered while the probe was in flight', async () => {
     const offline = stubReporting({ deliveredCount: 1, connections: 0 })
-    const { userConnections, delivery, event } = setup({ offline })
-    // /register-connection installs a fresh stub; simulate it landing mid-fan-out.
-    const fresh = stubReporting({ deliveredCount: 1, connections: 1 })
+    const { userConnections, delivery, event, ctx } = setup({ offline })
+    // /register-connection bumps the generation (keeping the stub); simulate it landing mid-fan-out.
     offline.fetch.mockImplementationOnce(async () => {
-      userConnections.set('offline', fresh)
+      ctx.userRegistrationGen.set('offline', (ctx.userRegistrationGen.get('offline') ?? 0) + 1)
       return Response.json({ success: true, deliveredCount: 1, connections: 0 })
     })
     await delivery.deliverGlobalBroadcast([event])
-    expect(userConnections.get('offline')).toBe(fresh)
+    expect(userConnections.get('offline')).toBe(offline)
   })
 
   it('restores an unregistered user whose targeted delivery reports live sockets', async () => {

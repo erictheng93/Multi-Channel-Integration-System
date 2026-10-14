@@ -36,9 +36,13 @@ export class BroadcasterConnectionRegistry {
         if (!namespace) {
           return new Response(JSON.stringify({ error: 'USER_CONNECTION binding is not configured' }), { status: 503 });
         }
-        // Always install a fresh stub, even for a known user: stale-entry pruning compares
-        // stub identity, so a registration after a presence probe must change the entry.
-        this.ctx.userConnections.set(id, namespace.get(namespace.idFromName(id)));
+        // Keep the existing stub for a known user: deliveries must keep using one stub per
+        // UserConnection, because the platform does not order requests across different stubs.
+        // Stale-entry pruning detects a re-registration via the generation counter instead.
+        if (!this.ctx.userConnections.has(id)) {
+          this.ctx.userConnections.set(id, namespace.get(namespace.idFromName(id)));
+        }
+        this.ctx.userRegistrationGen.set(id, (this.ctx.userRegistrationGen.get(id) ?? 0) + 1);
       }
 
       this.ctx.stats.activeConnections++;
