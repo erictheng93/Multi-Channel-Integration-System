@@ -13,6 +13,11 @@ import { revalidateWebSocketAccess } from '@/services/websocket-access-revocatio
  * - Participant joined/left
  * - Dual-team transfer notifications
  */
+function hasStatusChange(event: { type: string; data: unknown }): boolean {
+  return event.type === 'conversation_status_changed' &&
+    typeof event.data === 'object' && event.data !== null && 'status' in event.data;
+}
+
 export class ConversationEventBroadcaster extends EventBroadcasterBase {
 
   /**
@@ -45,7 +50,9 @@ export class ConversationEventBroadcaster extends EventBroadcasterBase {
               type: 'conversation' as const,
               targets: [event.conversationId]
             },
-            ...(event.type.includes('assigned') || event.type.includes('transferred') ? [
+            // 結案 / 重新開啟也送到全域，讓每位看得到此對話的客服列表即時更新
+            // （global 投遞會依對話可見性過濾收件者）；標籤變更的 status_changed 不帶 status，維持只送對話房間
+            ...(event.type.includes('assigned') || event.type.includes('transferred') || hasStatusChange(event) ? [
               {
                 type: 'global' as const,
                 targets: ['admin', 'team'] as (string | number)[],
