@@ -177,7 +177,7 @@ footer { margin-top: 56px; padding-top: 16px; border-top: 1px solid var(--grid);
     <span>日期 2026-10-13</span>
     <span>範圍 wrangler.toml 中的 9 個 DO 類別、全部 Worker 呼叫端、前端 socket 與輪詢</span>
     <span>基準 main 993594ec</span>
-    <span>更新 2026-10-14（main cfd2d0e7，Worker a8fee503）</span>
+    <span>更新 2026-10-14（Worker 2025470b）</span>
   </div>
   <div class="verdict">
     <p><strong>結論。</strong>專案目前沒有會讓帳單失控的結構。所有 WebSocket 都走 Hibernation API，閒置不計時；alarm 鏈在 <code>fix/do-alarm-retry-caps</code> 合併後全部有上限。
@@ -204,7 +204,7 @@ footer { margin-top: 56px; padding-top: 16px; border-top: 1px solid var(--grid);
   <div class="tile"><div class="k">已部署的修正</div><div class="v">10 支 PR</div><div class="s">#90 #91 #93 #94 #100–#104</div></div>
   <div class="tile"><div class="k">實測月用量（7 日平均 × 30）</div><div class="v">$0 超額</div><div class="s">約 133k 請求 / 21k GB-s / 118k 寫入，皆在免費額度內</div></div>
   <div class="tile"><div class="k">最大 GB-s 來源</div><div class="v">DelayedMessageBuffer</div><div class="s">113–1,249 GB-s / 日，每次投遞常駐 15–45 分鐘，與 W1 計時器吻合</div></div>
-  <div class="tile"><div class="k">待處理殘留</div><div class="v">1 項</div><div class="s"><code>__warmup__</code> 未認證入口（見 0.3）</div></div>
+  <div class="tile"><div class="k">待處理殘留</div><div class="v">0 項急件</div><div class="s"><code>__warmup__</code> 已移除（#108）；collaboration 清理排入 #107</div></div>
 </div>
 
 <h3>0.1 每一項的狀態</h3>
@@ -222,7 +222,7 @@ footer { margin-top: 56px; padding-top: 16px; border-top: 1px solid var(--grid);
 <tr><td>2c</td><td>停止對 ConversationRoom 廣播（W5）</td><td><span class="chip warn">已部署・待量測</span></td><td class="num">#102</td><td>實測 8 天連線數皆為 0；class 與 binding 保留，可回退</td></tr>
 <tr><td>2d</td><td>連線前不打 health 預檢（W7）</td><td><span class="chip warn">已部署・待量測</span></td><td class="num">#101</td><td>原本 1 次預檢在伺服器端扇出 3 個 DO</td></tr>
 <tr><td>—</td><td>MessageBroadcaster 在線名單去污染（W3 另一半）</td><td><span class="chip warn">已部署・待量測</span></td><td class="num">#103</td><td>見 0.2</td></tr>
-<tr><td>—</td><td>刪除未認證的 <code>__warmup__</code> middleware（W2 殘留，W6 同類）</td><td><span class="chip info">待處理・PR 審查中</span></td><td></td><td>與本文件同一支 PR，尚未合併、尚未部署；見 0.3</td></tr>
+<tr><td>—</td><td>刪除未認證的 <code>__warmup__</code> middleware（W2 殘留，W6 同類）</td><td><span class="chip warn">已部署・待量測</span></td><td class="num">#108</td><td>Worker 2025470b。觸發入口已驗證關閉（見 0.3）；D1／KV 用量變化併入 10-15／16 量測</td></tr>
 <tr><td>3a-B</td><td>UserConnection 訂閱有變才寫</td><td><span class="chip warn">已部署・待量測</span></td><td class="num">#100</td><td>每次 alarm 少 1 次 storage put</td></tr>
 <tr><td>3a-A / 3a-C</td><td>權限複查週期拉長 / 改事件驅動</td><td><span class="chip info">待處理・不做</span></td><td></td><td>有行為取捨，而用量在免費額度內，省下約 $0</td></tr>
 <tr><td>3b</td><td>團隊廣播只送在線者</td><td><span class="chip info">待處理・暫緩</span></td><td></td><td>先看 #103 上線後 registry 大小是否與實測連線數一致</td></tr>
@@ -237,7 +237,7 @@ footer { margin-top: 56px; padding-top: 16px; border-top: 1px solid var(--grid);
 <div class="tscroll"><table>
 <thead><tr><th>殘留</th><th>驗證結果</th><th>風險</th><th>建議</th></tr></thead>
 <tbody>
-<tr><td><code>__warmup__</code> middleware（<code>src/index.ts</code> 143–160）</td><td><strong>屬實。</strong>掛在 <code>app.use('*')</code>，在任何認證之前執行。URL 含 <code>__warmup__</code> 或帶 <code>cf-worker-started</code> 標頭（客戶端可自行設定）就會 await <code>warmupCache()</code>：1 次 Coordinator DO 請求、1 次對 messages 的 <code>SELECT DISTINCT … ORDER BY created_at</code>、最多 100 次逐對話 D1 查詢與 100 次 KV 寫入。沒有任何正常流程會觸發它，測試也沒有引用。</td><td><span class="chip serious">外部可觸發</span>與 W6 同類，且 D1 rows read 先前已造成過一次 $22 帳單</td><td><strong>處理中</strong>：整段 middleware 刪除，附 guard test，與本文件同一支 PR；<strong>尚未部署</strong>。部署後以 <code>wrangler tail</code> 對照同樣兩個請求，確認不再觸發</td></tr>
+<tr><td><code>__warmup__</code> middleware（<code>src/index.ts</code> 143–160）</td><td><strong>屬實。</strong>掛在 <code>app.use('*')</code>，在任何認證之前執行。URL 含 <code>__warmup__</code> 或帶 <code>cf-worker-started</code> 標頭（客戶端可自行設定）就會 await <code>warmupCache()</code>：1 次 Coordinator DO 請求、1 次對 messages 的 <code>SELECT DISTINCT … ORDER BY created_at</code>、最多 100 次逐對話 D1 查詢與 100 次 KV 寫入。沒有任何正常流程會觸發它，測試也沒有引用。</td><td><span class="chip serious">外部可觸發（已關閉）</span>與 W6 同類，且 D1 rows read 先前已造成過一次 $22 帳單</td><td><strong>已部署（#108，Worker 2025470b）</strong>。同一個不存在路徑的對照：部署前 <code>?__warmup__=1</code> 46.8 秒、<code>cf-worker-started</code> 標頭 46.3 秒、無觸發 0.67 秒；部署後三者皆約 0.6 秒，<code>wrangler tail</code> 無任何 DO 呼叫與預熱紀錄。註：<code>/api/monitoring/health</code> 等先註冊的路由原本就不經過這個 middleware，可觸發的是之後註冊的路由與所有 404 路徑</td></tr>
 <tr><td>collaboration adapter 呼叫 CONVERSATION_ROOM</td><td><strong>部分不屬實。</strong>路由有掛載：<code>route-config.ts:303</code> 把它掛在 <code>/api/collaboration</code>，除 <code>/health</code> 外全部要求 JWT；<code>/health</code> 與模組初始化都不碰 DO。前端沒有任何呼叫端。</td><td><span class="chip info">低</span>只有已登入使用者能觸發，目前零流量</td><td>已登記為後續清理 <a href="https://github.com/erictheng93/Multi-Channel-Integration-System/issues/107">#107</a>（負責人 erictheng93），不阻擋本次部署。JWT 降低外部濫用面，但不是成本控制</td></tr>
 </tbody></table></div>
 
@@ -259,7 +259,7 @@ footer { margin-top: 56px; padding-top: 16px; border-top: 1px solid var(--grid);
 
 <h3>0.5 下一步</h3>
 <ol>
-  <li><strong>10-14</strong>：合併並部署 warmup 移除（本 PR），部署後以 <code>wrangler tail</code> 驗證兩種觸發方式都不再產生預熱工作，再把 0.1 該列改為「已部署・待量測」。</li>
+  <li><s>10-14：合併並部署 warmup 移除</s>：已完成（#108，Worker 2025470b，觸發入口已驗證關閉）。</li>
   <li><strong>10-15／10-16 重新量測，DO 與 D1 一起看</strong>：
     <ul>
       <li>DO：每個 namespace 的 requests、duration（GB-s）、storage 讀寫，部署前（10-06 至 10-13）對部署後。預期 DelayedMessageBuffer GB-s 接近 0（W1）、ConversationRoom requests 接近 0（#102）、UserConnection requests 與寫入下降（#103、#100）。</li>
