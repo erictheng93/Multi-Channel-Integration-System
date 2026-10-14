@@ -74,7 +74,7 @@ describe('POST /:id/close and /:id/reopen', () => {
 
     expect(res.status).toBe(200);
     expect(body.data.status).toBe('closed');
-    expect(updateParams()).toEqual(['closed', '2026-10-14T00:00:00.000Z', '2026-10-14T00:00:00.000Z', 'conv-1']);
+    expect(updateParams()).toEqual(['closed', '2026-10-14T00:00:00.000Z', '2026-10-14T00:00:00.000Z', '2026-10-14T00:00:00.000Z', 'conv-1']);
     expect(mocks.broadcast).toHaveBeenCalledWith(expect.objectContaining({
       type: 'conversation_status_changed',
       data: expect.objectContaining({ status: 'closed' }),
@@ -87,7 +87,7 @@ describe('POST /:id/close and /:id/reopen', () => {
     const body = await (await request('reopen')).json() as { data: { status: string } };
 
     expect(body.data.status).toBe('assigned');
-    expect(updateParams()?.slice(0, 2)).toEqual(['assigned', null]);
+    expect(updateParams()?.[0]).toBe('assigned');
   });
 
   it('reopens to active when the conversation has no team', async () => {

@@ -1,0 +1,11 @@
+-- ===============================================
+-- Migration 0064: conversations.unread_floor_at
+-- ===============================================
+-- Date: 2026-10-14
+--
+-- Closing a conversation records the close time here and it is NOT cleared on
+-- reopen (closed_at is cleared, and analytics read it, so it cannot serve).
+-- The unread formula floors its threshold at this value, so customer messages
+-- that were already pending when the conversation was closed do not come back
+-- as unread when it reopens. NULL = never closed.
+ALTER TABLE conversations ADD COLUMN unread_floor_at TEXT;

@@ -125,7 +125,8 @@ function createSqliteDb() {
   db.exec(`
     CREATE TABLE conversations (
       id TEXT PRIMARY KEY,
-      status TEXT NOT NULL DEFAULT 'active'
+      status TEXT NOT NULL DEFAULT 'active',
+      unread_floor_at TEXT
     );
     CREATE TABLE conversation_read_states (
       agent_id TEXT NOT NULL,
@@ -268,6 +269,20 @@ describe('conversation unread count SQL', () => {
       expect(Number(row?.unreadCount)).toBe(0);
       expect(Number(row?.manuallyUnread)).toBe(0);
     }
+  });
+
+  // Closing records unread_floor_at and reopening keeps it, so the backlog that
+  // was pending at close time stays read; only newer messages count.
+  it('does not resurrect the pre-close backlog when a conversation reopens', () => {
+    const db = createSqliteDb();
+    insertConversation(db, 'reopened', 'active');
+    db.prepare('UPDATE conversations SET unread_floor_at = ? WHERE id = ?').run('2026-07-21T12:00:00Z', 'reopened');
+    insertMessage(db, 'old1', 'reopened', 'customer', '2026-07-21T10:00:00Z');
+    insertMessage(db, 'old2', 'reopened', 'customer', '2026-07-21T11:00:00Z');
+    insertMessage(db, 'new1', 'reopened', 'customer', '2026-07-21T13:00:00Z');
+
+    const [row] = unreadRows(db, ['reopened'], 'agent-1');
+    expect(Number(row?.unreadCount)).toBe(1);
   });
 
   // The whole point of Migration 0060: two agents looking at the same

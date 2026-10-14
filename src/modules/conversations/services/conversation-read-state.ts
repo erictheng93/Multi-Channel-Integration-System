@@ -57,3 +57,28 @@ export async function upsertReadState(
       }
     });
 }
+
+// Marks a conversation unread for one agent ONLY while it is not closed, in a
+// single statement: the status check and the write cannot be split by another
+// agent closing the conversation in between. Returns false (nothing written)
+// when the conversation is closed.
+export async function markUnreadIfOpen(
+  db: D1Database,
+  agentId: string,
+  conversationId: string,
+  now: string
+): Promise<boolean> {
+  const result = await db
+    .prepare(`
+      INSERT INTO conversation_read_states (agent_id, conversation_id, last_read_at, marked_unread_at, updated_at)
+      SELECT ?, ?, NULL, ?, ?
+      WHERE EXISTS (SELECT 1 FROM conversations WHERE id = ? AND status <> 'closed')
+      ON CONFLICT (agent_id, conversation_id) DO UPDATE SET
+        last_read_at = NULL,
+        marked_unread_at = excluded.marked_unread_at,
+        updated_at = excluded.updated_at
+    `)
+    .bind(agentId, conversationId, now, now, conversationId)
+    .run();
+  return (result.meta?.changes ?? 0) > 0;
+}
