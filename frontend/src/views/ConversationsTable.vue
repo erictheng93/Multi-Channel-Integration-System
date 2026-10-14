@@ -71,7 +71,7 @@
             <HamsterLoader message="載入對話列表中..." />
           </div>
           <div
-            v-else-if="loadError && conversations.length === 0"
+            v-else-if="loadError && displayedConversations.length === 0"
             class="conversations-error"
             role="alert"
           >
@@ -223,9 +223,10 @@ const SCOPE_TABS: ReadonlyArray<{ value: ConversationScope; label: string; empty
 const scope = ref<ConversationScope>('open')
 
 // 有搜尋字時一律搜「全部」：找舊客戶不該因為對話已結案而查無結果（未結案仍排在前面）
+// lastMessageSearch 只在前端篩選已載入的列，伺服器端無法涵蓋已結案，故不納入
 const isSearching = computed(() => {
   const f = filterComposable.filters.value
-  return Boolean(f.customerName?.trim() || f.search?.trim() || f.lastMessageSearch?.trim())
+  return Boolean(f.customerName?.trim() || f.search?.trim())
 })
 const effectiveScope = computed<ConversationScope>(() => (isSearching.value ? 'all' : scope.value))
 const emptyText = computed(() => isSearching.value
@@ -233,7 +234,12 @@ const emptyText = computed(() => isSearching.value
   : SCOPE_TABS.find(t => t.value === scope.value)?.empty ?? '暫無對話記錄')
 
 // Debounced API filters — triggers store fetch on change
-const apiFilters = computed(() => ({ ...filterComposable.getApiFilters(), scope: effectiveScope.value }))
+const apiFilters = computed(() => {
+  const base: ConversationFiltersType = { ...filterComposable.getApiFilters(), scope: effectiveScope.value }
+  // 後端把 status 與 scope 取交集：已結案分頁不能再帶 active/assigned/pending，否則永遠是空的
+  if (base.scope === 'closed') { delete base.status }
+  return base
+})
 const debouncedApiFilters = useDebounce(apiFilters, 300)
 
 // 平滑載入動畫系統
@@ -247,13 +253,32 @@ const loadError = computed(() => conversationsStore.loadError)
 const conversations = computed(() => conversationsStore.conversations)
 
 // 平滑載入系統：顯示的對話列表（僅 lastMessageSearch 為 client-side 篩選）
-const displayedConversations = computed(() => {
-  // 分頁籤也在前端套用：結案 / 重新開啟後列即時滑出，不必等重新抓取
-  let result = effectiveScope.value === 'open'
+// 分頁籤也在前端套用：結案 / 重新開啟後列即時滑出，不必等重新抓取
+const scopedConversations = computed(() =>
+  effectiveScope.value === 'open'
     ? conversations.value.filter(c => c.status !== 'closed')
     : effectiveScope.value === 'closed'
       ? conversations.value.filter(c => c.status === 'closed')
       : conversations.value
+)
+
+// 列因狀態轉換滑出分頁後，若伺服器還有更多，補抓一次填滿頁面
+let refillTimer: ReturnType<typeof setTimeout> | null = null
+watch(scopedConversations, (list, prev) => {
+  if (!prev || effectiveScope.value === 'all' || conversationsStore.pagination.totalPages <= 1) { return }
+  const kept = new Set(list.map(c => c.id))
+  const loaded = new Set(conversations.value.map(c => c.id))
+  // 只算「仍在列表、但已不屬於本分頁」的列；換分頁 / 重新抓取造成的消失不會觸發
+  if (!prev.some(c => !kept.has(c.id) && loaded.has(c.id))) { return }
+  if (refillTimer) { clearTimeout(refillTimer) }
+  refillTimer = setTimeout(() => {
+    refillTimer = null
+    conversationsStore.fetchConversations(apiFilters.value as ConversationFiltersType)
+  }, 500)
+})
+
+const displayedConversations = computed(() => {
+  let result = scopedConversations.value
   const lastMsgSearch = filterComposable.filters.value.lastMessageSearch?.trim().toLowerCase()
   if (lastMsgSearch) {
     result = result.filter(c => {
@@ -447,6 +472,7 @@ onMounted(async () => {
 // 清理实时同步资源
 onUnmounted(() => {
   frontendLogger.debug('[ConversationsTable] Component unmounting, cleaning up...')
+  if (refillTimer) { clearTimeout(refillTimer) }
   conversationsStore.cleanup()
 })
 </script>
