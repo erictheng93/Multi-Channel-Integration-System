@@ -4,7 +4,7 @@
 import { Hono } from 'hono';
 import { HTTP_STATUS } from '@/constants/http-status';
 import { globalErrorHandler } from '@/core/error-handler';
-import { eq, desc, and, or, like, sql, count } from 'drizzle-orm';
+import { eq, desc, and, or, like, sql, count, type SQL } from 'drizzle-orm';
 import { createDbClient } from '@/db/drizzle-factory';
 import { conversations, customers, teams } from '@/db/schema';
 import type { Bindings } from '@/types';
@@ -126,6 +126,23 @@ export function createConversationUnreadCountQuery(conversationIds: string[]): s
           AND customer_message.created_at > threshold.unread_threshold
         GROUP BY threshold.id, threshold.manuallyUnread
       `;
+}
+
+// 列表分頁籤（scope）：open = 處理中、closed = 已結案、all = 全部；其他值（含未指定）= 不過濾
+export function conversationScopeConditions(scope: string): SQL[] {
+  if (scope === 'open') { return [sql`${conversations.status} <> 'closed'`]; }
+  if (scope === 'closed') { return [sql`${conversations.status} = 'closed'`]; }
+  return [];
+}
+
+export function conversationScopeOrderBy(scope: string): SQL[] {
+  if (scope === 'closed') {
+    return [desc(conversations.closedAt), desc(conversations.id)];
+  }
+  if (scope === 'all') {
+    return [sql`${conversations.status} = 'closed'`, desc(conversations.updatedAt), desc(conversations.id)];
+  }
+  return [desc(conversations.updatedAt), desc(conversations.id)];
 }
 
 function parsePositiveInt(value: string | undefined, fallback: number): number {
@@ -446,6 +463,8 @@ conversationQueriesHandler.get('/', jwtAuth, async (c) => {
     const page = parsePositiveInt(c.req.query('page'), 1);
     const pageSize = clampPageSize(parsePositiveInt(c.req.query('pageSize'), 20));
     const statusQuery = c.req.query('status')?.trim() || '';
+    // 分頁籤：open = 處理中、closed = 已結案、all / 未指定 = 全部（未指定維持舊行為，相容舊前端）
+    const scopeQuery = c.req.query('scope')?.trim() || '';
     const platformQuery = c.req.query('platform')?.trim() || '';
     const teamIdParam = c.req.query('teamId');
     const teamIdQuery = teamIdParam ? Number.parseInt(teamIdParam, 10) : undefined;
@@ -486,6 +505,7 @@ conversationQueriesHandler.get('/', jwtAuth, async (c) => {
       ...(updatedAfter ? [sql`${conversations.updatedAt} >= ${updatedAfter}`] : []),
       ...(updatedBefore ? [sql`${conversations.updatedAt} <= ${updatedBefore}`] : []),
       ...(statusQuery ? [sql`${conversations.status} = ${statusQuery}`] : []),
+      ...conversationScopeConditions(scopeQuery),
       ...(platformQuery ? [sql`${customers.platform} = ${platformQuery}`] : []),
       ...(teamIdQuery !== undefined && Number.isFinite(teamIdQuery)
         ? [sql`${conversations.assignedTeamId} = ${teamIdQuery}`]
@@ -508,7 +528,10 @@ conversationQueriesHandler.get('/', jwtAuth, async (c) => {
       .where(listFilter)
       // id breaks ties so a row cannot repeat or vanish across page boundaries
       // when several conversations share an updatedAt.
-      .orderBy(desc(conversations.updatedAt), desc(conversations.id));
+      // 已結案分頁依結案時間排序；全部分頁未結案在前，避免「按結案反而跳到最上面」
+      // (結案會更新 updated_at)。處理中分頁仍走 idx_conversations_updated_at。
+      // ponytail: closed / all 會用 temp B-tree 排序（目前數百筆無感），量大再加 (status, closed_at) 索引
+      .orderBy(...conversationScopeOrderBy(scopeQuery));
 
     let total: number;
     let pagedConversationResults: Awaited<typeof listQuery>;
