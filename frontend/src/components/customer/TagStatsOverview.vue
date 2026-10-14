@@ -124,7 +124,7 @@
         </div>
         <div class="conversation-item closed">
           <div class="conversation-label">
-            已關閉
+            已結案
           </div>
           <div class="conversation-count">
             {{ stats.conversations.closed }} 則
