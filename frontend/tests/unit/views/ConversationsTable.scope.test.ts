@@ -9,6 +9,7 @@ const store = reactive({
   loadError: null as string | null,
   error: null as string | null,
   conversations: [] as Conversation[],
+  pagination: { page: 1, pageSize: 50, total: 0, totalPages: 1 },
   $state: {},
   fetchConversations: vi.fn(),
   loadWithCache: vi.fn(),
@@ -42,8 +43,9 @@ function conv(id: string, status: Conversation['status']): Conversation {
   return { id, status, unreadCount: 0, userId: id, lastMessageAt: 1, createdAt: 1, updatedAt: 1 } as Conversation
 }
 
+const mounted: Array<{ unmount: () => void }> = []
 function mountView() {
-  return mount(ConversationsTable, {
+  const wrapper = mount(ConversationsTable, {
     global: {
       stubs: {
         AppLayout: SlotStub,
@@ -57,9 +59,12 @@ function mountView() {
       }
     }
   })
+  mounted.push(wrapper)
+  return wrapper
 }
 
 const lastScope = () => store.fetchConversations.mock.calls[store.fetchConversations.mock.calls.length - 1]?.[0]?.scope
+const lastCall = () => store.fetchConversations.mock.calls[store.fetchConversations.mock.calls.length - 1]?.[0]
 const shownIds = (wrapper: ReturnType<typeof mountView>) =>
   (wrapper.findComponent(TableStub).props('conversations') as Conversation[]).map(c => c.id)
 
@@ -70,6 +75,7 @@ describe('ConversationsTable scope tabs', () => {
     store.conversations = [conv('open-1', 'active'), conv('closed-1', 'closed'), conv('open-2', 'assigned')]
   })
   afterEach(() => {
+    mounted.splice(0).forEach(w => w.unmount())
     vi.useRealTimers()
   })
 
@@ -94,6 +100,42 @@ describe('ConversationsTable scope tabs', () => {
 
     expect(lastScope()).toBe('closed')
     expect(shownIds(wrapper)).toEqual(['closed-1'])
+  })
+
+  it('drops the status filter on 已結案 so the tab is not intersected into emptiness', async () => {
+    const wrapper = mountView()
+    await flushPromises()
+
+    wrapper.findComponent(FiltersStub).vm.$emit('update:filter', 'status', 'active')
+    await flushPromises()
+    vi.advanceTimersByTime(350)
+    await flushPromises()
+    expect(lastCall()?.status).toBe('active')
+
+    await wrapper.findAll('.scope-tab').find(t => t.text() === '已結案')?.trigger('click')
+    vi.advanceTimersByTime(350)
+    await flushPromises()
+
+    expect(lastScope()).toBe('closed')
+    expect(lastCall()?.status).toBeUndefined()
+  })
+
+  it('refetches to refill the page when a row leaves the scope and more pages exist', async () => {
+    store.pagination.totalPages = 3
+    mountView()
+    await flushPromises()
+    vi.advanceTimersByTime(600)
+    await flushPromises()
+    store.fetchConversations.mockClear()
+
+    store.conversations = store.conversations.map((c: Conversation) => (c.id === 'open-1' ? conv('open-1', 'closed') : c))
+    await flushPromises()
+    vi.advanceTimersByTime(600)
+    await flushPromises()
+
+    expect(store.fetchConversations).toHaveBeenCalledTimes(1)
+    expect(store.fetchConversations.mock.calls[0]?.[0]?.scope).toBe('open')
+    store.pagination.totalPages = 1
   })
 
   it('searching a customer name searches 全部 so closed cases are still found, and says so', async () => {
