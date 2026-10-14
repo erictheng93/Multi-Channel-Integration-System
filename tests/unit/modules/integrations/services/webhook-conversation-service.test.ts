@@ -191,6 +191,30 @@ describe('webhook-conversation-service', () => {
       expect(result.assignedTeamId).toBe(7);
     });
 
+    it('should reopen a closed conversation to assigned when it has a team', async () => {
+      mockGet.mockResolvedValueOnce({ id: 'conv-123', customerId: 1, status: 'closed', assignedTeamId: 3 });
+
+      const result = await findOrCreateConversation(mockEnv, 1, 'line');
+
+      expect(mockUpdateSet).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'assigned', closedAt: null })
+      );
+      expect(result.status).toBe('assigned');
+      expect(mockDb.insert).not.toHaveBeenCalled();
+    });
+
+    it('should reopen a closed unassigned conversation to active', async () => {
+      mockGet.mockResolvedValueOnce({ id: 'conv-123', customerId: 1, status: 'closed', assignedTeamId: null });
+
+      const result = await findOrCreateConversation(mockEnv, 1, 'facebook');
+
+      expect(mockUpdateSet).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'active', closedAt: null })
+      );
+      expect(result.status).toBe('active');
+      expect(mockDb.insert).not.toHaveBeenCalled();
+    });
+
     it('should NOT overwrite existing team assignment', async () => {
       const existingConversation = {
         id: 'conv-123',

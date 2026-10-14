@@ -4,7 +4,7 @@
  * Centralized conversation status definitions for the conversation management system.
  * These constants should be used throughout the codebase instead of hardcoded strings.
  *
- * Valid statuses: active, pending, in-progress, assigned, waiting
+ * Valid statuses: active, pending, in-progress, assigned, waiting, closed
  *
  * @module constants/conversation-status
  */
@@ -18,6 +18,7 @@
  * - IN_PROGRESS: Conversation is being actively handled by an agent
  * - ASSIGNED: Conversation has been assigned to an agent/team
  * - WAITING: Conversation is waiting for customer response
+ * - CLOSED: Case closed by an agent (已結案); the next inbound message reopens it
  */
 export const CONVERSATION_STATUS = {
   /** Conversation is currently active */
@@ -33,7 +34,10 @@ export const CONVERSATION_STATUS = {
   ASSIGNED: 'assigned',
 
   /** Waiting for customer response */
-  WAITING: 'waiting'
+  WAITING: 'waiting',
+
+  /** Case closed by an agent; reopened by the next inbound message */
+  CLOSED: 'closed'
 } as const;
 
 /**
@@ -63,7 +67,8 @@ export const CONVERSATION_STATUS_LABELS: Record<ConversationStatus, string> = {
   [CONVERSATION_STATUS.PENDING]: 'Pending',
   [CONVERSATION_STATUS.IN_PROGRESS]: 'In Progress',
   [CONVERSATION_STATUS.ASSIGNED]: 'Assigned',
-  [CONVERSATION_STATUS.WAITING]: 'Waiting'
+  [CONVERSATION_STATUS.WAITING]: 'Waiting',
+  [CONVERSATION_STATUS.CLOSED]: 'Closed'
 };
 
 /**
@@ -74,7 +79,8 @@ export const CONVERSATION_STATUS_DESCRIPTIONS: Record<ConversationStatus, string
   [CONVERSATION_STATUS.PENDING]: 'Conversation is waiting for agent assignment or initial response',
   [CONVERSATION_STATUS.IN_PROGRESS]: 'Conversation is being actively handled by an agent',
   [CONVERSATION_STATUS.ASSIGNED]: 'Conversation has been assigned to an agent or team',
-  [CONVERSATION_STATUS.WAITING]: 'Waiting for customer response'
+  [CONVERSATION_STATUS.WAITING]: 'Waiting for customer response',
+  [CONVERSATION_STATUS.CLOSED]: 'Case closed; the next inbound message reopens it'
 };
 
 /**
@@ -85,7 +91,8 @@ export const CONVERSATION_STATUS_COLORS: Record<ConversationStatus, string> = {
   [CONVERSATION_STATUS.PENDING]: 'text-yellow-600 bg-yellow-50 border-yellow-200',
   [CONVERSATION_STATUS.IN_PROGRESS]: 'text-blue-600 bg-blue-50 border-blue-200',
   [CONVERSATION_STATUS.ASSIGNED]: 'text-cyan-600 bg-cyan-50 border-cyan-200',
-  [CONVERSATION_STATUS.WAITING]: 'text-orange-600 bg-orange-50 border-orange-200'
+  [CONVERSATION_STATUS.WAITING]: 'text-orange-600 bg-orange-50 border-orange-200',
+  [CONVERSATION_STATUS.CLOSED]: 'text-gray-600 bg-gray-50 border-gray-200'
 };
 
 /**
@@ -96,12 +103,12 @@ export const CONVERSATION_STATUS_ICONS: Record<ConversationStatus, string> = {
   [CONVERSATION_STATUS.PENDING]: '',
   [CONVERSATION_STATUS.IN_PROGRESS]: '',
   [CONVERSATION_STATUS.ASSIGNED]: '',
-  [CONVERSATION_STATUS.WAITING]: ''
+  [CONVERSATION_STATUS.WAITING]: '',
+  [CONVERSATION_STATUS.CLOSED]: ''
 };
 
 /**
- * Open statuses (conversation can receive messages)
- * All statuses are open since closed/resolved have been removed
+ * Open statuses (every status except closed)
  */
 export const OPEN_CONVERSATION_STATUSES = [
   CONVERSATION_STATUS.ACTIVE,
@@ -135,8 +142,7 @@ export function isValidConversationStatus(status: string): status is Conversatio
 }
 
 /**
- * Check if a conversation is open (can receive messages)
- * All conversations are open since closed/resolved have been removed
+ * Check if a conversation is open (not closed)
  */
 export function isOpenConversation(status: ConversationStatus): boolean {
   return OPEN_CONVERSATION_STATUSES.includes(status as typeof OPEN_CONVERSATION_STATUSES[number]);
@@ -192,27 +198,36 @@ export const CONVERSATION_STATUS_TRANSITIONS: Record<ConversationStatus, Convers
   [CONVERSATION_STATUS.PENDING]: [
     CONVERSATION_STATUS.ACTIVE,
     CONVERSATION_STATUS.ASSIGNED,
-    CONVERSATION_STATUS.IN_PROGRESS
+    CONVERSATION_STATUS.IN_PROGRESS,
+    CONVERSATION_STATUS.CLOSED
   ],
   [CONVERSATION_STATUS.ACTIVE]: [
     CONVERSATION_STATUS.IN_PROGRESS,
     CONVERSATION_STATUS.ASSIGNED,
-    CONVERSATION_STATUS.WAITING
+    CONVERSATION_STATUS.WAITING,
+    CONVERSATION_STATUS.CLOSED
   ],
   [CONVERSATION_STATUS.ASSIGNED]: [
     CONVERSATION_STATUS.ACTIVE,
     CONVERSATION_STATUS.IN_PROGRESS,
-    CONVERSATION_STATUS.WAITING
+    CONVERSATION_STATUS.WAITING,
+    CONVERSATION_STATUS.CLOSED
   ],
   [CONVERSATION_STATUS.IN_PROGRESS]: [
     CONVERSATION_STATUS.ACTIVE,
     CONVERSATION_STATUS.ASSIGNED,
-    CONVERSATION_STATUS.WAITING
+    CONVERSATION_STATUS.WAITING,
+    CONVERSATION_STATUS.CLOSED
   ],
   [CONVERSATION_STATUS.WAITING]: [
     CONVERSATION_STATUS.ACTIVE,
     CONVERSATION_STATUS.ASSIGNED,
-    CONVERSATION_STATUS.IN_PROGRESS
+    CONVERSATION_STATUS.IN_PROGRESS,
+    CONVERSATION_STATUS.CLOSED
+  ],
+  [CONVERSATION_STATUS.CLOSED]: [
+    CONVERSATION_STATUS.ACTIVE,
+    CONVERSATION_STATUS.ASSIGNED
   ]
 };
 
