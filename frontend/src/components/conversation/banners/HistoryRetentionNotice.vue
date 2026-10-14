@@ -101,4 +101,12 @@ const boundaryLabel = computed(() => props.boundaryLabel)
     padding: 7px 12px;
   }
 }
+
+/* On-screen keyboard open (short phone viewport): the reply box and message list matter more
+   than an informational note, which would otherwise take ~75px of a ~120px message area. */
+@media (max-width: 768px) and (max-height: 600px) {
+  .history-retention-notice {
+    display: none;
+  }
+}
 </style>
