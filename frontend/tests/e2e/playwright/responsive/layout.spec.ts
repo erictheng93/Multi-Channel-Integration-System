@@ -22,6 +22,8 @@ const credentials = {
   password: process.env.E2E_PASSWORD ?? ADMIN_CREDENTIALS.password,
 }
 const MIN_ROUTES = Number(process.env.E2E_MIN_ROUTES ?? 8)
+// Optional: open this customer's conversation instead of whichever is first (e.g. a LINE user).
+const TARGET_CUSTOMER = process.env.E2E_CONVERSATION_CUSTOMER?.trim()
 
 test.describe.configure({ mode: 'serial' })
 
@@ -42,9 +44,15 @@ test.describe('responsive layout sweep', () => {
     await page?.close()
   })
 
-  /** Opens the first conversation this account can see; false when there is none. */
+  /** Opens the first conversation this account can see (or E2E_CONVERSATION_CUSTOMER's); false when there is none. */
   async function openFirstConversation(): Promise<boolean> {
     await spaNavigate(page, '/conversations')
+    if (TARGET_CUSTOMER) {
+      const input = page.getByPlaceholder('輸入客戶名稱...')
+      if (!(await input.isVisible())) { await page.locator('.filter-trigger').click() }
+      await input.fill(TARGET_CUSTOMER)
+      await page.waitForTimeout(1_500) // 300ms debounce + list refetch
+    }
     const row = await waitForFirstConversation(page)
     if (!row) { return false }
     await row.click()
@@ -170,6 +178,9 @@ test.describe('responsive layout sweep', () => {
       const list = document.querySelector('.messages-container-wrapper')!.getBoundingClientRect()
       return { inputBottom: input.bottom, inputTop: input.top, listHeight: list.height, vh: window.innerHeight }
     })
+    const summary = `customer=${TARGET_CUSTOMER ?? '(first conversation)'} messageArea=${m.listHeight}px viewport=${m.vh}px`
+    test.info().annotations.push({ type: 'keyboard-viewport', description: summary })
+    console.log(`[keyboard-viewport] ${summary}`)
     expect(m.inputTop).toBeGreaterThanOrEqual(0)
     expect(m.inputBottom).toBeLessThanOrEqual(m.vh)
     expect(m.listHeight, `message area is only ${m.listHeight}px`).toBeGreaterThanOrEqual(150)
