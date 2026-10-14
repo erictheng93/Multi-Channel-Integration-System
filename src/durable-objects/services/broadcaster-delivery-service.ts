@@ -449,10 +449,11 @@ export class BroadcasterDeliveryService {
 
       // Broadcast to all active user connections; users that report zero live
       // sockets are stale registry entries and are pruned after the fan-out.
-      // The stub is kept so a registration that lands during the fan-out (which replaces
-      // the map entry) is not pruned on the strength of this earlier probe.
-      const stale: Array<[string, DurableObjectStub]> = [];
-      const userPromises = Array.from(this.ctx.userConnections.entries()).map(async ([userId, stub]) => {
+      // The registration generation is captured before the probe so a registration that lands
+      // during the fan-out is not pruned on the strength of this earlier probe.
+      const stale: Array<[string, number]> = [];
+      const userPromises = Array.from(this.ctx.userConnections.keys()).map(async (userId) => {
+        const gen = this.ctx.userRegistrationGen.get(userId) ?? 0;
         try {
           console.log(`[MessageBroadcaster] Delivering to user: ${userId}`);
           const visible = events.filter(event => contexts.has(event) &&
@@ -462,7 +463,7 @@ export class BroadcasterDeliveryService {
           if (!visible.length) return 0;
           const { delivered, connections } = await this.deliverToUserWithPresence(userId, visible);
           // Missing `connections` means unknown (older UserConnection): keep the entry.
-          if (connections === 0) stale.push([userId, stub]);
+          if (connections === 0) stale.push([userId, gen]);
           console.log(`[MessageBroadcaster] Delivered to user ${userId}: ${delivered} events`);
           return delivered;
         } catch (error) {
@@ -479,10 +480,10 @@ export class BroadcasterDeliveryService {
       });
 
       let pruned = 0;
-      for (const [userId, stub] of stale) {
-        // Identity check: /register-connection installs a fresh stub, so a user who came
-        // online after the probe keeps their entry.
-        if (this.ctx.userConnections.get(userId) === stub) {
+      for (const [userId, gen] of stale) {
+        // Generation check: /register-connection bumps it, so a user who came online
+        // after the probe keeps their entry.
+        if (this.ctx.userConnections.has(userId) && (this.ctx.userRegistrationGen.get(userId) ?? 0) === gen) {
           this.ctx.userConnections.delete(userId);
           pruned++;
         }
