@@ -8,6 +8,7 @@ import { conversations, conversationTags } from '@/db/schema';
 import type { Bindings } from '@/types';
 import { getConversationVisibilitySql } from '@/services/conversation-visibility';
 import { jwtAuth } from '@/middleware/auth';
+import { PermissionService } from '@/services/permission-service';
 import { WebSocketBroadcastService } from '@/services/websocket-broadcast-service';
 import { revalidateWebSocketAccess } from '@/services/websocket-access-revocation';
 import { successResponse, errorResponse, validationErrorResponse } from '@/utils/api-response';
@@ -99,6 +100,11 @@ conversationBulkHandler.post('/bulk', jwtAuth, async (c) => {
 
     switch (operation) {
       case 'assign': {
+        // 與單筆 POST /:id/assign 相同的權限檢查（agent 角色沒有 conversation.assign）
+        const canAssign = await PermissionService.checkPermission(user.id, 'conversation', 'assign', undefined, c.env.DB);
+        if (!canAssign) {
+          return errorResponse(c, 'Permission denied', 403);
+        }
         // Note: Individual assignment (userId) removed - only team assignment is supported now
         if (!data?.teamId) {
           return validationErrorResponse(c, [
