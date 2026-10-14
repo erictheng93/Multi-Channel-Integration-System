@@ -40,7 +40,7 @@ const statusConfig: Record<string, { text: string; color: string }> = {
   // Conversation statuses
   open: { text: '待處理', color: 'orange' },
   assigned: { text: '處理中', color: 'blue' },
-  closed: { text: '已結束', color: 'gray' },
+  closed: { text: '已結案', color: 'gray' },
   
   // Extended statuses for tests
   pending: { text: '待處理', color: 'orange' },

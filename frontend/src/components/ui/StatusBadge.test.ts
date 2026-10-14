@@ -60,7 +60,7 @@ describe('StatusBadge Component', () => {
       const wrapper = createWrapper({ status: 'closed' })
 
       expect(wrapper.find('.status-badge').classes()).toContain('closed')
-      expect(wrapper.text()).toBe('已結束')
+      expect(wrapper.text()).toBe('已結案')
     })
 
     it('should render resolved status', () => {
