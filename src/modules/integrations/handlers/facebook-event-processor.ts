@@ -125,7 +125,10 @@ export async function processFacebookMessage(env: Bindings, messaging: FacebookM
 
     // 查詢或建立對話
     // (Dedupe already happened at the top of this try block — see EARLY DEDUPE.)
-    const conversation = await findOrCreateConversation(env, user.id, 'facebook');
+    const conversation = await findOrCreateConversation(env, user.id, 'facebook', {
+      messageContent: messageContent.substring(0, 100),
+      customerDisplayName: user.displayName || 'Facebook User'
+    });
 
     // 儲存訊息
     const messageId = await saveMessage(
