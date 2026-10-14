@@ -93,13 +93,18 @@ conversationReadHandler.put('/:id/unread', jwtAuth, async (c) => {
     const now = nowISO();
 
     const existing = await drizzleDb
-      .select({ id: conversations.id })
+      .select({ id: conversations.id, status: conversations.status })
       .from(conversations)
       .where(eq(conversations.id, conversationId))
       .get();
 
     if (!existing) {
       return c.json({ error: 'Conversation not found' }, HTTP_STATUS.NOT_FOUND);
+    }
+
+    // 已結案的對話對所有客服都算 0 未讀，標示未讀沒有意義；先重新開啟
+    if (existing.status === 'closed') {
+      return c.json({ error: '已結案的對話無法標示為未讀，請先重新開啟' }, HTTP_STATUS.CONFLICT);
     }
 
     await upsertReadState(
