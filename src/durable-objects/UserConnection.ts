@@ -810,6 +810,7 @@ export class UserConnection implements DurableObject {
         success: true,
         deliveredCount,
         userId: this.userId,
+        connections: this.stateManager.connectionCount,
         activeConnections: this.stateManager.connectionCount
       }));
     } catch (error) {
