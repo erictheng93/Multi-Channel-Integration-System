@@ -94,28 +94,42 @@ export function createRealtimeHandler(deps: RealtimeHandlerDeps) {
     frontendLogger.debug('[ConversationsStore] Scheduled pending reconciliation in 5s')
   }
 
+  const buildPollFilters = (): Record<string, unknown> => {
+    const f = activeFilters.value
+    const cleanFilters: Record<string, unknown> = {}
+    if (f.scope) { cleanFilters.scope = f.scope }
+    if (f.status) { cleanFilters.status = f.status }
+    if (f.platform) { cleanFilters.platform = f.platform }
+    if (f.teamId) { cleanFilters.teamId = f.teamId }
+    if (f.search) { cleanFilters.search = f.search }
+    if (f.tagIds && f.tagIds.length > 0) { cleanFilters.tagIds = f.tagIds }
+    if (f.customerName) { cleanFilters.customerName = f.customerName }
+    if (f.updatedAfter) { cleanFilters.updatedAfter = f.updatedAfter }
+    if (f.updatedBefore) { cleanFilters.updatedBefore = f.updatedBefore }
+    return cleanFilters
+  }
+
   /**
    * 轮询对话数据（HTTP 备份机制）
    */
   const pollConversations = async () => {
     try {
       // Build query params respecting activeFilters so polling doesn't overwrite filtered views
-      const cleanFilters: Record<string, unknown> = {}
-      if (activeFilters.value.scope) { cleanFilters.scope = activeFilters.value.scope }
-      if (activeFilters.value.status) { cleanFilters.status = activeFilters.value.status }
-      if (activeFilters.value.platform) { cleanFilters.platform = activeFilters.value.platform }
-      if (activeFilters.value.teamId) { cleanFilters.teamId = activeFilters.value.teamId }
-      if (activeFilters.value.search) { cleanFilters.search = activeFilters.value.search }
-      if (activeFilters.value.tagIds && activeFilters.value.tagIds.length > 0) { cleanFilters.tagIds = activeFilters.value.tagIds }
-      if (activeFilters.value.customerName) { cleanFilters.customerName = activeFilters.value.customerName }
-      if (activeFilters.value.updatedAfter) { cleanFilters.updatedAfter = activeFilters.value.updatedAfter }
-      if (activeFilters.value.updatedBefore) { cleanFilters.updatedBefore = activeFilters.value.updatedBefore }
+      const cleanFilters = buildPollFilters()
+      const filterSnapshot = JSON.stringify(cleanFilters)
 
       const response = await conversationApi.list({
         page: 1,
         pageSize: 50,
         ...cleanFilters
       })
+
+      // The scope/filters changed while this poll was in flight: its rows belong to the old
+      // view, and clearing loadError would hide a failure of the newer foreground fetch.
+      if (JSON.stringify(buildPollFilters()) !== filterSnapshot) {
+        frontendLogger.debug('[ConversationsStore] Discarding stale poll result (filters changed)')
+        return
+      }
 
       if (response.success && response.data) {
         const conversationList = Array.isArray(response.data)
