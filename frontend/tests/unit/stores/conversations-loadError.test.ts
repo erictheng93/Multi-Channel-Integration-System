@@ -142,8 +142,8 @@ describe('conversations store persistent loadError', () => {
   })
 
   it('ignores a superseded response that resolves after the newer one', async () => {
-    let resolveOld!: (v: unknown) => void
-    let resolveNew!: (v: unknown) => void
+    let resolveOld!: (_v: unknown) => void
+    let resolveNew!: (_v: unknown) => void
     mockList.mockImplementationOnce(() => new Promise(r => { resolveOld = r }))
     mockList.mockImplementationOnce(() => new Promise(r => { resolveNew = r }))
     const { useConversationsStore } = await import('@/stores/conversations')
@@ -165,8 +165,8 @@ describe('conversations store persistent loadError', () => {
   })
 
   it('keeps loading true until the newest fetch finishes when the older one resolves first', async () => {
-    let resolveOld!: (v: unknown) => void
-    let resolveNew!: (v: unknown) => void
+    let resolveOld!: (_v: unknown) => void
+    let resolveNew!: (_v: unknown) => void
     mockList.mockImplementationOnce(() => new Promise(r => { resolveOld = r }))
     mockList.mockImplementationOnce(() => new Promise(r => { resolveNew = r }))
     const { useConversationsStore } = await import('@/stores/conversations')
@@ -187,8 +187,8 @@ describe('conversations store persistent loadError', () => {
   })
 
   it('does not surface loadError from a superseded failing request', async () => {
-    let rejectOld!: (e: unknown) => void
-    let resolveNew!: (v: unknown) => void
+    let rejectOld!: (_e: unknown) => void
+    let resolveNew!: (_v: unknown) => void
     mockList.mockImplementationOnce(() => new Promise((_, rej) => { rejectOld = rej }))
     mockList.mockImplementationOnce(() => new Promise(r => { resolveNew = r }))
     const { useConversationsStore } = await import('@/stores/conversations')
