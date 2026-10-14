@@ -1167,6 +1167,29 @@ describe('Conversation Handlers Integration Tests', () => {
       expect(body.error).toContain('Permission denied');
     });
 
+    test('bulk assign returns 403 without the conversation.assign permission', async () => {
+      permissionCheckResult = false;
+      const res = await makeRequest(app, '/api/conversations/bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ operation: 'assign', conversationIds: ['conv-001'], data: { teamId: 2 } }),
+      });
+
+      expect(res.status).toBe(403);
+      expect(drizzleMock.update).not.toHaveBeenCalled();
+    });
+
+    test('bulk close does not require the assign permission', async () => {
+      permissionCheckResult = false;
+      const res = await makeRequest(app, '/api/conversations/bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ operation: 'close', conversationIds: ['conv-001'] }),
+      });
+
+      expect(res.status).toBe(200);
+    });
+
     test('bulk close closes visible conversations and broadcasts each new status', async () => {
       const res = await makeRequest(app, '/api/conversations/bulk', {
         method: 'POST',
