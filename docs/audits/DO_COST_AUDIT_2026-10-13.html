@@ -1,0 +1,575 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Durable Object 成本稽核</title>
+<style>
+/* Layout: one reading column; evidence tables may scroll sideways inside their own box. */
+:root {
+  color-scheme: light;
+  --page: #f9f9f7;
+  --surface: #fcfcfb;
+  --ink: #0b0b0b;
+  --ink-2: #52514e;
+  --muted: #898781;
+  --grid: #e1e0d9;
+  --ring: rgba(11,11,11,0.10);
+  --accent: #2a78d6;        /* series 1: 現在 */
+  --accent-2: #eb6834;      /* series 2: 之後 */
+  --accent-3: #1baf7a;      /* series 3: 再加 3b */
+  --accent-soft: #cde2fb;
+  --st-good: #0ca30c;
+  --st-warn: #fab219;
+  --st-serious: #ec835a;
+  --st-critical: #d03b3b;
+  --code-bg: #f0efec;
+  --font: system-ui, -apple-system, "Segoe UI", "PingFang TC", "Microsoft JhengHei", "Noto Sans TC", sans-serif;
+  --mono: ui-monospace, "Cascadia Mono", "SF Mono", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --page: #0d0d0d; --surface: #1a1a19; --ink: #f0efec; --ink-2: #c3c2b7; --muted: #898781;
+    --grid: #2c2c2a; --ring: rgba(255,255,255,0.10);
+    --accent: #3987e5; --accent-2: #d95926; --accent-3: #199e70; --accent-soft: #184f95;
+    --code-bg: #262624;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --page: #0d0d0d; --surface: #1a1a19; --ink: #f0efec; --ink-2: #c3c2b7; --muted: #898781;
+  --grid: #2c2c2a; --ring: rgba(255,255,255,0.10);
+  --accent: #3987e5; --accent-2: #d95926; --accent-3: #199e70; --accent-soft: #184f95;
+  --code-bg: #262624;
+}
+
+* { box-sizing: border-box; }
+html { font-size: 16px; }
+body {
+  margin: 0; background: var(--page); color: var(--ink);
+  font-family: var(--font); line-height: 1.65;
+  padding-block: 0 64px; padding-inline: 16px;
+}
+.wrap { max-width: 960px; margin: 0 auto; }
+h1, h2, h3 { line-height: 1.25; text-wrap: balance; margin: 0; }
+h1 { font-size: 2rem; font-weight: 700; letter-spacing: -0.01em; }
+h2 { font-size: 1.375rem; font-weight: 700; margin-top: 56px; margin-bottom: 16px; padding-top: 16px; border-top: 1px solid var(--grid); }
+h3 { font-size: 1.05rem; font-weight: 650; margin-top: 28px; margin-bottom: 10px; }
+p { margin: 0 0 12px; max-width: 70ch; }
+ul, ol { margin: 0 0 12px; padding-left: 1.4em; max-width: 70ch; }
+li { margin-bottom: 4px; }
+code, .path { font-family: var(--mono); font-size: 0.86em; background: var(--code-bg); padding: 1px 5px; border-radius: 4px; word-break: break-all; }
+pre { font-family: var(--mono); font-size: 0.8rem; line-height: 1.5; background: var(--surface); border: 1px solid var(--grid); border-radius: 8px; padding: 14px 16px; overflow-x: auto; margin: 0 0 16px; color: var(--ink); }
+.eyebrow { font-size: 0.75rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+.meta { display: flex; flex-wrap: wrap; gap: 8px 20px; color: var(--ink-2); font-size: 0.9rem; margin-top: 10px; }
+header { padding-block: 40px 8px; }
+.verdict { margin-top: 20px; padding: 16px 20px; border-left: 4px solid var(--accent); background: var(--surface); border-radius: 0 8px 8px 0; }
+.verdict p { max-width: none; margin: 0; }
+.verdict strong { font-weight: 700; }
+
+/* KPI tiles */
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin: 20px 0 8px; }
+.tile { background: var(--surface); border: 1px solid var(--grid); border-radius: 10px; padding: 14px 16px; min-width: 0; }
+.tile .k { font-size: 0.78rem; color: var(--muted); font-weight: 600; letter-spacing: 0.04em; }
+.tile .v { font-size: 1.75rem; font-weight: 700; line-height: 1.15; margin-top: 4px; }
+.tile .s { font-size: 0.82rem; color: var(--ink-2); margin-top: 4px; }
+
+/* Tables */
+.tscroll { overflow-x: auto; margin: 0 0 16px; border: 1px solid var(--grid); border-radius: 8px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-size: 0.9rem; }
+th, td { text-align: left; vertical-align: top; padding: 9px 12px; border-bottom: 1px solid var(--grid); }
+th { font-size: 0.78rem; color: var(--muted); letter-spacing: 0.04em; font-weight: 600; background: var(--page); white-space: nowrap; }
+tr:last-child td { border-bottom: 0; }
+td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+td.c { text-align: center; }
+
+/* Status chips: icon + label, never color alone */
+.chip { display: inline-flex; align-items: center; gap: 6px; font-size: 0.78rem; font-weight: 650; padding: 2px 9px 2px 7px; border-radius: 999px; border: 1px solid var(--ring); white-space: nowrap; }
+.chip::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+.chip.critical { color: var(--st-critical); }
+.chip.serious { color: var(--st-serious); }
+.chip.warn { color: var(--st-warn); }
+.chip.good { color: var(--st-good); }
+.chip.info { color: var(--accent); }
+@media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) .chip.warn { color: #9a6a00; } :root:not([data-theme="dark"]) .chip.serious { color: #b4552f; } }
+:root[data-theme="light"] .chip.warn { color: #9a6a00; }
+:root[data-theme="light"] .chip.serious { color: #b4552f; }
+
+/* Waste cards */
+.waste { display: grid; gap: 12px; margin: 0 0 16px; }
+.w { background: var(--surface); border: 1px solid var(--grid); border-left-width: 4px; border-radius: 8px; padding: 14px 16px 12px; min-width: 0; }
+.w.critical { border-left-color: var(--st-critical); }
+.w.serious { border-left-color: var(--st-serious); }
+.w.warn { border-left-color: var(--st-warn); }
+.w .head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-bottom: 6px; }
+.w .id { font-family: var(--mono); font-weight: 700; color: var(--ink-2); }
+.w .title { font-weight: 650; }
+.w p { max-width: none; margin-bottom: 6px; }
+.w dl { display: grid; grid-template-columns: max-content 1fr; gap: 4px 14px; margin: 8px 0 0; font-size: 0.88rem; }
+.w dt { color: var(--muted); font-weight: 600; }
+.w dd { margin: 0; min-width: 0; }
+
+/* Tier ladder */
+.ladder { display: grid; gap: 0; margin: 12px 0 20px; }
+.rung { display: grid; grid-template-columns: 96px 1fr; gap: 14px; padding: 12px 0; border-bottom: 1px dashed var(--grid); }
+.rung:last-child { border-bottom: 0; }
+.rung .t { font-weight: 700; }
+.rung .d { color: var(--ink-2); }
+
+/* Bars (before / after). Thin marks, rounded data-end, 2px surface gap, direct labels. */
+.chart { background: var(--surface); border: 1px solid var(--grid); border-radius: 10px; padding: 14px 16px 12px; margin: 0 0 16px; min-width: 0; }
+.chart .ct { font-weight: 650; margin-bottom: 2px; }
+.chart .cs { font-size: 0.82rem; color: var(--ink-2); margin-bottom: 10px; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 0.8rem; color: var(--ink-2); margin-bottom: 10px; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+.rows { display: grid; gap: 10px; }
+.row { display: grid; grid-template-columns: minmax(120px, 180px) 1fr; gap: 10px; align-items: center; min-width: 0; }
+.row .lab { font-size: 0.86rem; color: var(--ink); }
+.bars { display: grid; gap: 2px; }
+.bar { display: grid; grid-template-columns: 1fr max-content; align-items: center; gap: 8px; }
+.bar .track { height: 12px; position: relative; }
+.bar .fill { height: 100%; border-radius: 0 4px 4px 0; min-width: 2px; }
+.bar.s1 .fill { background: var(--accent); }
+.bar.s2 .fill { background: var(--accent-2); }
+.bar.s3 .fill { background: var(--accent-3); }
+.bar .val { font-size: 0.82rem; color: var(--ink-2); font-variant-numeric: tabular-nums; min-width: 64px; }
+.chart .note { font-size: 0.8rem; color: var(--muted); margin-top: 10px; }
+
+/* Roadmap */
+.road { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; margin: 12px 0 16px; }
+.phase { background: var(--surface); border: 1px solid var(--grid); border-top: 3px solid var(--accent); border-radius: 8px; padding: 12px 14px; min-width: 0; }
+.phase .ph { font-size: 0.78rem; color: var(--muted); font-weight: 600; letter-spacing: 0.04em; }
+.phase .pt { font-weight: 650; margin: 2px 0 6px; }
+.phase ul { font-size: 0.88rem; padding-left: 1.2em; margin: 0; }
+
+.callout { padding: 12px 16px; border-radius: 8px; background: var(--surface); border: 1px solid var(--grid); margin: 0 0 16px; }
+.callout.danger { border-color: var(--st-critical); }
+.callout p { max-width: none; }
+.small { font-size: 0.85rem; color: var(--ink-2); }
+a { color: var(--accent); }
+a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+footer { margin-top: 56px; padding-top: 16px; border-top: 1px solid var(--grid); color: var(--muted); font-size: 0.82rem; }
+
+@media (max-width: 640px) {
+  h1 { font-size: 1.6rem; }
+  .rung { grid-template-columns: 1fr; gap: 4px; }
+  .row { grid-template-columns: 1fr; gap: 4px; }
+  .w dl { grid-template-columns: 1fr; }
+}
+@media print {
+  body { padding-inline: 0; background: #fff; color: #000; }
+  .w, .tile, .chart, .phase, .tscroll, .callout { break-inside: avoid; }
+  h2 { break-after: avoid; }
+  a { color: inherit; text-decoration: none; }
+}
+@media (prefers-reduced-motion: no-preference) { .bar .fill { transition: width 200ms ease-out; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="eyebrow">Multi-Channel Integration System</div>
+  <h1>Durable Object 成本稽核</h1>
+  <div class="meta">
+    <span>日期 2026-10-13</span>
+    <span>範圍 wrangler.toml 中的 9 個 DO 類別、全部 Worker 呼叫端、前端 socket 與輪詢</span>
+    <span>基準 main 993594ec</span>
+    <span>更新 2026-10-14（main cfd2d0e7，Worker a8fee503）</span>
+  </div>
+  <div class="verdict">
+    <p><strong>結論。</strong>專案目前沒有會讓帳單失控的結構。所有 WebSocket 都走 Hibernation API，閒置不計時；alarm 鏈在 <code>fix/do-alarm-retry-caps</code> 合併後全部有上限。
+    真正該處理的是四件事：一個讓 DO 每次投遞後多活 15 分鐘的計時器、一個寫了沒人讀的快取 DO、每則進站訊息重複兩次的使用者 fan-out、以及一個任何人都能打的公開健康檢查端點。
+    除了計時器之外，其餘項目在目前流量下合計大約是每月個位數美元；計時器的實際金額需要用儀表板的 GB-s 數字證實。</p>
+  </div>
+</header>
+
+<div class="tiles">
+  <div class="tile"><div class="k">已驗證的浪費點</div><div class="v">7</div><div class="s">每一項都由第二個人用原始碼再確認</div></div>
+  <div class="tile"><div class="k">最大單一項目（待證實）</div><div class="v">$8–58 / 月</div><div class="s">BatchQueueManager 計時器造成的閒置 Duration</div></div>
+  <div class="tile"><div class="k">其餘項目合計</div><div class="v">個位數美元 / 月</div><div class="s">30 位 agent、每日 3,000 則訊息的估算</div></div>
+  <div class="tile"><div class="k">不可回退的變更</div><div class="v">1</div><div class="s">v7 刪除 MetricsCollectorDO 的遷移，建議拆出</div></div>
+</div>
+
+<h2>0. 進度更新（2026-10-14）</h2>
+<div class="verdict">
+  <p><strong>現況。</strong>Tier 1 與 Tier 2 已全部部署（1d 除外，刻意放棄），但效果都還沒有經過部署後的實測確認，另外修了稽核時沒抓到的兩件事：MessageBroadcaster 的在線名單被離線者污染，以及 Facebook 新對話不通知。
+  實測（10-06 至 10-13）顯示 <strong>DO 全部計費項目都在免費額度內</strong>，所以這一輪的價值是堵住「可能失控」的路徑，不是省下帳單上的錢。
+  最大的 GB-s 來源是 <code>DelayedMessageBuffer</code>，不是稽核預估的 CustomerMessageDO；W1 的修正效果要等 10-15 之後重新量測確認。</p>
+</div>
+
+<div class="tiles">
+  <div class="tile"><div class="k">已部署的修正</div><div class="v">10 支 PR</div><div class="s">#90 #91 #93 #94 #100–#104</div></div>
+  <div class="tile"><div class="k">實測月用量（7 日平均 × 30）</div><div class="v">$0 超額</div><div class="s">約 133k 請求 / 21k GB-s / 118k 寫入，皆在免費額度內</div></div>
+  <div class="tile"><div class="k">最大 GB-s 來源</div><div class="v">DelayedMessageBuffer</div><div class="s">113–1,249 GB-s / 日，每次投遞常駐 15–45 分鐘，與 W1 計時器吻合</div></div>
+  <div class="tile"><div class="k">待處理殘留</div><div class="v">1 項</div><div class="s"><code>__warmup__</code> 未認證入口（見 0.3）</div></div>
+</div>
+
+<h3>0.1 每一項的狀態</h3>
+<p class="small">狀態分三種：<span class="chip good">已量測驗證</span> 部署後的實測數據已證實效果；<span class="chip warn">已部署・待量測</span> 已在生產環境，效果尚未經實測確認（10-15／10-16 量測）；<span class="chip info">待處理</span> 尚未部署、暫緩或不做。截至本次更新，<strong>沒有任何一項達到「已量測驗證」</strong>：唯一的實測是部署前的基線（0.4），只證實了 W5 的前提（ConversationRoom 連線數為 0），不是修正的效果。</p>
+<div class="tscroll"><table>
+<thead><tr><th>#</th><th>項目</th><th>狀態</th><th>PR</th><th>備註</th></tr></thead>
+<tbody>
+<tr><td>1a</td><td>alarm 重試上限</td><td><span class="chip warn">已部署・待量測</span></td><td class="num">#90</td><td></td></tr>
+<tr><td>1b</td><td>刪掉 BatchQueueManager 1 小時計時器（W1）</td><td><span class="chip warn">已部署・待量測</span></td><td class="num">#93</td><td>效果待 10-15 重新量測</td></tr>
+<tr><td>1c</td><td>公開 health 端點只做存活檢查（W6）</td><td><span class="chip warn">已部署・待量測</span></td><td class="num">#93</td><td></td></tr>
+<tr><td>1d</td><td>全域 socket reconnect 上限</td><td><span class="chip warn">放棄</span></td><td></td><td>沒有任何可見的「請重新整理」提示（WebSocketStatusIndicator 沒有被使用），放棄重連會讓桌面通知靜默失效最多約 1 小時，等於部分重現 #53；2d 之後每次重試只剩 1 個請求，不設上限也便宜</td></tr>
+<tr><td>2a</td><td>停止更新 LatestMessageCacheCoordinator（W2）</td><td><span class="chip warn">已部署・待量測</span></td><td class="num">#93</td><td>殘留入口見 0.3</td></tr>
+<tr><td>2b</td><td>新對話通知只在建立時觸發一次（W3 一半）</td><td><span class="chip warn">已部署・待量測</span></td><td class="num">#94</td><td>副作用：既有對話的新訊息不再產生通知鈴鐺列；桌面通知不受影響。依指示不改 LINE</td></tr>
+<tr><td>—</td><td>Facebook 新對話通知（#94 的缺口）</td><td><span class="chip warn">已部署・待量測</span></td><td class="num">#104</td><td>移除 <code>platform === 'line'</code> 條件，LINE 路徑行為不變</td></tr>
+<tr><td>2c</td><td>停止對 ConversationRoom 廣播（W5）</td><td><span class="chip warn">已部署・待量測</span></td><td class="num">#102</td><td>實測 8 天連線數皆為 0；class 與 binding 保留，可回退</td></tr>
+<tr><td>2d</td><td>連線前不打 health 預檢（W7）</td><td><span class="chip warn">已部署・待量測</span></td><td class="num">#101</td><td>原本 1 次預檢在伺服器端扇出 3 個 DO</td></tr>
+<tr><td>—</td><td>MessageBroadcaster 在線名單去污染（W3 另一半）</td><td><span class="chip warn">已部署・待量測</span></td><td class="num">#103</td><td>見 0.2</td></tr>
+<tr><td>—</td><td>刪除未認證的 <code>__warmup__</code> middleware（W2 殘留，W6 同類）</td><td><span class="chip info">待處理・PR 審查中</span></td><td></td><td>與本文件同一支 PR，尚未合併、尚未部署；見 0.3</td></tr>
+<tr><td>3a-B</td><td>UserConnection 訂閱有變才寫</td><td><span class="chip warn">已部署・待量測</span></td><td class="num">#100</td><td>每次 alarm 少 1 次 storage put</td></tr>
+<tr><td>3a-A / 3a-C</td><td>權限複查週期拉長 / 改事件驅動</td><td><span class="chip info">待處理・不做</span></td><td></td><td>有行為取捨，而用量在免費額度內，省下約 $0</td></tr>
+<tr><td>3b</td><td>團隊廣播只送在線者</td><td><span class="chip info">待處理・暫緩</span></td><td></td><td>先看 #103 上線後 registry 大小是否與實測連線數一致</td></tr>
+<tr><td>v7</td><td>刪除 MetricsCollectorDO</td><td><span class="chip serious">已部署（未拆出）</span></td><td class="num">#91</td><td>與程式碼一起部署，<code>wrangler rollback</code> 無法回到 10-13 14:14Z 之前的版本</td></tr>
+</tbody></table></div>
+
+<h3>0.2 稽核後新發現：在線名單被污染</h3>
+<p>未指派團隊的對話走全域廣播，MessageBroadcaster 依自己的在線名單 <code>userConnections</code> 發送。但 <code>deliverToUser()</code> 會把每一個送過的使用者 stub 寫進同一個 Map，而團隊廣播會送給 D1 查出的全部成員，所以離線者被寫進名單、被持久化、而且永遠不會被移除。結果每則訊息打 11 個 UserConnection，實測同時在線只有 3–5 人。UserConnection 沒有離線佇列，送給離線者的事件本來就被丟掉。</p>
+<p>#103 的修法：<code>deliverToUser</code> 不再寫入名單；<code>/batch-events</code> 回傳即時 socket 數，回報 0 的使用者在全域廣播後被移出名單並持久化一次。休眠喚醒時 socket 數在建構子內同步由 <code>getWebSockets()</code> 重建，所以在線者不會被誤刪。</p>
+
+<h3>0.3 殘留入口</h3>
+<div class="tscroll"><table>
+<thead><tr><th>殘留</th><th>驗證結果</th><th>風險</th><th>建議</th></tr></thead>
+<tbody>
+<tr><td><code>__warmup__</code> middleware（<code>src/index.ts</code> 143–160）</td><td><strong>屬實。</strong>掛在 <code>app.use('*')</code>，在任何認證之前執行。URL 含 <code>__warmup__</code> 或帶 <code>cf-worker-started</code> 標頭（客戶端可自行設定）就會 await <code>warmupCache()</code>：1 次 Coordinator DO 請求、1 次對 messages 的 <code>SELECT DISTINCT … ORDER BY created_at</code>、最多 100 次逐對話 D1 查詢與 100 次 KV 寫入。沒有任何正常流程會觸發它，測試也沒有引用。</td><td><span class="chip serious">外部可觸發</span>與 W6 同類，且 D1 rows read 先前已造成過一次 $22 帳單</td><td><strong>處理中</strong>：整段 middleware 刪除，附 guard test，與本文件同一支 PR；<strong>尚未部署</strong>。部署後以 <code>wrangler tail</code> 對照同樣兩個請求，確認不再觸發</td></tr>
+<tr><td>collaboration adapter 呼叫 CONVERSATION_ROOM</td><td><strong>部分不屬實。</strong>路由有掛載：<code>route-config.ts:303</code> 把它掛在 <code>/api/collaboration</code>，除 <code>/health</code> 外全部要求 JWT；<code>/health</code> 與模組初始化都不碰 DO。前端沒有任何呼叫端。</td><td><span class="chip info">低</span>只有已登入使用者能觸發，目前零流量</td><td>已登記為後續清理 <a href="https://github.com/erictheng93/Multi-Channel-Integration-System/issues/107">#107</a>（負責人 erictheng93），不阻擋本次部署。JWT 降低外部濫用面，但不是成本控制</td></tr>
+</tbody></table></div>
+
+<h3>0.4 實測數據（GraphQL Analytics，10-06 至 10-13）</h3>
+<div class="tscroll"><table>
+<thead><tr><th>Namespace</th><th>請求 / 日</th><th>GB-s / 日</th><th>寫入單位 / 日</th><th>最大 WS 連線</th></tr></thead>
+<tbody>
+<tr><td>UserConnection</td><td class="num">1,777</td><td class="num">101</td><td class="num">2,425</td><td class="num">3–5</td></tr>
+<tr><td>MessageBroadcaster</td><td class="num">1,050</td><td class="num">185</td><td class="num">1,423</td><td class="num">0</td></tr>
+<tr><td>ConversationRoom</td><td class="num">799</td><td class="num">1</td><td class="num">0</td><td class="num">0</td></tr>
+<tr><td>CustomerConversationDO</td><td class="num">651</td><td class="num">0</td><td class="num">0</td><td class="num">9–13</td></tr>
+<tr><td>DelayedMessageBuffer</td><td class="num">10</td><td class="num">359（10-13：1,249）</td><td class="num">10</td><td class="num">0</td></tr>
+<tr><td>CustomerMessageDO</td><td class="num">65</td><td class="num">3</td><td class="num">0</td><td class="num">0</td></tr>
+<tr><td>RateLimiterDO</td><td class="num">51</td><td class="num">38</td><td class="num">0</td><td class="num">0</td></tr>
+<tr><td>LatestMessageCacheCoordinator</td><td class="num">24</td><td class="num">2</td><td class="num">58</td><td class="num">0</td></tr>
+<tr><td>LockCoordinator</td><td class="num">21</td><td class="num">20</td><td class="num">22</td><td class="num">0</td></tr>
+</tbody></table></div>
+<p class="small">7 日平均，缺資料的日子算 0。請求數來自 adaptive（取樣）資料集，視為下限。最新資料點為 10-13 17:00Z，10-13 為部分日。</p>
+
+<h3>0.5 下一步</h3>
+<ol>
+  <li><strong>10-14</strong>：合併並部署 warmup 移除（本 PR），部署後以 <code>wrangler tail</code> 驗證兩種觸發方式都不再產生預熱工作，再把 0.1 該列改為「已部署・待量測」。</li>
+  <li><strong>10-15／10-16 重新量測，DO 與 D1 一起看</strong>：
+    <ul>
+      <li>DO：每個 namespace 的 requests、duration（GB-s）、storage 讀寫，部署前（10-06 至 10-13）對部署後。預期 DelayedMessageBuffer GB-s 接近 0（W1）、ConversationRoom requests 接近 0（#102）、UserConnection requests 與寫入下降（#103、#100）。</li>
+      <li>D1：rows read 與 rows written（rows read 是掃描列數，只看 API 請求數不足以證明改善）。</li>
+      <li>對照正常業務量（當日進站／回覆訊息數），並單獨看低流量時段（夜間），判斷是否仍有與流量無關的背景消耗。</li>
+    </ul>
+  </li>
+  <li><strong>3b 依量測決定</strong>：若仍有無法解釋的背景消耗，優先處理；若已回到合理基線，回到產品開發。</li>
+  <li><strong>collaboration</strong>：後續清理 <a href="https://github.com/erictheng93/Multi-Channel-Integration-System/issues/107">#107</a>，不阻擋本次部署。</li>
+  <li>main 上的 <code>Responsive (route sweep)</code> 自 10-14 01:52Z 起持續失敗（手機鍵盤開啟時訊息區只有 122px），來自已結案狀態的工作，與本輪無關，需交給該工作的負責人。</li>
+</ol>
+
+<p class="small">以下第 1 至 7 節為 2026-10-13 的原始稽核內容，保留作為紀錄；預估數字已由 0.4 的實測取代。</p>
+
+<h2>1. DO 的錢從哪四個表跑掉</h2>
+<p>價格取自 Cloudflare 官方定價頁（2026-10 版）。重點是比例：Requests 很便宜，Duration 很貴。一個 24 小時不睡的物件每月約 332,000 GB-s，大約 $4；免費額度 400,000 GB-s 只夠養一個。</p>
+<div class="tscroll"><table>
+<thead><tr><th>計費項目</th><th>每月內含</th><th>超額單價</th><th>在這個專案裡誰會動到它</th></tr></thead>
+<tbody>
+<tr><td>Requests</td><td class="num">1M</td><td class="num">$0.15 / M</td><td>每次 stub.fetch、每次 alarm 喚醒、休眠 socket 的進站訊息以 20:1 計</td></tr>
+<tr><td>Duration（128 MB）</td><td class="num">400k GB-s</td><td class="num">$12.50 / M GB-s</td><td>物件執行中，或閒置但「不能休眠」：掛著的 setTimeout、未完成的 fetch、非休眠的 accept()</td></tr>
+<tr><td>KV-backed 寫入單位（4 KB）</td><td class="num">1M</td><td class="num">$1.00 / M</td><td>每次 put、delete，以及<strong>每次 setAlarm / deleteAlarm</strong></td></tr>
+<tr><td>KV-backed 讀取單位（4 KB）</td><td class="num">1M</td><td class="num">$0.20 / M</td><td>每次 get；冷啟動時的狀態讀取；list 按掃過的資料量</td></tr>
+<tr><td>SQLite rows written</td><td class="num">50M</td><td class="num">$1.00 / M</td><td>只有 RateLimiterDO 是 SQLite；login / refresh 各一筆</td></tr>
+</tbody></table></div>
+<p class="small">本專案 8 個類別為 KV-backed（migrations v1–v4），RateLimiterDO 為 SQLite（v5）。文件明示儲存後端不可就地更換。</p>
+
+<h2>2. 生產環境的真實拓撲</h2>
+<p>以下是原始碼追出來、並逐條驗證過的實際路徑。打勾的是已經正確的設計，打叉的是浪費。</p>
+<pre>Agent 瀏覽器分頁
+ ├── 全域 socket ─────────────► UserConnection(userId)           休眠中 ✓
+ │                                 └ 每 5 分鐘 alarm 醒來做權限複查   ✗ W4
+ └── 對話 socket ─────────────► CustomerConversationDO(convId)   休眠中 ✓
+                                 (client 每 30 秒送 "ping"，由 AutoResponse 免費回覆 ✓)
+
+一則 LINE 進站訊息（queue consumer）
+ ├─► CustomerConversationDO(conv)   /notify-message              1 req
+ ├─► LatestMessageCacheCoordinator  /schedule                    1 req + 2 writes   ✗ W2
+ │      └ 5 秒後 alarm 醒來 → KV delete/get/put + D1 read        1 req              ✗ W2
+ ├─► MessageBroadcaster('global')
+ │      └ D1 查全隊 + 全管理員 → UserConnection × N              N req              ✗ W3 (離線者也打)
+ └─► triggerNewConversationNotification（每則都跑，不只新對話）
+        └ 同一批人再打一次 → UserConnection × N                  N req              ✗ W3 (重複)
+
+一則 Agent 回覆（POST /api/customer-conversations/:id/messages）
+ └─► CustomerMessageDO(conv)                                     1 req
+        ├ 在 DO 內執行 deliver()：LINE push + 約 6 次 D1
+        ├ new BatchQueueManager() → 1 小時自續 setTimeout          ✗ W1 (物件多活 ≤15 分鐘)
+        ├─► ConversationRoom(conv) /broadcast                     1 req              ✗ W5 (沒有 socket 在聽)
+        ├─► CustomerConversationDO ×2                             2 req
+        └─► MessageBroadcaster → UserConnection × 已註冊           N req</pre>
+
+<h3>已經乾淨、不需要動的部分</h3>
+<ul>
+  <li><strong>RateLimiterDO</strong>：只服務 login 與 refresh，每次允許寫一列，alarm 是空函式。</li>
+  <li><strong>DelayedMessageScheduler</strong>：每個對話一個 alarm，排在投遞時刻；失敗重試最多 3 次（+30/+60/+90 秒）；閒置時 deleteAlarm；建構子只讀不排。</li>
+  <li><strong>LockCoordinator</strong>：沒有 alarm；只在新客戶、新對話建立時使用；惰性 GC 不掃 storage。</li>
+  <li><strong>CustomerConversationDO</strong>：休眠 socket、零 storage 操作、零 alarm。</li>
+</ul>
+
+<h2>3. 七個浪費點</h2>
+<p>嚴重度依「對帳單的潛在影響 × 是否與流量無關」排序。每一項列出證據位置與驗證狀態。</p>
+<div class="waste">
+
+<div class="w critical">
+  <div class="head"><span class="id">W1</span><span class="title">投遞後掛著 1 小時自續計時器，DO 多活 15 分鐘</span><span class="chip critical">嚴重</span><span class="chip info">Duration</span></div>
+  <p><code>BatchQueueManager</code> 的建構子無條件呼叫 <code>scheduleMetricsReset()</code>，綁一個 1 小時、到期自動再綁的 <code>setTimeout</code>，用途是重設沒人讀的 metrics。<code>MessageDeliveryService.deliver()</code> 會建構它，而 deliver() 在兩個 DO 內執行：<code>CustomerMessageDO</code>（召回窗為 0 的每一則 LINE 回覆）與 <code>DelayedMessageScheduler</code>（每次緩衝投遞）。Cloudflare 文件明示未到期的 setTimeout 會阻止驅逐，每個操作最多 15 分鐘，期間持續計 Duration。</p>
+  <dl>
+    <dt>規模</dt><dd>每次投遞 ≤ 900 s × 0.128 GB ≈ 115 GB-s；每日 300–1,500 次投遞 → 每月 1–5M GB-s ≈ $8–58</dd>
+    <dt>證據</dt><dd><span class="path">src/modules/websocket/services/batch-queue-manager.ts:64, :88, :283-293</span>；<span class="path">src/durable-objects/CustomerMessageDO.ts:520-521</span>；<span class="path">src/durable-objects/DelayedMessageScheduler.ts:618-621</span>；<span class="path">src/modules/conversations/services/message-delivery-service.ts:336</span></dd>
+    <dt>驗證</dt><dd>程式碼已確認。帳單影響尚未對照儀表板，是本報告唯一需要量測證實的項目。</dd>
+  </dl>
+</div>
+
+<div class="w critical">
+  <div class="head"><span class="id">W6</span><span class="title">公開的 /api/monitoring/health 會喚醒所有已註冊的房間與用戶</span><span class="chip critical">嚴重</span><span class="chip info">Requests</span></div>
+  <p>該端點的註解寫明「Public endpoint，不需要認證」。它呼叫 <code>performHealthCheck()</code>，向 MessageBroadcaster 取回全部已註冊的對話與用戶清單，再對每一個 ConversationRoom 與 UserConnection 各發一次 <code>/health</code>。任何人用 curl 迴圈打它，就能替你花錢。前端沒有呼叫它。</p>
+  <dl>
+    <dt>規模</dt><dd>每次 3 + N（房間）+ M（用戶）個 DO 請求，由呼叫者決定頻率</dd>
+    <dt>證據</dt><dd><span class="path">src/modules/monitoring/handlers/monitoring-main.ts:24-27</span>；<span class="path">src/services/durable-objects-monitor.ts:254-284, :325-355</span></dd>
+    <dt>驗證</dt><dd>已確認。</dd>
+  </dl>
+</div>
+
+<div class="w serious">
+  <div class="head"><span class="id">W3</span><span class="title">每則進站訊息做兩次使用者 fan-out，對象含離線者</span><span class="chip serious">中高</span><span class="chip info">Requests</span></div>
+  <p>MessageBroadcaster 用 D1 查出團隊全部成員加全部管理員，對每個人的 UserConnection 發一次 <code>/batch-events</code>，不看誰在線；離線者的 DO 被冷啟動、讀 3 個 key、發現沒有 socket、回傳。接著 <code>triggerNewConversationNotification</code> 在 Worker 端對同一批人再跑一次迴圈。這個函式名稱暗示只在新對話時觸發，實際上每則訊息都跑。</p>
+  <dl>
+    <dt>規模</dt><dd>2N × 3,000 則/日；N 為團隊成員與管理員聯集，約 10–30</dd>
+    <dt>證據</dt><dd><span class="path">src/durable-objects/services/broadcaster-delivery-service.ts:354-356</span>；<span class="path">src/durable-objects/services/broadcaster-helpers.ts:88-95</span>；<span class="path">src/utils/notification-trigger.ts:463-478, :665-728</span>；<span class="path">src/modules/integrations/handlers/line-message-handler.ts:349-362</span></dd>
+    <dt>驗證</dt><dd>已確認兩個迴圈的位置與觸發點。</dd>
+  </dl>
+</div>
+
+<div class="w serious">
+  <div class="head"><span class="id">W4</span><span class="title">每個在線 agent 每 5 分鐘 alarm 一次，每次 3 次寫入與 D1 查詢</span><span class="chip serious">中高</span><span class="chip info">Writes + D1</span></div>
+  <p>UserConnection 只要有 socket 就把 <code>accessCheckDeadline</code> 設為 5 分鐘後。alarm 醒來做 <code>revalidateGlobalAccess()</code>：查 agent（2 次 D1）、逐一查訂閱的對話（各 1 次 D1）、無條件寫回 subscriptions、再排下一次。常數 300000 直接寫在程式碼裡。這些 D1 查詢也會算進 rows read，本專案先前已經為此付過一次 $22。</p>
+  <dl>
+    <dt>規模</dt><dd>每人每日 288 次喚醒、864 次寫入、≥576 次 D1 查詢；30 人 → 8,640 / 25,920 / 17,280</dd>
+    <dt>證據</dt><dd><span class="path">src/durable-objects/UserConnection.ts:557-558, :595-625</span></dd>
+    <dt>驗證</dt><dd>已確認。<code>fix/do-alarm-retry-caps</code> 只移除冷啟動的多餘寫入與無上限重試，不改這個週期。</dd>
+  </dl>
+</div>
+
+<div class="w serious">
+  <div class="head"><span class="id">W2</span><span class="title">LatestMessageCacheCoordinator 是純寫入，結果沒有任何讀者</span><span class="chip serious">中高</span><span class="chip info">Requests + Writes + KV + D1</span></div>
+  <p>每則進站訊息呼叫一次這個全域單例的 <code>/schedule</code>（2 次 storage put），5 秒後 alarm 醒來對每個對話做 KV delete、KV get（必定 miss）、D1 查最新訊息、KV put。寫出的 <code>latest_msg:</code> key 只有兩個讀者：它自己的 alarm（剛刪掉就讀），以及一個沒有任何呼叫端、也沒有 queue consumer 綁定的 worker。對話列表的最新訊息是直接查 D1。</p>
+  <dl>
+    <dt>規模</dt><dd>每日約 6,000 DO 請求、12,000 次寫入、3,000 次 D1 讀取、9,000 次 KV 操作</dd>
+    <dt>證據</dt><dd>唯一呼叫點 <span class="path">src/modules/integrations/services/webhook-conversation-service.ts:338-347</span>；<span class="path">src/durable-objects/LatestMessageCacheCoordinator.ts:92-100, :348, :436-453</span>；key 定義 <span class="path">src/services/latest-message-cache.ts:53</span></dd>
+    <dt>驗證</dt><dd>已用 grep 全域確認無讀者。</dd>
+  </dl>
+</div>
+
+<div class="w warn">
+  <div class="head"><span class="id">W5</span><span class="title">ConversationRoom 在生產環境零 socket，Worker 對它廣播是對空氣說話</span><span class="chip warn">中</span><span class="chip info">Reads</span></div>
+  <p>唯一會把 conversationId 加到全域 socket URL 的程式碼在 <code>realtimeConnectionManager.ts</code>，而這個檔案沒有被任何地方 import；對話頁開的是 <code>/api/customer-ws</code>，進的是 CustomerConversationDO。所以每次 Worker 對 CONVERSATION_ROOM 發 <code>/broadcast</code>（媒體更新、投遞狀態、標籤、指派），都是冷啟動、讀 4 個 key、送給零個連線。</p>
+  <dl>
+    <dt>規模</dt><dd>每日約 1,500–2,000 次請求、6,000–8,000 次讀取；HEAD 另有每次 1 次 deleteAlarm 寫入（caps 分支已修）</dd>
+    <dt>證據</dt><dd><span class="path">frontend/src/services/websocketClient.ts:297-298</span>；<span class="path">frontend/src/services/realtimeConnectionManager.ts:157-158</span>（無 importer）；<span class="path">src/durable-objects/services/room-storage-service.ts:22-41, :126-129</span></dd>
+    <dt>驗證</dt><dd>已確認。動手前仍建議用儀表板確認該 namespace 的 WebSocket 連線數為 0。</dd>
+  </dl>
+</div>
+
+<div class="w warn">
+  <div class="head"><span class="id">W7</span><span class="title">每次 socket 連線 4 個 DO 請求，全域 reconnect 沒有上限</span><span class="chip warn">中</span><span class="chip info">Requests</span></div>
+  <p>連線前先打 <code>/api/websocket/health</code>（對一個假房間 health-check-test 發 /metrics），再查 UserConnection /status、MessageBroadcaster /metrics，最後才 upgrade。Pinia store 的 reconnect 迴圈沒有次數上限，退避 5 到 60 秒。後端故障或 token 過期時，每個分頁每分鐘最多 4 個請求，便宜但會累積。另外管理員頁 WebSocketMonitoring 每 5 秒輪詢兩個 DO 端點，開著就是每分鐘 36 個請求。</p>
+  <dl>
+    <dt>規模</dt><dd>正常每日約 1,080；故障時每分頁 ≤ 5,760 / 日</dd>
+    <dt>證據</dt><dd><span class="path">frontend/src/services/websocketClient.ts:207-246</span>；<span class="path">src/modules/websocket/handlers/websocket-main.ts:337-339, :507-509</span>；<span class="path">frontend/src/stores/websocket.ts:76</span>；<span class="path">frontend/src/views/WebSocketMonitoring.vue:354</span></dd>
+    <dt>驗證</dt><dd>已確認。</dd>
+  </dl>
+</div>
+
+</div>
+
+<h2>4. 方案：四個層級</h2>
+<div class="ladder">
+  <div class="rung"><div class="t">Tier 0</div><div><div class="t">先量測</div><div class="d">零風險，今天就做。決定 Tier 1 之後的順序。</div></div></div>
+  <div class="rung"><div class="t">Tier 1</div><div><div class="t">關掉會失控的路徑</div><div class="d">與流量無關的安全網。這一層對應「差點破產」的那類問題。</div></div></div>
+  <div class="rung"><div class="t">Tier 2</div><div><div class="t">移除純浪費</div><div class="d">使用者看不出差別，全部可回退。</div></div></div>
+  <div class="rung"><div class="t">Tier 3</div><div><div class="t">調整穩態節奏</div><div class="d">有行為取捨，需要團隊決定。</div></div></div>
+</div>
+
+<h3>Tier 0：先看儀表板</h3>
+<p>Cloudflare Dashboard → Workers &amp; Pages → Durable Objects，逐一點開 namespace 看 Requests、Duration（GB-s）、Storage。要找兩個訊號：</p>
+<div class="tscroll"><table>
+<thead><tr><th>訊號</th><th>代表</th><th>行動</th></tr></thead>
+<tbody>
+<tr><td>CUSTOMER_MESSAGE_DO 或 DELAYED_MESSAGE_SCHEDULER 的 GB-s 高、requests 低</td><td>W1 計時器洩漏是真的</td><td>1b 拉到最前面</td></tr>
+<tr><td>USER_CONNECTION 的 requests 遠高於每日訊息量</td><td>W3 與 W4 是主要請求來源</td><td>優先做 2b，再評估 3a / 3b</td></tr>
+<tr><td>CONVERSATION_ROOM 的 WebSocket 連線數為 0</td><td>確認 W5</td><td>可以安心做 2c</td></tr>
+</tbody></table></div>
+<p>程式化查詢用 GraphQL Analytics API 的三個資料集：<code>durableObjectsInvocationsAdaptiveGroups</code>（請求）、<code>durableObjectsPeriodicGroups</code>（duration）、<code>durableObjectsStorageGroups</code>（儲存），都可依 scriptName 與 namespaceId 分組。專案內目前沒有這支腳本。</p>
+
+<h3>Tier 1：安全網</h3>
+<div class="tscroll"><table>
+<thead><tr><th>#</th><th>項目</th><th>做法</th><th>省什麼</th><th>風險</th><th>可回退</th></tr></thead>
+<tbody>
+<tr><td>1a</td><td>合併 <code>fix/do-alarm-retry-caps</code></td><td>已寫好、含 390 行測試，commit 9f4566ac，尚未推送</td><td>關掉 HEAD 上 1 秒 flush 無限重試、30 秒權限複查無限重試、閒置物件每次冷啟動一次 deleteAlarm 寫入</td><td>低，已有測試</td><td class="c">是</td></tr>
+<tr><td>1b</td><td>刪掉 BatchQueueManager 的 1 小時計時器</td><td>建構子那行 <code>scheduleMetricsReset()</code> 與方法本身一併刪除；metrics 無人讀</td><td>W1，潛在最大的 GB-s 項目</td><td>無，純刪除</td><td class="c">是</td></tr>
+<tr><td>1c</td><td>保護 <code>/api/monitoring/health</code></td><td>收進管理員認證，或拿掉逐實例迴圈；先用 wrangler tail 確認沒有外部探針指著它</td><td>W6，堵住別人替你花錢的入口</td><td>若有外部探針會收到 401，需先確認</td><td class="c">是</td></tr>
+<tr><td>1d</td><td>全域 socket reconnect 設上限</td><td>例如 20 次後停止，提示使用者重新整理</td><td>W7 故障時的累積請求</td><td>使用者體驗微調</td><td class="c">是</td></tr>
+</tbody></table></div>
+
+<h3>Tier 2：純浪費</h3>
+<div class="tscroll"><table>
+<thead><tr><th>#</th><th>項目</th><th>做法</th><th>省什麼</th><th>風險</th><th>可回退</th></tr></thead>
+<tbody>
+<tr><td>2a</td><td>停用 LatestMessageCacheCoordinator</td><td>只有一個呼叫點在 webhook-conversation-service.ts，拿掉即可；<strong>class 保留 export，不加 delete 遷移</strong></td><td>W2 全部</td><td>無，結果沒人讀</td><td class="c">是</td></tr>
+<tr><td>2b</td><td>通知觸發器只在真正的新對話時執行</td><td>函式名已是 NewConversation；Broadcaster 已把訊息送到同一批人</td><td>W3 的一半：每則進站 −N 請求</td><td>需確認沒有人依賴「每則都推通知」；桌面通知走另一條路</td><td class="c">是</td></tr>
+<tr><td>2c</td><td>Worker 停止對 ConversationRoom 廣播</td><td><code>durable-object-client.ts</code> 一個開關；事件改送 CustomerConversationDO</td><td>W5，每則回覆與媒體 −1 冷啟動</td><td>先用儀表板確認連線數為 0</td><td class="c">是</td></tr>
+<tr><td>2d</td><td>連線前不打 health probe、不查 broadcaster metrics</td><td>4 req → 1–2 req；失敗改由 upgrade 本身回報</td><td>W7 正常情況 −50%</td><td>少了預檢</td><td class="c">是</td></tr>
+</tbody></table></div>
+
+<h3>Tier 3：有取捨，請團隊決定</h3>
+<div class="tscroll"><table>
+<thead><tr><th>#</th><th>項目</th><th>現況</th><th>選項</th><th>取捨</th></tr></thead>
+<tbody>
+<tr><td>3a</td><td>UserConnection 權限複查週期</td><td>5 分鐘，每次 3 次寫入、≥2 次 D1 查詢</td><td>A：拉長到 30 分鐘（÷6）。B：subscriptions 有變才寫（−1/3 寫入）。C：改事件驅動，撤銷權限時主動踢（已有 <code>revoked:</code> KV key）</td><td>被撤銷的 agent 最多多收 25 分鐘的即時事件；REST 權限仍即時失效</td></tr>
+<tr><td>3b</td><td>Broadcaster 只送給在線者</td><td>查 D1 全隊名單，離線者的 DO 也被冷啟動</td><td>先查自己的 registry（connect / disconnect 已維護）再 fetch</td><td>registry 若不同步，該人到重新整理前漏即時事件；對話 socket 仍會收到</td></tr>
+</tbody></table></div>
+
+<p><strong>不建議做的：</strong>把 KV-backed class 改成 SQLite（文件明示後端不可就地更換，得改名遷移）；合併三個 WebSocket DO（requests 太便宜，不值得重構風險）。</p>
+
+<h2>5. 前後對比</h2>
+
+<div class="chart">
+  <div class="ct">一則 LINE 進站訊息的 DO 請求數</div>
+  <div class="cs">N = 20（團隊成員與管理員聯集）。</div>
+  <div class="legend"><span><i style="background:var(--accent)"></i>現在</span><span><i style="background:var(--accent-2)"></i>Tier 1 + 2 之後</span><span><i style="background:var(--accent-3)"></i>再加 3b</span></div>
+  <div class="rows">
+    <div class="row"><div class="lab">DO requests</div><div class="bars">
+      <div class="bar s1"><div class="track"><div class="fill" style="width:100%" title="現在 44"></div></div><div class="val">44</div></div>
+      <div class="bar s2"><div class="track"><div class="fill" style="width:50%" title="Tier 1+2 之後 22"></div></div><div class="val">22</div></div>
+      <div class="bar s3"><div class="track"><div class="fill" style="width:15.9%" title="再加 3b 7"></div></div><div class="val">7</div></div>
+    </div></div>
+    <div class="row"><div class="lab">DO 寫入</div><div class="bars">
+      <div class="bar s1"><div class="track"><div class="fill" style="width:100%" title="現在 2"></div></div><div class="val">2</div></div>
+      <div class="bar s2"><div class="track"><div class="fill" style="width:0" title="之後 0"></div></div><div class="val">0</div></div>
+      <div class="bar s3"><div class="track"><div class="fill" style="width:0" title="再加 3b 0"></div></div><div class="val">0</div></div>
+    </div></div>
+  </div>
+  <div class="note">拆解：CustomerConversationDO 1；Coordinator 與其 alarm 2 → 0（2a）；Broadcaster 1；UserConnection × N 20 → 在線數約 5（3b）；通知觸發器 × N 20 → 0（2b）。</div>
+</div>
+
+<div class="chart">
+  <div class="ct">每個在線 agent 的閒置成本（每日）</div>
+  <div class="cs">UserConnection 權限複查 alarm；30 位 agent 請乘以 30。</div>
+  <div class="legend"><span><i style="background:var(--accent)"></i>現在（5 分鐘）</span><span><i style="background:var(--accent-2)"></i>3a-A（30 分鐘）</span><span><i style="background:var(--accent-3)"></i>3a-A + 3a-B</span></div>
+  <div class="rows">
+    <div class="row"><div class="lab">alarm 喚醒</div><div class="bars">
+      <div class="bar s1"><div class="track"><div class="fill" style="width:100%" title="現在 288"></div></div><div class="val">288</div></div>
+      <div class="bar s2"><div class="track"><div class="fill" style="width:16.7%" title="30 分鐘 48"></div></div><div class="val">48</div></div>
+      <div class="bar s3"><div class="track"><div class="fill" style="width:16.7%" title="30 分鐘 + 有變才寫 48"></div></div><div class="val">48</div></div>
+    </div></div>
+    <div class="row"><div class="lab">storage 寫入</div><div class="bars">
+      <div class="bar s1"><div class="track"><div class="fill" style="width:100%" title="現在 864"></div></div><div class="val">864</div></div>
+      <div class="bar s2"><div class="track"><div class="fill" style="width:16.7%" title="30 分鐘 144"></div></div><div class="val">144</div></div>
+      <div class="bar s3"><div class="track"><div class="fill" style="width:11.1%" title="30 分鐘 + 有變才寫 96"></div></div><div class="val">96</div></div>
+    </div></div>
+    <div class="row"><div class="lab">D1 查詢（至少）</div><div class="bars">
+      <div class="bar s1"><div class="track"><div class="fill" style="width:100%" title="現在 576"></div></div><div class="val">576</div></div>
+      <div class="bar s2"><div class="track"><div class="fill" style="width:16.7%" title="30 分鐘 96"></div></div><div class="val">96</div></div>
+      <div class="bar s3"><div class="track"><div class="fill" style="width:16.7%" title="30 分鐘 + 有變才寫 96"></div></div><div class="val">96</div></div>
+    </div></div>
+  </div>
+</div>
+
+<div class="chart">
+  <div class="ct">一則 Agent 回覆（LINE，召回窗 0）留下的閒置 Duration</div>
+  <div class="cs">CustomerMessageDO 處理本身約 1–2 秒，問題在回覆之後。</div>
+  <div class="legend"><span><i style="background:var(--accent)"></i>現在</span><span><i style="background:var(--accent-2)"></i>1b 之後</span></div>
+  <div class="rows">
+    <div class="row"><div class="lab">閒置 GB-s / 次</div><div class="bars">
+      <div class="bar s1"><div class="track"><div class="fill" style="width:100%" title="現在 115 GB-s"></div></div><div class="val">115</div></div>
+      <div class="bar s2"><div class="track"><div class="fill" style="width:0" title="1b 之後 0"></div></div><div class="val">0</div></div>
+    </div></div>
+    <div class="row"><div class="lab">ConversationRoom 冷啟動</div><div class="bars">
+      <div class="bar s1"><div class="track"><div class="fill" style="width:100%" title="現在 1 次 + 4 reads"></div></div><div class="val">1 + 4 reads</div></div>
+      <div class="bar s2"><div class="track"><div class="fill" style="width:0" title="2c 之後 0"></div></div><div class="val">0（2c）</div></div>
+    </div></div>
+  </div>
+  <div class="note">115 GB-s 是上限：掛著的計時器讓物件在 15 分鐘的驅逐上限內持續計時（900 s × 0.128 GB）。同一對話在 15 分鐘內的多次回覆共用同一個物件。</div>
+</div>
+
+<h2>6. 決策矩陣</h2>
+<div class="tscroll"><table>
+<thead><tr><th>方案</th><th>月省估計</th><th>實作量</th><th>使用者可感知</th><th>失控風險降低</th><th>可回退</th><th>建議</th></tr></thead>
+<tbody>
+<tr><td>1a 合併 caps 分支</td><td>寫入 −30k–90k / 日</td><td>已完成</td><td>無</td><td><span class="chip good">高</span></td><td class="c">是</td><td>立刻</td></tr>
+<tr><td>1b 刪計時器</td><td><strong>$8–58</strong>（待儀表板證實）</td><td>1 行刪除</td><td>無</td><td><span class="chip warn">中</span></td><td class="c">是</td><td>立刻</td></tr>
+<tr><td>1c 保護 monitoring/health</td><td>防禦性</td><td>小</td><td>無</td><td><span class="chip good">高</span>（外部可觸發）</td><td class="c">是</td><td>立刻</td></tr>
+<tr><td>1d reconnect 上限</td><td>故障時才有</td><td>小</td><td>極小</td><td><span class="chip warn">中</span></td><td class="c">是</td><td>第一批</td></tr>
+<tr><td>2a 停用 Coordinator</td><td>約 $0.5 + D1 / KV 往返</td><td>1 個呼叫點</td><td>無</td><td><span class="chip info">低</span></td><td class="c">是</td><td>第一批</td></tr>
+<tr><td>2b 通知只在新對話</td><td>請求 −N / 則</td><td>小</td><td>需確認無人依賴</td><td><span class="chip info">低</span></td><td class="c">是</td><td>第一批</td></tr>
+<tr><td>2c 停播 ConversationRoom</td><td>請求與讀取小幅</td><td>中</td><td>無</td><td><span class="chip info">低</span></td><td class="c">是</td><td>第二批</td></tr>
+<tr><td>2d 連線瘦身</td><td>請求 −50% / 連線</td><td>小</td><td>無</td><td><span class="chip info">低</span></td><td class="c">是</td><td>第二批</td></tr>
+<tr><td>3a 複查週期 30 分鐘</td><td>寫入 −20k / 日、D1 −14k / 日</td><td>1 個常數</td><td>撤銷延遲 ≤ 30 分</td><td><span class="chip info">低</span></td><td class="c">是</td><td>團隊決定</td></tr>
+<tr><td>3b 只送在線者</td><td>請求 −(N − 在線) / 則</td><td>中</td><td>registry 不同步時漏事件</td><td><span class="chip info">低</span></td><td class="c">是</td><td>第二批，看量測</td></tr>
+<tr><td>v7 刪除 MetricsCollectorDO</td><td>$0</td><td>已寫</td><td>無</td><td>無</td><td class="c"><strong>否</strong></td><td>拆出、延後或不做</td></tr>
+</tbody></table></div>
+
+<h2>7. 部署安全規則</h2>
+<div class="callout danger">
+  <p><strong>DO 類別刪除是單向的，而且會鎖死 rollback。</strong>Cloudflare 文件確認三件事：<code>deleted_classes</code> 會永久刪除 namespace 與全部資料，沒有回收桶；任何 DO lifecycle 變更之後，<code>wrangler rollback</code> 一律拒絕回到變更前的版本；lifecycle 變更應該單獨部署，不與其他程式碼混在一起。本專案的 <code>bun run deploy</code> 直接執行 <code>wrangler deploy</code>，沒有針對遷移的 dry-run 關卡。</p>
+</div>
+<ol>
+  <li><strong>Tier 1–3 全部不含 DO lifecycle 變更</strong>，每一支都能用 wrangler rollback 回退。</li>
+  <li><strong>v7 遷移從 <code>chore/remove-api-metrics</code> 拆出。</strong>該分支保留「移除 middleware、呼叫端、binding」，並留一個約 10 行的 MetricsCollectorDO 空殼 class（v6 已建立此 class，不 export 又沒有 delete 遷移會被拒絕部署）。閒置 namespace 的計算成本為零，儲存只有一筆小 value。要刪就等整體優化穩定後，單獨一次 deploy 只含 v7。將來若要刪 LatestMessageCacheCoordinator，同樣規則。</li>
+  <li><strong>部署前 git status 必須乾淨。</strong>wrangler deploy 打包的是工作樹，另一個 session 的未提交 DO 編輯曾經被一起送上去。</li>
+  <li>每支 PR 描述寫清楚「這條 alarm 鏈怎麼停」，這是 CLAUDE.md 已有的規則，對 1a 尤其重要。</li>
+  <li>1c 動手前先 <code>wrangler tail</code> 幾分鐘，確認沒有外部探針打 <code>/api/monitoring/health</code>。</li>
+  <li>一個 commit 一件事：上面是 5 支獨立的 PR。</li>
+</ol>
+
+<h3>路線圖</h3>
+<div class="road">
+  <div class="phase"><div class="ph">第 0 天</div><div class="pt">量測</div><ul><li>記下每個 namespace 的 requests 與 GB-s</li><li>確認 CONVERSATION_ROOM 連線數</li></ul></div>
+  <div class="phase"><div class="ph">第 1–2 天</div><div class="pt">安全網</div><ul><li>PR-1：合併 caps 分支</li><li>PR-2：1b 刪計時器、1c 保護 health、1d reconnect 上限</li><li>部署後 24 小時回看 GB-s</li></ul></div>
+  <div class="phase"><div class="ph">第 3–5 天</div><div class="pt">移除浪費</div><ul><li>PR-3：2a 停用 Coordinator</li><li>PR-4：2b 通知改新對話</li><li>PR-5：2c、2d 連線瘦身</li></ul></div>
+  <div class="phase"><div class="ph">之後</div><div class="pt">節奏與整理</div><ul><li>團隊決定 3a / 3b</li><li>觀察一週</li><li>再談要不要單獨部署 v7</li></ul></div>
+</div>
+
+<h2>附錄 A：PR 與部署紀錄</h2>
+<div class="tscroll"><table>
+<thead><tr><th>PR</th><th>內容</th><th>狀態</th><th>對應方案</th></tr></thead>
+<tbody>
+<tr><td class="num">#88 / #89</td><td>RateLimiterDO 與 MetricsCollectorDO 不再排 alarm，metrics 改批次上送</td><td>已合併（10-13）</td><td>本報告的基準 993594ec</td></tr>
+<tr><td class="num">#90</td><td>flush 重試 1/2/4/8 秒、最多 5 次；權限複查退避 30→240 秒、上限 5 分鐘；閒置不寫 alarm</td><td>已合併、已部署（10-13）</td><td>1a</td></tr>
+<tr><td class="num">#91</td><td>移除 metrics middleware、binding、MetricsCollectorDO，含 v7 deleted_classes</td><td>已合併、已部署（10-13 14:14Z，未拆出）</td><td>v7</td></tr>
+<tr><td class="num">#93</td><td>刪 BatchQueueManager 計時器、health 只做存活檢查、停止更新 Coordinator</td><td>已合併、已部署（10-13 14:47Z）</td><td>1b、1c、2a</td></tr>
+<tr><td class="num">#94</td><td>新對話通知只在建立時觸發</td><td>已合併、已部署（10-14 00:21Z）</td><td>2b</td></tr>
+<tr><td class="num">#100</td><td>UserConnection 訂閱有變才寫</td><td rowspan="5">已合併、已部署（10-14，Worker a8fee503 + Pages，自乾淨 worktree）</td><td>3a-B</td></tr>
+<tr><td class="num">#101</td><td>連線前不打 health 預檢</td><td>2d</td></tr>
+<tr><td class="num">#102</td><td>停止對 ConversationRoom 廣播</td><td>2c</td></tr>
+<tr><td class="num">#103</td><td>MessageBroadcaster 在線名單去污染與自我修復</td><td>W3（新發現）</td></tr>
+<tr><td class="num">#104</td><td>Facebook 新對話通知</td><td>#94 缺口</td></tr>
+</tbody></table></div>
+
+<h2>附錄 B：稽核方法</h2>
+<ul>
+  <li>四個獨立的程式碼稽核平行進行：WebSocket 三件組（ConversationRoom、UserConnection、MessageBroadcaster）；Customer 兩件組（CustomerConversationDO、CustomerMessageDO）；快取、延遲投遞、鎖與限流（LatestMessageCacheCoordinator、DelayedMessageScheduler、LockCoordinator、RateLimiterDO）；Worker 端每個業務事件的 DO 請求追蹤，含 cron、前端輪詢與 socket 心跳。</li>
+  <li>七個浪費點中影響最大的五項（W1、W2、W3、W5、W6）由第二人直接讀原始碼再確認，包含 grep 全域確認 W2 無讀者、W5 無 importer。</li>
+  <li>定價與遷移規則取自 Cloudflare 官方文件：<a href="https://developers.cloudflare.com/durable-objects/platform/pricing/">durable-objects/platform/pricing</a>、<a href="https://developers.cloudflare.com/durable-objects/concepts/durable-object-lifecycle/">durable-object-lifecycle</a>、<a href="https://developers.cloudflare.com/durable-objects/reference/durable-objects-migrations/">durable-objects-migrations</a>、<a href="https://developers.cloudflare.com/workers/versions-and-deployments/rollbacks/">versions-and-deployments/rollbacks</a>、<a href="https://developers.cloudflare.com/workers/versions-and-deployments/gradual-deployments/with-durable-objects/">gradual-deployments/with-durable-objects</a>。</li>
+  <li>所有「每日規模」數字都是以 30 位 agent、200 個活躍對話、每日 3,000 則訊息、N = 10–30 推算，不是帳單實測。唯一需要實測證實的是 W1。</li>
+</ul>
+
+<footer>Durable Object 成本稽核 · 2026-10-13，2026-10-14 更新進度 · 基準 main 993594ec · 文件位置 docs/audits/DO_COST_AUDIT_2026-10-13.html</footer>
+
+</div>
+</body>
+</html>
