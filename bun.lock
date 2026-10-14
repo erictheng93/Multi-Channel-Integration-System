@@ -1,5 +1,5 @@
 {
-  "lockfileVersion": 1,
+  "lockfileVersion": 3,
   "configVersion": 0,
   "workspaces": {
     "": {
@@ -10,7 +10,7 @@
         "@hono/zod-validator": "^0.9.1",
         "bcryptjs": "^3.0.3",
         "drizzle-orm": "^0.45.2",
-        "hono": "^4.12.32",
+        "hono": "^4.13.13",
         "ipaddr.js": "^2.5.0",
         "jsonwebtoken": "^9.0.3",
         "node-fetch": "^3.3.2",
@@ -41,6 +41,9 @@
     },
   },
   "overrides": {
+    "@esbuild-kit/core-utils": {
+      "esbuild": "^0.25.9",
+    },
     "esbuild": "^0.25.9",
     "picomatch": "^4.0.4",
     "postcss": "^8.5.10",
@@ -474,7 +477,7 @@
 
     "has-flag": ["has-flag@4.0.0", "", {}, "sha512-EykJT/Q1KjTWctppgIAgfSO0tKVuZUjhgMr17kqTumMl6Afv3EISleU7qZUzoXDFTAHTDC4NOoG/ZxU3EvlMPQ=="],
 
-    "hono": ["hono@4.12.32", "", {}, "sha512-XcuyW9qE2kJn07PkecMOBd5Vq/hMy7mmGw+idz1yblbg9N17ijJODrvPkn7/dwL3Kulj8LcRJ69DLOWf91dRUg=="],
+    "hono": ["hono@4.13.13", "", {}, "sha512-CQ46U0ZkAGmbT/4UxdzzGJpacP2IeKgY4a5/tOI9AABbpOMfK739wfDXmv1usCk+3RkKj1hQy4/fjhiwa2xlrA=="],
 
     "html-encoding-sniffer": ["html-encoding-sniffer@7.0.0", "", { "dependencies": { "@exodus/bytes": "^1.15.1" } }, "sha512-UikN5yr7xsCDAq87Or5or0PAlD3HJJOKVzM05az588WnpDJ4Ux7a2A53Qi6gofGg2/EtvF/H4hCi/TXfCW4Y6w=="],
 
