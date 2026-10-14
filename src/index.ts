@@ -139,26 +139,6 @@ app.use('*', honoLogger());
 // Lazy init: modular system + collaboration (on first request)
 app.use('*', createLazyInitMiddleware());
 
-// Initialize latest message cache on startup
-app.use('*', async (c, next) => {
-  // Only run warmup on the first request after deployment
-  const shouldWarmup = c.req.header('cf-worker-started') ||
-                      c.req.url.includes('__warmup__');
-
-  if (shouldWarmup) {
-    try {
-      const { LatestMessageJobQueue } = await import('./workers/latest-message-worker');
-      const jobQueue = new LatestMessageJobQueue(c.env);
-      await jobQueue.warmupCache();
-      log.debug('Startup: Latest message cache warmup initiated');
-    } catch (error) {
-      log.warn('Startup: Cache warmup failed (non-critical)', { error: error instanceof Error ? error.message : String(error) });
-    }
-  }
-
-  await next();
-});
-
 // 全域錯誤處理中間件 (在其他 middleware 之後)
 app.use('*', errorHandlingMiddleware());
 
