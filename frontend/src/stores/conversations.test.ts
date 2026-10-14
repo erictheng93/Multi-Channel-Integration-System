@@ -9,6 +9,10 @@ const mockConversationApi = {
   assignConversation: vi.fn(),
   markAsRead: vi.fn(),
   markAsUnread: vi.fn(),
+  closeConversation: vi.fn(),
+  reopenConversation: vi.fn(),
+  bulkClose: vi.fn(),
+  bulkReopen: vi.fn(),
   getStats: vi.fn()
 }
 
@@ -356,6 +360,65 @@ describe('Conversations Store', () => {
       expect(result).toBe(true)
       expect(store.conversations[0]?.unreadCount).toBe(1)
       expect(store.error).toBeNull()
+    })
+  })
+
+  describe('Close rollback unread restoration', () => {
+    const makeConv = (id: string, unreadCount: number) => ({
+      id, userId: '1', status: 'active', platform: 'line', unreadCount,
+      lastMessageAt: Date.now(), createdAt: Date.now(), updatedAt: Date.now()
+    })
+    const customerMessage = { content: 'hi', senderType: 'customer' as const }
+
+    it('restores previous backlog plus realtime delta when single close fails (5 -> 0 -> +1 -> 6)', async () => {
+      let rejectClose: (_reason: Error) => void = () => undefined
+      mockConversationApi.closeConversation.mockReturnValue(new Promise((_, reject) => { rejectClose = reject }))
+
+      const { useConversationsStore } = await import('./conversations')
+      const store = useConversationsStore()
+      store.setConversations([makeConv('conv-1', 5)] as never)
+
+      const pending = store.setConversationClosed('conv-1', true)
+      expect(store.conversations[0]?.unreadCount).toBe(0)
+
+      store.updateConversationFromWebSocketMessage('conv-1', customerMessage)
+      expect(store.conversations[0]?.unreadCount).toBe(1)
+
+      rejectClose(new Error('network'))
+      expect(await pending).toBe(false)
+      expect(store.conversations[0]?.status).toBe('active')
+      expect(store.conversations[0]?.unreadCount).toBe(6)
+    })
+
+    it('restores the saved count unchanged when no realtime message arrived', async () => {
+      mockConversationApi.closeConversation.mockResolvedValue({ success: false, error: 'nope' })
+
+      const { useConversationsStore } = await import('./conversations')
+      const store = useConversationsStore()
+      store.setConversations([makeConv('conv-1', 5)] as never)
+
+      expect(await store.setConversationClosed('conv-1', true)).toBe(false)
+      expect(store.conversations[0]?.unreadCount).toBe(5)
+    })
+
+    it('restores previous backlog plus realtime delta when bulk close fails (5 -> 0 -> +1 -> 6)', async () => {
+      let rejectBulk: (_reason: Error) => void = () => undefined
+      mockConversationApi.bulkClose.mockReturnValue(new Promise((_, reject) => { rejectBulk = reject }))
+
+      const { useConversationsStore } = await import('./conversations')
+      const store = useConversationsStore()
+      store.setConversations([makeConv('conv-1', 5), makeConv('conv-2', 2)] as never)
+
+      const pending = store.bulkSetConversationsClosed(['conv-1', 'conv-2'], true)
+      expect(store.conversations.map(c => c.unreadCount)).toEqual([0, 0])
+
+      store.updateConversationFromWebSocketMessage('conv-1', customerMessage)
+
+      rejectBulk(new Error('network'))
+      expect(await pending).toBeNull()
+      const byId = Object.fromEntries(store.conversations.map(c => [c.id, c.unreadCount]))
+      expect(byId['conv-1']).toBe(6)
+      expect(byId['conv-2']).toBe(2)
     })
   })
 

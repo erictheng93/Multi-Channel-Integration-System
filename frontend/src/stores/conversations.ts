@@ -702,6 +702,13 @@ export const useConversationsStore = defineStore('conversations', () => {
     }
   }
 
+  // 回滾結案時的未讀數。樂觀結案把本地未讀歸 0，之後 WebSocket 只會對它 +1（客戶新訊息，
+  // 見 updateConversationFromWebSocketMessage；對既有對話沒有「絕對值」覆寫路徑，只有結案時歸 0），
+  // 所以請求期間 current 內的值就是「歸 0 之後新增的 delta」，需與結案前的積壓相加，
+  // 否則 5 -> 0 -> +1 -> 回滾會得到 1 而不是 6。重新開啟不動未讀數，原值照舊。
+  const rollbackUnread = (closed: boolean, saved: number, currentUnread: number | undefined): number =>
+    closed ? saved + Math.max(currentUnread ?? 0, 0) : saved
+
   // 結案 / 重新開啟（optimistic UI：先改本地狀態，失敗則回滾）
   const setConversationClosed = async (conversationId: string, closed: boolean): Promise<boolean> => {
     if (!conversationId) { return false }
@@ -725,8 +732,7 @@ export const useConversationsStore = defineStore('conversations', () => {
         ?? (currentConversation.value?.id === conversationId ? currentConversation.value : undefined)
       // 請求期間 WebSocket 已推進狀態（例如客戶新訊息自動重新開啟）→ 以較新的狀態為準，不回滾
       if (current && current.status !== optimisticStatus) { return }
-      // 只在仍是樂觀的 0 時還原未讀數；請求期間即時推進的未讀數保留
-      const unreadCount = closed && current && current.unreadCount > 0 ? current.unreadCount : previousUnread
+      const unreadCount = rollbackUnread(closed, previousUnread, current?.unreadCount)
       updateConversationStatus(conversationId, { status: previousStatus, unreadCount })
     }
 
@@ -779,7 +785,7 @@ export const useConversationsStore = defineStore('conversations', () => {
         const current = conversations.value.find(c => c.id === id)
         // 結案後已被即時事件重新開啟 → 保留較新的狀態；未讀數同理
         if (current && closed && current.status !== 'closed') { continue }
-        const unreadCount = closed && current && current.unreadCount > 0 ? current.unreadCount : state.unreadCount
+        const unreadCount = rollbackUnread(closed, state.unreadCount, current?.unreadCount)
         updateConversationStatus(id, { status: state.status, unreadCount })
       }
     }
