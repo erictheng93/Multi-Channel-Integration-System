@@ -22,7 +22,7 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "hono": "^4.12.32"
+    "hono": "^4.13.13"
   },
   "devDependencies": {
     "@cloudflare/vitest-pool-workers": "^0.22.0",
