@@ -108,6 +108,8 @@ export const conversations = sqliteTable('conversations', {
   priority: text('priority').default('normal'), // 'low', 'normal', 'high', 'urgent'
   firstResponseAt: text('first_response_at'),
   closedAt: text('closed_at'),
+  // Set on close, kept on reopen: unread floor so pre-close backlog stays read (Migration 0064)
+  unreadFloorAt: text('unread_floor_at'),
   lastMessageAt: text('last_message_at'),
   // DEPRECATED (Migration 0060): read state is now per-agent in
   // conversation_read_states. These two columns are no longer read by the

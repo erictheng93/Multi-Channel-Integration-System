@@ -39,7 +39,6 @@ export async function setConversationsClosed(
   }
 
   const timestamp = nowISO();
-  const closedAt = closed ? timestamp : null;
   const capture = new ActivityCapture(env.DB);
   const statuses: Record<string, string> = {};
 
@@ -56,13 +55,14 @@ export async function setConversationsClosed(
         reason: closed ? 'Undo by reopening the conversation' : 'Undo by closing the conversation'
       }),
       // 狀態條件避免與同時進來的客戶訊息（自動重新開啟）互相覆蓋
-      env.DB
-        .prepare(
-          closed
-            ? "UPDATE conversations SET status = ?, closed_at = ?, updated_at = ? WHERE id = ? AND status <> 'closed'"
-            : "UPDATE conversations SET status = ?, closed_at = ?, updated_at = ? WHERE id = ? AND status = 'closed'"
-        )
-        .bind(status, closedAt, timestamp, target.id)
+      // 結案時記下未讀下限（unread_floor_at），重新開啟時保留，結案前累積的訊息不會再算未讀
+      closed
+        ? env.DB
+          .prepare("UPDATE conversations SET status = ?, closed_at = ?, unread_floor_at = ?, updated_at = ? WHERE id = ? AND status <> 'closed'")
+          .bind(status, timestamp, timestamp, timestamp, target.id)
+        : env.DB
+          .prepare("UPDATE conversations SET status = ?, closed_at = NULL, updated_at = ? WHERE id = ? AND status = 'closed'")
+          .bind(status, timestamp, target.id)
     ];
   });
 

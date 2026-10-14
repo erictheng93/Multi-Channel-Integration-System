@@ -7,7 +7,7 @@ import { globalErrorHandler } from '@/core/error-handler';
 import { eq } from 'drizzle-orm';
 import { createDbClient } from '@/db/drizzle-factory';
 import { conversations } from '@/db/schema';
-import { agentIdOf, upsertReadState } from '../services/conversation-read-state';
+import { agentIdOf, markUnreadIfOpen, upsertReadState } from '../services/conversation-read-state';
 import type { Bindings } from '@/types';
 import { PermissionService } from '@/services/permission-service';
 import { jwtAuth } from '@/middleware/auth';
@@ -102,18 +102,12 @@ conversationReadHandler.put('/:id/unread', jwtAuth, async (c) => {
       return c.json({ error: 'Conversation not found' }, HTTP_STATUS.NOT_FOUND);
     }
 
-    // 已結案的對話對所有客服都算 0 未讀，標示未讀沒有意義；先重新開啟
-    if (existing.status === 'closed') {
+    // 已結案的對話對所有客服都算 0 未讀，標示未讀沒有意義；先重新開啟。
+    // 狀態檢查與寫入在同一個 statement 內，避免與他人結案交錯。
+    const marked = await markUnreadIfOpen(c.env.DB, agentIdOf(user), conversationId, now);
+    if (!marked) {
       return c.json({ error: '已結案的對話無法標示為未讀，請先重新開啟' }, HTTP_STATUS.CONFLICT);
     }
-
-    await upsertReadState(
-      drizzleDb,
-      agentIdOf(user),
-      conversationId,
-      { lastReadAt: null, markedUnreadAt: now },
-      now
-    );
 
     // Recompute the unread count with the same formula as conversation-queries.ts:
     // "Unread" = customer messages after MAX(last_agent_reply, last_read_at).

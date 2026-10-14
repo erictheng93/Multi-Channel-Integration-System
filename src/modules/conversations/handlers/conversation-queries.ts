@@ -103,7 +103,8 @@ export function createConversationUnreadCountQuery(conversationIds: string[]): s
             CASE WHEN c.status <> 'closed' AND rs.marked_unread_at IS NOT NULL THEN 1 ELSE 0 END as manuallyUnread,
             CASE WHEN c.status = 'closed' THEN '9999-12-31' ELSE MAX(
               COALESCE(la.last_agent_at, '1970-01-01'),
-              COALESCE(rs.last_read_at, '1970-01-01')
+              COALESCE(rs.last_read_at, '1970-01-01'),
+              COALESCE(c.unread_floor_at, '1970-01-01')
             ) END as unread_threshold
           FROM conversations c
           LEFT JOIN conversation_read_states rs
@@ -204,6 +205,7 @@ conversationQueriesHandler.get('/stats', jwtAuth, async (c) => {
         SELECT
           conversation.id AS id,
           conversation.status AS status,
+          conversation.unread_floor_at AS unread_floor_at,
           read_state.last_read_at AS last_read_at,
           read_state.marked_unread_at AS marked_unread_at
         FROM conversations AS conversation
@@ -231,7 +233,8 @@ conversationQueriesHandler.get('/stats', jwtAuth, async (c) => {
             CASE WHEN visible.status <> 'closed' AND visible.marked_unread_at IS NOT NULL THEN 1 ELSE 0 END as manuallyUnread,
             CASE WHEN visible.status = 'closed' THEN '9999-12-31' ELSE MAX(
               COALESCE(last_agent.last_agent_at, '1970-01-01'),
-              COALESCE(visible.last_read_at, '1970-01-01')
+              COALESCE(visible.last_read_at, '1970-01-01'),
+              COALESCE(visible.unread_floor_at, '1970-01-01')
             ) END as unread_threshold
           FROM visible
           LEFT JOIN (
