@@ -72,6 +72,7 @@ function makeDeps(overrides: Partial<RealtimeHandlerDeps> = {}): RealtimeHandler
     lastUpdateTime: ref<Date | null>(null),
     activeFilters: ref<ConversationFilters>({}),
     error: ref<string | null>(null),
+    loadError: ref<string | null>(null),
     updateConversationFromWebSocketMessage: vi.fn().mockReturnValue(true),
     updateConversationStatus: vi.fn().mockReturnValue(true),
     updateConversationsIncrementally: vi.fn(),
@@ -121,6 +122,14 @@ describe('createRealtimeHandler', () => {
       expect(deps.updateConversationsIncrementally).toHaveBeenCalledWith(convs, true)
       expect(deps.lastUpdateTime.value).not.toBeNull()
       expect(deps.stats.value.total).toBe(1)
+    })
+
+    it('clears a stale loadError once a poll succeeds', async () => {
+      mockConversationList.mockResolvedValue({ success: true, data: [] })
+      const deps = makeDeps()
+      deps.loadError.value = '載入對話失敗'
+      await createRealtimeHandler(deps).pollConversations()
+      expect(deps.loadError.value).toBeNull()
     })
 
     it('respects activeFilters when polling', async () => {

@@ -348,6 +348,7 @@ export const useConversationsStore = defineStore('conversations', () => {
     lastUpdateTime,
     activeFilters,
     error,
+    loadError,
     updateConversationFromWebSocketMessage,
     updateConversationStatus,
     updateConversationsIncrementally,
