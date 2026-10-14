@@ -52,7 +52,7 @@
           :key="conversation.id"
           class="conversation-row"
           :class="{
-            'has-unread': conversation.unreadCount > 0,
+            'has-unread': conversation.status !== 'closed' && conversation.unreadCount > 0,
             'is-selected': selectionMode && selectedIds.has(conversation.id)
           }"
           :style="{ animationDelay: `${index * 50}ms` }"
