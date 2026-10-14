@@ -1,5 +1,5 @@
 {
-  "lockfileVersion": 3,
+  "lockfileVersion": 1,
   "configVersion": 0,
   "workspaces": {
     "": {
@@ -41,9 +41,6 @@
     },
   },
   "overrides": {
-    "@esbuild-kit/core-utils": {
-      "esbuild": "^0.25.9",
-    },
     "esbuild": "^0.25.9",
     "picomatch": "^4.0.4",
     "postcss": "^8.5.10",
