@@ -105,6 +105,21 @@ describe('bulkSetConversationsClosed', () => {
     expect(statusOf(store, 'a')).toBe('active')
   })
 
+  it('zeroes unread on close and restores it on rollback', async () => {
+    const store = await setup([conv('a', { unreadCount: 3 })])
+    const unreadOf = () => store.conversations.find(c => c.id === 'a')?.unreadCount
+    let observedDuringCall: number | undefined
+    mockBulkClose.mockImplementation(async () => {
+      observedDuringCall = unreadOf()
+      return { success: false, error: 'forbidden' }
+    })
+
+    await store.bulkSetConversationsClosed(['a'], true)
+
+    expect(observedDuringCall).toBe(0)
+    expect(unreadOf()).toBe(3)
+  })
+
   it('does not call the API when nothing needs to change', async () => {
     const store = await setup([conv('a', { status: 'closed' })])
 

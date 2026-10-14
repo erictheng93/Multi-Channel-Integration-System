@@ -193,8 +193,10 @@ export function createRealtimeHandler(deps: RealtimeHandlerDeps) {
           const assignedTeamId = data?.assignedTeamId as number | undefined
           const assignedTeamName = data?.assignedTeamName as string | undefined
 
-          const updates: Partial<Pick<Conversation, 'status' | 'assignedTeamId' | 'assignedTeam'>> = {}
+          const updates: Partial<Pick<Conversation, 'status' | 'assignedTeamId' | 'assignedTeam' | 'unreadCount'>> = {}
           if (status) { updates.status = status as Conversation['status'] }
+          // 已結案的對話對所有客服都算 0 未讀（後端同規則）
+          if (status === 'closed') { updates.unreadCount = 0 }
           if (assignedTeamId !== undefined) {
             updates.assignedTeamId = assignedTeamId
             if (assignedTeamId) {

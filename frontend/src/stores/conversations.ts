@@ -697,17 +697,19 @@ export const useConversationsStore = defineStore('conversations', () => {
     const target = conversations.value.find(c => c.id === conversationId)
       ?? (currentConversation.value?.id === conversationId ? currentConversation.value : undefined)
     const previousStatus = target?.status
+    const previousUnread = target?.unreadCount ?? 0
     const optimisticStatus: Conversation['status'] = closed
       ? 'closed'
       : (target?.assignedTeamId ? 'assigned' : 'active')
 
+    // 已結案的對話對所有客服都算 0 未讀（後端同規則）
     if (previousStatus) {
-      updateConversationStatus(conversationId, { status: optimisticStatus })
+      updateConversationStatus(conversationId, closed ? { status: optimisticStatus, unreadCount: 0 } : { status: optimisticStatus })
     }
 
     const rollback = () => {
       if (previousStatus) {
-        updateConversationStatus(conversationId, { status: previousStatus })
+        updateConversationStatus(conversationId, { status: previousStatus, unreadCount: previousUnread })
       }
     }
 
@@ -735,12 +737,12 @@ export const useConversationsStore = defineStore('conversations', () => {
   // 批量結案 / 重新開啟（optimistic UI）：只送出需要變更的 id，失敗則全部回滾。
   // 回傳實際變更筆數；失敗回傳 null。
   const bulkSetConversationsClosed = async (ids: string[], closed: boolean): Promise<number | null> => {
-    const previous = new Map<string, Conversation['status']>()
+    const previous = new Map<string, Pick<Conversation, 'status' | 'unreadCount'>>()
     for (const id of ids) {
       const target = conversations.value.find(c => c.id === id)
       if (!target || previous.has(id)) { continue }
       const needsChange = closed ? target.status !== 'closed' : target.status === 'closed'
-      if (needsChange) { previous.set(id, target.status) }
+      if (needsChange) { previous.set(id, { status: target.status, unreadCount: target.unreadCount }) }
     }
 
     const changedIds = Array.from(previous.keys())
@@ -751,12 +753,13 @@ export const useConversationsStore = defineStore('conversations', () => {
       const optimisticStatus: Conversation['status'] = closed
         ? 'closed'
         : (target?.assignedTeamId ? 'assigned' : 'active')
-      updateConversationStatus(id, { status: optimisticStatus })
+      // 已結案的對話對所有客服都算 0 未讀（後端同規則）
+      updateConversationStatus(id, closed ? { status: optimisticStatus, unreadCount: 0 } : { status: optimisticStatus })
     }
 
     const rollback = () => {
-      for (const [id, status] of previous) {
-        updateConversationStatus(id, { status })
+      for (const [id, state] of previous) {
+        updateConversationStatus(id, state)
       }
     }
 

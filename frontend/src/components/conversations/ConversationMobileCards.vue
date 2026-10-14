@@ -143,14 +143,14 @@ const getPlatformText = (platform: string) => {
   return platformMap[platform as keyof typeof platformMap] || platform
 }
 
-// 讀取徽章：未讀優先（結案後仍有未讀也要提醒）；已結案顯示淡灰「結案」，其餘「已讀」
 const readBadge = (conversation: Conversation) => {
+  // 已結案優先：結案的對話對所有客服都算 0 未讀（新訊息會自動重新開啟）
+  if (conversation.status === 'closed') {
+    return { cls: 'closed', text: '結案', aria: '已結案' }
+  }
   const unread = conversation.unreadCount
   if (unread > 0) {
     return { cls: 'unread', text: unread > 1 ? `未讀 ${unread}` : '未讀', aria: `未讀 ${unread} 則訊息` }
-  }
-  if (conversation.status === 'closed') {
-    return { cls: 'closed', text: '結案', aria: '已結案' }
   }
   return { cls: 'read', text: '已讀', aria: '已讀' }
 }
