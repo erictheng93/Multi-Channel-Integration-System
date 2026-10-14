@@ -273,9 +273,9 @@ describe('ConversationDesktopTable.vue', () => {
       expect(badge.text()).toBe('結案')
     })
 
-    it('should still show 未讀 on a closed conversation with unread messages', () => {
+    it('should show 結案, not 未讀, on a closed conversation even with a stale unread count', () => {
       const wrapper = mountTable([createConversation({ unreadCount: 1, status: 'closed' })])
-      expect(wrapper.find('.read-badge').text()).toBe('未讀')
+      expect(wrapper.find('.read-badge').text()).toBe('結案')
     })
 
     it('should add has-unread class to row when unread', () => {
