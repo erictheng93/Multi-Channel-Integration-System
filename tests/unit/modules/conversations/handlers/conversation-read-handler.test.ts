@@ -9,6 +9,7 @@ const handlerMocks = vi.hoisted(() => ({
   checkPermission: vi.fn(),
   prepareBind: vi.fn(),
   prepareFirst: vi.fn(),
+  prepareRun: vi.fn(),
 }));
 
 function makeSelectChain() {
@@ -100,7 +101,8 @@ describe('conversation unread handler', () => {
     handlerMocks.selectGet.mockResolvedValue({ id: 'conv-1' });
     handlerMocks.insertValues.mockReturnValue({ onConflictDoUpdate: handlerMocks.insertOnConflict });
     handlerMocks.insertOnConflict.mockResolvedValue(undefined);
-    handlerMocks.prepareBind.mockReturnValue({ first: handlerMocks.prepareFirst });
+    handlerMocks.prepareBind.mockReturnValue({ first: handlerMocks.prepareFirst, run: handlerMocks.prepareRun });
+    handlerMocks.prepareRun.mockResolvedValue({ meta: { changes: 1 } });
     handlerMocks.prepareFirst.mockResolvedValue({ unreadCount: 3 });
   });
 
@@ -114,34 +116,18 @@ describe('conversation unread handler', () => {
     expect(response.status).toBe(200);
     expect(body.success).toBe(true);
     expect(body.data.unreadCount).toBe(3);
-    expect(handlerMocks.insertValues).toHaveBeenCalledWith({
-      agentId: 'agent-1',
-      conversationId: 'conv-1',
-      lastReadAt: null,
-      markedUnreadAt: '2026-07-19T12:00:00Z',
-      updatedAt: '2026-07-19T12:00:00Z',
-    });
+    expect(handlerMocks.prepareBind).toHaveBeenCalledWith('agent-1', 'conv-1', '2026-07-19T12:00:00Z', '2026-07-19T12:00:00Z', 'conv-1');
   });
 
   // Read state is per-agent (Migration 0060): the write must be scoped to the
-  // acting agent, never to the conversation alone, or one agent marking unread
-  // would flip the badge for the whole team again.
-  it('scopes the write to the acting agent and upserts rather than updating', async () => {
+  // acting agent and is one status-conditional upsert, so closing by another
+  // agent cannot interleave between the check and the write.
+  it('writes one status-conditional upsert scoped to the acting agent', async () => {
     await markUnread();
 
-    const inserted = handlerMocks.insertValues.mock.calls[0]?.[0] as { agentId: string };
-    expect(inserted.agentId).toBe('agent-1');
-    expect(handlerMocks.insertOnConflict).toHaveBeenCalledTimes(1);
-
-    const conflict = handlerMocks.insertOnConflict.mock.calls[0]?.[0] as {
-      target: unknown[];
-      set: Record<string, unknown>;
-    };
-    expect(conflict.target).toHaveLength(2);
-    expect(conflict.set).toMatchObject({
-      lastReadAt: null,
-      markedUnreadAt: '2026-07-19T12:00:00Z',
-    });
+    expect(handlerMocks.prepareRun).toHaveBeenCalledTimes(1);
+    expect(handlerMocks.prepareBind.mock.calls[0]?.[0]).toBe('agent-1');
+    expect(handlerMocks.insertValues).not.toHaveBeenCalled();
   });
 
   // The threshold is MAX(last_agent_reply, last_read_at) and mark-unread just
@@ -173,12 +159,12 @@ describe('conversation unread handler', () => {
   });
 
   it('returns 409 without mutating when the conversation is closed', async () => {
-    handlerMocks.selectGet.mockResolvedValueOnce({ id: 'conv-1', status: 'closed' });
+    handlerMocks.prepareRun.mockResolvedValueOnce({ meta: { changes: 0 } });
 
     const response = await markUnread();
 
     expect(response.status).toBe(409);
-    expect(handlerMocks.insertValues).not.toHaveBeenCalled();
+    expect(handlerMocks.prepareFirst).not.toHaveBeenCalled();
   });
 
   it('floors unreadCount at 1 when the derived count is 0 (agent sent the last message)', async () => {
@@ -193,13 +179,7 @@ describe('conversation unread handler', () => {
     expect(response.status).toBe(200);
     expect(body.success).toBe(true);
     expect(body.data.unreadCount).toBe(1);
-    expect(handlerMocks.insertValues).toHaveBeenCalledWith({
-      agentId: 'agent-1',
-      conversationId: 'conv-1',
-      lastReadAt: null,
-      markedUnreadAt: '2026-07-19T12:00:00Z',
-      updatedAt: '2026-07-19T12:00:00Z',
-    });
+    expect(handlerMocks.prepareBind).toHaveBeenCalledWith('agent-1', 'conv-1', '2026-07-19T12:00:00Z', '2026-07-19T12:00:00Z', 'conv-1');
   });
 
   it('floors unreadCount at 1 when the recount query yields no row', async () => {
