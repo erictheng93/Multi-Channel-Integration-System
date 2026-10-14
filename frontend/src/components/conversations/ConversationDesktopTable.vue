@@ -3,6 +3,10 @@
     <table class="conversations-table">
       <thead>
         <tr>
+          <!-- 讀取狀態欄：表頭視覺留白（Apple Mail 慣例），保留螢幕閱讀器文字 -->
+          <th class="read-col">
+            <span class="sr-only">讀取狀態</span>
+          </th>
           <th class="customer-col">
             客戶
           </th>
@@ -36,28 +40,17 @@
           :style="{ animationDelay: `${index * 50}ms` }"
           @click="$emit('select', conversation.id)"
         >
+          <td class="read-cell">
+            <span
+              class="read-badge"
+              :class="readBadge(conversation).cls"
+              :aria-label="readBadge(conversation).aria"
+            >
+              {{ readBadge(conversation).text }}
+            </span>
+          </td>
           <td class="customer-cell">
             <div class="customer-info">
-              <span
-                class="read-badge"
-                :class="conversation.unreadCount > 0 ? 'unread' : 'read'"
-                :aria-label="conversation.unreadCount > 0 ? `未讀 ${conversation.unreadCount} 則訊息` : '已讀'"
-              >
-                {{ conversation.unreadCount > 0
-                  ? (conversation.unreadCount > 1 ? `未讀 ${conversation.unreadCount}` : '未讀')
-                  : '已讀' }}
-              </span>
-              <span
-                v-if="conversation.unreadCount > 0"
-                class="unread-dot"
-                aria-hidden="true"
-              />
-              <span
-                v-if="conversation.unreadCount > 0"
-                class="sr-only"
-              >
-                未讀 {{ conversation.unreadCount }} 則訊息
-              </span>
               <div>
                 <div class="customer-name">
                   {{ getCustomerName(conversation) }}
@@ -148,13 +141,26 @@ const getPlatformText = (platform: string) => {
   return platformMap[platform as keyof typeof platformMap] || platform
 }
 
+// 讀取徽章：未讀優先（結案後仍有未讀也要提醒）；已結案顯示淡灰「結案」，其餘「已讀」
+const readBadge = (conversation: Conversation) => {
+  const unread = conversation.unreadCount
+  if (unread > 0) {
+    return { cls: 'unread', text: unread > 1 ? `未讀 ${unread}` : '未讀', aria: `未讀 ${unread} 則訊息` }
+  }
+  if (conversation.status === 'closed') {
+    return { cls: 'closed', text: '結案', aria: '已結案' }
+  }
+  return { cls: 'read', text: '已讀', aria: '已讀' }
+}
+
 const getStatusText = (status: string) => {
   const statusMap: Record<string, string> = {
     active: '進行中',
     assigned: '已指派',
     pending: '待處理',
     'in-progress': '處理中',
-    waiting: '等待中'
+    waiting: '等待中',
+    closed: '已結案'
   }
   return statusMap[status] || status
 }
@@ -271,6 +277,10 @@ const getAssignedTo = (conversation: Conversation) => {
 .conversation-row:nth-child(5) { --animation-duration: 0.7s; }
 
 /* Table Column Widths */
+.read-col { width: 72px; }
+.read-col,
+.read-cell { padding-right: 0 !important; }
+.read-cell .read-badge { margin-top: 2px; }
 .customer-col { width: 20%; }
 .platform-col { width: 10%; }
 .status-col { width: 10%; }
@@ -305,17 +315,16 @@ const getAssignedTo = (conversation: Conversation) => {
   color: #FFFFFF;
 }
 
-.unread-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #FF3B30;
-  flex-shrink: 0;
-}
-
 .read-badge.read {
   background: #F2F2F7;
   color: #8E8E93;
+  font-weight: 500;
+}
+
+/* 已結案：同尺寸但更淡，不搶注意力 */
+.read-badge.closed {
+  background: #F7F7FA;
+  color: #C7C7CC;
   font-weight: 500;
 }
 
@@ -409,6 +418,11 @@ const getAssignedTo = (conversation: Conversation) => {
 
 .status-badge.waiting {
   background-color: #e67e22;
+}
+
+.status-badge.closed {
+  background-color: #E5E5EA;
+  color: #8E8E93;
 }
 
 .last-message {
