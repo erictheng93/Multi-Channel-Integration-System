@@ -410,11 +410,15 @@ export const useConversationsStore = defineStore('conversations', () => {
   // Fetch methods
   // ═══════════════════════════════════════════════════════════════════
 
+  // Latest-wins: a response from a superseded request (e.g. the previous scope tab) must not overwrite the list.
+  let fetchSeq = 0
+
   const fetchConversations = async (newFilters?: ConversationFilters, page = 1, append = false) => {
     if (newFilters) {
       filters.value = { ...newFilters }
       activeFilters.value = { ...newFilters }
     }
+    const seq = ++fetchSeq
 
     loading.value = true
     error.value = null
@@ -437,6 +441,8 @@ export const useConversationsStore = defineStore('conversations', () => {
         pageSize: pagination.value.pageSize,
         ...cleanFilters
       })
+
+      if (seq !== fetchSeq) { return }
 
       if (response.success && response.data) {
         let conversationList: Conversation[]
@@ -476,16 +482,20 @@ export const useConversationsStore = defineStore('conversations', () => {
         pagination.value = paginationData
       } else {
         handleError(response.error, '獲取對話列表失敗')
-        if (conversations.value.length === 0) { loadError.value = error.value ?? '載入對話失敗' }
+        loadError.value = error.value ?? '載入對話失敗'
       }
     } catch (err) {
+      if (seq !== fetchSeq) { return }
       handleError(err, '網路錯誤，無法載入對話列表')
-      if (conversations.value.length === 0) { loadError.value = error.value ?? '載入對話失敗' }
+      // Always recorded: the view decides by what it can actually display (rows of another scope may linger).
+      loadError.value = error.value ?? '載入對話失敗'
     } finally {
-      loading.value = false
-      refreshing.value = false
-      updating.value = false
-      loadingMore.value = false
+      if (seq === fetchSeq) {
+        loading.value = false
+        refreshing.value = false
+        updating.value = false
+        loadingMore.value = false
+      }
     }
   }
 
