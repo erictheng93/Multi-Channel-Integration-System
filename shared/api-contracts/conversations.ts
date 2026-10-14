@@ -267,6 +267,16 @@ export const conversationContracts = {
     path: ({ conversationId }) => `/conversations/${conversationId}/unassign`
   }),
 
+  close: defineApiContract<{ conversationId: string }, void, RawConversationData>({
+    method: 'POST',
+    path: ({ conversationId }) => `/conversations/${conversationId}/close`
+  }),
+
+  reopen: defineApiContract<{ conversationId: string }, void, RawConversationData>({
+    method: 'POST',
+    path: ({ conversationId }) => `/conversations/${conversationId}/reopen`
+  }),
+
   transfer: defineApiContract<{ conversationId: string }, TransferConversationOptions, RawConversationData>({
     method: 'POST',
     path: ({ conversationId }) => `/conversations/${conversationId}/transfer`

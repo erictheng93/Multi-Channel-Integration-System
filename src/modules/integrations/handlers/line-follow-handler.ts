@@ -1,7 +1,7 @@
 // src/modules/integrations/handlers/line-follow-handler.ts
 // LINE follow/unfollow event processing — extracted from line-event-processor.ts
 
-import { eq, and, ne, desc, isNull } from 'drizzle-orm';
+import { eq, and, desc, isNull } from 'drizzle-orm';
 import { createDbClient } from '@/db/drizzle-factory';
 import { customers, conversations, teams, messages } from '@/db/schema';
 import type { Bindings, LineEvent } from '@/types';
@@ -226,10 +226,7 @@ export async function processLineFollowEvent(env: Bindings, event: LineEvent) {
       existingConversation = await drizzleDb
         .select()
         .from(conversations)
-        .where(and(
-          eq(conversations.customerId, existingCustomer.id),
-          ne(conversations.status, 'closed')
-        ))
+        .where(eq(conversations.customerId, existingCustomer.id)) // 一位客戶一個對話（含已結案）
         .get();
 
       if (!existingConversation) {
@@ -409,10 +406,7 @@ export async function processLineFollowEvent(env: Bindings, event: LineEvent) {
           const newConv = await drizzleDb
             .select({ id: conversations.id })
             .from(conversations)
-            .where(and(
-              eq(conversations.customerId, existingCustomer.id),
-              ne(conversations.status, 'closed')
-            ))
+            .where(eq(conversations.customerId, existingCustomer.id)) // 一位客戶一個對話（含已結案）
             .limit(1)
             .get();
           welcomeConversationId = newConv?.id || '';
