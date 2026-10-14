@@ -3,6 +3,12 @@ import Database from 'better-sqlite3'
 import { BroadcasterDeliveryService } from '@/durable-objects/services/broadcaster-delivery-service'
 import { BroadcasterHelpers, type BroadcasterContext } from '@/durable-objects/services/broadcaster-helpers'
 
+// Events a stub actually received; empty-batch presence probes carry none.
+async function received(stub: { fetch: ReturnType<typeof vi.fn> }): Promise<unknown[]> {
+  const bodies = await Promise.all(stub.fetch.mock.calls.map(([req]) => (req as Request).json() as Promise<{ events: unknown[] }>))
+  return bodies.flatMap(b => b.events)
+}
+
 function setup() {
   const db = new Database(':memory:')
   db.exec(`
@@ -36,9 +42,9 @@ describe('global conversation broadcast visibility', () => {
   it('delivers assigned content only to active team members, admins and the matching room', async () => {
     const { db, users, rooms, delivery, event } = setup()
     await delivery.deliverGlobalBroadcast([event('assigned')])
-    expect(users.get('owner')!.fetch).toHaveBeenCalledOnce()
-    expect(users.get('admin')!.fetch).toHaveBeenCalledOnce()
-    for (const id of ['other', 'customer', 'inactive']) expect(users.get(id)!.fetch).not.toHaveBeenCalled()
+    expect(await received(users.get('owner')!)).toHaveLength(1)
+    expect(await received(users.get('admin')!)).toHaveLength(1)
+    for (const id of ['other', 'customer', 'inactive']) expect(await received(users.get(id)!)).toEqual([])
     expect(rooms.get('assigned')!.fetch).toHaveBeenCalledOnce()
     expect(rooms.get('unassigned')!.fetch).not.toHaveBeenCalled()
     db.close()
@@ -47,9 +53,9 @@ describe('global conversation broadcast visibility', () => {
   it('preserves the unassigned pool for agents and admins, excluding customers', async () => {
     const { db, users, delivery, event } = setup()
     await delivery.deliverGlobalBroadcast([event('unassigned')])
-    for (const id of ['owner', 'other', 'admin']) expect(users.get(id)!.fetch).toHaveBeenCalledOnce()
-    expect(users.get('customer')!.fetch).not.toHaveBeenCalled()
-    expect(users.get('inactive')!.fetch).not.toHaveBeenCalled()
+    for (const id of ['owner', 'other', 'admin']) expect(await received(users.get(id)!)).toHaveLength(1)
+    expect(await received(users.get('customer')!)).toEqual([])
+    expect(await received(users.get('inactive')!)).toEqual([])
     db.close()
   })
 
@@ -58,7 +64,8 @@ describe('global conversation broadcast visibility', () => {
     await delivery.deliverGlobalBroadcast([event('missing'), event(), {
       ...event('assigned'), conversationId: 'unassigned'
     }])
-    for (const stub of [...users.values(), ...rooms.values()]) expect(stub.fetch).not.toHaveBeenCalled()
+    for (const stub of users.values()) expect(await received(stub)).toEqual([])
+    for (const stub of rooms.values()) expect(stub.fetch).not.toHaveBeenCalled()
     db.close()
   })
 

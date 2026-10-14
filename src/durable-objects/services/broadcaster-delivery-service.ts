@@ -330,6 +330,13 @@ export class BroadcasterDeliveryService {
 
       if (response.ok) {
         const result = await response.json() as { deliveredCount?: number; connections?: number };
+        // registerWithMessageBroadcaster is one-shot: if it failed, a confirmed live socket
+        // found here is the only chance to put the user back in the global-broadcast registry.
+        if (typeof result.connections === 'number' && result.connections > 0 && !this.ctx.userConnections.has(userId)) {
+          this.ctx.userConnections.set(userId, userStub);
+          this.ctx.stats.activeConnections++;
+          await this.helpers.persistConnectionIds();
+        }
         return {
           delivered: result.deliveredCount || events.length,
           connections: typeof result.connections === 'number' ? result.connections : undefined
@@ -442,16 +449,20 @@ export class BroadcasterDeliveryService {
 
       // Broadcast to all active user connections; users that report zero live
       // sockets are stale registry entries and are pruned after the fan-out.
-      const staleUserIds: string[] = [];
-      const userPromises = Array.from(this.ctx.userConnections.entries()).map(async ([userId, _stub]) => {
+      // The stub is kept so a registration that lands during the fan-out (which replaces
+      // the map entry) is not pruned on the strength of this earlier probe.
+      const stale: Array<[string, DurableObjectStub]> = [];
+      const userPromises = Array.from(this.ctx.userConnections.entries()).map(async ([userId, stub]) => {
         try {
           console.log(`[MessageBroadcaster] Delivering to user: ${userId}`);
           const visible = events.filter(event => contexts.has(event) &&
             (contexts.get(event) === null || recipients.get(contexts.get(event)!)?.has(String(userId))));
+          // No request for users who cannot see these events (DO requests are billed); their
+          // stale entry, if any, is pruned the next time they are a recipient.
           if (!visible.length) return 0;
           const { delivered, connections } = await this.deliverToUserWithPresence(userId, visible);
           // Missing `connections` means unknown (older UserConnection): keep the entry.
-          if (connections === 0) staleUserIds.push(userId);
+          if (connections === 0) stale.push([userId, stub]);
           console.log(`[MessageBroadcaster] Delivered to user ${userId}: ${delivered} events`);
           return delivered;
         } catch (error) {
@@ -467,11 +478,17 @@ export class BroadcasterDeliveryService {
         }
       });
 
-      let pruned = false;
-      for (const userId of staleUserIds) {
-        pruned = this.ctx.userConnections.delete(userId) || pruned;
+      let pruned = 0;
+      for (const [userId, stub] of stale) {
+        // Identity check: /register-connection installs a fresh stub, so a user who came
+        // online after the probe keeps their entry.
+        if (this.ctx.userConnections.get(userId) === stub) {
+          this.ctx.userConnections.delete(userId);
+          pruned++;
+        }
       }
-      if (pruned) {
+      if (pruned > 0) {
+        this.ctx.stats.activeConnections = Math.max(0, this.ctx.stats.activeConnections - pruned);
         await this.helpers.persistConnectionIds();
       }
 
