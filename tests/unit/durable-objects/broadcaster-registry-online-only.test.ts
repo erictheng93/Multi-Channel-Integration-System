@@ -19,6 +19,7 @@ function setup(registered: Record<string, FakeStub>, local: Record<string, FakeS
       }
     },
     state: { storage: { put } },
+    stats: { activeConnections: Object.keys(registered).length },
     userConnections,
     conversationRooms: new Map()
   } as unknown as BroadcasterContext
@@ -30,7 +31,7 @@ function setup(registered: Record<string, FakeStub>, local: Record<string, FakeS
     priority: 'normal' as const, data: { conversationId: 'c1' }, targets: [], options: {},
     queuedAt: 0, retryCount: 0
   }
-  return { userConnections, put, delivery, event }
+  return { userConnections, put, delivery, event, ctx, helpers }
 }
 
 describe('MessageBroadcaster registry holds online users only', () => {
@@ -53,6 +54,45 @@ describe('MessageBroadcaster registry holds online users only', () => {
     const writes = put.mock.calls.filter(c => c[0] === 'userConnectionIds')
     expect(writes).toHaveLength(1)
     expect(writes[0][1]).toEqual(['online'])
+  })
+
+  it('decrements activeConnections by the number of pruned users', async () => {
+    const online = stubReporting({ deliveredCount: 1, connections: 1 })
+    const offline = stubReporting({ deliveredCount: 1, connections: 0 })
+    const { ctx, delivery, event } = setup({ online, offline })
+    await delivery.deliverGlobalBroadcast([event])
+    expect(ctx.stats.activeConnections).toBe(1)
+  })
+
+  it('does not prune a user who re-registered while the probe was in flight', async () => {
+    const offline = stubReporting({ deliveredCount: 1, connections: 0 })
+    const { userConnections, delivery, event } = setup({ offline })
+    // /register-connection installs a fresh stub; simulate it landing mid-fan-out.
+    const fresh = stubReporting({ deliveredCount: 1, connections: 1 })
+    offline.fetch.mockImplementationOnce(async () => {
+      userConnections.set('offline', fresh)
+      return Response.json({ success: true, deliveredCount: 1, connections: 0 })
+    })
+    await delivery.deliverGlobalBroadcast([event])
+    expect(userConnections.get('offline')).toBe(fresh)
+  })
+
+  it('restores an unregistered user whose targeted delivery reports live sockets', async () => {
+    const stranger = stubReporting({ deliveredCount: 1, connections: 1 })
+    const { userConnections, ctx, put, delivery, event } = setup({}, { stranger })
+    await delivery.deliverToUser('stranger', [event])
+    expect(userConnections.get('stranger')).toBe(stranger)
+    expect(ctx.stats.activeConnections).toBe(1)
+    expect(put.mock.calls.filter(c => c[0] === 'userConnectionIds')).toHaveLength(1)
+  })
+
+  it('sends no request to users who cannot see the event', async () => {
+    const hidden = stubReporting({ deliveredCount: 0, connections: 0 })
+    const { userConnections, helpers, delivery, event } = setup({ hidden })
+    vi.spyOn(helpers, 'getConversationRecipients').mockResolvedValue(new Set(['someone-else']))
+    await delivery.deliverGlobalBroadcast([event])
+    expect(hidden.fetch).not.toHaveBeenCalled()
+    expect(userConnections.has('hidden')).toBe(true)
   })
 
   it('keeps a user whose response lacks connections (rolling deploy) and does not persist', async () => {

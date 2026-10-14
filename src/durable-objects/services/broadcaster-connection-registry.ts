@@ -32,15 +32,13 @@ export class BroadcasterConnectionRegistry {
           this.ctx.conversationRooms.set(id, stub);
         }
       } else if (type === 'user') {
-        if (!this.ctx.userConnections.has(id)) {
-          const namespace = this.ctx.env.USER_CONNECTION;
-          if (!namespace) {
-            return new Response(JSON.stringify({ error: 'USER_CONNECTION binding is not configured' }), { status: 503 });
-          }
-          const doId = namespace.idFromName(id);
-          const stub = namespace.get(doId);
-          this.ctx.userConnections.set(id, stub);
+        const namespace = this.ctx.env.USER_CONNECTION;
+        if (!namespace) {
+          return new Response(JSON.stringify({ error: 'USER_CONNECTION binding is not configured' }), { status: 503 });
         }
+        // Always install a fresh stub, even for a known user: stale-entry pruning compares
+        // stub identity, so a registration after a presence probe must change the entry.
+        this.ctx.userConnections.set(id, namespace.get(namespace.idFromName(id)));
       }
 
       this.ctx.stats.activeConnections++;
