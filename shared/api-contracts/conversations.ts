@@ -128,6 +128,8 @@ export interface ConversationBulkOperationResponse {
   operation: string
   affectedCount: number
   conversationIds: string[]
+  /** close / reopen only: new status per conversation that actually changed */
+  statuses?: Record<string, string>
 }
 
 export interface ConversationHealthResponse {

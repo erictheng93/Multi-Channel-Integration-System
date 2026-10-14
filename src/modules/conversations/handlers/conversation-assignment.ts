@@ -10,6 +10,7 @@ import { conversations, customers, teams, customerNameSql } from '@/db/schema';
 import type { Bindings } from '@/types';
 import { PermissionService } from '@/services/permission-service';
 import { getConversationVisibilityCondition } from '@/services/conversation-visibility';
+import { setConversationsClosed } from '../services/conversation-close-service';
 import { jwtAuth } from '@/middleware/auth';
 import { WebSocketBroadcastService } from '@/services/websocket-broadcast-service';
 import { createContextLogger } from '@/utils/logger';
@@ -675,43 +676,15 @@ async function setConversationClosed(c: Context<{ Bindings: Bindings }>, closed:
       return c.json({ error: 'Conversation not found' }, HTTP_STATUS.NOT_FOUND);
     }
 
-    // 已是目標狀態：冪等回傳，避免 reopen 把 in-progress 等狀態改掉
-    if ((conv.status === 'closed') === closed) {
+    const statuses = await setConversationsClosed(c.env, activityMeta(c, user), [conv], closed);
+    const status = statuses[conv.id];
+    // 已是目標狀態：冪等回傳原資料
+    if (!status) {
       return c.json({ success: true, data: conv, timestamp: nowISO() });
     }
 
-    // 重新開啟時依指派狀態回到 assigned / active，與 assign / unassign 的狀態語意一致
-    const status = closed ? 'closed' : (conv.assignedTeamId ? 'assigned' : 'active');
     const timestamp = nowISO();
     const closedAt = closed ? timestamp : null;
-
-    const capture = new ActivityCapture(c.env.DB);
-    await c.env.DB.batch([
-      capture.buildIrreversibleLog({
-        ...activityMeta(c, user),
-        action: closed ? ACTIVITY_ACTIONS.CONVERSATION_CLOSE : ACTIVITY_ACTIONS.CONVERSATION_REOPEN,
-        resourceType: RESOURCE_TYPES.CONVERSATION,
-        resourceId: conversationId,
-        details: { previousStatus: conv.status, status },
-        reason: closed ? 'Undo by reopening the conversation' : 'Undo by closing the conversation'
-      }),
-      c.env.DB
-        .prepare('UPDATE conversations SET status = ?, closed_at = ?, updated_at = ? WHERE id = ?')
-        .bind(status, closedAt, timestamp, conversationId)
-    ]);
-
-    try {
-      const broadcastService = new WebSocketBroadcastService(c.env);
-      await broadcastService.broadcastConversationEvent({
-        type: 'conversation_status_changed',
-        conversationId,
-        userId: String(user.id),
-        data: { status, timestamp },
-        priority: 'normal'
-      });
-    } catch (broadcastError) {
-      log.warn('WebSocket: Status change broadcast failed, continuing', { error: broadcastError instanceof Error ? broadcastError.message : String(broadcastError) });
-    }
 
     return c.json({
       success: true,
