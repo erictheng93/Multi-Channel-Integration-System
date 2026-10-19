@@ -17,8 +17,10 @@ let currentPayload: Record<string, any> = {
 vi.mock('@/middleware/auth', () => ({
   jwtAuth: vi.fn(async (c: any, next: any) => {
     c.set('jwtPayload', { ...currentPayload });
+    c.set('user', { id: 'u1', role: 'admin', allowedTeamIds: [1] });
     return next();
   }),
+  requireAdmin: () => async (_c: any, next: any) => next(),
 }));
 
 // Drizzle ORM

@@ -3,7 +3,7 @@
 
 import { Hono } from 'hono';
 import type { Bindings } from '@/types';
-import { jwtAuth } from '@/middleware/auth';
+import { jwtAuth, requireAdmin } from '@/middleware/auth';
 import { createDbClient } from '@/db/drizzle-factory';
 import { autoReplySchedules } from '@/db/schema';
 import { eq } from 'drizzle-orm';
@@ -34,6 +34,8 @@ function toContractSchedule(schedule: AutoReplyScheduleRow): AutoReplySchedule {
 }
 
 autoReplySchedulesHandler.use('/*', jwtAuth);
+// Writes are admin-only (matches frontend requiresAdmin); role comes from D1.
+autoReplySchedulesHandler.on(['POST', 'PUT', 'DELETE'], '/*', requireAdmin());
 
 // ==================== Health check ====================
 autoReplySchedulesHandler.get('/health', (c) => {
@@ -53,6 +55,10 @@ autoReplySchedulesHandler.get('/', async (c) => {
 
     if (!teamId) {
       return badRequestResponse(c, 'teamId is required');
+    }
+    const reader = c.get('user');
+    if (reader.role !== 'admin' && !reader.allowedTeamIds?.includes(teamId)) {
+      return c.json({ success: false, error: 'Forbidden' }, 403);
     }
 
     const schedules = await drizzleDb
