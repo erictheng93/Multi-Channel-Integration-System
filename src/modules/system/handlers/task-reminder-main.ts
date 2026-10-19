@@ -8,7 +8,7 @@ const log = createContextLogger('TaskReminder')
 
 import { HTTP_STATUS } from '@/constants/http-status';
 import type { Bindings, JWTPayload } from '@/types';
-import { jwtAuth } from '@/middleware/auth';
+import { jwtAuth, requireAdmin } from '@/middleware/auth';
 import { TaskReminderService } from '@/services/task-reminder-service';
 import { globalErrorHandler } from '@/core/error-handler';
 import { nowISO } from '@/utils/timestamp'
@@ -78,12 +78,11 @@ app.get('/stats', jwtAuth, async (c) => {
  * 手動觸發處理到期提醒 (Admin Only)
  * POST /api/reminders/process
  */
-app.post('/process', jwtAuth, async (c) => {
+app.post('/process', jwtAuth, requireAdmin(), async (c) => {
   try {
-    const payload = c.get('jwtPayload') as JWTPayload;
 
     // 只有管理員可以手動觸發
-    if (payload.role !== 'admin') {
+    if (c.get('user')?.role !== 'admin') {
       return c.json({
         success: false,
         error: 'Admin access required',

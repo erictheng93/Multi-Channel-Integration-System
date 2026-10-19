@@ -176,7 +176,7 @@ export const getSettings = async (c: Context<{ Bindings: Bindings }>) => {
 export const updateSettings = async (c: Context<{ Bindings: Bindings }>) => {
   try {
     const payload = c.get('jwtPayload')
-    if (!payload || payload.role !== 'admin') {
+    if (!payload || c.get('user')?.role !== 'admin') {
       return forbiddenResponse(c, 'Admin role required')
     }
 
@@ -248,7 +248,7 @@ export const updateSettings = async (c: Context<{ Bindings: Bindings }>) => {
       await activityService.logActivity({
         userId: payload.userId.toString(),
         userName: payload.username || 'Admin',
-        userRole: payload.role,
+        userRole: c.get('user')?.role ?? 'admin',
         action: ACTIVITY_ACTIONS.SETTINGS_UPDATE,
         resourceType: RESOURCE_TYPES.SYSTEM,
         details: {

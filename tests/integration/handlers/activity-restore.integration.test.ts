@@ -79,7 +79,7 @@ function makeBindings(options: {
     ])
 
   return {
-    bindings: { DB: { prepare, batch } as unknown as D1Database },
+    bindings: { DB: { prepare, batch } as unknown as D1Database, ENVIRONMENT: 'test' },
     prepare,
     stmt,
     batch,
@@ -88,6 +88,12 @@ function makeBindings(options: {
 }
 
 const originalActorHeader = {
+  Authorization: 'Bearer fake',
+  'X-Test-User': JSON.stringify({ id: 'agent-original', role: 'admin', name: 'Alice' })
+}
+
+// F07: the original author, now demoted to agent, must not be able to restore
+const demotedAuthorHeader = {
   Authorization: 'Bearer fake',
   'X-Test-User': JSON.stringify({ id: 'agent-original', role: 'agent', name: 'Alice' })
 }
@@ -152,6 +158,12 @@ describe('POST /api/activities/:id/restore', () => {
       }
     }, bindings)
 
+    expect(res.status).toBe(403)
+  })
+
+  it('returns 403 for the original author once demoted from admin (F07)', async () => {
+    const { bindings } = makeBindings()
+    const res = await app.request('/api/activities/5/restore', { method: 'POST', headers: demotedAuthorHeader }, bindings)
     expect(res.status).toBe(403)
   })
 
@@ -274,7 +286,7 @@ describe('POST /api/activities/:id/restore', () => {
         { meta: { last_row_id: assignedId } }
       ]
     })
-    const bindings = { DB: { prepare, batch } as unknown as D1Database }
+    const bindings = { DB: { prepare, batch } as unknown as D1Database, ENVIRONMENT: 'test' }
 
     const [first, second] = await Promise.all([
       app.request('/api/activities/5/restore', {
