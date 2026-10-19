@@ -137,7 +137,7 @@
     "@aws-sdk/s3-request-presigner": "^3.1151.0",
     "@hono/zod-validator": "^0.9.1",
     "bcryptjs": "^3.0.3",
-    "drizzle-orm": "^0.45.2",
+    "drizzle-orm": "^0.45.4",
     "hono": "^4.13.13",
     "ipaddr.js": "^2.5.0",
     "jsonwebtoken": "^9.0.3",
