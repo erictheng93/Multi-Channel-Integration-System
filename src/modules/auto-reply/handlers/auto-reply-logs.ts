@@ -14,12 +14,13 @@ import { Hono } from 'hono';
 import type { Bindings } from '@/types';
 import { jwtAuth } from '@/middleware/auth';
 import { createDbClient } from '@/db/drizzle-factory';
-import { and, or, eq, gte, isNull, desc, count } from 'drizzle-orm';
-import { autoReplyLogs, autoReplyRules } from '@/db/schema';
+import { and, or, eq, gte, isNull, isNotNull, desc, count } from 'drizzle-orm';
+import { autoReplyLogs, autoReplyRules, conversations } from '@/db/schema';
 import {
   badRequestResponse,
   handleApiError,
 } from '@/utils/api-response';
+import { getConversationVisibilityCondition } from '@/services/conversation-visibility';
 import { nowISO } from '@/utils/timestamp';
 import {
   autoReplyContracts,
@@ -72,6 +73,12 @@ autoReplyLogsHandler.get('/', async (c) => {
       return badRequestResponse(c, 'teamId is required');
     }
 
+    // ?teamId= must be a team the caller belongs to (admin: any)
+    const user = c.get('user');
+    if (user.role !== 'admin' && !user.allowedTeamIds?.includes(teamId)) {
+      return c.json({ success: false, error: 'Forbidden' }, 403);
+    }
+
     const page = Math.max(1, parseInt(c.req.query('page') || '1'));
     const pageSize = Math.min(parseInt(c.req.query('pageSize') || '50'), 100);
     const offset = (page - 1) * pageSize;
@@ -118,9 +125,12 @@ autoReplyLogsHandler.get('/', async (c) => {
     // Team scoping: include rules owned by the caller's team AND global
     // rules (team_id IS NULL). This matches the previous behaviour.
     // ──────────────────────────────────────────────────────────────────
-    const teamCondition = or(
-      eq(autoReplyRules.teamId, teamId),
-      isNull(autoReplyRules.teamId)
+    // Plus conversation visibility: global/orphaned-rule logs must not expose
+    // other teams' conversations. Logs without a conversation are admin-only.
+    const teamCondition = and(
+      or(eq(autoReplyRules.teamId, teamId), isNull(autoReplyRules.teamId)),
+      getConversationVisibilityCondition(user),
+      user.role === 'admin' ? undefined : isNotNull(conversations.id)
     );
 
     // Build the full filter set for the listing and total-count queries
@@ -167,6 +177,7 @@ autoReplyLogsHandler.get('/', async (c) => {
         .select(logsProjection)
         .from(autoReplyLogs)
         .leftJoin(autoReplyRules, eq(autoReplyLogs.ruleId, autoReplyRules.id))
+        .leftJoin(conversations, eq(autoReplyLogs.conversationId, conversations.id))
         .where(listWhere)
         .orderBy(desc(autoReplyLogs.createdAt))
         .limit(pageSize)
@@ -175,11 +186,13 @@ autoReplyLogsHandler.get('/', async (c) => {
         .select({ total: count() })
         .from(autoReplyLogs)
         .leftJoin(autoReplyRules, eq(autoReplyLogs.ruleId, autoReplyRules.id))
+        .leftJoin(conversations, eq(autoReplyLogs.conversationId, conversations.id))
         .where(listWhere),
       drizzleDb
         .select({ total: count() })
         .from(autoReplyLogs)
         .leftJoin(autoReplyRules, eq(autoReplyLogs.ruleId, autoReplyRules.id))
+        .leftJoin(conversations, eq(autoReplyLogs.conversationId, conversations.id))
         .where(todayWhere),
     ]);
 

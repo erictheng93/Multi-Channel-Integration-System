@@ -25,8 +25,13 @@ let currentPayload: Record<string, unknown> = {
 vi.mock('@/middleware/auth', () => ({
   jwtAuth: vi.fn(async (c: any, next: any) => {
     c.set('jwtPayload', { ...currentPayload });
+    c.set('user', { id: 'agent-007', role: 'agent', allowedTeamIds: [Number(currentPayload.primaryTeamId ?? 1)] });
     return next();
   }),
+}));
+
+vi.mock('@/services/conversation-visibility', () => ({
+  getConversationVisibilityCondition: () => ({ _op: 'visibility' }),
 }));
 
 // Drizzle operators — return opaque token objects so we can inspect call args
@@ -35,6 +40,7 @@ vi.mock('drizzle-orm', () => ({
   and: (...args: any[]) => ({ _op: 'and', args: args.filter(Boolean) }),
   or: (...args: any[]) => ({ _op: 'or', args: args.filter(Boolean) }),
   isNull: (col: any) => ({ _op: 'isNull', col }),
+  isNotNull: (col: any) => ({ _op: 'isNotNull', col }),
   gte: (col: any, value: any) => ({ _op: 'gte', col, value }),
   desc: (col: any) => ({ _op: 'desc', col }),
   count: () => ({ _op: 'count' }),
@@ -42,6 +48,7 @@ vi.mock('drizzle-orm', () => ({
 
 // Schema tables — stub objects used only as identity markers
 vi.mock('@/db/schema', () => ({
+  conversations: { _table: 'conversations', id: { _col: 'id' } },
   autoReplyLogs: {
     _table: 'auto_reply_logs',
     id: { _col: 'id' },
