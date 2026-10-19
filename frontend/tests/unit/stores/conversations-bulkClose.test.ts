@@ -4,13 +4,13 @@ import type { Conversation } from '@/types'
 
 const mockBulkClose = vi.fn()
 const mockBulkReopen = vi.fn()
-const mockList = vi.fn()
+const mockGetConversation = vi.fn()
 
 vi.mock('@/api/conversations', () => ({
   conversationApi: {
     bulkClose: (...args: unknown[]) => mockBulkClose(...args),
     bulkReopen: (...args: unknown[]) => mockBulkReopen(...args),
-    list: (...args: unknown[]) => mockList(...args)
+    getConversation: (...args: unknown[]) => mockGetConversation(...args)
   }
 }))
 
@@ -86,27 +86,31 @@ describe('bulkSetConversationsClosed', () => {
     expect(statusOf(store, 'c')).toBe('active')
   })
 
-  it('refetches when the server skipped a requested id, instead of keeping the guessed status', async () => {
-    const store = await setup([conv('a', { status: 'closed', assignedTeamId: 3 }), conv('b', { status: 'closed' })])
+  it('fetches only the skipped id and keeps the rest of the loaded list intact', async () => {
+    const loaded = Array.from({ length: 60 }, (_, i) => conv(`x${i}`))
+    const store = await setup([conv('a', { status: 'closed', assignedTeamId: 3 }), conv('b', { status: 'closed' }), ...loaded])
     // b was already moved to in_progress server-side, so it is omitted from statuses
     mockBulkReopen.mockResolvedValue({
       success: true,
       data: { operation: 'reopen', affectedCount: 1, conversationIds: ['a'], statuses: { a: 'assigned' } }
     })
-    mockList.mockResolvedValue({ success: true, data: { items: [conv('a', { status: 'assigned', assignedTeamId: 3 }), conv('b', { status: 'in_progress' })] } })
+    mockGetConversation.mockResolvedValue({ success: true, data: conv('b', { status: 'in_progress' }) })
 
     await store.bulkSetConversationsClosed(['a', 'b'], false)
-    await vi.waitFor(() => expect(mockList).toHaveBeenCalled())
     await vi.waitFor(() => expect(statusOf(store, 'b')).toBe('in_progress'))
+
+    expect(mockGetConversation).toHaveBeenCalledTimes(1)
+    expect(mockGetConversation).toHaveBeenCalledWith('b')
+    expect(store.conversations).toHaveLength(62)
   })
 
-  it('does not refetch when every requested id is in the server statuses', async () => {
+  it('does not fetch anything when every requested id is in the server statuses', async () => {
     const store = await setup([conv('a')])
     mockBulkClose.mockResolvedValue({ success: true, data: { operation: 'close', affectedCount: 1, conversationIds: ['a'], statuses: { a: 'closed' } } })
 
     await store.bulkSetConversationsClosed(['a'], true)
 
-    expect(mockList).not.toHaveBeenCalled()
+    expect(mockGetConversation).not.toHaveBeenCalled()
   })
 
   it('rolls back every id and returns null when the API reports failure', async () => {
