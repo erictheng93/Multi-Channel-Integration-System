@@ -5,9 +5,10 @@
  */
 import * as fs from 'fs';
 import * as path from 'path';
+import { fileURLToPath } from 'url';
 import { computeWorkerSourceHash } from './worker-bundle-source-hash';
 
-const bundleFile = path.join(path.dirname(new URL(import.meta.url).pathname), '../web-installer/backend/src/services/generated/worker-bundle.ts');
+const bundleFile = path.join(path.dirname(fileURLToPath(import.meta.url)), '../web-installer/backend/src/services/generated/worker-bundle.ts');
 const recorded = fs.readFileSync(bundleFile, 'utf-8').match(/sourceHash: '([0-9a-f]{64})'/)?.[1];
 const current = computeWorkerSourceHash();
 
