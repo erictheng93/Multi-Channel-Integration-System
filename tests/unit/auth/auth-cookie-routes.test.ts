@@ -171,7 +171,8 @@ describe('auth cookie route contract', () => {
       jti: 'refresh-jti',
       exp: Math.floor(Date.now() / 1000) + 3600
     })
-    mocks.cacheGet.mockResolvedValue('agent-1')
+    // only the refresh-active slot exists; revoked:/epoch keys are absent
+    mocks.cacheGet.mockImplementation(async (k: string) => (k.startsWith('refresh-active:') ? 'agent-1' : null))
   })
 
   it('sets HttpOnly refresh/access cookies and readable CSRF cookie on login', async () => {
