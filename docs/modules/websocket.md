@@ -70,4 +70,4 @@ WebSocket 模組負責建立並維護「客服人員瀏覽器 ↔ Cloudflare Wor
 
 ---
 
-**相關模組**：[realtime](./realtime.md)（事件語意層）、[collaboration](./collaboration.md)（協作狀態）、[notifications](./notifications.md)（通知遞送）
+**相關模組**：[realtime](./realtime.md)（事件語意層）、[notifications](./notifications.md)（通知遞送）

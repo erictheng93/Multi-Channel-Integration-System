@@ -13,7 +13,6 @@
 
 ### Module-Specific APIs (`api/modules/`)
 - [ANALYTICS_API.md](api/modules/ANALYTICS_API.md) - Analytics and reporting
-- [COLLABORATION_API.md](api/modules/COLLABORATION_API.md) - Team collaboration
 - [WEBSOCKET_API.md](api/modules/WEBSOCKET_API.md) - Real-time WebSocket API
 
 ---

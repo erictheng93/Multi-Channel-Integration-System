@@ -1292,7 +1292,6 @@ export function useWebSocket(url, token) {
 ##  Related Resources
 
 - [Main API Reference](../API_REFERENCE.md)
-- [Collaboration API](./COLLABORATION_API.md)
 - [Messaging API](./MESSAGING_API.md)
 - [WebSocket Integration Guide](../../guides/WEBSOCKET_INTEGRATION.md)
 - [Real-time Best Practices](../../guides/REALTIME_BEST_PRACTICES.md)
