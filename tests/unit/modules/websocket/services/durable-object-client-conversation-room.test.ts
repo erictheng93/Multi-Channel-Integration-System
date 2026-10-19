@@ -71,4 +71,20 @@ describe('DurableObjectClient conversation targets (audit W5)', () => {
     expect(room.fetch).not.toHaveBeenCalled();
     expect(user.fetch).toHaveBeenCalledTimes(1);
   });
+
+  it('does not count the skipped conversation target as a success when the real target fails', async () => {
+    const user = makeNamespace();
+    user.fetch.mockResolvedValue(new Response('{}', { status: 500 }));
+    const client = makeClient({ USER_CONNECTION: user.ns });
+    const ok = await client.broadcast(makeEvent([
+      { type: 'conversation', targets: ['c1'] },
+      { type: 'user', targets: ['u1'] }
+    ]));
+    expect(ok).toBe(false);
+  });
+
+  it('treats an event addressed only to the conversation room as nothing to deliver, not a failure', async () => {
+    const client = makeClient({});
+    expect(await client.broadcast(makeEvent([{ type: 'conversation', targets: ['c1'] }]))).toBe(true);
+  });
 });
