@@ -64,6 +64,8 @@ export async function signJWT(payload: Omit<JWTPayload, 'iat' | 'exp'>, secret: 
   const jwtPayload = {
     ...payload,
     iat: now,
+    // Millisecond issue time: iat alone cannot order a token against a same-second credential change.
+    iatMs: Date.now(),
     exp: now + expiresIn
   };
 
@@ -142,24 +144,25 @@ export async function verifyJWT(token: string, secret: string): Promise<JWTPaylo
   }
 }
 
-// Per-user "tokens valid after" epoch (KV, no migration). Password change/reset
-// writes it; /refresh and access-token validation reject tokens with iat before it.
+// Per-user "tokens valid after" epoch in ms (KV, no migration). Password change/reset
+// writes it; /refresh and access-token validation reject tokens issued before it.
 // TTL covers the longest token life (7-day refresh), after which no older token can exist.
 const TOKEN_EPOCH_TTL = 8 * 24 * 60 * 60;
 const tokenEpochKey = (userId: string | number) => `tokens-valid-after:${userId}`;
 
 export async function bumpTokensValidAfter(cache: KVNamespace, userId: string | number): Promise<void> {
-  // +1: iat has whole-second resolution, so a token minted earlier in this same second
-  // would otherwise equal the epoch and survive. Cost: a login within the remaining
-  // <1s of the bump second is also rejected (callers never mint a token right after a bump).
-  await cache.put(tokenEpochKey(userId), String(Math.floor(Date.now() / 1000) + 1), { expirationTtl: TOKEN_EPOCH_TTL });
+  await cache.put(tokenEpochKey(userId), String(Date.now()), { expirationTtl: TOKEN_EPOCH_TTL });
 }
 
 /** True when the token was issued before the user's last credential change. Throws if KV is unreadable (callers fail closed). */
-export async function isIssuedBeforeTokenEpoch(cache: KVNamespace, payload: { userId: string | number; iat?: number }): Promise<boolean> {
+export async function isIssuedBeforeTokenEpoch(cache: KVNamespace, payload: { userId: string | number; iat?: number; iatMs?: number }): Promise<boolean> {
   const raw = await cache.get(tokenEpochKey(payload.userId));
   if (!raw) return false;
-  return typeof payload.iat !== 'number' || payload.iat < Number(raw);
+  if (typeof payload.iat !== 'number') return true;
+  // Epochs written before the ms switch are in seconds (< 1e11).
+  const epochMs = Number(raw) < 1e11 ? Number(raw) * 1000 : Number(raw);
+  // Tokens without iatMs predate it; their earliest possible issue time is iat seconds.
+  return (payload.iatMs ?? payload.iat * 1000) < epochMs;
 }
 
 // 生成隨機字符串 - 使用加密安全的隨機數生成器 (CSPRNG)
