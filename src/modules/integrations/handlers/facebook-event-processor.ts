@@ -7,7 +7,7 @@ import { ActivityService } from '@modules/activities';
 import { WebSocketBroadcastService } from '@/services/websocket-broadcast-service';
 import { createContextLogger } from '@/utils/logger';
 
-import { findOrCreateConversation, isDuplicateMessage, saveMessage } from '../services/webhook-conversation-service';
+import { findOrCreateConversation, isDuplicateMessage, notifyNewConversation, saveMessage } from '../services/webhook-conversation-service';
 import { processFacebookMedia } from '../services/webhook-media-service';
 import { nowMs } from '@/utils/timestamp';
 import { findOrCreateCustomer, triggerBackgroundSyncIfNeeded } from '../services/webhook-customer-service';
@@ -142,6 +142,12 @@ export async function processFacebookMessage(env: Bindings, messaging: FacebookM
       mediaData,
       'facebook'
     );
+
+    // Notify only once the first message is stored, so agents never see an alert for an empty conversation.
+    await notifyNewConversation(env, conversation, 'facebook', {
+      messageContent: messageContent.substring(0, 100),
+      customerDisplayName: user.displayName || 'Facebook User'
+    });
 
     // =================== DEFERRED: Non-critical tasks via waitUntil ===================
     const convId = conversation!.id;
