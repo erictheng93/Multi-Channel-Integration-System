@@ -166,7 +166,6 @@ Access token 過期前用 refresh token 換新；refresh 端點會**重新查 DB
 
 ### 模組級 API 規格（如有獨立規格書）
 - [`modules/WEBSOCKET_API.md`](./modules/WEBSOCKET_API.md)
-- [`modules/COLLABORATION_API.md`](./modules/COLLABORATION_API.md)
 - [`modules/ANALYTICS_API.md`](./modules/ANALYTICS_API.md)
 - [`MESSAGING_API_REFERENCE.md`](./MESSAGING_API_REFERENCE.md)
 - [`TAG_API_REFERENCE.md`](./TAG_API_REFERENCE.md)
