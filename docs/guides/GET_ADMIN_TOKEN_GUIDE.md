@@ -82,11 +82,8 @@ echo "Token: $TOKEN"
 ```bash
 
 curl -H "Authorization: Bearer $TOKEN" \
- https://your-api-domain.example.com/api/collaboration/health
+ https://your-api-domain.example.com/api/auth/me
 
-
-curl -H "Authorization: Bearer $TOKEN" \
- https://your-api-domain.example.com/api/collaboration/stats
 ```
 
 ---
@@ -110,11 +107,7 @@ $headers = @{
 }
 
 
-Invoke-RestMethod -Uri "https://your-api-domain.example.com/api/collaboration/health" `
- -Headers $headers
-
-
-Invoke-RestMethod -Uri "https://your-api-domain.example.com/api/collaboration/stats" `
+Invoke-RestMethod -Uri "https://your-api-domain.example.com/api/auth/me" `
  -Headers $headers
 ```
 
@@ -182,95 +175,10 @@ wrangler d1 execute mcis-db --remote \
 #### 1.
 
 ```bash
-curl -H "Authorization: Bearer YOUR_TOKEN" \
- https://your-api-domain.example.com/api/collaboration/health
-
-# :
-{
- "success": true,
- "data": {
- "status": "healthy",
- "config": {
- "defaultProtocol": "websocket",
- "enableWebSocket": true
- },
- "availableProtocols": ["sse", "websocket"],
- "timestamp": "2025-10-02T10:00:00Z"
- }
-}
+curl -H "Authorization: Bearer YOUR_TOKEN"  https://your-api-domain.example.com/api/auth/me
 ```
 
-#### 2.
-
-```bash
-curl -H "Authorization: Bearer YOUR_TOKEN" \
- https://your-api-domain.example.com/api/collaboration/stats
-
-# :
-{
- "success": true,
- "data": {
- "totalViewers": 10,
- "totalTyping": 2,
- "totalRooms": 5,
- "connectionsByProtocol": {
- "sse": 3,
- "websocket": 7,
- "http": 0
- }
- }
-}
-```
-
-#### 3.
-
-```bash
-curl -X POST \
- -H "Authorization: Bearer YOUR_TOKEN" \
- -H "Content-Type: application/json" \
- https://your-api-domain.example.com/api/collaboration/conversations/123/join
-
-# :
-{
- "success": true,
- "message": "Joined conversation successfully"
-}
-```
-
-#### 4.
-
-```bash
-curl -H "Authorization: Bearer YOUR_TOKEN" \
- https://your-api-domain.example.com/api/collaboration/conversations/123/state
-
-# :
-{
- "success": true,
- "data": {
- "conversationId": 123,
- "viewers": [...],
- "typing": [...],
- "totalConnections": 2,
- "protocol": "websocket"
- }
-}
-```
-
-#### 5.
-
-```bash
-curl -X POST \
- -H "Authorization: Bearer YOUR_TOKEN" \
- -H "Content-Type: application/json" \
- -d '{"conversationId": 123, "status": "start"}' \
- https://your-api-domain.example.com/api/collaboration/typing
-
-# :
-{
- "success": true,
- "message": "Typing start sent successfully"
-}
-```
+200 with the current user means the token is valid. 401 means it is expired or malformed.
 
 ---
 
@@ -453,17 +361,11 @@ echo "Token: ${TOKEN:0:50}..."
 
 # 2.
 echo ""
-echo " Testing collaboration health..."
+echo " Testing token (auth/me)..."
 curl -s -H "Authorization: Bearer $TOKEN" \
- "$API_URL/api/collaboration/health" | jq
+ "$API_URL/api/auth/me" | jq
 
-# 3.
-echo ""
-echo " Testing collaboration stats..."
-curl -s -H "Authorization: Bearer $TOKEN" \
- "$API_URL/api/collaboration/stats" | jq
-
-# 4. WebSocket
+# 3. WebSocket
 echo ""
 echo " Testing WebSocket health..."
 curl -s "$API_URL/api/websocket/health" | jq
@@ -516,12 +418,8 @@ $headers = @{
 }
 
 # 2.
-Write-Host "`n Testing collaboration health..." -ForegroundColor Cyan
-Invoke-RestMethod -Uri "$API_URL/api/collaboration/health" -Headers $headers | ConvertTo-Json
-
-# 3.
-Write-Host "`n Testing collaboration stats..." -ForegroundColor Cyan
-Invoke-RestMethod -Uri "$API_URL/api/collaboration/stats" -Headers $headers | ConvertTo-Json
+Write-Host "`n Testing token (auth/me)..." -ForegroundColor Cyan
+Invoke-RestMethod -Uri "$API_URL/api/auth/me" -Headers $headers | ConvertTo-Json
 
 # 4. WebSocket
 Write-Host "`n Testing WebSocket health..." -ForegroundColor Cyan

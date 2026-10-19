@@ -335,7 +335,6 @@ Multi_Channel_Integration_System/
 │ │   ├── notifications/ # 通知系統
 │ │   ├── session/ # 會話管理
 │ │   ├── agents/ # 客服代理
-│ │   ├── collaboration/ # 協作功能
 │ │   ├── file-management/ # 檔案管理
 │ │   ├── monitoring/ # 監控系統
 │ │   ├── realtime/ # 即時功能

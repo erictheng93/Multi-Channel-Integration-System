@@ -208,7 +208,6 @@ docs/
 │ ├── ULTIMATE_PINIA_SOLUTION.md # Pinia 终极解决方案
 │ ├── AUTH_TEST_FIX_REPORT.md # 认证测试修复
 │ ├── COMPREHENSIVE_TEST_OPTIMIZATION_SUMMARY.md # 综合测试优化
-│ ├── COLLABORATION_API_TEST_REPORT.md # 协作API测试报告
 │ ├── COVERAGE_ANALYSIS_REPORT.md # 覆盖率分析报告
 │ ├── TEST_FAILURE_ANALYSIS_REPORT.md # 测试失败分析
 │ ├── TEST_IMPROVEMENT_FINAL_REPORT.md # 测试改进最终报告

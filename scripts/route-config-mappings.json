@@ -7,7 +7,6 @@
   "modules/reports/handlers/reports-main": "/api/reports",
   "handlers/websocket-main": "/api/websocket",
   "handlers/websocket-analytics-main": "/api/websocket/analytics",
-  "modules/collaboration/handlers/collaboration-main": "/api/collaboration",
   "modules/realtime": "/api/realtime",
   "handlers/sse-monitoring-main": "/api/sse/monitoring",
   "handlers/delayed-message-buffer": "/api/delayed-messages-v2",
