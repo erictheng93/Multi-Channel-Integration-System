@@ -7,6 +7,7 @@ import type { Bindings } from '@/types';
 import { globalErrorHandler } from '@/core/error-handler';
 import { AUTH_COOKIE_NAMES, parseCookieHeader } from '@/middleware/auth';
 import { verifyConversationAccess } from '../utils/conversation-auth';
+import { isOriginAllowed } from '@/config/cors';
 import { createContextLogger } from '@/utils/logger';
 
 const log = createContextLogger('CustomerWS');
@@ -38,6 +39,12 @@ router.get('/', async (c) => {
     }, 400);
   }
 
+  // Same Origin policy as /api/websocket/connect (browsers always send Origin on upgrades).
+  const origin = c.req.header('Origin');
+  if (origin && !isOriginAllowed(origin, c.env)) {
+    return c.json({ success: false, error: 'Origin not allowed' }, 403);
+  }
+
   try {
     const { payload } = await verifyConversationAccess(
       c.env, sessionId, conversationId, 'Customer WebSocket'
@@ -61,6 +68,9 @@ router.get('/', async (c) => {
       url.searchParams.set('validatedRole', (payload.role as string) || 'agent');
       url.searchParams.set('validatedDisplayName', (payload.displayName as string) || 'User');
       url.searchParams.set('validated', 'true');
+      // Lets the DO close the socket at token expiry (sibling DOs do the same).
+      url.searchParams.delete('tokenExp');
+      if (typeof payload.exp === 'number') url.searchParams.set('tokenExp', String(payload.exp));
 
       const modifiedRequest = new Request(url.toString(), c.req.raw);
 

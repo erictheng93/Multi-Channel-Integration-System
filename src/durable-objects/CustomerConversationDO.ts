@@ -5,6 +5,7 @@
 import { DurableObject } from 'cloudflare:workers';
 import type { Bindings } from '../types';
 import { nowMs } from '@/utils/timestamp'
+import { WebSocketAuthService } from '@/services/websocket-auth-service'
 
 /**
  * Session data structure for validation
@@ -54,6 +55,8 @@ interface ConnectionInfo {
   role: string;
   conversationId: string;
   connectedAt: number;
+  /** Access-token expiry, seconds since epoch (absent for legacy sockets). */
+  tokenExp?: number;
 }
 
 interface ConnectionAttachment {
@@ -63,6 +66,7 @@ interface ConnectionAttachment {
   role: string;
   conversationId: string;
   connectedAt: number;
+  tokenExp?: number;
 }
 
 /**
@@ -87,11 +91,20 @@ export class CustomerConversationDO extends DurableObject<Bindings> {
   // This allows multiple connections from the same user (e.g., multiple browser tabs)
   private connections = new Map<string, ConnectionInfo>();
   private conversationId: string = '';
+  private accessCheckDeadline: number | null = null;
+  private readonly ready: Promise<void>;
 
   constructor(ctx: DurableObjectState, env: Bindings) {
     super(ctx, env);
     this.ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair('ping', 'pong'));
     this.restoreConnectionsFromHibernation();
+    // Re-derive the alarm only from stored work (open sockets / saved deadline); never arm unconditionally.
+    this.ready = Promise.resolve(this.ctx.storage.get<number>('accessCheckDeadline'))
+      .then(async (deadline) => {
+        this.accessCheckDeadline = deadline ?? null;
+        await this.scheduleAlarm();
+      })
+      .catch(error => console.error('[CustomerConversationDO] Initial alarm scheduling failed:', error));
     console.log('[CustomerConversationDO] Initialized');
   }
 
@@ -131,7 +144,8 @@ export class CustomerConversationDO extends DurableObject<Bindings> {
         displayName: attachment.displayName,
         role: attachment.role,
         conversationId: attachment.conversationId,
-        connectedAt: attachment.connectedAt
+        connectedAt: attachment.connectedAt,
+        tokenExp: attachment.tokenExp
       });
 
       if (!this.conversationId) {
@@ -150,7 +164,8 @@ export class CustomerConversationDO extends DurableObject<Bindings> {
     displayName: string,
     role: string,
     conversationId: string,
-    connectedAt: number
+    connectedAt: number,
+    tokenExp?: number
   ): ConnectionAttachment {
     return {
       connectionId,
@@ -158,7 +173,8 @@ export class CustomerConversationDO extends DurableObject<Bindings> {
       displayName,
       role,
       conversationId,
-      connectedAt
+      connectedAt,
+      tokenExp
     };
   }
 
@@ -171,7 +187,8 @@ export class CustomerConversationDO extends DurableObject<Bindings> {
       displayName: attachment.displayName,
       role: attachment.role,
       conversationId: attachment.conversationId,
-      connectedAt: attachment.connectedAt
+      connectedAt: attachment.connectedAt,
+      tokenExp: attachment.tokenExp
     });
   }
 
@@ -227,6 +244,8 @@ export class CustomerConversationDO extends DurableObject<Bindings> {
         const validatedUserId = url.searchParams.get('validatedUserId');
         const validatedRole = url.searchParams.get('validatedRole');
         const validatedDisplayName = url.searchParams.get('validatedDisplayName');
+        const tokenExp = Number(url.searchParams.get('tokenExp'));
+        const tokenExpiresAt = Number.isFinite(tokenExp) && tokenExp > 0 ? tokenExp : undefined;
 
         this.conversationId = conversationId;
 
@@ -236,7 +255,8 @@ export class CustomerConversationDO extends DurableObject<Bindings> {
             validatedUserId,
             validatedRole || 'agent',
             validatedDisplayName || 'User',
-            conversationId
+            conversationId,
+            tokenExpiresAt
           );
         }
 
@@ -244,6 +264,10 @@ export class CustomerConversationDO extends DurableObject<Bindings> {
         return this.clientConnected(sessionId, conversationId);
       }
       return new Response('Expected WebSocket', { status: 400 });
+    }
+
+    if (url.pathname === '/evict') {
+      return this.handleEvict(request);
     }
 
     // Notify about new message endpoint (called by CustomerMessageDO)
@@ -368,10 +392,12 @@ export class CustomerConversationDO extends DurableObject<Bindings> {
       displayName,
       role,
       conversationId,
-      connectedAt
+      connectedAt,
+      Math.floor(validation.session.expiresAt / 1000)
     );
 
     this.addHibernatableConnection(server, attachment);
+    await this.scheduleAlarm();
 
     console.log(`[CustomerConversationDO] Client connected. Total connections: ${this.connections.size}, Unique users: ${this.getUniqueUserCount()}`);
 
@@ -390,7 +416,8 @@ export class CustomerConversationDO extends DurableObject<Bindings> {
     userId: string,
     role: string,
     displayName: string,
-    conversationId: string
+    conversationId: string,
+    tokenExp?: number
   ): Promise<Response> {
     const webSocketPair = new WebSocketPair();
     const [client, server] = Object.values(webSocketPair);
@@ -413,10 +440,12 @@ export class CustomerConversationDO extends DurableObject<Bindings> {
       displayName,
       role,
       conversationId,
-      connectedAt
+      connectedAt,
+      tokenExp
     );
 
     this.addHibernatableConnection(server, attachment);
+    await this.scheduleAlarm();
 
     console.log(`[CustomerConversationDO] Client connected (pre-validated). Total connections: ${this.connections.size}, Unique users: ${this.getUniqueUserCount()}`);
 
@@ -438,11 +467,117 @@ export class CustomerConversationDO extends DurableObject<Bindings> {
 
   override async webSocketClose(ws: WebSocket, _code: number, _reason: string, _wasClean: boolean): Promise<void> {
     await this.removeConnectionForSocket(ws, 'closed');
+    await this.scheduleAlarm();
   }
 
   override async webSocketError(ws: WebSocket, error: unknown): Promise<void> {
     console.error('[CustomerConversationDO] WebSocket error:', error);
     await this.removeConnectionForSocket(ws, 'errored');
+  }
+
+  override async alarm(): Promise<void> {
+    await this.ready;
+    this.refreshHibernatedConnections();
+    const nowSec = Math.floor(Date.now() / 1000);
+    const expired = Array.from(this.connections.values())
+      .filter(conn => typeof conn.tokenExp === 'number' && conn.tokenExp <= nowSec);
+    await this.closeConnections(expired, 4401, 'Token expired');
+
+    if (this.accessCheckDeadline && this.accessCheckDeadline <= Date.now()) {
+      // Cleared first: revalidation sets a short retry deadline when D1 is unavailable.
+      this.accessCheckDeadline = null;
+      await this.revalidateAccess();
+    }
+    await this.scheduleAlarm();
+  }
+
+  /** Close sockets, drop them, and announce presence loss for users with no remaining socket. */
+  private async closeConnections(conns: ConnectionInfo[], code: number, reason: string): Promise<void> {
+    for (const conn of conns) {
+      try { conn.socket.serializeAttachment(null); } catch { /* socket already gone */ }
+      try { conn.socket.close(code, reason); } catch { /* socket already gone */ }
+      for (const [id, c] of this.connections) if (c === conn) this.connections.delete(id);
+    }
+    for (const userId of new Set(conns.map(c => c.userId))) {
+      if (!this.isUserConnected(userId)) await this.broadcastUserPresence(userId, false);
+    }
+  }
+
+  /**
+   * Re-check live D1 access for agent/admin sockets. Only a definite denial
+   * closes a socket; when D1 cannot answer the socket stays and the check is
+   * retried in 30s. Returns true when deferred.
+   */
+  private async revalidateAccess(userIds?: string[]): Promise<boolean> {
+    this.refreshHibernatedConnections();
+    const auth = new WebSocketAuthService(this.env);
+    const decisions = new Map<string, boolean>();
+    const revoked: ConnectionInfo[] = [];
+    let deferred = false;
+    for (const conn of this.connections.values()) {
+      // Customer-role sockets have no agent record; they are bounded by token expiry only.
+      if (conn.role !== 'agent' && conn.role !== 'admin') continue;
+      if (userIds && !userIds.includes(conn.userId)) continue;
+      const key = `${conn.userId}:${conn.conversationId}`;
+      if (!decisions.has(key)) {
+        try {
+          decisions.set(key, await auth.hasLiveConversationAccess(conn.userId, conn.conversationId));
+        } catch (error) {
+          console.error('[CustomerConversationDO] Access check unavailable, retrying later:', error);
+          decisions.set(key, true);
+          deferred = true;
+        }
+      }
+      if (!decisions.get(key)) revoked.push(conn);
+    }
+    if (deferred) {
+      this.accessCheckDeadline = Date.now() + 30000;
+      await this.ctx.storage.put('accessCheckDeadline', this.accessCheckDeadline);
+    }
+    await this.closeConnections(revoked, 4403, 'Access revoked');
+    return deferred;
+  }
+
+  /** Earliest of token expiry / access re-check. Stops when no socket remains. */
+  private async scheduleAlarm(): Promise<void> {
+    let nextExp: number | undefined;
+    for (const conn of this.connections.values()) {
+      if (typeof conn.tokenExp === 'number' && (nextExp === undefined || conn.tokenExp < nextExp)) {
+        nextExp = conn.tokenExp;
+      }
+    }
+    if (this.connections.size > 0 && !this.accessCheckDeadline) {
+      this.accessCheckDeadline = Date.now() + 300000;
+      await this.ctx.storage.put('accessCheckDeadline', this.accessCheckDeadline);
+    } else if (this.connections.size === 0 && this.accessCheckDeadline) {
+      this.accessCheckDeadline = null;
+      await this.ctx.storage.delete('accessCheckDeadline');
+    }
+    if (nextExp === undefined && !this.accessCheckDeadline) {
+      await this.ctx.storage.deleteAlarm();
+      return;
+    }
+    // Re-arms only while sockets are open: stops once the last socket closes (no deadline left).
+    await this.ctx.storage.setAlarm(Math.max(Date.now(), Math.min(
+      nextExp === undefined ? Infinity : nextExp * 1000,
+      this.accessCheckDeadline ?? Infinity
+    )));
+  }
+
+  private async handleEvict(request: Request): Promise<Response> {
+    if (request.method !== 'POST') return new Response('Method not allowed', { status: 405 });
+    const body: unknown = await request.json().catch(() => null);
+    if (!body || typeof body !== 'object' || Array.isArray(body)) {
+      return new Response('Invalid eviction request', { status: 400 });
+    }
+    const { userId, userIds } = body as { userId?: unknown; userIds?: unknown };
+    const ids = userIds ?? (userId === undefined ? undefined : [userId]);
+    if (ids !== undefined && (!Array.isArray(ids) || !ids.every(id => typeof id === 'string' && id.length > 0))) {
+      return new Response('Invalid userIds', { status: 400 });
+    }
+    const deferred = await this.revalidateAccess(ids as string[] | undefined);
+    await this.scheduleAlarm();
+    return Response.json({ success: !deferred }, { status: deferred ? 503 : 200 });
   }
 
   private async removeConnectionForSocket(ws: WebSocket, eventName: string): Promise<void> {
