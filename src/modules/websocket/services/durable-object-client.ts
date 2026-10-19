@@ -93,12 +93,15 @@ export class DurableObjectClient {
 
         try {
           const promises: Promise<boolean>[] = [];
+          let skippedConversationTarget = false;
 
           if (event.deliveryOptions?.targets) {
             for (const target of event.deliveryOptions.targets) {
               switch (target.type) {
                 case 'conversation':
-                  promises.push(this.broadcastToConversationRooms(event, target.targets as string[]));
+                  // ConversationRoom has no sockets: nothing to deliver, so it is neither a
+                  // success nor a failure and must not mask the outcome of the real targets.
+                  skippedConversationTarget = true;
                   break;
                 case 'user':
                   promises.push(this.broadcastToUserConnections(event, target.targets as string[]));
@@ -129,7 +132,8 @@ export class DurableObjectClient {
             priority: event.priority
           });
 
-          return successCount > 0;
+          // An event addressed only to the socket-less conversation room has nothing to fail.
+          return successCount > 0 || (promises.length === 0 && skippedConversationTarget);
         } catch (error) {
           this.logger.error('WebSocket broadcast error', error, context);
           throw error; // Re-throw to trigger circuit breaker
