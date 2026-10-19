@@ -534,13 +534,14 @@ export class CustomerConversationDO extends DurableObject<Bindings> {
     }
     if (deferred) {
       // Retry chain stops by count: backoff 30s, 60s, 120s, 240s, then after
-      // MAX_ACCESS_CHECK_RETRIES failures fall back to the normal 5-minute cadence
-      // and reset the counter. The counter is persisted so eviction cannot restart it.
+      // MAX_ACCESS_CHECK_RETRIES failures stay on the normal 5-minute cadence
+      // (counter held at the cap) until a check succeeds and clears it. The counter is
+      // persisted so eviction cannot restart it.
       const failures = ((await this.ctx.storage.get<number>('accessCheckFailures')) ?? 0) + 1;
       const delay = failures >= MAX_ACCESS_CHECK_RETRIES ? 300000 : 30000 * 2 ** (failures - 1);
       this.accessCheckDeadline = Date.now() + delay;
       await this.ctx.storage.put('accessCheckDeadline', this.accessCheckDeadline);
-      await this.ctx.storage.put('accessCheckFailures', failures >= MAX_ACCESS_CHECK_RETRIES ? 0 : failures);
+      await this.ctx.storage.put('accessCheckFailures', Math.min(failures, MAX_ACCESS_CHECK_RETRIES));
     } else {
       await this.ctx.storage.delete('accessCheckFailures');
     }
