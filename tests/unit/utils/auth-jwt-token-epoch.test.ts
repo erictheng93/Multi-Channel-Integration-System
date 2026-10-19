@@ -28,6 +28,15 @@ describe('token epoch', () => {
     expect(await isIssuedBeforeTokenEpoch(cache, tok())).toBe(false)
   })
 
+  it('rejects a token issued in the very same millisecond as the bump, accepts one 1ms later', async () => {
+    vi.useFakeTimers(); vi.setSystemTime(new Date('2026-10-19T00:00:00.500Z'))
+    const cache = kv(); const tie = tok()
+    await bumpTokensValidAfter(cache, 1)
+    expect(await isIssuedBeforeTokenEpoch(cache, tie)).toBe(true)
+    vi.setSystemTime(new Date('2026-10-19T00:00:00.501Z'))
+    expect(await isIssuedBeforeTokenEpoch(cache, tok())).toBe(false)
+  })
+
   it('treats a legacy token without iatMs by its iat second', async () => {
     vi.useFakeTimers(); vi.setSystemTime(new Date('2026-10-19T00:00:10.500Z'))
     const cache = kv(); await bumpTokensValidAfter(cache, 1)
