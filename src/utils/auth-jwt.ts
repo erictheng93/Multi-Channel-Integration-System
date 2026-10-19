@@ -142,6 +142,23 @@ export async function verifyJWT(token: string, secret: string): Promise<JWTPaylo
   }
 }
 
+// Per-user "tokens valid after" epoch (KV, no migration). Password change/reset
+// writes it; /refresh and access-token validation reject tokens with iat before it.
+// TTL covers the longest token life (7-day refresh), after which no older token can exist.
+const TOKEN_EPOCH_TTL = 8 * 24 * 60 * 60;
+const tokenEpochKey = (userId: string | number) => `tokens-valid-after:${userId}`;
+
+export async function bumpTokensValidAfter(cache: KVNamespace, userId: string | number): Promise<void> {
+  await cache.put(tokenEpochKey(userId), String(Math.floor(Date.now() / 1000)), { expirationTtl: TOKEN_EPOCH_TTL });
+}
+
+/** True when the token was issued before the user's last credential change. Throws if KV is unreadable (callers fail closed). */
+export async function isIssuedBeforeTokenEpoch(cache: KVNamespace, payload: { userId: string | number; iat?: number }): Promise<boolean> {
+  const raw = await cache.get(tokenEpochKey(payload.userId));
+  if (!raw) return false;
+  return typeof payload.iat !== 'number' || payload.iat < Number(raw);
+}
+
 // 生成隨機字符串 - 使用加密安全的隨機數生成器 (CSPRNG)
 export function generateRandomString(length: number = 32): string {
   // 使用 crypto.getRandomValues() 生成加密安全的隨機字節

@@ -4,7 +4,7 @@
 import type { Context, Next } from 'hono';
 import { drizzle } from 'drizzle-orm/d1';
 import type { Bindings } from '@/types';
-import { verifyJWT } from '@/utils/auth';
+import { validateAccessToken } from '@/middleware/auth';
 import { HTTP_STATUS } from '@/constants/http-status';
 import { SessionAccessService } from '@modules/session/services/session-access-service';
 import { nowISO, nowMs } from '@/utils/timestamp'
@@ -31,17 +31,24 @@ export async function checkSessionAccess(c: Context<{ Bindings: Bindings }>, nex
     }
 
     const token = authHeader.substring(7);
-    const payload = await verifyJWT(token, c.env.JWT_SECRET);
-
-    if (!payload) {
+    // Same checks as jwtAuth; role/teams come from the D1-reloaded user, not the claims.
+    let validated: Awaited<ReturnType<typeof validateAccessToken>>;
+    try {
+      validated = await validateAccessToken(c.env, token);
+    } catch (err) {
+      const status = (err as { status?: number }).status;
+      if (status === undefined) throw err; // unexpected failure -> generic handler below
+      const unavailable = status === 503;
       return c.json({
         success: false,
-        error: 'Invalid or expired token',
+        error: unavailable ? 'Service temporarily unavailable' : 'Invalid or expired token',
         timestamp: nowISO()
-      }, HTTP_STATUS.UNAUTHORIZED);
+      }, unavailable ? 503 : HTTP_STATUS.UNAUTHORIZED);
     }
+    const { payload: tokenPayload, user } = validated;
+    const payload = { ...tokenPayload, role: user.role, allowedTeamIds: user.allowedTeamIds, teamRoles: user.teamRoles };
 
-    // 將 JWT payload 存储到 context 中
+    c.set('user', user);
     c.set('jwtPayload', payload);
     await next();
   } catch (error) {

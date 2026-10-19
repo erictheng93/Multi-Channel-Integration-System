@@ -360,6 +360,18 @@ export function createAgentRouter() {
         }
       }
 
+      // F01: non-admins (self-service) may not touch account-state or credential fields.
+      if (currentUser.role !== 'admin') {
+        const privileged = ['isActive', 'deletedAt', 'role', 'passwordHash', 'passwordPolicy'];
+        if (privileged.some((k) => data && typeof data === 'object' && k in data)) {
+          return c.json({
+            success: false,
+            error: 'Only an admin can change account status, role or credentials',
+            timestamp: nowISO()
+          }, HTTP_STATUS.FORBIDDEN);
+        }
+      }
+
       // F6 fix: prevent self-team-transfer privilege escalation.
       // checkAgentAccess permits agents to PUT their own record, and the
       // underlying AgentService.updateAgent unconditionally rewrites

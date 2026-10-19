@@ -3,6 +3,7 @@ import type { Bindings, JWTPayload } from '../types';
 import type { DbUser } from '../types';
 import type { TeamRoleInTeam } from '../types';
 import { verifyJWT, getUserById, getSession, updateUserActivityDebounced, canAccessTeam, hasTeamRole, TEAM_PERMISSIONS } from '../utils/auth';
+import { isIssuedBeforeTokenEpoch } from '../utils/auth-jwt';
 import { ROLES, type Role } from '../constants/roles';
 import { createContextLogger } from '../utils/logger';
 import { incrementRequestCounter, trackTheoreticalKVSavings } from '@modules/system/handlers/kv-optimization-monitoring';
@@ -109,6 +110,23 @@ export async function validateAccessTokenPayload(
   }
   if (isRevoked) {
     throw Object.assign(new Error('Token has been revoked'), {
+      status: 401,
+      code: 'TOKEN_REVOKED'
+    });
+  }
+
+  // Password change/reset invalidates every token issued before it.
+  let beforeEpoch: boolean;
+  try {
+    beforeEpoch = await isIssuedBeforeTokenEpoch(env.CACHE, payload);
+  } catch {
+    throw Object.assign(new Error('Service temporarily unavailable'), {
+      status: 503,
+      code: 'REVOCATION_CHECK_FAILED'
+    });
+  }
+  if (beforeEpoch) {
+    throw Object.assign(new Error('Token was issued before a credential change'), {
       status: 401,
       code: 'TOKEN_REVOKED'
     });
