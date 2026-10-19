@@ -804,9 +804,17 @@ export const useConversationsStore = defineStore('conversations', () => {
             }
           }
           // 伺服器略過的 id（本地資料過期、或剛被別的請求改走）不在 statuses 裡：
-          // 樂觀狀態是我們猜的，改向伺服器取得實際狀態
-          if (changedIds.some(id => !(id in statuses))) {
-            void pollConversations()
+          // 樂觀狀態是我們猜的，只針對這些 id 向伺服器取得實際狀態並合併進列表
+          // （不重抓整頁：那會把已載入的後續頁面換成第一頁）
+          // ponytail: 一個 id 一次請求；略過的通常只有少數幾筆，數量大時再改成批次端點
+          const skipped = changedIds.filter(id => !(id in statuses))
+          if (skipped.length > 0) {
+            void Promise.allSettled(skipped.map(async id => {
+              const fresh = await conversationApi.getConversation(id)
+              if (fresh.success && fresh.data?.status) {
+                updateConversationStatus(id, { status: fresh.data.status })
+              }
+            }))
           }
         }
         return response.data?.affectedCount ?? changedIds.length
