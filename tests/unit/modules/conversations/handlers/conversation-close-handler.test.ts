@@ -56,13 +56,14 @@ function request(action: 'close' | 'reopen') {
   return app.request(`/api/conversations/conv-1/${action}`, { method: 'POST' }, env);
 }
 
-// The UPDATE is the last statement bound; its params are [status, closedAt, updatedAt, id]
-const updateParams = () => mocks.bind.mock.calls[mocks.bind.mock.calls.length - 1];
+// The UPDATE is bound first (the guarded activity row follows it); its params are [status, closedAt, unreadFloor, updatedAt, id]
+const updateParams = () => mocks.bind.mock.calls[0];
 
 describe('POST /:id/close and /:id/reopen', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.batch.mockResolvedValue([]);
+    // Each guarded UPDATE reports one changed row (the race-lost case is covered in conversation-close-service.test.ts)
+    mocks.batch.mockImplementation(async (stmts: unknown[]) => stmts.map(() => ({ meta: { changes: 1 } })));
     mocks.broadcast.mockResolvedValue(true);
   });
 
