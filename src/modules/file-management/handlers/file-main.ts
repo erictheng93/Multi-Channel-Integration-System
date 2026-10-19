@@ -11,6 +11,7 @@ import {
   handleApiError
 } from '@/utils/api-response';
 import { PLATFORMS } from '@/constants/platforms';
+import { checkConversationBinding, canDeleteFile } from '@modules/file-management/middleware/file-auth';
 import { FileService } from '@modules/file-management/services/file-service';
 import type {
   FileQueryOptions,
@@ -113,6 +114,9 @@ async function handleFileUpload(c: FileContext) {
     return badRequestResponse(c, 'File is required');
   }
 
+  const denied = await checkConversationBinding(c, { conversationId, messageId });
+  if (denied) return denied;
+
   // 獲取文件內容
   const fileBuffer = await file.arrayBuffer();
 
@@ -162,6 +166,9 @@ async function handleMultipleFileUpload(c: FileContext) {
   if (files.length === 0 || files.some(file => !(file instanceof File))) {
     return badRequestResponse(c, 'At least one file is required');
   }
+
+  const denied = await checkConversationBinding(c, { conversationId, messageId });
+  if (denied) return denied;
 
   const fileService = new FileService(c.env);
   const uploaded = [];
@@ -304,6 +311,10 @@ async function handleDeleteMultiple(c: FileContext) {
   const failed: string[] = [];
 
   for (const fileId of fileIds) {
+    if ((await canDeleteFile(c, fileId)) !== 'ok') {
+      failed.push(fileId);
+      continue;
+    }
     const result = await fileService.deleteFile(fileId, payload.userId.toString());
     if (result.success) {
       successful.push(fileId);
@@ -587,6 +598,14 @@ fileMainHandler.delete('/:fileId', jwtAuth, async (c) => {
 
     if (!fileId) {
       return badRequestResponse(c, 'File ID is required');
+    }
+
+    const allowed = await canDeleteFile(c, fileId);
+    if (allowed === 'not_found') {
+      return contractJson(c, fileContracts.delete, { success: false, error: 'File not found' }, 404);
+    }
+    if (allowed === 'forbidden') {
+      return contractJson(c, fileContracts.delete, { success: false, error: 'Not allowed to delete this file' }, 403);
     }
 
     // 執行刪除

@@ -77,7 +77,7 @@ export async function getSignedFileUrl(
 ): Promise<string> {
   const normalizedKey = r2Key.replace(/^\//, '');
   const backendUrl = getBackendUrl(env);
-  const { sig, exp } = await signFileUrl(normalizedKey, env.JWT_SECRET, ttlSeconds);
+  const { sig, exp } = await signFileUrl(normalizedKey, env.JWT_SECRET, ttlSeconds, 'public');
   const params = new URLSearchParams({ sig, exp: String(exp) });
   return `${backendUrl}/api/files/public/${normalizedKey}?${params.toString()}`;
 }
@@ -108,7 +108,7 @@ export async function getSignedDownloadUrl(
 ): Promise<string> {
   const normalizedKey = r2Key.replace(/^\//, '');
   const backendUrl = getBackendUrl(env);
-  const { sig, exp } = await signFileUrl(normalizedKey, env.JWT_SECRET, ttlSeconds);
+  const { sig, exp } = await signFileUrl(normalizedKey, env.JWT_SECRET, ttlSeconds, 'download');
   const params = new URLSearchParams({ sig, exp: String(exp) });
   return `${backendUrl}/api/files/download/${encodeURIComponent(attachmentId)}?${params.toString()}`;
 }
@@ -132,4 +132,42 @@ export function isPublicDomainConfigured(env: Bindings): boolean {
     return true;
   }
   return false;
+}
+
+// Content types that cannot execute script when rendered inline. Anything else
+// (html, svg, xml, js, unknown) is served as an attachment.
+const INLINE_SAFE_TYPE = /^(image\/(jpeg|png|gif|webp)|audio\/[a-z0-9.+-]+|video\/[a-z0-9.+-]+|application\/pdf)$/;
+
+function baseType(contentType: string | null | undefined): string {
+  return (contentType || '').split(';')[0].trim().toLowerCase();
+}
+
+export function isInlineSafeContentType(contentType: string | null | undefined): boolean {
+  return INLINE_SAFE_TYPE.test(baseType(contentType));
+}
+
+/** For storing upstream/untrusted types: safe allowlist, else application/octet-stream. */
+export function normalizeStoredContentType(contentType: string | null | undefined): string {
+  const t = baseType(contentType);
+  return INLINE_SAFE_TYPE.test(t) ? t : 'application/octet-stream';
+}
+
+/**
+ * Response headers that make user-uploaded content inert on the API origin:
+ * nosniff + sandbox CSP always, and attachment disposition unless the type is
+ * in the inline-safe allowlist.
+ */
+export function inertFileHeaders(
+  contentType: string | null | undefined,
+  filename: string,
+  storedDisposition?: string | null,
+): Record<string, string> {
+  const safe = isInlineSafeContentType(contentType);
+  const fallback = `attachment; filename="${filename.replace(/["\\\r\n]/g, '_')}"`;
+  return {
+    'Content-Type': contentType || 'application/octet-stream',
+    'Content-Disposition': safe && storedDisposition ? storedDisposition : fallback,
+    'X-Content-Type-Options': 'nosniff',
+    'Content-Security-Policy': "sandbox; default-src 'none'",
+  };
 }

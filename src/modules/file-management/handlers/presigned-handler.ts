@@ -14,6 +14,7 @@ import { createContextLogger } from '@/utils/logger'
 const log = createContextLogger('PresignedHandler')
 
 import type { Bindings } from '@/types';
+import { checkConversationBinding } from '../middleware/file-auth';
 import { createPresignedUrlService } from '../services/presigned-url-service';
 import {
   successResponse,
@@ -32,7 +33,6 @@ const ALLOWED_MIME_TYPES = new Set([
   'image/png',
   'image/gif',
   'image/webp',
-  'image/svg+xml',
   // Videos
   'video/mp4',
   'video/quicktime',
@@ -124,6 +124,9 @@ export class PresignedHandler {
       if (errors.length > 0) {
         return validationErrorResponse(c, errors);
       }
+
+      const denied = await checkConversationBinding(c, { conversationId, messageId });
+      if (denied) return denied;
 
       // ═══════════════════════════════════════════════════════════════════════
       // Service Check

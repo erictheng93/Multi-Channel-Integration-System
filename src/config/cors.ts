@@ -51,14 +51,9 @@ export function getAllowedOrigins(env?: WorkerEnv): string[] {
     if (env.BACKEND_URL) {
       origins.add(env.BACKEND_URL);
     }
-    if (env.STORAGE_PUBLIC_URL) {
-      origins.add(env.STORAGE_PUBLIC_URL);
-    }
-    // 相容性: 也檢查 R2_PUBLIC_URL
-    const r2Url = (env as Record<string, unknown>).R2_PUBLIC_URL as string;
-    if (r2Url) {
-      origins.add(r2Url);
-    }
+    // NV2: STORAGE_PUBLIC_URL / R2_PUBLIC_URL host user-uploaded content and are
+    // same-site with the API; they must NOT be trusted for credentialed CORS.
+    // Add one explicitly via ADDITIONAL_ALLOWED_ORIGINS only if truly needed.
 
     // 支持額外的允許 origins (逗號分隔)
     const additionalOrigins = (env as Record<string, unknown>).ADDITIONAL_ALLOWED_ORIGINS as string;

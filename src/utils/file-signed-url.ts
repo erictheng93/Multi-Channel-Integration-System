@@ -60,8 +60,14 @@ async function hmacSign(secret: string, message: string): Promise<string> {
   return urlSafeBase64(sig);
 }
 
+/** Endpoint a signature is minted for. Bound into the HMAC (v2). */
+export type FileUrlPurpose = 'public' | 'download' | 'r2-public';
+
 /**
  * Sign an r2Key for use in a Worker proxy URL.
+ *
+ * `purpose` is bound into the HMAC so a signature minted for one endpoint does
+ * not validate on another (F05). Defaults to 'public' (/api/files/public).
  *
  * @returns `{ sig, exp }` ready to be appended as `?sig=&exp=`
  */
@@ -69,22 +75,27 @@ export async function signFileUrl(
   r2Key: string,
   secret: string,
   ttlSeconds: number = DEFAULT_TTL_SECONDS,
+  purpose: FileUrlPurpose = 'public',
 ): Promise<{ sig: string; exp: number }> {
   const exp = Math.floor(Date.now() / 1000) + ttlSeconds;
-  const sig = await hmacSign(secret, `${HMAC_DOMAIN}|${r2Key}|${exp}`);
+  const sig = await hmacSign(secret, `file-url-v2|${purpose}|${r2Key}|${exp}`);
   return { sig, exp };
 }
 
 /**
- * Verify a sig/exp pair against the r2Key. Returns true only when the HMAC
- * matches AND the signature is not expired. Use this in proxy handlers
- * before serving any file.
+ * Verify a sig/exp pair against the r2Key and the endpoint (`purpose`).
+ * Returns true only when the HMAC matches AND the signature is not expired.
+ *
+ * Legacy v1 signatures (no purpose bound) were only ever minted for
+ * /api/files/public and /api/files/download, so they are still accepted on
+ * those two purposes and never on 'r2-public' (the F05 cross-route reuse).
  */
 export async function verifyFileSignature(
   r2Key: string,
   sig: string | null | undefined,
   expStr: string | null | undefined,
   secret: string,
+  purpose: FileUrlPurpose = 'public',
 ): Promise<boolean> {
   if (!sig || !expStr) return false;
 
@@ -92,6 +103,9 @@ export async function verifyFileSignature(
   if (!Number.isFinite(exp) || exp <= 0) return false;
   if (Math.floor(Date.now() / 1000) > exp) return false;
 
-  const expected = await hmacSign(secret, `${HMAC_DOMAIN}|${r2Key}|${exp}`);
-  return constantTimeEqual(sig, expected);
+  const expected = await hmacSign(secret, `file-url-v2|${purpose}|${r2Key}|${exp}`);
+  if (constantTimeEqual(sig, expected)) return true;
+  if (purpose === 'r2-public') return false;
+  const legacy = await hmacSign(secret, `${HMAC_DOMAIN}|${r2Key}|${exp}`);
+  return constantTimeEqual(sig, legacy);
 }
