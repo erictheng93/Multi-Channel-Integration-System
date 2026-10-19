@@ -14,7 +14,39 @@ import { DistributedLockService } from '@/services/distributed-lock-service';
 const log = createContextLogger('WebhookConversation');
 
 type Platform = 'line' | 'facebook';
-type WebhookConversation = ReturnType<typeof convertConversation>;
+// `created` is set only on the object returned by the invocation that inserted the row.
+type WebhookConversation = ReturnType<typeof convertConversation> & { created?: boolean };
+
+/**
+ * Raise the "new conversation" notification. Call it after the first message is
+ * persisted, and only with the result of findOrCreateConversation: it acts only
+ * when that call inserted the conversation, so a concurrent request that merely
+ * found it (or a retry) never notifies twice. Non-critical: failures are logged.
+ */
+export async function notifyNewConversation(
+  env: Bindings,
+  conversation: WebhookConversation | undefined,
+  platform: Platform,
+  opts?: { messageContent?: string; customerDisplayName?: string }
+): Promise<void> {
+  if (!conversation?.created) return;
+  const platformLabel = platform.toUpperCase();
+  try {
+    const { triggerNewConversationNotification } = await import('@/utils/notification-trigger');
+    await triggerNewConversationNotification(env, {
+      conversationId: conversation.id,
+      customerName: opts?.customerDisplayName || `${platformLabel} User`,
+      platform: platformLabel,
+      messagePreview: opts?.messageContent || '',
+      teamId: conversation.assignedTeamId || undefined
+    });
+    log.debug('New conversation notification triggered', { platform: platformLabel });
+  } catch (notificationError) {
+    log.warn(`${platformLabel} Webhook: Failed to trigger new conversation notification`, {
+      error: notificationError instanceof Error ? notificationError.message : String(notificationError)
+    });
+  }
+}
 
 /**
  * Find the customer's conversation (reopening it if closed),
@@ -156,7 +188,7 @@ export async function findOrCreateConversation(
             log.debug('Created new Facebook conversation', { conversationId });
           }
 
-          return created;
+          return { ...created, created: true };
         } catch (convError) {
           log.error(`${platformLabel} Webhook: Failed to create conversation`, {
             error: convError instanceof Error ? convError.message : 'Unknown error',
@@ -169,25 +201,6 @@ export async function findOrCreateConversation(
       },
       { ttl: 10000, timeout: 5000 }
     );
-
-    // Trigger notification OUTSIDE the lock (non-critical, reduces lock hold time)
-    if (conversation) {
-      try {
-        const { triggerNewConversationNotification } = await import('@/utils/notification-trigger');
-        await triggerNewConversationNotification(env, {
-          conversationId: conversation.id,
-          customerName: opts?.customerDisplayName || `${platformLabel} User`,
-          platform: platformLabel,
-          messagePreview: opts?.messageContent || '',
-          teamId: conversation.assignedTeamId || undefined
-        });
-        log.debug(`New conversation notification triggered`, { platform: platformLabel });
-      } catch (notificationError) {
-        log.warn(`${platformLabel} Webhook: Failed to trigger new conversation notification`, {
-          error: notificationError instanceof Error ? notificationError.message : String(notificationError)
-        });
-      }
-    }
 
     return conversation;
   } else {

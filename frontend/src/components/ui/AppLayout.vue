@@ -123,6 +123,7 @@
 
     switch (type) {
       case 'new_message':
+      case 'new_conversation':
       case 'customer_responded':
         if (data?.conversationId) {
           router.push(`/conversations/${data.conversationId}`)

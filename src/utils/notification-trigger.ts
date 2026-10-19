@@ -389,9 +389,8 @@ export async function triggerMentionNotification(
   try {
     const service = createNotificationService(env);
     const userId = parseUserId(options.mentionedUserId);
-    const conversationId = typeof options.conversationId === 'string'
-      ? parseInt(options.conversationId, 10) || 0
-      : options.conversationId;
+    // Conversation ids are UUID strings; keep them intact so the notification can link back.
+    const conversationId = options.conversationId;
 
     const content = `${options.mentionerName} 在對話中提及了您：${options.messagePreview.substring(0, 50)}${options.messagePreview.length > 50 ? '...' : ''}`;
 
@@ -571,9 +570,8 @@ export async function triggerNewConversationNotification(
       return [];
     }
 
-    const conversationId = typeof options.conversationId === 'string'
-      ? parseInt(options.conversationId, 10) || 0
-      : options.conversationId;
+    // Conversation ids are UUID strings; keep them intact so the notification can link back.
+    const conversationId = options.conversationId;
 
     const preview = options.messagePreview
       ? `: ${options.messagePreview.substring(0, 50)}${options.messagePreview.length > 50 ? '...' : ''}`

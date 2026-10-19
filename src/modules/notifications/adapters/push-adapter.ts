@@ -210,6 +210,7 @@ export class PushAdapter implements ChannelAdapter {
     // 根據通知類型生成對應的 URL
     switch (notification.type) {
       case 'new_message':
+      case 'new_conversation':
       case 'conversation_assigned':
       case 'conversation_transferred':
         return `/conversations/${notification.data?.conversationId || ''}`;

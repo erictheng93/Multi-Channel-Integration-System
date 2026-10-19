@@ -242,6 +242,7 @@ describe('useNotificationActions', () => {
 
       const supportedTypes = [
         'new_message',
+        'new_conversation',
         'customer_responded',
         'conversation_assigned',
         'conversation_transferred',

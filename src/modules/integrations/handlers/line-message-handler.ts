@@ -9,7 +9,7 @@ import { ActivityService } from '@modules/activities';
 import { WebSocketBroadcastService } from '@/services/websocket-broadcast-service';
 import { createContextLogger } from '@/utils/logger';
 
-import { findOrCreateConversation, isDuplicateMessage, saveMessage } from '../services/webhook-conversation-service';
+import { findOrCreateConversation, isDuplicateMessage, notifyNewConversation, saveMessage } from '../services/webhook-conversation-service';
 import { nowMs } from '@/utils/timestamp';
 import {
   evaluate as autoReplyEvaluate,
@@ -229,6 +229,12 @@ export async function processLineMessage(env: Bindings, event: LineEvent, defer:
       'line'
     );
 
+    // Notify only once the first message is stored, so agents never see an alert for an empty conversation.
+    await notifyNewConversation(env, conversation, 'line', {
+      messageContent,
+      customerDisplayName: user.displayName || 'LINE User'
+    });
+
     // =================== SYNC: Auto-reply (replyToken expires ~30s) ===================
     if (conversation) {
       try {
@@ -344,8 +350,8 @@ export async function processLineMessage(env: Bindings, event: LineEvent, defer:
       }
     })());
 
-    // F. Notifications: the "new conversation" notification is raised once, when the conversation
-    // is created (findOrCreateConversation). Firing it here as well made every inbound message
+    // F. Notifications: the "new conversation" notification is raised once, right after the first
+    // message of a newly created conversation is saved (notifyNewConversation). Firing it here as well made every inbound message
     // insert one notification row per target user and one UserConnection request per user, and
     // sent a duplicate for the very first message.
 

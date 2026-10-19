@@ -88,6 +88,7 @@ const mockSaveMessage = vi.fn();
 vi.mock('@modules/integrations/services/webhook-conversation-service', () => ({
   findOrCreateConversation: (...args: unknown[]) => mockFindOrCreateConversation(...args),
   isDuplicateMessage: (...args: unknown[]) => mockIsDuplicateMessage(...args),
+  notifyNewConversation: vi.fn().mockResolvedValue(undefined),
   saveMessage: (...args: unknown[]) => mockSaveMessage(...args),
 }));
 
