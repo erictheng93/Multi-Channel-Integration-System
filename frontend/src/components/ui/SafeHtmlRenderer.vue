@@ -12,19 +12,32 @@ import { setTrustedInnerHTML } from '@/utils/trustedHtml'
 
 const props = withDefaults(defineProps<Props>(), {
   html: '',
-  allowedTags: () => ['span', 'img', 'div', 'a'],
-  allowedAttributes: () => ({
-    span: ['class', 'title', 'style'],
-    img: ['src', 'alt', 'title', 'class', 'style', 'width', 'height', 'data-sticker-package', 'data-sticker-id', 'data-sticker-type'],
-    div: ['class', 'style'],
-    a: ['href', 'target', 'rel', 'class', 'title']
-  })
+  rich: false,
+  allowedTags: undefined,
+  allowedAttributes: undefined
 })
+// Text mode (default): only what the app generates for customer text. No style,
+// no <div>, <img> limited to the fixed emoji CDN. `rich` (stickers) is app-built markup.
+const tags = computed(() => props.allowedTags ?? (props.rich ? ['span', 'img', 'div', 'a'] : ['span', 'img', 'a']))
+const attrs = computed<Record<string, string[]>>(() => props.allowedAttributes ?? (props.rich
+  ? {
+      span: ['class', 'title', 'style'],
+      img: ['src', 'alt', 'title', 'class', 'style', 'width', 'height', 'data-sticker-package', 'data-sticker-id', 'data-sticker-type'],
+      div: ['class', 'style'],
+      a: ['href', 'target', 'rel', 'class', 'title']
+    }
+  : {
+      span: ['class', 'title'],
+      img: ['src', 'alt', 'title', 'class'],
+      a: ['href', 'target', 'rel', 'class', 'title']
+    }))
+const EMOJI_IMG_PREFIX = 'https://cdn.jsdelivr.net/gh/twitter/twemoji@'
 const frontendLogger = createLogger('SafeHtmlRenderer')
-import { ref, watch, onMounted, nextTick } from 'vue'
+import { ref, computed, watch, onMounted, nextTick } from 'vue'
 
 interface Props {
   html?: string
+  rich?: boolean
   allowedTags?: string[]
   allowedAttributes?: Record<string, string[]>
 }
@@ -39,8 +52,8 @@ const sanitizeHtml = (html: string): string => {
   // 创建一个临时DOM元素来解析HTML
   const temp = document.createElement('div')
   const sanitizedInput = DOMPurify.sanitize(html, {
-    ALLOWED_TAGS: props.allowedTags,
-    ALLOWED_ATTR: Object.values(props.allowedAttributes).flat()
+    ALLOWED_TAGS: tags.value,
+    ALLOWED_ATTR: Object.values(attrs.value).flat()
   })
   setTrustedInnerHTML(temp, sanitizedInput)
   
@@ -56,7 +69,7 @@ const sanitizeHtml = (html: string): string => {
       const tagName = element.tagName.toLowerCase()
       
       // 检查是否在允许的标签列表中
-      if (!props.allowedTags.includes(tagName)) {
+      if (!tags.value.includes(tagName)) {
         // 如果标签不被允许，返回其文本内容
         return document.createTextNode(element.textContent || '')
       }
@@ -65,12 +78,12 @@ const sanitizeHtml = (html: string): string => {
       const safeElement = document.createElement(tagName)
       
       // 复制允许的属性
-      const allowedAttrs = props.allowedAttributes[tagName] || []
+      const allowedAttrs = attrs.value[tagName] || []
       for (const attr of allowedAttrs) {
         const value = element.getAttribute(attr)
         if (value !== null) {
           // 额外的安全检查
-          if (attr === 'src' && !isValidImageSrc(value)) {
+          if (attr === 'src' && !(props.rich ? isValidImageSrc(value) : value.startsWith(EMOJI_IMG_PREFIX))) {
             continue
           }
           if (attr === 'href' && !isValidHref(value)) {
@@ -91,6 +104,15 @@ const sanitizeHtml = (html: string): string => {
         }
       }
       
+      // Text mode: an <img> without an allowed (emoji CDN) src is dropped
+      if (!props.rich && tagName === 'img' && !safeElement.getAttribute('src')) {
+        return null
+      }
+      // Text mode: <a> must be an auto-linked URL and always opens safely
+      if (!props.rich && tagName === 'a') {
+        safeElement.setAttribute('target', '_blank')
+        safeElement.setAttribute('rel', 'noopener noreferrer')
+      }
       return safeElement
     }
     

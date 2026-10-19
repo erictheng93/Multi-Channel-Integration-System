@@ -193,6 +193,15 @@ class UnicodeEmojiLibrary {
 // 创建Unicode库实例
 const unicodeEmojiLibrary = new UnicodeEmojiLibrary();
 
+/** Escape customer-supplied text so it can only ever render as text. */
+export const escapeHtmlText = (text: string): string =>
+  text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+
 /**
  * 分层Emoji处理器类
  */
@@ -264,7 +273,8 @@ export class LayeredEmojiProcessor {
 
     // URL pattern that matches http/https URLs
     // Handles common URL characters including encoded characters like %E7%B7%9A
-    const urlPattern = /(https?:\/\/[^\s<>"{}|\\^`[\]]+)/gi;
+    // Input is already HTML-escaped, so stop at escaped delimiters too.
+    const urlPattern = /(https?:\/\/(?:(?!&(?:lt|gt|quot|#39);)[^\s<>"{}|\\^`[\]])+)/gi;
 
     return text.replace(urlPattern, (url) => {
       // Validate URL for security
@@ -289,8 +299,10 @@ export class LayeredEmojiProcessor {
    * 完整处理方法 - 使用Layer 1 + Layer 2 + URL Linkification
    * 用于消息详情页等可以接受稍慢响应的场景
    */
-  async processWithBothLayers(text: string): Promise<string> {
-    if (!text) {return text;}
+  async processWithBothLayers(rawText: string): Promise<string> {
+    if (!rawText) {return rawText;}
+    // Escape first: output is rendered as HTML, input is customer-controlled.
+    const text = escapeHtmlText(rawText);
 
     const emojiPattern = /\(([^)]+)\)/g;
     let processedText = text;
