@@ -1,4 +1,4 @@
-// Lazy initialization for modular architecture, and P1 optimizations
+// Lazy initialization for the modular architecture system
 // Extracted from src/index.ts to reduce entry point size
 
 import type { Context, Next } from 'hono';
@@ -12,7 +12,6 @@ const log = createContextLogger('ModuleInitializer');
 // Module initialization state tracking
 let modularSystemInitialized = false;
 let modularSystemInitPromise: Promise<void> | null = null;
-let p1Initialized = false;
 
 /**
  * Lazy-initialize the modular architecture system (runs on first request)
@@ -55,31 +54,11 @@ async function initializeModularSystem(): Promise<void> {
 }
 
 /**
- * Lazy-initialize P1 Optimizations (runs on first request)
- */
-async function initializeP1Optimizations(env: Bindings): Promise<void> {
-  if (p1Initialized) {
-    return;
-  }
-
-  try {
-    log.debug('Initializing P1 Optimizations');
-    const { initializeP1Optimizations: init } = await import('../services/p1-optimizations');
-    await init(env);
-    p1Initialized = true;
-    log.debug('P1 Optimizations initialized successfully');
-  } catch (error) {
-    log.error('Failed to initialize P1 Optimizations', { error: error instanceof Error ? error.message : String(error) });
-    // P1 optimization failure should not block system startup
-  }
-}
-
-/**
- * Creates middleware that lazy-initializes the modular system and P1 optimizations
+ * Creates middleware that lazy-initializes the modular system
  * on the first request. Subsequent requests skip initialization.
  */
 export function createLazyInitMiddleware() {
-  return async (c: Context<{ Bindings: Bindings }>, next: Next) => {
+  return async (_c: Context<{ Bindings: Bindings }>, next: Next) => {
     if (!modularSystemInitialized) {
       try {
         await initializeModularSystem();
@@ -87,8 +66,6 @@ export function createLazyInitMiddleware() {
         log.error('Modular system initialization failed (continuing anyway)', { error: error instanceof Error ? error.message : String(error) });
       }
     }
-
-    await initializeP1Optimizations(c.env);
 
     await next();
   };
