@@ -159,3 +159,17 @@ describe('ActivityCapture.logOnly', () => {
     await expect(capture.logOnly(stmt)).resolves.toBeNull()
   })
 })
+
+describe('ActivityCapture.buildIrreversibleLog onlyIfPreviousChanged', () => {
+  const req = { userId: 'u', userName: 'n', userRole: 'admin', action: 'a', resourceType: 'r', reason: 'x' }
+
+  it('guards the insert with changes() > 0 only when asked', () => {
+    const { db, prepare } = makeMockDb()
+    const capture = new ActivityCapture(db)
+    capture.buildIrreversibleLog(req, { onlyIfPreviousChanged: true })
+    capture.buildIrreversibleLog(req)
+    const [guarded, plain] = prepare.mock.calls.map(c => (c as unknown as [string])[0])
+    expect(guarded).toContain('WHERE changes() > 0')
+    expect(plain).not.toContain('changes()')
+  })
+})

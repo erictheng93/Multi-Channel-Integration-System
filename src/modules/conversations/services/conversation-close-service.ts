@@ -25,7 +25,8 @@ export function reopenedStatus(assignedTeamId: number | null): 'assigned' | 'act
 /**
  * Close or reopen conversations. Rows already in the target state are skipped,
  * so reopening never overwrites an in-progress / waiting status.
- * Returns the new status of every conversation that changed.
+ * Returns the new status of every conversation this call actually changed
+ * (targets that lost a race with a concurrent update are omitted).
  */
 export async function setConversationsClosed(
   env: Bindings,
@@ -40,21 +41,13 @@ export async function setConversationsClosed(
 
   const timestamp = nowISO();
   const capture = new ActivityCapture(env.DB);
-  const statuses: Record<string, string> = {};
 
+  // Per target: the guarded UPDATE, then an activity row that exists only if that UPDATE
+  // changed a row. The status guard exists because a customer message can reopen the
+  // conversation concurrently; a target that lost that race is skipped, not reported.
   const statements = changing.flatMap(target => {
     const status = closed ? 'closed' : reopenedStatus(target.assignedTeamId);
-    statuses[target.id] = status;
     return [
-      capture.buildIrreversibleLog({
-        ...actor,
-        action: closed ? ACTIVITY_ACTIONS.CONVERSATION_CLOSE : ACTIVITY_ACTIONS.CONVERSATION_REOPEN,
-        resourceType: RESOURCE_TYPES.CONVERSATION,
-        resourceId: target.id,
-        details: { previousStatus: target.status, status },
-        reason: closed ? 'Undo by reopening the conversation' : 'Undo by closing the conversation'
-      }),
-      // 狀態條件避免與同時進來的客戶訊息（自動重新開啟）互相覆蓋
       // 結案時記下未讀下限（unread_floor_at），重新開啟時保留，結案前累積的訊息不會再算未讀
       closed
         ? env.DB
@@ -62,11 +55,29 @@ export async function setConversationsClosed(
           .bind(status, timestamp, timestamp, timestamp, target.id)
         : env.DB
           .prepare("UPDATE conversations SET status = ?, closed_at = NULL, updated_at = ? WHERE id = ? AND status = 'closed'")
-          .bind(status, timestamp, target.id)
+          .bind(status, timestamp, target.id),
+      capture.buildIrreversibleLog({
+        ...actor,
+        action: closed ? ACTIVITY_ACTIONS.CONVERSATION_CLOSE : ACTIVITY_ACTIONS.CONVERSATION_REOPEN,
+        resourceType: RESOURCE_TYPES.CONVERSATION,
+        resourceId: target.id,
+        details: { previousStatus: target.status, status },
+        reason: closed ? 'Undo by reopening the conversation' : 'Undo by closing the conversation'
+      }, { onlyIfPreviousChanged: true })
     ];
   });
 
-  await env.DB.batch(statements);
+  const batchResults = await env.DB.batch(statements);
+
+  const statuses: Record<string, string> = {};
+  changing.forEach((target, i) => {
+    if ((batchResults[i * 2]?.meta?.changes ?? 0) > 0) {
+      statuses[target.id] = closed ? 'closed' : reopenedStatus(target.assignedTeamId);
+    }
+  });
+  if (Object.keys(statuses).length === 0) {
+    return statuses;
+  }
 
   const broadcastService = new WebSocketBroadcastService(env);
   const results = await Promise.allSettled(Object.entries(statuses).map(([conversationId, status]) =>
