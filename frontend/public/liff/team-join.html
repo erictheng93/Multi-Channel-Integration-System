@@ -526,11 +526,11 @@
     };
 
     /**
-     * 取得 API 端點 - 優先順序：URL 參數 > window 全域變數 > Fallback
+     * 取得 API 端點 - 優先順序：window 全域變數 > Fallback
      */
     function getApiEndpoint() {
-      const urlParam = new URLSearchParams(window.location.search).get('api');
-      if (urlParam) return urlParam;
+      // ?api= is intentionally ignored: it would let a crafted link send the
+      // user's LINE identity to an arbitrary origin.
       if (window.MCIS_API_ENDPOINT) return window.MCIS_API_ENDPOINT;
       return FALLBACK_CONFIG.API_ENDPOINT;
     }
@@ -648,10 +648,9 @@
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            lineUserId: state.userProfile.userId,
+            idToken: liff.getIDToken(),
             teamId: state.teamId,
             displayName: state.userProfile.displayName,
-            timestamp: new Date().toISOString(),
           }),
         });
 
@@ -674,7 +673,7 @@
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            lineUserId: state.userProfile.userId,
+            idToken: liff.getIDToken(),
             teamId: state.teamId,
           }),
         });
