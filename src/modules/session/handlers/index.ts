@@ -41,6 +41,7 @@ import {
 } from '../middleware/index';
 
 import type { Bindings } from '@/types';
+import { requireBodyConversationAccess, requireSessionAccess } from '../middleware/session-visibility';
 import { nowISO } from '@/utils/timestamp'
 import { DEFAULT_PAGINATION, DEFAULT_SESSION_CONFIG } from '../types/session-types';
 
@@ -149,6 +150,14 @@ sessionRouter.post(
   // ...basicSessionAccess, // Temporarily disabled due to import issue
   checkSessionAccess,
   checkSessionCreatePermission,
+  requireBodyConversationAccess(async (c) => {
+    const body = await c.req.json().catch(() => ({})) as { conversationId?: unknown };
+    return typeof body.conversationId === 'string' ? body.conversationId : undefined;
+  }),
+  requireSessionAccess(async (c) => {
+    const body = await c.req.json().catch(() => ({})) as { currentSessionId?: unknown };
+    return typeof body.currentSessionId === 'string' ? body.currentSessionId : undefined;
+  }),
   async (c) => {
     try {
       const body = await c.req.json() as {
@@ -173,7 +182,7 @@ sessionRouter.post(
       if (body.currentSessionId) {
         currentSession = await sessionService.get(body.currentSessionId);
       } else {
-        const sessions = await sessionService.list({ conversationId: body.conversationId, isActive: true, page: 1, pageSize: 1 });
+        const sessions = await sessionService.list({ conversationId: body.conversationId, isActive: true, page: 1, pageSize: 1 }, c.get('user'));
         if (sessions.sessions.length > 0) currentSession = sessions.sessions[0];
       }
       const detectionResult = await sessionService.detectSessionBoundary(currentSession, body.messageContent, body.senderType);

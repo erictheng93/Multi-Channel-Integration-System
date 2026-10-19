@@ -28,6 +28,7 @@ import { nowISO, nowMs } from '@/utils/timestamp';
 import { createContextLogger } from '@/utils/logger';
 
 import { SessionAccessService } from './session-access-service';
+import type { ConversationVisibilityUser } from '@/services/conversation-visibility';
 import { SessionQueryService, transformDbSession } from './session-query-service';
 import { SessionMessageService } from './session-message-service';
 import { SessionStatsService } from './session-stats-service';
@@ -277,12 +278,12 @@ export class SessionService implements SessionServiceInterface {
     return this.accessService.canAccessSession(sessionId, userId, userRole);
   }
 
-  async list(query: SessionListQuery): Promise<SessionListResponse> {
-    return this.queryService.list(query);
+  async list(query: SessionListQuery, user: ConversationVisibilityUser): Promise<SessionListResponse> {
+    return this.queryService.list(query, user);
   }
 
-  async search(query: SessionSearchQuery): Promise<ConversationSession[]> {
-    return this.queryService.search(query);
+  async search(query: SessionSearchQuery, user: ConversationVisibilityUser): Promise<ConversationSession[]> {
+    return this.queryService.search(query, user);
   }
 
   async getMessages(sessionId: string, page = 1, pageSize = 20): Promise<SessionMessagesResponse> {

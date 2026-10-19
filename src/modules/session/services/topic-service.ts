@@ -8,6 +8,8 @@ const log = createContextLogger('TopicService')
 
 import type { DrizzleD1Database } from 'drizzle-orm/d1';
 import { eq, and, desc } from 'drizzle-orm';
+import { visibleSessionCondition } from './session-access-service';
+import type { ConversationVisibilityUser } from '@/services/conversation-visibility';
 import { conversationSessions, messages } from '@/db/schema';
 import { DEFAULT_SESSION_CONFIG } from '@modules/session/types/session-types';
 
@@ -235,16 +237,16 @@ export class TopicService {
   /**
    * 獲取會話主題統計
    */
-  async getTopicStatistics(conversationId?: string): Promise<{
+  async getTopicStatistics(conversationId: string | undefined, user: ConversationVisibilityUser): Promise<{
     totalTopics: number;
     topicDistribution: Array<{ topic: string; count: number; percentage: number }>;
     mostCommonTopic: string | null;
     topicsBySession: Array<{ sessionId: string; topic: string | null; messageCount: number }>;
   }> {
-    let whereCondition = undefined;
-    if (conversationId) {
-      whereCondition = eq(conversationSessions.conversationId, conversationId);
-    }
+    const visible = visibleSessionCondition(this.db, user);
+    const whereCondition = conversationId
+      ? and(visible, eq(conversationSessions.conversationId, conversationId))
+      : visible;
 
     // 獲取所有會話主題
     const sessions = await this.db
