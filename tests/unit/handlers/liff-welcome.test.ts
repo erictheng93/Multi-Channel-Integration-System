@@ -241,6 +241,30 @@ describe('LIFF Welcome Endpoint - Conversation Sync', () => {
     });
   });
 
+  describe('Dedupe marker', () => {
+    const post = (app: ReturnType<typeof createTestApp>) => app.request('/api/liff/welcome', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ idToken: 'valid', teamId: 1 })
+    });
+
+    it('does not write the marker when the LINE push fails, so a retry can deliver', async () => {
+      mockDbResults = { team: { id: 1, name: 'Test Team' }, customer: null, conversation: null };
+      mockLineApiFetch(false);
+      const env = createMockEnv();
+      const res = await post(createTestApp(env));
+      expect(res.status).toBe(500);
+      expect(env.CACHE.put).not.toHaveBeenCalled();
+    });
+
+    it('writes the marker after a successful push', async () => {
+      mockDbResults = { team: { id: 1, name: 'Test Team' }, customer: null, conversation: null };
+      const env = createMockEnv();
+      expect((await post(createTestApp(env))).status).toBe(200);
+      expect(env.CACHE.put).toHaveBeenCalledWith(expect.stringContaining('liff:welcome:'), '1', { expirationTtl: 300 });
+    });
+  });
+
   // ==========================================================================
   // Scenario 2: Existing User, No Conversation
   // ==========================================================================
