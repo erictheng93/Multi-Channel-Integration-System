@@ -149,7 +149,10 @@ const TOKEN_EPOCH_TTL = 8 * 24 * 60 * 60;
 const tokenEpochKey = (userId: string | number) => `tokens-valid-after:${userId}`;
 
 export async function bumpTokensValidAfter(cache: KVNamespace, userId: string | number): Promise<void> {
-  await cache.put(tokenEpochKey(userId), String(Math.floor(Date.now() / 1000)), { expirationTtl: TOKEN_EPOCH_TTL });
+  // +1: iat has whole-second resolution, so a token minted earlier in this same second
+  // would otherwise equal the epoch and survive. Cost: a login within the remaining
+  // <1s of the bump second is also rejected (callers never mint a token right after a bump).
+  await cache.put(tokenEpochKey(userId), String(Math.floor(Date.now() / 1000) + 1), { expirationTtl: TOKEN_EPOCH_TTL });
 }
 
 /** True when the token was issued before the user's last credential change. Throws if KV is unreadable (callers fail closed). */
