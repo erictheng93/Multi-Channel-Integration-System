@@ -340,10 +340,21 @@ export class DelayedMessageScheduler implements DurableObject {
     const data = await request.json() as {
       messageId: string;
       reason?: string;
+      /** When set, only the agent that scheduled the message may cancel it. */
+      requireAgentId?: string;
     };
 
     if (!data.messageId) {
       return this.badRequestResponse('Message ID required');
+    }
+
+    if (data.requireAgentId !== undefined) {
+      // Fail closed: memory first, then durable storage; no record means ownership is unprovable.
+      const pending = this.pendingMessages.get(data.messageId)
+        ?? await this.state.storage.get<PendingMessage>(`msg:${data.messageId}`);
+      if (!pending || pending.agentId !== data.requireAgentId) {
+        return this.jsonResponse({ success: false, forbidden: true, reason: 'Not the sender' }, 403);
+      }
     }
 
     const result = await cancelMessage(

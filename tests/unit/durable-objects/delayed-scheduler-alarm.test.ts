@@ -34,7 +34,7 @@ function harness(extra: Array<[string, unknown]> = [], failDlq = false) {
   }
   const scheduler = new DelayedMessageScheduler(state as any, {} as any)
   return {
-    ready: () => ready, alarm: () => alarm, values,
+    ready: () => ready, alarm: () => alarm, values, scheduler,
     async restart() {
       new DelayedMessageScheduler(state as any, {} as any)
       await ready
@@ -111,5 +111,27 @@ describe('DelayedMessageScheduler alarm chain', () => {
     expect(h.values.has('msg:f2')).toBe(true)
     expect(h.values.has('dlq:old')).toBe(false)
     expect(h.values.has('msg:m1')).toBe(true)
+  })
+
+  describe('cancel ownership (requireAgentId)', () => {
+    const post = (path: string, body: unknown) =>
+      new Request(`https://do${path}`, { method: 'POST', body: JSON.stringify(body) })
+    const pendingFor = (agentId: string) => ['msg:own', {
+      id: 'own', conversationId: 'c1', agentId, content: 'hi', messageType: 'text', platform: 'line',
+      recipientPlatformId: 'U1', status: 'pending', scheduledAt: Date.now() + 60_000, createdAt: Date.now(),
+    }] as [string, unknown]
+
+    async function cancel(h: ReturnType<typeof harness>, requireAgentId: string, messageId = 'own') {
+      const doo = (h as any).scheduler
+      return doo.fetch(post('/cancel', { messageId, requireAgentId }))
+    }
+
+    it('lets the scheduling agent cancel, rejects another agent, and rejects an unknown id', async () => {
+      const h = harness([pendingFor('7')])
+      await h.ready()
+      expect((await cancel(h, '8')).status).toBe(403)
+      expect((await cancel(h, '7', 'missing')).status).toBe(403)
+      expect((await cancel(h, '7')).status).toBe(200)
+    })
   })
 })
