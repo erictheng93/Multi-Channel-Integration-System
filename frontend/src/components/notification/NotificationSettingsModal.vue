@@ -305,7 +305,7 @@ import {
 // import it directly, matching the existing pattern in SidebarNav.vue.
 import MonitorIcon from '@/components/icons/MonitorIcon.vue'
 import { useDesktopNotificationPrefs } from '@/composables/notification/useDesktopNotificationPrefs'
-import { formatPausedUntil, nextNineAm } from '@/composables/notification/desktopNotificationLogic'
+import { nextNineAm } from '@/composables/notification/desktopNotificationLogic'
 
 const props = defineProps<{
   visible: boolean
@@ -333,6 +333,7 @@ const {
   refreshPermission,
   requestDesktopPermission,
   isPaused: desktopPaused,
+  pausedUntilText,
   pauseUntil: pauseDesktopUntil,
   resume: resumeDesktop
 } = useDesktopNotificationPrefs()
@@ -344,10 +345,6 @@ const pauseOptions = [
   { key: '1h', label: '1 小時', until: () => Date.now() + 60 * MINUTE_MS },
   { key: 'until-9', label: '至 09:00', until: () => nextNineAm(Date.now()) }
 ]
-
-const pausedUntilText = computed(() =>
-  desktopPrefs.pausedUntil === null ? '' : formatPausedUntil(desktopPrefs.pausedUntil, Date.now())
-)
 
 // 開啟 Modal 時重新讀取權限(使用者可能已在瀏覽器設定變更)
 watch(() => props.visible, (visible) => {

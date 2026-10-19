@@ -55,6 +55,8 @@ export interface BroadcasterContext {
   highPriorityQueue: unknown[];
   conversationRooms: Map<string, DurableObjectStub>;
   userConnections: Map<string, DurableObjectStub>;
+  /** Bumped on every /register-connection for a user; lets stale-entry pruning detect a re-registration without swapping the stub. */
+  userRegistrationGen: Map<string, number>;
   targetFilters: Map<string, WebSocketSubscription[]>;
   locks: Map<string, DistributedLock>;
   stats: DistributionStats;

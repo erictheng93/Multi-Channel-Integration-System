@@ -93,8 +93,8 @@ export const METRIC_DEFINITIONS: Record<string, MetricDefinition> = {
   },
   closedConversations: {
     key: 'closedConversations',
-    label: '已關閉對話',
-    description: '已結束的對話數量',
+    label: '已結案對話',
+    description: '已結案的對話數量',
     unit: '個',
     category: 'conversation'
   },

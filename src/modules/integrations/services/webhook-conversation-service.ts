@@ -1,7 +1,7 @@
 // src/modules/integrations/services/webhook-conversation-service.ts
 // Shared conversation find/create/update logic extracted from webhook.ts (Phase 4 refactoring)
 
-import { eq, and, ne } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { createDbClient } from '@/db/drizzle-factory';
 import { conversations, messages } from '@/db/schema';
 import { convertConversation } from '@/utils/drizzle-converters';
@@ -17,7 +17,7 @@ type Platform = 'line' | 'facebook';
 type WebhookConversation = ReturnType<typeof convertConversation>;
 
 /**
- * Find an existing open conversation for a customer,
+ * Find the customer's conversation (reopening it if closed),
  * or create a new one with UUID.
  * Returns the conversation record.
  */
@@ -40,10 +40,8 @@ export async function findOrCreateConversation(
   const existingConversation = await drizzleDb
     .select()
     .from(conversations)
-    .where(and(
-      eq(conversations.customerId, customerId),
-      ne(conversations.status, 'closed')
-    ))
+    // 一位客戶只有一個對話；已結案的對話也在這裡找到，下方會重新開啟
+    .where(eq(conversations.customerId, customerId))
     .get();
   let conversation: WebhookConversation | undefined = existingConversation
     ? convertConversation(existingConversation)
@@ -61,10 +59,7 @@ export async function findOrCreateConversation(
         const existing = await drizzleDb
           .select()
           .from(conversations)
-          .where(and(
-            eq(conversations.customerId, customerId),
-            ne(conversations.status, 'closed')
-          ))
+          .where(eq(conversations.customerId, customerId))
           .get();
 
         if (existing) {
@@ -176,7 +171,7 @@ export async function findOrCreateConversation(
     );
 
     // Trigger notification OUTSIDE the lock (non-critical, reduces lock hold time)
-    if (platform === 'line' && conversation) {
+    if (conversation) {
       try {
         const { triggerNewConversationNotification } = await import('@/utils/notification-trigger');
         await triggerNewConversationNotification(env, {
@@ -220,11 +215,37 @@ export async function findOrCreateConversation(
       });
     }
 
+    // 客戶在已結案的對話再次傳訊 → 自動重新開啟（依指派狀態回到 assigned / active）
+    const reopenedStatus = conversation.status === 'closed'
+      ? (conversation.assignedTeamId || opts?.assignedTeamId ? 'assigned' : 'active')
+      : null;
+    if (reopenedStatus) {
+      updateFields.status = reopenedStatus;
+      updateFields.closedAt = null;
+      updateFields.updatedAt = timestamp;
+    }
+
     if (Object.keys(updateFields).length > 0) {
       await drizzleDb
         .update(conversations)
         .set(updateFields)
         .where(eq(conversations.id, conversation.id));
+    }
+
+    if (reopenedStatus) {
+      conversation.status = reopenedStatus;
+      log.info('Reopened closed conversation on inbound message', { conversationId: conversation.id, status: reopenedStatus });
+      try {
+        const { WebSocketBroadcastService } = await import('@/services/websocket-broadcast-service');
+        await new WebSocketBroadcastService(env).broadcastConversationEvent({
+          type: 'conversation_status_changed',
+          conversationId: conversation.id,
+          data: { status: reopenedStatus, timestamp },
+          priority: 'normal'
+        });
+      } catch (broadcastError) {
+        log.warn('Reopen broadcast failed, continuing', { error: broadcastError instanceof Error ? broadcastError.message : String(broadcastError) });
+      }
     }
 
     // 更新本地 conversation 物件以反映最新狀態
@@ -335,16 +356,9 @@ export async function saveMessage(
       });
     }
 
-    // Trigger latest message cache update
-    try {
-      const { LatestMessageJobQueue } = await import('@/workers/latest-message-worker');
-      const jobQueue = new LatestMessageJobQueue(env);
-      await jobQueue.updateLatestMessage(conversationId, messageId, 'high');
-      log.debug(`Triggered cache update for ${platform} message`, { conversationId });
-    } catch (error) {
-      log.warn('Failed to trigger cache update', { error: error instanceof Error ? error.message : String(error) });
-      // Don't fail the webhook for cache update failures
-    }
+    // The latest-message KV cache is no longer updated here: nothing reads `latest_msg:*`
+    // (conversation lists come from D1), and every inbound message used to cost a
+    // LatestMessageCacheCoordinator request, two storage writes and a 5 s alarm wake.
 
     if (platform === 'line') {
       log.debug(`Message created successfully`, {

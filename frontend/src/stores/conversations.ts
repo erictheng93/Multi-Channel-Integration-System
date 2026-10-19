@@ -40,6 +40,10 @@ export const useConversationsStore = defineStore('conversations', () => {
   const loadingMore = ref(false) // Pagination
 
   const error = ref<string | null>(null)
+  // Persistent list-load failure. Unlike `error` (toast, auto-cleared after 5s) this
+  // stays until the next load attempt starts or succeeds, so the list view can show
+  // a failure state instead of the misleading empty state.
+  const loadError = ref<string | null>(null)
   const messagesLoading = ref(false)
   const sendingMessage = ref(false)
   const optimisticMessages = ref<Message[]>([])
@@ -344,6 +348,7 @@ export const useConversationsStore = defineStore('conversations', () => {
     lastUpdateTime,
     activeFilters,
     error,
+    loadError,
     updateConversationFromWebSocketMessage,
     updateConversationStatus,
     updateConversationsIncrementally,
@@ -378,6 +383,7 @@ export const useConversationsStore = defineStore('conversations', () => {
     loading,
     updating,
     error,
+    loadError,
     filters,
     pagination,
     handleError,
@@ -405,17 +411,23 @@ export const useConversationsStore = defineStore('conversations', () => {
   // Fetch methods
   // ═══════════════════════════════════════════════════════════════════
 
+  // Latest-wins: a response from a superseded request (e.g. the previous scope tab) must not overwrite the list.
+  let fetchSeq = 0
+
   const fetchConversations = async (newFilters?: ConversationFilters, page = 1, append = false) => {
     if (newFilters) {
       filters.value = { ...newFilters }
       activeFilters.value = { ...newFilters }
     }
+    const seq = ++fetchSeq
 
     loading.value = true
     error.value = null
+    loadError.value = null
 
     try {
       const cleanFilters: Record<string, unknown> = {}
+      if (filters.value.scope) { cleanFilters.scope = filters.value.scope }
       if (filters.value.status) { cleanFilters.status = filters.value.status }
       if (filters.value.platform) { cleanFilters.platform = filters.value.platform }
       if (filters.value.teamId) { cleanFilters.teamId = filters.value.teamId }
@@ -430,6 +442,8 @@ export const useConversationsStore = defineStore('conversations', () => {
         pageSize: pagination.value.pageSize,
         ...cleanFilters
       })
+
+      if (seq !== fetchSeq) { return }
 
       if (response.success && response.data) {
         let conversationList: Conversation[]
@@ -469,14 +483,20 @@ export const useConversationsStore = defineStore('conversations', () => {
         pagination.value = paginationData
       } else {
         handleError(response.error, '獲取對話列表失敗')
+        loadError.value = error.value ?? '載入對話失敗'
       }
     } catch (err) {
+      if (seq !== fetchSeq) { return }
       handleError(err, '網路錯誤，無法載入對話列表')
+      // Always recorded: the view decides by what it can actually display (rows of another scope may linger).
+      loadError.value = error.value ?? '載入對話失敗'
     } finally {
-      loading.value = false
-      refreshing.value = false
-      updating.value = false
-      loadingMore.value = false
+      if (seq === fetchSeq) {
+        loading.value = false
+        refreshing.value = false
+        updating.value = false
+        loadingMore.value = false
+      }
     }
   }
 
@@ -682,6 +702,120 @@ export const useConversationsStore = defineStore('conversations', () => {
     }
   }
 
+  // 回滾結案時的未讀數。樂觀結案把本地未讀歸 0，之後 WebSocket 只會對它 +1（客戶新訊息，
+  // 見 updateConversationFromWebSocketMessage；對既有對話沒有「絕對值」覆寫路徑，只有結案時歸 0），
+  // 所以請求期間 current 內的值就是「歸 0 之後新增的 delta」，需與結案前的積壓相加，
+  // 否則 5 -> 0 -> +1 -> 回滾會得到 1 而不是 6。重新開啟不動未讀數，原值照舊。
+  const rollbackUnread = (closed: boolean, saved: number, currentUnread: number | undefined): number =>
+    closed ? saved + Math.max(currentUnread ?? 0, 0) : saved
+
+  // 結案 / 重新開啟（optimistic UI：先改本地狀態，失敗則回滾）
+  const setConversationClosed = async (conversationId: string, closed: boolean): Promise<boolean> => {
+    if (!conversationId) { return false }
+
+    const target = conversations.value.find(c => c.id === conversationId)
+      ?? (currentConversation.value?.id === conversationId ? currentConversation.value : undefined)
+    const previousStatus = target?.status
+    const previousUnread = target?.unreadCount ?? 0
+    const optimisticStatus: Conversation['status'] = closed
+      ? 'closed'
+      : (target?.assignedTeamId ? 'assigned' : 'active')
+
+    // 已結案的對話對所有客服都算 0 未讀（後端同規則）
+    if (previousStatus) {
+      updateConversationStatus(conversationId, closed ? { status: optimisticStatus, unreadCount: 0 } : { status: optimisticStatus })
+    }
+
+    const rollback = () => {
+      if (!previousStatus) { return }
+      const current = conversations.value.find(c => c.id === conversationId)
+        ?? (currentConversation.value?.id === conversationId ? currentConversation.value : undefined)
+      // 請求期間 WebSocket 已推進狀態（例如客戶新訊息自動重新開啟）→ 以較新的狀態為準，不回滾
+      if (current && current.status !== optimisticStatus) { return }
+      const unreadCount = rollbackUnread(closed, previousUnread, current?.unreadCount)
+      updateConversationStatus(conversationId, { status: previousStatus, unreadCount })
+    }
+
+    try {
+      const response = closed
+        ? await conversationApi.closeConversation(conversationId)
+        : await conversationApi.reopenConversation(conversationId)
+
+      if (response.success) {
+        if (response.data?.status) {
+          updateConversationStatus(conversationId, { status: response.data.status })
+        }
+        return true
+      }
+      rollback()
+      handleError(response.error, closed ? '結案失敗' : '重新開啟失敗')
+      return false
+    } catch (err) {
+      rollback()
+      handleError(err, closed ? '網路錯誤，結案失敗' : '網路錯誤，重新開啟失敗')
+      return false
+    }
+  }
+
+  // 批量結案 / 重新開啟（optimistic UI）：只送出需要變更的 id，失敗則全部回滾。
+  // 回傳實際變更筆數；失敗回傳 null。
+  const bulkSetConversationsClosed = async (ids: string[], closed: boolean): Promise<number | null> => {
+    const previous = new Map<string, Pick<Conversation, 'status' | 'unreadCount'>>()
+    for (const id of ids) {
+      const target = conversations.value.find(c => c.id === id)
+      if (!target || previous.has(id)) { continue }
+      const needsChange = closed ? target.status !== 'closed' : target.status === 'closed'
+      if (needsChange) { previous.set(id, { status: target.status, unreadCount: target.unreadCount }) }
+    }
+
+    const changedIds = Array.from(previous.keys())
+    if (changedIds.length === 0) { return 0 }
+
+    for (const id of changedIds) {
+      const target = conversations.value.find(c => c.id === id)
+      const optimisticStatus: Conversation['status'] = closed
+        ? 'closed'
+        : (target?.assignedTeamId ? 'assigned' : 'active')
+      // 已結案的對話對所有客服都算 0 未讀（後端同規則）
+      updateConversationStatus(id, closed ? { status: optimisticStatus, unreadCount: 0 } : { status: optimisticStatus })
+    }
+
+    const rollback = () => {
+      for (const [id, state] of previous) {
+        const current = conversations.value.find(c => c.id === id)
+        // 結案後已被即時事件重新開啟 → 保留較新的狀態；未讀數同理
+        if (current && closed && current.status !== 'closed') { continue }
+        const unreadCount = rollbackUnread(closed, state.unreadCount, current?.unreadCount)
+        updateConversationStatus(id, { status: state.status, unreadCount })
+      }
+    }
+
+    try {
+      const response = closed
+        ? await conversationApi.bulkClose(changedIds)
+        : await conversationApi.bulkReopen(changedIds)
+
+      if (response.success) {
+        const statuses = response.data?.statuses
+        if (statuses) {
+          for (const [id, status] of Object.entries(statuses)) {
+            if (previous.has(id)) {
+              updateConversationStatus(id, { status: status as Conversation['status'] })
+            }
+          }
+        }
+        return response.data?.affectedCount ?? changedIds.length
+      }
+      rollback()
+      handleError(response.error, closed ? '批量結案失敗' : '批量重新開啟失敗')
+      return null
+    } catch (err) {
+      rollback()
+      handleError(err, closed ? '網路錯誤，批量結案失敗' : '網路錯誤，批量重新開啟失敗')
+      return null
+    }
+  }
+
   const loadMore = async () => {
     if (pagination.value.page >= pagination.value.totalPages) { return }
     await fetchConversations(filters.value, pagination.value.page + 1, true)
@@ -809,6 +943,7 @@ export const useConversationsStore = defineStore('conversations', () => {
     loading,
     loadingMore,
     error,
+    loadError,
     messagesLoading,
     sendingMessage,
     optimisticMessages,
@@ -838,6 +973,8 @@ export const useConversationsStore = defineStore('conversations', () => {
     unassignConversation,
     markAsRead,
     markAsUnread,
+    setConversationClosed,
+    bulkSetConversationsClosed,
     loadMore,
     loadMoreConversations,
     refresh,

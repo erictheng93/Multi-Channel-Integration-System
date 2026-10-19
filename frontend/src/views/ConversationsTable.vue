@@ -6,12 +6,48 @@
           <div class="header-top">
             <h1>對話管理</h1>
             <div class="header-actions">
+              <button
+                type="button"
+                class="btn btn-secondary btn-sm selection-toggle"
+                :class="{ 'is-active': selectionMode }"
+                :aria-pressed="selectionMode"
+                :disabled="displayedConversations.length === 0 && !selectionMode"
+                @click="toggleSelectionMode"
+              >
+                {{ selectionMode ? '完成' : '選取' }}
+              </button>
               <RefreshButton
                 :loading="loading || isUpdating"
                 @refresh="refreshConversations"
               />
             </div>
           </div>
+          <!-- 分頁籤：預設「處理中」，已結案的對話不佔據最顯眼的位置 -->
+          <div
+            class="scope-tabs"
+            role="tablist"
+            aria-label="對話分類"
+          >
+            <button
+              v-for="tab in SCOPE_TABS"
+              :key="tab.value"
+              type="button"
+              role="tab"
+              class="scope-tab"
+              :class="{ active: scope === tab.value }"
+              :aria-selected="scope === tab.value"
+              @click="scope = tab.value"
+            >
+              {{ tab.label }}
+            </button>
+          </div>
+          <p
+            v-if="isSearching"
+            class="scope-hint"
+            role="status"
+          >
+            搜尋時會一併顯示已結案的對話
+          </p>
           <ConversationFilters
             :filters="filterComposable.filters.value"
             :available-tags="availableTags"
@@ -35,13 +71,35 @@
             <HamsterLoader message="載入對話列表中..." />
           </div>
           <div
+            v-else-if="loadError && displayedConversations.length === 0"
+            class="conversations-error"
+            role="alert"
+          >
+            <div class="conversations-error-content">
+              <div class="conversations-error-title">
+                無法載入對話列表
+              </div>
+              <div class="conversations-error-text">
+                {{ loadError }}
+              </div>
+              <button
+                type="button"
+                class="btn btn-primary"
+                :disabled="isUpdating"
+                @click="refreshConversations"
+              >
+                重試
+              </button>
+            </div>
+          </div>
+          <div
             v-else-if="displayedConversations.length === 0"
             class="no-data"
           >
             <div class="no-data-content">
               <div class="no-data-icon" />
               <div class="no-data-text">
-                暫無對話記錄
+                {{ emptyText }}
               </div>
             </div>
           </div>
@@ -53,16 +111,64 @@
             <!-- Desktop Table View -->
             <ConversationDesktopTable
               :conversations="displayedConversations"
+              :selection-mode="selectionMode"
+              :selected-ids="selectedIds"
               @select="goToConversation"
+              @toggle-select="toggleSelect"
+              @toggle-select-all="toggleSelectAll"
             />
 
             <!-- Mobile Card View -->
             <ConversationMobileCards
               :conversations="displayedConversations"
+              :selection-mode="selectionMode"
+              :selected-ids="selectedIds"
               @select="goToConversation"
+              @toggle-select="toggleSelect"
             />
           </div>
         </div>
+
+        <!-- 批量操作列 -->
+        <Transition name="bulk-bar">
+          <div
+            v-if="selectionMode && selectedIds.size > 0"
+            class="bulk-action-bar"
+            role="toolbar"
+            aria-label="批量操作"
+          >
+            <span class="bulk-count">已選 {{ selectedIds.size }} 筆</span>
+            <span
+              v-if="overLimit"
+              class="bulk-limit"
+              role="status"
+            >最多 {{ BULK_LIMIT }} 筆</span>
+            <button
+              type="button"
+              class="btn btn-primary btn-sm"
+              :disabled="!canClose || overLimit || bulkBusy"
+              @click="runBulk(true)"
+            >
+              結案
+            </button>
+            <button
+              type="button"
+              class="btn btn-secondary btn-sm"
+              :disabled="!canReopen || overLimit || bulkBusy"
+              @click="runBulk(false)"
+            >
+              重新開啟
+            </button>
+            <button
+              type="button"
+              class="btn btn-secondary btn-sm"
+              :disabled="bulkBusy"
+              @click="clearSelection"
+            >
+              取消
+            </button>
+          </div>
+        </Transition>
       </div>
     </ErrorBoundary>
   </AppLayout>
@@ -77,6 +183,8 @@ import { useRouter } from 'vue-router'
 import { useConversationsStore } from '@/stores/conversations'
 import { useConversationFilters } from '@/composables/conversation/useConversationFilters'
 import { useDebounce } from '@/composables/useDebounce'
+import { useToast } from '@/composables/useToast'
+import { useConfirmDialog } from '@/composables/useConfirmDialog'
 import { tagCacheService } from '@/services/tagCacheService'
 import type { ConversationFilters as ConversationFiltersType } from '@/types'
 
@@ -105,8 +213,33 @@ async function loadAvailableTags() {
   }
 }
 
+// 分頁籤（處理中 / 已結案 / 全部）。不放進 filterComposable：「清除篩選」不應該切換分頁
+type ConversationScope = NonNullable<ConversationFiltersType['scope']>
+const SCOPE_TABS: ReadonlyArray<{ value: ConversationScope; label: string; empty: string }> = [
+  { value: 'open', label: '處理中', empty: '沒有處理中的對話' },
+  { value: 'closed', label: '已結案', empty: '沒有已結案的對話' },
+  { value: 'all', label: '全部', empty: '暫無對話記錄' }
+]
+const scope = ref<ConversationScope>('open')
+
+// 有搜尋字時一律搜「全部」：找舊客戶不該因為對話已結案而查無結果（未結案仍排在前面）
+// lastMessageSearch 只在前端篩選已載入的列，伺服器端無法涵蓋已結案，故不納入
+const isSearching = computed(() => {
+  const f = filterComposable.filters.value
+  return Boolean(f.customerName?.trim() || f.search?.trim())
+})
+const effectiveScope = computed<ConversationScope>(() => (isSearching.value ? 'all' : scope.value))
+const emptyText = computed(() => isSearching.value
+  ? '找不到符合的對話（已包含已結案）'
+  : SCOPE_TABS.find(t => t.value === scope.value)?.empty ?? '暫無對話記錄')
+
 // Debounced API filters — triggers store fetch on change
-const apiFilters = computed(() => filterComposable.getApiFilters())
+const apiFilters = computed(() => {
+  const base: ConversationFiltersType = { ...filterComposable.getApiFilters(), scope: effectiveScope.value }
+  // 後端把 status 與 scope 取交集：已結案分頁不能再帶 active/assigned/pending，否則永遠是空的
+  if (base.scope === 'closed') { delete base.status }
+  return base
+})
 const debouncedApiFilters = useDebounce(apiFilters, 300)
 
 // 平滑載入動畫系統
@@ -116,11 +249,41 @@ const animationDelay = ref(0)
 
 // 直接使用 Store 數據，避免 useAsyncData 的複雜性
 const loading = computed(() => conversationsStore.loading)
+const loadError = computed(() => conversationsStore.loadError)
 const conversations = computed(() => conversationsStore.conversations)
 
 // 平滑載入系統：顯示的對話列表（僅 lastMessageSearch 為 client-side 篩選）
+// 分頁籤也在前端套用：結案 / 重新開啟後列即時滑出，不必等重新抓取
+const scopedConversations = computed(() =>
+  effectiveScope.value === 'open'
+    ? conversations.value.filter(c => c.status !== 'closed')
+    : effectiveScope.value === 'closed'
+      ? conversations.value.filter(c => c.status === 'closed')
+      : conversations.value
+)
+
+// 列因狀態轉換滑出分頁後，若伺服器還有更多，補抓一次填滿頁面
+let refillTimer: ReturnType<typeof setTimeout> | null = null
+watch(() => [effectiveScope.value, scopedConversations.value] as const, ([scope, list], [prevScope, prev]) => {
+  // 換分頁不是狀態轉換：debounced 篩選 watcher 會負責抓取，這裡取消待補抓並跳過，避免重複請求
+  if (scope !== prevScope) {
+    if (refillTimer) { clearTimeout(refillTimer); refillTimer = null }
+    return
+  }
+  if (scope === 'all' || conversationsStore.pagination.totalPages <= 1) { return }
+  const kept = new Set(list.map(c => c.id))
+  const loaded = new Set(conversations.value.map(c => c.id))
+  // 只算「仍在列表、但已不屬於本分頁」的列；換分頁 / 重新抓取造成的消失不會觸發
+  if (!prev.some(c => !kept.has(c.id) && loaded.has(c.id))) { return }
+  if (refillTimer) { clearTimeout(refillTimer) }
+  refillTimer = setTimeout(() => {
+    refillTimer = null
+    conversationsStore.fetchConversations(apiFilters.value as ConversationFiltersType)
+  }, 500)
+})
+
 const displayedConversations = computed(() => {
-  let result = conversations.value
+  let result = scopedConversations.value
   const lastMsgSearch = filterComposable.filters.value.lastMessageSearch?.trim().toLowerCase()
   if (lastMsgSearch) {
     result = result.filter(c => {
@@ -130,6 +293,90 @@ const displayedConversations = computed(() => {
   }
   return result
 })
+
+// ==================== 批量選取 ====================
+const BULK_LIMIT = 100
+const { showSuccess, showError } = useToast()
+const { showConfirm } = useConfirmDialog()
+
+const selectionMode = ref(false)
+const selectedIds = ref<Set<string>>(new Set())
+const bulkBusy = ref(false)
+
+const selectedConversations = computed(() =>
+  displayedConversations.value.filter(c => selectedIds.value.has(c.id))
+)
+const canClose = computed(() => selectedConversations.value.some(c => c.status !== 'closed'))
+const canReopen = computed(() => selectedConversations.value.some(c => c.status === 'closed'))
+const overLimit = computed(() => selectedIds.value.size > BULK_LIMIT)
+
+function clearSelection() {
+  selectedIds.value = new Set()
+}
+
+function toggleSelectionMode() {
+  selectionMode.value = !selectionMode.value
+  if (!selectionMode.value) { clearSelection() }
+}
+
+function toggleSelect(id: string) {
+  const next = new Set(selectedIds.value)
+  if (next.has(id)) { next.delete(id) } else { next.add(id) }
+  selectedIds.value = next
+}
+
+function toggleSelectAll() {
+  const pageIds = displayedConversations.value.map(c => c.id)
+  const allSelected = pageIds.length > 0 && pageIds.every(id => selectedIds.value.has(id))
+  const next = new Set(selectedIds.value)
+  for (const id of pageIds) {
+    if (allSelected) { next.delete(id) } else { next.add(id) }
+  }
+  selectedIds.value = next
+}
+
+// 篩選 / 換頁後，移除已不在目前列表中的選取
+watch(displayedConversations, (list) => {
+  if (selectedIds.value.size === 0) { return }
+  const visible = new Set(list.map(c => c.id))
+  const kept = Array.from(selectedIds.value).filter(id => visible.has(id))
+  if (kept.length !== selectedIds.value.size) {
+    selectedIds.value = new Set(kept)
+  }
+})
+
+async function runBulk(closed: boolean) {
+  if (bulkBusy.value || overLimit.value || selectedIds.value.size === 0) { return }
+  // 結案後未讀會歸零（對所有客服），批量時可能沒看過最後一句 → 有未讀就先確認
+  if (closed) {
+    const unreadCount = selectedConversations.value.filter(c => c.status !== 'closed' && c.unreadCount > 0).length
+    if (unreadCount > 0) {
+      const confirmed = await showConfirm({
+        title: '仍要結案嗎？',
+        message: `其中 ${unreadCount} 筆有未讀訊息，結案後所有客服都不會再看到未讀提示。`,
+        type: 'warning',
+        confirmText: '結案',
+        cancelText: '取消'
+      })
+      if (!confirmed) { return }
+    }
+  }
+  bulkBusy.value = true
+  try {
+    const count = await conversationsStore.bulkSetConversationsClosed(
+      Array.from(selectedIds.value),
+      closed
+    )
+    if (count === null) {
+      showError(conversationsStore.error || (closed ? '批量結案失敗' : '批量重新開啟失敗'))
+      return
+    }
+    showSuccess(closed ? `已結案 ${count} 筆對話` : `已重新開啟 ${count} 筆對話`)
+    clearSelection()
+  } finally {
+    bulkBusy.value = false
+  }
+}
 
 // Watch debounced API filters and fetch from API
 watch(debouncedApiFilters, (newFilters) => {
@@ -171,7 +418,7 @@ const performSmoothUpdate = async () => {
   frontendLogger.debug('[ConversationsTable] Starting smooth update...')
 
   try {
-    await conversationsStore.fetchConversations(filterComposable.getApiFilters() as ConversationFiltersType)
+    await conversationsStore.fetchConversations(apiFilters.value as ConversationFiltersType)
 
     // 短暫的視覺反饋
     await nextTick()
@@ -212,7 +459,9 @@ onMounted(async () => {
   // - 如果有緩存數據：立即顯示，背景靜默更新（只顯示更新指示器，非全屏載入）
   // - 如果無緩存數據：顯示載入狀態
   try {
-    await conversationsStore.loadWithCache(filterComposable.getApiFilters() as ConversationFiltersType)
+    // 即時事件觸發的輪詢讀 activeFilters；先設好，避免首次輪詢不帶 scope 而抓回已結案
+    conversationsStore.setActiveFilters(apiFilters.value as ConversationFiltersType)
+    await conversationsStore.loadWithCache(apiFilters.value as ConversationFiltersType)
   } catch (error) {
     console.error('載入對話失敗:', error)
     // 即使載入失敗，也不要讓頁面白屏
@@ -228,6 +477,7 @@ onMounted(async () => {
 // 清理实时同步资源
 onUnmounted(() => {
   frontendLogger.debug('[ConversationsTable] Component unmounting, cleaning up...')
+  if (refillTimer) { clearTimeout(refillTimer) }
   conversationsStore.cleanup()
 })
 </script>
@@ -245,6 +495,51 @@ onUnmounted(() => {
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
   display: flex;
   flex-direction: column;
+}
+
+.scope-tabs {
+  display: inline-flex;
+  align-self: flex-start;
+  gap: 2px;
+  margin: 0.75rem 1.5rem 0;
+  padding: 3px;
+  border-radius: 9999px;
+  background: #F2F2F7;
+}
+
+.scope-tab {
+  min-height: 32px;
+  padding: 0 16px;
+  border: none;
+  border-radius: 9999px;
+  background: transparent;
+  color: #8E8E93;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s ease-out, color 0.2s ease-out, box-shadow 0.2s ease-out;
+}
+
+.scope-tab:hover {
+  color: #1C1C1E;
+}
+
+.scope-tab.active {
+  background: #FFFFFF;
+  color: #1C1C1E;
+  font-weight: 600;
+  box-shadow: 0 1px 4px rgb(0 0 0 / 0.08);
+}
+
+.scope-hint {
+  margin: 0.5rem 1.5rem 0;
+  font-size: 13px;
+  color: #8E8E93;
+}
+
+.scope-tab:focus-visible {
+  outline: 2px solid #007AFF;
+  outline-offset: 2px;
 }
 
 .header-top {
@@ -314,6 +609,37 @@ onUnmounted(() => {
   font-size: 1.1rem;
   color: #666;
   font-weight: 500;
+}
+
+/* Load failure state */
+.conversations-error {
+  background: #FFFFFF;
+  border-radius: 24px;
+  box-shadow: 0 4px 16px rgb(0, 0, 0, 0.06);
+  padding: 4rem 2rem;
+  text-align: center;
+  animation: fadeIn 0.4s ease-out;
+}
+
+.conversations-error-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  max-width: 400px;
+  margin: 0 auto;
+}
+
+.conversations-error-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #FF3B30;
+}
+
+.conversations-error-text {
+  font-size: 0.95rem;
+  color: #8E8E93;
+  margin-bottom: 0.5rem;
 }
 
 @keyframes fadeIn {
@@ -387,6 +713,63 @@ onUnmounted(() => {
   100% { transform: rotate(360deg); }
 }
 
+/* Selection toggle (layout only; button look comes from global .btn) */
+.selection-toggle.is-active {
+  background: #007AFF;
+  color: #FFFFFF;
+}
+
+/* Floating bulk action bar */
+.bulk-action-bar {
+  position: fixed;
+  left: 50%;
+  bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%);
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  max-width: calc(100vw - 32px);
+  padding: 8px 12px 8px 20px;
+  border-radius: 9999px;
+  background: rgb(255 255 255 / 0.8);
+  -webkit-backdrop-filter: blur(24px);
+  backdrop-filter: blur(24px);
+  box-shadow: 0 4px 16px rgb(0 0 0 / 0.06);
+}
+
+.bulk-count {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1C1C1E;
+  white-space: nowrap;
+  margin-right: 0.25rem;
+}
+
+.bulk-limit {
+  font-size: 12px;
+  color: #FF3B30;
+  white-space: nowrap;
+}
+
+.bulk-bar-enter-active,
+.bulk-bar-leave-active {
+  transition: opacity 0.25s ease-out, transform 0.25s ease-out;
+}
+
+.bulk-bar-enter-from,
+.bulk-bar-leave-to {
+  opacity: 0;
+  transform: translateX(-50%) translateY(16px);
+}
+
+@media (max-width: 480px) {
+  .bulk-action-bar {
+    gap: 0.25rem;
+    padding: 6px 8px 6px 14px;
+  }
+}
+
 /* Reduced motion */
 @media (prefers-reduced-motion: reduce) {
   *,
@@ -404,6 +787,14 @@ onUnmounted(() => {
 
 /* Responsive */
 @media (max-width: 768px) {
+  .scope-tabs {
+    margin: 0.75rem 1rem 0;
+  }
+
+  .scope-tab {
+    min-height: 44px;
+  }
+
   .header-top {
     padding: 0.75rem 1rem;
   }
@@ -417,7 +808,8 @@ onUnmounted(() => {
     border-radius: 0;
   }
 
-  .no-data {
+  .no-data,
+  .conversations-error {
     padding: 3rem 1rem;
   }
 

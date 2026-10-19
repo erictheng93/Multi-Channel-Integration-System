@@ -23,6 +23,9 @@ function setup(beforeBatch?: (db: Database.Database) => void) {
       VALUES ('free', 'agent-1', NULL, NULL), ('scoped', 'agent-1', 'conv-1', NULL),
         ('foreign', 'agent-2', NULL, NULL), ('linked', 'agent-1', 'conv-1', 'old-message'),
         ('other-conversation', 'agent-1', 'conv-2', NULL);
+    INSERT INTO file_attachments (id, uploaded_by, conversation_id, message_id, mime_type)
+      VALUES ('img-1', 'agent-1', NULL, NULL, 'image/jpeg'), ('img-2', 'agent-1', NULL, NULL, 'image/png'),
+        ('pdf-1', 'agent-1', NULL, NULL, 'application/pdf');
   `);
   function prepare(query: string) {
     const statement = {
@@ -101,6 +104,17 @@ describe('message attachment ownership and atomic claims', () => {
     expect(sqlite.prepare('SELECT id FROM messages').all()).toEqual([]);
     expect(sqlite.prepare("SELECT id, message_id FROM file_attachments WHERE id IN ('free','scoped') ORDER BY id").all())
       .toEqual([{ id: 'free', message_id: null }, { id: 'scoped', message_id: 'winner' }]);
+  });
+
+  it.each([
+    [['img-1', 'img-2'], 'file', 'image'],
+    [['img-1', 'pdf-1'], 'file', 'file'],
+    [['pdf-1'], 'file', 'file'],
+    [['img-1'], 'text', 'text'],
+  ])('stores attachments %j sent as %s with message_type %s', async (ids, sent, expected) => {
+    const { sqlite, d1, db } = setup();
+    await insertMessageWithAttachments(d1, db, { ...message, messageType: sent } as typeof message, ids, 'agent-1');
+    expect(sqlite.prepare('SELECT message_type FROM messages').get()).toEqual({ message_type: expected });
   });
 
   it('preserves ordinary messages without attachments', async () => {

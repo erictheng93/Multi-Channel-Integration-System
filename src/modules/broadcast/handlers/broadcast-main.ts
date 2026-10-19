@@ -110,13 +110,12 @@ broadcastRouter.get('/:id/recipients', async (c) => {
   const status = parseRecipientStatus(c.req.query('status'));
   if (status.invalid) {
     return validationErrorResponse(c, [
-      { field: 'status', message: 'status must be one of pending, sent, failed, skipped' },
+      { field: 'status', message: '請選擇待發送、已發送、失敗或略過' },
     ]);
   }
 
   const service = new BroadcastService(createDbClient(c.env.DB), c.env);
-  const broadcast = await service.getById(c.req.param('id'));
-  if (!broadcast) {
+  if (!await service.exists(c.req.param('id'))) {
     return errorResponse(c, { code: 'NOT_FOUND', message: 'Broadcast not found' }, 404);
   }
 
@@ -185,20 +184,20 @@ async function parseCreateInput(
   const parsedAttachments = parseAttachments(record.attachments);
 
   if (title.length < 1 || title.length > 100) {
-    errors.push({ field: 'title', message: 'title must be 1-100 characters', value: record.title });
+    errors.push({ field: 'title', message: '請輸入 1 至 100 個字元', value: record.title });
   }
   if (content.length > 2000) {
-    errors.push({ field: 'content', message: 'content must be at most 2000 characters', value: record.content });
+    errors.push({ field: 'content', message: '最多 2000 個字元', value: record.content });
   }
   if (!parsedTagIds.ok) {
-    errors.push({ field: 'tagIds', message: 'tagIds must be a non-empty array of positive integers' });
+    errors.push({ field: 'tagIds', message: '請選擇有效的目標標籤' });
   }
   if (!parsedAttachments.ok) {
-    errors.push({ field: 'attachments', message: 'attachments must be an array of { attachmentId, previewAttachmentId }' });
+    errors.push({ field: 'attachments', message: '圖片與預覽圖資料不完整，請重新上傳' });
   } else if (parsedAttachments.attachments.length > BROADCAST_MAX_IMAGES) {
-    errors.push({ field: 'attachments', message: `at most ${BROADCAST_MAX_IMAGES} images` });
+    errors.push({ field: 'attachments', message: `最多 ${BROADCAST_MAX_IMAGES} 張圖片` });
   } else if (content.length === 0 && parsedAttachments.attachments.length === 0) {
-    errors.push({ field: 'content', message: 'content or at least one image is required' });
+    errors.push({ field: 'content', message: '請輸入文字或加入至少一張圖片' });
   }
 
   if (errors.length > 0 || !parsedTagIds.ok || !parsedAttachments.ok) {
@@ -242,7 +241,7 @@ async function parsePreviewInput(
   if (!parsedTagIds.ok) {
     return {
       ok: false,
-      errors: [{ field: 'tagIds', message: 'tagIds must be a non-empty array of positive integers' }],
+      errors: [{ field: 'tagIds', message: '請選擇有效的目標標籤' }],
     };
   }
 

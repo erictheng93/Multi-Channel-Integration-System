@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { auditLayoutInPage } from '../helpers/rwd'
+import { auditLayoutInPage, VIEWPORTS } from '../helpers/rwd'
 
 /**
  * Hermetic: proves the layout detector actually catches the failure classes it
@@ -50,9 +50,41 @@ test.describe('layout detector', () => {
   })
 
   test('flags values that leaked to the UI unformatted', async ({ page }) => {
-    await page.setContent('<div class="page-content"><span>0.0001414069537075366</span> <span>NaN</span></div>')
+    await page.setContent(`<div class="page-content">
+      <span class="metric-value">0.0001414069537075366</span>
+      <span data-rwd-value>NaN undefined [object Object] Infinity</span>
+    </div>`)
     const audit = await page.evaluate(auditLayoutInPage)
-    expect(audit.rawValues).toEqual(['0.0001414069537075366', 'NaN'])
+    expect(audit.rawValues).toEqual([
+      '0.0001414069537075366', 'NaN', 'undefined', '[object Object]', 'Infinity',
+    ])
+  })
+
+  for (const viewport of VIEWPORTS) {
+    test(`ignores user-authored raw-value strings on ${viewport.name}`, async ({ page }) => {
+      await page.setViewportSize(viewport)
+      await page.setContent(`<div class="page-content">
+        <div class="last-message">NaN Infinity undefined [object Object] 1.23456</div>
+        <span class="customer-name">undefined</span>
+        <span class="stat-value">Infinity</span>
+        <span class="metric-value">0.00% 452ms 23 connections</span>
+        <span data-rwd-value>87%</span>
+      </div>`)
+      expect((await page.evaluate(auditLayoutInPage)).rawValues).toEqual([])
+
+      // A legitimate message must not mask a formatting defect elsewhere on the page.
+      await page.locator('.metric-value').evaluate((el) => { el.textContent = 'NaN' })
+      expect((await page.evaluate(auditLayoutInPage)).rawValues).toEqual(['NaN'])
+    })
+  }
+
+  test('checks metric values with the body fallback but excludes values outside page content', async ({ page }) => {
+    await page.setContent('<p>NaN</p><span class="metric-value">Infinity</span>')
+    expect((await page.evaluate(auditLayoutInPage)).rawValues).toEqual(['Infinity'])
+
+    await page.setContent(`<span class="metric-value">Infinity</span>
+      <div class="page-content"><span data-rwd-value>0.00%</span></div>`)
+    expect((await page.evaluate(auditLayoutInPage)).rawValues).toEqual([])
   })
 
   test('does not flag a decorative pseudo-element clipped inside an overflow:hidden button', async ({ page }) => {
@@ -67,11 +99,48 @@ test.describe('layout detector', () => {
     expect(audit.clipped).toEqual([])
   })
 
+  test('does not flag an empty overflow:hidden box whose only overflow is a pseudo-element', async ({ page }) => {
+    // a shimmer skeleton: no text, no children, offset from the left edge
+    await page.setContent(`${RESET}
+      <style>
+        .skeleton { position: relative; overflow: hidden; width: 200px; height: 16px; margin-left: 20px; }
+        .skeleton::after { content: ''; position: absolute; left: 0; top: 0; width: 400px; height: 100%; transform: translateX(100%); }
+      </style>
+      <div class="skeleton"></div>`)
+    const audit = await page.evaluate(auditLayoutInPage)
+    expect(audit.clipped).toEqual([])
+  })
+
   test('still flags real content cut by overflow:hidden without an ellipsis', async ({ page }) => {
     await page.setContent(`${RESET}
       <div class="cut" style="width:60px;overflow:hidden;white-space:nowrap">a label that does not fit and is silently cut</div>`)
     const audit = await page.evaluate(auditLayoutInPage)
     expect(audit.clipped.join()).toContain('cut')
+  })
+
+  for (const direction of ['ltr', 'rtl']) {
+    test(`flags narrow content offset outside an overflow:hidden parent (${direction})`, async ({ page }) => {
+      await page.setContent(`${RESET}
+        <div class="offset-cut" style="direction:${direction};width:100px;overflow:hidden;margin-left:100px;border:12px solid;padding:10px">
+          <div style="width:50px;height:20px;margin-inline-start:90px"></div>
+        </div>`)
+      const audit = await page.evaluate(auditLayoutInPage)
+      expect(audit.clipped.join()).toContain('offset-cut')
+      expect(audit.documentOverflow).toBe(0)
+    })
+  }
+
+  test('passes offset content that fits inside a bordered container with decorative overflow', async ({ page }) => {
+    await page.setContent(`${RESET}
+      <style>
+        .offset-fit { position:relative; }
+        .offset-fit::before { content:'';position:absolute;left:400px;width:100px;height:20px; }
+      </style>
+      <div class="offset-fit" style="width:100px;overflow:hidden;margin-left:100px;border:12px solid;padding:10px">
+        <div style="width:50px;height:20px;margin-left:40px"></div>
+      </div>`)
+    const audit = await page.evaluate(auditLayoutInPage)
+    expect(audit.clipped).toEqual([])
   })
 
   test('passes a layout that wraps, scrolls or truncates on purpose', async ({ page }) => {

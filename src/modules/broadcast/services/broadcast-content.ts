@@ -2,13 +2,12 @@ import type { fileAttachments } from '@/db/schema';
 import type { LineReplyMessage } from '@/types';
 import { BROADCAST_MESSAGE_INSERT_CHUNK_SIZE, chunkItems } from './d1-chunks';
 import { createImageMessage, createTextMessage } from '@/utils/line';
-import { BroadcastServiceError, type BroadcastAttachmentInput } from '@modules/broadcast/types';
+import { LINE_PREVIEW_IMAGE_MAX_BYTES } from '@/constants/limits';
+import { BroadcastServiceError, type BroadcastAttachmentInput, type BroadcastServiceErrorCode } from '@modules/broadcast/types';
 
 // LINE multicast carries at most 5 message objects: 1 text + 4 images.
 export const BROADCAST_MAX_IMAGES = 4;
 export const BROADCAST_IMAGE_MAX_BYTES = 10 * 1024 * 1024;
-// LINE previewImageUrl limit; larger previews render as broken images client-side.
-export const BROADCAST_PREVIEW_MAX_BYTES = 1024 * 1024;
 const BROADCAST_IMAGE_MIME_TYPES: readonly string[] = ['image/jpeg', 'image/png'];
 
 export interface AttachmentCandidate {
@@ -36,7 +35,7 @@ export function assertBroadcastAttachments(
   const byId = new Map(rows.map((candidate) => [candidate.id, candidate]));
   for (const item of attachments) {
     checkImage(byId.get(item.attachmentId), actorId, BROADCAST_IMAGE_MAX_BYTES, 'image');
-    checkImage(byId.get(item.previewAttachmentId), actorId, BROADCAST_PREVIEW_MAX_BYTES, 'preview');
+    checkImage(byId.get(item.previewAttachmentId), actorId, LINE_PREVIEW_IMAGE_MAX_BYTES, 'preview');
   }
 }
 
@@ -121,22 +120,22 @@ function checkImage(
   label: 'image' | 'preview'
 ): void {
   if (!candidate) {
-    fail(`${label} not found`);
+    fail(`${label} not found`, 'ATTACHMENT_NOT_FOUND');
   }
   if (candidate.uploadedBy !== actorId) {
-    fail(`${label} was not uploaded by you`);
+    fail(`${label} was not uploaded by you`, 'ATTACHMENT_NOT_OWNED');
   }
   if (candidate.messageId !== null) {
-    fail(`${label} is already attached to a message`);
+    fail(`${label} is already attached to a message`, 'ATTACHMENT_ALREADY_BOUND');
   }
   if (!BROADCAST_IMAGE_MIME_TYPES.includes(candidate.mimeType)) {
-    fail(`${label} must be JPEG or PNG`);
+    fail(`${label} must be JPEG or PNG`, 'ATTACHMENT_BAD_MIME');
   }
   if (candidate.fileSize > maxBytes) {
-    fail(`${label} exceeds ${maxBytes} bytes`);
+    fail(`${label} exceeds ${maxBytes} bytes`, 'ATTACHMENT_TOO_LARGE');
   }
 }
 
-function fail(message: string): never {
-  throw new BroadcastServiceError('INVALID_BROADCAST_INPUT', message, 422);
+function fail(message: string, code: BroadcastServiceErrorCode = 'INVALID_BROADCAST_INPUT'): never {
+  throw new BroadcastServiceError(code, message, 422);
 }

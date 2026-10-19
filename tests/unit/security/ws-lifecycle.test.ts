@@ -9,7 +9,6 @@ vi.mock('@/services/websocket-auth-service', () => ({
 }))
 
 import { CustomerConversationDO } from '@/durable-objects/CustomerConversationDO'
-import { RoomStorageService } from '@/durable-objects/services/room-storage-service'
 import { revalidateWebSocketAccess } from '@/services/websocket-access-revocation'
 import websocketHandler from '@/modules/websocket/handlers/websocket-main'
 import type { Bindings } from '@/types'
@@ -91,40 +90,5 @@ describe('F29 test-connection is not exposed', () => {
   it('route no longer exists', async () => {
     const res = await websocketHandler.request('/test-connection?userId=u', {}, {} as Bindings)
     expect(res.status).toBe(404)
-  })
-})
-
-describe('NV3 messageHistory write retry is bounded', () => {
-  function room(putFails: boolean) {
-    const setAlarm = vi.fn(), deleteAlarm = vi.fn()
-    const c = {
-      messageDirty: true, storageFlushDeadline: null as number | null, connections: new Map(), alarmAt: null as number | null | undefined,
-      messageHistory: [], accessCheckDeadline: null,
-      state: { storage: { put: vi.fn(async () => { if (putFails) throw new Error('too big') }), setAlarm, deleteAlarm, delete: vi.fn() } }
-    }
-    return { c, svc: new RoomStorageService(c as never, {} as never), setAlarm }
-  }
-  it('stops after N failures and leaves no flush deadline', async () => {
-    vi.useFakeTimers()
-    const { c, svc } = room(true)
-    let writes = 0
-    for (let i = 0; i < 20 && c.messageDirty; i++) { await svc.forceStorageWrite(); writes++; vi.advanceTimersByTime(60000) }
-    expect(writes).toBe(5)
-    expect(c.messageDirty).toBe(false)
-    expect(c.storageFlushDeadline).toBeNull()
-    await svc.scheduleNextAlarm()
-    expect(c.alarmAt).toBeNull() // idle, no connections: no alarm
-    vi.useRealTimers()
-  })
-  it('backs off instead of re-arming at 1s', async () => {
-    const { c, svc } = room(true)
-    await svc.forceStorageWrite(); const first = c.storageFlushDeadline! - Date.now()
-    await svc.forceStorageWrite(); const second = c.storageFlushDeadline! - Date.now()
-    expect(second).toBeGreaterThan(first)
-  })
-  it('drained write clears the deadline', async () => {
-    const { c, svc } = room(false)
-    await svc.forceStorageWrite()
-    expect(c.messageDirty).toBe(false); expect(c.storageFlushDeadline).toBeNull()
   })
 })

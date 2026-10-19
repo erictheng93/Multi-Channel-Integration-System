@@ -3,17 +3,20 @@ import { SQLiteAsyncDialect } from 'drizzle-orm/sqlite-core';
 import type { Database } from '@/db/drizzle-factory';
 import { fileAttachments, messages } from '@/db/schema';
 
-/** Claim all uploads with the message in one D1 transaction, including race revalidation. */
+/**
+ * Claim all uploads with the message in one D1 transaction, including race revalidation.
+ * Returns the message_type actually stored so callers can broadcast the same value.
+ */
 export async function insertMessageWithAttachments(
   d1: D1Database,
   db: Database,
   message: typeof messages.$inferInsert,
   attachmentIds: unknown,
   uploadedBy: string
-): Promise<void> {
+): Promise<string | undefined> {
   if (attachmentIds === undefined || (Array.isArray(attachmentIds) && !attachmentIds.length)) {
     await db.insert(messages).values(message);
-    return;
+    return message.messageType;
   }
   if (!Array.isArray(attachmentIds) || attachmentIds.length > 10 ||
       attachmentIds.some(id => typeof id !== 'string' || !id) ||
@@ -34,8 +37,14 @@ export async function insertMessageWithAttachments(
     throw Object.assign(new Error('Invalid attachments'), { status: 400 });
   }
 
+  // An attachment-only send is stored as 'file'; when every attachment is an image the
+  // conversation list preview should read [圖片] rather than [檔案].
+  const stored = message.messageType === 'file' && attachments.every(file => file.mimeType?.startsWith('image/'))
+    ? { ...message, messageType: 'image' as const }
+    : message;
+
   const columns = getTableColumns(messages);
-  const entries = Object.entries(message).filter(([, value]) => value !== undefined);
+  const entries = Object.entries(stored).filter(([, value]) => value !== undefined);
   const insert = sql`insert into ${messages} (${sql.join(entries.map(([key]) =>
     sql.identifier(columns[key as keyof typeof columns].name)), sql`, `)})
     select ${sql.join(entries.map(([, value]) => sql`${typeof value === 'boolean' ? Number(value) : value}`), sql`, `)}
@@ -51,4 +60,5 @@ export async function insertMessageWithAttachments(
   if (created.meta.changes !== 1 || claimed.meta.changes !== ids.length) {
     throw Object.assign(new Error('Attachments are no longer available'), { status: 400 });
   }
+  return stored.messageType;
 }

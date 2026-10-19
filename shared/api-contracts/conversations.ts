@@ -58,9 +58,13 @@ export interface RawConversationData {
   markedUnreadAt?: string | null
 }
 
+/** 列表分頁籤：open = 處理中（非已結案）、closed = 已結案、all = 全部（未結案在前） */
+export type ConversationListScope = 'open' | 'closed' | 'all'
+
 export interface ConversationListParams {
   page?: number
   pageSize?: number
+  scope?: ConversationListScope
   status?: ConversationStatusForApi | ''
   platform?: Platform
   teamId?: number
@@ -128,6 +132,8 @@ export interface ConversationBulkOperationResponse {
   operation: string
   affectedCount: number
   conversationIds: string[]
+  /** close / reopen only: new status per conversation that actually changed */
+  statuses?: Record<string, string>
 }
 
 export interface ConversationHealthResponse {
@@ -156,6 +162,9 @@ export function buildConversationQuery(params: ConversationListParams | Conversa
   }
   if (listParams.pageSize !== undefined) {
     queryParams.append('pageSize', listParams.pageSize.toString())
+  }
+  if (listParams.scope) {
+    queryParams.append('scope', listParams.scope)
   }
   if (listParams.status) {
     queryParams.append('status', listParams.status)
@@ -265,6 +274,16 @@ export const conversationContracts = {
   unassign: defineApiContract<{ conversationId: string }, { reason?: string }, RawConversationData>({
     method: 'POST',
     path: ({ conversationId }) => `/conversations/${conversationId}/unassign`
+  }),
+
+  close: defineApiContract<{ conversationId: string }, void, RawConversationData>({
+    method: 'POST',
+    path: ({ conversationId }) => `/conversations/${conversationId}/close`
+  }),
+
+  reopen: defineApiContract<{ conversationId: string }, void, RawConversationData>({
+    method: 'POST',
+    path: ({ conversationId }) => `/conversations/${conversationId}/reopen`
   }),
 
   transfer: defineApiContract<{ conversationId: string }, TransferConversationOptions, RawConversationData>({

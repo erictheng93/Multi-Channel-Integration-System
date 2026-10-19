@@ -236,16 +236,28 @@ describe('ConversationMobileCards.vue', () => {
   })
 
   describe('Unread indicator', () => {
-    it('should show unread dot when conversation has unreadCount > 0', () => {
-      const conv = createConversation({ unreadCount: 3 })
-      const wrapper = mountCards([conv])
-      expect(wrapper.find('.unread-dot').exists()).toBe(true)
+    it('should show a red 未讀 badge with the count when unreadCount > 1', () => {
+      const wrapper = mountCards([createConversation({ unreadCount: 3 })])
+      const badge = wrapper.find('.read-badge')
+      expect(badge.classes()).toContain('unread')
+      expect(badge.text()).toBe('未讀 3')
     })
 
-    it('should not show unread dot when unreadCount is 0', () => {
-      const conv = createConversation({ unreadCount: 0 })
-      const wrapper = mountCards([conv])
-      expect(wrapper.find('.unread-dot').exists()).toBe(false)
+    it('should show 已讀 when there is nothing unread', () => {
+      const wrapper = mountCards([createConversation({ unreadCount: 0 })])
+      expect(wrapper.find('.read-badge').text()).toBe('已讀')
+    })
+
+    it('should show a muted 結案 badge instead of 已讀 for closed conversations', () => {
+      const wrapper = mountCards([createConversation({ unreadCount: 0, status: 'closed' })])
+      const badge = wrapper.find('.read-badge')
+      expect(badge.classes()).toContain('closed')
+      expect(badge.text()).toBe('結案')
+    })
+
+    it('should show 結案, not 未讀, on a closed conversation even with a stale unread count', () => {
+      const wrapper = mountCards([createConversation({ unreadCount: 1, status: 'closed' })])
+      expect(wrapper.find('.read-badge').text()).toBe('結案')
     })
 
     it('should add has-unread class to card when unread', () => {
@@ -289,5 +301,28 @@ describe('ConversationMobileCards.vue', () => {
       await cards[1].trigger('click')
       expect(wrapper.emitted('select')![0]).toEqual(['mc2'])
     })
+  })
+})
+
+describe('ConversationMobileCards.vue selection mode', () => {
+  const list = [
+    { id: 'c1', userId: 'u1', status: 'active', unreadCount: 0, updatedAt: 1 },
+    { id: 'c2', userId: 'u2', status: 'closed', unreadCount: 0, updatedAt: 1 }
+  ] as unknown as Conversation[]
+
+  it('shows checkboxes only in selection mode and toggles on card click', async () => {
+    const off = mount(ConversationMobileCards, { props: { conversations: list } })
+    expect(off.findAll('input[type="checkbox"]')).toHaveLength(0)
+
+    const on = mount(ConversationMobileCards, {
+      props: { conversations: list, selectionMode: true, selectedIds: new Set(['c2']) }
+    })
+    const boxes = on.findAll('input[type="checkbox"]')
+    expect(boxes).toHaveLength(2)
+    expect((boxes[1].element as HTMLInputElement).checked).toBe(true)
+
+    await on.findAll('.conversation-card')[0].trigger('click')
+    expect(on.emitted('toggle-select')).toEqual([['c1']])
+    expect(on.emitted('select')).toBeUndefined()
   })
 })

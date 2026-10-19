@@ -13,6 +13,8 @@ export interface CacheStrategyDeps {
   loading: Ref<boolean>
   updating: Ref<boolean>
   error: Ref<string | null>
+  /** Persistent list-load failure; NOT auto-cleared by handleError's toast timer. */
+  loadError: Ref<string | null>
   filters: Ref<ConversationFilters>
   pagination: Ref<{
     page: number
@@ -31,6 +33,8 @@ export function createCacheStrategy(deps: CacheStrategyDeps) {
     conversations,
     loading,
     updating,
+    error,
+    loadError,
     filters,
     pagination,
     handleError,
@@ -109,12 +113,17 @@ export function createCacheStrategy(deps: CacheStrategyDeps) {
       updating.value = true
     } else {
       loading.value = true
+      // A fresh attempt must not keep showing the previous failure.
+      error.value = null
     }
+    // Any new attempt (cached or not) starts without a stale persistent failure.
+    loadError.value = null
 
     try {
       frontendLogger.debug(`[ConversationsStore] ${wasFromCache ? 'Background' : 'Initial'} API call`)
 
       const cleanFilters: Record<string, unknown> = {}
+      if (cacheFilters.scope) { cleanFilters.scope = cacheFilters.scope }
       if (cacheFilters.status) { cleanFilters.status = cacheFilters.status }
       if (cacheFilters.platform) { cleanFilters.platform = cacheFilters.platform }
       if (cacheFilters.teamId) { cleanFilters.teamId = cacheFilters.teamId }
@@ -161,23 +170,29 @@ export function createCacheStrategy(deps: CacheStrategyDeps) {
         // 4. Update cache (包含 userId 防止跨用戶數據污染)
         conversationCache.setConversationList(conversationList, cacheFilters, getCurrentUserId())
         pagination.value = paginationData
+        loadError.value = null
 
         frontendLogger.debug(`[ConversationsStore] ${wasFromCache ? 'Background update' : 'Initial load'} completed`)
         return { fromCache: wasFromCache, fresh: true, count: conversationList.length }
       }
 
+      // The API answered but reported failure (no throw): surface it like a thrown error.
+      if (!wasFromCache) {
+        handleError(response.error, '載入對話失敗')
+        loadError.value = error.value ?? '載入對話失敗'
+      }
+      return { fromCache: wasFromCache, fresh: false, error: response.error }
     } catch (err) {
       console.error(`[ConversationsStore] Smart cache loading failed:`, err)
       if (!wasFromCache) {
         handleError(err, '載入對話失敗')
+        loadError.value = error.value ?? '載入對話失敗'
       }
       return { fromCache: wasFromCache, fresh: false, error: err }
     } finally {
       loading.value = false
       updating.value = false
     }
-
-    return { fromCache: false, fresh: false }
   }
 
   // Preload next page

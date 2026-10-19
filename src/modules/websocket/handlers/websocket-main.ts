@@ -395,26 +395,31 @@ websocketHandler.post('/migration-config', websocketAuth, async (c) => {
       return forbiddenResponse(c, 'Admin access required');
     }
 
-    // `confirmDisable` is a request flag, not config: never persist it
-    const { confirmDisable, ...newConfig } = await c.req.json() as Partial<MigrationConfig> & {
+    const body = await c.req.json<unknown>();
+    if (!body || typeof body !== 'object' || Array.isArray(body)) {
+      return badRequestResponse(c, 'Migration config update must be a JSON object');
+    }
+
+    // `confirmDisable` is a request flag, not config: never persist it.
+    // The guard validates the switch's runtime type before any config read or write.
+    const { confirmDisable, ...newConfig } = body as Partial<MigrationConfig> & {
       confirmDisable?: boolean;
     };
 
     const guardError = checkMigrationConfigUpdate(
-      await getMigrationConfig(c.env),
       newConfig,
       confirmDisable === true
     );
     if (guardError) {
-      log.warn('Migration config update rejected', { userId: user.id, reason: 'disable-not-confirmed' });
+      log.warn('Migration config update rejected', { userId: user.id, reason: guardError });
       return badRequestResponse(c, guardError);
     }
+
+    await updateMigrationConfig(newConfig, c.env);
 
     if (newConfig.enableWebSocket === false) {
       log.warn('WebSocket disabled via migration config', { updatedBy: user.id });
     }
-
-    await updateMigrationConfig(newConfig, c.env);
 
     log.info('Migration config updated', { updatedBy: user.id, newConfig });
 
@@ -474,17 +479,19 @@ async function getMigrationConfig(env: Bindings): Promise<MigrationConfig> {
   }
 }
 
+/**
+ * Persists an already-validated patch (see checkMigrationConfigUpdate).
+ * featureFlags is merged per key so a partial flag patch keeps the other flags.
+ */
 async function updateMigrationConfig(newConfig: Partial<MigrationConfig>, env: Bindings): Promise<void> {
   const currentConfig = await getMigrationConfig(env);
-  const updatedConfig = { ...currentConfig, ...newConfig };
-
-  // Validate configuration
-  if (updatedConfig.rolloutPercentage < 0 || updatedConfig.rolloutPercentage > 100) {
-    throw new Error('Rollout percentage must be between 0 and 100');
-  }
+  const updatedConfig: MigrationConfig = {
+    ...currentConfig,
+    ...newConfig,
+    featureFlags: { ...currentConfig.featureFlags, ...newConfig.featureFlags }
+  };
 
   await env.SESSIONS.put('websocket_migration_config', JSON.stringify(updatedConfig));
-  log.info('Migration config updated', { config: updatedConfig });
 }
 
 // =================== Helper Functions ===================

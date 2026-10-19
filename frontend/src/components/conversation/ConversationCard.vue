@@ -123,7 +123,7 @@ import { computed, ref, h } from 'vue'
 import type { Conversation } from '@/types'
 import { usePrefetch } from '@/composables/usePrefetch'
 import { convertEmojiForConversationList } from '@/utils/layered-emoji-processor'
-import { CONVERSATION_STATUS } from '@/constants/conversation-status'
+import { getConversationStatusLabel, type ConversationStatus } from '@/constants/conversation-status'
 import {
   UserCheckIcon,
   ChevronRightIcon
@@ -238,8 +238,7 @@ const isPendingConversation = computed(() => {
 
 const conversationAriaLabel = computed(() => {
   const unreadText = hasUnreadMessages.value ? `，${props.conversation.unreadCount} 則未讀訊息` : ''
-  const statusText = props.conversation.status === CONVERSATION_STATUS.PENDING ? '待處理' :
-                    props.conversation.status === CONVERSATION_STATUS.IN_PROGRESS ? '處理中' : '已結束'
+  const statusText = getConversationStatusLabel(props.conversation.status as ConversationStatus)
   return `與 ${customerName.value} 的對話，狀態：${statusText}${unreadText}`
 })
 

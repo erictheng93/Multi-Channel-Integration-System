@@ -164,7 +164,7 @@ export function registerPreRegistryRoutes(app: Hono<{ Bindings: Bindings }>): vo
   app.route('/api/monitoring', monitoringMainHandler);
   log.info('Monitoring & Alerting API registered', {
     endpoints: [
-      'GET /api/monitoring/health (public)',
+      'GET /api/monitoring/health (public, liveness only - no Durable Object calls)',
       'GET /api/monitoring/metrics (admin only)',
       'GET /api/monitoring/alerts (auth)',
       'GET /api/monitoring/alerts/history (admin only)',

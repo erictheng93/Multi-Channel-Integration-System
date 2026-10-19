@@ -4,7 +4,7 @@
  * Frontend mirror of backend conversation status constants.
  * Must be kept in sync with src/constants/conversation-status.ts
  *
- * Valid statuses: active, pending, in-progress, assigned, waiting
+ * Valid statuses: active, pending, in-progress, assigned, waiting, closed
  *
  * @module constants/conversation-status
  */
@@ -19,7 +19,8 @@ export const CONVERSATION_STATUS = {
   PENDING: 'pending',
   IN_PROGRESS: 'in-progress',
   ASSIGNED: 'assigned',
-  WAITING: 'waiting'
+  WAITING: 'waiting',
+  CLOSED: 'closed'
 } as const;
 
 /**
@@ -40,7 +41,8 @@ export const CONVERSATION_STATUS_LABELS: Record<ConversationStatus, string> = {
   [CONVERSATION_STATUS.PENDING]: '待處理',
   [CONVERSATION_STATUS.IN_PROGRESS]: '處理中',
   [CONVERSATION_STATUS.ASSIGNED]: '已指派',
-  [CONVERSATION_STATUS.WAITING]: '等待中'
+  [CONVERSATION_STATUS.WAITING]: '等待中',
+  [CONVERSATION_STATUS.CLOSED]: '已結案'
 };
 
 /**
@@ -51,7 +53,8 @@ export const CONVERSATION_STATUS_COLORS: Record<ConversationStatus, string> = {
   [CONVERSATION_STATUS.PENDING]: 'text-yellow-600 bg-yellow-50 border-yellow-200',
   [CONVERSATION_STATUS.IN_PROGRESS]: 'text-blue-600 bg-blue-50 border-blue-200',
   [CONVERSATION_STATUS.ASSIGNED]: 'text-cyan-600 bg-cyan-50 border-cyan-200',
-  [CONVERSATION_STATUS.WAITING]: 'text-orange-600 bg-orange-50 border-orange-200'
+  [CONVERSATION_STATUS.WAITING]: 'text-orange-600 bg-orange-50 border-orange-200',
+  [CONVERSATION_STATUS.CLOSED]: 'text-gray-600 bg-gray-50 border-gray-200'
 };
 
 /**
@@ -62,12 +65,12 @@ export const CONVERSATION_STATUS_ICONS: Record<ConversationStatus, string> = {
   [CONVERSATION_STATUS.PENDING]: '',
   [CONVERSATION_STATUS.IN_PROGRESS]: '',
   [CONVERSATION_STATUS.ASSIGNED]: '',
-  [CONVERSATION_STATUS.WAITING]: ''
+  [CONVERSATION_STATUS.WAITING]: '',
+  [CONVERSATION_STATUS.CLOSED]: ''
 };
 
 /**
- * Open statuses (conversation can receive messages)
- * All statuses are open since closed/resolved have been removed
+ * Open statuses (every status except closed)
  */
 export const OPEN_CONVERSATION_STATUSES = [
   CONVERSATION_STATUS.ACTIVE,
@@ -85,8 +88,7 @@ export function isValidConversationStatus(status: string): status is Conversatio
 }
 
 /**
- * Check if a conversation is open (accepts both frontend and shared types)
- * All conversations are open since closed/resolved have been removed
+ * Check if a conversation is open, i.e. not closed (accepts both frontend and shared types)
  */
 export function isOpenConversation(status: ConversationStatus | SharedConversationStatus): boolean {
   return OPEN_CONVERSATION_STATUSES.includes(status as typeof OPEN_CONVERSATION_STATUSES[number]);

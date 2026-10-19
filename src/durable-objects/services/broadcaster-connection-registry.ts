@@ -32,15 +32,17 @@ export class BroadcasterConnectionRegistry {
           this.ctx.conversationRooms.set(id, stub);
         }
       } else if (type === 'user') {
-        if (!this.ctx.userConnections.has(id)) {
-          const namespace = this.ctx.env.USER_CONNECTION;
-          if (!namespace) {
-            return new Response(JSON.stringify({ error: 'USER_CONNECTION binding is not configured' }), { status: 503 });
-          }
-          const doId = namespace.idFromName(id);
-          const stub = namespace.get(doId);
-          this.ctx.userConnections.set(id, stub);
+        const namespace = this.ctx.env.USER_CONNECTION;
+        if (!namespace) {
+          return new Response(JSON.stringify({ error: 'USER_CONNECTION binding is not configured' }), { status: 503 });
         }
+        // Keep the existing stub for a known user: deliveries must keep using one stub per
+        // UserConnection, because the platform does not order requests across different stubs.
+        // Stale-entry pruning detects a re-registration via the generation counter instead.
+        if (!this.ctx.userConnections.has(id)) {
+          this.ctx.userConnections.set(id, namespace.get(namespace.idFromName(id)));
+        }
+        this.ctx.userRegistrationGen.set(id, (this.ctx.userRegistrationGen.get(id) ?? 0) + 1);
       }
 
       this.ctx.stats.activeConnections++;

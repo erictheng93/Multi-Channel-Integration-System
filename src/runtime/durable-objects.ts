@@ -7,4 +7,3 @@ export { LockCoordinator } from '../services/distributed-lock-service';
 export { CustomerConversationDO } from '../durable-objects/CustomerConversationDO';
 export { CustomerMessageDO } from '../durable-objects/CustomerMessageDO';
 export { RateLimiterDO } from '../durable-objects/RateLimiterDO';
-export { MetricsCollectorDO } from '../durable-objects/MetricsCollectorDO';

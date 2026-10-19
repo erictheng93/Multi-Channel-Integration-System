@@ -1,6 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { ADMIN_CREDENTIALS, login } from '../helpers/auth'
-import { ROUTES, VIEWPORTS, auditLayout, spaNavigate } from '../helpers/rwd'
+import { ROUTES, VIEWPORTS, auditLayout, spaNavigate, waitForFirstConversation } from '../helpers/rwd'
 
 /**
  * Responsive regression sweep: every route the account can open, at narrow phone /
@@ -22,6 +22,8 @@ const credentials = {
   password: process.env.E2E_PASSWORD ?? ADMIN_CREDENTIALS.password,
 }
 const MIN_ROUTES = Number(process.env.E2E_MIN_ROUTES ?? 8)
+// Optional: open this customer's conversation instead of whichever is first (e.g. a LINE user).
+const TARGET_CUSTOMER = process.env.E2E_CONVERSATION_CUSTOMER?.trim()
 
 test.describe.configure({ mode: 'serial' })
 
@@ -31,8 +33,10 @@ test.describe('responsive layout sweep', () => {
 
   let page: Page
 
-  test.beforeAll(async ({ browser }) => {
-    page = await browser.newPage()
+  test.beforeAll(async ({ browser, baseURL, contextOptions, serviceWorkers, actionTimeout, navigationTimeout }) => {
+    page = await browser.newPage({ ...contextOptions, baseURL, serviceWorkers })
+    page.setDefaultTimeout(actionTimeout)
+    page.setDefaultNavigationTimeout(navigationTimeout)
     await login(page, credentials)
   })
 
@@ -40,14 +44,43 @@ test.describe('responsive layout sweep', () => {
     await page?.close()
   })
 
-  /** Opens the first conversation this account can see; false when there is none. */
+  /**
+   * Opens the first conversation this account can see, or E2E_CONVERSATION_CUSTOMER's (the row whose
+   * name matches exactly; the backend filter is a substring match). false when there is none; throws
+   * when the requested customer is not in the list.
+   */
   async function openFirstConversation(): Promise<boolean> {
     await spaNavigate(page, '/conversations')
-    await page.waitForTimeout(1500)
-    // the desktop table and the mobile cards are both in the DOM; only one is visible
-    const row = page.locator('.conversation-row:visible, .conversation-card:visible, tbody tr:visible').first()
-    if (!(await row.count())) { return false }
-    await row.click()
+    if (TARGET_CUSTOMER) {
+      const input = page.getByPlaceholder('輸入客戶名稱...')
+      if (!(await input.isVisible())) { await page.locator('.filter-trigger').click() }
+      // The input and the table each debounce 300ms, then the list is refetched with customerName.
+      const filtered = page.waitForResponse((res) => {
+        const url = new URL(res.url())
+        return (
+          res.request().method() === 'GET' &&
+          url.pathname.endsWith('/conversations') &&
+          url.searchParams.get('customerName') === TARGET_CUSTOMER
+        )
+      }, { timeout: 15_000 })
+      await input.fill(TARGET_CUSTOMER)
+      await filtered
+      // The table keeps its stale rows until the response renders, so wait for the exact match.
+      const exact = page
+        .locator('.conversation-row:visible, .conversation-card:visible')
+        .filter({ has: page.locator('.customer-name').getByText(TARGET_CUSTOMER, { exact: true }) })
+        .first()
+      try {
+        await exact.waitFor({ state: 'visible', timeout: 10_000 })
+      } catch {
+        throw new Error(`E2E_CONVERSATION_CUSTOMER "${TARGET_CUSTOMER}": no conversation with exactly this customer name is visible to this account`)
+      }
+      await exact.click()
+    } else {
+      const row = await waitForFirstConversation(page)
+      if (!row) { return false }
+      await row.click()
+    }
     await page.waitForURL(/\/conversations\/.+/)
     await page.locator('.header-actions').first().waitFor({ timeout: 10_000 })
     return true
@@ -105,6 +138,60 @@ test.describe('responsive layout sweep', () => {
     })
   }
 
+  // The pause pill is the widest thing the top bar can gain. Measure it in the real app
+  // shell (real AppTopBar, 68px hamburger gutter on phones) at every viewport. The pause
+  // state is per-browser localStorage of this throwaway context; nothing server-side changes.
+  const PREFS_KEY = 'desktop-notification-prefs'
+  const setPause = (paused: boolean) =>
+    page.evaluate(
+      ([key, on]) => {
+        const prefs = JSON.parse(localStorage.getItem(key as string) ?? '{}')
+        localStorage.setItem(
+          key as string,
+          JSON.stringify({ ...prefs, enabled: true, pausedUntil: on ? Date.now() + 3_600_000 : null })
+        )
+        // `storage` only fires in other tabs; dispatch it so the singleton re-reads without a reload.
+        window.dispatchEvent(new window.StorageEvent('storage', { key: key as string }))
+      },
+      [PREFS_KEY, paused] as const
+    )
+
+  for (const vp of VIEWPORTS) {
+    test(`${vp.name} ${vp.width}px: paused-notification pill keeps the top bar reachable`, async () => {
+      await page.setViewportSize({ width: vp.width, height: vp.height })
+      await spaNavigate(page, '/dashboard')
+      await page.waitForTimeout(800)
+      test.skip(new URL(page.url()).pathname !== '/dashboard', 'this account cannot open /dashboard')
+
+      await setPause(true)
+      try {
+        const pill = page.getByTestId('desktop-paused-pill')
+        await pill.waitFor({ state: 'visible', timeout: 5_000 })
+
+        const a = await auditLayout(page)
+        expect(a.documentOverflow, 'top bar pushed the page sideways').toBeLessThanOrEqual(0)
+        expect(a.unreachable, a.unreachable.join('\n')).toEqual([])
+
+        const boxes = await page.evaluate(() =>
+          ['[data-testid="desktop-paused-pill"]', '.notification-trigger', '.top-bar-actions'].map((sel) => {
+            const r = document.querySelector(sel)?.getBoundingClientRect()
+            return { sel, left: r?.left ?? NaN, right: r?.right ?? NaN, width: r?.width ?? 0 }
+          })
+        )
+        for (const b of boxes) {
+          expect(b.width, `${b.sel} is not rendered`).toBeGreaterThan(0)
+          expect(b.left, `${b.sel} starts left of the viewport`).toBeGreaterThanOrEqual(0)
+          expect(b.right, `${b.sel} ends right of the viewport`).toBeLessThanOrEqual(vp.width + 1)
+        }
+        // The bell is the control that matters while paused: it must keep its 40px target.
+        const bell = boxes.find((b) => b.sel === '.notification-trigger')!
+        expect(Math.round(bell.width)).toBeGreaterThanOrEqual(40)
+      } finally {
+        await setPause(false)
+      }
+    })
+  }
+
   test('phone with the on-screen keyboard open keeps the reply box and a usable message area', async () => {
     // An on-screen keyboard takes ~300px of an 812px phone; the visual viewport shrinks to ~512px.
     await page.setViewportSize({ width: 375, height: 512 })
@@ -116,6 +203,9 @@ test.describe('responsive layout sweep', () => {
       const list = document.querySelector('.messages-container-wrapper')!.getBoundingClientRect()
       return { inputBottom: input.bottom, inputTop: input.top, listHeight: list.height, vh: window.innerHeight }
     })
+    const summary = `customer=${TARGET_CUSTOMER ?? '(first conversation)'} messageArea=${m.listHeight}px viewport=${m.vh}px`
+    test.info().annotations.push({ type: 'keyboard-viewport', description: summary })
+    console.log(`[keyboard-viewport] ${summary}`)
     expect(m.inputTop).toBeGreaterThanOrEqual(0)
     expect(m.inputBottom).toBeLessThanOrEqual(m.vh)
     expect(m.listHeight, `message area is only ${m.listHeight}px`).toBeGreaterThanOrEqual(150)

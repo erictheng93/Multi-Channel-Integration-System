@@ -85,12 +85,6 @@ app.use('*', async (c, next) => {
 
 log.info('Global CORS middleware registered successfully');
 
-// ==================== METRICS MIDDLEWARE (after CORS, before auth) ====================
-import { metricsMiddleware } from './middleware/metrics'
-log.info('Registering metrics collection middleware')
-app.use('/api/*', metricsMiddleware)
-log.info('Metrics middleware registered')
-
 // ==================== 統一路由管理系統初始化 ====================
 log.info('Initializing Unified Route Management System');
 
@@ -144,26 +138,6 @@ app.use('*', honoLogger());
 
 // Lazy init: modular system + collaboration (on first request)
 app.use('*', createLazyInitMiddleware());
-
-// Initialize latest message cache on startup
-app.use('*', async (c, next) => {
-  // Only run warmup on the first request after deployment
-  const shouldWarmup = c.req.header('cf-worker-started') ||
-                      c.req.url.includes('__warmup__');
-
-  if (shouldWarmup) {
-    try {
-      const { LatestMessageJobQueue } = await import('./workers/latest-message-worker');
-      const jobQueue = new LatestMessageJobQueue(c.env);
-      await jobQueue.warmupCache();
-      log.debug('Startup: Latest message cache warmup initiated');
-    } catch (error) {
-      log.warn('Startup: Cache warmup failed (non-critical)', { error: error instanceof Error ? error.message : String(error) });
-    }
-  }
-
-  await next();
-});
 
 // 全域錯誤處理中間件 (在其他 middleware 之後)
 app.use('*', errorHandlingMiddleware());
@@ -388,9 +362,7 @@ export {
   CustomerConversationDO,
   CustomerMessageDO,
   // KV Optimization: Rate Limiter (Phase 1)
-  RateLimiterDO,
-  // Metrics: API request metrics accumulator
-  MetricsCollectorDO
+  RateLimiterDO
 } from './runtime/durable-objects';
 
 // Export legacy Delayed Message DO names (kept for backward compatibility)

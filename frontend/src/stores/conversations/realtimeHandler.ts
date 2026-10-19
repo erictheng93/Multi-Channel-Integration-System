@@ -23,6 +23,7 @@ export interface RealtimeHandlerDeps {
   lastUpdateTime: Ref<Date | null>
   activeFilters: Ref<ConversationFilters>
   error: Ref<string | null>
+  loadError: Ref<string | null>
 
   // Store helper functions
   updateConversationFromWebSocketMessage: (
@@ -58,6 +59,7 @@ export function createRealtimeHandler(deps: RealtimeHandlerDeps) {
     lastUpdateTime,
     activeFilters,
     error,
+    loadError,
     updateConversationFromWebSocketMessage,
     updateConversationStatus,
     updateConversationsIncrementally,
@@ -92,22 +94,42 @@ export function createRealtimeHandler(deps: RealtimeHandlerDeps) {
     frontendLogger.debug('[ConversationsStore] Scheduled pending reconciliation in 5s')
   }
 
+  const buildPollFilters = (): Record<string, unknown> => {
+    const f = activeFilters.value
+    const cleanFilters: Record<string, unknown> = {}
+    if (f.scope) { cleanFilters.scope = f.scope }
+    if (f.status) { cleanFilters.status = f.status }
+    if (f.platform) { cleanFilters.platform = f.platform }
+    if (f.teamId) { cleanFilters.teamId = f.teamId }
+    if (f.search) { cleanFilters.search = f.search }
+    if (f.tagIds && f.tagIds.length > 0) { cleanFilters.tagIds = f.tagIds }
+    if (f.customerName) { cleanFilters.customerName = f.customerName }
+    if (f.updatedAfter) { cleanFilters.updatedAfter = f.updatedAfter }
+    if (f.updatedBefore) { cleanFilters.updatedBefore = f.updatedBefore }
+    return cleanFilters
+  }
+
   /**
    * 轮询对话数据（HTTP 备份机制）
    */
   const pollConversations = async () => {
     try {
       // Build query params respecting activeFilters so polling doesn't overwrite filtered views
-      const cleanFilters: Record<string, unknown> = {}
-      if (activeFilters.value.status) { cleanFilters.status = activeFilters.value.status }
-      if (activeFilters.value.platform) { cleanFilters.platform = activeFilters.value.platform }
-      if (activeFilters.value.teamId) { cleanFilters.teamId = activeFilters.value.teamId }
+      const cleanFilters = buildPollFilters()
+      const filterSnapshot = JSON.stringify(cleanFilters)
 
       const response = await conversationApi.list({
         page: 1,
         pageSize: 50,
         ...cleanFilters
       })
+
+      // The scope/filters changed while this poll was in flight: its rows belong to the old
+      // view, and clearing loadError would hide a failure of the newer foreground fetch.
+      if (JSON.stringify(buildPollFilters()) !== filterSnapshot) {
+        frontendLogger.debug('[ConversationsStore] Discarding stale poll result (filters changed)')
+        return
+      }
 
       if (response.success && response.data) {
         const conversationList = Array.isArray(response.data)
@@ -117,6 +139,9 @@ export function createRealtimeHandler(deps: RealtimeHandlerDeps) {
         // 使用智能增量更新
         updateConversationsIncrementally(conversationList, true)
         lastUpdateTime.value = new Date()
+        // A successful refresh supersedes an earlier fetch failure, otherwise a now-empty
+        // list would keep showing the error instead of the valid empty state.
+        loadError.value = null
 
         // 更新统计信息
         stats.value = computeStatsFromConversations(conversationList)
@@ -193,8 +218,10 @@ export function createRealtimeHandler(deps: RealtimeHandlerDeps) {
           const assignedTeamId = data?.assignedTeamId as number | undefined
           const assignedTeamName = data?.assignedTeamName as string | undefined
 
-          const updates: Partial<Pick<Conversation, 'status' | 'assignedTeamId' | 'assignedTeam'>> = {}
+          const updates: Partial<Pick<Conversation, 'status' | 'assignedTeamId' | 'assignedTeam' | 'unreadCount'>> = {}
           if (status) { updates.status = status as Conversation['status'] }
+          // 已結案的對話對所有客服都算 0 未讀（後端同規則）
+          if (status === 'closed') { updates.unreadCount = 0 }
           if (assignedTeamId !== undefined) {
             updates.assignedTeamId = assignedTeamId
             if (assignedTeamId) {
@@ -208,11 +235,16 @@ export function createRealtimeHandler(deps: RealtimeHandlerDeps) {
             }
           }
 
+          // 列表裡沒有這筆、但它變成未結案（例如客戶傳訊自動重新開啟）→ 需要重新抓取，
+          // 讓它出現在「處理中」分頁（對話頁的 currentConversation 仍照常直接更新）
+          const reopenedOutsideList = Boolean(status && status !== 'closed') &&
+            !conversations.value.some(c => c.id === conversationId)
           if (Object.keys(updates).length > 0) {
             updateConversationStatus(conversationId, updates)
             lastUpdateTime.value = new Date()
             frontendLogger.debug(`[ConversationsStore] Direct status update for ${conversationId}`, { assignedTeamName })
-          } else {
+          }
+          if (reopenedOutsideList || Object.keys(updates).length === 0) {
             pollConversations()
           }
         } else {

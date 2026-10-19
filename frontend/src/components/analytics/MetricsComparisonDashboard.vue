@@ -298,7 +298,7 @@ const periodPresets = [
 const metricLabels: Record<string, string> = {
   totalConversations: '總對話數',
   activeConversations: '活躍對話',
-  closedConversations: '已關閉對話',
+  closedConversations: '已結案對話',
   totalMessages: '總消息數',
   customerMessages: '客戶消息',
   agentMessages: '客服消息',

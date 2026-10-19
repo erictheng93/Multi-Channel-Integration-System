@@ -37,7 +37,7 @@ describe('API Base Client', () => {
     const result = await apiClient.post(
       '/auth/change-password',
       { currentPassword: 'wrong', newPassword: 'Password123!' },
-      { redirectOnUnauthorized: false },
+      { redirectOnUnauthorized: false }
     )
 
     expect(fetchMock).toHaveBeenCalled()
@@ -63,8 +63,30 @@ describe('API Base Client', () => {
       expect.any(String),
       expect.objectContaining({
         credentials: 'include',
-      }),
+      })
     )
+  })
+
+  it('preserves validation details and error codes on non-2xx responses', async () => {
+    const data = { errors: [{ field: 'title', message: '請輸入標題' }] }
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          success: false,
+          error: 'Validation failed',
+          code: 'VALIDATION_ERROR',
+          data,
+        }),
+        { status: 422 }
+      )
+    )
+    expect(await apiClient.post('/broadcasts', {})).toEqual({
+      success: false,
+      error: 'Validation failed',
+      code: 'VALIDATION_ERROR',
+      data,
+      status: 422,
+    })
   })
 
   it('sends CSRF header from readable cookie on unsafe requests', async () => {
@@ -85,7 +107,7 @@ describe('API Base Client', () => {
         headers: expect.objectContaining({
           'X-CSRF-Token': 'csrf-token',
         }),
-      }),
+      })
     )
   })
 })

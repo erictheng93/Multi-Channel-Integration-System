@@ -1,14 +1,16 @@
 // 對話指派處理器
-// Handles: POST /:id/assign, POST /:id/unassign, POST /:id/transfer
+// Handles: POST /:id/assign, POST /:id/unassign, POST /:id/transfer, POST /:id/close, POST /:id/reopen
 
 import { Hono, type Context } from 'hono';
 import { HTTP_STATUS } from '@/constants/http-status';
 import { globalErrorHandler } from '@/core/error-handler';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { createDbClient } from '@/db/drizzle-factory';
 import { conversations, customers, teams, customerNameSql } from '@/db/schema';
 import type { Bindings } from '@/types';
 import { PermissionService } from '@/services/permission-service';
+import { getConversationVisibilityCondition } from '@/services/conversation-visibility';
+import { setConversationsClosed } from '../services/conversation-close-service';
 import { jwtAuth } from '@/middleware/auth';
 import { WebSocketBroadcastService } from '@/services/websocket-broadcast-service';
 import { createContextLogger } from '@/utils/logger';
@@ -656,5 +658,45 @@ conversationAssignmentHandler.post('/:id/transfer', jwtAuth, async (c) => {
     return globalErrorHandler.handleError(c, error);
   }
 });
+
+// 結案 / 重新開啟：看得到此對話的客服都能操作（可見性規則同列表），不需要 assign 權限
+async function setConversationClosed(c: Context<{ Bindings: Bindings }>, closed: boolean) {
+  try {
+    const user = c.get('user');
+    const conversationId = c.req.param('id')!;
+    const drizzleDb = createDbClient(c.env.DB);
+
+    const [conv] = await drizzleDb
+      .select()
+      .from(conversations)
+      .where(and(eq(conversations.id, conversationId), getConversationVisibilityCondition(user)))
+      .limit(1);
+
+    if (!conv) {
+      return c.json({ error: 'Conversation not found' }, HTTP_STATUS.NOT_FOUND);
+    }
+
+    const statuses = await setConversationsClosed(c.env, activityMeta(c, user), [conv], closed);
+    const status = statuses[conv.id];
+    // 已是目標狀態：冪等回傳原資料
+    if (!status) {
+      return c.json({ success: true, data: conv, timestamp: nowISO() });
+    }
+
+    const timestamp = nowISO();
+    const closedAt = closed ? timestamp : null;
+
+    return c.json({
+      success: true,
+      data: { ...conv, status, closedAt, updatedAt: timestamp },
+      timestamp: nowISO()
+    });
+  } catch (error) {
+    return globalErrorHandler.handleError(c, error);
+  }
+}
+
+conversationAssignmentHandler.post('/:id/close', jwtAuth, (c) => setConversationClosed(c, true));
+conversationAssignmentHandler.post('/:id/reopen', jwtAuth, (c) => setConversationClosed(c, false));
 
 export default conversationAssignmentHandler;

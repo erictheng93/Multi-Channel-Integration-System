@@ -2,6 +2,7 @@
   <div
     v-if="visible"
     class="history-retention-notice"
+    :class="{ 'is-keyboard-open': keyboardOpen }"
     role="note"
   >
     <span
@@ -49,7 +50,7 @@
  * chat history, so messages older than the restore boundary cannot be shown.
  * Rendered only for LINE conversations. Purely informational (no DB record).
  */
-import { computed } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 
 const props = withDefaults(
   defineProps<{
@@ -66,6 +67,25 @@ const props = withDefaults(
 
 const visible = computed(() => (props.platform || '').toLowerCase() === 'line')
 const boundaryLabel = computed(() => props.boundaryLabel)
+
+/* iOS Safari and Android Chrome (without interactive-widget=resizes-content) open the on-screen
+   keyboard by shrinking only the visual viewport; CSS height queries keep seeing the layout
+   viewport. Compare the two: height * scale cancels pinch-zoom, leaving the keyboard's height. */
+const KEYBOARD_MIN_HEIGHT = 150
+const keyboardOpen = ref(false)
+
+function updateKeyboardOpen(): void {
+  const vv = window.visualViewport
+  keyboardOpen.value = !!vv && window.innerHeight - vv.height * vv.scale > KEYBOARD_MIN_HEIGHT
+}
+
+onMounted(() => {
+  window.visualViewport?.addEventListener('resize', updateKeyboardOpen)
+  updateKeyboardOpen()
+})
+onBeforeUnmount(() => {
+  window.visualViewport?.removeEventListener('resize', updateKeyboardOpen)
+})
 </script>
 
 <style scoped>
@@ -99,6 +119,21 @@ const boundaryLabel = computed(() => props.boundaryLabel)
     font-size: 12px;
     margin: 6px 12px;
     padding: 7px 12px;
+  }
+}
+
+/* On-screen keyboard open: the reply box and message list matter more than an informational
+   note, which would otherwise take ~75px of a ~120px message area. The height query covers
+   browsers that resize the layout viewport; .is-keyboard-open covers visual-viewport-only ones. */
+@media (max-width: 768px) and (max-height: 600px) {
+  .history-retention-notice {
+    display: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .history-retention-notice.is-keyboard-open {
+    display: none;
   }
 }
 </style>

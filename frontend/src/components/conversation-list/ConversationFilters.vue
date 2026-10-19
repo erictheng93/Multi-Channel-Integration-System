@@ -444,7 +444,8 @@ const platformLabels: Record<string, string> = {
 const statusLabels: Record<string, string> = {
   active: '進行中',
   assigned: '已指派',
-  pending: '待處理'
+  pending: '待處理',
+  closed: '已結案'
 }
 
 // Time presets
