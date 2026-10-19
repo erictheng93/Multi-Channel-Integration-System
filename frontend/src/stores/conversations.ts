@@ -803,6 +803,11 @@ export const useConversationsStore = defineStore('conversations', () => {
               updateConversationStatus(id, { status: status as Conversation['status'] })
             }
           }
+          // 伺服器略過的 id（本地資料過期、或剛被別的請求改走）不在 statuses 裡：
+          // 樂觀狀態是我們猜的，改向伺服器取得實際狀態
+          if (changedIds.some(id => !(id in statuses))) {
+            void pollConversations()
+          }
         }
         return response.data?.affectedCount ?? changedIds.length
       }
