@@ -205,9 +205,9 @@ delayedMessageBufferHandler.delete('/cancel/:messageId', jwtAuth, async (c) => {
       return notFoundResponse(c, 'Message not found');
     }
 
-    // Cancelling a buffered send is a recall: sender or admin only. The D1 row
-    // is loaded by (messageId, conversationId); with no row the sender cannot
-    // be proven, so only an admin may cancel.
+    // Cancelling a buffered send is a recall: sender or admin only. Messages
+    // scheduled via /send have no D1 row yet, so ownership of those is checked
+    // by the scheduler against the agentId it stored (requireAgentId).
     const db = createDbClient(c.env.DB);
     const row = await db
       .select({ senderType: messages.senderType, agentSenderId: messages.agentSenderId })
@@ -215,9 +215,10 @@ delayedMessageBufferHandler.delete('/cancel/:messageId', jwtAuth, async (c) => {
       .where(and(eq(messages.id, messageId), eq(messages.conversationId, conversationId)))
       .get();
     const isSender = row?.senderType === 'agent' && row.agentSenderId === String(user.id);
-    if (user.role !== 'admin' && !isSender) {
+    if (user.role !== 'admin' && row && !isSender) {
       return forbiddenResponse(c, 'Only the sender or admin can cancel this message');
     }
+    const needsDoOwnerCheck = user.role !== 'admin' && !row;
 
     // 檢查 Durable Object 綁定
     if (!c.env.DELAYED_MESSAGE_SCHEDULER) {
@@ -234,16 +235,21 @@ delayedMessageBufferHandler.delete('/cancel/:messageId', jwtAuth, async (c) => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         messageId,
-        reason: reason || 'User cancelled'
+        reason: reason || 'User cancelled',
+        ...(needsDoOwnerCheck && { requireAgentId: String(user.id) })
       })
     });
 
     const result = await response.json() as {
       success: boolean;
+      forbidden?: boolean;
       reason?: string;
       cancelledAt?: number;
     };
 
+    if (result.forbidden) {
+      return forbiddenResponse(c, 'Only the sender or admin can cancel this message');
+    }
     if (!result.success) {
       return badRequestResponse(c, result.reason || 'Failed to cancel message');
     }
