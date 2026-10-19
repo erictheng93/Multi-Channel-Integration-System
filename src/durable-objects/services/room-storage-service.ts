@@ -5,6 +5,8 @@ import type { RealtimeEvent } from '../../types';
 import type { RoomContext, RoomHelpers } from './room-helpers';
 import { testSafeLog, testSafeError, getEmojiPrefix } from '../../utils/test-logger';
 
+const MAX_FLUSH_ATTEMPTS = 5;
+
 /**
  * Manages all persistent storage operations for ConversationRoom:
  * - State initialization from DO storage
@@ -77,10 +79,23 @@ export class RoomStorageService {
         await this.ctx.state.storage.put('messageHistory', this.ctx.messageHistory);
         this.ctx.messageDirty = false;
         this.ctx.storageFlushDeadline = null;
+        this.ctx.storageFlushFailures = 0;
         testSafeLog(`\uD83D\uDCBE [ConversationRoom] Message history force-saved (${this.ctx.messageHistory.length} messages)`);
       } catch (error) {
         testSafeError(`${getEmojiPrefix('ERROR')}[ConversationRoom] Force storage write error:`, error);
-        this.ctx.storageFlushDeadline = Date.now() + 1000;
+        const failures = (this.ctx.storageFlushFailures ?? 0) + 1;
+        if (failures >= MAX_FLUSH_ATTEMPTS) {
+          // Stop condition: give up after MAX_FLUSH_ATTEMPTS. History stays in memory; the next
+          // chat message marks it dirty again and starts a fresh bounded cycle.
+          testSafeError(`${getEmojiPrefix('ERROR')}[ConversationRoom] Dropping messageHistory write after ${failures} failures`);
+          this.ctx.messageDirty = false;
+          this.ctx.storageFlushDeadline = null;
+          this.ctx.storageFlushFailures = 0;
+        } else {
+          this.ctx.storageFlushFailures = failures;
+          // Exponential backoff: 2s, 4s, 8s, 16s (bounded by MAX_FLUSH_ATTEMPTS).
+          this.ctx.storageFlushDeadline = Date.now() + 1000 * 2 ** failures;
+        }
       }
     }
   }
