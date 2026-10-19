@@ -41,6 +41,7 @@ export interface JWTPayload {
   role: 'admin' | 'agent'; // Simplified from 3-tier to 2-tier role system
   primaryTeamId?: number;  // From agent_teams WHERE isPrimary=true
   iat: number;
+  iatMs?: number;
   exp: number;
   type?: 'access' | 'refresh' | 'temp_password_change';
   isSystemToken?: boolean;

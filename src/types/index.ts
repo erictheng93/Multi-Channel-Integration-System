@@ -268,6 +268,7 @@ export interface JWTPayload {
   primaryTeamId?: number | undefined;  // From agent_teams WHERE isPrimary=true
   teamName?: string | undefined;
   iat: number;
+  iatMs?: number;
   exp: number;
   iss?: string;
   // F13: unique token id used by the KV revocation list. jwtAuth checks

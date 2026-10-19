@@ -227,6 +227,7 @@ interface RefreshTokenPayload {
   jti?: string;
   exp?: number;
   iat?: number;
+  iatMs?: number;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -945,7 +946,7 @@ authHandler.post('/refresh', authRateLimiter, async (c) => {
     try {
       if (
         (payload.jti && await c.env.CACHE.get(`revoked:${payload.jti}`)) ||
-        await isIssuedBeforeTokenEpoch(c.env.CACHE, { userId: payload.userId, iat: payload.iat })
+        await isIssuedBeforeTokenEpoch(c.env.CACHE, { userId: payload.userId, iat: payload.iat, iatMs: payload.iatMs })
       ) {
         return unauthorizedResponse(c, 'Refresh token has been revoked');
       }

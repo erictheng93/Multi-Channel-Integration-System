@@ -87,6 +87,7 @@ export async function signJWT(payload: Omit<JWTPayload, 'iat' | 'exp'>, secret: 
   const jwtPayload = {
     ...payload,
     iat: now,
+    iatMs: Date.now(),
     exp: now + expiresIn
   };
 
