@@ -120,6 +120,7 @@ describe('deployment ownership', () => {
     const object = new DeploymentOrchestrator(state, { DEPLOYMENT_ORCHESTRATOR: {} as DurableObjectNamespace, ENVIRONMENT: 'production' });
     const network = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
       const request = new Request(input, init);
+      if (request.method === 'GET' && new URL(request.url).pathname === `/client/v4/accounts/${'a'.repeat(32)}`) return Response.json({ success: true });
       requests.push(`${request.method} ${new URL(request.url).pathname}`);
       if (request.method === 'POST' && request.url.endsWith('/d1/database')) {
         creationStarted();

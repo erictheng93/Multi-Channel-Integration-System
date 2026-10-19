@@ -209,8 +209,8 @@ describe('ActivityTimelineItem', () => {
     expect(badge.attributes('aria-label')).toBeTruthy()
   })
 
-  it('shows restore button when activity is reversible and caller is original actor', () => {
-    setCurrentAgent('agent-1', 'agent')
+  it('shows restore button when activity is reversible and caller is admin', () => {
+    setCurrentAgent('agent-1', 'admin')
 
     const wrapper = mountItem(makeReversibleActivity())
 
@@ -247,7 +247,7 @@ describe('ActivityTimelineItem', () => {
     expect(wrapper.find('[data-test="restore-irreversible"]').text()).toContain('不可還原')
   })
 
-  it('hides button when caller is neither original actor nor admin', () => {
+  it('hides button for a non-admin, even the original actor', () => {
     setCurrentAgent('agent-other', 'agent')
 
     const wrapper = mountItem(makeReversibleActivity())
@@ -275,7 +275,7 @@ describe('ActivityTimelineItem', () => {
   })
 
   it('opens modal and emits restored on successful confirm', async () => {
-    setCurrentAgent('agent-1', 'agent')
+    setCurrentAgent('agent-1', 'admin')
     restoreMock.attemptRestore.mockResolvedValueOnce({
       kind: 'success',
       restoredByActivityId: 99,
@@ -295,7 +295,7 @@ describe('ActivityTimelineItem', () => {
   })
 
   it('keeps modal open with conflict changes when restore reports conflict', async () => {
-    setCurrentAgent('agent-1', 'agent')
+    setCurrentAgent('agent-1', 'admin')
     restoreMock.attemptRestore.mockResolvedValueOnce({
       kind: 'conflict',
       midChanges: [

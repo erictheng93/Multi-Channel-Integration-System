@@ -86,7 +86,7 @@ export const storeCredential = async (c: Context<{ Bindings: Bindings }>) => {
   try {
     // 驗證用戶權限 - 只有管理員可以管理憑證
     const payload = c.get('jwtPayload')
-    if (!payload || payload.role !== 'admin') {
+    if (!payload || c.get('user')?.role !== 'admin') {
       return forbiddenResponse(c, '權限不足：需要管理員權限')
     }
 
@@ -129,7 +129,7 @@ export const storeCredential = async (c: Context<{ Bindings: Bindings }>) => {
       await activityService.logActivity({
         userId: payload.userId.toString(),
         userName: payload.username || 'Admin',
-        userRole: payload.role,
+        userRole: c.get('user')?.role ?? 'admin',
         action: sanitizedValue ? ACTIVITY_ACTIONS.SETTINGS_UPDATE : 'CREDENTIAL_DELETE',
         resourceType: RESOURCE_TYPES.SYSTEM,
         details: {
@@ -154,7 +154,7 @@ export const getCredential = async (c: Context<{ Bindings: Bindings }>) => {
   try {
     // 驗證用戶權限 - 只有管理員可以查看憑證
     const payload = c.get('jwtPayload')
-    if (!payload || payload.role !== 'admin') {
+    if (!payload || c.get('user')?.role !== 'admin') {
       return forbiddenResponse(c, '權限不足：需要管理員權限')
     }
 
@@ -194,7 +194,7 @@ export const getAllCredentials = async (c: Context<{ Bindings: Bindings }>) => {
   try {
     // 驗證用戶權限 - 只有管理員可以查看所有憑證
     const payload = c.get('jwtPayload')
-    if (!payload || payload.role !== 'admin') {
+    if (!payload || c.get('user')?.role !== 'admin') {
       return forbiddenResponse(c, '權限不足：需要管理員權限')
     }
 
@@ -253,7 +253,7 @@ export const clearPlatformCredentials = async (c: Context<{ Bindings: Bindings }
   try {
     // 驗證用戶權限 - 只有管理員可以清除憑證
     const payload = c.get('jwtPayload')
-    if (!payload || payload.role !== 'admin') {
+    if (!payload || c.get('user')?.role !== 'admin') {
       return forbiddenResponse(c, '權限不足：需要管理員權限')
     }
 
@@ -285,7 +285,7 @@ export const clearPlatformCredentials = async (c: Context<{ Bindings: Bindings }
       await activityService.logActivity({
         userId: payload.userId.toString(),
         userName: payload.username || 'Admin',
-        userRole: payload.role,
+        userRole: c.get('user')?.role ?? 'admin',
         action: 'CREDENTIALS_CLEAR',
         resourceType: RESOURCE_TYPES.SYSTEM,
         details: {
@@ -308,7 +308,7 @@ export const backupCredentials = async (c: Context<{ Bindings: Bindings }>) => {
   try {
     // 驗證用戶權限 - 只有管理員可以備份憑證
     const payload = c.get('jwtPayload')
-    if (!payload || payload.role !== 'admin') {
+    if (!payload || c.get('user')?.role !== 'admin') {
       return forbiddenResponse(c, '權限不足：需要管理員權限')
     }
 
@@ -344,7 +344,7 @@ export const backupCredentials = async (c: Context<{ Bindings: Bindings }>) => {
       await activityService.logActivity({
         userId: payload.userId.toString(),
         userName: payload.username || 'Admin',
-        userRole: payload.role,
+        userRole: c.get('user')?.role ?? 'admin',
         action: 'CREDENTIALS_BACKUP',
         resourceType: RESOURCE_TYPES.SYSTEM,
         details: {

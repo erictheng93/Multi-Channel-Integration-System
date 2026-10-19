@@ -57,6 +57,8 @@ function readCaller(c: Context<{ Bindings: Bindings }>): RestoreCaller | null {
     return { id: jwtUser.id, role: jwtUser.role, name: jwtUser.displayName ?? jwtUser.name }
   }
 
+  // Test-only identity shim: never honoured outside ENVIRONMENT=test (route is also behind jwtAuth)
+  if (c.env?.ENVIRONMENT !== 'test') return null
   const testUserHeader = c.req.header('X-Test-User')
   if (!testUserHeader) return null
   try {
@@ -125,12 +127,9 @@ handler.post('/', async (c) => {
   }
 
   const restorePolicy = asRecord(details.restorePolicy)
-  const requiresAdmin = restorePolicy.requiresAdmin === true
-  const canRestore =
-    caller.role === 'admin' ||
-    (caller.id === row.user_id && !requiresAdmin)
-
-  if (!canRestore) {
+  // Authorize on the CURRENT role only: authorship at write time says nothing about
+  // whether the caller may still perform the underlying (admin/lead-only) mutation.
+  if (caller.role !== 'admin') {
     return c.json({ success: false, error: 'Forbidden' }, 403)
   }
 

@@ -39,6 +39,13 @@ vi.mock('../../../../../src/utils/auth', () => ({
   verifyJWT: vi.fn()
 }));
 
+// Visibility guards are covered by tests/unit/security/feedback-notifications-sessions-f15-f22-f23-f24.test.ts
+vi.mock('../../../../../src/modules/session/middleware/session-visibility', () => ({
+  requireBodyConversationAccess: () => (_c: unknown, next: () => Promise<void>) => next(),
+  requireSessionAccess: () => (_c: unknown, next: () => Promise<void>) => next(),
+  requireVisibilityUser: (_c: unknown, next: () => Promise<void>) => next()
+}));
+
 // Mock middleware functions
 vi.mock('../../../../../src/modules/session/middleware/index', () => ({
   checkSessionAccess: vi.fn((c, next) => next()),

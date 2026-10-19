@@ -6,9 +6,10 @@ import { HTTP_STATUS } from '@/constants/http-status';
 import { globalErrorHandler } from '@/core/error-handler';
 import { eq, and, inArray } from 'drizzle-orm';
 import { createDbClient } from '@/db/drizzle-factory';
-import { conversations, conversationTags, tags } from '@/db/schema';
+import { conversationTags, tags } from '@/db/schema';
 import type { Bindings } from '@/types';
 import { jwtAuth } from '@/middleware/auth';
+import { canConversationBeAccessedBy } from '@/services/conversation-access';
 import { WebSocketBroadcastService } from '@/services/websocket-broadcast-service';
 import { validationErrorResponse } from '@/utils/api-response';
 import { createContextLogger } from '@/utils/logger';
@@ -25,14 +26,16 @@ conversationTagsHandler.get('/:id/tags', jwtAuth, async (c) => {
     const drizzleDb = createDbClient(c.env.DB);
 
     // 檢查對話是否存在
-    const conversation = await drizzleDb
-      .select({ id: conversations.id })
-      .from(conversations)
-      .where(eq(conversations.id, conversationId))
-      .get();
-
-    if (!conversation) {
+    const access = await canConversationBeAccessedBy(
+      c.env,
+      { userId: c.get('user').id, role: c.get('user').role, allowedTeamIds: c.get('user').allowedTeamIds },
+      conversationId
+    );
+    if (!access.conversation) {
       return c.json({ success: false, error: 'Conversation not found' }, HTTP_STATUS.NOT_FOUND);
+    }
+    if (!access.allowed) {
+      return c.json({ success: false, error: 'You do not have access to this conversation' }, HTTP_STATUS.FORBIDDEN);
     }
 
     // 獲取對話的所有標籤
@@ -91,14 +94,16 @@ conversationTagsHandler.post('/:id/tags', jwtAuth, async (c) => {
     const drizzleDb = createDbClient(c.env.DB);
 
     // 檢查對話是否存在
-    const conversation = await drizzleDb
-      .select({ id: conversations.id })
-      .from(conversations)
-      .where(eq(conversations.id, conversationId))
-      .get();
-
-    if (!conversation) {
+    const access = await canConversationBeAccessedBy(
+      c.env,
+      { userId: c.get('user').id, role: c.get('user').role, allowedTeamIds: c.get('user').allowedTeamIds },
+      conversationId
+    );
+    if (!access.conversation) {
       return c.json({ success: false, error: 'Conversation not found' }, HTTP_STATUS.NOT_FOUND);
+    }
+    if (!access.allowed) {
+      return c.json({ success: false, error: 'You do not have access to this conversation' }, HTTP_STATUS.FORBIDDEN);
     }
 
     // 構建批量插入值
@@ -165,14 +170,16 @@ conversationTagsHandler.delete('/:id/tags', jwtAuth, async (c) => {
     const drizzleDb = createDbClient(c.env.DB);
 
     // 檢查對話是否存在
-    const conversation = await drizzleDb
-      .select({ id: conversations.id })
-      .from(conversations)
-      .where(eq(conversations.id, conversationId))
-      .get();
-
-    if (!conversation) {
+    const access = await canConversationBeAccessedBy(
+      c.env,
+      { userId: c.get('user').id, role: c.get('user').role, allowedTeamIds: c.get('user').allowedTeamIds },
+      conversationId
+    );
+    if (!access.conversation) {
       return c.json({ success: false, error: 'Conversation not found' }, HTTP_STATUS.NOT_FOUND);
+    }
+    if (!access.allowed) {
+      return c.json({ success: false, error: 'You do not have access to this conversation' }, HTTP_STATUS.FORBIDDEN);
     }
 
     const parsedTagIds = tagIds.map((id: string | number) => parseInt(String(id)));

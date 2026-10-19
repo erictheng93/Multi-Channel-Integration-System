@@ -10,7 +10,7 @@ const log = createContextLogger('AgentTeams')
 import { eq, inArray } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/d1';
 import type { Bindings } from '@/types';
-import { AgentTeamsService } from '@modules/teams/services/agent-teams-service';
+import { AgentTeamsService, checkTeamRoleAssignment } from '@modules/teams/services/agent-teams-service';
 import { jwtAuth, requireManagerOrAdmin, requireTeamRole } from '@/middleware/auth';
 import { requireIntId, getValidatedParam } from '@/middleware/param-validator';
 import { ActivityService, ACTIVITY_ACTIONS, RESOURCE_TYPES } from '@/modules/activities';
@@ -424,6 +424,13 @@ agentTeamsHandler.put('/:agentId/role/:teamId', jwtAuth, requireTeamRole('lead',
     const { roleInTeam, isPrimary } = await c.req.json();
     const db = drizzle(c.env.DB);
     const service = new AgentTeamsService(c.env.DB, c.env);
+    if (roleInTeam !== undefined) {
+      const current = await service.getAgentTeamMembership(agentId, teamId);
+      const denied = checkTeamRoleAssignment(user, teamId, roleInTeam, agentId, current?.roleInTeam);
+      if (denied) {
+        return c.json({ success: false, error: denied }, denied === 'Invalid roleInTeam' ? HTTP_STATUS.BAD_REQUEST : HTTP_STATUS.FORBIDDEN);
+      }
+    }
     const updated = await service.updateAgentTeamRole(agentId, teamId, { roleInTeam, isPrimary });
 
     // Fetch names for activity log

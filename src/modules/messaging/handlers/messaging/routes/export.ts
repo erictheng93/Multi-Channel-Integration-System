@@ -7,10 +7,11 @@ import { createContextLogger } from '@/utils/logger'
 const log = createContextLogger('MsgExport')
 
 import { HTTP_STATUS } from '@/constants/http-status';
-import { eq, and, desc, gte, lte, count, isNull } from 'drizzle-orm';
+import { eq, and, desc, gte, lte, count, isNull, exists, sql } from 'drizzle-orm';
+import { getConversationVisibilityCondition } from '@/services/conversation-visibility';
 import type { SQL } from 'drizzle-orm';
 import { createDbClient } from '@/db/drizzle-factory';
-import type { Bindings, JWTPayload } from '@/types';
+import type { Bindings, DbUser, JWTPayload } from '@/types';
 import { messages, conversations, agents, customers, customerNameSql } from '@/db/schema';
 import { jwtAuth } from '@/middleware/auth';
 import { BULK_OPERATION_LIMITS } from '@/constants/limits';
@@ -28,6 +29,7 @@ const exportRoutes = new Hono<{ Bindings: Bindings }>();
  */
 exportRoutes.get('/export/customers', jwtAuth, async (c) => {
   try {
+    const user = c.get('user') as DbUser;
     const db = createDbClient(c.env.DB);
 
     const customerList = await db
@@ -38,7 +40,14 @@ exportRoutes.get('/export/customers', jwtAuth, async (c) => {
         platformUserId: customers.platformUserId
       })
       .from(customers)
-      .where(isNull(customers.deletedAt))
+      .where(and(
+        isNull(customers.deletedAt),
+        // Only customers with at least one conversation the caller can see (admin: all)
+        user.role === 'admin' ? undefined : exists(
+          db.select({ one: sql`1` }).from(conversations)
+            .where(and(eq(conversations.customerId, customers.id), getConversationVisibilityCondition(user)))
+        )
+      ))
       .orderBy(customerNameSql)
       .limit(200);
 
@@ -107,7 +116,8 @@ exportRoutes.get('/export/count', jwtAuth, async (c) => {
     const agentId = c.req.query('agentId');
 
     const whereConditions: SQL<unknown>[] = [
-      eq(messages.isRecalled, false)
+      eq(messages.isRecalled, false),
+      getConversationVisibilityCondition(c.get('user') as DbUser)
     ];
 
     if (conversationId) {
@@ -187,7 +197,8 @@ exportRoutes.get('/export', jwtAuth, async (c) => {
 
     // 構建查詢條件
     const whereConditions: SQL<unknown>[] = [
-      eq(messages.isRecalled, false)
+      eq(messages.isRecalled, false),
+      getConversationVisibilityCondition(c.get('user') as DbUser)
     ];
 
     if (conversationId) {

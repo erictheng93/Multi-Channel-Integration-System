@@ -404,7 +404,7 @@ describe('SessionService', () => {
         mockSelectChain.get.mockResolvedValueOnce({ count: 2 }); // Active
 
         const query = createMockListQuery({ page: 1, pageSize: 20 });
-        const result = await sessionService.list(query);
+        const result = await sessionService.list(query, { role: "admin", allowedTeamIds: [] });
 
         expect(result).toBeDefined();
         expect(result.sessions).toHaveLength(2);
@@ -427,7 +427,7 @@ describe('SessionService', () => {
         mockSelectChain.get.mockResolvedValueOnce({ count: 0 }); // Active
 
         const query = createMockListQuery();
-        const result = await sessionService.list(query);
+        const result = await sessionService.list(query, { role: "admin", allowedTeamIds: [] });
 
         expect(result.sessions).toHaveLength(0);
         expect(result.pagination.total).toBe(0);
@@ -451,7 +451,7 @@ describe('SessionService', () => {
         mockSelectChain.get.mockResolvedValueOnce({ count: 1 }); // Total
         mockSelectChain.get.mockResolvedValueOnce({ count: 1 }); // Active
 
-        const result = await sessionService.list(query);
+        const result = await sessionService.list(query, { role: "admin", allowedTeamIds: [] });
 
         expect(mockSelectChain.where).toHaveBeenCalled();
         expect(result).toBeDefined();
@@ -470,7 +470,7 @@ describe('SessionService', () => {
         mockSelectChain.get.mockResolvedValueOnce({ count: 25 }); // Total
         mockSelectChain.get.mockResolvedValueOnce({ count: 15 }); // Active
 
-        const result = await sessionService.list(query);
+        const result = await sessionService.list(query, { role: "admin", allowedTeamIds: [] });
 
         expect(result.pagination.page).toBe(2);
         expect(result.pagination.pageSize).toBe(10);
@@ -505,7 +505,7 @@ describe('SessionService', () => {
         mockSelectChain.all.mockResolvedValue(searchResults);
 
         const query = createMockSearchQuery({ query: 'support' });
-        const result = await sessionService.search(query);
+        const result = await sessionService.search(query, { role: "admin", allowedTeamIds: [] });
 
         expect(result).toHaveLength(1);
         expect(result[0].topic).toBe('Support Topic');
@@ -518,7 +518,7 @@ describe('SessionService', () => {
         mockSelectChain.all.mockResolvedValue([]);
 
         const query = createMockSearchQuery({ query: 'nonexistent' });
-        const result = await sessionService.search(query);
+        const result = await sessionService.search(query, { role: "admin", allowedTeamIds: [] });
 
         expect(result).toHaveLength(0);
       });
@@ -532,7 +532,7 @@ describe('SessionService', () => {
 
         mockSelectChain.all.mockResolvedValue([]);
 
-        const result = await sessionService.search(query);
+        const result = await sessionService.search(query, { role: "admin", allowedTeamIds: [] });
 
         expect(mockSelectChain.where).toHaveBeenCalled();
         expect(result).toBeDefined();

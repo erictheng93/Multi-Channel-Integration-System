@@ -4,6 +4,7 @@
  */
 
 import { comprehensiveStickerRenderer, type StickerRenderResult } from './sticker-renderer';
+import { escapeHtmlText } from './layered-emoji-processor'
 import { createLogger } from '@/utils/logger'
 
 const frontendLogger = createLogger('enhancedmessagerenderer')
@@ -51,7 +52,7 @@ export class EnhancedMessageRenderer {
     if (!message) {return '';}
 
     // 处理emoji描述
-    let html = await this.processEmojiDescriptions(message);
+    let html = await this.processEmojiDescriptions(escapeHtmlText(message));
     
     // 处理自定义表情
     html = await this.processCustomEmojis(html);
@@ -75,7 +76,7 @@ export class EnhancedMessageRenderer {
     }
 
     // 首先处理文本内容中的emoji描述
-    let html = await this.processEmojiDescriptions(message);
+    let html = await this.processEmojiDescriptions(escapeHtmlText(message));
     frontendLogger.debug('[EnhancedMessageRenderer] After emoji processing:', html)
     
     // 处理贴图（基于数据库元数据）

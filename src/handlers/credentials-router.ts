@@ -3,7 +3,7 @@
 
 import { Hono } from 'hono';
 import type { Bindings } from '../types';
-import { jwtAuth } from '../middleware/auth';
+import { jwtAuth, requireAdmin } from '../middleware/auth';
 import {
   storeCredential,
   getCredential,
@@ -14,10 +14,10 @@ import {
 
 const router = new Hono<{ Bindings: Bindings }>();
 
-router.post('/', jwtAuth, storeCredential);
-router.get('/:platform/:type', jwtAuth, getCredential);
-router.get('/', jwtAuth, getAllCredentials);
-router.delete('/:platform', jwtAuth, clearPlatformCredentials);
-router.get('/backup', jwtAuth, backupCredentials);
+router.post('/', jwtAuth, requireAdmin(), storeCredential);
+router.get('/:platform/:type', jwtAuth, requireAdmin(), getCredential);
+router.get('/', jwtAuth, requireAdmin(), getAllCredentials);
+router.delete('/:platform', jwtAuth, requireAdmin(), clearPlatformCredentials);
+router.get('/backup', jwtAuth, requireAdmin(), backupCredentials);
 
 export default router;

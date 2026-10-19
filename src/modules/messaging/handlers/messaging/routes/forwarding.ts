@@ -11,6 +11,7 @@ import { createDbClient } from '@/db/drizzle-factory';
 import type { Bindings, JWTPayload } from '@/types';
 import { messages, conversations } from '@/db/schema';
 import { jwtAuth } from '@/middleware/auth';
+import { canConversationBeAccessedBy } from '@/services/conversation-access';
 import {
   successResponse,
   errorResponse,
@@ -83,6 +84,13 @@ forwardingRoutes.post('/:id/forward', jwtAuth, async (c) => {
       return notFoundResponse(c, 'Message not found');
     }
 
+    const user = c.get('user');
+    const principal = { userId: user.id, role: user.role, allowedTeamIds: user.allowedTeamIds };
+    const sourceAccess = await canConversationBeAccessedBy(c.env, principal, originalMessage.conversationId);
+    if (!sourceAccess.allowed) {
+      return notFoundResponse(c, 'Message not found');
+    }
+
     const results: unknown[] = [];
     const errors: unknown[] = [];
 
@@ -98,6 +106,8 @@ forwardingRoutes.post('/:id/forward', jwtAuth, async (c) => {
     const validTargetIds: string[] = [];
     for (const targetConversationId of targetConversationIds) {
       if (!existingConvIdSet.has(targetConversationId)) {
+        errors.push({ conversationId: targetConversationId, error: 'Target conversation not found' });
+      } else if (!(await canConversationBeAccessedBy(c.env, principal, targetConversationId)).allowed) {
         errors.push({ conversationId: targetConversationId, error: 'Target conversation not found' });
       } else {
         validTargetIds.push(targetConversationId);

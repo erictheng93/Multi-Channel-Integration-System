@@ -6,7 +6,7 @@ import type {
 import { createContextLogger } from './logger';
 import { PLATFORMS } from '../constants/platforms';
 import { nowISO } from '@/utils/timestamp'
-import { getPublicFileUrl } from '@/utils/file-url'
+import { getPublicFileUrl, isInlineSafeContentType, normalizeStoredContentType } from '@/utils/file-url'
 
 // Legacy interface for backward compatibility
 export interface MediaFile {
@@ -98,6 +98,11 @@ export class FileStorageService {
         mimeType = actualContentType.split(';')[0].trim();
         console.log(`[FileStorage] Using actual Content-Type from response: ${mimeType}`);
       }
+      // NV4: never keep a script-capable type from upstream/customer-controlled input
+      if (/html|xml|javascript|ecmascript|svg/i.test(mimeType)) {
+        mimeType = 'application/octet-stream';
+      }
+      const inlineSafe = isInlineSafeContentType(mimeType);
 
       // 生成唯一檔案名
       const fileId = crypto.randomUUID();
@@ -123,8 +128,8 @@ export class FileStorageService {
       console.log(`[FileStorage] Uploading to R2...`);
       await this.env.R2_BUCKET.put(storageKey, fileBuffer, {
         httpMetadata: {
-          contentType: mimeType,
-          contentDisposition: `inline; filename="${finalFilename}"`,
+          contentType: normalizeStoredContentType(mimeType),
+          contentDisposition: `${inlineSafe ? 'inline' : 'attachment'}; filename="${finalFilename.replace(/["\\\r\n]/g, '_')}"`,
           cacheControl: 'public, max-age=604800'
         },
         customMetadata: {
