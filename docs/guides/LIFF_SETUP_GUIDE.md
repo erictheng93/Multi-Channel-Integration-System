@@ -33,8 +33,12 @@ LIFF 方案通過中間頁面解決這個問題：
 | LIFF app name | Multi-Channel QR Bind | 應用名稱 |
 | Size | Full | 全螢幕顯示 |
 | Endpoint URL | `https://your-frontend-domain.com/liff` | 前端 LIFF 頁面 URL |
-| Scope | `profile` | 需要獲取用戶資料 |
+| Scope | `profile`、`openid`（兩者都要勾選） | `profile` 取得用戶名稱與頭像；`openid` 讓 `liff.getIDToken()` 回傳 ID token |
 | Bot link feature | Aggressive | 自動提示加好友 |
+
+> **`openid` 是必要的。** `team-join.html` 會把 `liff.getIDToken()` 取得的 ID token 送給 `/api/liff/assign-team` 和 `/api/liff/welcome`，後端向 LINE 驗證後才採用其中的用戶 ID，不再信任前端傳來的 `lineUserId`。沒有勾選 `openid` 時 `getIDToken()` 會回傳 `null`，這兩個端點會回 401，QR Code 加入團隊的流程會失敗。
+>
+> 已建立的 LIFF 應用：到 LINE Developers Console → LINE Login channel → **LIFF** 分頁 → 點進該應用 → **Scopes**，確認 `openid` 已勾選後儲存。
 
 ### 3. 獲取 LIFF ID
 
