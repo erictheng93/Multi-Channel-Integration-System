@@ -124,7 +124,9 @@ function createSqliteDb() {
   const db = new Database(':memory:');
   db.exec(`
     CREATE TABLE conversations (
-      id TEXT PRIMARY KEY
+      id TEXT PRIMARY KEY,
+      status TEXT NOT NULL DEFAULT 'active',
+      unread_floor_at TEXT
     );
     CREATE TABLE conversation_read_states (
       agent_id TEXT NOT NULL,
@@ -144,8 +146,8 @@ function createSqliteDb() {
   return db;
 }
 
-function insertConversation(db: Database.Database, id: string) {
-  db.prepare('INSERT INTO conversations (id) VALUES (?)').run(id);
+function insertConversation(db: Database.Database, id: string, status = 'active') {
+  db.prepare('INSERT INTO conversations (id, status) VALUES (?, ?)').run(id, status);
 }
 
 function insertReadState(
@@ -252,6 +254,35 @@ describe('conversation unread count SQL', () => {
     const fillerRows = rows.filter(row => row.conversationId.startsWith('filler-'));
     expect(fillerRows).toHaveLength(91);
     expect(fillerRows.every(row => Number(row.unreadCount) === 0)).toBe(true);
+  });
+
+  // Closed conversations reopen on the next inbound message, so their unread
+  // count is 0 for every agent, including a manual unread override.
+  it('counts a closed conversation as 0 unread for every agent', () => {
+    const db = createSqliteDb();
+    insertConversation(db, 'closed', 'closed');
+    insertMessage(db, 'm1', 'closed', 'customer', '2026-07-21T10:00:00Z');
+    insertReadState(db, 'agent-2', 'closed', null, '2026-07-21T11:00:00Z');
+
+    for (const agentId of ['agent-1', 'agent-2']) {
+      const [row] = unreadRows(db, ['closed'], agentId);
+      expect(Number(row?.unreadCount)).toBe(0);
+      expect(Number(row?.manuallyUnread)).toBe(0);
+    }
+  });
+
+  // Closing records unread_floor_at and reopening keeps it, so the backlog that
+  // was pending at close time stays read; only newer messages count.
+  it('does not resurrect the pre-close backlog when a conversation reopens', () => {
+    const db = createSqliteDb();
+    insertConversation(db, 'reopened', 'active');
+    db.prepare('UPDATE conversations SET unread_floor_at = ? WHERE id = ?').run('2026-07-21T12:00:00Z', 'reopened');
+    insertMessage(db, 'old1', 'reopened', 'customer', '2026-07-21T10:00:00Z');
+    insertMessage(db, 'old2', 'reopened', 'customer', '2026-07-21T11:00:00Z');
+    insertMessage(db, 'new1', 'reopened', 'customer', '2026-07-21T13:00:00Z');
+
+    const [row] = unreadRows(db, ['reopened'], 'agent-1');
+    expect(Number(row?.unreadCount)).toBe(1);
   });
 
   // The whole point of Migration 0060: two agents looking at the same
@@ -403,7 +434,7 @@ describe('GET /conversations/stats unreadConversations', () => {
 
   function createStatsDb() {
     const db = createSqliteDb();
-    db.exec('ALTER TABLE conversations ADD COLUMN status TEXT; ALTER TABLE conversations ADD COLUMN assigned_team_id INTEGER;');
+    db.exec('ALTER TABLE conversations ADD COLUMN assigned_team_id INTEGER;');
     return db;
   }
 
@@ -430,5 +461,21 @@ describe('GET /conversations/stats unreadConversations', () => {
     // messages: many(3) + one(1) + manual floor(1) = 5; conversations: many, one, manual = 3
     expect(body.data.unreadCount).toBe(5);
     expect(body.data.unreadConversations).toBe(3);
+  });
+
+  it('leaves closed conversations out of the unread totals', async () => {
+    const db = createStatsDb();
+    insertConversation(db, 'open');
+    insertConversation(db, 'closed', 'closed');
+    insertMessage(db, 'open-0', 'open', 'customer', '2026-07-01T01');
+    insertMessage(db, 'closed-0', 'closed', 'customer', '2026-07-01T01');
+    insertMessage(db, 'closed-1', 'closed', 'customer', '2026-07-01T02');
+    insertReadState(db, 'agent-1', 'closed', null, '2026-07-01T03');
+
+    const response = await makeApp(createStatsEnv(db)).request('/api/conversations/stats');
+    const body = await response.json() as { data: { unreadCount: number; unreadConversations: number } };
+
+    expect(body.data.unreadCount).toBe(1);
+    expect(body.data.unreadConversations).toBe(1);
   });
 });

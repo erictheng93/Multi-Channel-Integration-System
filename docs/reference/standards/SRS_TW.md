@@ -114,7 +114,7 @@
 ## 9. 監控與可觀測性
 
 - API 健康檢查（`/api/system/health`）
-- `MetricsCollectorDO`：請求級指標累加（60s flush 到 KV）
+- 每端點 API 指標收集（`MetricsCollectorDO`）已移除（migration v7）
 - 斷路器（緊急斷流）
 - 警報歷史
 - 完整活動日誌

@@ -1,4 +1,29 @@
-import type { Page } from '@playwright/test'
+import type { Locator, Page } from '@playwright/test'
+
+/**
+ * Resolves to the first visible conversation, or null only for an explicit empty
+ * list. A load failure (`.conversations-error`) and stalled loading both throw, so
+ * the suite fails instead of silently skipping.
+ */
+export async function waitForFirstConversation(
+  page: Page,
+  timeout = 10_000
+): Promise<Locator | null> {
+  // The desktop table and mobile cards coexist in the DOM; only one is visible.
+  const row = page.locator(
+    '.conversation-row:visible, .conversation-card:visible, tbody tr:visible'
+  ).first()
+  const empty = page.locator('.conversations-content .no-data:visible').first()
+  const failed = page.locator('.conversations-content .conversations-error:visible').first()
+  await row.or(empty).or(failed).first().waitFor({ state: 'visible', timeout })
+  if (await failed.count()) {
+    const detail = (await failed.innerText()).replace(/\s+/g, ' ').trim()
+    throw new Error(`Conversation list failed to load (not an empty list): ${detail}`)
+  }
+  if (await row.count()) { return row }
+  await empty.waitFor({ state: 'visible', timeout })
+  return null
+}
 
 /**
  * Viewports the responsive suite checks: narrow phone, phone, tablet, laptop.
@@ -51,7 +76,7 @@ export interface LayoutAudit {
    * they are allowed (and grow past it as soon as the content gets wide).
    */
   shrinkWrapped: string[]
-  /** Values that leaked to the UI unformatted: 0.00014140695, NaN, undefined, [object Object]. */
+  /** Application-owned values that leaked to the UI unformatted. */
   rawValues: string[]
 }
 
@@ -112,7 +137,16 @@ export function auditLayoutInPage(): LayoutAudit {
       // is measured by a Range, so only content that does not fit is reported.
       const content = document.createRange()
       content.selectNodeContents(el)
-      if (content.getBoundingClientRect().width <= el.clientWidth + 8) { continue }
+      const contentBounds = content.getBoundingClientRect()
+      // An element with no real content (only a decorative pseudo-element) has an empty Range
+      // rect at 0,0; there is nothing to clip, and comparing it to the container would misreport.
+      if (!contentBounds.width && !contentBounds.height) { continue }
+      const bounds = el.getBoundingClientRect()
+      // clientWidth includes padding but excludes borders. Check both edges so narrow
+      // content shifted outside the visible area is still reported.
+      const left = bounds.left + el.clientLeft
+      const right = left + el.clientWidth
+      if (contentBounds.left >= left - 8 && contentBounds.right <= right + 8) { continue }
       clipped.push(`${label(el)} ${el.scrollWidth}>${el.clientWidth}`)
     }
   }
@@ -136,9 +170,18 @@ export function auditLayoutInPage(): LayoutAudit {
     }
   }
 
-  const rawValues = [
-    ...(container as HTMLElement).innerText.matchAll(/\b\d+\.\d{5,}\b|\bNaN\b|\bundefined\b|\[object Object\]|\bInfinity\b/g),
-  ].map((m) => m[0].slice(0, 30))
+  // Only inspect application-owned metric values. Page text includes customer messages,
+  // names and other user-authored content where these strings are legitimate. Additional
+  // formatted values can opt in with data-rwd-value on the value element (not its card).
+  // Do not include .stat-value: some components use it for team names and descriptions.
+  const rawValues = Array.from(
+    container.querySelectorAll<HTMLElement>('.metric-value, [data-rwd-value]'),
+  ).flatMap((el) =>
+    Array.from(
+      el.innerText.matchAll(/\b\d+\.\d{5,}\b|\bNaN\b|\bundefined\b|\[object Object\]|\bInfinity\b/g),
+      (m) => m[0].slice(0, 30),
+    ),
+  )
 
   return {
     documentOverflow: document.documentElement.scrollWidth - vw,

@@ -63,8 +63,6 @@ export interface RoomContext {
   // Storage optimization
   messageDirty: boolean;
   storageFlushDeadline: number | null;
-  /** Consecutive failed messageHistory writes; reset on success or give-up. */
-  storageFlushFailures?: number;
   accessCheckDeadline?: number | null;
   /** Alarm time last set by this instance; undefined = unknown (cold start). */
   alarmAt?: number | null;

@@ -363,7 +363,7 @@ export class BroadcastSenderService {
         senderType: 'agent',
         agentSenderId: String(actor.id),
         content,
-        messageType: images.length > 0 ? 'file' : 'text',
+        messageType: images.length > 0 ? 'image' : 'text',
         isSent: true,
         sentAt: timestamp,
         deliveryStatus: 'delivered',

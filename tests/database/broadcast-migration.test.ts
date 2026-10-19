@@ -91,6 +91,8 @@ describe('broadcast table migrations', () => {
       VALUES (?, ?, ?, ?)
     `);
     insert.run('broadcast-1', 'img-1', 'prev-1', 0);
+    db.prepare(`INSERT INTO broadcast_recipients (broadcast_id, platform, platform_user_id)
+      VALUES ('broadcast-1', 'line', 'U123')`).run();
 
     expect(() => insert.run('broadcast-1', 'img-2', 'prev-2', 0)).toThrow(/UNIQUE constraint failed/);
     expect(() => insert.run('broadcast-1', 'img-1', 'prev-2', 1)).toThrow(/UNIQUE constraint failed/);
@@ -100,6 +102,8 @@ describe('broadcast table migrations', () => {
     db.prepare('DELETE FROM broadcasts WHERE id = ?').run('broadcast-1');
     const remaining = db.prepare('SELECT COUNT(*) AS n FROM broadcast_attachments').get() as { n: number };
     expect(remaining.n).toBe(0);
+    expect(db.prepare('SELECT COUNT(*) AS n FROM broadcast_recipients').get()).toEqual({ n: 0 });
+    expect(db.prepare('SELECT COUNT(*) AS n FROM file_attachments').get()).toEqual({ n: 4 });
   });
 
   function applyMigration(fileName: string): void {

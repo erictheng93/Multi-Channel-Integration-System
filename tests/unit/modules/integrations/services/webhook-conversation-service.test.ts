@@ -191,6 +191,30 @@ describe('webhook-conversation-service', () => {
       expect(result.assignedTeamId).toBe(7);
     });
 
+    it('should reopen a closed conversation to assigned when it has a team', async () => {
+      mockGet.mockResolvedValueOnce({ id: 'conv-123', customerId: 1, status: 'closed', assignedTeamId: 3 });
+
+      const result = await findOrCreateConversation(mockEnv, 1, 'line');
+
+      expect(mockUpdateSet).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'assigned', closedAt: null })
+      );
+      expect(result.status).toBe('assigned');
+      expect(mockDb.insert).not.toHaveBeenCalled();
+    });
+
+    it('should reopen a closed unassigned conversation to active', async () => {
+      mockGet.mockResolvedValueOnce({ id: 'conv-123', customerId: 1, status: 'closed', assignedTeamId: null });
+
+      const result = await findOrCreateConversation(mockEnv, 1, 'facebook');
+
+      expect(mockUpdateSet).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'active', closedAt: null })
+      );
+      expect(result.status).toBe('active');
+      expect(mockDb.insert).not.toHaveBeenCalled();
+    });
+
     it('should NOT overwrite existing team assignment', async () => {
       const existingConversation = {
         id: 'conv-123',
@@ -266,6 +290,29 @@ describe('webhook-conversation-service', () => {
           teamId: 5,
         })
       );
+    });
+
+    it('should trigger notification for new Facebook conversation', async () => {
+      mockGet.mockResolvedValueOnce(undefined); // no existing (fast path)
+      mockGet.mockResolvedValueOnce(undefined); // double-check inside lock
+      mockGet.mockResolvedValueOnce({ id: 'mock-uuid-1234', customerId: 1, status: 'active', assignedTeamId: null });
+
+      await findOrCreateConversation(mockEnv, 1, 'facebook', { customerDisplayName: 'FB User', messageContent: 'Hi' });
+
+      const { triggerNewConversationNotification } = await import('@/utils/notification-trigger');
+      expect(triggerNewConversationNotification).toHaveBeenCalledWith(
+        mockEnv,
+        expect.objectContaining({ conversationId: 'mock-uuid-1234', customerName: 'FB User', platform: 'FACEBOOK', messagePreview: 'Hi', teamId: undefined })
+      );
+    });
+
+    it('should not trigger notification for an existing conversation', async () => {
+      mockGet.mockResolvedValueOnce({ id: 'existing', customerId: 1, status: 'active', assignedTeamId: 5 });
+
+      await findOrCreateConversation(mockEnv, 1, 'facebook');
+
+      const { triggerNewConversationNotification } = await import('@/utils/notification-trigger');
+      expect(triggerNewConversationNotification).not.toHaveBeenCalled();
     });
 
     it('should throw when re-query after insert fails', async () => {
@@ -479,7 +526,12 @@ describe('webhook-conversation-service', () => {
       );
     });
 
-    it('should trigger cache update after successful save', async () => {
+    it('does not call the latest-message coordinator (its cache has no readers)', async () => {
+      const { LatestMessageJobQueue } = await import(
+        '@/workers/latest-message-worker'
+      );
+      vi.mocked(LatestMessageJobQueue).mockClear();
+
       await saveMessage(
         mockEnv,
         'conv-1',
@@ -492,10 +544,7 @@ describe('webhook-conversation-service', () => {
         'line'
       );
 
-      const { LatestMessageJobQueue } = await import(
-        '@/workers/latest-message-worker'
-      );
-      expect(LatestMessageJobQueue).toHaveBeenCalledWith(mockEnv);
+      expect(LatestMessageJobQueue).not.toHaveBeenCalled();
     });
 
     it('should update conversation timestamps only after message insert succeeds', async () => {
@@ -516,30 +565,6 @@ describe('webhook-conversation-service', () => {
         lastMessageAt: '2026-03-09T12:00:00.000Z',
         updatedAt: '2026-03-09T12:00:00.000Z',
       });
-    });
-
-    it('should not fail when cache update throws', async () => {
-      const { LatestMessageJobQueue } = await import(
-        '@/workers/latest-message-worker'
-      );
-      vi.mocked(LatestMessageJobQueue).mockImplementationOnce(() => ({
-        updateLatestMessage: vi.fn().mockRejectedValue(new Error('cache fail')),
-      }));
-
-      // Should NOT throw
-      const result = await saveMessage(
-        mockEnv,
-        'conv-1',
-        1,
-        'Hello',
-        'text',
-        'msg-1',
-        null,
-        null,
-        'line'
-      );
-
-      expect(result).toBe('mock-uuid-1234');
     });
 
     it('should throw when DB insert fails', async () => {

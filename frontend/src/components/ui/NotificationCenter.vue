@@ -6,10 +6,15 @@
       data-testid="desktop-paused-pill"
       class="notification-paused-pill"
       role="status"
+      :aria-label="`已暫停 · 至 ${pausedUntilText}`"
       :title="`桌面通知與音效已暫停，至 ${pausedUntilText} 自動恢復（可在通知設定立即恢復）`"
     >
       <BellOffIcon class="notification-paused-icon" />
-      已暫停 · 至 {{ pausedUntilText }}
+      <span class="notification-paused-full">已暫停 · 至 {{ pausedUntilText }}</span>
+      <span
+        class="notification-paused-compact"
+        aria-hidden="true"
+      >暫停</span>
     </span>
     <!-- 觸發按鈕 -->
     <button
@@ -187,14 +192,10 @@ import NotificationItem from './NotificationItem.vue'
 import LoadingSpinner from './LoadingSpinner.vue'
 import { BellIcon, BellOffIcon, CheckAllIcon, RefreshIcon } from '@/components/icons'
 import { useDesktopNotificationPrefs } from '@/composables/notification/useDesktopNotificationPrefs'
-import { formatPausedUntil } from '@/composables/notification/desktopNotificationLogic'
 
 const store = useNotificationsStore()
 
-const { prefs: desktopPrefs, isPaused: desktopPaused } = useDesktopNotificationPrefs()
-const pausedUntilText = computed(() =>
-  desktopPrefs.pausedUntil === null ? '' : formatPausedUntil(desktopPrefs.pausedUntil, Date.now())
-)
+const { prefs: desktopPrefs, isPaused: desktopPaused, pausedUntilText } = useDesktopNotificationPrefs()
 
 // Refs
 const triggerRef = ref<HTMLElement>()
@@ -401,6 +402,24 @@ defineExpose({ open, close, toggle, isOpen })
   height: 14px;
 }
 
+.notification-paused-compact {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .notification-paused-pill {
+    padding: 4px 6px;
+  }
+
+  .notification-paused-full {
+    display: none;
+  }
+
+  .notification-paused-compact {
+    display: inline;
+  }
+}
+
 /* 觸發按鈕 */
 .notification-trigger {
   position: relative;
@@ -409,6 +428,7 @@ defineExpose({ open, close, toggle, isOpen })
   justify-content: center;
   width: 40px;
   height: 40px;
+  flex-shrink: 0;
   border: none;
   border-radius: var(--radius-lg);
   background: transparent;

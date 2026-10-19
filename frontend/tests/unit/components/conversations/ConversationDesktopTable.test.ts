@@ -16,6 +16,7 @@
 
 import { describe, it, expect, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
+import { nextTick } from 'vue'
 import ConversationDesktopTable from '@/components/conversations/ConversationDesktopTable.vue'
 import type { Conversation } from '@/types'
 
@@ -55,13 +56,15 @@ describe('ConversationDesktopTable.vue', () => {
     it('should render a table with correct column headers', () => {
       const wrapper = mountTable([])
       const headers = wrapper.findAll('th')
-      expect(headers).toHaveLength(6)
-      expect(headers[0].text()).toBe('客戶')
-      expect(headers[1].text()).toBe('平台')
-      expect(headers[2].text()).toBe('狀態')
-      expect(headers[3].text()).toBe('最後訊息')
-      expect(headers[4].text()).toBe('負責人')
-      expect(headers[5].text()).toBe('更新時間')
+      expect(headers).toHaveLength(7)
+      // 讀取狀態欄表頭視覺留白，只有螢幕閱讀器文字
+      expect(headers[0].find('.sr-only').text()).toBe('讀取狀態')
+      expect(headers[1].text()).toBe('客戶')
+      expect(headers[2].text()).toBe('平台')
+      expect(headers[3].text()).toBe('狀態')
+      expect(headers[4].text()).toBe('最後訊息')
+      expect(headers[5].text()).toBe('負責人')
+      expect(headers[6].text()).toBe('更新時間')
     })
 
     it('should render no rows when conversations is empty', () => {
@@ -251,16 +254,28 @@ describe('ConversationDesktopTable.vue', () => {
   })
 
   describe('Unread indicator', () => {
-    it('should show unread dot when conversation has unreadCount > 0', () => {
-      const conv = createConversation({ unreadCount: 3 })
-      const wrapper = mountTable([conv])
-      expect(wrapper.find('.unread-dot').exists()).toBe(true)
+    it('should show a red 未讀 badge with the count when unreadCount > 1', () => {
+      const wrapper = mountTable([createConversation({ unreadCount: 3 })])
+      const badge = wrapper.find('.read-badge')
+      expect(badge.classes()).toContain('unread')
+      expect(badge.text()).toBe('未讀 3')
     })
 
-    it('should not show unread dot when unreadCount is 0', () => {
-      const conv = createConversation({ unreadCount: 0 })
-      const wrapper = mountTable([conv])
-      expect(wrapper.find('.unread-dot').exists()).toBe(false)
+    it('should show 已讀 when there is nothing unread', () => {
+      const wrapper = mountTable([createConversation({ unreadCount: 0 })])
+      expect(wrapper.find('.read-badge').text()).toBe('已讀')
+    })
+
+    it('should show a muted 結案 badge instead of 已讀 for closed conversations', () => {
+      const wrapper = mountTable([createConversation({ unreadCount: 0, status: 'closed' })])
+      const badge = wrapper.find('.read-badge')
+      expect(badge.classes()).toContain('closed')
+      expect(badge.text()).toBe('結案')
+    })
+
+    it('should show 結案, not 未讀, on a closed conversation even with a stale unread count', () => {
+      const wrapper = mountTable([createConversation({ unreadCount: 1, status: 'closed' })])
+      expect(wrapper.find('.read-badge').text()).toBe('結案')
     })
 
     it('should add has-unread class to row when unread', () => {
@@ -275,12 +290,60 @@ describe('ConversationDesktopTable.vue', () => {
       expect(wrapper.find('.conversation-row').classes()).not.toContain('has-unread')
     })
 
-    it('should include sr-only text for accessibility', () => {
+    it('should label the badge with the unread count for accessibility', () => {
       const conv = createConversation({ unreadCount: 2 })
       const wrapper = mountTable([conv])
-      const srOnly = wrapper.find('.sr-only')
-      expect(srOnly.exists()).toBe(true)
-      expect(srOnly.text()).toContain('未讀')
+      expect(wrapper.find('.read-badge').attributes('aria-label')).toBe('未讀 2 則訊息')
+    })
+  })
+
+  describe('Selection mode', () => {
+    const list = [createConversation({ id: 'c1' }), createConversation({ id: 'c2' })]
+
+    function mountSelecting(selected: string[] = []) {
+      return mount(ConversationDesktopTable, {
+        props: { conversations: list, selectionMode: true, selectedIds: new Set(selected) },
+        global: { stubs: { TransitionGroup: false } }
+      })
+    }
+
+    it('renders no checkboxes outside selection mode', () => {
+      const wrapper = mountTable(list)
+      expect(wrapper.findAll('input[type="checkbox"]')).toHaveLength(0)
+      expect(wrapper.findAll('th')).toHaveLength(7)
+    })
+
+    it('renders a checkbox column (header + one per row) in selection mode', () => {
+      const wrapper = mountSelecting(['c1'])
+      const boxes = wrapper.findAll('input[type="checkbox"]')
+      expect(boxes).toHaveLength(3)
+      expect(wrapper.findAll('th')).toHaveLength(8)
+      expect(boxes[0].attributes('aria-label')).toBe('全選本頁對話')
+      expect((boxes[1].element as HTMLInputElement).checked).toBe(true)
+      expect((boxes[2].element as HTMLInputElement).checked).toBe(false)
+    })
+
+    it('row click toggles selection instead of emitting select', async () => {
+      const wrapper = mountSelecting()
+      await wrapper.findAll('.conversation-row')[1].trigger('click')
+      expect(wrapper.emitted('toggle-select')).toEqual([['c2']])
+      expect(wrapper.emitted('select')).toBeUndefined()
+    })
+
+    it('header checkbox emits toggle-select-all and is indeterminate when partially selected', async () => {
+      const wrapper = mountSelecting(['c1'])
+      await nextTick()
+      const header = wrapper.findAll('input[type="checkbox"]')[0]
+      expect((header.element as HTMLInputElement).indeterminate).toBe(true)
+      await header.trigger('change')
+      expect(wrapper.emitted('toggle-select-all')).toHaveLength(1)
+    })
+
+    it('header checkbox is checked when every row is selected', () => {
+      const wrapper = mountSelecting(['c1', 'c2'])
+      const header = wrapper.findAll('input[type="checkbox"]')[0].element as HTMLInputElement
+      expect(header.checked).toBe(true)
+      expect(header.indeterminate).toBe(false)
     })
   })
 })

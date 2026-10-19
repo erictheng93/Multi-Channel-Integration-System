@@ -8,11 +8,13 @@ import { conversations, conversationTags } from '@/db/schema';
 import type { Bindings } from '@/types';
 import { getConversationVisibilitySql } from '@/services/conversation-visibility';
 import { jwtAuth } from '@/middleware/auth';
+import { PermissionService } from '@/services/permission-service';
 import { WebSocketBroadcastService } from '@/services/websocket-broadcast-service';
 import { revalidateWebSocketAccess } from '@/services/websocket-access-revocation';
 import { successResponse, errorResponse, validationErrorResponse } from '@/utils/api-response';
 import { createContextLogger } from '@/utils/logger';
 import { nowISO } from '@/utils/timestamp'
+import { setConversationsClosed, type CloseTarget } from '../services/conversation-close-service';
 
 const log = createContextLogger('ConversationBulkHandler');
 
@@ -63,6 +65,7 @@ conversationBulkHandler.post('/bulk', jwtAuth, async (c) => {
     // P1 優化：添加權限檢查 - 驗證用戶是否有權訪問這些對話
     const visibility = getConversationVisibilitySql(user, 'assigned_team_id');
     const authorizedIds = new Set<string>();
+    const authorizedRows: CloseTarget[] = [];
 
     for (const idChunk of chunkItems(
       conversationIdsArray,
@@ -70,14 +73,15 @@ conversationBulkHandler.post('/bulk', jwtAuth, async (c) => {
     )) {
       const placeholders = idChunk.map(() => '?').join(',');
       const result = await c.env.DB.prepare(`
-        SELECT id
+        SELECT id, status, assigned_team_id
         FROM conversations
         WHERE id IN (${placeholders})
           AND ${visibility.clause}
-      `).bind(...idChunk, ...visibility.params).all<{ id: string }>();
+      `).bind(...idChunk, ...visibility.params).all<{ id: string; status: string; assigned_team_id: number | null }>();
 
       for (const row of result.results ?? []) {
         authorizedIds.add(row.id);
+        authorizedRows.push({ id: row.id, status: row.status, assignedTeamId: row.assigned_team_id });
       }
     }
 
@@ -91,9 +95,16 @@ conversationBulkHandler.post('/bulk', jwtAuth, async (c) => {
     // 用於追蹤標籤操作，以便後續 WebSocket 廣播
     let tagOperation: 'add' | 'remove' | null = null;
     let affectedTagIds: number[] = [];
+    // close / reopen：實際改變狀態的對話 → 新狀態
+    let statuses: Record<string, string> | undefined;
 
     switch (operation) {
       case 'assign': {
+        // 與單筆 POST /:id/assign 相同的權限檢查（agent 角色沒有 conversation.assign）
+        const canAssign = await PermissionService.checkPermission(user.id, 'conversation', 'assign', undefined, c.env.DB);
+        if (!canAssign) {
+          return errorResponse(c, 'Permission denied', 403);
+        }
         // Note: Individual assignment (userId) removed - only team assignment is supported now
         if (!data?.teamId) {
           return validationErrorResponse(c, [
@@ -117,13 +128,19 @@ conversationBulkHandler.post('/bulk', jwtAuth, async (c) => {
         break;
       }
 
-      // Note: 'close' and 'reopen' bulk operations removed - closed status no longer exists
-
+      // 結案 / 重新開啟：與單筆端點共用 service（只改變需要改變的對話、寫 activity、廣播）
       case 'close':
-      case 'reopen':
-        return validationErrorResponse(c, [
-          { field: 'operation', message: 'close/reopen operations are no longer supported' }
-        ]);
+      case 'reopen': {
+        statuses = await setConversationsClosed(c.env, {
+          userId: String(user.id),
+          userName: user.displayName || user.email || String(user.id),
+          userRole: user.role,
+          ipAddress: c.req.header('CF-Connecting-IP') || c.req.header('X-Forwarded-For'),
+          userAgent: c.req.header('User-Agent')
+        }, authorizedRows, operation === 'close');
+        log.debug('Bulk close/reopen completed', { operation, changed: Object.keys(statuses).length });
+        break;
+      }
 
       case 'set_priority':
         if (!data?.priority) {
@@ -263,8 +280,9 @@ conversationBulkHandler.post('/bulk', jwtAuth, async (c) => {
     log.info('Conversations bulk operation completed', { operation, count: conversationIdsArray.length });
     return successResponse(c, {
       operation,
-      affectedCount: conversationIdsArray.length,
-      conversationIds: conversationIdsArray
+      affectedCount: statuses ? Object.keys(statuses).length : conversationIdsArray.length,
+      conversationIds: conversationIdsArray,
+      ...(statuses ? { statuses } : {})
     }, `Bulk ${operation} completed successfully`);
 
   } catch (error) {

@@ -28,18 +28,17 @@ export type { AssignConversationOptions } from '@shared/api-contracts'
 // 數據轉換適配器
 function adaptConversationData(rawData: RawConversationData): Conversation {
   // 狀態映射: Backend status → Frontend status
-  // Backend uses: active, pending, in-progress, waiting, closed, resolved
-  // Frontend uses: active, pending, in-progress, waiting, closed, resolved (same values)
+  // Backend and frontend share the same values; 'open'/'resolved' are legacy aliases
   const statusMap: Record<string, ConversationStatus> = {
     'active': CONVERSATION_STATUS.ACTIVE,
     'pending': CONVERSATION_STATUS.PENDING,
     'in-progress': CONVERSATION_STATUS.IN_PROGRESS,
     'assigned': CONVERSATION_STATUS.ASSIGNED,
     'waiting': CONVERSATION_STATUS.WAITING,
+    'closed': CONVERSATION_STATUS.CLOSED,
     // Legacy mappings (backward compat)
     'open': CONVERSATION_STATUS.ACTIVE,
-    'closed': CONVERSATION_STATUS.ACTIVE,
-    'resolved': CONVERSATION_STATUS.ACTIVE
+    'resolved': CONVERSATION_STATUS.CLOSED
   }
 
   const customerId = rawData.customerId || rawData.customer_id
@@ -327,7 +326,28 @@ export const conversationApi = {
     return { success: false, error: response.error || '轉移對話失敗' };
   },
 
-  // Note: closeConversation and reopenConversation removed - closed status no longer exists
+  // 結案 / 重新開啟（後端回傳更新後的對話，status 為 'closed' 或回到 active/assigned）
+  closeConversation: async (conversationId: string): Promise<ApiResponse<Conversation>> => {
+    if (!conversationId?.trim()) {
+      return { success: false, error: '對話 ID 不能為空' };
+    }
+    const response = await callApiContract(conversationContracts.close, { conversationId });
+    if (response.success && response.data) {
+      return { success: true, data: adaptConversationData(response.data) };
+    }
+    return { success: false, error: response.error || '結案失敗' };
+  },
+
+  reopenConversation: async (conversationId: string): Promise<ApiResponse<Conversation>> => {
+    if (!conversationId?.trim()) {
+      return { success: false, error: '對話 ID 不能為空' };
+    }
+    const response = await callApiContract(conversationContracts.reopen, { conversationId });
+    if (response.success && response.data) {
+      return { success: true, data: adaptConversationData(response.data) };
+    }
+    return { success: false, error: response.error || '重新開啟失敗' };
+  },
 
   // 標記對話為已讀
   markAsRead: async (conversationId: string): Promise<ApiResponse<void>> => {
@@ -401,6 +421,7 @@ export const conversationApi = {
     operation: string;
     affectedCount: number;
     conversationIds: string[];
+    statuses?: Record<string, string>;
   }>> => {
     if (conversationIds.length === 0) {
       return { success: false, error: '至少需要選擇一個對話' };
@@ -422,6 +443,7 @@ export const conversationApi = {
     operation: string;
     affectedCount: number;
     conversationIds: string[];
+    statuses?: Record<string, string>;
   }>> => {
     return conversationApi.bulkOperation('close', conversationIds);
   },
@@ -433,6 +455,7 @@ export const conversationApi = {
     operation: string;
     affectedCount: number;
     conversationIds: string[];
+    statuses?: Record<string, string>;
   }>> => {
     return conversationApi.bulkOperation('reopen', conversationIds);
   },
@@ -448,6 +471,7 @@ export const conversationApi = {
     operation: string;
     affectedCount: number;
     conversationIds: string[];
+    statuses?: Record<string, string>;
   }>> => {
     return conversationApi.bulkOperation('assign', conversationIds, options);
   },
@@ -462,6 +486,7 @@ export const conversationApi = {
     operation: string;
     affectedCount: number;
     conversationIds: string[];
+    statuses?: Record<string, string>;
   }>> => {
     return conversationApi.bulkOperation('add_tags', conversationIds, { tagIds });
   },
@@ -476,6 +501,7 @@ export const conversationApi = {
     operation: string;
     affectedCount: number;
     conversationIds: string[];
+    statuses?: Record<string, string>;
   }>> => {
     return conversationApi.bulkOperation('remove_tags', conversationIds, { tagIds });
   },

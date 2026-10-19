@@ -8,7 +8,7 @@
 
 import { computed, reactive, ref, type Ref } from 'vue'
 import { createLogger } from '@/utils/logger'
-import { isPaused, type DesktopNotificationScope, type DesktopPermission } from './desktopNotificationLogic'
+import { formatPausedUntil, isPaused, type DesktopNotificationScope, type DesktopPermission } from './desktopNotificationLogic'
 
 const logger = createLogger('useDesktopNotificationPrefs')
 
@@ -52,7 +52,7 @@ const prefs = reactive<DesktopNotificationPrefs>({ ...DEFAULT_PREFS })
 const permission: Ref<DesktopPermission> = ref('unsupported')
 
 // 供 UI 顯示「暫停中」用的時鐘。通知判斷每次都用 Date.now(),不依賴它;
-// 這裡只排一個 setTimeout 在到期瞬間刷新,讓提示不需重新整理就消失。
+// 下一個本地午夜或到期瞬間刷新，讓相對日期與暫停狀態同步更新。
 const clock = ref(Date.now())
 let expiryTimer: ReturnType<typeof setTimeout> | null = null
 
@@ -65,11 +65,16 @@ function scheduleExpiry(): void {
   const until = prefs.pausedUntil
   // 停止條件:到期後 clock 追上 until,不再排程
   if (until !== null && clock.value < until) {
-    expiryTimer = setTimeout(scheduleExpiry, until - clock.value)
+    const midnight = new Date(clock.value)
+    midnight.setHours(24, 0, 0, 0)
+    expiryTimer = setTimeout(scheduleExpiry, Math.min(until, midnight.getTime()) - clock.value)
   }
 }
 
 const paused = computed(() => isPaused(prefs.pausedUntil, clock.value))
+const pausedUntilText = computed(() =>
+  prefs.pausedUntil === null ? '' : formatPausedUntil(prefs.pausedUntil, clock.value)
+)
 
 function ensureInitialized(): void {
   if (initialized) {
@@ -84,6 +89,14 @@ function ensureInitialized(): void {
 // 其他分頁改了偏好時同步記憶體:否則此分頁照舊彈通知,且下次 setPrefs 會把舊值整包寫回、蓋掉對方的變更。
 // storage 事件只在「其他」分頁寫入時觸發;key 為 null 代表 localStorage.clear()。
 if (typeof window !== 'undefined') {
+  // 背景分頁的計時器可能延後；回到前景時立即校正日期與到期狀態。
+  const refreshClock = () => {
+    if (initialized) { scheduleExpiry() }
+  }
+  window.addEventListener('focus', refreshClock)
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') { refreshClock() }
+  })
   window.addEventListener('storage', (event) => {
     if (initialized && (event.key === DESKTOP_NOTIFICATION_PREFS_KEY || event.key === null)) {
       Object.assign(prefs, readStoredPrefs())
@@ -134,7 +147,7 @@ export function useDesktopNotificationPrefs() {
     }
   }
 
-  return { prefs, setPrefs, permission, refreshPermission, requestDesktopPermission, isPaused: paused, pauseUntil, resume }
+  return { prefs, setPrefs, permission, refreshPermission, requestDesktopPermission, isPaused: paused, pausedUntilText, pauseUntil, resume }
 }
 
 /** 僅供測試重置模組單例 */

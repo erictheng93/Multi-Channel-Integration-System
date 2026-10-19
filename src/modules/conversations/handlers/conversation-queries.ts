@@ -4,7 +4,7 @@
 import { Hono } from 'hono';
 import { HTTP_STATUS } from '@/constants/http-status';
 import { globalErrorHandler } from '@/core/error-handler';
-import { eq, desc, and, or, like, sql, count } from 'drizzle-orm';
+import { eq, desc, and, or, like, sql, count, type SQL } from 'drizzle-orm';
 import { createDbClient } from '@/db/drizzle-factory';
 import { conversations, customers, teams } from '@/db/schema';
 import type { Bindings } from '@/types';
@@ -99,11 +99,13 @@ export function createConversationUnreadCountQuery(conversationIds: string[]): s
         FROM (
           SELECT
             c.id as id,
-            CASE WHEN rs.marked_unread_at IS NOT NULL THEN 1 ELSE 0 END as manuallyUnread,
-            MAX(
+            -- 已結案的對話對所有客服都算 0 未讀（新訊息會自動重新開啟，不會漏看）
+            CASE WHEN c.status <> 'closed' AND rs.marked_unread_at IS NOT NULL THEN 1 ELSE 0 END as manuallyUnread,
+            CASE WHEN c.status = 'closed' THEN '9999-12-31' ELSE MAX(
               COALESCE(la.last_agent_at, '1970-01-01'),
-              COALESCE(rs.last_read_at, '1970-01-01')
-            ) as unread_threshold
+              COALESCE(rs.last_read_at, '1970-01-01'),
+              COALESCE(c.unread_floor_at, '1970-01-01')
+            ) END as unread_threshold
           FROM conversations c
           LEFT JOIN conversation_read_states rs
             ON rs.conversation_id = c.id
@@ -125,6 +127,23 @@ export function createConversationUnreadCountQuery(conversationIds: string[]): s
           AND customer_message.created_at > threshold.unread_threshold
         GROUP BY threshold.id, threshold.manuallyUnread
       `;
+}
+
+// 列表分頁籤（scope）：open = 處理中、closed = 已結案、all = 全部；其他值（含未指定）= 不過濾
+export function conversationScopeConditions(scope: string): SQL[] {
+  if (scope === 'open') { return [sql`${conversations.status} <> 'closed'`]; }
+  if (scope === 'closed') { return [sql`${conversations.status} = 'closed'`]; }
+  return [];
+}
+
+export function conversationScopeOrderBy(scope: string): SQL[] {
+  if (scope === 'closed') {
+    return [desc(conversations.closedAt), desc(conversations.id)];
+  }
+  if (scope === 'all') {
+    return [sql`${conversations.status} = 'closed'`, desc(conversations.updatedAt), desc(conversations.id)];
+  }
+  return [desc(conversations.updatedAt), desc(conversations.id)];
 }
 
 function parsePositiveInt(value: string | undefined, fallback: number): number {
@@ -185,6 +204,8 @@ conversationQueriesHandler.get('/stats', jwtAuth, async (c) => {
       WITH visible AS (
         SELECT
           conversation.id AS id,
+          conversation.status AS status,
+          conversation.unread_floor_at AS unread_floor_at,
           read_state.last_read_at AS last_read_at,
           read_state.marked_unread_at AS marked_unread_at
         FROM conversations AS conversation
@@ -208,11 +229,13 @@ conversationQueriesHandler.get('/stats', jwtAuth, async (c) => {
         FROM (
           SELECT
             visible.id,
-            CASE WHEN visible.marked_unread_at IS NOT NULL THEN 1 ELSE 0 END as manuallyUnread,
-            MAX(
+            -- 已結案的對話不計入未讀總數（與列表一致）
+            CASE WHEN visible.status <> 'closed' AND visible.marked_unread_at IS NOT NULL THEN 1 ELSE 0 END as manuallyUnread,
+            CASE WHEN visible.status = 'closed' THEN '9999-12-31' ELSE MAX(
               COALESCE(last_agent.last_agent_at, '1970-01-01'),
-              COALESCE(visible.last_read_at, '1970-01-01')
-            ) as unread_threshold
+              COALESCE(visible.last_read_at, '1970-01-01'),
+              COALESCE(visible.unread_floor_at, '1970-01-01')
+            ) END as unread_threshold
           FROM visible
           LEFT JOIN (
             SELECT message.conversation_id, MAX(message.created_at) as last_agent_at
@@ -305,7 +328,8 @@ conversationQueriesHandler.get('/:id', jwtAuth, async (c) => {
         SELECT id as messageId, content, created_at as createdAt, sender_type as senderType, message_type as messageType
         FROM messages
         WHERE conversation_id = ?
-        ORDER BY created_at DESC
+          AND deleted_at IS NULL
+        ORDER BY created_at DESC, id DESC
         LIMIT 1
       `).bind(conversationId).first<LatestConversationMessageRow>();
 
@@ -371,6 +395,10 @@ conversationQueriesHandler.get('/:id', jwtAuth, async (c) => {
     // this agent marked unread stays unread even when an agent sent the last
     // message (derived count 0). Cleared by mark-as-read.
     unreadCount = applyManualUnreadFloor(unreadCount, manuallyUnread);
+    // 已結案的對話對所有客服都算 0 未讀（與列表 / 統計一致）
+    if (result.conversations.status === 'closed') {
+      unreadCount = 0;
+    }
 
     const displayContent = lastMessageData ? getDisplayContent(lastMessageData.content, lastMessageData.messageType) : null;
 
@@ -438,6 +466,8 @@ conversationQueriesHandler.get('/', jwtAuth, async (c) => {
     const page = parsePositiveInt(c.req.query('page'), 1);
     const pageSize = clampPageSize(parsePositiveInt(c.req.query('pageSize'), 20));
     const statusQuery = c.req.query('status')?.trim() || '';
+    // 分頁籤：open = 處理中、closed = 已結案、all / 未指定 = 全部（未指定維持舊行為，相容舊前端）
+    const scopeQuery = c.req.query('scope')?.trim() || '';
     const platformQuery = c.req.query('platform')?.trim() || '';
     const teamIdParam = c.req.query('teamId');
     const teamIdQuery = teamIdParam ? Number.parseInt(teamIdParam, 10) : undefined;
@@ -478,6 +508,7 @@ conversationQueriesHandler.get('/', jwtAuth, async (c) => {
       ...(updatedAfter ? [sql`${conversations.updatedAt} >= ${updatedAfter}`] : []),
       ...(updatedBefore ? [sql`${conversations.updatedAt} <= ${updatedBefore}`] : []),
       ...(statusQuery ? [sql`${conversations.status} = ${statusQuery}`] : []),
+      ...conversationScopeConditions(scopeQuery),
       ...(platformQuery ? [sql`${customers.platform} = ${platformQuery}`] : []),
       ...(teamIdQuery !== undefined && Number.isFinite(teamIdQuery)
         ? [sql`${conversations.assignedTeamId} = ${teamIdQuery}`]
@@ -500,7 +531,10 @@ conversationQueriesHandler.get('/', jwtAuth, async (c) => {
       .where(listFilter)
       // id breaks ties so a row cannot repeat or vanish across page boundaries
       // when several conversations share an updatedAt.
-      .orderBy(desc(conversations.updatedAt), desc(conversations.id));
+      // 已結案分頁依結案時間排序；全部分頁未結案在前，避免「按結案反而跳到最上面」
+      // (結案會更新 updated_at)。處理中分頁仍走 idx_conversations_updated_at。
+      // ponytail: closed / all 會用 temp B-tree 排序（目前數百筆無感），量大再加 (status, closed_at) 索引
+      .orderBy(...conversationScopeOrderBy(scopeQuery));
 
     let total: number;
     let pagedConversationResults: Awaited<typeof listQuery>;
@@ -605,9 +639,22 @@ conversationQueriesHandler.get('/', jwtAuth, async (c) => {
             SELECT conversation_id, MAX(created_at) as max_created_at
             FROM messages
             WHERE conversation_id IN (${placeholders})
+              AND deleted_at IS NULL
             GROUP BY conversation_id
           ) latest ON m.conversation_id = latest.conversation_id
                   AND m.created_at = latest.max_created_at
+          WHERE m.deleted_at IS NULL
+            -- Tie-break: when several visible messages share the latest
+            -- created_at, keep only the one with the greatest id so each
+            -- conversation yields exactly one row. Only evaluated for rows
+            -- already at the max timestamp (about one per conversation).
+            AND NOT EXISTS (
+              SELECT 1 FROM messages m2
+              WHERE m2.conversation_id = m.conversation_id
+                AND m2.created_at = m.created_at
+                AND m2.deleted_at IS NULL
+                AND m2.id > m.id
+            )
         `;
 
         try {

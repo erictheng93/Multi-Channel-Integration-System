@@ -13,11 +13,14 @@ describe('useMessageTime', () => {
   beforeEach(() => {
     // Save original Date constructor
     originalDate = global.Date
+    // vi.setSystemTime only moves the clock while fake timers are active
+    vi.useFakeTimers()
   })
 
   afterEach(() => {
     // Restore original Date constructor
     global.Date = originalDate
+    vi.useRealTimers()
   })
 
   describe('formatTime', () => {

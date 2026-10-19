@@ -77,6 +77,7 @@ export function errorResponse(
   const response: StandardApiResponse = {
     success: false,
     error: apiError.message,
+    code: apiError.code,
     timestamp: nowISO(),
     requestId: generateRequestId()
   }

@@ -141,6 +141,15 @@ export class BroadcastService {
     return { ...mapBroadcastRecord(row), attachments: await this.loadAttachments(id) };
   }
 
+  async exists(id: string): Promise<boolean> {
+    const rows = await this.db
+      .select({ id: broadcasts.id })
+      .from(broadcasts)
+      .where(and(eq(broadcasts.id, id), isNull(broadcasts.deletedAt)))
+      .limit(1);
+    return rows.length > 0;
+  }
+
   private async assertAttachments(input: CreateBroadcastInput, actorId: string): Promise<void> {
     if (input.attachments.length === 0) {
       return;

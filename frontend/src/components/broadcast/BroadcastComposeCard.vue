@@ -1,5 +1,6 @@
 <template>
   <section
+    ref="composeRoot"
     class="compose-card"
     aria-labelledby="broadcast-compose-title"
   >
@@ -66,20 +67,13 @@
           <li
             v-for="(image, index) in images"
             :key="image.key"
+            :data-image-key="image.key"
             class="image-tile"
           >
             <img
               :src="image.objectUrl"
               :alt="`圖片 ${index + 1}`"
             >
-            <span
-              v-if="image.status === 'uploading'"
-              class="tile-state"
-            >上傳中...</span>
-            <span
-              v-else-if="image.status === 'error'"
-              class="tile-state is-error"
-            >{{ image.error }}</span>
             <div class="tile-actions">
               <button
                 v-if="image.status === 'error'"
@@ -94,6 +88,7 @@
                 type="button"
                 class="btn btn-ghost btn-sm"
                 :disabled="index === 0"
+                data-action="move-before"
                 :aria-label="`將圖片 ${index + 1} 往前移`"
                 @click="move(index, -1)"
               >
@@ -102,7 +97,18 @@
               <button
                 type="button"
                 class="btn btn-ghost btn-sm"
+                :disabled="index === images.length - 1"
+                data-action="move-after"
+                :aria-label="`將圖片 ${index + 1} 往後移`"
+                @click="move(index, 1)"
+              >
+                後移
+              </button>
+              <button
+                type="button"
+                class="btn btn-ghost btn-sm"
                 :aria-label="`移除圖片 ${index + 1}`"
+                data-action="remove"
                 @click="remove(index)"
               >
                 移除
@@ -123,7 +129,27 @@
             @change="onPick"
           >
         </label>
-        <small v-if="imageNotice">{{ imageNotice }}</small>
+        <div
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
+          class="tile-state"
+        >
+          <span v-if="uploadingCount">{{ uploadingCount }} 張圖片上傳中...</span>
+          <small v-if="imageNotice">{{ imageNotice }}</small>
+        </div>
+        <div
+          role="alert"
+          aria-atomic="true"
+          class="tile-state is-error"
+        >
+          <span
+            v-for="(image, index) in images"
+            :key="image.key"
+          >
+            <template v-if="image.status === 'error'">圖片 {{ index + 1 }}：{{ image.error }}</template>
+          </span>
+        </div>
       </div>
 
       <div
@@ -139,6 +165,7 @@
       <p
         v-if="error"
         class="error-text"
+        role="alert"
       >
         {{ error }}
       </p>
@@ -165,272 +192,333 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref } from 'vue'
-import type { Tag } from '@/api/tags'
-import { uploadBroadcastImage, type BroadcastAttachmentInput } from '@/api/broadcasts'
-import type {
-  BroadcastAudiencePreview,
-  BroadcastPreviewRequest,
-  CreateBroadcastRequest
-} from '@/api/broadcasts'
+  import { computed, nextTick, onBeforeUnmount, ref } from 'vue'
+  import type { Tag } from '@/api/tags'
+  import { cleanupBroadcastImage, uploadBroadcastImage, type BroadcastAttachmentInput } from '@/api/broadcasts'
+  import type {
+    BroadcastAudiencePreview,
+    BroadcastPreviewRequest,
+    CreateBroadcastRequest,
+  } from '@/api/broadcasts'
 
-const props = defineProps<{
-  tags: Tag[]
-  preview: BroadcastAudiencePreview | null
-  previewTagId: number | null
-  previewLoading: boolean
-  sending: boolean
-  error: string | null
-}>()
+  const props = defineProps<{
+    tags: Tag[]
+    preview: BroadcastAudiencePreview | null
+    previewTagId: number | null
+    previewLoading: boolean
+    sending: boolean
+    error: string | null
+  }>()
 
-const emit = defineEmits<{
-  preview: [input: BroadcastPreviewRequest]
-  send: [input: CreateBroadcastRequest]
-}>()
+  const emit = defineEmits<{
+    preview: [input: BroadcastPreviewRequest]
+    send: [input: CreateBroadcastRequest]
+  }>()
 
-const title = ref('')
-const content = ref('')
-const selectedTagId = ref(0)
+  const title = ref('')
+  const content = ref('')
+  const selectedTagId = ref(0)
 
-const MAX_IMAGES = 4
-const MAX_IMAGE_BYTES = 10 * 1024 * 1024
-const ACCEPTED_TYPES = ['image/jpeg', 'image/png']
+  const MAX_IMAGES = 4
+  const MAX_IMAGE_BYTES = 10 * 1024 * 1024
+  const ACCEPTED_TYPES = ['image/jpeg', 'image/png']
 
-interface PickedImage {
-  key: string
-  objectUrl: string
-  file: File
-  status: 'uploading' | 'done' | 'error'
-  attachment?: BroadcastAttachmentInput
-  error?: string
-}
-
-const images = ref<PickedImage[]>([])
-const imageNotice = ref('')
-
-async function onPick(event: Event) {
-  const fileInput = event.target as HTMLInputElement
-  const picked = Array.from(fileInput.files ?? [])
-  fileInput.value = ''
-  imageNotice.value = ''
-
-  const valid = picked.filter((file) => ACCEPTED_TYPES.includes(file.type) && file.size <= MAX_IMAGE_BYTES)
-  if (valid.length < picked.length) {
-    imageNotice.value = '僅接受 10MB 以內的 JPEG / PNG 圖片'
-  }
-  const room = MAX_IMAGES - images.value.length
-  if (valid.length > room) {
-    imageNotice.value = '最多 4 張圖片，超出的已略過'
+  interface PickedImage {
+    key: string
+    objectUrl: string
+    file: File
+    status: 'uploading' | 'done' | 'error'
+    attachment?: BroadcastAttachmentInput
+    error?: string
   }
 
-  await Promise.all(valid.slice(0, room).map((file) => {
-    const image: PickedImage = {
-      key: crypto.randomUUID(),
-      objectUrl: URL.createObjectURL(file),
-      file,
-      status: 'uploading'
-    }
-    images.value.push(image)
-    return uploadImage(image.key, file)
-  }))
-}
-
-async function uploadImage(key: string, file: File) {
-  // Look up by key so remove/reorder while the upload is in flight stays safe.
-  const target = () => images.value.find((item) => item.key === key)
-  try {
-    const attachment = await uploadBroadcastImage(file)
-    Object.assign(target() ?? {}, { status: 'done', attachment, error: undefined })
-  } catch (err) {
-    Object.assign(target() ?? {}, { status: 'error', error: err instanceof Error ? err.message : '上傳失敗' })
-  }
-}
-
-async function retry(image: PickedImage) {
-  const current = images.value.find((item) => item.key === image.key)
-  if (!current || current.status !== 'error') {return}
-  Object.assign(current, { status: 'uploading', error: undefined })
-  await uploadImage(current.key, current.file)
-}
-
-function remove(index: number) {
-  const [removed] = images.value.splice(index, 1)
-  if (removed) {URL.revokeObjectURL(removed.objectUrl)}
-}
-
-function move(index: number, delta: number) {
-  const next = index + delta
-  if (next < 0 || next >= images.value.length) {return}
-  const [moved] = images.value.splice(index, 1)
-  if (moved) {images.value.splice(next, 0, moved)}
-}
-
-onBeforeUnmount(() => images.value.forEach((image) => URL.revokeObjectURL(image.objectUrl)))
-
-const imagesReady = computed(() => images.value.every((image) => image.status === 'done'))
-
-const input = computed<CreateBroadcastRequest>(() => ({
-  title: title.value,
-  content: content.value,
-  tagIds: selectedTagId.value ? [selectedTagId.value] : [],
-  attachments: images.value.flatMap((image) => (image.attachment ? [image.attachment] : []))
-}))
-
-const previewInput = computed<BroadcastPreviewRequest>(() => ({
-  tagIds: selectedTagId.value ? [selectedTagId.value] : []
-}))
-
-const currentPreview = computed(() =>
-  props.previewTagId === selectedTagId.value ? props.preview : null
-)
-
-const canSubmit = computed(() =>
-  title.value.length > 0 &&
-  (content.value.length > 0 || images.value.length > 0) &&
-  imagesReady.value &&
-  selectedTagId.value > 0 &&
-  currentPreview.value?.sendable &&
-  currentPreview.value.sendable > 0
-)
-
-function emitPreview() {
-  if (selectedTagId.value > 0) {
-    emit('preview', previewInput.value)
-  }
-}
-
-function handleSubmit() {
-  if (selectedTagId.value > 0 && props.previewTagId !== selectedTagId.value) {
-    emitPreview()
-    return
-  }
-  if (!canSubmit.value) {return}
-  const parts = [content.value ? '文字' : '', images.value.length ? `${images.value.length} 張圖片` : ''].filter(Boolean)
-  const confirmed = window.confirm(
-    `即將發送「${parts.join(' + ')}」給 ${currentPreview.value?.sendable ?? 0} 位 LINE 客戶，送出後無法復原。`
+  const images = ref<PickedImage[]>([])
+  const imageNotice = ref('')
+  const uploadingCount = computed(
+    () => images.value.filter(image => image.status === 'uploading').length
   )
-  if (confirmed) {
-    emit('send', input.value)
+  const composeRoot = ref<HTMLElement | null>(null)
+  let disposed = false
+
+  async function onPick(event: Event) {
+    const fileInput = event.target as HTMLInputElement
+    const picked = Array.from(fileInput.files ?? [])
+    fileInput.value = ''
+    imageNotice.value = ''
+    const notices: string[] = []
+
+    const valid = picked.filter(
+      file => ACCEPTED_TYPES.includes(file.type) && file.size <= MAX_IMAGE_BYTES
+    )
+    if (valid.length < picked.length) {
+      notices.push('僅接受 10MB 以內的 JPEG / PNG 圖片')
+    }
+    const room = MAX_IMAGES - images.value.length
+    if (valid.length > room) {
+      notices.push('最多 4 張圖片，超出的已略過')
+    }
+    imageNotice.value = notices.join('；')
+
+    await Promise.all(
+      valid.slice(0, room).map(file => {
+        const image: PickedImage = {
+          key: crypto.randomUUID(),
+          objectUrl: URL.createObjectURL(file),
+          file,
+          status: 'uploading',
+        }
+        images.value.push(image)
+        return uploadImage(image.key, file)
+      })
+    )
   }
-}
+
+  async function uploadImage(key: string, file: File) {
+    // Look up by key so remove/reorder while the upload is in flight stays safe.
+    const target = () => images.value.find(item => item.key === key)
+    try {
+      const attachment = await uploadBroadcastImage(file)
+      const current = target()
+      if (!current || disposed) {
+        void cleanupBroadcastImage(attachment)
+        return
+      }
+      Object.assign(current, { status: 'done', attachment, error: undefined })
+    } catch (err) {
+      Object.assign(target() ?? {}, {
+        status: 'error',
+        error: err instanceof Error ? err.message : '上傳失敗',
+      })
+    }
+  }
+
+  async function retry(image: PickedImage) {
+    const current = images.value.find(item => item.key === image.key)
+    if (!current || current.status !== 'error') {
+      return
+    }
+    Object.assign(current, { status: 'uploading', error: undefined })
+    await uploadImage(current.key, current.file)
+  }
+
+  async function remove(index: number) {
+    const [removed] = images.value.splice(index, 1)
+    if (removed) {
+      URL.revokeObjectURL(removed.objectUrl)
+      if (removed.attachment) {void cleanupBroadcastImage(removed.attachment)}
+    }
+    await nextTick()
+    const nextImage = images.value[Math.min(index, images.value.length - 1)]
+    if (nextImage) {
+      focusTile(nextImage.key, 'remove')
+    } else {
+      composeRoot.value?.querySelector<HTMLInputElement>('input[type="file"]')?.focus()
+    }
+  }
+
+  function focusTile(key: string, action: string) {
+    const tile = Array.from(
+      composeRoot.value?.querySelectorAll<HTMLElement>('[data-image-key]') ?? []
+    ).find(element => element.dataset.imageKey === key)
+    const preferred = tile?.querySelector<HTMLButtonElement>(`[data-action="${action}"]`)
+    const fallback = tile?.querySelector<HTMLButtonElement>('button:not(:disabled)')
+    ;(preferred && !preferred.disabled ? preferred : fallback)?.focus()
+  }
+
+  async function move(index: number, delta: number) {
+    const next = index + delta
+    if (next < 0 || next >= images.value.length) {
+      return
+    }
+    const [moved] = images.value.splice(index, 1)
+    if (moved) {
+      images.value.splice(next, 0, moved)
+    }
+    await nextTick()
+    if (moved) {
+      focusTile(moved.key, delta > 0 ? 'move-after' : 'move-before')
+    }
+  }
+
+  onBeforeUnmount(() => {
+    disposed = true
+    images.value.forEach(image => URL.revokeObjectURL(image.objectUrl))
+  })
+
+  const imagesReady = computed(() => images.value.every(image => image.status === 'done'))
+
+  const input = computed<CreateBroadcastRequest>(() => ({
+    title: title.value,
+    content: content.value,
+    tagIds: selectedTagId.value ? [selectedTagId.value] : [],
+    attachments: images.value.flatMap(image => (image.attachment ? [image.attachment] : [])),
+  }))
+
+  const previewInput = computed<BroadcastPreviewRequest>(() => ({
+    tagIds: selectedTagId.value ? [selectedTagId.value] : [],
+  }))
+
+  const currentPreview = computed(() =>
+    props.previewTagId === selectedTagId.value ? props.preview : null
+  )
+
+  const canSubmit = computed(
+    () =>
+      title.value.length > 0 &&
+      (content.value.length > 0 || images.value.length > 0) &&
+      imagesReady.value &&
+      selectedTagId.value > 0 &&
+      currentPreview.value?.sendable &&
+      currentPreview.value.sendable > 0
+  )
+
+  function emitPreview() {
+    if (selectedTagId.value > 0) {
+      emit('preview', previewInput.value)
+    }
+  }
+
+  function handleSubmit() {
+    if (selectedTagId.value > 0 && props.previewTagId !== selectedTagId.value) {
+      emitPreview()
+      return
+    }
+    if (!canSubmit.value) {
+      return
+    }
+    const parts = [
+      content.value ? '文字' : '',
+      images.value.length ? `${images.value.length} 張圖片` : '',
+    ].filter(Boolean)
+    const confirmed = window.confirm(
+      `即將發送「${parts.join(' + ')}」給 ${currentPreview.value?.sendable ?? 0} 位 LINE 客戶，送出後無法復原。`
+    )
+    if (confirmed) {
+      emit('send', input.value)
+    }
+  }
 </script>
 
 <style scoped>
-.compose-card {
-  background: #fff;
-  border-radius: 16px;
-  padding: var(--space-6);
-  box-shadow: var(--shadow-sm);
-}
+  .compose-card {
+    background: #fff;
+    border-radius: 16px;
+    padding: var(--space-6);
+    box-shadow: var(--shadow-sm);
+  }
 
-.section-heading h2 {
-  margin: 0;
-  font-size: var(--text-xl);
-}
+  .section-heading h2 {
+    margin: 0;
+    font-size: var(--text-xl);
+  }
 
-.section-heading p,
-.field small {
-  color: var(--gray-500);
-}
+  .section-heading p,
+  .field small {
+    color: var(--gray-500);
+  }
 
-.compose-form {
-  display: grid;
-  gap: var(--space-4);
-  margin-top: var(--space-5);
-}
+  .compose-form {
+    display: grid;
+    gap: var(--space-4);
+    margin-top: var(--space-5);
+  }
 
-.field {
-  display: grid;
-  gap: var(--space-2);
-  font-weight: 600;
-}
+  .field {
+    display: grid;
+    gap: var(--space-2);
+    font-weight: 600;
+  }
 
-.field input,
-.field select,
-.field textarea {
-  width: 100%;
-  border: 0;
-  border-radius: 12px;
-  background: #f2f2f7;
-  padding: var(--space-3) var(--space-4);
-  font: inherit;
-}
+  .field input,
+  .field select,
+  .field textarea {
+    width: 100%;
+    border: 0;
+    border-radius: 12px;
+    background: #f2f2f7;
+    padding: var(--space-3) var(--space-4);
+    font: inherit;
+  }
 
-.field textarea {
-  resize: vertical;
-}
+  .field textarea {
+    resize: vertical;
+  }
 
-.preview-panel {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-3);
-  align-items: center;
-  padding: var(--space-4);
-  border-radius: 14px;
-  background: #f2f2f7;
-}
+  .preview-panel {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+    align-items: center;
+    padding: var(--space-4);
+    border-radius: 14px;
+    background: #f2f2f7;
+  }
 
-.error-text {
-  color: #ff3b30;
-  margin: 0;
-}
+  .error-text {
+    color: #ff3b30;
+    margin: 0;
+  }
 
-.actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: var(--space-3);
-}
+  .actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--space-3);
+  }
 
-.image-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-  gap: var(--space-3);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
+  .image-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: var(--space-3);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
 
-.image-tile {
-  position: relative;
-  display: grid;
-  gap: var(--space-2);
-  padding: var(--space-2);
-  border-radius: 14px;
-  background: #f2f2f7;
-}
+  .image-tile {
+    position: relative;
+    display: grid;
+    gap: var(--space-2);
+    padding: var(--space-2);
+    border-radius: 14px;
+    background: #f2f2f7;
+  }
 
-.image-tile img {
-  width: 100%;
-  aspect-ratio: 1;
-  object-fit: cover;
-  border-radius: 10px;
-}
+  .image-tile img {
+    width: 100%;
+    aspect-ratio: 1;
+    object-fit: cover;
+    border-radius: 10px;
+  }
 
-.tile-state {
-  font-size: var(--text-sm);
-  font-weight: 500;
-  color: #8e8e93;
-}
+  .tile-state {
+    font-size: var(--text-sm);
+    font-weight: 500;
+    color: #8e8e93;
+  }
 
-.tile-state.is-error {
-  color: #ff3b30;
-}
+  .tile-state.is-error {
+    color: #ff3b30;
+  }
 
-.tile-actions {
-  display: flex;
-  justify-content: space-between;
-}
+  .tile-actions {
+    display: flex;
+    justify-content: space-between;
+  }
 
-.image-picker {
-  justify-self: start;
-  cursor: pointer;
-}
+  .image-picker {
+    justify-self: start;
+    cursor: pointer;
+  }
 
-.visually-hidden {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
-}
+  .image-picker:focus-within {
+    box-shadow: 0 0 0 3px rgb(var(--ring) / 0.3);
+  }
+
+  .visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+  }
 </style>

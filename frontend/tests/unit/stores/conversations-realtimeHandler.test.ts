@@ -72,6 +72,7 @@ function makeDeps(overrides: Partial<RealtimeHandlerDeps> = {}): RealtimeHandler
     lastUpdateTime: ref<Date | null>(null),
     activeFilters: ref<ConversationFilters>({}),
     error: ref<string | null>(null),
+    loadError: ref<string | null>(null),
     updateConversationFromWebSocketMessage: vi.fn().mockReturnValue(true),
     updateConversationStatus: vi.fn().mockReturnValue(true),
     updateConversationsIncrementally: vi.fn(),
@@ -123,6 +124,14 @@ describe('createRealtimeHandler', () => {
       expect(deps.stats.value.total).toBe(1)
     })
 
+    it('clears a stale loadError once a poll succeeds', async () => {
+      mockConversationList.mockResolvedValue({ success: true, data: [] })
+      const deps = makeDeps()
+      deps.loadError.value = '載入對話失敗'
+      await createRealtimeHandler(deps).pollConversations()
+      expect(deps.loadError.value).toBeNull()
+    })
+
     it('respects activeFilters when polling', async () => {
       mockConversationList.mockResolvedValue({ success: true, data: [] })
 
@@ -140,6 +149,44 @@ describe('createRealtimeHandler', () => {
           teamId: 3
         })
       )
+    })
+
+    it('forwards search, tagIds, customerName and date range filters and omits unset ones', async () => {
+      mockConversationList.mockResolvedValue({ success: true, data: [] })
+
+      const deps = makeDeps({
+        activeFilters: ref({
+          search: 'hello',
+          tagIds: [1, 2],
+          customerName: 'Alice',
+          updatedAfter: '2026-01-01',
+          updatedBefore: '2026-02-01'
+        } as ConversationFilters)
+      })
+      await createRealtimeHandler(deps).pollConversations()
+
+      expect(mockConversationList).toHaveBeenCalledWith(
+        expect.objectContaining({
+          page: 1,
+          pageSize: 50,
+          search: 'hello',
+          tagIds: [1, 2],
+          customerName: 'Alice',
+          updatedAfter: '2026-01-01',
+          updatedBefore: '2026-02-01'
+        })
+      )
+
+      mockConversationList.mockClear()
+      const emptyDeps = makeDeps({
+        activeFilters: ref({ tagIds: [] } as ConversationFilters)
+      })
+      await createRealtimeHandler(emptyDeps).pollConversations()
+
+      const params = mockConversationList.mock.calls[0][0] as Record<string, unknown>
+      for (const key of ['search', 'tagIds', 'customerName', 'updatedAfter', 'updatedBefore']) {
+        expect(params).not.toHaveProperty(key)
+      }
     })
 
     it('handles API error without throwing', async () => {

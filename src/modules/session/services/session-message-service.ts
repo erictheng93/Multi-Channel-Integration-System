@@ -1,6 +1,7 @@
 import type { DrizzleD1Database } from 'drizzle-orm/d1';
 import { eq, and, asc, count, sql } from 'drizzle-orm';
 import { messages } from '@/db/schema';
+import { notDeletedMessage } from '@/db/message-conditions';
 import type { ConversationSession, SessionMessage, SessionMessagesResponse } from '../types/session-types';
 import { SessionNotFoundError, SessionOperationError } from '../types/session-types';
 import { nowISO } from '@/utils/timestamp';
@@ -19,10 +20,11 @@ export class SessionMessageService {
     if (!session) throw new SessionNotFoundError(sessionId);
     const offset = (page - 1) * pageSize;
     try {
-      const totalResult = await this.db.select({ count: count() }).from(messages).where(eq(messages.sessionId, sessionId)).get();
+      const visibleMessages = and(eq(messages.sessionId, sessionId), notDeletedMessage);
+      const totalResult = await this.db.select({ count: count() }).from(messages).where(visibleMessages).get();
       const total = totalResult?.count || 0;
       const totalPages = Math.ceil(total / pageSize);
-      const messageList = await this.db.select().from(messages).where(eq(messages.sessionId, sessionId)).orderBy(asc(messages.sessionSequence), asc(messages.createdAt)).limit(pageSize).offset(offset).all();
+      const messageList = await this.db.select().from(messages).where(visibleMessages).orderBy(asc(messages.sessionSequence), asc(messages.createdAt)).limit(pageSize).offset(offset).all();
       const transformedMessages: SessionMessage[] = messageList.map(msg => ({
         id: msg.id.toString(), sessionId, conversationId: msg.conversationId.toString(),
         senderId: msg.agentSenderId || msg.customerSenderId?.toString() || 'unknown',
@@ -41,6 +43,7 @@ export class SessionMessageService {
   async addMessage(sessionId: string, messageData: Omit<SessionMessage, 'id' | 'sessionId' | 'sessionSequence' | 'createdAt'>, getSession: GetSessionCallback, updateSessionActivity: UpdateSessionActivityCallback): Promise<SessionMessage> {
     const session = await getSession(sessionId);
     if (!session) throw new SessionNotFoundError(sessionId);
+    // Include deleted rows so sequence numbers are never reused after deletion.
     const sequenceResult = await this.db.select({ nextSequence: sql<number>`COALESCE(MAX(${messages.sessionSequence}), 0) + 1` }).from(messages).where(eq(messages.sessionId, sessionId)).get();
     const sessionSequence = sequenceResult?.nextSequence || 1;
     const now = nowISO();

@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "Frontend for CRM Web Installer - Self-hosted deployment system",
   "type": "module",
-  "packageManager": "bun@1.3.9",
+  "packageManager": "bun@1.4.3",
   "engines": {
     "npm": "use bun instead - see CLAUDE.md",
     "yarn": "use bun instead - see CLAUDE.md",

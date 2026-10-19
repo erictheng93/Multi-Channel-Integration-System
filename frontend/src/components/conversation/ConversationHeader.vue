@@ -86,8 +86,8 @@
            （即使最後一則訊息是客服傳送，後端也會將未讀數下限設為 1） -->
       <button
         class="header-action-btn"
-        :disabled="!conversation"
-        title="標示為未讀"
+        :disabled="!conversation || isClosed"
+        :title="isClosed ? '已結案的對話不會顯示未讀' : '標示為未讀'"
         @click="$emit('markUnread')"
       >
         <MailIcon :size="18" />
@@ -183,7 +183,23 @@
           @change="handleTagsChange"
         />
       </div>
-      <!-- 結束對話按鈕 - 暫時移除，未來有需求再加入 -->
+      <!-- 結案 / 重新開啟按鈕 -->
+      <button
+        v-if="conversation"
+        class="btn btn-secondary btn-sm close-toggle-btn"
+        :disabled="togglingClosed"
+        @click="handleToggleClosed"
+      >
+        <RefreshIcon
+          v-if="isClosed"
+          :size="16"
+        />
+        <CheckIcon
+          v-else
+          :size="16"
+        />
+        <span>{{ isClosed ? '重新開啟' : '結案' }}</span>
+      </button>
 
       <button
         class="btn btn-secondary"
@@ -202,7 +218,6 @@ import { createLogger } from '@/utils/logger'
 const props = defineProps<Props>()
 defineEmits<{
   back: []
-  // close: []  // 暫時移除 - 結束對話功能未來再加入
   refresh: []
   search: []
   export: []
@@ -210,7 +225,7 @@ defineEmits<{
 }>()
 const frontendLogger = createLogger('ConversationHeader')
 import { computed, ref, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
-import { ArrowLeftIcon, RefreshIcon, UserPlusIcon, ChevronDownIcon, SearchIcon, DownloadIcon, MailIcon } from '@/components/icons'
+import { ArrowLeftIcon, RefreshIcon, UserPlusIcon, ChevronDownIcon, SearchIcon, DownloadIcon, MailIcon, CheckIcon } from '@/components/icons'
 import PlatformBadge from '../ui/PlatformBadge.vue'
 import StatusBadge from '../ui/StatusBadge.vue'
 import AssignmentBadge from '../ui/AssignmentBadge.vue'
@@ -222,12 +237,11 @@ import CustomerNameEditor from './CustomerNameEditor.vue'
 import type { Conversation } from '@/types'
 import { getCustomerTags, setCustomerTags, type Tag } from '@/api/tags'
 import { useToast } from '@/composables/useToast'
-// Note: CONVERSATION_STATUS.CLOSED removed - status cleanup
+import { useConversationsStore } from '@/stores/conversations'
 
 interface Props {
   conversation?: Conversation
   loading?: boolean
-  // closing?: boolean  // 暫時移除 - 結束對話功能未來再加入
 }
 
 const customerTags = ref<Tag[]>([])
@@ -242,6 +256,27 @@ let tagLoadRequestId = 0
 
 // Toast notifications
 const { showSuccess, showError } = useToast()
+const conversationsStore = useConversationsStore()
+
+const togglingClosed = ref(false)
+const isClosed = computed(() => props.conversation?.status === 'closed')
+
+const handleToggleClosed = async () => {
+  const conv = props.conversation
+  if (!conv || togglingClosed.value) { return }
+  const closing = !isClosed.value
+  togglingClosed.value = true
+  try {
+    const ok = await conversationsStore.setConversationClosed(String(conv.id), closing)
+    if (ok) {
+      showSuccess(closing ? '已結案' : '已重新開啟')
+    } else {
+      showError(closing ? '結案失敗' : '重新開啟失敗')
+    }
+  } finally {
+    togglingClosed.value = false
+  }
+}
 
 const customerInitials = computed(() => {
   const name = props.conversation?.customer?.name
@@ -545,7 +580,12 @@ defineExpose({
   border-color: var(--border-color, #e5e7eb);
 }
 
-/* 結束對話按鈕樣式 - 暫時移除，未來有需求再加入 */
+.close-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  white-space: nowrap;
+}
 
 /* 客戶標籤樣式 */
 .customer-tags {

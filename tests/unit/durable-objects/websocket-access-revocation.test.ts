@@ -139,6 +139,8 @@ describe('WebSocket access revocation (#25)', () => {
     const ws = socket('old'), stored = new Map<string, unknown>(), ctx = state([ws], stored)
     const room = new ConversationRoom(ctx, env, { mode: 'simplified' })
     await room.fetch(new Request('https://room/metrics'))
+    // The cold-start alarm is armed after a getAlarm() read; let that settle.
+    await vi.advanceTimersByTimeAsync(0)
     expect(ctx.storage.setAlarm).toHaveBeenCalledWith(Date.now() + 300000)
     sqlite.exec("DELETE FROM agent_teams WHERE agent_id = 'old'")
     vi.setSystemTime(Date.now() + 300000)

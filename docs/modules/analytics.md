@@ -54,7 +54,7 @@ Analytics 模組把分散在 conversations / messages / users / metrics 的資�
 
 ## 6. 涉及的 Durable Objects
 
-- **`MetricsCollectorDO`** — 消費定期快照
+- `MetricsCollectorDO`（API 指標 DO）已移除（migration v7）
 - 中介層攔截所有請求標 `(method, path, status, responseTime)` 入庫
 
 ## 7. 邊界案例與小細節

@@ -7,7 +7,7 @@ import { HTTP_STATUS } from '@/constants/http-status';
 import { globalErrorHandler } from '@/core/error-handler';
 import type { Bindings } from '@/types';
 import { createDbClient } from '@/db/drizzle-factory';
-import { eq, and, ne } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import { customers, conversations, teams } from '@/db/schema';
 import { v4 as uuidv4 } from 'uuid';
 import { createContextLogger } from '@/utils/logger';
@@ -322,14 +322,11 @@ liffHandler.post('/welcome', async (c) => {
         .get();
 
       if (customer) {
-        // 查詢現有對話 (排除已關閉的)
+        // 查詢現有對話（含已結案，避免重複建立）
         const existingConversation = await db
           .select()
           .from(conversations)
-          .where(and(
-            eq(conversations.customerId, customer.id),
-            ne(conversations.status, 'closed')
-          ))
+          .where(eq(conversations.customerId, customer.id)) // 一位客戶一個對話（含已結案）
           .get();
 
         const timestamp = nowISO();

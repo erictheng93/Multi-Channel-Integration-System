@@ -104,10 +104,12 @@ export const conversations = sqliteTable('conversations', {
   customerId: integer('customer_id').notNull().references(() => customers.id, { onDelete: 'restrict' }),
   assignedTeamId: integer('assigned_team_id').references(() => teams.id, { onDelete: 'set null' }),
   // Note: assignedUserId removed - only team assignment is supported now
-  status: text('status').notNull().default('active'), // 'active', 'assigned', 'pending', 'in-progress', 'waiting', 'closed'
+  status: text('status').notNull().default('active'), // 'active', 'assigned', 'pending', 'in-progress', 'waiting', 'closed'; 'closed' = 已結案 (reopens on next inbound message)
   priority: text('priority').default('normal'), // 'low', 'normal', 'high', 'urgent'
   firstResponseAt: text('first_response_at'),
   closedAt: text('closed_at'),
+  // Set on close, kept on reopen: unread floor so pre-close backlog stays read (Migration 0064)
+  unreadFloorAt: text('unread_floor_at'),
   lastMessageAt: text('last_message_at'),
   // DEPRECATED (Migration 0060): read state is now per-agent in
   // conversation_read_states. These two columns are no longer read by the

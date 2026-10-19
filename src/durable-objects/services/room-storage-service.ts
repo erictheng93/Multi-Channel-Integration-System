@@ -5,15 +5,25 @@ import type { RealtimeEvent } from '../../types';
 import type { RoomContext, RoomHelpers } from './room-helpers';
 import { testSafeLog, testSafeError, getEmojiPrefix } from '../../utils/test-logger';
 
-const MAX_FLUSH_ATTEMPTS = 5;
-
 /**
  * Manages all persistent storage operations for ConversationRoom:
  * - State initialization from DO storage
  * - Debounced message history writes
  * - Force storage writes on shutdown
  */
+/** Flush retry policy: 1s, 2s, 4s ... capped at 60s, at most 5 consecutive failed attempts. */
+const FLUSH_RETRY_BASE_MS = 1000;
+const FLUSH_RETRY_MAX_MS = 60000;
+const FLUSH_MAX_ATTEMPTS = 5;
+
 export class RoomStorageService {
+  /**
+   * Consecutive failed flushes. In memory on purpose: eviction only costs a few
+   * extra bounded retries, and persisting it would add a storage write per failure.
+   */
+  private flushFailures = 0;
+  private alarmSeed: Promise<void> | null = null;
+
   constructor(
     private ctx: RoomContext,
     private helpers: RoomHelpers
@@ -64,7 +74,11 @@ export class RoomStorageService {
    */
   scheduleStorageWrite(): void {
     // Fixed window, not sliding: steady traffic flushes every 5s and leaves the alarm untouched.
-    this.ctx.storageFlushDeadline ??= Date.now() + this.ctx.STORAGE_WRITE_DEBOUNCE_MS;
+    if (!this.ctx.storageFlushDeadline) {
+      // New window (also the wake-up after a given-up failure): fresh message work resets the retry budget.
+      this.flushFailures = 0;
+      this.ctx.storageFlushDeadline = Date.now() + this.ctx.STORAGE_WRITE_DEBOUNCE_MS;
+    }
     this.scheduleNextAlarm().catch((error) => {
       testSafeError(`${getEmojiPrefix('ERROR')}[ConversationRoom] Alarm scheduling error:`, error);
     });
@@ -79,22 +93,18 @@ export class RoomStorageService {
         await this.ctx.state.storage.put('messageHistory', this.ctx.messageHistory);
         this.ctx.messageDirty = false;
         this.ctx.storageFlushDeadline = null;
-        this.ctx.storageFlushFailures = 0;
+        this.flushFailures = 0;
         testSafeLog(`\uD83D\uDCBE [ConversationRoom] Message history force-saved (${this.ctx.messageHistory.length} messages)`);
       } catch (error) {
         testSafeError(`${getEmojiPrefix('ERROR')}[ConversationRoom] Force storage write error:`, error);
-        const failures = (this.ctx.storageFlushFailures ?? 0) + 1;
-        if (failures >= MAX_FLUSH_ATTEMPTS) {
-          // Stop condition: give up after MAX_FLUSH_ATTEMPTS. History stays in memory; the next
-          // chat message marks it dirty again and starts a fresh bounded cycle.
-          testSafeError(`${getEmojiPrefix('ERROR')}[ConversationRoom] Dropping messageHistory write after ${failures} failures`);
-          this.ctx.messageDirty = false;
+        this.flushFailures += 1;
+        if (this.flushFailures >= FLUSH_MAX_ATTEMPTS) {
+          // Give up re-arming: stop condition for the flush alarm chain. The data stays dirty,
+          // so the next message (scheduleStorageWrite) or any other wake retries with a fresh budget.
           this.ctx.storageFlushDeadline = null;
-          this.ctx.storageFlushFailures = 0;
         } else {
-          this.ctx.storageFlushFailures = failures;
-          // Exponential backoff: 2s, 4s, 8s, 16s (bounded by MAX_FLUSH_ATTEMPTS).
-          this.ctx.storageFlushDeadline = Date.now() + 1000 * 2 ** failures;
+          const delay = Math.min(FLUSH_RETRY_BASE_MS * 2 ** (this.flushFailures - 1), FLUSH_RETRY_MAX_MS);
+          this.ctx.storageFlushDeadline = Date.now() + delay;
         }
       }
     }
@@ -123,6 +133,15 @@ export class RoomStorageService {
   }
 
   async scheduleNextAlarm(): Promise<void> {
+    // Cold start: learn the persisted alarm with a cheap read so an idle object
+    // never pays for a deleteAlarm/setAlarm write that changes nothing.
+    // Memoised so concurrent (un-awaited per-message) callers share one read and cannot each arm.
+    if (this.ctx.alarmAt === undefined && typeof this.ctx.state.storage.getAlarm === 'function') {
+      this.alarmSeed ??= Promise.resolve(this.ctx.state.storage.getAlarm()).then((at) => {
+        if (this.ctx.alarmAt === undefined) this.ctx.alarmAt = at ?? null;
+      }).finally(() => { this.alarmSeed = null; });
+      await this.alarmSeed;
+    }
     if (this.ctx.connections.size > 0 && !this.ctx.accessCheckDeadline) {
       this.ctx.accessCheckDeadline = Date.now() + 300000;
       await this.ctx.state.storage.put('accessCheckDeadline', this.ctx.accessCheckDeadline);
@@ -138,6 +157,7 @@ export class RoomStorageService {
 
     // Skip the storage write when the alarm is already where it needs to be.
     if (deadlines.length === 0) {
+      // alarmAt is null when no alarm is pending (known), so an idle object writes nothing.
       if (this.ctx.alarmAt !== null && typeof this.ctx.state.storage.deleteAlarm === 'function') {
         this.ctx.alarmAt = null;
         await this.ctx.state.storage.deleteAlarm();
@@ -147,7 +167,11 @@ export class RoomStorageService {
     }
 
     const next = Math.min(...deadlines);
-    if (next !== this.ctx.alarmAt) {
+    // An alarm already in the past fires immediately; re-arming it to a newer "now" would only add writes.
+    const alreadyImminent = typeof this.ctx.alarmAt === 'number'
+      && this.ctx.alarmAt <= Date.now() && next <= Date.now();
+    if (next !== this.ctx.alarmAt && !alreadyImminent) {
+      // Re-arm stop condition: only while a deadline (flush, token expiry, access check) is stored.
       // Claimed before the await so concurrent callers (un-awaited per-message calls) see it.
       this.ctx.alarmAt = next;
       try {

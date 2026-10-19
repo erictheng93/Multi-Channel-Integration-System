@@ -3,6 +3,25 @@
     <table class="conversations-table">
       <thead>
         <tr>
+          <th
+            v-if="selectionMode"
+            class="select-col"
+          >
+            <label class="select-hit">
+              <input
+                ref="selectAllRef"
+                type="checkbox"
+                class="select-checkbox"
+                aria-label="全選本頁對話"
+                :checked="allSelected"
+                @change="$emit('toggle-select-all')"
+              >
+            </label>
+          </th>
+          <!-- 讀取狀態欄：表頭視覺留白（Apple Mail 慣例），保留螢幕閱讀器文字 -->
+          <th class="read-col">
+            <span class="sr-only">讀取狀態</span>
+          </th>
           <th class="customer-col">
             客戶
           </th>
@@ -32,32 +51,41 @@
           v-for="(conversation, index) in conversations"
           :key="conversation.id"
           class="conversation-row"
-          :class="{ 'has-unread': conversation.unreadCount > 0 }"
+          :class="{
+            'has-unread': conversation.status !== 'closed' && conversation.unreadCount > 0,
+            'is-selected': selectionMode && selectedIds.has(conversation.id)
+          }"
           :style="{ animationDelay: `${index * 50}ms` }"
-          @click="$emit('select', conversation.id)"
+          @click="handleRowClick(conversation.id)"
         >
+          <td
+            v-if="selectionMode"
+            class="select-cell"
+          >
+            <label
+              class="select-hit"
+              @click.stop
+            >
+              <input
+                type="checkbox"
+                class="select-checkbox"
+                :aria-label="`選取 ${getCustomerName(conversation)} 的對話`"
+                :checked="selectedIds.has(conversation.id)"
+                @change="$emit('toggle-select', conversation.id)"
+              >
+            </label>
+          </td>
+          <td class="read-cell">
+            <span
+              class="read-badge"
+              :class="readBadge(conversation).cls"
+              :aria-label="readBadge(conversation).aria"
+            >
+              {{ readBadge(conversation).text }}
+            </span>
+          </td>
           <td class="customer-cell">
             <div class="customer-info">
-              <span
-                class="read-badge"
-                :class="conversation.unreadCount > 0 ? 'unread' : 'read'"
-                :aria-label="conversation.unreadCount > 0 ? `未讀 ${conversation.unreadCount} 則訊息` : '已讀'"
-              >
-                {{ conversation.unreadCount > 0
-                  ? (conversation.unreadCount > 1 ? `未讀 ${conversation.unreadCount}` : '未讀')
-                  : '已讀' }}
-              </span>
-              <span
-                v-if="conversation.unreadCount > 0"
-                class="unread-dot"
-                aria-hidden="true"
-              />
-              <span
-                v-if="conversation.unreadCount > 0"
-                class="sr-only"
-              >
-                未讀 {{ conversation.unreadCount }} 則訊息
-              </span>
               <div>
                 <div class="customer-name">
                   {{ getCustomerName(conversation) }}
@@ -106,16 +134,49 @@
 </template>
 
 <script setup lang="ts">
+import { computed, ref, watchEffect } from 'vue'
 import type { Conversation } from '@/types'
 import { convertEmojiForConversationList } from '@/utils/layered-emoji-processor'
 
-defineProps<{
+const props = withDefaults(defineProps<{
   conversations: Conversation[]
+  selectionMode?: boolean
+  selectedIds?: ReadonlySet<string>
+}>(), {
+  selectionMode: false,
+  selectedIds: () => new Set<string>()
+})
+
+const emit = defineEmits<{
+  select: [id: string]
+  'toggle-select': [id: string]
+  'toggle-select-all': []
 }>()
 
-defineEmits<{
-  select: [id: string]
-}>()
+const selectAllRef = ref<HTMLInputElement | null>(null)
+
+const selectedOnPage = computed(
+  () => props.conversations.filter(c => props.selectedIds.has(c.id)).length
+)
+const allSelected = computed(
+  () => props.conversations.length > 0 && selectedOnPage.value === props.conversations.length
+)
+
+// indeterminate 只能透過 DOM property 設定
+watchEffect(() => {
+  if (selectAllRef.value) {
+    selectAllRef.value.indeterminate = selectedOnPage.value > 0 && !allSelected.value
+  }
+}, { flush: 'post' })
+
+// 選取模式下，點擊整列切換選取而非導覽
+const handleRowClick = (id: string) => {
+  if (props.selectionMode) {
+    emit('toggle-select', id)
+  } else {
+    emit('select', id)
+  }
+}
 
 interface LegacyConversationFields {
   customer_name?: string
@@ -148,13 +209,26 @@ const getPlatformText = (platform: string) => {
   return platformMap[platform as keyof typeof platformMap] || platform
 }
 
+const readBadge = (conversation: Conversation) => {
+  // 已結案優先：結案的對話對所有客服都算 0 未讀（新訊息會自動重新開啟）
+  if (conversation.status === 'closed') {
+    return { cls: 'closed', text: '結案', aria: '已結案' }
+  }
+  const unread = conversation.unreadCount
+  if (unread > 0) {
+    return { cls: 'unread', text: unread > 1 ? `未讀 ${unread}` : '未讀', aria: `未讀 ${unread} 則訊息` }
+  }
+  return { cls: 'read', text: '已讀', aria: '已讀' }
+}
+
 const getStatusText = (status: string) => {
   const statusMap: Record<string, string> = {
     active: '進行中',
     assigned: '已指派',
     pending: '待處理',
     'in-progress': '處理中',
-    waiting: '等待中'
+    waiting: '等待中',
+    closed: '已結案'
   }
   return statusMap[status] || status
 }
@@ -270,7 +344,39 @@ const getAssignedTo = (conversation: Conversation) => {
 .conversation-row:nth-child(4) { --animation-duration: 0.6s; }
 .conversation-row:nth-child(5) { --animation-duration: 0.7s; }
 
+/* Selection column */
+.select-col,
+.select-cell {
+  width: 56px;
+  padding-right: 0 !important;
+}
+
+.select-hit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  margin: -12px 0;
+  cursor: pointer;
+}
+
+.select-checkbox {
+  width: 20px;
+  height: 20px;
+  accent-color: #007AFF;
+  cursor: pointer;
+}
+
+.conversation-row.is-selected {
+  background: #EAF3FF;
+}
+
 /* Table Column Widths */
+.read-col { width: 72px; }
+.read-col,
+.read-cell { padding-right: 0 !important; }
+.read-cell .read-badge { margin-top: 2px; }
 .customer-col { width: 20%; }
 .platform-col { width: 10%; }
 .status-col { width: 10%; }
@@ -305,17 +411,16 @@ const getAssignedTo = (conversation: Conversation) => {
   color: #FFFFFF;
 }
 
-.unread-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #FF3B30;
-  flex-shrink: 0;
-}
-
 .read-badge.read {
   background: #F2F2F7;
   color: #8E8E93;
+  font-weight: 500;
+}
+
+/* 已結案：同尺寸但更淡，不搶注意力 */
+.read-badge.closed {
+  background: #F7F7FA;
+  color: #C7C7CC;
   font-weight: 500;
 }
 
@@ -411,6 +516,11 @@ const getAssignedTo = (conversation: Conversation) => {
   background-color: #e67e22;
 }
 
+.status-badge.closed {
+  background-color: #E5E5EA;
+  color: #8E8E93;
+}
+
 .last-message {
   color: #555;
   line-height: 1.4;
@@ -418,6 +528,8 @@ const getAssignedTo = (conversation: Conversation) => {
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  /* line-clamp does not ellipsize an unbreakable string (URL, long ID); wrap it instead of cutting it */
+  overflow-wrap: anywhere;
   max-width: 350px;
 }
 
