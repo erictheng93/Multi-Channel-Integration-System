@@ -12,6 +12,7 @@ import { eq } from 'drizzle-orm';
 import { createContextLogger } from '@/utils/logger';
 import { ensureFilenameExtension } from '@/utils/mime-ext';
 import { verifyFileSignature } from '@/utils/file-signed-url';
+import { inertFileHeaders } from '@/utils/file-url';
 import { jwtAuth } from '@/middleware/auth';
 import { addCorsHeaders, createCorsPreflightResponse } from '@/config/cors';
 import { canConversationBeAccessedBy } from '@/services/conversation-access';
@@ -47,7 +48,7 @@ fileProxyHandler.get('/public/*', async (c) => {
     // avoid leaking the existence of any particular r2Key).
     const sig = c.req.query('sig');
     const exp = c.req.query('exp');
-    const sigValid = await verifyFileSignature(r2Key, sig, exp, c.env.JWT_SECRET);
+    const sigValid = await verifyFileSignature(r2Key, sig, exp, c.env.JWT_SECRET, 'public');
     if (!sigValid) {
       log.warn('File proxy: missing or invalid signature', { r2Key, hasSig: !!sig });
       return c.json({ success: false, error: 'File not found' }, HTTP_STATUS.NOT_FOUND);
@@ -68,18 +69,14 @@ fileProxyHandler.get('/public/*', async (c) => {
 
     // 從 R2 object 獲取元數據
     const contentType = object.httpMetadata?.contentType || 'application/octet-stream';
-    const contentDisposition = object.httpMetadata?.contentDisposition ||
-      `attachment; filename="${r2Key.split('/').pop() || 'download'}"`;
-
     log.info('Serving file', { r2Key, contentType, size: object.size });
 
     // 返回文件流
     return new Response(object.body, {
       status: 200,
       headers: {
-        'Content-Type': contentType,
+        ...inertFileHeaders(contentType, r2Key.split('/').pop() || 'download', object.httpMetadata?.contentDisposition),
         'Content-Length': object.size.toString(),
-        'Content-Disposition': contentDisposition,
         'Cache-Control': 'public, max-age=86400', // 緩存 24 小時
         'Access-Control-Allow-Origin': '*', // 允許跨域訪問
         'Access-Control-Allow-Methods': 'GET, OPTIONS',
@@ -133,7 +130,7 @@ fileProxyHandler.get('/download/:attachmentId', async (c) => {
     // they discover later.
     const sig = c.req.query('sig');
     const exp = c.req.query('exp');
-    const sigValid = await verifyFileSignature(r2Key, sig, exp, c.env.JWT_SECRET);
+    const sigValid = await verifyFileSignature(r2Key, sig, exp, c.env.JWT_SECRET, 'download');
     if (!sigValid) {
       log.warn('Download: missing or invalid signature', { attachmentId, hasSig: !!sig });
       return c.json({ success: false, error: 'Attachment not found' }, HTTP_STATUS.NOT_FOUND);
@@ -166,7 +163,7 @@ fileProxyHandler.get('/download/:attachmentId', async (c) => {
     return new Response(object.body, {
       status: 200,
       headers: {
-        'Content-Type': contentType,
+        ...inertFileHeaders(contentType, filename),
         'Content-Length': object.size.toString(),
         'Content-Disposition': `attachment; filename="${encodeURIComponent(filename)}"`,
         'Cache-Control': 'public, max-age=86400',
@@ -228,7 +225,7 @@ fileProxyHandler.get('/line-proxy/:lineMessageId', jwtAuth, async (c) => {
         if (r2Object) {
           log.info('Serving from R2 (fast path)', { lineMessageId, r2Key: existingAttachment.r2Key });
           const headers = new Headers({
-            'Content-Type': existingAttachment.mimeType || r2Object.httpMetadata?.contentType || 'image/jpeg',
+            ...inertFileHeaders(existingAttachment.mimeType || r2Object.httpMetadata?.contentType || 'image/jpeg', `line-${lineMessageId}`),
             'Content-Length': r2Object.size.toString(),
             'Cache-Control': 'private, no-store',
             'Access-Control-Allow-Methods': 'GET, OPTIONS',
@@ -321,7 +318,7 @@ fileProxyHandler.get('/line-proxy/:lineMessageId', jwtAuth, async (c) => {
 
     // Return the image to the frontend
     const headers = new Headers({
-      'Content-Type': contentType,
+      ...inertFileHeaders(contentType, `line-${lineMessageId}`),
       'Content-Length': body.byteLength.toString(),
       'Cache-Control': 'private, no-store',
       'Access-Control-Allow-Methods': 'GET, OPTIONS',

@@ -1,5 +1,6 @@
 import type { Hono } from 'hono';
 import { isOriginAllowed } from '@/config/cors';
+import { inertFileHeaders } from '@/utils/file-url';
 import { nowISO } from '@/utils/timestamp';
 import { jwtAuth, requireAdmin } from '@/middleware/auth';
 import type { Bindings } from '@/types';
@@ -84,7 +85,7 @@ export function registerPreRegistryRoutes(app: Hono<{ Bindings: Bindings }>): vo
       const { verifyFileSignature } = await import('@/utils/file-signed-url');
       const sig = c.req.query('sig');
       const exp = c.req.query('exp');
-      const sigValid = await verifyFileSignature(objectKey, sig, exp, c.env.JWT_SECRET);
+      const sigValid = await verifyFileSignature(objectKey, sig, exp, c.env.JWT_SECRET, 'r2-public');
       if (!sigValid) {
         return c.json({ error: 'File not found' }, 404);
       }
@@ -104,7 +105,13 @@ export function registerPreRegistryRoutes(app: Hono<{ Bindings: Bindings }>): vo
         headers.set('Access-Control-Max-Age', '3600');
       }
 
-      headers.set('Content-Type', object.httpMetadata?.contentType || 'application/octet-stream');
+      for (const [k, v] of Object.entries(inertFileHeaders(
+        object.httpMetadata?.contentType,
+        filename,
+        object.httpMetadata?.contentDisposition
+      ))) {
+        headers.set(k, v);
+      }
       headers.set('ETag', object.httpEtag);
       headers.set('Cache-Control', 'public, max-age=31536000');
       headers.set('Content-Length', object.size.toString());
