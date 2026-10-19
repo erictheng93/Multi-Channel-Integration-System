@@ -69,6 +69,10 @@ jobs:
       - name: Check for unsafe sql.raw usage
         run: bun run check:sql-raw:ci
 
+      # The installer deploys a committed worker bundle; fail if it was built from older src.
+      - name: Check installer worker bundle is fresh
+        run: bun run check:worker-bundle
+
       # Every @media width must come from frontend/src/config/breakpoints.ts so
       # layouts switch at one shared set of widths instead of ad-hoc numbers.
       - name: Check responsive breakpoint scale

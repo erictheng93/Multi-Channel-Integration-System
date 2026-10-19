@@ -28,6 +28,12 @@ const validConfig: DeploymentConfig = {
  * they extend.
  */
 const MOCK_ROUTES: Array<{ method: string; pattern: RegExp; body: unknown }> = [
+  // Account/token ownership check performed before a project name is claimed.
+  {
+    method: 'GET',
+    pattern: /^https:\/\/api\.cloudflare\.com\/client\/v4\/accounts\/[^/]+$/,
+    body: { success: true, result: { id: 'test-account-123' } }
+  },
   // D1 query (migrations) — must precede the D1 database route it extends.
   {
     method: 'POST',

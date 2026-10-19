@@ -115,6 +115,12 @@ export class DeploymentOrchestrator implements DurableObject {
           if (!config.oauthToken || !await this.tokensMatch(token, config.oauthToken)) {
             return Response.json({ error: 'Deployment access denied' }, { status: 403 });
           }
+          // First claim of this project name: the token must be a real Cloudflare
+          // credential for config.accountId, otherwise a made-up string would
+          // become the permanent owner (installer project-name squatting).
+          if (!this.deploymentState && !await this.tokenCanAccessAccount(config.oauthToken, config.accountId)) {
+            return Response.json({ error: 'Cloudflare token could not be verified for this account' }, { status: 403 });
+          }
           if (this.deploymentState && ['pending', 'in_progress', 'rolling_back'].includes(this.deploymentState.status)) {
             return Response.json({ error: 'Deployment already active' }, { status: 409 });
           }
@@ -581,6 +587,20 @@ export class DeploymentOrchestrator implements DurableObject {
     }
 
     return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  /** True only when Cloudflare itself accepts the token for this account. */
+  private async tokenCanAccessAccount(token: string, accountId: string): Promise<boolean> {
+    try {
+      const res = await fetch(`https://api.cloudflare.com/client/v4/accounts/${encodeURIComponent(accountId)}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (!res.ok) return false;
+      const body = await res.json<{ success?: boolean }>();
+      return body.success === true;
+    } catch {
+      return false;
+    }
   }
 
   private isTestEnvironment(): boolean {
