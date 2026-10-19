@@ -47,7 +47,7 @@ describe('layered-emoji-processor', () => {
         const text = 'https://example.com/search?q=test&page=1'
         const result = await convertEmojiForMessageDetail(text)
 
-        expect(result).toContain('<a href="https://example.com/search?q=test&page=1"')
+        expect(result).toContain('<a href="https://example.com/search?q=test&amp;page=1"')
       })
 
       it('should handle URL with fragments', async () => {

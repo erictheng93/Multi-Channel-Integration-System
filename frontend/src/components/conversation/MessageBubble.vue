@@ -219,6 +219,7 @@
         <SafeHtmlRenderer
           v-if="processedMessageContent && processedMessageContent !== message.content"
           :html="processedMessageContent"
+          rich
           class="sticker-rendered-content"
         />
 

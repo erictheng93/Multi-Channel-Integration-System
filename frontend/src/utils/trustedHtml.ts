@@ -1,3 +1,5 @@
+import DOMPurify from 'dompurify'
+
 type TrustedHtmlPolicy = {
   createHTML: (_html: string) => unknown
 }
@@ -23,7 +25,7 @@ function getDefaultPolicy(): TrustedHtmlPolicy | null {
 
   if (!defaultPolicy) {
     defaultPolicy = trustedTypes.createPolicy('default', {
-      createHTML: html => html
+      createHTML: html => DOMPurify.sanitize(html, { RETURN_TRUSTED_TYPE: false }) as string
     })
   }
 
