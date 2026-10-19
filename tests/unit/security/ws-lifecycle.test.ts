@@ -55,6 +55,18 @@ describe('F13 CustomerConversationDO access lifecycle', () => {
     expect(c.storage.put).toHaveBeenCalledWith('accessCheckDeadline', Date.now() + 30000)
   })
 
+  it('persistent D1 outage backs off and falls back to 5 minutes after 5 failures', async () => {
+    const ws = sock('a'); hasAccess.mockRejectedValue(new Error('d1'))
+    const c = ctx([ws]); const doo = new CustomerConversationDO(c, {} as Bindings)
+    const delays: number[] = []
+    for (let i = 0; i < 6; i++) {
+      await doo.fetch(post({}))
+      const calls = (c.storage.put as ReturnType<typeof vi.fn>).mock.calls.filter(x => x[0] === 'accessCheckDeadline')
+      delays.push((calls.at(-1)![1] as number) - Date.now())
+    }
+    expect(delays).toEqual([30000, 60000, 120000, 240000, 300000, 30000])
+  })
+
   it('alarm closes expired tokens and re-checks access after 5 minutes', async () => {
     const expired = sock('e', Math.floor(Date.now() / 1000) - 1), demoted = sock('d')
     hasAccess.mockResolvedValue(false)
