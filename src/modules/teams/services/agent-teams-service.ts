@@ -12,7 +12,8 @@ import { eq, and, sql, inArray } from 'drizzle-orm';
 import { agentTeams, agents, teams } from '@/db/schema';
 import type { D1Database } from '@cloudflare/workers-types';
 import { nowISO } from '@/utils/timestamp'
-import type { Bindings } from '@/types';
+import type { Bindings, DbUser, TeamRoleInTeam } from '@/types';
+import { TEAM_ROLE_HIERARCHY, getUserTeamRole } from '@/utils/auth';
 import { revalidateWebSocketAccess } from '@/services/websocket-access-revocation';
 
 export interface AgentTeamMembership {
@@ -66,6 +67,36 @@ export interface BatchAddMembersResult {
   added: string[]; // 成功加入的 agentId 列表
   skipped: string[]; // 已存在於團隊的 agentId 列表
   errors: { agentId: string; error: string }[];  // 失敗的記錄
+}
+
+export function isTeamRole(role: unknown): role is TeamRoleInTeam {
+  return typeof role === 'string' && Object.prototype.hasOwnProperty.call(TEAM_ROLE_HIERARCHY, role);
+}
+
+/**
+ * Team-role ceiling (F26). Returns an error message when `caller` may not set `newRole`
+ * on `targetAgentId` (whose current role in the team is `targetCurrentRole`, if any).
+ * Admin is unrestricted; others may only assign roles strictly below their own, never
+ * change themselves, and never touch someone at or above their own level.
+ */
+export function checkTeamRoleAssignment(
+  caller: DbUser,
+  teamId: number,
+  newRole: unknown,
+  targetAgentId: string | null,
+  targetCurrentRole?: string | null
+): string | null {
+  if (!isTeamRole(newRole)) return 'Invalid roleInTeam';
+  if (caller.role === 'admin') return null;
+  const callerRole = getUserTeamRole(caller, teamId);
+  if (!callerRole) return 'Not a member of this team';
+  const callerLevel = TEAM_ROLE_HIERARCHY[callerRole];
+  if (TEAM_ROLE_HIERARCHY[newRole] >= callerLevel) return 'Cannot assign a team role at or above your own';
+  if (targetAgentId !== null && String(caller.id) === targetAgentId) return 'Cannot change your own team role';
+  if (targetCurrentRole && (!isTeamRole(targetCurrentRole) || TEAM_ROLE_HIERARCHY[targetCurrentRole] >= callerLevel)) {
+    return 'Cannot modify a member at or above your own team role';
+  }
+  return null;
 }
 
 export class AgentTeamsService {
@@ -444,6 +475,7 @@ export class AgentTeamsService {
     const updateData: Partial<typeof agentTeams.$inferInsert> = {};
 
     if (data.roleInTeam !== undefined) {
+      if (!isTeamRole(data.roleInTeam)) throw new Error('Invalid roleInTeam');
       updateData.roleInTeam = data.roleInTeam;
     }
 

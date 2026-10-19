@@ -7,7 +7,7 @@ import { createContextLogger } from '@/utils/logger';
 const log = createContextLogger('TeamMembers');
 
 import { TeamService } from '@modules/teams/services/team-service';
-import { AgentTeamsService } from '@modules/teams/services/agent-teams-service';
+import { AgentTeamsService, checkTeamRoleAssignment } from '@modules/teams/services/agent-teams-service';
 import { ActivityService, ACTIVITY_ACTIONS, RESOURCE_TYPES } from '@/modules/activities';
 import { triggerTeamMemberChangeEvent } from '@/utils/notification-trigger';
 import { HTTP_STATUS } from '@/constants/http-status';
@@ -124,6 +124,11 @@ app.post('/:id/members/batch', jwtAuth, requireTeamRole('lead'), requireIntId(),
     }
 
     // Batch add members (2-3 DB queries vs 6*N before)
+    const denied = checkTeamRoleAssignment(user, teamId, roleInTeam, null);
+    if (denied) {
+      return c.json({ success: false, error: denied }, HTTP_STATUS.FORBIDDEN);
+    }
+
     const result = await agentTeamsService.addMembersToTeam(teamId, body.agentIds, roleInTeam);
 
     // Activity log (non-blocking)
@@ -187,9 +192,16 @@ app.post('/:id/members/batch', jwtAuth, requireTeamRole('lead'), requireIntId(),
 // Update team member (requires 'lead' role in team)
 app.put('/:id/members/:agentId', jwtAuth, requireTeamRole('lead'), requireIntId(), async (c) => {
   try {
+    const user = c.get('user');
     const teamId = getValidatedParam<number>(c, 'id');
     const agentId = c.req.param('agentId');
     const body = await c.req.json() as TeamMemberUpdateRequest;
+
+    // F06: role / isActive are GLOBAL agents columns; only system admins may change them
+    // (non-admins use team roles via agent-teams/:agentId/role/:teamId).
+    if (user.role !== 'admin' && (body.role !== undefined || body.isActive !== undefined)) {
+      return c.json({ success: false, error: 'Admin role required to change global role or active status' }, HTTP_STATUS.FORBIDDEN);
+    }
 
     if (!agentId?.trim()) {
       return c.json({
