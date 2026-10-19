@@ -12,10 +12,14 @@
 import { Hono } from 'hono';
 import { HTTP_STATUS } from '@/constants/http-status';
 import { DELAYED_MESSAGE_LIMITS } from '@/constants/limits';
-import type { Bindings } from '@/types';
+import type { Bindings, DbUser } from '@/types';
 import { jwtAuth } from '@/middleware/auth';
+import { and, eq } from 'drizzle-orm';
+import { createDbClient } from '@/db/drizzle-factory';
+import { messages } from '@/db/schema';
+import { canConversationBeAccessedBy } from '@/services/conversation-access';
 import { PermissionService } from '@/services/permission-service';
-import { badRequestResponse, forbiddenResponse, internalErrorResponse, handleApiError } from '@/utils/api-response';
+import { badRequestResponse, forbiddenResponse, notFoundResponse, internalErrorResponse, handleApiError } from '@/utils/api-response';
 import { errorResponse } from '@/utils/api-response';
 import { nowISO } from '@/utils/timestamp'
 import { createContextLogger } from '@/utils/logger';
@@ -26,6 +30,20 @@ import { contractJson } from '@/utils/api-contract-response';
 const log = createContextLogger('DelayedMessageBuffer');
 
 const delayedMessageBufferHandler = new Hono<{ Bindings: Bindings }>();
+
+/** Conversation visibility for the D1-reloaded caller (admin / own team / unassigned pool). */
+async function canAccessConversation(
+  env: Bindings,
+  user: DbUser,
+  conversationId: string
+): Promise<boolean> {
+  const access = await canConversationBeAccessedBy(
+    env,
+    { userId: user.id, role: user.role, allowedTeamIds: user.allowedTeamIds },
+    conversationId
+  );
+  return access.allowed;
+}
 
 /**
  * 發送延遲訊息 (使用 Durable Objects)
@@ -72,7 +90,7 @@ delayedMessageBufferHandler.post('/send', jwtAuth, async (c) => {
       }
     );
 
-    if (!hasPermission) {
+    if (!hasPermission || !(await canAccessConversation(c.env, user, conversationId))) {
       return forbiddenResponse(c, 'Permission denied');
     }
 
@@ -183,6 +201,24 @@ delayedMessageBufferHandler.delete('/cancel/:messageId', jwtAuth, async (c) => {
       return badRequestResponse(c, 'Conversation ID is required');
     }
 
+    if (!(await canAccessConversation(c.env, user, conversationId))) {
+      return notFoundResponse(c, 'Message not found');
+    }
+
+    // Cancelling a buffered send is a recall: sender or admin only. The D1 row
+    // is loaded by (messageId, conversationId); with no row the sender cannot
+    // be proven, so only an admin may cancel.
+    const db = createDbClient(c.env.DB);
+    const row = await db
+      .select({ senderType: messages.senderType, agentSenderId: messages.agentSenderId })
+      .from(messages)
+      .where(and(eq(messages.id, messageId), eq(messages.conversationId, conversationId)))
+      .get();
+    const isSender = row?.senderType === 'agent' && row.agentSenderId === String(user.id);
+    if (user.role !== 'admin' && !isSender) {
+      return forbiddenResponse(c, 'Only the sender or admin can cancel this message');
+    }
+
     // 檢查 Durable Object 綁定
     if (!c.env.DELAYED_MESSAGE_SCHEDULER) {
       return errorResponse(c, 'Delayed message service is not configured', HTTP_STATUS.SERVICE_UNAVAILABLE);
@@ -210,6 +246,14 @@ delayedMessageBufferHandler.delete('/cancel/:messageId', jwtAuth, async (c) => {
 
     if (!result.success) {
       return badRequestResponse(c, result.reason || 'Failed to cancel message');
+    }
+
+    if (row) {
+      const recalledAt = nowISO();
+      await db
+        .update(messages)
+        .set({ isRecalled: true, recalledAt, updatedAt: recalledAt, content: '[This message has been recalled]' })
+        .where(eq(messages.id, messageId));
     }
 
     log.info(`Message ${messageId} cancelled by ${user.displayName}`, { messageId, cancelledBy: user.displayName });
@@ -248,11 +292,16 @@ delayedMessageBufferHandler.delete('/cancel/:messageId', jwtAuth, async (c) => {
  */
 delayedMessageBufferHandler.get('/status/:messageId', jwtAuth, async (c) => {
   try {
+    const user = c.get('user');
     const messageId = c.req.param('messageId');
     const conversationId = c.req.query('conversationId');
 
     if (!messageId || !conversationId) {
       return badRequestResponse(c, 'Message ID and Conversation ID are required');
+    }
+
+    if (!(await canAccessConversation(c.env, user, conversationId))) {
+      return notFoundResponse(c, 'Message not found');
     }
 
     // 檢查 Durable Object 綁定
@@ -299,10 +348,15 @@ delayedMessageBufferHandler.get('/status/:messageId', jwtAuth, async (c) => {
  */
 delayedMessageBufferHandler.get('/pending', jwtAuth, async (c) => {
   try {
+    const user = c.get('user');
     const conversationId = c.req.query('conversationId');
 
     if (!conversationId) {
       return badRequestResponse(c, 'Conversation ID is required');
+    }
+
+    if (!(await canAccessConversation(c.env, user, conversationId))) {
+      return notFoundResponse(c, 'Conversation not found');
     }
 
     // 檢查 Durable Object 綁定

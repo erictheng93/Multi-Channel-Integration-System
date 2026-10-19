@@ -11,6 +11,7 @@ import { createDbClient } from '@/db/drizzle-factory';
 import type { Bindings, JWTPayload } from '@/types';
 import { messages, conversations } from '@/db/schema';
 import { jwtAuth } from '@/middleware/auth';
+import { canConversationBeAccessedBy } from '@/services/conversation-access';
 import {
   errorResponse,
   badRequestResponse
@@ -102,9 +103,16 @@ bulkRoutes.post('/bulk-create', jwtAuth, async (c) => {
       const existingConvIdSet = new Set(existingConvs.map(c => c.id));
 
       // Step 3: Partition into valid (conversation exists) and invalid
+      const user = c.get('user');
+      const principal = { userId: user.id, role: user.role, allowedTeamIds: user.allowedTeamIds };
+      const accessibleConvIds = new Set<string>();
+      for (const id of existingConvIdSet) {
+        if ((await canConversationBeAccessedBy(c.env, principal, id)).allowed) accessibleConvIds.add(id);
+      }
       const insertableMessages: typeof validatedMessages = [];
       for (const msg of validatedMessages) {
-        if (!existingConvIdSet.has(msg.conversationId)) {
+        // Inaccessible conversations report the same error as missing ones.
+        if (!accessibleConvIds.has(msg.conversationId)) {
           errors.push({ index: msg.index, error: 'Conversation not found' });
         } else {
           insertableMessages.push(msg);
@@ -169,7 +177,6 @@ bulkRoutes.post('/bulk-create', jwtAuth, async (c) => {
  */
 bulkRoutes.post('/bulk-delete', jwtAuth, async (c) => {
   try {
-    const userPayload = c.get('jwtPayload') as JWTPayload;
 
     let requestData: { messageIds: string[] };
 
@@ -209,7 +216,15 @@ bulkRoutes.post('/bulk-delete', jwtAuth, async (c) => {
       .where(inArray(messages.id, messageIds))
       .all();
 
-    const messageMap = new Map(existingMessages.map(m => [m.id, m]));
+    const user = c.get('user');
+    const principal = { userId: user.id, role: user.role, allowedTeamIds: user.allowedTeamIds };
+    const accessibleConvIds = new Set<string>();
+    for (const convId of new Set(existingMessages.map(m => m.conversationId))) {
+      if ((await canConversationBeAccessedBy(c.env, principal, convId)).allowed) accessibleConvIds.add(convId);
+    }
+    const messageMap = new Map(
+      existingMessages.filter(m => accessibleConvIds.has(m.conversationId)).map(m => [m.id, m])
+    );
 
     // Step 2: Validate each message in application code
     const recallableIds: string[] = [];
@@ -223,9 +238,10 @@ bulkRoutes.post('/bulk-delete', jwtAuth, async (c) => {
         continue;
       }
 
-      if (existing.senderType === 'agent' &&
-          existing.agentSenderId !== userPayload.userId.toString() &&
-          userPayload.role !== 'admin') {
+      // Same positive check as DELETE /:id (F9): own agent message or admin only;
+      // customer/system messages are never recallable by a non-admin.
+      if (user.role !== 'admin' &&
+          !(existing.senderType === 'agent' && existing.agentSenderId === String(user.id))) {
         errors.push({ index, error: 'Permission denied' });
         continue;
       }

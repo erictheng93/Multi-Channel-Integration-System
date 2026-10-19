@@ -12,7 +12,9 @@ vi.mock('cloudflare:workers', () => ({
 }));
 vi.mock('@/middleware/auth', () => ({
   jwtAuth: async (c: any, next: () => Promise<void>) => {
-    c.set('jwtPayload', await verify(c.req.header('Authorization').slice(7), c.env.JWT_SECRET, 'HS256'));
+    const payload = await verify(c.req.header('Authorization').slice(7), c.env.JWT_SECRET, 'HS256') as Record<string, unknown>;
+    c.set('jwtPayload', payload);
+    c.set('user', { id: payload.userId, role: payload.role, allowedTeamIds: payload.allowedTeamIds });
     await next();
   },
 }));
