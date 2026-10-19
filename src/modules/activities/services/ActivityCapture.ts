@@ -60,8 +60,14 @@ export class ActivityCapture {
       )
   }
 
+  /**
+   * `onlyIfPreviousChanged` makes the row conditional on the statement just before it in the
+   * same batch having changed a row (`changes() > 0`), so a guarded UPDATE that matched
+   * nothing leaves no activity behind. Place it directly after that UPDATE.
+   */
   buildIrreversibleLog(
-    req: CreateActivityRequest & { reason: string }
+    req: CreateActivityRequest & { reason: string },
+    opts?: { onlyIfPreviousChanged?: boolean }
   ): D1PreparedStatement {
     const now = new Date()
     const details = {
@@ -78,7 +84,9 @@ export class ActivityCapture {
       .prepare(
         `INSERT INTO activities
            (user_id, user_name, user_role, action, resource_type, resource_id, details, ip_address, user_agent, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+         ${opts?.onlyIfPreviousChanged
+           ? 'SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ? WHERE changes() > 0'
+           : 'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'}`
       )
       .bind(
         req.userId,
