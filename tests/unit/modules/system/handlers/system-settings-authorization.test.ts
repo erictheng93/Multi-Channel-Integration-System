@@ -48,6 +48,9 @@ function createContext(role: 'admin' | 'agent') {
       if (key === 'jwtPayload') {
         return { userId: 'agent-1', username: 'Agent One', role };
       }
+      if (key === 'user') {
+        return { id: 'agent-1', role };
+      }
       return undefined;
     }),
     json: vi.fn((data: unknown, status = 200) => {

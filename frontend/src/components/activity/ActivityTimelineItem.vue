@@ -139,13 +139,12 @@ const restoreState = computed<RestoreState>(() => {
     return { kind: 'expired' }
   }
 
-  const callerId = auth.currentAgent?.id
   const callerRole = auth.currentAgent?.role
   const isAdmin = callerRole === ROLES.ADMIN
-  const isOriginalActor = callerId === props.activity.userId
   const requiresAdmin = details.restorePolicy.requiresAdmin
 
-  if (isAdmin || (isOriginalActor && !requiresAdmin)) {
+  // Server authorizes restore on the caller's CURRENT role: admin only
+  if (isAdmin) {
     return {
       kind: 'eligible',
       expiresAt: details.restorePolicy.expiresAt,

@@ -187,10 +187,15 @@ async function testFacebookIntegration(config: FacebookIntegrationTestConfig, en
       return { status: 'error', message: '請填寫完整的 Facebook 設定' }
     }
 
+    // pageId is interpolated into a Graph path: numeric ids only (blocks path/query injection)
+    if (!/^\d+$/.test(testConfig.pageId)) {
+      return { status: 'error', message: 'Facebook Page ID 格式錯誤' }
+    }
+
     // Test 1: Validate Page Access Token
     log.info('Testing Facebook Page Access Token')
     const tokenResponse = await fetch(
-      `https://graph.facebook.com/v18.0/me?access_token=${testConfig.pageToken}`
+      `https://graph.facebook.com/v18.0/me?access_token=${encodeURIComponent(testConfig.pageToken)}`
     )
 
     if (!tokenResponse.ok) {
@@ -237,7 +242,7 @@ async function testFacebookIntegration(config: FacebookIntegrationTestConfig, en
     // Test 3: Check page permissions
     log.info('Testing Facebook Page Permissions')
     const permissionsResponse = await fetch(
-      `https://graph.facebook.com/v18.0/${testConfig.pageId}?fields=access_token,name,category&access_token=${testConfig.pageToken}`
+      `https://graph.facebook.com/v18.0/${testConfig.pageId}?fields=access_token,name,category&access_token=${encodeURIComponent(testConfig.pageToken)}`
     )
 
     let pageDetails: Partial<{ category: string }> = {}
