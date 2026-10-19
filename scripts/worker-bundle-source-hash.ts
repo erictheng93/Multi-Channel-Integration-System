@@ -6,8 +6,9 @@
 import { createHash } from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
+import { fileURLToPath } from 'url';
 
-const root = path.join(path.dirname(new URL(import.meta.url).pathname), '..');
+const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const INPUTS = ['src', 'shared', 'bun.lock', 'scripts/build-worker-bundle.ts'];
 
 function walk(p: string, out: string[]): void {
@@ -25,7 +26,8 @@ export function computeWorkerSourceHash(): string {
   const hash = createHash('sha256');
   for (const file of files) {
     hash.update(path.relative(root, file).split(path.sep).join('/') + '\0');
-    hash.update(fs.readFileSync(file));
+    // LF-normalized so a Windows (autocrlf) checkout hashes the same as CI.
+    hash.update(fs.readFileSync(file, 'utf-8').replace(/\r\n/g, '\n'));
     hash.update('\0');
   }
   return hash.digest('hex');
