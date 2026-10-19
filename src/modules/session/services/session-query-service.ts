@@ -2,6 +2,8 @@ import type { DrizzleD1Database } from 'drizzle-orm/d1';
 import { eq, and, desc, count, sql } from 'drizzle-orm';
 import { likeEscaped } from '@/utils/sql-like';
 import { conversationSessions } from '@/db/schema';
+import { visibleSessionCondition } from './session-access-service';
+import type { ConversationVisibilityUser } from '@/services/conversation-visibility';
 import type { ConversationSession, SessionListQuery, SessionSearchQuery, SessionListResponse } from '../types/session-types';
 import { SessionOperationError, DEFAULT_PAGINATION } from '../types/session-types';
 import { createContextLogger } from '@/utils/logger';
@@ -26,11 +28,11 @@ export function transformDbSession(dbSession: Record<string, unknown>): Conversa
 export class SessionQueryService {
   constructor(private db: DrizzleD1Database) {}
 
-  async list(query: SessionListQuery): Promise<SessionListResponse> {
+  async list(query: SessionListQuery, user: ConversationVisibilityUser): Promise<SessionListResponse> {
     const page = query.page || DEFAULT_PAGINATION.page;
     const pageSize = Math.min(query.pageSize || DEFAULT_PAGINATION.pageSize, DEFAULT_PAGINATION.maxPageSize);
     const offset = (page - 1) * pageSize;
-    const conditions = [];
+    const conditions = [visibleSessionCondition(this.db, user)];
     if (query.conversationId) conditions.push(eq(conversationSessions.conversationId, query.conversationId));
     if (query.isActive !== undefined) conditions.push(eq(conversationSessions.isActive, query.isActive));
     if (query.sessionType) conditions.push(eq(conversationSessions.sessionType, query.sessionType));
@@ -51,9 +53,9 @@ export class SessionQueryService {
     }
   }
 
-  async search(query: SessionSearchQuery): Promise<ConversationSession[]> {
+  async search(query: SessionSearchQuery, user: ConversationVisibilityUser): Promise<ConversationSession[]> {
     const limit = Math.min(query.limit || 10, 50);
-    const conditions = [likeEscaped(conversationSessions.topic, query.query)];
+    const conditions = [visibleSessionCondition(this.db, user), likeEscaped(conversationSessions.topic, query.query)];
     if (query.conversationId) conditions.push(eq(conversationSessions.conversationId, query.conversationId));
     if (query.sessionType) conditions.push(eq(conversationSessions.sessionType, query.sessionType));
     try {
