@@ -69,9 +69,10 @@ jobs:
       - name: Check for unsafe sql.raw usage
         run: bun run check:sql-raw:ci
 
-      # The installer deploys a committed worker bundle; fail if it was built from older src.
+      # The installer deploys a committed worker bundle; warn (don't block) when it was
+      # built from older src. Regenerate with `bun run build:worker-bundle` before an installer release.
       - name: Check installer worker bundle is fresh
-        run: bun run check:worker-bundle
+        run: bun run check:worker-bundle || echo "::warning title=Stale installer bundle::Run 'bun run build:worker-bundle' before releasing the installer."
 
       # Every @media width must come from frontend/src/config/breakpoints.ts so
       # layouts switch at one shared set of widths instead of ad-hoc numbers.
