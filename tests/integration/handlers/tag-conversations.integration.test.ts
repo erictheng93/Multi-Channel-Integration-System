@@ -32,6 +32,7 @@ let currentPayload = {
 vi.mock('@/middleware/auth', () => ({
   jwtAuth: vi.fn((_c: any, next: any) => {
     _c.set('jwtPayload', { ...currentPayload });
+    _c.set('user', { id: currentPayload.userId, role: currentPayload.role, allowedTeamIds: [currentPayload.teamId] });
     return next();
   }),
   requireRole: vi.fn(() => (_c: any, next: any) => next()),
