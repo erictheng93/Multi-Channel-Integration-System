@@ -442,7 +442,6 @@ liffHandler.post('/welcome', async (c) => {
     if (await c.env.CACHE.get(dedupeKey)) {
       return c.json({ success: true, data: { message: '歡迎消息已發送' } });
     }
-    await c.env.CACHE.put(dedupeKey, '1', { expirationTtl: 300 });
 
     // Send welcome message via LINE API
     const channelAccessToken = c.env.LINE_CHANNEL_ACCESS_TOKEN;
@@ -475,6 +474,8 @@ liffHandler.post('/welcome', async (c) => {
       return c.json({ success: false, error: '發送歡迎消息失敗' }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
 
+    // Marker is written only after a successful push so failed attempts stay retryable.
+    await c.env.CACHE.put(dedupeKey, '1', { expirationTtl: 300 });
     log.info('Welcome message sent', { lineUserId, teamId });
 
     return c.json({
