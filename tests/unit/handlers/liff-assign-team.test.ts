@@ -34,6 +34,14 @@ vi.mock('@/services/websocket-broadcast-service', () => ({
   })
 }));
 
+vi.mock('@/modules/liff/handlers/line-id-token', () => ({
+  verifyLiffIdToken: vi.fn(async (t: unknown) => (t === 'valid' ? 'U1234567890' : typeof t === 'string' && t.startsWith('tok:') ? t.slice(4) : null))
+}));
+
+vi.mock('@/modules/liff/handlers/line-id-token', () => ({
+  verifyLiffIdToken: vi.fn(async (t: unknown) => (t === 'valid' ? 'U1234567890' : typeof t === 'string' && t.startsWith('tok:') ? t.slice(4) : null))
+}));
+
 // Mock uuid
 vi.mock('uuid', () => ({
   v4: vi.fn().mockReturnValue('mock-assignment-uuid')
@@ -106,6 +114,7 @@ import liffHandler from '@modules/liff/handlers/liff';
 function createMockEnv() {
   return {
     DB: {},
+    CACHE: { get: vi.fn().mockResolvedValue(null), put: vi.fn().mockResolvedValue(undefined) },
     LINE_CHANNEL_ACCESS_TOKEN: 'mock-line-token',
     SESSIONS: {
       get: vi.fn().mockResolvedValue(null),
@@ -145,7 +154,7 @@ describe('LIFF Assign-Team Endpoint', () => {
   // Parameter Validation Tests
   // ==========================================================================
   describe('Parameter Validation', () => {
-    it('should return 400 when lineUserId is missing', async () => {
+    it('should return 401 when idToken is missing or unverified', async () => {
       const env = createMockEnv();
       const app = createTestApp(env);
 
@@ -155,10 +164,9 @@ describe('LIFF Assign-Team Endpoint', () => {
         body: JSON.stringify({ teamId: 1 })
       });
 
-      expect(response.status).toBe(400);
+      expect(response.status).toBe(401);
       const data = await response.json();
       expect(data.success).toBe(false);
-      expect(data.error).toContain('lineUserId');
     });
 
     it('should return 400 when teamId is missing', async () => {
@@ -168,7 +176,7 @@ describe('LIFF Assign-Team Endpoint', () => {
       const response = await app.request('/api/liff/assign-team', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ lineUserId: 'U1234567890' })
+        body: JSON.stringify({ idToken: 'valid' })
       });
 
       expect(response.status).toBe(400);
@@ -187,7 +195,7 @@ describe('LIFF Assign-Team Endpoint', () => {
         body: JSON.stringify({})
       });
 
-      expect(response.status).toBe(400);
+      expect(response.status).toBe(401);
       const data = await response.json();
       expect(data.success).toBe(false);
     });
@@ -205,7 +213,7 @@ describe('LIFF Assign-Team Endpoint', () => {
       const response = await app.request('/api/liff/assign-team', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ lineUserId: 'U1234567890', teamId: 999 })
+        body: JSON.stringify({ idToken: 'valid', teamId: 999 })
       });
 
       expect(response.status).toBe(404);
@@ -232,7 +240,7 @@ describe('LIFF Assign-Team Endpoint', () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          lineUserId: 'U1234567890',
+          idToken: 'valid',
           teamId: 1,
           displayName: 'Test User'
         })
@@ -269,7 +277,7 @@ describe('LIFF Assign-Team Endpoint', () => {
       const response = await app.request('/api/liff/assign-team', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ lineUserId: 'U1234567890', teamId: 1 })
+        body: JSON.stringify({ idToken: 'valid', teamId: 1 })
       });
 
       expect(response.status).toBe(200);
@@ -292,7 +300,7 @@ describe('LIFF Assign-Team Endpoint', () => {
       const response = await app.request('/api/liff/assign-team', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ lineUserId: 'U1234567890', teamId: 1 })
+        body: JSON.stringify({ idToken: 'valid', teamId: 1 })
       });
 
       expect(response.status).toBe(200);
@@ -318,7 +326,7 @@ describe('LIFF Assign-Team Endpoint', () => {
           'Content-Type': 'application/json',
           'User-Agent': 'Mozilla/5.0 LIFF/2.0'
         },
-        body: JSON.stringify({ lineUserId: 'U1234567890', teamId: 1 })
+        body: JSON.stringify({ idToken: 'valid', teamId: 1 })
       });
 
       expect(response.status).toBe(200);
@@ -329,7 +337,7 @@ describe('LIFF Assign-Team Endpoint', () => {
       expect(metadata.timestamp).toBeDefined();
     });
 
-    it('should use provided timestamp if available', async () => {
+    it('should ignore a client-supplied timestamp', async () => {
       mockDbResults = {
         team: { id: 1, name: 'Test Team' },
         existingAssignment: null,
@@ -343,7 +351,7 @@ describe('LIFF Assign-Team Endpoint', () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          lineUserId: 'U1234567890',
+          idToken: 'valid',
           teamId: 1,
           timestamp: customTimestamp
         })
@@ -352,7 +360,7 @@ describe('LIFF Assign-Team Endpoint', () => {
       expect(response.status).toBe(200);
 
       const insertOp = dbOperations.inserts.find(i => i.table === 'customerTeamAssignments');
-      expect(insertOp?.values.assignedAt).toBe(customTimestamp);
+      expect(insertOp?.values.assignedAt).not.toBe(customTimestamp);
     });
   });
 
@@ -377,7 +385,7 @@ describe('LIFF Assign-Team Endpoint', () => {
       const response = await app.request('/api/liff/assign-team', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ lineUserId: 'U1234567890', teamId: 1 })
+        body: JSON.stringify({ idToken: 'valid', teamId: 1 })
       });
 
       expect(response.status).toBe(200);
@@ -402,7 +410,7 @@ describe('LIFF Assign-Team Endpoint', () => {
       await app.request('/api/liff/assign-team', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ lineUserId: 'U1234567890', teamId: 1 })
+        body: JSON.stringify({ idToken: 'valid', teamId: 1 })
       });
 
       // Should NOT update scan count for duplicate
@@ -427,7 +435,7 @@ describe('LIFF Assign-Team Endpoint', () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          lineUserId: 'Uabcdef123456',
+          idToken: 'tok:Uabcdef123456',
           teamId: 5,
           displayName: 'John Doe'
         })
@@ -468,7 +476,7 @@ describe('LIFF Assign-Team Endpoint', () => {
       await app.request('/api/liff/assign-team', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ lineUserId: 'U1234567890', teamId: 1 })
+        body: JSON.stringify({ idToken: 'valid', teamId: 1 })
       });
 
       expect(mockBroadcastConversationTransferred).toHaveBeenCalledWith(
@@ -493,7 +501,7 @@ describe('LIFF Assign-Team Endpoint', () => {
       const response = await app.request('/api/liff/assign-team', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ lineUserId: 'U1234567890', teamId: 1 })
+        body: JSON.stringify({ idToken: 'valid', teamId: 1 })
       });
 
       // Should still return success
@@ -515,7 +523,7 @@ describe('LIFF Assign-Team Endpoint', () => {
       await app.request('/api/liff/assign-team', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ lineUserId: 'U1234567890', teamId: 1 })
+        body: JSON.stringify({ idToken: 'valid', teamId: 1 })
       });
 
       // Should NOT broadcast for duplicate
@@ -556,7 +564,7 @@ describe('LIFF Assign-Team Endpoint', () => {
       const response = await app.request('/api/liff/assign-team', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ lineUserId: 'U1234567890', teamId: 1 })
+        body: JSON.stringify({ idToken: 'valid', teamId: 1 })
       });
 
       expect(response.status).toBe(500);
@@ -601,7 +609,7 @@ describe('LIFF Assign-Team Endpoint', () => {
           'User-Agent': 'LIFF/2.0 iPhone'
         },
         body: JSON.stringify({
-          lineUserId: 'U9876543210',
+          idToken: 'tok:U9876543210',
           teamId: 7,
           displayName: 'Jane Smith',
           timestamp: '2024-06-20T15:30:00Z'
@@ -623,7 +631,7 @@ describe('LIFF Assign-Team Endpoint', () => {
         teamId: 7,
         source: 'liff_qr',
         displayName: 'Jane Smith',
-        assignedAt: '2024-06-20T15:30:00Z'
+        assignedAt: expect.any(String)
       });
 
       // 3. Verify scan count update

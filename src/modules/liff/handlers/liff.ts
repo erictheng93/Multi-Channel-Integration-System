@@ -12,6 +12,7 @@ import { customers, conversations, teams } from '@/db/schema';
 import { v4 as uuidv4 } from 'uuid';
 import { createContextLogger } from '@/utils/logger';
 import { nowISO, nowMs } from '@/utils/timestamp'
+import { verifyLiffIdToken } from './line-id-token';
 
 const log = createContextLogger('LIFF');
 
@@ -121,10 +122,15 @@ liffHandler.get('/teams/:teamId', async (c) => {
 liffHandler.post('/assign-team', async (c) => {
   try {
     const body = await c.req.json();
-    const { lineUserId, teamId, displayName, timestamp: assignTimestamp } = body;
+    const { teamId, displayName } = body;
 
-    if (!lineUserId || !teamId) {
-      return c.json({ success: false, error: '缺少必要參數: lineUserId 或 teamId' }, HTTP_STATUS.BAD_REQUEST);
+    // Identity comes from the LINE-verified ID token, never from the body.
+    const lineUserId = await verifyLiffIdToken(body.idToken, c.env.LINE_LIFF_ID);
+    if (!lineUserId) {
+      return c.json({ success: false, error: 'LINE 身分驗證失敗' }, HTTP_STATUS.UNAUTHORIZED);
+    }
+    if (!teamId) {
+      return c.json({ success: false, error: '缺少必要參數: teamId' }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const db = createDbClient(c.env.DB);
@@ -173,7 +179,7 @@ liffHandler.post('/assign-team', async (c) => {
         teamId: teamId,
         source: 'liff_qr',
         displayName: displayName || null,
-        assignedAt: assignTimestamp || nowISO(),
+        assignedAt: nowISO(),
         metadata: JSON.stringify({
           userAgent: c.req.header('user-agent'),
           timestamp: nowISO(),
@@ -278,10 +284,14 @@ liffHandler.post('/assign-team', async (c) => {
 liffHandler.post('/welcome', async (c) => {
   try {
     const body = await c.req.json();
-    const { lineUserId, teamId } = body;
+    const { teamId } = body;
 
-    if (!lineUserId || !teamId) {
-      return c.json({ success: false, error: '缺少必要參數: lineUserId 或 teamId' }, HTTP_STATUS.BAD_REQUEST);
+    const lineUserId = await verifyLiffIdToken(body.idToken, c.env.LINE_LIFF_ID);
+    if (!lineUserId) {
+      return c.json({ success: false, error: 'LINE 身分驗證失敗' }, HTTP_STATUS.UNAUTHORIZED);
+    }
+    if (!teamId) {
+      return c.json({ success: false, error: '缺少必要參數: teamId' }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const db = createDbClient(c.env.DB);
@@ -428,6 +438,14 @@ liffHandler.post('/welcome', async (c) => {
         teamId
       });
     }
+
+    // Dedupe pushes: at most one welcome per verified user+team per 5 minutes.
+    // ponytail: KV get/put is not atomic; a tight race can send 2, not unbounded.
+    const dedupeKey = `liff:welcome:${lineUserId}:${teamId}`;
+    if (await c.env.CACHE.get(dedupeKey)) {
+      return c.json({ success: true, data: { message: '歡迎消息已發送' } });
+    }
+    await c.env.CACHE.put(dedupeKey, '1', { expirationTtl: 300 });
 
     // Send welcome message via LINE API
     const channelAccessToken = c.env.LINE_CHANNEL_ACCESS_TOKEN;
