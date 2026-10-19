@@ -144,7 +144,7 @@ export async function processFacebookMessage(env: Bindings, messaging: FacebookM
     );
 
     // Notify only once the first message is stored, so agents never see an alert for an empty conversation.
-    await notifyNewConversation(env, conversation, 'facebook', {
+    await notifyNewConversation(env, conversation, messageId, 'facebook', {
       messageContent: messageContent.substring(0, 100),
       customerDisplayName: user.displayName || 'Facebook User'
     });

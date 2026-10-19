@@ -1,7 +1,7 @@
 // src/modules/integrations/services/webhook-conversation-service.ts
 // Shared conversation find/create/update logic extracted from webhook.ts (Phase 4 refactoring)
 
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { createDbClient } from '@/db/drizzle-factory';
 import { conversations, messages } from '@/db/schema';
 import { convertConversation } from '@/utils/drizzle-converters';
@@ -14,24 +14,38 @@ import { DistributedLockService } from '@/services/distributed-lock-service';
 const log = createContextLogger('WebhookConversation');
 
 type Platform = 'line' | 'facebook';
-// `created` is set only on the object returned by the invocation that inserted the row.
-type WebhookConversation = ReturnType<typeof convertConversation> & { created?: boolean };
+type WebhookConversation = ReturnType<typeof convertConversation>;
 
 /**
- * Raise the "new conversation" notification. Call it after the first message is
- * persisted, and only with the result of findOrCreateConversation: it acts only
- * when that call inserted the conversation, so a concurrent request that merely
- * found it (or a retry) never notifies twice. Non-critical: failures are logged.
+ * Raise the "new conversation" notification. Call it right after saveMessage succeeded.
+ *
+ * "New" is derived from stored state, not from who created the row: the notification
+ * belongs to whichever request persisted the conversation's FIRST message (lowest rowid,
+ * i.e. insertion order, which D1 serializes). That makes it exactly-once across
+ * concurrent first messages, and a retry after a failed first save still notifies,
+ * because the retried message is then the first one stored.
+ * Only conversations with no message yet (lastMessageAt unset when it was loaded) pay
+ * for the lookup. Non-critical: failures are logged.
  */
 export async function notifyNewConversation(
   env: Bindings,
   conversation: WebhookConversation | undefined,
+  messageId: string,
   platform: Platform,
   opts?: { messageContent?: string; customerDisplayName?: string }
 ): Promise<void> {
-  if (!conversation?.created) return;
+  if (!conversation || conversation.lastMessageAt) return;
   const platformLabel = platform.toUpperCase();
   try {
+    const first = await createDbClient(env.DB)
+      .select({ id: messages.id })
+      .from(messages)
+      .where(eq(messages.conversationId, conversation.id))
+      .orderBy(sql`rowid`)
+      .limit(1)
+      .get();
+    if (first?.id !== messageId) return;
+
     const { triggerNewConversationNotification } = await import('@/utils/notification-trigger');
     await triggerNewConversationNotification(env, {
       conversationId: conversation.id,
@@ -188,7 +202,7 @@ export async function findOrCreateConversation(
             log.debug('Created new Facebook conversation', { conversationId });
           }
 
-          return { ...created, created: true };
+          return created;
         } catch (convError) {
           log.error(`${platformLabel} Webhook: Failed to create conversation`, {
             error: convError instanceof Error ? convError.message : 'Unknown error',
