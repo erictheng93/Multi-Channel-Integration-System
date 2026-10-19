@@ -263,6 +263,13 @@ describe('LIFF Welcome Endpoint - Conversation Sync', () => {
       expect((await post(createTestApp(env))).status).toBe(200);
       expect(env.CACHE.put).toHaveBeenCalledWith(expect.stringContaining('liff:welcome:'), '1', { expirationTtl: 300 });
     });
+
+    it('still returns success when the marker write fails after the push', async () => {
+      mockDbResults = { team: { id: 1, name: 'Test Team' }, customer: null, conversation: null };
+      const env = createMockEnv();
+      env.CACHE.put.mockRejectedValueOnce(new Error('KV down'));
+      expect((await post(createTestApp(env))).status).toBe(200);
+    });
   });
 
   // ==========================================================================

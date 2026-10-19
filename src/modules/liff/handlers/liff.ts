@@ -475,7 +475,14 @@ liffHandler.post('/welcome', async (c) => {
     }
 
     // Marker is written only after a successful push so failed attempts stay retryable.
-    await c.env.CACHE.put(dedupeKey, '1', { expirationTtl: 300 });
+    // The push is irreversible: a KV failure here must not turn into a 500 that invites a duplicate retry.
+    try {
+      await c.env.CACHE.put(dedupeKey, '1', { expirationTtl: 300 });
+    } catch (markerError) {
+      log.warn('Welcome dedupe marker write failed (push already sent)', {
+        error: markerError instanceof Error ? markerError.message : String(markerError)
+      });
+    }
     log.info('Welcome message sent', { lineUserId, teamId });
 
     return c.json({
