@@ -120,7 +120,7 @@ log.info(`Route system initialized successfully:
 // ==================== 模組化架構系統初始化 ====================
 log.info('Initializing Modular Architecture System');
 
-// Lazy init for modular system, P1 optimizations, and collaboration
+// Lazy init for modular system, and P1 optimizations
 import { createLazyInitMiddleware, errorHandlingMiddleware } from './core/module-initializer';
 
 registerProtectedAdminRoutes(app);
@@ -136,7 +136,7 @@ const securityConfig = getSecurityConfig(environment);
 // 添加中間件
 app.use('*', honoLogger());
 
-// Lazy init: modular system + collaboration (on first request)
+// Lazy init: modular system + P1 optimizations (on first request)
 app.use('*', createLazyInitMiddleware());
 
 // 全域錯誤處理中間件 (在其他 middleware 之後)

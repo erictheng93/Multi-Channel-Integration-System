@@ -28,7 +28,6 @@ docs/
 
 #### API Modules (`reference/api/modules/`)
 - [Analytics API](reference/api/modules/ANALYTICS_API.md) - Analytics and reporting
-- [Collaboration API](reference/api/modules/COLLABORATION_API.md) - Team collaboration
 - [WebSocket API](reference/api/modules/WEBSOCKET_API.md) - Real-time communication
 
 ### Specifications (`reference/specifications/`)

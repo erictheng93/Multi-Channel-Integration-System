@@ -69,4 +69,4 @@ Realtime 模組處理所有「即時事件」的語意：誰在打字？對話�
 
 ---
 
-**相關模組**：[websocket](./websocket.md)（傳輸層）、[collaboration](./collaboration.md)（協作狀態的持久化）
+**相關模組**：[websocket](./websocket.md)（傳輸層）

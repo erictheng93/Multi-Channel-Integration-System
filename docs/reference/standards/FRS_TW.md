@@ -21,7 +21,7 @@
 | 客戶與標籤 | customer, tags, auto-reply |
 | 認證與團隊 | auth, teams, agents, activities |
 | 渠道整合 | integrations, liff |
-| 即時通訊 | websocket, realtime, collaboration, notifications |
+| 即時通訊 | websocket, realtime, notifications |
 | 系統與營運 | system, monitoring, analytics, reports, queue, file-management |
 
 詳見 [`docs/modules/INDEX.md`](../../modules/INDEX.md)。

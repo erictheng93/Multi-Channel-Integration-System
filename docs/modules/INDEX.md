@@ -46,7 +46,6 @@
 |------|------------|
 | [websocket](./websocket.md) | WebSocket 連線基石 |
 | [realtime](./realtime.md) | 即時事件總匯（打字、指派、狀態） |
-| [collaboration](./collaboration.md) | 協作狀態與在場感 |
 | [notifications](./notifications.md) | 多渠道通知中心 |
 
 ## 六、系統與營運
@@ -85,8 +84,8 @@ claude/       ← Claude Code 開發指引
 
 | DO | 主要服務模組 |
 |----|--------------|
-| `ConversationRoom` | conversations, messaging, realtime, collaboration |
-| `UserConnection` | websocket, realtime, collaboration |
+| `ConversationRoom` | conversations, messaging, realtime |
+| `UserConnection` | websocket, realtime |
 | `MessageBroadcaster` | messaging, notifications, liff, queue |
 | `DelayedMessageBuffer` *(alias for `DelayedMessageScheduler`)* | delayed-message |
 | `LockCoordinator` *(在 services/ 不在 durable-objects/)* | 分散式鎖（跨模組） |

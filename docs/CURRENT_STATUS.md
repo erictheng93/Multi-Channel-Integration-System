@@ -44,7 +44,7 @@
 | 客戶與標籤 | `customer`, `tags`, `auto-reply` |
 | 認證與團隊 | `auth`, `teams`, `agents`, `session` |
 | 渠道整合 | `integrations`, `liff` |
-| 即時通訊 | `websocket`, `realtime`, `collaboration`, `notifications` |
+| 即時通訊 | `websocket`, `realtime`, `notifications` |
 | 系統與營運 | `system`, `monitoring`, `analytics`, `reports`, `activities`, `queue`, `file-management` |
 
 ### Durable Objects (9 個，位於 `src/durable-objects/` + `src/services/`)

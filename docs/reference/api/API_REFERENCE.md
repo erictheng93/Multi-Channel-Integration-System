@@ -152,7 +152,6 @@ Access token 過期前用 refresh token 換新；refresh 端點會**重新查 DB
 |------|------------|------|
 | WebSocket | `/api/websocket` | [websocket.md](../../modules/websocket.md) |
 | Realtime | `/api/realtime` | [realtime.md](../../modules/realtime.md) |
-| Collaboration | `/api/collaboration` | [collaboration.md](../../modules/collaboration.md) |
 | Notifications | `/api/notifications` | [notifications.md](../../modules/notifications.md) |
 
 ### 系統與營運

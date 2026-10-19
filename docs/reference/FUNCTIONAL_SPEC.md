@@ -40,7 +40,7 @@ The current role model is dual-layer:
 | Delayed messages | Implemented | Delayed Message, Queue |
 | Customer profiles and tags | Implemented | Customer, Tags |
 | Auto-reply rules, schedules, logs | Implemented with UI doc drift | Auto-Reply, Integrations |
-| Realtime collaboration and notifications | Implemented | WebSocket, Realtime, Collaboration, Notifications |
+| Realtime collaboration and notifications | Implemented | WebSocket, Realtime, Notifications |
 | Channel integrations and LIFF QR binding | Implemented | Integrations, LIFF, Teams |
 | Analytics and reports | Implemented with export caveats | Analytics, Reports |
 | Data management and conversation export | Implemented in UI for message export; documentation fragmented | Messaging, Data Management UI |
@@ -559,32 +559,9 @@ Primary API surface:
 | GET | `/api/realtime/stats` | Stats |
 | GET/POST | `/api/realtime/config` | Config |
 
-### 5.17 Collaboration
+### 5.17 Collaboration (removed)
 
-Collaboration tracks viewers, typing, and presence for shared conversation work.
-
-Capabilities:
-
-- Current viewers.
-- Typing indicators with user identity.
-- Join/leave events.
-- Online state with current conversation.
-- Room state snapshot.
-- Expired state cleanup.
-- WebSocket-backed or HTTP fallback behavior.
-
-Primary API surface:
-
-| Method | Path | Purpose |
-|---|---|---|
-| GET | `/api/collaboration/conversations/:id/state` | Room state |
-| GET | `/api/collaboration/conversations/:id/viewers` | Viewers |
-| POST | `/api/collaboration/conversations/:id/join` | Join room |
-| POST | `/api/collaboration/conversations/:id/leave` | Leave room |
-| POST | `/api/collaboration/typing` | Typing |
-| POST | `/api/collaboration/presence` | Presence |
-| GET | `/api/collaboration/stats` | Stats |
-| POST | `/api/collaboration/cleanup` | Cleanup |
+The `/api/collaboration/*` HTTP module (viewers, typing, presence) was removed in issue #107. It had no callers, and its WebSocket adapter reached `ConversationRoom` directly. The `ConversationRoom` Durable Object itself is unchanged.
 
 ### 5.18 Notifications
 

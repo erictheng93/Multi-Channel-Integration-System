@@ -4,7 +4,6 @@ import { Hono } from 'hono'
 import type { Bindings } from '@/types'
 import phase2AuthHandler from '@/modules/auth/handlers/phase2-auth-management'
 import fileProxyHandler from '@/modules/file-management/handlers/file-proxy'
-import collaborationMainHandler from '@/modules/collaboration/handlers/collaboration-main'
 import { routeGroups } from '@/core/route-config'
 import { validateAccessTokenPayload } from '@/middleware/auth'
 import { signJWT, generateSystemToken, generateMonitoringToken } from '@/utils/auth'
@@ -61,10 +60,10 @@ describe('security audit regressions', () => {
     expect(response.status).toBe(401)
   })
 
-  it('requires auth before returning collaboration conversation state', async () => {
-    const response = await appFor(collaborationMainHandler).request('/conversations/1/state')
+  it('does not mount the removed collaboration module (it bypassed the ConversationRoom no-op)', () => {
+    const moduleNames = routeGroups.flatMap(group => group.modules.map(module => module.name))
 
-    expect(response.status).toBe(401)
+    expect(moduleNames).not.toContain('collaboration')
   })
 
   it('does not publicly mount the modular-system admin router via route config', () => {

@@ -1,4 +1,4 @@
-// Lazy initialization for modular architecture, P1 optimizations, and collaboration
+// Lazy initialization for modular architecture, and P1 optimizations
 // Extracted from src/index.ts to reduce entry point size
 
 import type { Context, Next } from 'hono';
@@ -12,7 +12,7 @@ const log = createContextLogger('ModuleInitializer');
 // Module initialization state tracking
 let modularSystemInitialized = false;
 let modularSystemInitPromise: Promise<void> | null = null;
-let collaborationInitialized = false;
+let p1Initialized = false;
 
 /**
  * Lazy-initialize the modular architecture system (runs on first request)
@@ -58,10 +58,15 @@ async function initializeModularSystem(): Promise<void> {
  * Lazy-initialize P1 Optimizations (runs on first request)
  */
 async function initializeP1Optimizations(env: Bindings): Promise<void> {
+  if (p1Initialized) {
+    return;
+  }
+
   try {
     log.debug('Initializing P1 Optimizations');
     const { initializeP1Optimizations: init } = await import('../services/p1-optimizations');
     await init(env);
+    p1Initialized = true;
     log.debug('P1 Optimizations initialized successfully');
   } catch (error) {
     log.error('Failed to initialize P1 Optimizations', { error: error instanceof Error ? error.message : String(error) });
@@ -70,44 +75,7 @@ async function initializeP1Optimizations(env: Bindings): Promise<void> {
 }
 
 /**
- * Lazy-initialize Collaboration module (runs on first request)
- */
-async function initializeCollaboration(env: Bindings): Promise<void> {
-  if (collaborationInitialized) {
-    return;
-  }
-
-  try {
-    log.debug('Initializing Collaboration Module');
-
-    // Initialize P1 optimizations first
-    await initializeP1Optimizations(env);
-
-    const { Collaboration } = await import('@modules/collaboration');
-
-    const config = {
-      defaultProtocol: 'websocket' as const,
-      enableWebSocket: true,
-      typingExpirationSeconds: 5,
-      presenceExpirationSeconds: 300,
-      cleanupIntervalSeconds: 60,
-      maxViewersPerConversation: 50,
-      persistEvents: false
-    };
-
-    await Collaboration.initialize(env, config);
-
-    collaborationInitialized = true;
-
-    log.info('Collaboration Module initialized', { protocol: 'WebSocket', environment: env.ENVIRONMENT || 'unknown' });
-  } catch (error) {
-    log.error('Failed to initialize Collaboration Module', { error: error instanceof Error ? error.message : String(error) });
-    throw error;
-  }
-}
-
-/**
- * Creates middleware that lazy-initializes the modular system and collaboration
+ * Creates middleware that lazy-initializes the modular system and P1 optimizations
  * on the first request. Subsequent requests skip initialization.
  */
 export function createLazyInitMiddleware() {
@@ -120,14 +88,7 @@ export function createLazyInitMiddleware() {
       }
     }
 
-    // Initialize Collaboration module
-    if (!collaborationInitialized) {
-      try {
-        await initializeCollaboration(c.env);
-      } catch (error) {
-        log.error('Collaboration module initialization failed (continuing anyway)', { error: error instanceof Error ? error.message : String(error) });
-      }
-    }
+    await initializeP1Optimizations(c.env);
 
     await next();
   };

@@ -34,7 +34,6 @@ import phase2AuthHandler from '@modules/auth/handlers/phase2-auth-management';
 import alertConfigHandler from '@modules/system/handlers/alert-config-management';
 import dataOptimizationHandler from '@modules/system/handlers/data-optimization-main';
 import webhookRouter from '@modules/integrations/handlers/webhook';
-import collaborationMainHandler from '@modules/collaboration/handlers/collaboration-main';
 
 /**
  * Core API route group
@@ -295,15 +294,6 @@ const realtimeGroup = createRouteGroup({
       description: 'WebSocket Performance Monitoring',
       version: '1.0.0',
       dependencies: ['auth'], // websocket dependency removed as it's manually registered
-      healthCheck: '/health'
-    }),
-    createRouteModule({
-      name: 'collaboration',
-      path: '/collaboration',
-      handler: collaborationMainHandler,
-      description: '統一多客服協作模組 (WebSocket)',
-      version: '1.0.0',
-      dependencies: ['auth'],
       healthCheck: '/health'
     }),
     // Note: Realtime routes are registered directly in src/index.ts (lines 1143-1154)
