@@ -230,7 +230,7 @@ export async function processLineMessage(env: Bindings, event: LineEvent, defer:
     );
 
     // Notify only once the first message is stored, so agents never see an alert for an empty conversation.
-    await notifyNewConversation(env, conversation, 'line', {
+    await notifyNewConversation(env, conversation, messageId, 'line', {
       messageContent,
       customerDisplayName: user.displayName || 'LINE User'
     });

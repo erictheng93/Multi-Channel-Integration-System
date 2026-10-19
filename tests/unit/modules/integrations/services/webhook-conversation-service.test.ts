@@ -8,6 +8,7 @@ vi.mock('drizzle-orm', () => ({
   eq: (...args: any[]) => ({ type: 'eq', args }),
   and: (...args: any[]) => ({ type: 'and', args }),
   ne: (...args: any[]) => ({ type: 'ne', args }),
+  sql: (...args: any[]) => ({ type: 'sql', args }),
 }));
 
 // Mock drizzle-factory
@@ -21,6 +22,8 @@ function createSelectChain() {
   const chain: Record<string, any> = {};
   chain.from = vi.fn().mockReturnValue(chain);
   chain.where = vi.fn().mockReturnValue(chain);
+  chain.orderBy = vi.fn().mockReturnValue(chain);
+  chain.limit = vi.fn().mockReturnValue(chain);
   chain.get = mockGet;
   chain.all = mockAll;
   return chain;
@@ -267,64 +270,62 @@ describe('webhook-conversation-service', () => {
       mockGet.mockResolvedValueOnce(undefined);
       mockGet.mockResolvedValueOnce({ id: 'mock-uuid-1234', customerId: 1, status: 'active', assignedTeamId: null });
 
-      const result = await findOrCreateConversation(mockEnv, 1, 'facebook');
-
-      const { triggerNewConversationNotification } = await import('@/utils/notification-trigger');
-      expect(result?.created).toBe(true);
-      expect(triggerNewConversationNotification).not.toHaveBeenCalled();
-    });
-
-    it('notifyNewConversation notifies with the UUID for a newly created LINE conversation', async () => {
-      mockGet.mockResolvedValueOnce(undefined);
-      mockGet.mockResolvedValueOnce(undefined);
-      mockGet.mockResolvedValueOnce({ id: 'mock-uuid-1234', customerId: 1, status: 'active', assignedTeamId: 5 });
-      const opts = { customerDisplayName: 'Test User', messageContent: 'Hello', assignedTeamId: 5 };
-
-      const conversation = await findOrCreateConversation(mockEnv, 1, 'line', opts);
-      await notifyNewConversation(mockEnv, conversation, 'line', opts);
-
-      const { triggerNewConversationNotification } = await import('@/utils/notification-trigger');
-      expect(triggerNewConversationNotification).toHaveBeenCalledWith(
-        mockEnv,
-        expect.objectContaining({ conversationId: 'mock-uuid-1234', customerName: 'Test User', platform: 'LINE', messagePreview: 'Hello', teamId: 5 })
-      );
-    });
-
-    it('notifyNewConversation notifies for a newly created Facebook conversation', async () => {
-      mockGet.mockResolvedValueOnce(undefined);
-      mockGet.mockResolvedValueOnce(undefined);
-      mockGet.mockResolvedValueOnce({ id: 'mock-uuid-1234', customerId: 1, status: 'active', assignedTeamId: null });
-      const opts = { customerDisplayName: 'FB User', messageContent: 'Hi' };
-
-      const conversation = await findOrCreateConversation(mockEnv, 1, 'facebook', opts);
-      await notifyNewConversation(mockEnv, conversation, 'facebook', opts);
-
-      const { triggerNewConversationNotification } = await import('@/utils/notification-trigger');
-      expect(triggerNewConversationNotification).toHaveBeenCalledWith(
-        mockEnv,
-        expect.objectContaining({ conversationId: 'mock-uuid-1234', customerName: 'FB User', platform: 'FACEBOOK', messagePreview: 'Hi', teamId: undefined })
-      );
-    });
-
-    it('notifyNewConversation skips a conversation found by the fast path', async () => {
-      mockGet.mockResolvedValueOnce({ id: 'existing', customerId: 1, status: 'active', assignedTeamId: 5 });
-
-      const conversation = await findOrCreateConversation(mockEnv, 1, 'facebook');
-      await notifyNewConversation(mockEnv, conversation, 'facebook');
+      await findOrCreateConversation(mockEnv, 1, 'facebook');
 
       const { triggerNewConversationNotification } = await import('@/utils/notification-trigger');
       expect(triggerNewConversationNotification).not.toHaveBeenCalled();
     });
 
-    it('notifyNewConversation skips a conversation another request created while we waited for the lock', async () => {
-      mockGet.mockResolvedValueOnce(undefined); // fast path miss
-      mockGet.mockResolvedValueOnce({ id: 'raced', customerId: 1, status: 'active', assignedTeamId: 5 }); // found inside lock
+    const empty = { id: 'conv-1', assignedTeamId: 5, lastMessageAt: '' } as never;
 
-      const conversation = await findOrCreateConversation(mockEnv, 1, 'facebook');
-      await notifyNewConversation(mockEnv, conversation, 'facebook');
+    it('notifies when the saved message is the conversation first message', async () => {
+      mockGet.mockResolvedValueOnce({ id: 'm1' });
+
+      await notifyNewConversation(mockEnv, empty, 'm1', 'line', { customerDisplayName: 'Test User', messageContent: 'Hello' });
 
       const { triggerNewConversationNotification } = await import('@/utils/notification-trigger');
-      expect(conversation?.created).toBeUndefined();
+      expect(triggerNewConversationNotification).toHaveBeenCalledWith(
+        mockEnv,
+        expect.objectContaining({ conversationId: 'conv-1', customerName: 'Test User', platform: 'LINE', messagePreview: 'Hello', teamId: 5 })
+      );
+    });
+
+    it('notifies a Facebook conversation too', async () => {
+      mockGet.mockResolvedValueOnce({ id: 'm1' });
+
+      await notifyNewConversation(mockEnv, empty, 'm1', 'facebook', { customerDisplayName: 'FB User', messageContent: 'Hi' });
+
+      const { triggerNewConversationNotification } = await import('@/utils/notification-trigger');
+      expect(triggerNewConversationNotification).toHaveBeenCalledWith(
+        mockEnv,
+        expect.objectContaining({ platform: 'FACEBOOK', customerName: 'FB User' })
+      );
+    });
+
+    it('a retry after a failed first save still notifies: the retried message is then the first stored', async () => {
+      // The conversation row already existed (found, not created), but holds no message yet.
+      mockGet.mockResolvedValueOnce({ id: 'm-retry' });
+
+      await notifyNewConversation(mockEnv, empty, 'm-retry', 'facebook');
+
+      const { triggerNewConversationNotification } = await import('@/utils/notification-trigger');
+      expect(triggerNewConversationNotification).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not notify the concurrent loser: another request stored the first message', async () => {
+      mockGet.mockResolvedValueOnce({ id: 'm-winner' });
+
+      await notifyNewConversation(mockEnv, empty, 'm-loser', 'facebook');
+
+      const { triggerNewConversationNotification } = await import('@/utils/notification-trigger');
+      expect(triggerNewConversationNotification).not.toHaveBeenCalled();
+    });
+
+    it('skips the lookup entirely for a conversation that already had messages', async () => {
+      await notifyNewConversation(mockEnv, { id: 'conv-1', lastMessageAt: '2026-01-01T00:00:00Z' } as never, 'm1', 'line');
+
+      const { triggerNewConversationNotification } = await import('@/utils/notification-trigger');
+      expect(mockGet).not.toHaveBeenCalled();
       expect(triggerNewConversationNotification).not.toHaveBeenCalled();
     });
 
