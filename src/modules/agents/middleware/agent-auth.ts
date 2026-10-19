@@ -3,9 +3,8 @@
 
 import type { MiddlewareHandler } from 'hono';
 import type { Bindings } from '@/types';
-import { verifyJWT } from '@/utils/auth';
+import { validateAccessToken } from '@/middleware/auth';
 import { AgentPermissionError } from '@modules/agents/types/agent-types';
-import { nowISO } from '@/utils/timestamp'
 import { unauthorizedResponse, forbiddenResponse, internalErrorResponse } from '@/utils/api-response';
 import { createContextLogger } from '@/utils/logger';
 
@@ -25,27 +24,16 @@ export const agentAuthMiddleware = (): MiddlewareHandler<{ Bindings: Bindings }>
         return unauthorizedResponse(c, 'Missing token');
       }
 
-      const payload = await verifyJWT(token, c.env.JWT_SECRET);
-
-      if (!payload) {
-        return unauthorizedResponse(c, 'Invalid token');
-      }
-
-      // 設定使用者資訊到 context
-      c.set('user', {
-        id: payload.userId,
-        email: payload.email || '',
-        displayName: payload.displayName || payload.username || '',
-        role: payload.role,
-        primaryTeamId: payload.primaryTeamId,
-        teamName: payload.teamName,
-        isActive: true,
-        createdAt: nowISO(),
-        updatedAt: nowISO()
-      });
+      // Same checks as jwtAuth: type=access, jti revocation, token epoch, D1 reload (active, not deleted, DB role)
+      const { payload, user } = await validateAccessToken(c.env, token);
+      c.set('user', user);
+      c.set('jwtPayload', payload);
 
       return await next();
     } catch (error) {
+      if ((error as { status?: number }).status === 503) {
+        return internalErrorResponse(c, 'Service temporarily unavailable');
+      }
       return unauthorizedResponse(c, 'Authentication failed');
     }
   };

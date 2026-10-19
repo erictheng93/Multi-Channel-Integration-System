@@ -7,6 +7,12 @@ const mockGetFileStatistics = vi.fn();
 const mockGetFileDetails = vi.fn();
 const mockListFiles = vi.fn();
 
+vi.mock('@modules/file-management/middleware/file-auth', () => ({
+  // ownership/visibility is covered in tests/unit/security/file-serving-f05-f16-f18.test.ts
+  canDeleteFile: vi.fn(async () => 'ok'),
+  checkConversationBinding: vi.fn(async () => null)
+}));
+
 vi.mock('@/middleware/auth', () => ({
   jwtAuth: vi.fn(async (c: any, next: any) => {
     c.set('jwtPayload', { userId: 'agent-1', role: 'agent' });

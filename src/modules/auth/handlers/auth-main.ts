@@ -9,6 +9,7 @@ import {
   createUser,
   createSession
 } from '@/utils/auth';
+import { isIssuedBeforeTokenEpoch } from '@/utils/auth-jwt';
 import {
   AUTH_COOKIE_NAMES,
   jwtAuth,
@@ -20,7 +21,7 @@ import { ActivityCapture, ActivityService, ACTIVITY_ACTIONS, RESOURCE_TYPES } fr
 import { createDbClient } from '@/db/drizzle-factory';
 import { withD1Retry } from '@/utils/db-retry';
 import { agents, agentTeams } from '@/db/schema';
-import { eq, and, sql } from 'drizzle-orm';
+import { eq, and, sql, isNull } from 'drizzle-orm';
 import { createContextLogger } from '@/utils/logger';
 import { authContracts } from '@shared/api-contracts';
 import { contractJson } from '@/utils/api-contract-response';
@@ -225,6 +226,7 @@ interface RefreshTokenPayload {
   // F20: jti from F13's revocation/rotation infrastructure
   jti?: string;
   exp?: number;
+  iat?: number;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -637,6 +639,10 @@ authHandler.post('/logout', jwtAuth, async (c) => {
           const ttl = Math.max(1, payload.exp - now);
           await c.env.CACHE.put(`revoked:${payload.jti}`, '1', { expirationTtl: ttl });
         }
+        if (sessionUserId !== null && tokenUserId === sessionUserId && payload.jti) {
+          // F09: /refresh consumes refresh-active:{jti}; deleting it is what actually ends the session
+          await c.env.CACHE.delete(`refresh-active:${payload.jti}`);
+        }
       }
     } catch (err) {
       authLogger.warn('Failed to revoke refresh token on logout', {
@@ -935,6 +941,21 @@ authHandler.post('/refresh', authRateLimiter, async (c) => {
     // Tokens minted before F13/F20 carry no jti — they fall through
     // without rotation enforcement, matching pre-F13 behaviour. New
     // tokens minted by this commit gain the protection on next login.
+    // F09: honour logout/reuse blocklist and password-change epoch (fail closed on KV errors).
+    try {
+      if (
+        (payload.jti && await c.env.CACHE.get(`revoked:${payload.jti}`)) ||
+        await isIssuedBeforeTokenEpoch(c.env.CACHE, { userId: payload.userId, iat: payload.iat })
+      ) {
+        return unauthorizedResponse(c, 'Refresh token has been revoked');
+      }
+    } catch (err) {
+      authLogger.error('refresh revocation KV read failed; rejecting refresh', {
+        error: err instanceof Error ? err.message : String(err),
+      });
+      return unauthorizedResponse(c, 'Unable to validate refresh token');
+    }
+
     if (payload.jti) {
       const activeKey = `refresh-active:${payload.jti}`;
       let active: string | null = null;
@@ -1001,7 +1022,8 @@ authHandler.post('/refresh', authRateLimiter, async (c) => {
         .from(agents)
         .where(and(
           eq(agents.id, payload.userId),
-          eq(agents.isActive, true)
+          eq(agents.isActive, true),
+          isNull(agents.deletedAt)
         ))
         .get()
     );
@@ -1033,6 +1055,7 @@ authHandler.post('/refresh', authRateLimiter, async (c) => {
     // Re-query fresh team data from DB instead of carrying over stale JWT claims
     let freshAllowedTeamIds: number[] = payload.allowedTeamIds || [];
     let freshTeamRoles: Record<number, TeamRoleInTeam> = payload.teamRoles || {};
+    let freshPrimaryTeamId: number | undefined = payload.primaryTeamId;
 
     try {
       const teamMemberships = await drizzleDb
@@ -1044,7 +1067,9 @@ authHandler.post('/refresh', authRateLimiter, async (c) => {
         .from(agentTeams)
         .where(eq(agentTeams.agentId, String(payload.userId)));
 
-      if (teamMemberships.length > 0) {
+      {
+        // Always trust the DB result, including "no memberships" (removed from all teams).
+        freshPrimaryTeamId = teamMemberships.find(m => m.isPrimary)?.teamId;
         freshAllowedTeamIds = teamMemberships.map(m => m.teamId);
         freshTeamRoles = {};
         for (const m of teamMemberships) {
@@ -1064,7 +1089,8 @@ authHandler.post('/refresh', authRateLimiter, async (c) => {
       });
     }
 
-    const refreshedRole = payload.role === 'admin' ? 'admin' : 'agent';
+    // F08: role comes from the current D1 row, never from the old token claim
+    const refreshedRole = userRow.role === 'admin' ? 'admin' : 'agent';
 
     // 生成新的 access token
     // Phase 1 Optimization: Re-query multi-team data from DB on refresh
@@ -1075,7 +1101,7 @@ authHandler.post('/refresh', authRateLimiter, async (c) => {
         displayName: payload.displayName || userRow.displayName || userRow.displayName,
         email: payload.email || userRow.email,
         role: refreshedRole,
-        primaryTeamId: payload.primaryTeamId,
+        primaryTeamId: freshPrimaryTeamId,
         type: 'access',
         jti: crypto.randomUUID(),
         // Multi-team support - freshly queried from DB
@@ -1098,7 +1124,7 @@ authHandler.post('/refresh', authRateLimiter, async (c) => {
         displayName: payload.displayName || userRow.displayName || userRow.displayName,
         email: payload.email || userRow.email,
         role: refreshedRole,
-        primaryTeamId: payload.primaryTeamId,
+        primaryTeamId: freshPrimaryTeamId,
         type: 'refresh',
         jti: newRefreshJti,
         // Multi-team support - freshly queried from DB

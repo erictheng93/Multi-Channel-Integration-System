@@ -11,7 +11,7 @@ import { createDbClient } from '../db/drizzle-factory';
 import { notDeletedMessage } from '../db/message-conditions';
 import { messages, fileAttachments, conversations, customers, agents } from '../db/schema';
 import { nowISO, nowMs } from '@/utils/timestamp'
-import { getPublicFileUrl, getSignedDownloadUrl } from '@/utils/file-url';
+import { getPublicFileUrl, getSignedDownloadUrl, isInlineSafeContentType, normalizeStoredContentType } from '@/utils/file-url';
 import { resolveDisplaySenderName } from '@/utils/sender-name-repair';
 import { getRecallWindowSeconds } from '@/services/recall-window-config';
 import { scheduleOrDeliverNow } from '@modules/conversations/services/buffered-send-scheduler';
@@ -628,13 +628,19 @@ export class CustomerMessageDO extends DurableObject<Bindings> {
         });
 
         // Generate a unique filename
-        const fileExtension = file.name.split('.').pop();
+        const rawExtension = (file.name.split('.').pop() || '').toLowerCase();
+        const fileExtension = /^[a-z0-9]{1,8}$/.test(rawExtension) ? rawExtension : 'bin';
         const uniqueFilename = `${conversationId}/${crypto.randomUUID()}.${fileExtension}`;
+        // NV2: user content on the storage origin must be inert (no inline html/svg)
+        const storedType = normalizeStoredContentType(file.type);
 
         // Upload to R2
         await this.env.R2_BUCKET.put(uniqueFilename, file, {
           httpMetadata: {
-            contentType: file.type,
+            contentType: storedType,
+            contentDisposition: isInlineSafeContentType(storedType)
+              ? 'inline'
+              : `attachment; filename="download.${fileExtension}"`,
             cacheControl: 'public, max-age=604800'
           }
         });
@@ -649,7 +655,7 @@ export class CustomerMessageDO extends DurableObject<Bindings> {
           url: assetUrl,
           filename: file.name,
           size: file.size,
-          contentType: file.type
+          contentType: storedType
         });
       } catch (error) {
         console.error('[CustomerMessageDO] File upload error:', error);

@@ -74,13 +74,13 @@ export function useQRCodeDownloader(): UseQRCodeDownloaderReturn {
     const storageHostname = new URL(storageUrl).hostname
     const hasSignature = qrCodeUrl.includes('sig=') && qrCodeUrl.includes('exp=')
 
-    // 只對帶有簽名參數的 storage 連結走 r2-public 代理，避免 legacy
-    // unsigned storage URL 直接走 r2-public 時回 404。
+    // 只對帶有簽名參數的 storage 連結走 files/public 代理（簽名綁定該端點），
+    // 避免 legacy unsigned storage URL 直接走代理時回 404。
     if (qrCodeUrl.includes(storageHostname) && hasSignature) {
       // Convert Storage URL to Worker proxy URL
       return qrCodeUrl.replace(
         storageUrl,
-        `${import.meta.env.DEV ? window.location.origin : getBackendUrl()}/api/r2-public`
+        `${import.meta.env.DEV ? window.location.origin : getBackendUrl()}/api/files/public`
       )
     }
 

@@ -33,7 +33,19 @@ import {
   validateBatchSessionOperation,
   logSessionOperation
 } from '../middleware/index';
+import { requireBodyConversationAccess, requireSessionAccess, requireVisibilityUser } from '../middleware/session-visibility';
 import { nowISO } from '@/utils/timestamp'
+
+// Conversation-visibility guards (D1-backed `user`; see middleware/session-visibility.ts)
+const paramSession = requireSessionAccess(async (c) => c.req.param('sessionId'));
+const bodyConversation = (key: string) => requireBodyConversationAccess(async (c) => {
+  const body = await c.req.json().catch(() => ({})) as Record<string, unknown>;
+  return typeof body[key] === 'string' ? body[key] : undefined;
+});
+const bodySession = requireSessionAccess(async (c) => {
+  const body = await c.req.json().catch(() => ({})) as { currentSessionId?: unknown };
+  return typeof body.currentSessionId === 'string' ? body.currentSessionId : undefined;
+});
 
 // 創建會話路由實例
 const sessionHandler = new Hono<{ Bindings: Bindings }>();
@@ -159,12 +171,13 @@ sessionHandler.get(
   validateSessionSearchQuery,
   checkSessionAccess,
   checkSessionViewPermission,
+  requireVisibilityUser,
   async (c) => {
     try {
       const searchQuery = c.get('sessionSearchQuery');
       const sessionService = new SessionService(c.env.DB);
 
-      const sessions = await sessionService.search(searchQuery as SessionSearchQuery);
+      const sessions = await sessionService.search(searchQuery as SessionSearchQuery, c.get('user'));
 
       return c.json({
         success: true,
@@ -250,11 +263,12 @@ sessionHandler.get(
   '/topics/stats',
   checkSessionAccess,
   checkSessionViewPermission,
+  requireVisibilityUser,
   async (c) => {
     try {
       const conversation_id = c.req.query('conversation_id');
       const topicService = new TopicService(c.env.DB);
-      const topicStats = await topicService.getTopicStatistics(conversation_id);
+      const topicStats = await topicService.getTopicStatistics(conversation_id, c.get('user'));
 
       return c.json({
         success: true,
@@ -348,6 +362,7 @@ sessionHandler.post(
   checkSessionAccess,
   validateRateLimit,
   checkSessionCreatePermission,
+  bodyConversation('conversation_id'),
   logSessionOperation,
   async (c) => {
     try {
@@ -384,6 +399,7 @@ sessionHandler.post(
   validateRequestSize,
   checkSessionAccess,
   checkSessionViewPermission,
+  bodySession,
   async (c) => {
     try {
       const { currentSessionId, messageContent, senderType } = await c.req.json();
@@ -453,6 +469,7 @@ sessionHandler.post(
   checkSessionAccess,
   validateRateLimit,
   checkSessionUpdatePermission,
+  paramSession,
   logSessionOperation,
   async (c) => {
     try {
@@ -491,6 +508,7 @@ sessionHandler.post(
   checkSessionAccess,
   validateRateLimit,
   checkSessionUpdatePermission,
+  paramSession,
   logSessionOperation,
   async (c) => {
     try {
@@ -528,6 +546,7 @@ sessionHandler.get(
   validateSessionId,
   checkSessionAccess,
   checkSessionViewPermission,
+  paramSession,
   async (c) => {
     try {
       const sessionId = c.get('sessionId');
@@ -557,6 +576,7 @@ sessionHandler.get(
   validateSessionId,
   checkSessionAccess,
   checkSessionViewPermission,
+  paramSession,
   async (c) => {
     try {
       const sessionId = c.get('sessionId');
@@ -585,6 +605,7 @@ sessionHandler.put(
   validateRequestSize,
   checkSessionAccess,
   checkSessionUpdatePermission,
+  paramSession,
   logSessionOperation,
   async (c) => {
     try {
@@ -625,6 +646,7 @@ sessionHandler.get(
   validateSessionId,
   checkSessionAccess,
   checkSessionViewPermission,
+  paramSession,
   async (c) => {
     try {
       const sessionId = c.get('sessionId');
@@ -668,6 +690,7 @@ sessionHandler.put(
   validateRateLimit,
   validateUpdateSessionData,
   checkSessionUpdatePermission,
+  paramSession,
   logSessionOperation,
   async (c) => {
     try {
@@ -740,6 +763,7 @@ sessionHandler.post(
   validateRateLimit,
   validateCreateSessionData,
   checkSessionCreatePermission,
+  requireBodyConversationAccess(async (c) => (c.get('createSessionData') as { conversationId?: string } | undefined)?.conversationId),
   logSessionOperation,
   async (c) => {
     try {
@@ -769,12 +793,13 @@ sessionHandler.get(
   validateSessionListQuery,
   checkSessionAccess,
   checkSessionViewPermission,
+  requireVisibilityUser,
   async (c) => {
     try {
       const query = c.get('sessionQuery');
       const sessionService = new SessionService(c.env.DB);
 
-      const result = await sessionService.list(query);
+      const result = await sessionService.list(query, c.get('user'));
 
       return c.json({
         success: true,

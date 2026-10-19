@@ -10,6 +10,7 @@ import { conversations, messages, customers, agents, fileAttachments, customerNa
 import type { Bindings, JWTPayload } from '@/types';
 import { PermissionService } from '@/services/permission-service';
 import { jwtAuth } from '@/middleware/auth';
+import { canConversationBeAccessedBy } from '@/services/conversation-access';
 import { WebSocketBroadcastService } from '@/services/websocket-broadcast-service';
 import { MessageRequestService, MessageService } from '@modules/conversations/services/message-service';
 import { upsertReadState } from '@modules/conversations/services/conversation-read-state';
@@ -18,7 +19,7 @@ import { ActivityService, ACTIVITY_ACTIONS, RESOURCE_TYPES } from '@modules/acti
 import { errorResponse } from '@/utils/api-response';
 import { createContextLogger } from '@/utils/logger';
 import { nowISO, nowMs } from '@/utils/timestamp';
-import {
+import { normalizeStoredContentType,
   getSignedFileUrl,
   getSignedDownloadUrl,
   PERSISTENT_ATTACHMENT_URL_TTL_SECONDS
@@ -215,9 +216,11 @@ conversationMessagesHandler.post('/:id/attachments', jwtAuth, async (c) => {
     // upload a file into any conversation's R2 prefix and insert a
     // file_attachments row, enabling cross-team data injection when
     // combined with a message-send IDOR.
-    const isAdmin = userPayload.role === 'admin';
+    const dbUser = c.get('user');
+    if (!dbUser) return c.json({ success: false, error: 'Unauthorized' }, HTTP_STATUS.UNAUTHORIZED);
+    const isAdmin = dbUser.role === 'admin';
     const assignedTeamId = conversation.assignedTeamId;
-    const allowedTeams = userPayload.allowedTeamIds ?? [];
+    const allowedTeams = dbUser.allowedTeamIds ?? [];
     const teamAllowed =
       isAdmin ||
       assignedTeamId === null ||
@@ -263,7 +266,7 @@ conversationMessagesHandler.post('/:id/attachments', jwtAuth, async (c) => {
       const arrayBuffer = await file.arrayBuffer();
       await c.env.R2_BUCKET.put(r2Key, arrayBuffer, {
         httpMetadata: {
-          contentType: file.type,
+          contentType: normalizeStoredContentType(file.type),
           cacheControl: 'public, max-age=604800'
         }
       });
@@ -287,7 +290,7 @@ conversationMessagesHandler.post('/:id/attachments', jwtAuth, async (c) => {
       messageId: null, // Will be updated when message is sent
       conversationId, // Associate with conversation for tracking
       filename: file.name,
-      mimeType: file.type,
+      mimeType: normalizeStoredContentType(file.type),
       fileSize: file.size,
       fileUrl,
       r2Key,
@@ -302,7 +305,7 @@ conversationMessagesHandler.post('/:id/attachments', jwtAuth, async (c) => {
         attachmentId,
         url: fileUrl,
         filename: file.name,
-        mimeType: file.type,
+        mimeType: normalizeStoredContentType(file.type),
         size: file.size
       }
     } satisfies ContractResponse<typeof conversationMessageContracts.uploadAttachment>);
@@ -604,6 +607,17 @@ conversationMessagesHandler.put('/:id/messages/:messageId/read', jwtAuth, async 
     const userPayload = c.get('jwtPayload') as JWTPayload;
     const agentId = userPayload.userId.toString();
     const db = createDbClient(c.env.DB);
+
+    const dbUser = c.get('user');
+    if (!dbUser) return c.json({ success: false, error: 'Unauthorized' }, HTTP_STATUS.UNAUTHORIZED);
+    const access = await canConversationBeAccessedBy(
+      c.env,
+      { userId: dbUser.id, role: dbUser.role, allowedTeamIds: dbUser.allowedTeamIds },
+      conversationId
+    );
+    if (!access.allowed) {
+      return c.json({ success: false, error: 'Message not found' }, HTTP_STATUS.NOT_FOUND);
+    }
 
     const existing = await db
       .select({ id: messages.id, readBy: messages.readBy })

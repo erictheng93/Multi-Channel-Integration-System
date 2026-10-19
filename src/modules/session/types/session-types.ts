@@ -1,3 +1,4 @@
+import type { ConversationVisibilityUser } from '@/services/conversation-visibility';
 // Session 模組類型定義
 // 對話會話管理相關的所有類型和介面
 
@@ -265,8 +266,8 @@ export interface SessionServiceInterface {
   delete(sessionId: string): Promise<boolean>;
 
   // 列表和搜尋
-  list(query: SessionListQuery): Promise<SessionListResponse>;
-  search(query: SessionSearchQuery): Promise<ConversationSession[]>;
+  list(query: SessionListQuery, user: ConversationVisibilityUser): Promise<SessionListResponse>;
+  search(query: SessionSearchQuery, user: ConversationVisibilityUser): Promise<ConversationSession[]>;
 
   // 會話管理
   getOrCreate(conversationId: string, messageContent: string, senderType: 'customer' | 'agent' | 'system'): Promise<ConversationSession>;

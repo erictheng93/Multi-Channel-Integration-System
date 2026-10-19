@@ -9,7 +9,9 @@ const log = createContextLogger('FeedbackMain')
 import type { Bindings } from '@/types';
 import { createDbClient } from '@/db/drizzle-factory';
 import { customerFeedback, conversations, customers, agents, customerNameSql } from '@/db/schema';
-import { eq, desc, sql, gte } from 'drizzle-orm';
+import { eq, desc, sql, gte, and } from 'drizzle-orm';
+import { getConversationVisibilityCondition } from '@/services/conversation-visibility';
+import { canConversationBeAccessedBy } from '@/services/conversation-access';
 import { jwtAuth } from '@/middleware/auth';
 import { globalErrorHandler } from '@/core/error-handler';
 import { nowISO } from '@/utils/timestamp'
@@ -40,18 +42,25 @@ feedbackHandler.post('/', jwtAuth, async (c) => {
       }, 400);
     }
 
-    // 验证对话是否存在
-    const conversation = await db
-      .select()
-      .from(conversations)
-      .where(eq(conversations.id, body.conversationId))
-      .get();
+    // 验证对话存在且调用者可见 (团队可见性规则)
+    const user = c.get('user');
+    const access = await canConversationBeAccessedBy(
+      c.env,
+      { userId: user.id, role: user.role, allowedTeamIds: user.allowedTeamIds ?? [] },
+      String(body.conversationId)
+    );
 
-    if (!conversation) {
+    if (!access.conversation) {
       return contractJson(c, feedbackContracts.submit, {
         success: false,
         error: 'Conversation not found'
       }, 404);
+    }
+    if (!access.allowed) {
+      return contractJson(c, feedbackContracts.submit, {
+        success: false,
+        error: 'Access to this conversation is denied'
+      }, 403);
     }
 
     // 创建反馈记录
@@ -62,8 +71,9 @@ feedbackHandler.post('/', jwtAuth, async (c) => {
     await db.insert(customerFeedback).values({
       id: feedbackId,
       conversationId: body.conversationId,
-      customerId: body.customerId,
-      agentId: body.agentId || null,
+      // Derived server-side: never trust body customerId; only admins may attribute to another agent
+      customerId: Number(access.conversation.customerId),
+      agentId: user.role === 'admin' ? (body.agentId || null) : String(user.id),
       rating: body.rating,
       comment: body.comment || null,
       feedbackType: body.feedbackType || 'satisfaction',
@@ -95,6 +105,8 @@ feedbackHandler.get('/stats', jwtAuth, async (c) => {
     const db = createDbClient(c.env.DB);
     const timeRange = c.req.query('timeRange') || '30d'; // '24h', '7d', '30d', 'all'
 
+    const visibility = getConversationVisibilityCondition(c.get('user'));
+
     // 计算时间范围
     let timeFilter = null;
     const now = new Date();
@@ -121,11 +133,9 @@ feedbackHandler.get('/stats', jwtAuth, async (c) => {
         rating4Count: sql<number>`SUM(CASE WHEN rating = 4 THEN 1 ELSE 0 END)`.as('rating4_count'),
         rating5Count: sql<number>`SUM(CASE WHEN rating = 5 THEN 1 ELSE 0 END)`.as('rating5_count'),
       })
-      .from(customerFeedback);
-
-    if (timeFilter) {
-      statsQuery.where(timeFilter);
-    }
+      .from(customerFeedback)
+      .innerJoin(conversations, eq(customerFeedback.conversationId, conversations.id))
+      .where(timeFilter ? and(visibility, timeFilter) : visibility);
 
     const stats = await statsQuery.get();
 
@@ -182,6 +192,18 @@ feedbackHandler.get('/conversation/:conversationId', jwtAuth, async (c) => {
   try {
     const db = createDbClient(c.env.DB);
     const conversationId = c.req.param('conversationId')!;
+    const user = c.get('user');
+    const access = await canConversationBeAccessedBy(
+      c.env,
+      { userId: user.id, role: user.role, allowedTeamIds: user.allowedTeamIds ?? [] },
+      conversationId
+    );
+    if (!access.conversation) {
+      return contractJson(c, feedbackContracts.byConversation, { success: false, error: 'Conversation not found' }, 404);
+    }
+    if (!access.allowed) {
+      return contractJson(c, feedbackContracts.byConversation, { success: false, error: 'Access to this conversation is denied' }, 403);
+    }
 
     const feedback = await db
       .select({
@@ -224,6 +246,7 @@ feedbackHandler.get('/', jwtAuth, async (c) => {
     const page = parseInt(c.req.query('page') || '1');
     const pageSize = parseInt(c.req.query('pageSize') || '20');
     const offset = (page - 1) * pageSize;
+    const visibility = getConversationVisibilityCondition(c.get('user'));
 
     const feedbackList = await db
       .select({
@@ -241,6 +264,8 @@ feedbackHandler.get('/', jwtAuth, async (c) => {
       .from(customerFeedback)
       .innerJoin(customers, eq(customerFeedback.customerId, customers.id))
       .leftJoin(agents, eq(customerFeedback.agentId, agents.id))
+      .innerJoin(conversations, eq(customerFeedback.conversationId, conversations.id))
+      .where(visibility)
       .orderBy(desc(customerFeedback.createdAt))
       .limit(pageSize)
       .offset(offset)
@@ -250,6 +275,8 @@ feedbackHandler.get('/', jwtAuth, async (c) => {
     const totalResult = await db
       .select({ count: sql<number>`COUNT(*)` })
       .from(customerFeedback)
+      .innerJoin(conversations, eq(customerFeedback.conversationId, conversations.id))
+      .where(visibility)
       .get();
 
     const total = totalResult?.count || 0;

@@ -21,7 +21,6 @@ export const ALLOWED_MIME_TYPES = {
     'image/png',
     'image/gif',
     'image/webp',
-    'image/svg+xml',
     'image/bmp',
     'image/tiff'
   ],

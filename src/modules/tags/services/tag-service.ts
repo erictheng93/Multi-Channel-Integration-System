@@ -14,6 +14,7 @@ import {
 import { tagContracts, type TagConversation, type TagCustomer } from '@shared/api-contracts';
 import { contractJson } from '@/utils/api-contract-response';
 import { tags } from '@/db/schema';
+import type { DbUser } from '@/types';
 import { createDbClient } from '@/db/drizzle-factory';
 import { sql, eq, and, inArray } from 'drizzle-orm';
 import { nowISO } from '@/utils/timestamp'
@@ -154,6 +155,23 @@ const extractActivityMeta = (c: Context<{ Bindings: Bindings }>) => {
     userAgent: c.req.header('User-Agent')
   };
 };
+
+// Security: tags are global, so listings reached through a tag must apply the
+// same scopes as GET /api/customers (source_team_id) and conversations.
+type ScopeColumn = 'c.source_team_id' | 'cust.source_team_id' | 'conv.assigned_team_id'
+
+function teamScope(c: Context<{ Bindings: Bindings }>, col: ScopeColumn) {
+  const user = c.get('user') as DbUser
+  if (user.role === 'admin') return sql`1 = 1`
+  const teams = JSON.stringify([...new Set((user.allowedTeamIds ?? []).filter(Number.isFinite))])
+  // Safe: col is typed as a fixed union of column literals above; never caller input.
+  // eslint-disable-next-line no-unsafe-sql-raw
+  const column = sql.raw(col)
+  return sql`(${column} IS NULL OR ${column} IN (SELECT value FROM json_each(${teams})))`
+}
+
+const customerScope = (c: Context<{ Bindings: Bindings }>, col: 'c.source_team_id' | 'cust.source_team_id') => teamScope(c, col)
+const conversationScope = (c: Context<{ Bindings: Bindings }>, col: 'conv.assigned_team_id') => teamScope(c, col)
 
 export const tagHandler = {
   // Get tag list (simplified model: all tags visible to all agents)
@@ -668,6 +686,7 @@ export const tagHandler = {
           FROM customer_tags ct
           JOIN customers c ON ct.customer_id = c.id
           WHERE ct.tag_id = ${tagId}
+            AND ${customerScope(c, 'c.source_team_id')}
         `),
         drizzleDb.get(sql`
           SELECT
@@ -680,6 +699,8 @@ export const tagHandler = {
           WHERE ct.tag_id = ${tagId}
             AND c.deleted_at IS NULL
             AND conv.deleted_at IS NULL
+            AND ${customerScope(c, 'c.source_team_id')}
+            AND ${conversationScope(c, 'conv.assigned_team_id')}
         `),
         drizzleDb.all(sql`
           SELECT
@@ -868,6 +889,7 @@ export const tagHandler = {
         JOIN customers c ON ct.customer_id = c.id
         WHERE ct.tag_id = ${tagId}
           AND c.deleted_at IS NULL
+          AND ${customerScope(c, 'c.source_team_id')}
         ORDER BY ct.assigned_at DESC
         LIMIT ${limit} OFFSET ${offset}
       `);
@@ -879,6 +901,7 @@ export const tagHandler = {
         JOIN customers c ON ct.customer_id = c.id
         WHERE ct.tag_id = ${tagId}
           AND c.deleted_at IS NULL
+          AND ${customerScope(c, 'c.source_team_id')}
       `);
 
       const total = (countResult as CountRow | null)?.total || 0;
@@ -941,6 +964,8 @@ export const tagHandler = {
         WHERE ct.tag_id = ${tagId}
           AND conv.deleted_at IS NULL
           AND cust.deleted_at IS NULL
+          AND ${customerScope(c, 'cust.source_team_id')}
+          AND ${conversationScope(c, 'conv.assigned_team_id')}
         ORDER BY ct.assigned_at DESC
         LIMIT ${limit} OFFSET ${offset}
       `);
@@ -954,6 +979,8 @@ export const tagHandler = {
         WHERE ct.tag_id = ${tagId}
           AND conv.deleted_at IS NULL
           AND cust.deleted_at IS NULL
+          AND ${customerScope(c, 'cust.source_team_id')}
+          AND ${conversationScope(c, 'conv.assigned_team_id')}
       `);
 
       const total = (countResult as CountRow | null)?.total || 0;

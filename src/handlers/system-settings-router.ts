@@ -3,7 +3,7 @@
 
 import { Hono } from 'hono';
 import type { Bindings } from '../types';
-import { jwtAuth } from '../middleware/auth';
+import { jwtAuth, requireAdmin } from '../middleware/auth';
 import {
   getSystemInfo,
   getSettings,
@@ -19,8 +19,8 @@ const router = new Hono<{ Bindings: Bindings }>();
 // Authenticated system management routes
 router.get('/info', jwtAuth, getSystemInfo);
 router.get('/settings', jwtAuth, getSettings);
-router.put('/settings', jwtAuth, updateSettings);
-router.post('/integrations/:platform/test', jwtAuth, testIntegration);
+router.put('/settings', jwtAuth, requireAdmin(), updateSettings);
+router.post('/integrations/:platform/test', jwtAuth, requireAdmin(), testIntegration);
 router.get('/metrics', jwtAuth, getMetrics);
 
 // Public system endpoints (no auth)

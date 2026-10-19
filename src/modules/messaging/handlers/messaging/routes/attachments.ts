@@ -9,9 +9,10 @@ const log = createContextLogger('MsgAttachments')
 import { and, eq } from 'drizzle-orm';
 import { notDeletedMessage } from '@/db/message-conditions';
 import { createDbClient } from '@/db/drizzle-factory';
-import type { Bindings, JWTPayload } from '@/types';
+import type { Bindings } from '@/types';
 import { messages, fileAttachments } from '@/db/schema';
 import { jwtAuth } from '@/middleware/auth';
+import { canConversationBeAccessedBy } from '@/services/conversation-access';
 import {
   successResponse,
   errorResponse,
@@ -20,7 +21,7 @@ import {
   forbiddenResponse
 } from '@/utils/api-response';
 import { nowISO, nowMs } from '@/utils/timestamp';
-import { getSignedFileUrl, PERSISTENT_ATTACHMENT_URL_TTL_SECONDS } from '@/utils/file-url';
+import { normalizeStoredContentType, getSignedFileUrl, PERSISTENT_ATTACHMENT_URL_TTL_SECONDS } from '@/utils/file-url';
 
 const attachmentRoutes = new Hono<{ Bindings: Bindings }>();
 
@@ -62,6 +63,16 @@ attachmentRoutes.get('/:id/attachments', jwtAuth, async (c) => {
       return notFoundResponse(c, 'Message not found');
     }
 
+    const user = c.get('user');
+    const access = await canConversationBeAccessedBy(
+      c.env,
+      { userId: user.id, role: user.role, allowedTeamIds: user.allowedTeamIds },
+      message.conversationId
+    );
+    if (!access.allowed) {
+      return notFoundResponse(c, 'Message not found');
+    }
+
     // 獲取附件列表
     const attachmentList = await db
       .select({
@@ -97,7 +108,6 @@ attachmentRoutes.get('/:id/attachments', jwtAuth, async (c) => {
 attachmentRoutes.post('/:id/attachments', jwtAuth, async (c) => {
   try {
     const messageId = c.req.param('id');
-    const userPayload = c.get('jwtPayload') as JWTPayload;
 
     if (!messageId) {
       return badRequestResponse(c, 'Message ID is required');
@@ -121,10 +131,21 @@ attachmentRoutes.post('/:id/attachments', jwtAuth, async (c) => {
       return notFoundResponse(c, 'Message not found');
     }
 
+    const user = c.get('user');
+    const access = await canConversationBeAccessedBy(
+      c.env,
+      { userId: user.id, role: user.role, allowedTeamIds: user.allowedTeamIds },
+      message.conversationId
+    );
+    if (!access.allowed) {
+      return notFoundResponse(c, 'Message not found');
+    }
+
     // 檢查權限：只有發送者或管理員可以添加附件
+    // Customer/system messages: any agent who can see the conversation (checked above).
     if (message.senderType === 'agent' &&
-        message.agentSenderId !== userPayload.userId.toString() &&
-        userPayload.role !== 'admin') {
+        message.agentSenderId !== String(user.id) &&
+        user.role !== 'admin') {
       return forbiddenResponse(c, 'Only the sender or admin can add attachments');
     }
 
@@ -157,7 +178,7 @@ attachmentRoutes.post('/:id/attachments', jwtAuth, async (c) => {
       const arrayBuffer = await file.arrayBuffer();
       await c.env.R2_BUCKET.put(r2Key, arrayBuffer, {
         httpMetadata: {
-          contentType: file.type,
+          contentType: normalizeStoredContentType(file.type),
           cacheControl: 'public, max-age=604800'
         }
       });
@@ -176,7 +197,7 @@ attachmentRoutes.post('/:id/attachments', jwtAuth, async (c) => {
       id: attachmentId,
       messageId,
       filename: file.name,
-      mimeType: file.type,
+      mimeType: normalizeStoredContentType(file.type),
       fileSize: file.size,
       fileUrl,
       r2Key,
@@ -187,7 +208,7 @@ attachmentRoutes.post('/:id/attachments', jwtAuth, async (c) => {
       attachmentId,
       messageId,
       filename: file.name,
-      mimeType: file.type,
+      mimeType: normalizeStoredContentType(file.type),
       fileSize: file.size,
       url: fileUrl,
       createdAt: nowISO()

@@ -55,6 +55,7 @@ describe('SafeHtmlRenderer', () => {
     it('should render allowed div tags', async () => {
       wrapper = mount(SafeHtmlRenderer, {
         props: {
+          rich: true,
           html: '<div class="container">Content</div>'
         }
       })
@@ -243,6 +244,7 @@ describe('SafeHtmlRenderer', () => {
     it('should strip onerror attribute (XSS prevention)', async () => {
       wrapper = mount(SafeHtmlRenderer, {
         props: {
+          rich: true,
           html: '<img src="https://example.com/img.png" onerror="console.log(1)">'
         }
       })
@@ -257,6 +259,7 @@ describe('SafeHtmlRenderer', () => {
     it('should strip onload attribute (XSS prevention)', async () => {
       wrapper = mount(SafeHtmlRenderer, {
         props: {
+          rich: true,
           html: '<img src="https://example.com/img.png" onload="console.log(1)">'
         }
       })

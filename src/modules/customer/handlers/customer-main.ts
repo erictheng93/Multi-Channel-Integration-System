@@ -1,7 +1,7 @@
 // 客戶管理處理器 - 主要實現
 import { Hono } from 'hono';
 import { HTTP_STATUS } from '@/constants/http-status';
-import type { Bindings, JWTPayload } from '@/types';
+import type { Bindings, DbUser, JWTPayload } from '@/types';
 import { handleApiError } from '@/utils/api-response';
 import { customerTagsHandler } from './customer-tags';
 import { jwtAuth } from '@/middleware/auth';
@@ -17,7 +17,7 @@ import { ActivityCapture, ACTIVITY_ACTIONS, RESOURCE_TYPES } from '@modules/acti
 // (or null, treated as a shared pool consistent with conversations).
 function canAccessCustomer(
   customer: { sourceTeamId?: number | null | undefined },
-  user: JWTPayload
+  user: Pick<JWTPayload, 'role' | 'allowedTeamIds'>
 ): boolean {
   if (user.role === 'admin') return true;
   const sourceTeamId = customer.sourceTeamId;
@@ -37,6 +37,19 @@ const customerHandler = new Hono<{ Bindings: Bindings }>();
 
 // 應用 JWT 認證中間件到所有端點
 customerHandler.use('/*', jwtAuth);
+
+// F20: every method on /:customerId/tags (read, add, remove, replace) must
+// respect the same team scope as GET /:customerId. 404 hides foreign customers.
+customerHandler.use('/:customerId/tags', requireIntId('customerId'), async (c, next) => {
+  const customerId = getValidatedParam<number>(c, 'customerId');
+  const user = c.get('user') as DbUser;
+  const { getCustomerById } = await import('@/utils/database');
+  const customer = await getCustomerById(c.env.DB, customerId);
+  if (customer && !canAccessCustomer(customer, user)) {
+    return c.json({ success: false, error: 'Customer not found', timestamp: nowISO() }, HTTP_STATUS.NOT_FOUND);
+  }
+  return next();
+});
 
 // ========================================
 // 客戶標籤管理端點（需要在其他路由之前定義）

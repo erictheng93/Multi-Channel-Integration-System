@@ -17,6 +17,8 @@ import * as esbuild from 'esbuild';
 import * as fs from 'fs';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
+import { execFileSync } from 'child_process';
+import { computeWorkerSourceHash } from './worker-bundle-source-hash';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -201,6 +203,11 @@ function escapeForTemplateLiteral(code: string): string {
  */
 function generateOutputFile(escapedCode: string, originalSize: number): string {
   const timestamp = new Date().toISOString();
+  let sourceCommit = 'unknown';
+  try {
+    sourceCommit = execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf-8' }).trim();
+  } catch { /* not a git checkout; sourceHash still proves provenance */ }
+  const sourceHash = computeWorkerSourceHash();
 
   return `/**
  * Auto-generated Worker Bundle
@@ -233,6 +240,9 @@ export const BUNDLE_METADATA = {
   originalSizeBytes: ${originalSize},
   originalSizeKB: ${(originalSize / 1024).toFixed(2)},
   version: '1.0.0',
+  // HEAD at build time (the tree may have been dirty); sourceHash is what check-worker-bundle.ts verifies.
+  sourceCommit: '${sourceCommit}',
+  sourceHash: '${sourceHash}',
 } as const;
 
 /**

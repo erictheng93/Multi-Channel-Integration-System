@@ -117,6 +117,7 @@
     "check:scoped-todos": "bun scripts/check-scoped-todos.ts",
     "check:type-debt": "bun scripts/check-type-debt.ts",
     "precheck:all": "bun run check:routes && bun run validate:all",
+    "check:worker-bundle": "bun scripts/check-worker-bundle.ts",
     "build:worker-bundle": "bun scripts/build-worker-bundle.ts",
     "build:frontend-bundle": "bun scripts/build-frontend-bundle.ts",
     "build:installer-bundles": "bun run build:worker-bundle && bun run build:frontend-bundle"

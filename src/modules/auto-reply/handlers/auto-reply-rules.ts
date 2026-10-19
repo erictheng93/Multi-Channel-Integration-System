@@ -3,7 +3,7 @@
 
 import { Hono } from 'hono';
 import type { Bindings } from '@/types';
-import { jwtAuth } from '@/middleware/auth';
+import { jwtAuth, requireAdmin } from '@/middleware/auth';
 import { createDbClient } from '@/db/drizzle-factory';
 import { autoReplyRules, autoReplyConditions, autoReplyActions } from '@/db/schema';
 import { eq, and, isNull, inArray } from 'drizzle-orm';
@@ -69,6 +69,9 @@ function toContractRule(
 
 // Apply JWT auth to all endpoints
 autoReplyRulesHandler.use('/*', jwtAuth);
+// Writes are admin-only (global rules reply to every team; matches frontend requiresAdmin).
+// requireAdmin checks the D1-reloaded user role, not the raw JWT claim.
+autoReplyRulesHandler.on(['POST', 'PUT', 'DELETE'], '/*', requireAdmin());
 
 // ==================== Health check ====================
 autoReplyRulesHandler.get('/health', (c) => {
@@ -93,6 +96,10 @@ autoReplyRulesHandler.get('/', async (c) => {
 
     if (scope !== 'global' && !teamId) {
       return badRequestResponse(c, 'teamId is required (or use scope=global)');
+    }
+    const reader = c.get('user');
+    if (teamId && reader.role !== 'admin' && !reader.allowedTeamIds?.includes(teamId)) {
+      return c.json({ success: false, error: 'Forbidden' }, 403);
     }
 
     const page = Math.max(1, parseInt(c.req.query('page') || '1'));

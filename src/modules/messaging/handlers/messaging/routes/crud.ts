@@ -42,7 +42,6 @@ crudRoutes.get('/:id', jwtAuth, async (c) => {
       return badRequestResponse(c, 'Message ID is required');
     }
 
-    const userPayload = c.get('jwtPayload') as JWTPayload;
     const db = createDbClient(c.env.DB);
 
     // 獲取訊息詳細資訊，包含相關的對話和發送者資訊
@@ -100,9 +99,10 @@ crudRoutes.get('/:id', jwtAuth, async (c) => {
     // can only read messages whose conversation is in one of their
     // allowedTeamIds, or is unassigned (shared pool, matching the visibility
     // canonical conversation visibility rule).
-    const isAdmin = userPayload.role === 'admin';
+    const dbUser = c.get('user');
+    const isAdmin = dbUser.role === 'admin';
     const assignedTeamId = messageQuery.conversationAssignedTeamId;
-    const allowedTeams = userPayload.allowedTeamIds ?? [];
+    const allowedTeams = dbUser.allowedTeamIds ?? [];
     const teamAllowed =
       isAdmin ||
       assignedTeamId === null ||
@@ -211,7 +211,7 @@ crudRoutes.put('/:id', jwtAuth, async (c) => {
     // (agent message authored by the caller) OR admin role; everything
     // else is rejected — customer and system messages are never editable
     // via this endpoint.
-    const isAdmin = userPayload.role === 'admin';
+    const isAdmin = c.get('user').role === 'admin';
     const isOwnAgentMessage =
       existingMessage.senderType === 'agent' &&
       existingMessage.agentSenderId === userPayload.userId.toString();
@@ -316,7 +316,7 @@ crudRoutes.delete('/:id', jwtAuth, async (c) => {
     // previous guard only fired when senderType==='agent', so customer
     // messages fell through and an agent could overwrite transcript
     // history with the "[recalled]" marker on someone else's words.
-    const isAdmin = userPayload.role === 'admin';
+    const isAdmin = c.get('user').role === 'admin';
     const isOwnAgentMessage =
       existingMessage.senderType === 'agent' &&
       existingMessage.agentSenderId === userPayload.userId.toString();
@@ -440,9 +440,10 @@ crudRoutes.post('/', jwtAuth, async (c) => {
     // and have the message delivered to the customer on LINE/Messenger.
     // Mirror the same rule as F4 GET: admin OK, unassigned shared pool OK,
     // otherwise assignedTeamId must be in the JWT's allowedTeamIds.
-    const isAdmin = userPayload.role === 'admin';
+    const dbUser = c.get('user');
+    const isAdmin = dbUser.role === 'admin';
     const assignedTeamId = conversation.assignedTeamId;
-    const allowedTeams = userPayload.allowedTeamIds ?? [];
+    const allowedTeams = dbUser.allowedTeamIds ?? [];
     const teamAllowed =
       isAdmin ||
       assignedTeamId === null ||

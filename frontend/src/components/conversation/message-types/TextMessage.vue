@@ -68,15 +68,15 @@ const processMessageContent = async () => {
 
   debounceTimer = setTimeout(async () => {
     try {
-      // Step 1: Render database message (handles LINE formatting, links, etc.)
-      let rendered = await renderDatabaseMessageForVue(
-        content,
-        props.message.messageType,
-        typeof props.message.metadata === 'string' ? props.message.metadata : JSON.stringify(props.message.metadata)
-      )
-
-      // Step 2: Convert emojis to appropriate format
-      rendered = await convertEmojiForMessageDetail(rendered)
+      // Sticker markup is app-generated; text goes through the escaping emoji/link processor
+      const rendered =
+        props.message.messageType === 'sticker'
+          ? await renderDatabaseMessageForVue(
+              content,
+              props.message.messageType,
+              typeof props.message.metadata === 'string' ? props.message.metadata : JSON.stringify(props.message.metadata)
+            )
+          : await convertEmojiForMessageDetail(content)
 
       // Cache the result
       contentCache.set(cacheKey, rendered)

@@ -8,6 +8,7 @@ import {
   errorResponse,
   validationErrorResponse,
   unauthorizedResponse,
+  forbiddenResponse,
   notFoundResponse,
   handleApiError
 } from '@/utils/api-response';
@@ -556,7 +557,17 @@ export class NotificationHandler {
   // 創建新訊息通知
   notifyNewMessage = async (c: Context<{ Bindings: Bindings }>) => {
     try {
+      const payload = c.get('jwtPayload');
+      if (!payload?.userId) {
+        return unauthorizedResponse(c, 'Authentication required');
+      }
       const { userId, conversationId, senderName, content, channels } = await c.req.json();
+
+      // Same ownership rule as create(): non-admins may only notify themselves
+      if (payload.role !== 'admin' && String(userId) !== String(payload.userId)) {
+        return forbiddenResponse(c, 'Cannot create notifications for other users');
+      }
+
 
       const notificationId = await this.notificationService.notifyNewMessage(
         userId,
@@ -583,7 +594,17 @@ export class NotificationHandler {
   // 創建對話指派通知
   notifyConversationAssigned = async (c: Context<{ Bindings: Bindings }>) => {
     try {
+      const payload = c.get('jwtPayload');
+      if (!payload?.userId) {
+        return unauthorizedResponse(c, 'Authentication required');
+      }
       const { userId, conversationId, customerName, assignedBy } = await c.req.json();
+
+      // Same ownership rule as create(): non-admins may only notify themselves
+      if (payload.role !== 'admin' && String(userId) !== String(payload.userId)) {
+        return forbiddenResponse(c, 'Cannot create notifications for other users');
+      }
+
 
       const notificationId = await this.notificationService.notifyConversationAssigned(
         userId,

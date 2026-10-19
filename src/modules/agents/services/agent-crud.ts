@@ -191,7 +191,8 @@ export class AgentService implements AgentServiceInterface {
       }
 
       // Extract teamId — it targets agent_teams, not the agents table
-      const { teamId, ...agentFields } = data;
+      // passwordHash is never settable through the generic update (password endpoints own it)
+      const { teamId, passwordHash: _ignoredPasswordHash, ...agentFields } = data as typeof data & { passwordHash?: string };
 
       // 驗證 teamId 是否存在（如果提供）
       if (teamId) {

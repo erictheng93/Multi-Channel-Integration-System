@@ -32,6 +32,15 @@ vi.mock('../../../../../src/utils/auth', () => ({
   verifyJWT: mockVerifyJWT
 }));
 
+// checkSessionAccess now delegates to the shared validateAccessToken (F01); keep mockVerifyJWT as the token source.
+vi.mock('@/middleware/auth', () => ({
+  validateAccessToken: async (env: { JWT_SECRET: string }, token: string) => {
+    const payload = await mockVerifyJWT(token, env.JWT_SECRET);
+    if (!payload) throw Object.assign(new Error('Invalid token'), { status: 401 });
+    return { payload, user: { id: payload.userId, role: payload.role, isActive: true } };
+  }
+}));
+
 // Mock structured logger (source uses createContextLogger, not console.log)
 vi.mock('@/utils/logger', () => ({
   createContextLogger: () => ({
