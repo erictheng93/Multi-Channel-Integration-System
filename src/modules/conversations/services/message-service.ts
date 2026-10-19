@@ -2,7 +2,7 @@
 // 訊息服務層
 
 import { createDbClient, type Database } from '@/db/drizzle-factory';
-import { eq, desc, and, inArray, gte } from 'drizzle-orm';
+import { eq, desc, and, inArray, gte, isNull, or } from 'drizzle-orm';
 import { messages, conversations, customers, fileAttachments } from '@/db/schema';
 import type { Bindings } from '@/types';
 import type { LineReplyMessage } from '@/types';
@@ -112,6 +112,19 @@ export class MessageService implements MessageServiceInterface {
       const { customer } = conversationData;
       buffered = recallWindowSeconds > 0 && customer.platform === 'line';
 
+      // Only the sender's own unlinked uploads for this conversation may be
+      // attached (uploads store uploadedBy + conversationId); anything else is dropped.
+      const requestedIds = request.attachmentIds ?? [];
+      const attachmentIds = requestedIds.length === 0 ? [] : (await this.db
+        .select({ id: fileAttachments.id })
+        .from(fileAttachments)
+        .where(and(
+          inArray(fileAttachments.id, requestedIds),
+          isNull(fileAttachments.messageId),
+          eq(fileAttachments.uploadedBy, String(request.senderId)),
+          or(isNull(fileAttachments.conversationId), eq(fileAttachments.conversationId, request.conversationId))
+        ))).map(r => r.id);
+
       // Step 2: Insert Message (Pending)
       const messageData: NewMessage = {
         id: messageId,
@@ -132,9 +145,7 @@ export class MessageService implements MessageServiceInterface {
           platformUserId: customer.platformUserId,
           // Persisted so MessageDeliveryService can rebuild the send from D1
           // alone (delayed delivery via DO alarm has no request object).
-          ...(request.attachmentIds && request.attachmentIds.length > 0 && {
-            attachmentIds: request.attachmentIds
-          })
+          ...(attachmentIds.length > 0 && { attachmentIds })
         })
       };
 
@@ -143,12 +154,12 @@ export class MessageService implements MessageServiceInterface {
       log.info('Message inserted', { messageId });
 
       // Step 3b: Link attachments if any
-      if (request.attachmentIds && request.attachmentIds.length > 0) {
+      if (attachmentIds.length > 0) {
         await this.db
           .update(fileAttachments)
-          .set({ messageId: messageId })
-          .where(inArray(fileAttachments.id, request.attachmentIds));
-        log.info('Linked attachments', { count: request.attachmentIds.length });
+          .set({ messageId: messageId, conversationId: request.conversationId })
+          .where(and(inArray(fileAttachments.id, attachmentIds), isNull(fileAttachments.messageId)));
+        log.info('Linked attachments', { count: attachmentIds.length });
       }
 
       // Step 3c: Update conversation timestamps (explicit standalone UPDATE)

@@ -11,6 +11,7 @@ const state = vi.hoisted(() => ({
 vi.mock('@/middleware/auth', () => ({
   jwtAuth: async (c: any, next: () => Promise<void>) => {
     c.set('jwtPayload', state.jwtPayload)
+    c.set('user', { id: state.jwtPayload.userId, role: state.jwtPayload.role, allowedTeamIds: state.jwtPayload.allowedTeamIds })
     await next()
   }
 }))

@@ -8,7 +8,7 @@ const log = createContextLogger('MsgTags')
 
 import { eq } from 'drizzle-orm';
 import { createDbClient } from '@/db/drizzle-factory';
-import type { Bindings, JWTPayload } from '@/types';
+import type { Bindings, DbUser, JWTPayload } from '@/types';
 import { conversations, messages } from '@/db/schema';
 import { jwtAuth } from '@/middleware/auth';
 import {
@@ -30,7 +30,7 @@ const MAX_TAGS_PER_MESSAGE = 10;
  * unassigned (the shared pool in the canonical conversation visibility rule).
  */
 function canAccessConversationTeam(
-  userPayload: JWTPayload,
+  userPayload: Pick<DbUser, 'role' | 'allowedTeamIds'>,
   assignedTeamId: number | null | undefined
 ): boolean {
   if (userPayload.role === 'admin') {
@@ -100,7 +100,7 @@ tagsRoutes.put('/:id/tags', jwtAuth, async (c) => {
 
     // Return 404 (not 403) on a team mismatch so message existence is not
     // leaked to unauthorised agents, matching routes/crud.ts.
-    if (!message || !canAccessConversationTeam(userPayload, message.conversationAssignedTeamId)) {
+    if (!message || !canAccessConversationTeam(c.get('user'), message.conversationAssignedTeamId)) {
       return notFoundResponse(c, 'Message not found');
     }
 
@@ -175,7 +175,7 @@ tagsRoutes.delete('/:id/tags', jwtAuth, async (c) => {
 
     // Return 404 (not 403) on a team mismatch so message existence is not
     // leaked to unauthorised agents, matching routes/crud.ts.
-    if (!message || !canAccessConversationTeam(userPayload, message.conversationAssignedTeamId)) {
+    if (!message || !canAccessConversationTeam(c.get('user'), message.conversationAssignedTeamId)) {
       return notFoundResponse(c, 'Message not found');
     }
 

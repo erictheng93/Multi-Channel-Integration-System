@@ -10,13 +10,15 @@ import { eq, and, desc, count } from 'drizzle-orm';
 import type { SQL } from 'drizzle-orm';
 import { createDbClient } from '@/db/drizzle-factory';
 import type { Bindings } from '@/types';
-import { messages, conversations, customers, agents, customerNameSql } from '@/db/schema';
+import { messages, customers, agents, customerNameSql } from '@/db/schema';
 import { jwtAuth } from '@/middleware/auth';
+import { canConversationBeAccessedBy } from '@/services/conversation-access';
 import {
   successResponse,
   errorResponse,
   badRequestResponse,
-  notFoundResponse
+  notFoundResponse,
+  forbiddenResponse
 } from '@/utils/api-response';
 
 const conversationRoutes = new Hono<{ Bindings: Bindings }>();
@@ -45,15 +47,18 @@ conversationRoutes.get('/conversation/:conversationId', jwtAuth, async (c) => {
 
     const db = createDbClient(c.env.DB);
 
-    // 檢查對話是否存在
-    const conversation = await db
-      .select({ id: conversations.id })
-      .from(conversations)
-      .where(eq(conversations.id, conversationId))
-      .get();
-
-    if (!conversation) {
+    // 檢查對話是否存在且呼叫者可見 (team visibility, D1-reloaded user)
+    const user = c.get('user');
+    const access = await canConversationBeAccessedBy(
+      c.env,
+      { userId: user.id, role: user.role, allowedTeamIds: user.allowedTeamIds },
+      conversationId
+    );
+    if (!access.conversation) {
       return notFoundResponse(c, 'Conversation not found');
+    }
+    if (!access.allowed) {
+      return forbiddenResponse(c, 'You do not have access to this conversation');
     }
 
     // 構建查詢條件

@@ -43,6 +43,8 @@ vi.mock('drizzle-orm', () => {
     desc: (...args: any[]) => ({ type: 'desc', args }),
     and: (...args: any[]) => ({ type: 'and', args }),
     inArray: (...args: any[]) => ({ type: 'inArray', args }),
+    isNull: (...args: any[]) => ({ type: 'isNull', args }),
+    or: (...args: any[]) => ({ type: 'or', args }),
     count: () => ({ type: 'count' }),
     sql: sqlMock
   };
@@ -294,7 +296,8 @@ describe('MessageService', () => {
         conversation: { id: 'conv-123', customerId: 1 },
         customer: { id: 1, platform: 'line', platformUserId: 'U123' }
       };
-      mockDb._queueResults([mockConvData]);
+      // conversation lookup, then the sender-owned unlinked attachment lookup
+      mockDb._queueResults([mockConvData], [{ id: 'att-1' }, { id: 'att-2' }]);
 
       const result = await service.createPendingMessage({
         ...baseRequest,

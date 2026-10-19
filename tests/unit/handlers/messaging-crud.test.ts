@@ -72,6 +72,12 @@ let mockJwtPayload: {
 vi.mock('@/middleware/auth', () => ({
   jwtAuth: vi.fn((c: any, next: any) => {
     c.set('jwtPayload', mockJwtPayload);
+    // Handlers authorize on the D1-reloaded user, not JWT claims.
+    c.set('user', {
+      id: mockJwtPayload.userId,
+      role: mockJwtPayload.role,
+      allowedTeamIds: (mockJwtPayload as { allowedTeamIds?: number[] }).allowedTeamIds
+    });
     return next();
   })
 }));
