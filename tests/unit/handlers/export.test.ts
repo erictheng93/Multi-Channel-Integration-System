@@ -44,6 +44,7 @@ let mockDbError: Error | null = null;
 // Mock JWT auth middleware — bypass authentication, inject jwtPayload
 vi.mock('@/middleware/auth', () => ({
   jwtAuth: vi.fn((c: any, next: any) => {
+    c.set('user', { id: 'u1', role: 'admin', allowedTeamIds: [] });
     c.set('jwtPayload', {
       userId: 1,
       username: 'test-admin',
