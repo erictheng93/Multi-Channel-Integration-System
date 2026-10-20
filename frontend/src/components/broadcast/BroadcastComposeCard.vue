@@ -239,6 +239,8 @@
   )
   const composeRoot = ref<HTMLElement | null>(null)
   let disposed = false
+  // Once sent, the parent owns the uploaded files (the broadcast references them).
+  let submitted = false
 
   async function onPick(event: Event) {
     const fileInput = event.target as HTMLInputElement
@@ -342,7 +344,10 @@
 
   onBeforeUnmount(() => {
     disposed = true
-    images.value.forEach(image => URL.revokeObjectURL(image.objectUrl))
+    images.value.forEach(image => {
+      URL.revokeObjectURL(image.objectUrl)
+      if (!submitted && image.attachment) {void cleanupBroadcastImage(image.attachment)}
+    })
   })
 
   const imagesReady = computed(() => images.value.every(image => image.status === 'done'))
@@ -394,6 +399,7 @@
       `即將發送「${parts.join(' + ')}」給 ${currentPreview.value?.sendable ?? 0} 位 LINE 客戶，送出後無法復原。`
     )
     if (confirmed) {
+      submitted = true
       emit('send', input.value)
     }
   }
