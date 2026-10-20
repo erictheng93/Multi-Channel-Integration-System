@@ -51,5 +51,7 @@ describe('token epoch', () => {
     await cache.put('tokens-valid-after:1', String(now))
     expect(await isIssuedBeforeTokenEpoch(cache, { userId: 1, iat: now - 5, iatMs: (now - 5) * 1000 })).toBe(true)
     expect(await isIssuedBeforeTokenEpoch(cache, { userId: 1, iat: now + 1, iatMs: (now + 1) * 1000 })).toBe(false)
+    // The old seconds epoch is bumpSecond + 1, so a token issued in exactly that second stays valid.
+    expect(await isIssuedBeforeTokenEpoch(cache, { userId: 1, iat: now })).toBe(false)
   })
 })
