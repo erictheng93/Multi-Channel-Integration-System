@@ -2,7 +2,8 @@
  * Bundled Database Migrations
  *
  * Complete database schema for the Multi-Channel CRM System
- * Auto-generated from src/db/schema.ts
+ * Hand-maintained baseline (0001-0018) plus catch-up deltas (0019+). Ground truth is
+ * docs/architecture/SCHEMA.md; `bun run check:installer-schema` fails when it drifts.
  *
  * IMPORTANT: This file contains the full database schema required for
  * the Web Installer to set up a new CRM instance.
@@ -738,12 +739,335 @@ VALUES
   ('tpl_executive_summary', '高層管理摘要', '為管理層提供關鍵業務指標的簡潔摘要', 'executive_summary', '{"includeKPIs":true,"includeTrends":true}', 'executive', 1, 1, 'system');
 
 -- Integrity indexes (from schema review)
-CREATE UNIQUE INDEX IF NOT EXISTS idx_customer_team_assignments_unique ON customer_team_assignments(platform_user_id, team_id);
+-- The customer_team_assignments unique index lives in 0021: that table is created in 0019.
 CREATE INDEX IF NOT EXISTS idx_task_reminders_conversation_id ON task_reminders(conversation_id) WHERE conversation_id IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_message_recall_logs_message_id ON message_recall_logs(message_id);
 CREATE INDEX IF NOT EXISTS idx_scheduled_reports_created_by ON scheduled_reports(created_by);
 CREATE INDEX IF NOT EXISTS idx_report_templates_created_by ON report_templates(created_by);
 CREATE INDEX IF NOT EXISTS idx_report_download_history_downloaded_by ON report_download_history(downloaded_by);
+    `
+  },
+  // ============================================================,
+  // PHASE 3: Catch-up to the current production schema,
+  // (post-0018 root migrations: auto-reply, LIFF QR, broadcast, per-agent,
+  // read state, nickname, ...). Ground truth: docs/architecture/SCHEMA.md,,
+  // verified by `bun run check:installer-schema`.,
+  // ============================================================,
+  {
+    version: '0019',
+    filename: '0019_catchup_tables.sql',
+    description: 'Create tables added after the original baseline: auto-reply, LIFF QR codes, team assignments, broadcast, read states',
+    sql: `
+CREATE TABLE IF NOT EXISTS auto_reply_actions (
+	id integer PRIMARY KEY NOT NULL,
+	rule_id integer NOT NULL,
+	action_type text NOT NULL,
+	content text NOT NULL,
+	sort_order integer DEFAULT 0,
+	created_at text DEFAULT CURRENT_TIMESTAMP,
+	FOREIGN KEY (rule_id) REFERENCES auto_reply_rules(id) ON UPDATE no action ON DELETE cascade
+);
+
+CREATE TABLE IF NOT EXISTS auto_reply_conditions (
+	id integer PRIMARY KEY NOT NULL,
+	rule_id integer NOT NULL,
+	condition_type text NOT NULL,
+	value text NOT NULL,
+	case_sensitive integer DEFAULT false,
+	match_mode text DEFAULT 'any',
+	created_at text DEFAULT CURRENT_TIMESTAMP,
+	FOREIGN KEY (rule_id) REFERENCES auto_reply_rules(id) ON UPDATE no action ON DELETE cascade
+);
+
+CREATE TABLE IF NOT EXISTS auto_reply_deliveries (
+	id integer PRIMARY KEY NOT NULL,
+	platform text DEFAULT 'line' NOT NULL,
+	platform_message_id text NOT NULL,
+	rule_id integer,
+	conversation_id text,
+	customer_id integer,
+	status text DEFAULT 'pending' NOT NULL,
+	reply_method text,
+	attempt_count integer DEFAULT 0 NOT NULL,
+	last_error text,
+	last_attempt_at text,
+	sent_at text,
+	created_at text DEFAULT CURRENT_TIMESTAMP,
+	updated_at text DEFAULT CURRENT_TIMESTAMP,
+	FOREIGN KEY (rule_id) REFERENCES auto_reply_rules(id) ON UPDATE no action ON DELETE set null,
+	FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON UPDATE no action ON DELETE set null,
+	FOREIGN KEY (customer_id) REFERENCES customers(id) ON UPDATE no action ON DELETE set null
+);
+
+CREATE TABLE IF NOT EXISTS auto_reply_logs (
+	id integer PRIMARY KEY NOT NULL,
+	rule_id integer,
+	conversation_id text,
+	customer_id integer,
+	trigger_content text,
+	response_content text,
+	matched_condition text,
+	platform text DEFAULT 'line' NOT NULL,
+	reply_method text DEFAULT 'reply_api' NOT NULL,
+	created_at text DEFAULT CURRENT_TIMESTAMP,
+	FOREIGN KEY (rule_id) REFERENCES auto_reply_rules(id) ON UPDATE no action ON DELETE set null,
+	FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON UPDATE no action ON DELETE set null,
+	FOREIGN KEY (customer_id) REFERENCES customers(id) ON UPDATE no action ON DELETE set null
+);
+
+CREATE TABLE IF NOT EXISTS auto_reply_rules (
+	id integer PRIMARY KEY NOT NULL,
+	team_id integer,
+	name text NOT NULL,
+	trigger_type text NOT NULL,
+	priority integer DEFAULT 100 NOT NULL,
+	is_active integer DEFAULT true,
+	allow_push_fallback integer DEFAULT false NOT NULL,
+	created_by text,
+	created_at text DEFAULT CURRENT_TIMESTAMP,
+	updated_at text DEFAULT CURRENT_TIMESTAMP,
+	deleted_at text,
+	FOREIGN KEY (team_id) REFERENCES teams(id) ON UPDATE no action ON DELETE cascade,
+	FOREIGN KEY (created_by) REFERENCES agents(id) ON UPDATE no action ON DELETE set null
+);
+
+CREATE TABLE IF NOT EXISTS auto_reply_schedules (
+	id integer PRIMARY KEY NOT NULL,
+	team_id integer NOT NULL,
+	day_of_week integer NOT NULL,
+	start_time text NOT NULL,
+	end_time text NOT NULL,
+	timezone text DEFAULT 'Asia/Taipei',
+	is_active integer DEFAULT true,
+	created_at text DEFAULT CURRENT_TIMESTAMP,
+	updated_at text DEFAULT CURRENT_TIMESTAMP,
+	FOREIGN KEY (team_id) REFERENCES teams(id) ON UPDATE no action ON DELETE cascade
+);
+
+CREATE TABLE IF NOT EXISTS broadcast_attachments (
+  id INTEGER PRIMARY KEY,
+  broadcast_id TEXT NOT NULL REFERENCES broadcasts(id) ON DELETE CASCADE,
+  attachment_id TEXT NOT NULL REFERENCES file_attachments(id) ON DELETE RESTRICT,
+  preview_attachment_id TEXT NOT NULL REFERENCES file_attachments(id) ON DELETE RESTRICT,
+  position INTEGER NOT NULL,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE (broadcast_id, position),
+  UNIQUE (broadcast_id, attachment_id)
+);
+
+CREATE TABLE IF NOT EXISTS broadcast_recipients (
+  id INTEGER PRIMARY KEY,
+  broadcast_id TEXT NOT NULL,
+  customer_id INTEGER,
+  platform TEXT NOT NULL,
+  platform_user_id TEXT NOT NULL,
+  resolved_team_id INTEGER,
+  status TEXT NOT NULL DEFAULT 'pending',
+  error_reason TEXT,
+  sent_at TEXT,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (broadcast_id) REFERENCES broadcasts(id) ON UPDATE NO ACTION ON DELETE CASCADE,
+  FOREIGN KEY (customer_id) REFERENCES customers(id) ON UPDATE NO ACTION ON DELETE SET NULL,
+  CONSTRAINT broadcast_recipients_broadcast_customer_unique UNIQUE (broadcast_id, customer_id)
+);
+
+CREATE TABLE IF NOT EXISTS broadcasts (
+  id TEXT PRIMARY KEY NOT NULL,
+  title TEXT NOT NULL,
+  content_type TEXT NOT NULL DEFAULT 'text',
+  content TEXT NOT NULL,
+  tag_ids TEXT NOT NULL,
+  match_mode TEXT NOT NULL DEFAULT 'any',
+  status TEXT NOT NULL DEFAULT 'draft',
+  total_recipients INTEGER DEFAULT 0,
+  sent_count INTEGER DEFAULT 0,
+  failed_count INTEGER DEFAULT 0,
+  skipped_count INTEGER DEFAULT 0,
+  created_by TEXT NOT NULL,
+  sent_at TEXT,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  deleted_at TEXT,
+  FOREIGN KEY (created_by) REFERENCES agents(id) ON UPDATE NO ACTION ON DELETE RESTRICT
+);
+
+CREATE TABLE IF NOT EXISTS conversation_read_states (
+  agent_id         TEXT NOT NULL REFERENCES agents(id) ON DELETE CASCADE,
+  conversation_id  TEXT NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+  last_read_at     TEXT,
+  marked_unread_at TEXT,
+  updated_at       TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (agent_id, conversation_id)
+);
+
+CREATE TABLE IF NOT EXISTS customer_team_assignments (
+	id text PRIMARY KEY NOT NULL,
+	platform_user_id text NOT NULL,
+	team_id integer NOT NULL,
+	qr_code_id text,
+	source text DEFAULT 'liff_qr',
+	display_name text,
+	assigned_at text DEFAULT CURRENT_TIMESTAMP,
+	metadata text,
+	FOREIGN KEY (team_id) REFERENCES teams(id) ON UPDATE no action ON DELETE cascade,
+	FOREIGN KEY (qr_code_id) REFERENCES team_liff_qr_codes(id) ON UPDATE no action ON DELETE set null
+);
+
+CREATE TABLE IF NOT EXISTS team_liff_qr_codes (
+	id text PRIMARY KEY NOT NULL,
+	team_id integer NOT NULL,
+	liff_url text NOT NULL,
+	qr_code_url text NOT NULL,
+	scan_count integer DEFAULT 0,
+	is_active integer DEFAULT true,
+	created_at text DEFAULT CURRENT_TIMESTAMP,
+	updated_at text DEFAULT CURRENT_TIMESTAMP,
+	FOREIGN KEY (team_id) REFERENCES teams(id) ON UPDATE no action ON DELETE cascade
+);
+    `
+  },
+  {
+    version: '0020',
+    filename: '0020_catchup_columns.sql',
+    description: 'Add columns introduced after the original baseline (read state, nickname, notification priority)',
+    sql: `
+ALTER TABLE conversations ADD COLUMN last_read_at TEXT;
+ALTER TABLE conversations ADD COLUMN marked_unread_at TEXT;
+ALTER TABLE conversations ADD COLUMN unread_floor_at TEXT;
+ALTER TABLE customers ADD COLUMN custom_name TEXT;
+ALTER TABLE messages ADD COLUMN read_by TEXT;
+ALTER TABLE notifications ADD COLUMN priority TEXT DEFAULT 'normal';
+ALTER TABLE notifications ADD COLUMN updated_at TEXT;
+    `
+  },
+  {
+    version: '0021',
+    filename: '0021_catchup_indexes.sql',
+    description: 'Create the indexes and partial unique indexes the current worker relies on',
+    sql: `
+CREATE INDEX IF NOT EXISTS idx_activities_action ON activities(action);
+CREATE INDEX IF NOT EXISTS idx_activities_resource ON activities(resource_type, resource_id);
+CREATE INDEX IF NOT EXISTS idx_activities_user ON activities(user_id);
+CREATE UNIQUE INDEX IF NOT EXISTS agents_email_unique ON agents (email);
+CREATE INDEX IF NOT EXISTS idx_agents_deleted_at
+  ON agents(deleted_at)
+  WHERE deleted_at IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_auto_reply_actions_rule ON auto_reply_actions(rule_id);
+CREATE INDEX IF NOT EXISTS idx_auto_reply_conditions_rule ON auto_reply_conditions(rule_id);
+CREATE UNIQUE INDEX IF NOT EXISTS auto_reply_deliveries_platform_platform_message_id_unique ON auto_reply_deliveries(platform,platform_message_id);
+CREATE INDEX IF NOT EXISTS idx_auto_reply_deliveries_conversation ON auto_reply_deliveries(conversation_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_auto_reply_deliveries_status ON auto_reply_deliveries(status, updated_at);
+CREATE INDEX IF NOT EXISTS idx_auto_reply_logs_created ON auto_reply_logs(created_at);
+CREATE INDEX IF NOT EXISTS idx_auto_reply_logs_rule ON auto_reply_logs(rule_id);
+CREATE INDEX IF NOT EXISTS idx_auto_reply_rules_global_active ON auto_reply_rules(is_active) WHERE team_id IS NULL AND deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_auto_reply_rules_team_active ON auto_reply_rules(team_id, is_active) WHERE deleted_at IS NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS auto_reply_schedules_team_id_day_of_week_unique ON auto_reply_schedules(team_id,day_of_week);
+CREATE INDEX IF NOT EXISTS idx_auto_reply_schedules_team ON auto_reply_schedules(team_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_broadcast_recipients_broadcast_platform_user
+ON broadcast_recipients(broadcast_id, platform, platform_user_id);
+CREATE INDEX IF NOT EXISTS idx_broadcast_recipients_broadcast_status
+ON broadcast_recipients(broadcast_id, status);
+CREATE INDEX IF NOT EXISTS idx_broadcasts_list
+ON broadcasts(deleted_at, created_at);
+CREATE INDEX IF NOT EXISTS idx_channel_integrations_team_platform_active ON channel_integrations(team_id, platform, is_active);
+CREATE INDEX IF NOT EXISTS idx_conversation_read_states_conversation
+ON conversation_read_states(conversation_id);
+CREATE INDEX IF NOT EXISTS idx_conversation_sessions_is_active ON conversation_sessions(is_active);
+CREATE INDEX IF NOT EXISTS idx_conversation_sessions_last_activity ON conversation_sessions(last_activity);
+CREATE INDEX IF NOT EXISTS idx_conversations_customer_status
+  ON conversations(customer_id, status);
+CREATE INDEX IF NOT EXISTS idx_conversations_deleted_at
+  ON conversations(deleted_at)
+  WHERE deleted_at IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_conversations_last_message ON conversations(last_message_at);
+CREATE INDEX IF NOT EXISTS idx_conversations_updated_at
+ON conversations(updated_at, id);
+CREATE INDEX IF NOT EXISTS idx_cors_events_allowed_origin ON cors_events(type, origin, timestamp DESC) WHERE type = 'allowed';
+CREATE INDEX IF NOT EXISTS idx_cors_events_rejected_origin ON cors_events(type, origin, timestamp DESC) WHERE type = 'rejected';
+CREATE INDEX IF NOT EXISTS idx_cors_events_timestamp ON cors_events(timestamp DESC);
+CREATE INDEX IF NOT EXISTS idx_customer_tags_assigned_by ON customer_tags(assigned_by);
+CREATE INDEX IF NOT EXISTS idx_customer_tags_customer_id ON customer_tags(customer_id);
+CREATE INDEX IF NOT EXISTS idx_customer_tags_tag_assigned ON customer_tags(tag_id, assigned_at DESC);
+CREATE INDEX IF NOT EXISTS idx_customer_tags_tag_id ON customer_tags(tag_id);
+CREATE UNIQUE INDEX IF NOT EXISTS customer_team_assignments_platform_user_id_team_id_unique ON customer_team_assignments(platform_user_id,team_id);
+CREATE INDEX IF NOT EXISTS idx_customer_team_assignments_platform_user ON customer_team_assignments(platform_user_id);
+CREATE INDEX IF NOT EXISTS idx_customer_team_assignments_qr_code ON customer_team_assignments(qr_code_id);
+CREATE INDEX IF NOT EXISTS idx_customer_team_assignments_source ON customer_team_assignments(source);
+CREATE INDEX IF NOT EXISTS idx_customer_team_assignments_team_date ON customer_team_assignments(team_id, assigned_at DESC);
+CREATE INDEX IF NOT EXISTS idx_customer_team_assignments_team_id ON customer_team_assignments(team_id);
+CREATE INDEX IF NOT EXISTS idx_customers_deleted_at
+  ON customers(deleted_at)
+  WHERE deleted_at IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_customers_id ON customers(id);
+CREATE INDEX IF NOT EXISTS idx_customers_platform_id ON customers(platform, id);
+CREATE INDEX IF NOT EXISTS idx_delayed_messages_agent ON delayed_messages(agent_id);
+CREATE INDEX IF NOT EXISTS idx_delayed_messages_conversation ON delayed_messages(conversation_id);
+CREATE INDEX IF NOT EXISTS idx_delayed_messages_status_scheduled
+  ON delayed_messages(status, scheduled_at)
+  WHERE status = 'pending';
+CREATE INDEX IF NOT EXISTS idx_file_attachments_created_at ON file_attachments(created_at);
+CREATE INDEX IF NOT EXISTS idx_file_attachments_message ON file_attachments(message_id);
+CREATE INDEX IF NOT EXISTS idx_file_attachments_upload_status
+  ON file_attachments(upload_status)
+  WHERE upload_status != 'completed';
+CREATE INDEX IF NOT EXISTS idx_file_attachments_uploaded_by ON file_attachments(uploaded_by);
+CREATE INDEX IF NOT EXISTS idx_messages_agent_sender_created
+  ON messages(agent_sender_id, created_at DESC)
+  WHERE agent_sender_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_messages_conv_sender_deleted_created
+ON messages(conversation_id, sender_type, deleted_at, created_at);
+CREATE INDEX IF NOT EXISTS idx_messages_customer_sender_created
+  ON messages(customer_sender_id, created_at DESC)
+  WHERE customer_sender_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_messages_deleted_at
+  ON messages(deleted_at)
+  WHERE deleted_at IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_messages_reply_to
+  ON messages(reply_to_message_id)
+  WHERE reply_to_message_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_messages_thread_id_sequence
+  ON messages(thread_id, session_sequence)
+  WHERE thread_id IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS messages_platform_message_id_unique
+ON messages(platform_message_id)
+WHERE platform_message_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_metrics_name ON metrics(metric_name);
+CREATE INDEX IF NOT EXISTS idx_metrics_timestamp ON metrics(timestamp);
+CREATE INDEX IF NOT EXISTS idx_notifications_user_priority
+  ON notifications(user_id, priority);
+CREATE INDEX IF NOT EXISTS idx_notifications_user_unread
+  ON notifications(user_id, is_read)
+  WHERE is_read = 0;
+CREATE INDEX IF NOT EXISTS idx_download_history_downloaded_at ON report_download_history(downloaded_at DESC);
+CREATE INDEX IF NOT EXISTS idx_download_history_report ON report_download_history(report_id);
+CREATE INDEX IF NOT EXISTS idx_download_history_user ON report_download_history(downloaded_by);
+CREATE INDEX IF NOT EXISTS idx_templates_category ON report_templates(category);
+CREATE INDEX IF NOT EXISTS idx_templates_created_by ON report_templates(created_by);
+CREATE INDEX IF NOT EXISTS idx_templates_is_public ON report_templates(is_public);
+CREATE INDEX IF NOT EXISTS idx_templates_report_type ON report_templates(report_type);
+CREATE INDEX IF NOT EXISTS idx_reports_created_at ON reports(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_reports_expires_at ON reports(expires_at);
+CREATE INDEX IF NOT EXISTS idx_reports_team_id ON reports(team_id);
+CREATE INDEX IF NOT EXISTS idx_reports_type ON reports(type);
+CREATE INDEX IF NOT EXISTS idx_sched_exec_scheduled_report ON scheduled_report_executions(scheduled_report_id);
+CREATE INDEX IF NOT EXISTS idx_sched_exec_started_at ON scheduled_report_executions(execution_started_at DESC);
+CREATE INDEX IF NOT EXISTS idx_sched_exec_status ON scheduled_report_executions(execution_status);
+CREATE INDEX IF NOT EXISTS idx_scheduled_reports_is_active ON scheduled_reports(is_active);
+CREATE INDEX IF NOT EXISTS idx_scheduled_reports_next_execution ON scheduled_reports(next_execution_at);
+CREATE INDEX IF NOT EXISTS idx_scheduled_reports_team_id ON scheduled_reports(team_id);
+CREATE INDEX IF NOT EXISTS idx_tags_team_active
+  ON tags(team_id, is_active)
+  WHERE is_active = 1;
+CREATE INDEX IF NOT EXISTS idx_team_liff_qr_codes_is_active ON team_liff_qr_codes(is_active);
+CREATE INDEX IF NOT EXISTS idx_team_liff_qr_codes_team_id ON team_liff_qr_codes(team_id);
+CREATE UNIQUE INDEX IF NOT EXISTS team_liff_qr_codes_team_id_unique ON team_liff_qr_codes(team_id);
+CREATE INDEX IF NOT EXISTS idx_teams_deleted_at
+  ON teams(deleted_at)
+  WHERE deleted_at IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_webhook_security_events_created_at ON webhook_security_events(created_at);
+CREATE INDEX IF NOT EXISTS idx_webhook_security_events_integration ON webhook_security_events(integration_id);
+CREATE INDEX IF NOT EXISTS idx_webhook_security_events_platform ON webhook_security_events(platform);
+CREATE INDEX IF NOT EXISTS idx_webhook_security_events_platform_severity ON webhook_security_events(platform, severity, created_at DESC);
     `
   }
 ];

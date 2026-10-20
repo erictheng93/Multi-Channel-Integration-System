@@ -145,11 +145,18 @@ export class MigrationRunner {
 
     // Execute each statement
     for (const statement of statements) {
-      const result = await this.api.executeD1Query(databaseId, statement);
-
-      if (!result.success) {
-        const errorMsg = result.errors?.[0]?.message || 'Unknown error';
-        throw new Error(errorMsg);
+      try {
+        const result = await this.api.executeD1Query(databaseId, statement);
+        if (!result.success) {
+          throw new Error(result.errors?.[0]?.message || 'Unknown error');
+        }
+      } catch (error) {
+        // A retry restarts a half-applied migration; SQLite has no ADD COLUMN IF NOT EXISTS.
+        const message = error instanceof Error ? error.message : String(error);
+        if (/^\s*ALTER\s+TABLE\s+\S+\s+ADD\s+COLUMN/i.test(statement.replace(/--[^\n]*/g, '')) && /duplicate column name/i.test(message)) {
+          continue;
+        }
+        throw error;
       }
     }
   }
