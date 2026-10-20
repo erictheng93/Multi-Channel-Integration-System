@@ -94,6 +94,9 @@ describe('DelayedMessageScheduler alarm chain', () => {
     await h.restart()
     expect(h.values.get('msg:m1')).toMatchObject({ status: 'failed' })
     expect(h.alarm()).toBeNull()
+    // The fallback record stays discoverable: operators see it through /dlq.
+    const listed = await (await h.scheduler.fetch(new Request('https://do/dlq'))).json() as { count: number; messages: Array<{ id: string }> }
+    expect(listed.messages.map((m) => m.id)).toEqual(['m1'])
     vi.restoreAllMocks()
   })
 
