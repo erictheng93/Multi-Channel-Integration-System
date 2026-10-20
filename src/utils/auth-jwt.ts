@@ -159,12 +159,14 @@ export async function isIssuedBeforeTokenEpoch(cache: KVNamespace, payload: { us
   const raw = await cache.get(tokenEpochKey(payload.userId));
   if (!raw) return false;
   if (typeof payload.iat !== 'number') return true;
-  // Epochs written before the ms switch are in seconds (< 1e11).
-  const epochMs = Number(raw) < 1e11 ? Number(raw) * 1000 : Number(raw);
   // Tokens without iatMs predate it; their earliest possible issue time is iat seconds.
+  const issuedMs = payload.iatMs ?? payload.iat * 1000;
+  // Epochs written before the ms switch are in seconds (< 1e11) and already hold bumpSecond + 1,
+  // so a token issued in exactly that second is valid: keep the strict comparison for them.
+  if (Number(raw) < 1e11) return issuedMs < Number(raw) * 1000;
   // <=: a tie is ambiguous, and revocation must win it. A login can never share the bump's
   // millisecond (password verification alone takes far longer), so no valid token is lost.
-  return (payload.iatMs ?? payload.iat * 1000) <= epochMs;
+  return issuedMs <= Number(raw);
 }
 
 // 生成隨機字符串 - 使用加密安全的隨機數生成器 (CSPRNG)
