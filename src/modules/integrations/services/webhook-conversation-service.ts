@@ -318,7 +318,9 @@ export async function isDuplicateMessage(
 
 /**
  * Save a new message to the database.
- * Returns the generated messageId.
+ * Returns the generated messageId, or the winning row's id when a concurrent redelivery
+ * inserted the same platform message first (`outcome.duplicate` is then set, so only the
+ * request that really inserted the row raises the new-conversation notification).
  */
 export async function saveMessage(
   env: Bindings,
@@ -329,7 +331,8 @@ export async function saveMessage(
   platformMessageId: string | null,
   displayName: string | null,
   mediaData: unknown,
-  platform: Platform
+  platform: Platform,
+  outcome?: { duplicate?: boolean }
 ): Promise<string> {
   const drizzleDb = createDbClient(env.DB);
   const platformLabel = platform.toUpperCase();
@@ -395,6 +398,7 @@ export async function saveMessage(
         customerId,
         platformMessageId
       });
+      if (outcome) outcome.duplicate = true;
     }
   } catch (messageError) {
     // Handle UNIQUE constraint violation gracefully (race condition with dedup check)

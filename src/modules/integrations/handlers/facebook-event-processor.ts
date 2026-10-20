@@ -131,6 +131,7 @@ export async function processFacebookMessage(env: Bindings, messaging: FacebookM
     });
 
     // 儲存訊息
+    const saved: { duplicate?: boolean } = {};
     const messageId = await saveMessage(
       env,
       conversation!.id,
@@ -140,14 +141,18 @@ export async function processFacebookMessage(env: Bindings, messaging: FacebookM
       message.mid || null,
       user.displayName || null,
       mediaData,
-      'facebook'
+      'facebook',
+      saved
     );
 
     // Notify only once the first message is stored, so agents never see an alert for an empty conversation.
-    await notifyNewConversation(env, conversation, messageId, 'facebook', {
-      messageContent: messageContent.substring(0, 100),
-      customerDisplayName: user.displayName || 'Facebook User'
-    });
+    // A redelivery that lost the insert race must not notify a second time.
+    if (!saved.duplicate) {
+      await notifyNewConversation(env, conversation, messageId, 'facebook', {
+        messageContent: messageContent.substring(0, 100),
+        customerDisplayName: user.displayName || 'Facebook User'
+      });
+    }
 
     // =================== DEFERRED: Non-critical tasks via waitUntil ===================
     const convId = conversation!.id;
