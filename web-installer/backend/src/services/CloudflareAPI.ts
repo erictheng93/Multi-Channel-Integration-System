@@ -16,6 +16,7 @@ import type {
   CreateR2Request,
   Queue,
   CreateQueueRequest,
+  QueueConsumerSettings,
   Worker,
   DeployWorkerRequest,
   PagesProject,
@@ -241,6 +242,26 @@ export class CloudflareAPI {
   }
 
   /**
+   * Register a Worker as the push consumer of a queue. A queue allows one consumer, so
+   * a repeat call (redeploy onto a reused queue) fails with an "already ..." error that
+   * the caller treats as success.
+   */
+  async createQueueConsumer(
+    queueId: string,
+    scriptName: string,
+    settings: QueueConsumerSettings
+  ): Promise<void> {
+    const response = await this.request({
+      method: 'POST',
+      path: `/accounts/${this.accountId}/queues/${queueId}/consumers`,
+      body: { script_name: scriptName, type: 'worker', settings }
+    });
+    if (!response.success) {
+      throw new Error(`Failed to create queue consumer: ${response.errors[0]?.message}`);
+    }
+  }
+
+  /**
    * Worker Operations
    */
 
@@ -303,6 +324,33 @@ export class CloudflareAPI {
     }
 
     return response.json();
+  }
+
+  /**
+   * Replace the Worker's cron triggers (PUT replaces the whole list).
+   */
+  async setWorkerSchedules(scriptName: string, crons: readonly string[]): Promise<void> {
+    const response = await this.request({
+      method: 'PUT',
+      path: `/accounts/${this.accountId}/workers/scripts/${scriptName}/schedules`,
+      body: crons.map(cron => ({ cron }))
+    });
+    if (!response.success) {
+      throw new Error(`Failed to set cron triggers: ${response.errors[0]?.message}`);
+    }
+  }
+
+  /**
+   * Durable Object migration tag currently recorded on a deployed Worker, or null when
+   * none is recorded (or the API does not report one).
+   */
+  async getWorkerMigrationTag(name: string): Promise<string | null> {
+    const response = await this.request<Array<{ id: string; migration_tag?: string | null }>>({
+      method: 'GET',
+      path: `/accounts/${this.accountId}/workers/scripts`
+    });
+    if (!response.success || !Array.isArray(response.result)) return null;
+    return response.result.find(script => script.id === name)?.migration_tag || null;
   }
 
   async deleteWorker(name: string): Promise<void> {

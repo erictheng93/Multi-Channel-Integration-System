@@ -187,7 +187,8 @@ export const DEPLOYMENT_STEPS: Record<DeploymentStep, StepConfig> = {
     name: 'run_migrations',
     description: 'Running database migrations',
     weight: 15,
-    timeout: 120000,
+    // ~110 sequential D1 statements (tables, columns, indexes); a retry resumes at the first unrecorded migration.
+    timeout: 300000,
     retryable: true,
     maxRetries: 2
   },
