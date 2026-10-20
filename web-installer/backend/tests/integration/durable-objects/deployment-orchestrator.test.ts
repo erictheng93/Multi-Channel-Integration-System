@@ -174,8 +174,12 @@ describe('DeploymentOrchestrator - Workers Runtime Tests', () => {
       expect(consumer?.body).toEqual({
         script_name: 'test-crm-system-worker',
         type: 'worker',
-        settings: { batch_size: 10, max_wait_time_ms: 1000, max_retries: 3 }
+        settings: { batch_size: 10, max_wait_time_ms: 1000, max_retries: 3 },
+        dead_letter_queue: expect.any(String)
       });
+      // The DLQ is created before the main queue so the consumer can reference it.
+      const created = recordedCalls.filter(c => c.method === 'POST' && c.path.endsWith('/queues')).map(c => (c.body as { queue_name: string }).queue_name);
+      expect(created).toEqual(['test-crm-system-dlq', 'test-crm-system-queue']);
       const schedules = recordedCalls.find(c => c.method === 'PUT' && c.path.endsWith('/schedules'));
       expect(schedules?.body).toEqual([{ cron: '*/5 * * * *' }, { cron: '0 18 * * *' }]);
       expect(deployedMetadata?.migrations).toMatchObject({ new_tag: 'installer-v2' });
