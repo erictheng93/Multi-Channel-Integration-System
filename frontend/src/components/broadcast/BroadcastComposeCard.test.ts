@@ -62,6 +62,22 @@ describe('BroadcastComposeCard images', () => {
       previewAttachmentId: 'late-preview',
     })
   })
+  it('deletes finished uploads when an unsent form is discarded, but keeps them once sent', async () => {
+    const discarded = mountCard()
+    await pick(discarded, [image('1.jpg')])
+    discarded.unmount()
+    expect(cleanup).toHaveBeenCalledExactlyOnceWith({ attachmentId: 'a-1.jpg', previewAttachmentId: 'p-1.jpg' })
+
+    cleanup.mockClear()
+    const sent = mountCard()
+    await pick(sent, [image('2.jpg')])
+    await sent.find('input[type="text"]').setValue('Promo')
+    await sent.find('select').setValue(7)
+    await sent.find('form').trigger('submit')
+    expect(sent.emitted('send')).toHaveLength(1)
+    sent.unmount()
+    expect(cleanup).not.toHaveBeenCalled()
+  })
   beforeEach(() => {
     upload.mockReset()
     cleanup.mockReset().mockResolvedValue(undefined)
