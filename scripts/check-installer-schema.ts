@@ -28,7 +28,7 @@ const sections = doc
   .slice(1);
 
 const ref = new Database(':memory:');
-const refIndexes: { table: string; name: string; unique: boolean; cols: string }[] = [];
+const refIndexes: { table: string; name: string; unique: boolean; partial: boolean; cols: string }[] = [];
 for (const section of sections) {
   const sql = section.match(/```sql\n([\s\S]*?)\n```/)?.[1];
   if (!sql) throw new Error(`No CREATE TABLE block for section ${section.slice(0, 40)}`);
@@ -37,7 +37,7 @@ for (const section of sections) {
     const m = line.match(/^- `([^`]+)`((?: \*\([a-zA-Z]+\)\*)*) — \((.*)\)/);
     if (m) {
       const cols = m[3].replace(/[`\s]/g, '');
-      refIndexes.push({ table: section.split('`')[0], name: m[1], unique: m[2].includes('UNIQUE'), cols });
+      refIndexes.push({ table: section.split('`')[0], name: m[1], unique: m[2].includes('UNIQUE'), partial: m[2].includes('partial'), cols });
     }
   }
 }
@@ -68,6 +68,13 @@ const uniqueSets = (d: Database, t: string): string[] =>
     .filter((i) => i.unique)
     .map((i) => (d.query(`PRAGMA index_info(${i.name})`).all() as { name: string }[]).map((c) => c.name).join(','));
 
+// Partial-ness is part of a unique key's identity: WHERE status = 'pending' stops it protecting other rows.
+// ponytail: the doc records only that an index is partial, not its predicate, so a changed predicate still passes.
+const uniqueIndexKeys = (d: Database, t: string): string[] =>
+  (d.query(`PRAGMA index_list(${t})`).all() as { name: string; unique: number; partial: number }[])
+    .filter((i) => i.unique)
+    .map((i) => (d.query(`PRAGMA index_info(${i.name})`).all() as { name: string }[]).map((c) => c.name).join(',') + (i.partial ? ' [partial]' : ''));
+
 const instTables = tableNames(inst);
 for (const table of tableNames(ref)) {
   if (!instTables.includes(table)) {
@@ -84,9 +91,11 @@ const instIndexNames = (inst.query("SELECT name FROM sqlite_master WHERE type='i
 for (const idx of refIndexes) {
   // The reference DB is built from CREATE TABLE only, so named UNIQUE indexes never reach the
   // table-level check above. A unique index is satisfied by any unique key on the same
-  // columns, however declared (a same-named non-unique index does not count); other indexes match by name.
-  if (idx.unique ? instTables.includes(idx.table) && uniqueSets(inst, idx.table).includes(idx.cols) : instIndexNames.includes(idx.name)) continue;
-  problems.push(idx.unique ? `missing unique key: ${idx.table}(${idx.cols}) [${idx.name}]` : `missing index: ${idx.name}`);
+  // columns and the same partial-ness, however declared (a same-named non-unique index does not count);
+  // other indexes match by name.
+  const key = idx.cols + (idx.partial ? ' [partial]' : '');
+  if (idx.unique ? instTables.includes(idx.table) && uniqueIndexKeys(inst, idx.table).includes(key) : instIndexNames.includes(idx.name)) continue;
+  problems.push(idx.unique ? `missing unique key: ${idx.table}(${key}) [${idx.name}]` : `missing index: ${idx.name}`);
 }
 
 if (problems.length > 0) {
