@@ -678,9 +678,10 @@ async function setConversationClosed(c: Context<{ Bindings: Bindings }>, closed:
 
     const statuses = await setConversationsClosed(c.env, activityMeta(c, user), [conv], closed);
     const status = statuses[conv.id];
-    // 已是目標狀態：冪等回傳原資料
+    // 已是目標狀態，或讀取後被並行請求搶先改動：重讀取得實際狀態，避免回傳過期的 conv
     if (!status) {
-      return c.json({ success: true, data: conv, timestamp: nowISO() });
+      const [fresh] = await drizzleDb.select().from(conversations).where(eq(conversations.id, conv.id)).limit(1);
+      return c.json({ success: true, data: fresh ?? conv, timestamp: nowISO() });
     }
 
     const timestamp = nowISO();
