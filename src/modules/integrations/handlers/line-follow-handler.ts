@@ -419,6 +419,17 @@ export async function processLineFollowEvent(env: Bindings, event: LineEvent) {
               .set({ status: reopenedStatus, closedAt: null, updatedAt: nowISO() })
               .where(eq(conversations.id, newConv.id));
             log.info('Reopened closed conversation on follow', { conversationId: newConv.id, status: reopenedStatus });
+            try {
+              const { WebSocketBroadcastService } = await import('@/services/websocket-broadcast-service');
+              await new WebSocketBroadcastService(env).broadcastConversationEvent({
+                type: 'conversation_status_changed',
+                conversationId: newConv.id,
+                data: { status: reopenedStatus, timestamp: nowISO() },
+                priority: 'normal'
+              });
+            } catch (broadcastError) {
+              log.warn('Reopen broadcast failed, continuing', { error: broadcastError instanceof Error ? broadcastError.message : String(broadcastError) });
+            }
           }
           welcomeConversationId = newConv?.id || '';
         }

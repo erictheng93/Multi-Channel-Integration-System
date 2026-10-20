@@ -21,6 +21,7 @@ vi.mock('@/db/schema', () => {
 
 const updates: Array<{ table: string; set: Record<string, unknown> }> = [];
 const inserts: string[] = [];
+let hasAssignment = true;
 const closedRow = { id: 'conv-closed', customerId: 1, status: 'closed', assignedTeamId: null as number | null };
 
 function selectChain() {
@@ -32,7 +33,7 @@ function selectChain() {
   chain.limit = () => chain;
   chain.get = async () => {
     if (table === 'customers') return { id: 1, metadata: null };
-    if (table === 'assign') return { id: 'a1', teamId: 5, source: 'x', assignedAt: 't', displayName: null };
+    if (table === 'assign') return !hasAssignment ? undefined : { id: 'a1', teamId: 5, source: 'x', assignedAt: 't', displayName: null };
     if (table === 'teams') return { id: 5, name: 'Team Five' };
     return undefined;
   };
@@ -55,10 +56,11 @@ vi.mock('@/services/customer-conversation-lookup', async (orig) => ({
 }));
 
 const broadcastTransferred = vi.fn().mockResolvedValue(undefined);
+const broadcastEvent = vi.fn().mockResolvedValue(undefined);
 vi.mock('@/services/websocket-broadcast-service', () => ({
   WebSocketBroadcastService: class {
     broadcastConversationTransferred = broadcastTransferred;
-    broadcastConversationEvent = vi.fn().mockResolvedValue(undefined);
+    broadcastConversationEvent = broadcastEvent;
   },
 }));
 vi.mock('@/services/user-sync', () => ({
@@ -87,6 +89,8 @@ describe('processLineFollowEvent closed conversation reuse', () => {
     updates.length = 0;
     inserts.length = 0;
     broadcastTransferred.mockClear();
+    broadcastEvent.mockClear();
+    hasAssignment = true;
   });
 
   it('reopens the selected closed conversation, backfills the team and broadcasts the real status', async () => {
@@ -101,5 +105,19 @@ describe('processLineFollowEvent closed conversation reuse', () => {
     expect(inserts).not.toContain('conversations');
     expect(broadcastTransferred).toHaveBeenCalledTimes(1);
     expect(broadcastTransferred.mock.calls[0][0].conversation.status).toBe('assigned');
+  });
+
+  it('broadcasts the reopened status when the follow has no team assignment', async () => {
+    hasAssignment = false;
+    await processLineFollowEvent(
+      { DB: {} } as any,
+      { type: 'follow', source: { userId: 'U1234567890abc', type: 'user' }, timestamp: 1, replyToken: 'rt' } as any
+    );
+
+    expect(updates.some(u => u.table === 'conversations' && u.set.closedAt === null)).toBe(true);
+    expect(broadcastEvent).toHaveBeenCalledWith(expect.objectContaining({
+      type: 'conversation_status_changed',
+      conversationId: 'conv-closed'
+    }));
   });
 });
