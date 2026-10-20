@@ -12,6 +12,7 @@ import { customers, conversations, teams } from '@/db/schema';
 import { v4 as uuidv4 } from 'uuid';
 import { createContextLogger } from '@/utils/logger';
 import { nowISO, nowMs } from '@/utils/timestamp'
+import { findCustomerConversation, getReopenStatus } from '@/services/customer-conversation-lookup';
 import { verifyLiffIdToken } from './line-id-token';
 
 const log = createContextLogger('LIFF');
@@ -323,26 +324,52 @@ liffHandler.post('/welcome', async (c) => {
 
       if (customer) {
         // 查詢現有對話（含已結案，避免重複建立）
-        const existingConversation = await db
-          .select()
-          .from(conversations)
-          .where(eq(conversations.customerId, customer.id)) // 一位客戶一個對話（含已結案）
-          .get();
+        const existingConversation = await findCustomerConversation(db, customer.id); // 一位客戶一個對話（含已結案）
 
         const timestamp = nowISO();
 
         if (existingConversation) {
           // 更新現有對話的團隊指派 (如果團隊不同)
           const oldTeamId = existingConversation.assignedTeamId;
+          // 已結案的對話因客戶再次掃碼而重新開啟（團隊一定存在）
+          const reopenedStatus = getReopenStatus(existingConversation.status, true);
 
-          if (oldTeamId !== teamId) {
+          if (reopenedStatus) {
             await db
               .update(conversations)
               .set({
                 assignedTeamId: teamId,
+                status: reopenedStatus,
+                closedAt: null,
                 updatedAt: timestamp
               })
               .where(eq(conversations.id, existingConversation.id));
+            existingConversation.status = reopenedStatus;
+            try {
+              const { WebSocketBroadcastService } = await import('@/services/websocket-broadcast-service');
+              await new WebSocketBroadcastService(c.env).broadcastConversationEvent({
+                type: 'conversation_status_changed',
+                conversationId: existingConversation.id,
+                data: { status: reopenedStatus, timestamp },
+                priority: 'normal'
+              });
+            } catch (broadcastError) {
+              log.warn('LIFF welcome: reopen broadcast failed, continuing', {
+                error: broadcastError instanceof Error ? broadcastError.message : String(broadcastError)
+              });
+            }
+          }
+
+          if (oldTeamId !== teamId) {
+            if (!reopenedStatus) {
+              await db
+                .update(conversations)
+                .set({
+                  assignedTeamId: teamId,
+                  updatedAt: timestamp
+                })
+                .where(eq(conversations.id, existingConversation.id));
+            }
 
             // WebSocket 廣播 - 通知前端對話已轉移
             const { WebSocketBroadcastService } = await import('@/services/websocket-broadcast-service');

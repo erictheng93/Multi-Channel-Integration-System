@@ -194,6 +194,7 @@ vi.mock('drizzle-orm', () => ({
   ne: (...args: any[]) => ({ type: 'ne', args }),
   desc: (...args: any[]) => ({ type: 'desc', args }),
   isNull: (col: any) => ({ type: 'isNull', col }),
+  sql: (...args: any[]) => ({ type: 'sql', args }),
 }));
 
 // Mock schema imports

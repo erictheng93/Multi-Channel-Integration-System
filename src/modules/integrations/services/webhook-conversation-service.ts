@@ -10,6 +10,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { createContextLogger } from '@/utils/logger';
 import { nowISO } from '@/utils/timestamp';
 import { DistributedLockService } from '@/services/distributed-lock-service';
+import { findCustomerConversation, getReopenStatus } from '@/services/customer-conversation-lookup';
 
 const log = createContextLogger('WebhookConversation');
 
@@ -83,12 +84,9 @@ export async function findOrCreateConversation(
   log.debug(`Searching for existing conversation for customer`, { platform: platformLabel, customerId });
 
   // Fast path: check for existing conversation (no lock needed)
-  const existingConversation = await drizzleDb
-    .select()
-    .from(conversations)
-    // 一位客戶只有一個對話；已結案的對話也在這裡找到，下方會重新開啟
-    .where(eq(conversations.customerId, customerId))
-    .get();
+  // 一位客戶只有一個對話；已結案的對話也在這裡找到，下方會重新開啟。
+  // 舊資料可能有多筆：優先未結案，否則取最近的已結案（見 findCustomerConversation）。
+  const existingConversation = await findCustomerConversation(drizzleDb, customerId);
   let conversation: WebhookConversation | undefined = existingConversation
     ? convertConversation(existingConversation)
     : undefined;
@@ -102,11 +100,7 @@ export async function findOrCreateConversation(
       `webhook:conversation:${customerId}`,
       async () => {
         // Double-check inside lock — another request may have created the conversation
-        const existing = await drizzleDb
-          .select()
-          .from(conversations)
-          .where(eq(conversations.customerId, customerId))
-          .get();
+        const existing = await findCustomerConversation(drizzleDb, customerId);
 
         if (existing) {
           // Another request created it while we waited for the lock. Only
@@ -243,9 +237,10 @@ export async function findOrCreateConversation(
     }
 
     // 客戶在已結案的對話再次傳訊 → 自動重新開啟（依指派狀態回到 assigned / active）
-    const reopenedStatus = conversation.status === 'closed'
-      ? (conversation.assignedTeamId || opts?.assignedTeamId ? 'assigned' : 'active')
-      : null;
+    const reopenedStatus = getReopenStatus(
+      conversation.status,
+      Boolean(conversation.assignedTeamId || opts?.assignedTeamId)
+    );
     if (reopenedStatus) {
       updateFields.status = reopenedStatus;
       updateFields.closedAt = null;
@@ -398,12 +393,12 @@ export async function saveMessage(
         customerId,
         platformMessageId
       });
-      if (outcome) outcome.duplicate = true;
     }
   } catch (messageError) {
     // Handle UNIQUE constraint violation gracefully (race condition with dedup check)
     if (messageError instanceof Error && messageError.message?.includes('UNIQUE constraint failed')) {
       log.info(`${platformLabel} Webhook: Duplicate message caught by DB constraint`, { platformMessageId });
+      if (outcome) outcome.duplicate = true;
       if (platformMessageId) {
         const existing = await drizzleDb
           .select({ id: messages.id })
