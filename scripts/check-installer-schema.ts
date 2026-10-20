@@ -28,14 +28,17 @@ const sections = doc
   .slice(1);
 
 const ref = new Database(':memory:');
-const refIndexes: { name: string; unique: boolean }[] = [];
+const refIndexes: { table: string; name: string; unique: boolean; cols: string }[] = [];
 for (const section of sections) {
   const sql = section.match(/```sql\n([\s\S]*?)\n```/)?.[1];
   if (!sql) throw new Error(`No CREATE TABLE block for section ${section.slice(0, 40)}`);
   ref.exec(sql);
   for (const line of section.split('\n')) {
-    const m = line.match(/^- `([^`]+)`((?: \*\([a-zA-Z]+\)\*)*) — \(/);
-    if (m) refIndexes.push({ name: m[1], unique: m[2].includes('UNIQUE') });
+    const m = line.match(/^- `([^`]+)`((?: \*\([a-zA-Z]+\)\*)*) — \((.*)\)/);
+    if (m) {
+      const cols = m[3].replace(/[`\s]/g, '');
+      refIndexes.push({ table: section.split('`')[0], name: m[1], unique: m[2].includes('UNIQUE'), cols });
+    }
   }
 }
 
@@ -79,9 +82,11 @@ for (const table of tableNames(ref)) {
 
 const instIndexNames = (inst.query("SELECT name FROM sqlite_master WHERE type='index'").all() as { name: string }[]).map((r) => r.name);
 for (const idx of refIndexes) {
-  // A unique index is satisfied by an equivalent inline UNIQUE (checked above), so only
-  // non-unique indexes must match by name.
-  if (!idx.unique && !instIndexNames.includes(idx.name)) problems.push(`missing index: ${idx.name}`);
+  // The reference DB is built from CREATE TABLE only, so named UNIQUE indexes never reach the
+  // table-level check above. A unique index is satisfied by any unique key on the same
+  // columns, however declared (a same-named non-unique index does not count); other indexes match by name.
+  if (idx.unique ? instTables.includes(idx.table) && uniqueSets(inst, idx.table).includes(idx.cols) : instIndexNames.includes(idx.name)) continue;
+  problems.push(idx.unique ? `missing unique key: ${idx.table}(${idx.cols}) [${idx.name}]` : `missing index: ${idx.name}`);
 }
 
 if (problems.length > 0) {
