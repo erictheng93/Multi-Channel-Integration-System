@@ -888,16 +888,18 @@ export class DeploymentOrchestrator implements DurableObject {
     if (!this.deploymentState) return;
     const queueId = this.deploymentState.resources.queueId;
     if (!queueId) throw new Error('Queue not created; cannot register the queue consumer');
-    try {
-      await this.api.createQueueConsumer(queueId, workerName, LINE_QUEUE_CONSUMER_SETTINGS);
-      this.log('success', `Registered ${workerName} as consumer of queue ${this.deploymentState.resources.queueName}`);
-    } catch (error) {
-      if (error instanceof Error && /already|exists/i.test(error.message)) {
-        this.log('info', 'Queue already has a consumer, reusing...');
-        return;
-      }
-      throw error;
+    const queueName = this.deploymentState.resources.queueName;
+    // A reused queue may point at another Worker (or carry hand-edited settings): a queue
+    // allows one consumer, so repoint it at this Worker and reapply our settings.
+    const [existing] = await this.api.listQueueConsumers(queueId);
+    if (existing) {
+      await this.api.updateQueueConsumer(queueId, existing.consumerId, workerName, LINE_QUEUE_CONSUMER_SETTINGS);
+      const note = existing.scriptName && existing.scriptName !== workerName ? ` (was ${existing.scriptName})` : '';
+      this.log('success', `Updated queue ${queueName} consumer to ${workerName}${note}`);
+      return;
     }
+    await this.api.createQueueConsumer(queueId, workerName, LINE_QUEUE_CONSUMER_SETTINGS);
+    this.log('success', `Registered ${workerName} as consumer of queue ${queueName}`);
   }
 
   private async stepBuildFrontend(): Promise<void> {

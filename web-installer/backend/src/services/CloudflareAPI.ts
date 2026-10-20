@@ -241,11 +241,19 @@ export class CloudflareAPI {
     });
   }
 
-  /**
-   * Register a Worker as the push consumer of a queue. A queue allows one consumer, so
-   * a repeat call (redeploy onto a reused queue) fails with an "already ..." error that
-   * the caller treats as success.
-   */
+  /** Current consumers of a queue (a queue allows one). The Worker name is `script`, or `service` on older responses. */
+  async listQueueConsumers(queueId: string): Promise<Array<{ consumerId: string; scriptName: string | undefined }>> {
+    const response = await this.request<Array<{ consumer_id: string; script?: string; script_name?: string; service?: string }>>({
+      method: 'GET',
+      path: `/accounts/${this.accountId}/queues/${queueId}/consumers`
+    });
+    if (!response.success) {
+      throw new Error(`Failed to list queue consumers: ${response.errors[0]?.message}`);
+    }
+    return (response.result ?? []).map(c => ({ consumerId: c.consumer_id, scriptName: c.script ?? c.script_name ?? c.service }));
+  }
+
+  /** Register a Worker as the push consumer of a queue that has none. */
   async createQueueConsumer(
     queueId: string,
     scriptName: string,
@@ -258,6 +266,23 @@ export class CloudflareAPI {
     });
     if (!response.success) {
       throw new Error(`Failed to create queue consumer: ${response.errors[0]?.message}`);
+    }
+  }
+
+  /** Point an existing consumer at a Worker and (re)apply its settings. */
+  async updateQueueConsumer(
+    queueId: string,
+    consumerId: string,
+    scriptName: string,
+    settings: QueueConsumerSettings
+  ): Promise<void> {
+    const response = await this.request({
+      method: 'PUT',
+      path: `/accounts/${this.accountId}/queues/${queueId}/consumers/${consumerId}`,
+      body: { script_name: scriptName, type: 'worker', settings }
+    });
+    if (!response.success) {
+      throw new Error(`Failed to update queue consumer: ${response.errors[0]?.message}`);
     }
   }
 
