@@ -3,6 +3,7 @@
   "type": "module",
   "packageManager": "bun@1.4.3",
   "engines": {
+    "node": ">=22.12",
     "npm": "use bun instead - see CLAUDE.md",
     "yarn": "use bun instead - see CLAUDE.md",
     "pnpm": "use bun instead - see CLAUDE.md"
@@ -118,13 +119,14 @@
     "check:type-debt": "bun scripts/check-type-debt.ts",
     "precheck:all": "bun run check:routes && bun run validate:all",
     "check:worker-bundle": "bun scripts/check-worker-bundle.ts",
+    "check:installer-schema": "bun scripts/check-installer-schema.ts",
     "build:worker-bundle": "bun scripts/build-worker-bundle.ts",
     "build:frontend-bundle": "bun scripts/build-frontend-bundle.ts",
     "build:installer-bundles": "bun run build:worker-bundle && bun run build:frontend-bundle"
   },
   "overrides": {
     "esbuild": "^0.25.9",
-    "picomatch": "^4.0.4",
+    "picomatch": "^4.0.7",
     "postcss": "^8.5.10",
     "rollup": "^4.59.0",
     "vite": "^8.1.5",
