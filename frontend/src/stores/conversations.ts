@@ -771,11 +771,13 @@ export const useConversationsStore = defineStore('conversations', () => {
     const changedIds = Array.from(previous.keys())
     if (changedIds.length === 0) { return 0 }
 
+    const optimisticStatuses = new Map<string, Conversation['status']>()
     for (const id of changedIds) {
       const target = conversations.value.find(c => c.id === id)
       const optimisticStatus: Conversation['status'] = closed
         ? 'closed'
         : (target?.assignedTeamId ? 'assigned' : 'active')
+      optimisticStatuses.set(id, optimisticStatus)
       // 已結案的對話對所有客服都算 0 未讀（後端同規則）
       updateConversationStatus(id, closed ? { status: optimisticStatus, unreadCount: 0 } : { status: optimisticStatus })
     }
@@ -811,6 +813,8 @@ export const useConversationsStore = defineStore('conversations', () => {
           if (skipped.length > 0) {
             void Promise.allSettled(skipped.map(async id => {
               const fresh = await conversationApi.getConversation(id)
+              // 回應抵達前列表狀態已被即時事件或其他操作改走 → 這份讀取較舊，不覆蓋
+              if (conversations.value.find(c => c.id === id)?.status !== optimisticStatuses.get(id)) { return }
               if (fresh.success && fresh.data?.status) {
                 updateConversationStatus(id, { status: fresh.data.status })
               }
