@@ -79,6 +79,14 @@ export interface QueueConsumerSettings {
   max_retries: number;
 }
 
+/** An existing queue consumer as the API reports it; enough to put it back after a failed deployment. */
+export interface QueueConsumerInfo {
+  consumerId: string;
+  scriptName: string | undefined;
+  settings: Partial<QueueConsumerSettings> | undefined;
+  deadLetterQueue: string | undefined;
+}
+
 // Worker Types
 export interface Worker {
   id: string;

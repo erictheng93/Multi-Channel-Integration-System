@@ -100,6 +100,9 @@ export class RollbackService {
       // Fallback warning if only queue name available
       this.log('warning', `Queue ${resources.queueName} may need manual deletion - ID not stored`);
     }
+    // After the queue: its consumer references the DLQ. Independent of queueId, since the
+    // DLQ can be ours while the main queue was reused.
+    if (resources.dlqId) await this.api.deleteQueue(resources.dlqId);
   }
 
   /**
@@ -177,6 +180,7 @@ export class RollbackService {
     if (resources.kvCacheNamespaceId) estimatedMs += 2000;
     if (resources.r2BucketName) estimatedMs += 3000;
     if (resources.queueName) estimatedMs += 2000;
+    if (resources.dlqId) estimatedMs += 2000;
     if (resources.workerId) estimatedMs += 3000;
     if (resources.pagesProjectId) estimatedMs += 5000;
 

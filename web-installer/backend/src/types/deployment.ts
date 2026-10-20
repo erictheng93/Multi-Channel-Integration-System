@@ -1,3 +1,4 @@
+import type { QueueConsumerInfo } from './cloudflare';
 /**
  * Web Installer - Deployment Types
  *
@@ -47,6 +48,8 @@ export interface CloudflareResources {
   r2BucketName?: string;
   queueId?: string; // Queue ID for deletion
   queueName?: string; // Queue name for reference
+  dlqId?: string; // Dead-letter queue ID for deletion
+  dlqName?: string; // Dead-letter queue name (the consumer references it by name)
   workerId?: string;
   workerUrl?: string;
   pagesProjectId?: string;
@@ -82,6 +85,8 @@ export interface DeploymentState {
   totalProgress: number; // 0-100
   resources: CloudflareResources;
   createdResources?: (keyof CloudflareResources)[];
+  /** Consumer of a reused queue before this deployment repointed it; restored on rollback. */
+  priorQueueConsumer?: QueueConsumerInfo;
   generatedSecrets?: { jwtSecret: string; encryptionKey: string };
   logs: DeploymentLog[];
   error?: DeploymentError;
