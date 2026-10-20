@@ -4,6 +4,7 @@
   "type": "module",
   "packageManager": "bun@1.4.3",
   "engines": {
+    "node": ">=22.12",
     "npm": "use bun instead - see CLAUDE.md",
     "yarn": "use bun instead - see CLAUDE.md",
     "pnpm": "use bun instead - see CLAUDE.md"
@@ -65,7 +66,7 @@
     "dompurify": "^3.4.8",
     "flatted": "^3.4.2",
     "js-cookie": "^3.0.8",
-    "picomatch": "^4.0.4",
+    "picomatch": "^4.0.7",
     "postcss": "^8.5.15",
     "vite": "^8.1.5"
   },
