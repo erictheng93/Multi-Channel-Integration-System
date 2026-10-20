@@ -617,6 +617,25 @@ describe('CloudflareAPI - runtime provisioning calls', () => {
     });
   });
 
+  it('lists queue consumers with the worker name', async () => {
+    const { fetchMock, api } = make();
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ success: true, errors: [], messages: [], result: [{ consumer_id: 'c1', script: 'other-worker' }] })
+    });
+    expect(await api.listQueueConsumers('q1')).toEqual([{ consumerId: 'c1', scriptName: 'other-worker' }]);
+    expect(fetchMock.mock.calls[0][0]).toBe('https://api.cloudflare.com/client/v4/accounts/acc/queues/q1/consumers');
+  });
+
+  it('repoints an existing queue consumer with PUT', async () => {
+    const { fetchMock, api } = make();
+    await api.updateQueueConsumer('q1', 'c1', 'w1', { batch_size: 10, max_wait_time_ms: 1000, max_retries: 3 });
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe('https://api.cloudflare.com/client/v4/accounts/acc/queues/q1/consumers/c1');
+    expect(init.method).toBe('PUT');
+    expect(JSON.parse(init.body).script_name).toBe('w1');
+  });
+
   it('puts cron schedules as an array of {cron}', async () => {
     const { fetchMock, api } = make();
     await api.setWorkerSchedules('w1', ['*/5 * * * *', '0 18 * * *']);
