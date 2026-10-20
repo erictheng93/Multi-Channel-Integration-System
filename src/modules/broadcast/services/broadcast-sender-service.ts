@@ -33,6 +33,7 @@ import {
 } from './d1-chunks';
 import {
   assertObjectsExist,
+  ImageObjectMissingError,
   buildBroadcastLineMessages,
   groupWriteBackUnits,
   type BroadcastImageFile,
@@ -187,8 +188,13 @@ export class BroadcastSenderService {
     try {
       await assertObjectsExist(keys, (key) => this.env.R2_BUCKET.head(key));
     } catch (error) {
-      const detail = error instanceof Error ? error.message.replace('Image object missing in storage: ', '') : String(error);
-      throw new Error(`Broadcast ${broadcastId} image object missing in storage: ${detail}`);
+      if (!(error instanceof ImageObjectMissingError)) {
+        // R2 failed to answer; nothing was sent, so give the draft back and let the caller retry.
+        log.error('Broadcast image check failed; restoring draft', { broadcastId }, error instanceof Error ? error : String(error));
+        await this.restoreDraftStatus(broadcastId);
+        throw new BroadcastServiceError('STORAGE_UNAVAILABLE', 'Image storage is unavailable, try again', 503);
+      }
+      throw new Error(`Broadcast ${broadcastId} image object missing in storage: ${error.key}`);
     }
     const sign = (r2Key: string) => getSignedFileUrl(this.env, r2Key, PERSISTENT_ATTACHMENT_URL_TTL_SECONDS);
 
