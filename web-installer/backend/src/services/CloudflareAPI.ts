@@ -16,6 +16,7 @@ import type {
   CreateR2Request,
   Queue,
   CreateQueueRequest,
+  QueueConsumerInfo,
   QueueConsumerSettings,
   Worker,
   DeployWorkerRequest,
@@ -242,27 +243,36 @@ export class CloudflareAPI {
   }
 
   /** Current consumers of a queue (a queue allows one). The Worker name is `script`, or `service` on older responses. */
-  async listQueueConsumers(queueId: string): Promise<Array<{ consumerId: string; scriptName: string | undefined }>> {
-    const response = await this.request<Array<{ consumer_id: string; script?: string; script_name?: string; service?: string }>>({
+  async listQueueConsumers(queueId: string): Promise<QueueConsumerInfo[]> {
+    const response = await this.request<Array<{
+      consumer_id: string; script?: string; script_name?: string; service?: string;
+      settings?: Partial<QueueConsumerSettings>; dead_letter_queue?: string;
+    }>>({
       method: 'GET',
       path: `/accounts/${this.accountId}/queues/${queueId}/consumers`
     });
     if (!response.success) {
       throw new Error(`Failed to list queue consumers: ${response.errors[0]?.message}`);
     }
-    return (response.result ?? []).map(c => ({ consumerId: c.consumer_id, scriptName: c.script ?? c.script_name ?? c.service }));
+    return (response.result ?? []).map(c => ({
+      consumerId: c.consumer_id,
+      scriptName: c.script ?? c.script_name ?? c.service,
+      settings: c.settings,
+      deadLetterQueue: c.dead_letter_queue
+    }));
   }
 
   /** Register a Worker as the push consumer of a queue that has none. */
   async createQueueConsumer(
     queueId: string,
     scriptName: string,
-    settings: QueueConsumerSettings
+    settings: Partial<QueueConsumerSettings>,
+    deadLetterQueue?: string
   ): Promise<void> {
     const response = await this.request({
       method: 'POST',
       path: `/accounts/${this.accountId}/queues/${queueId}/consumers`,
-      body: { script_name: scriptName, type: 'worker', settings }
+      body: { script_name: scriptName, type: 'worker', settings, ...(deadLetterQueue && { dead_letter_queue: deadLetterQueue }) }
     });
     if (!response.success) {
       throw new Error(`Failed to create queue consumer: ${response.errors[0]?.message}`);
@@ -274,12 +284,13 @@ export class CloudflareAPI {
     queueId: string,
     consumerId: string,
     scriptName: string,
-    settings: QueueConsumerSettings
+    settings: Partial<QueueConsumerSettings>,
+    deadLetterQueue?: string
   ): Promise<void> {
     const response = await this.request({
       method: 'PUT',
       path: `/accounts/${this.accountId}/queues/${queueId}/consumers/${consumerId}`,
-      body: { script_name: scriptName, type: 'worker', settings }
+      body: { script_name: scriptName, type: 'worker', settings, ...(deadLetterQueue && { dead_letter_queue: deadLetterQueue }) }
     });
     if (!response.success) {
       throw new Error(`Failed to update queue consumer: ${response.errors[0]?.message}`);

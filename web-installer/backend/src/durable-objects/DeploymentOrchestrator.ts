@@ -431,7 +431,7 @@ export class DeploymentOrchestrator implements DurableObject {
 
     // Execute rollback
     try {
-      await this.rollbackService.rollback(this.createdResourcesForRollback());
+      await this.rollbackDeployment();
       this.log('success', 'Rollback completed successfully');
     } catch (rollbackError) {
       this.log('error', `Rollback failed: ${rollbackError instanceof Error ? rollbackError.message : 'Unknown'}`);
@@ -541,7 +541,7 @@ export class DeploymentOrchestrator implements DurableObject {
     // runStep stops before starting the next step once status is rolling_back.
     await this.deploymentTask;
 
-    await this.rollbackService.rollback(this.createdResourcesForRollback());
+    await this.rollbackDeployment();
 
     this.deploymentState.status = 'failed';
     await this.updateState();
@@ -555,6 +555,28 @@ export class DeploymentOrchestrator implements DurableObject {
   /**
    * Log a message
    */
+  /** Undo the one change made to a resource we did not create: put a reused queue's consumer back. */
+  private async restorePriorQueueConsumer(): Promise<void> {
+    const prior = this.deploymentState?.priorQueueConsumer;
+    const queueId = this.deploymentState?.resources.queueId;
+    if (!prior || !queueId) return;
+    if (!prior.scriptName) {
+      this.log('warning', 'Previous queue consumer has no readable Worker name; it must be restored manually');
+      return;
+    }
+    await this.api.updateQueueConsumer(queueId, prior.consumerId, prior.scriptName, prior.settings ?? {}, prior.deadLetterQueue);
+    this.log('success', `Restored queue consumer to ${prior.scriptName}`);
+  }
+
+  private async rollbackDeployment(): Promise<void> {
+    try {
+      await this.restorePriorQueueConsumer();
+    } catch (error) {
+      this.log('error', `Restoring the previous queue consumer failed: ${error instanceof Error ? error.message : 'Unknown'}`);
+    }
+    await this.rollbackService.rollback(this.createdResourcesForRollback());
+  }
+
   private createdResourcesForRollback(): CloudflareResources {
     const deployment = this.deploymentState!;
     // Legacy deployments have no reliable provenance; preserve their resources.
@@ -728,21 +750,30 @@ export class DeploymentOrchestrator implements DurableObject {
 
   private async stepCreateQueue(): Promise<void> {
     if (!this.deploymentState) return;
-    const queueName = `${this.deploymentState.config.projectName}-queue`;
+    const { projectName } = this.deploymentState.config;
+    // Dead-letter queue first: inbound LINE events that exhaust their retries are kept there
+    // (wrangler.toml parity) instead of being discarded.
+    await this.createOrReuseQueue(`${projectName}-dlq`, 'dlqId', 'dlqName');
+    await this.createOrReuseQueue(`${projectName}-queue`, 'queueId', 'queueName');
+  }
+
+  private async createOrReuseQueue(name: string, idKey: 'queueId' | 'dlqId', nameKey: 'queueName' | 'dlqName'): Promise<void> {
+    if (!this.deploymentState) return;
+    const { resources } = this.deploymentState;
     try {
-      const queue = await this.api.createQueue(queueName);
-      this.deploymentState.resources.queueId = queue.queue_id;
-      this.deploymentState.createdResources!.push('queueId');
-      this.deploymentState.resources.queueName = queue.queue_name;
+      const queue = await this.api.createQueue(name);
+      resources[idKey] = queue.queue_id;
+      this.deploymentState.createdResources!.push(idKey);
+      resources[nameKey] = queue.queue_name;
       this.log('success', `Created queue: ${queue.queue_name} (ID: ${queue.queue_id})`);
     } catch (error) {
       if (isAlreadyExistsError(error)) {
-        this.log('info', `Queue '${queueName}' already exists, reusing...`);
+        this.log('info', `Queue '${name}' already exists, reusing...`);
         const queues = await this.api.listQueues();
-        const existing = queues.find((q: { queue_name: string }) => q.queue_name === queueName);
+        const existing = queues.find((q: { queue_name: string }) => q.queue_name === name);
         if (existing) {
-          this.deploymentState.resources.queueId = existing.queue_id;
-          this.deploymentState.resources.queueName = existing.queue_name;
+          resources[idKey] = existing.queue_id;
+          resources[nameKey] = existing.queue_name;
           this.log('success', `Reusing existing queue: ${existing.queue_name} (ID: ${existing.queue_id})`);
           return;
         }
@@ -891,14 +922,18 @@ export class DeploymentOrchestrator implements DurableObject {
     const queueName = this.deploymentState.resources.queueName;
     // A reused queue may point at another Worker (or carry hand-edited settings): a queue
     // allows one consumer, so repoint it at this Worker and reapply our settings.
+    const dlq = this.deploymentState.resources.dlqName;
     const [existing] = await this.api.listQueueConsumers(queueId);
     if (existing) {
-      await this.api.updateQueueConsumer(queueId, existing.consumerId, workerName, LINE_QUEUE_CONSUMER_SETTINGS);
+      // A queue this deployment created cannot have a prior consumer worth restoring; a reused one can.
+      if (!this.deploymentState.createdResources?.includes('queueId')) this.deploymentState.priorQueueConsumer = existing;
+      await this.updateState();
+      await this.api.updateQueueConsumer(queueId, existing.consumerId, workerName, LINE_QUEUE_CONSUMER_SETTINGS, dlq);
       const note = existing.scriptName && existing.scriptName !== workerName ? ` (was ${existing.scriptName})` : '';
       this.log('success', `Updated queue ${queueName} consumer to ${workerName}${note}`);
       return;
     }
-    await this.api.createQueueConsumer(queueId, workerName, LINE_QUEUE_CONSUMER_SETTINGS);
+    await this.api.createQueueConsumer(queueId, workerName, LINE_QUEUE_CONSUMER_SETTINGS, dlq);
     this.log('success', `Registered ${workerName} as consumer of queue ${queueName}`);
   }
 
