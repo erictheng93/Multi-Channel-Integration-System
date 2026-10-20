@@ -217,6 +217,7 @@ export async function processLineMessage(env: Bindings, event: LineEvent, defer:
     });
 
     // Save message
+    const saved: { duplicate?: boolean } = {};
     const messageId = await saveMessage(
       env,
       conversation!.id,
@@ -226,14 +227,18 @@ export async function processLineMessage(env: Bindings, event: LineEvent, defer:
       message.id,
       user.displayName || null,
       mediaData,
-      'line'
+      'line',
+      saved
     );
 
     // Notify only once the first message is stored, so agents never see an alert for an empty conversation.
-    await notifyNewConversation(env, conversation, messageId, 'line', {
-      messageContent,
-      customerDisplayName: user.displayName || 'LINE User'
-    });
+    // A redelivery that lost the insert race must not notify a second time.
+    if (!saved.duplicate) {
+      await notifyNewConversation(env, conversation, messageId, 'line', {
+        messageContent,
+        customerDisplayName: user.displayName || 'LINE User'
+      });
+    }
 
     // =================== SYNC: Auto-reply (replyToken expires ~30s) ===================
     if (conversation) {
