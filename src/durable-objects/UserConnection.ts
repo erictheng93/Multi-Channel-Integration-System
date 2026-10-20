@@ -505,6 +505,8 @@ export class UserConnection implements DurableObject {
 
   private async initializeFromStorage(): Promise<void> {
     this.accessCheckDeadline = await this.state.storage.get<number>('accessCheckDeadline') ?? null;
+    // Persisted backoff step: this object is rebuilt on every alarm wake, so memory alone would reset it.
+    this.accessCheckFailures = await this.state.storage.get<number>('accessCheckFailures') ?? 0;
     await this.stateManager.initializeFromStorage(this.state.storage);
     await this.subscriptionManager.initializeFromStorage(this.state.storage);
     console.log(`[UserConnection] State restored for user ${this.userId}: ${this.subscriptionManager.subscriptionCount} subscriptions`);
@@ -564,6 +566,8 @@ export class UserConnection implements DurableObject {
     } else if (this.stateManager.connectionCount === 0 && this.accessCheckDeadline) {
       this.accessCheckDeadline = null;
       await this.state.storage.delete('accessCheckDeadline');
+      this.accessCheckFailures = 0;
+      await this.state.storage.delete('accessCheckFailures'); // no sockets left: backoff state is moot
     }
     // Cold start: learn the persisted alarm with a cheap read so unchanged state costs no write.
     if (this.armedAlarmAt === undefined) {
@@ -654,17 +658,22 @@ export class UserConnection implements DurableObject {
     // Every other mutation persists immediately, so storage already matches memory unless a subscription was revoked here.
     if (subscriptionsChanged) await this.subscriptionManager.persistSubscriptions(this.state.storage);
     if (deferred) return this.deferAccessCheck(deferredError); // once per run: one failure, one backoff step
-    this.accessCheckFailures = 0;
+    if (this.accessCheckFailures > 0) {
+      this.accessCheckFailures = 0;
+      await this.state.storage.delete('accessCheckFailures'); // only written when a backoff was in progress
+    }
     return false;
   }
 
   private async deferAccessCheck(error: unknown): Promise<boolean> {
     console.error('[UserConnection] Access check unavailable, retrying later:', error);
     // Backoff 30s, 60s, 120s, 240s then the normal 5 min cadence (cap), so an outage is a bounded number of short wakes.
+    // Stop condition: count (persisted, capped at 16 => 5 min cadence) until a check succeeds.
     this.accessCheckFailures = Math.min(this.accessCheckFailures + 1, 16);
     const delay = Math.min(30000 * 2 ** (this.accessCheckFailures - 1), 300000);
     this.accessCheckDeadline = Date.now() + delay;
     await this.state.storage.put('accessCheckDeadline', this.accessCheckDeadline);
+    await this.state.storage.put('accessCheckFailures', this.accessCheckFailures);
     return true;
   }
 

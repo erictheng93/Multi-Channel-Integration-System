@@ -27,10 +27,15 @@ import type { Bindings } from '@/types';
 /** Access-check retry policy while D1 is unavailable. */
 const ACCESS_CHECK_RETRY_BASE_MS = 30000;
 const ACCESS_CHECK_INTERVAL_MS = 300000; // the normal revalidation cadence, unchanged
+const ACCESS_CHECK_FAILURES_KEY = 'accessCheckFailures';
+const ACCESS_CHECK_MAX_FAILURES = 16;
 
 export class RoomConnectionManager {
-  /** Consecutive deferred access checks (in memory, see evictUnauthorizedConnections). */
-  private accessCheckFailures = 0;
+  /**
+   * Consecutive deferred access checks. Mirrored in DO storage (ACCESS_CHECK_FAILURES_KEY) so a
+   * room rebuilt on every alarm wake keeps its backoff; undefined = not yet loaded this life.
+   */
+  private accessCheckFailures: number | undefined;
 
   constructor(
     private ctx: RoomContext,
@@ -306,6 +311,13 @@ export class RoomConnectionManager {
     if (!response.ok) throw new Error(`Room tracking returned ${response.status}`);
   }
 
+  private async loadAccessCheckFailures(): Promise<number> {
+    if (this.accessCheckFailures === undefined) {
+      this.accessCheckFailures = (await this.ctx.state.storage.get<number>(ACCESS_CHECK_FAILURES_KEY)) ?? 0;
+    }
+    return this.accessCheckFailures;
+  }
+
   /**
    * Closes sockets whose user definitely lost access. When D1 cannot answer
    * for a user, that user's sockets stay open and the access check is retried
@@ -334,18 +346,19 @@ export class RoomConnectionManager {
     }
     if (deferred) {
       // Backoff 30s, 60s, 120s, 240s then the normal 5 min cadence (cap = ACCESS_CHECK_INTERVAL_MS),
-      // so a long D1 outage costs a bounded number of short-interval wakes. The counter is in
-      // memory: eviction resets it, which only buys a few more bounded retries.
-      this.accessCheckFailures = Math.min(this.accessCheckFailures + 1, 16);
-      const delay = Math.min(
-        ACCESS_CHECK_RETRY_BASE_MS * 2 ** (this.accessCheckFailures - 1),
-        ACCESS_CHECK_INTERVAL_MS
-      );
+      // so a long D1 outage costs a bounded number of short-interval wakes. The counter is
+      // persisted so reconstruction on an alarm wake cannot restart the 30s step.
+      // Stop condition: count (cap keeps the retry on the 5 min cadence) until a check succeeds.
+      const failures = Math.min((await this.loadAccessCheckFailures()) + 1, ACCESS_CHECK_MAX_FAILURES);
+      this.accessCheckFailures = failures;
+      const delay = Math.min(ACCESS_CHECK_RETRY_BASE_MS * 2 ** (failures - 1), ACCESS_CHECK_INTERVAL_MS);
       this.ctx.accessCheckDeadline = Date.now() + delay;
       await this.ctx.state.storage.put('accessCheckDeadline', this.ctx.accessCheckDeadline);
-    } else {
-      // Every checked user got a definite answer: reset the retry budget.
+      await this.ctx.state.storage.put(ACCESS_CHECK_FAILURES_KEY, failures);
+    } else if ((await this.loadAccessCheckFailures()) > 0) {
+      // Every checked user got a definite answer: reset the retry budget (write only when there is one to clear).
       this.accessCheckFailures = 0;
+      await this.ctx.state.storage.delete(ACCESS_CHECK_FAILURES_KEY);
     }
     // Close every revoked device before removeConnection emits any user_left events.
     for (const connection of revoked) {
