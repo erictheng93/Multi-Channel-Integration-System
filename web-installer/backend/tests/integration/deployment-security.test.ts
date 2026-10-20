@@ -58,6 +58,7 @@ describe('deployment ownership', () => {
     const network = vi.spyOn(globalThis, 'fetch').mockImplementation(async (url, init) => {
       const path = new URL(String(url)).pathname;
       if (path.endsWith('/secrets')) return Response.json({ success: true, result: [{ name: 'JWT_SECRET', type: 'secret_text' }, { name: 'ENCRYPTION_KEY', type: 'secret_text' }] });
+      if (path.endsWith('/consumers') && (init?.method ?? 'GET') === 'GET') return Response.json({ success: true, result: [] });
       if (init?.method === 'PUT' && path.endsWith('/schedules')) return Response.json({ success: true, result: {} });
       if (init?.method === 'PUT') {
         metadata = JSON.parse((init.body as FormData).get('metadata') as string);
