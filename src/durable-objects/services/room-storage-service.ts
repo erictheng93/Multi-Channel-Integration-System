@@ -22,6 +22,12 @@ export class RoomStorageService {
    * extra bounded retries, and persisting it would add a storage write per failure.
    */
   private flushFailures = 0;
+  /**
+   * Set once the retry budget is spent. Unrelated wakes (the five-minute access check)
+   * must not treat the missing deadline as "due" and keep writing during an outage;
+   * only new message work (scheduleStorageWrite) clears it.
+   */
+  private flushExhausted = false;
   private alarmSeed: Promise<void> | null = null;
 
   constructor(
@@ -77,6 +83,7 @@ export class RoomStorageService {
     if (!this.ctx.storageFlushDeadline) {
       // New window (also the wake-up after a given-up failure): fresh message work resets the retry budget.
       this.flushFailures = 0;
+      this.flushExhausted = false;
       this.ctx.storageFlushDeadline = Date.now() + this.ctx.STORAGE_WRITE_DEBOUNCE_MS;
     }
     this.scheduleNextAlarm().catch((error) => {
@@ -102,6 +109,7 @@ export class RoomStorageService {
           // Give up re-arming: stop condition for the flush alarm chain. The data stays dirty,
           // so the next message (scheduleStorageWrite) or any other wake retries with a fresh budget.
           this.ctx.storageFlushDeadline = null;
+          this.flushExhausted = true;
         } else {
           const delay = Math.min(FLUSH_RETRY_BASE_MS * 2 ** (this.flushFailures - 1), FLUSH_RETRY_MAX_MS);
           this.ctx.storageFlushDeadline = Date.now() + delay;
@@ -111,6 +119,7 @@ export class RoomStorageService {
   }
 
   async flushDueMessageHistory(now = Date.now()): Promise<void> {
+    if (this.flushExhausted) return; // budget spent: wait for new message work, not for the next unrelated wake
     if (this.ctx.messageDirty && (!this.ctx.storageFlushDeadline || this.ctx.storageFlushDeadline <= now)) {
       await this.forceStorageWrite();
     }
@@ -148,6 +157,7 @@ export class RoomStorageService {
     } else if (this.ctx.connections.size === 0 && this.ctx.accessCheckDeadline) {
       this.ctx.accessCheckDeadline = null;
       await this.ctx.state.storage.delete('accessCheckDeadline');
+      await this.ctx.state.storage.delete('accessCheckFailures'); // no sockets left: backoff state is moot
     }
     const deadlines = [
       this.ctx.storageFlushDeadline,

@@ -21,6 +21,7 @@ interface Harness {
   deleteAlarm: ReturnType<typeof vi.fn>
   getAlarm: ReturnType<typeof vi.fn>
   failPuts: { value: boolean }
+  values: Map<string, unknown>
   consume: () => void
 }
 
@@ -45,7 +46,7 @@ function harness(initialAlarm: number | null = null): Harness {
       getAlarm, setAlarm, deleteAlarm
     }
   } as unknown as DurableObjectState
-  return { state, alarm: () => alarm, consume: () => { alarm = null }, setAlarm, deleteAlarm, getAlarm, failPuts }
+  return { state, alarm: () => alarm, consume: () => { alarm = null }, setAlarm, deleteAlarm, getAlarm, failPuts, values }
 }
 
 function storageCtx(h: Harness) {
@@ -170,6 +171,42 @@ describe('ConversationRoom alarm chain', () => {
     expect(h.alarm()).toBeNull()
   })
 
+  it('an exhausted flush budget is not retried by unrelated wakes until new message work arrives', async () => {
+    const h = harness()
+    h.failPuts.value = true
+    const { ctx, svc } = makeStorage(h)
+    ctx.messageDirty = true
+    svc.scheduleStorageWrite()
+    await settle()
+    while (h.alarm() !== null) {
+      vi.setSystemTime(h.alarm() as number)
+      ctx.alarmAt = null
+      h.consume()
+      await svc.flushDueMessageHistory(Date.now())
+      await svc.scheduleNextAlarm()
+    }
+    expect(ctx.messageDirty).toBe(true)
+
+    // Several five-minute access-check wakes later: no further write attempts.
+    const puts = () => (h.state.storage.put as ReturnType<typeof vi.fn>).mock.calls
+      .filter(([k]) => k === 'messageHistory').length
+    const before = puts()
+    for (let i = 0; i < 4; i++) {
+      vi.setSystemTime(Date.now() + 300000)
+      await svc.flushDueMessageHistory(Date.now())
+    }
+    expect(puts()).toBe(before)
+    expect(ctx.storageFlushDeadline).toBeNull()
+
+    // New message work clears the exhausted state and re-arms.
+    svc.scheduleStorageWrite()
+    await settle()
+    expect(h.alarm()).not.toBeNull()
+    vi.setSystemTime(h.alarm() as number)
+    await svc.flushDueMessageHistory(Date.now())
+    expect(puts()).toBe(before + 1)
+  })
+
   it('does not rewrite an unchanged alarm deadline', async () => {
     const h = harness()
     const { ctx, svc } = makeStorage(h)
@@ -215,5 +252,42 @@ describe('ConversationRoom alarm chain', () => {
     const before = Date.now()
     await mgr.evictUnauthorizedConnections()
     expect((ctx.accessCheckDeadline as number) - before).toBe(30000)
+  })
+
+  it('access-check backoff survives reconstruction of the room between wakes', async () => {
+    const h = harness()
+    const build = () => {
+      const ctx = storageCtx(h)
+      ctx.connections.set('k1', {
+        userId: 'u1',
+        connectionId: 'k1',
+        websocket: { close: vi.fn(), serializeAttachment: vi.fn(), readyState: 1 },
+        metadata: {}
+      })
+      const mgr = new RoomConnectionManager(
+        ctx as never, { isFullMode: () => false } as never, {} as never, {} as never
+      )
+      ;(mgr as unknown as { restoreHibernatedConnections: () => void }).restoreHibernatedConnections = () => {}
+      return { ctx, mgr }
+    }
+
+    access.check = async () => { throw new Error('D1 down') }
+    const delays: number[] = []
+    for (let i = 0; i < 7; i++) {
+      const { ctx, mgr } = build() // fresh instance per wake: in-memory state is lost
+      const before = Date.now()
+      expect((await mgr.evictUnauthorizedConnections()).deferred).toBe(true)
+      delays.push((ctx.accessCheckDeadline as number) - before)
+    }
+    expect(delays).toEqual([30000, 60000, 120000, 240000, 300000, 300000, 300000])
+
+    access.check = async () => true
+    expect((await build().mgr.evictUnauthorizedConnections()).deferred).toBe(false)
+    expect(h.values.has('accessCheckFailures')).toBe(false)
+
+    // A healthy check with no failure on record performs no storage write.
+    const deletes = (h.state.storage.delete as ReturnType<typeof vi.fn>).mock.calls.length
+    await build().mgr.evictUnauthorizedConnections()
+    expect((h.state.storage.delete as ReturnType<typeof vi.fn>).mock.calls.length).toBe(deletes)
   })
 })
