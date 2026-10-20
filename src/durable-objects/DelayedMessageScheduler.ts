@@ -424,10 +424,10 @@ export class DelayedMessageScheduler implements DurableObject {
 
   private async handleDLQ(): Promise<Response> {
     try {
-      const dlqEntries = await this.state.storage.list<PendingMessage>({ prefix: 'dlq:' });
+      const dlqEntries = await this.listDeadLetters();
       const failedMessages: DeadLetterMessageSummary[] = [];
 
-      for (const [_key, entry] of dlqEntries) {
+      for (const entry of dlqEntries) {
         failedMessages.push({
           id: entry.id,
           content: entry.content?.substring(0, 100) || '',
@@ -599,6 +599,7 @@ export class DelayedMessageScheduler implements DurableObject {
           // Preserve the only durable copy, but stop the bounded delivery alarm chain.
           msg.status = 'failed';
           msg.failureReason = 'Delivery retries exhausted and DLQ write failed';
+          msg.failedAt = nowMs(); // listed by /dlq as a fallback record, expired by restoreState like dlq: rows
           await this.state.storage.put(`msg:${msg.id}`, msg);
         }
         this.pendingMessages.delete(msg.id);
@@ -647,10 +648,17 @@ export class DelayedMessageScheduler implements DurableObject {
   // Private helpers (response builders, DLQ size)
   // ---------------------------------------------------------------------------
 
+  /** dlq: rows plus the msg: rows kept as the only copy when the DLQ write itself failed. */
+  private async listDeadLetters(): Promise<PendingMessage[]> {
+    const dlq = await this.state.storage.list<PendingMessage>({ prefix: 'dlq:' });
+    const rows = await this.state.storage.list<PendingMessage>({ prefix: 'msg:' });
+    const fallback = [...rows.values()].filter((m) => m.status === 'failed' && !dlq.has(`dlq:${m.id}`));
+    return [...dlq.values(), ...fallback];
+  }
+
   private async getDLQSize(): Promise<number> {
     try {
-      const dlqEntries = await this.state.storage.list({ prefix: 'dlq:' });
-      return dlqEntries.size;
+      return (await this.listDeadLetters()).length;
     } catch (error) {
       this.logger.error('DLQ size query error', error);
       return 0;
