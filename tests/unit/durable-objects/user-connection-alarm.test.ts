@@ -55,7 +55,7 @@ function harness(sockets: ReturnType<typeof socket>[], initialAlarm: number | nu
   } as unknown as DurableObjectState
   const instance = new UserConnection(state, { userId: 'user-1', DB: {} } as never)
   return {
-    instance, setAlarm, deleteAlarm, getAlarm,
+    instance, setAlarm, deleteAlarm, getAlarm, values,
     alarm: () => alarm,
     /** The platform clears the alarm when it fires. */
     async fire() {
@@ -166,6 +166,30 @@ describe('UserConnection alarm chain', () => {
     await h.fire()
     expect((h.alarm() as number) - Date.now()).toBe(300000)
 
+    authMock.getUserById = async () => { throw new Error('D1 down') }
+    await h.fire()
+    expect((h.alarm() as number) - Date.now()).toBe(30000)
+  })
+
+  it('the outage backoff survives reconstruction of the object between wakes', async () => {
+    authMock.getUserById = async () => { throw new Error('D1 down') }
+    let h = harness([socket('c1', T0 / 1000 + 86400)])
+    await settle()
+
+    const gaps: number[] = []
+    for (let i = 0; i < 7; i++) {
+      await h.fire()
+      gaps.push((h.alarm() as number) - Date.now())
+      // Evicted: a new instance is built from storage only, as on a real alarm wake.
+      h = harness([socket('c1', T0 / 1000 + 86400)], h.alarm(), Object.fromEntries(h.values))
+      await settle()
+    }
+    expect(gaps).toEqual([30000, 60000, 120000, 240000, 300000, 300000, 300000])
+
+    // Success clears the persisted counter; the next outage starts from 30s again.
+    authMock.getUserById = async () => ({ role: 'agent' })
+    await h.fire()
+    expect(h.values.has('accessCheckFailures')).toBe(false)
     authMock.getUserById = async () => { throw new Error('D1 down') }
     await h.fire()
     expect((h.alarm() as number) - Date.now()).toBe(30000)
