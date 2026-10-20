@@ -9,6 +9,7 @@ vi.mock('drizzle-orm', () => ({
   and: (...args: any[]) => ({ type: 'and', args }),
   ne: (...args: any[]) => ({ type: 'ne', args }),
   sql: (...args: any[]) => ({ type: 'sql', args }),
+  desc: (...args: any[]) => ({ type: 'desc', args }),
 }));
 
 // Mock drizzle-factory

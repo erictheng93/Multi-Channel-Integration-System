@@ -22,10 +22,12 @@ import type { Bindings } from '@backend/types';
 
 // Mock WebSocket broadcast service
 const mockBroadcastConversationTransferred = vi.fn().mockResolvedValue(undefined);
+const mockBroadcastConversationEvent = vi.fn().mockResolvedValue(undefined);
 vi.mock('@/services/websocket-broadcast-service', () => ({
   WebSocketBroadcastService: vi.fn(function () {
     return {
-      broadcastConversationTransferred: mockBroadcastConversationTransferred
+      broadcastConversationTransferred: mockBroadcastConversationTransferred,
+      broadcastConversationEvent: mockBroadcastConversationEvent
     };
   })
 }));
@@ -36,6 +38,13 @@ vi.mock('@/modules/liff/handlers/line-id-token', () => ({
 
 vi.mock('@/modules/liff/handlers/line-id-token', () => ({
   verifyLiffIdToken: vi.fn(async (t: unknown) => (t === 'valid' ? 'U1234567890' : typeof t === 'string' && t.startsWith('tok:') ? t.slice(4) : null))
+}));
+
+// The conversation lookup orders/limits in SQL; the chainable db mock below cannot model that,
+// so feed the scenario's conversation straight through (selection is covered by its own test).
+vi.mock('@/services/customer-conversation-lookup', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/services/customer-conversation-lookup')>()),
+  findCustomerConversation: vi.fn(async () => mockDbResults.conversation ?? undefined)
 }));
 
 // Mock uuid
@@ -379,6 +388,33 @@ describe('LIFF Welcome Endpoint - Conversation Sync', () => {
 
       // Should NOT broadcast - no change needed
       expect(mockBroadcastConversationTransferred).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('Scenario 4b: Existing User with a Closed Conversation', () => {
+    it('reopens the closed conversation even when the team is unchanged', async () => {
+      mockBroadcastConversationEvent.mockClear();
+      mockDbResults = {
+        team: { id: 1, name: 'Test Team' },
+        customer: { id: 'cust-123', platformUserId: 'U1234567890', displayName: 'Test User' },
+        conversation: { id: 'conv-closed', customerId: 'cust-123', assignedTeamId: 1, status: 'closed' }
+      };
+      const app = createTestApp(createMockEnv());
+
+      const response = await app.request('/api/liff/welcome', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken: 'valid', teamId: 1 })
+      });
+
+      expect(response.status).toBe(200);
+      expect(mockBroadcastConversationEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'conversation_status_changed',
+          conversationId: 'conv-closed',
+          data: expect.objectContaining({ status: 'assigned' })
+        })
+      );
     });
   });
 

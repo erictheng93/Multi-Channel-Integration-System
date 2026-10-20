@@ -11,6 +11,7 @@ import { ActivityService } from '@modules/activities';
 import { createContextLogger } from '@/utils/logger';
 
 import { nowISO, nowMs } from '@/utils/timestamp';
+import { findCustomerConversation, getReopenStatus } from '@/services/customer-conversation-lookup';
 import { evaluateWelcome as autoReplyEvaluateWelcome } from '@modules/auto-reply/services/auto-reply-engine';
 
 const log = createContextLogger('Webhook');
@@ -223,11 +224,8 @@ export async function processLineFollowEvent(env: Bindings, event: LineEvent) {
     // Step 8: If team assigned, create default conversation
     if (assignedTeamId && existingCustomer) {
       // Check if active conversation already exists
-      existingConversation = await drizzleDb
-        .select()
-        .from(conversations)
-        .where(eq(conversations.customerId, existingCustomer.id)) // 一位客戶一個對話（含已結案）
-        .get();
+      // 一位客戶一個對話（含已結案）；優先未結案的，見 findCustomerConversation
+      existingConversation = (await findCustomerConversation(drizzleDb, existingCustomer.id)) ?? null;
 
       if (!existingConversation) {
         // Create new conversation with team assignment (only team assignment supported, individual removed)
@@ -251,20 +249,29 @@ export async function processLineFollowEvent(env: Bindings, event: LineEvent) {
           customerId: existingCustomer.id,
           teamId: assignedTeamId
         });
-      } else if (!existingConversation.assignedTeamId) {
-        // Update existing conversation team assignment
-        await drizzleDb
-          .update(conversations)
-          .set({
-            assignedTeamId: assignedTeamId,
-            updatedAt: timestamp
-          })
-          .where(eq(conversations.id, existingConversation.id));
+      } else {
+        // Backfill a missing team and reopen a closed conversation (the customer followed again)
+        const reopenedStatus = getReopenStatus(existingConversation.status, true);
+        const needsTeam = !existingConversation.assignedTeamId;
+        if (needsTeam || reopenedStatus) {
+          await drizzleDb
+            .update(conversations)
+            .set({
+              ...(needsTeam && { assignedTeamId: assignedTeamId }),
+              ...(reopenedStatus && { status: reopenedStatus, closedAt: null }),
+              updatedAt: timestamp
+            })
+            .where(eq(conversations.id, existingConversation.id));
 
-        log.info('Updated existing conversation with team', {
-          conversationId: existingConversation.id,
-          teamId: assignedTeamId
-        });
+          if (needsTeam) existingConversation.assignedTeamId = assignedTeamId;
+          if (reopenedStatus) existingConversation.status = reopenedStatus;
+
+          log.info('Updated existing conversation with team', {
+            conversationId: existingConversation.id,
+            teamId: assignedTeamId,
+            reopenedStatus
+          });
+        }
       }
     }
 
@@ -326,7 +333,7 @@ export async function processLineFollowEvent(env: Bindings, event: LineEvent) {
               customerId: existingCustomer.id,
               customerName: displayName,
               platform: 'line',
-              status: 'active',
+              status: existingConversation?.status ?? 'active',
               unreadCount: 0,
               assignedTeamId: assignedTeamId,
               assignedTeam: teamInfo ? {
@@ -403,12 +410,16 @@ export async function processLineFollowEvent(env: Bindings, event: LineEvent) {
         // Determine conversation ID for logging
         let welcomeConversationId = existingConversation?.id;
         if (!welcomeConversationId) {
-          const newConv = await drizzleDb
-            .select({ id: conversations.id })
-            .from(conversations)
-            .where(eq(conversations.customerId, existingCustomer.id)) // 一位客戶一個對話（含已結案）
-            .limit(1)
-            .get();
+          // 一位客戶一個對話（含已結案）；沒有團隊的 follow 也會走到這裡，已結案則先重新開啟
+          const newConv = await findCustomerConversation(drizzleDb, existingCustomer.id);
+          const reopenedStatus = newConv ? getReopenStatus(newConv.status, Boolean(newConv.assignedTeamId)) : null;
+          if (newConv && reopenedStatus) {
+            await drizzleDb
+              .update(conversations)
+              .set({ status: reopenedStatus, closedAt: null, updatedAt: nowISO() })
+              .where(eq(conversations.id, newConv.id));
+            log.info('Reopened closed conversation on follow', { conversationId: newConv.id, status: reopenedStatus });
+          }
           welcomeConversationId = newConv?.id || '';
         }
 
