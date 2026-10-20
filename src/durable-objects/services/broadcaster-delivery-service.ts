@@ -334,6 +334,8 @@ export class BroadcasterDeliveryService {
         // found here is the only chance to put the user back in the global-broadcast registry.
         if (typeof result.connections === 'number' && result.connections > 0 && !this.ctx.userConnections.has(userId)) {
           this.ctx.userConnections.set(userId, userStub);
+          // Every insertion bumps the generation, or an in-flight global probe would prune this entry.
+          this.ctx.userRegistrationGen.set(userId, (this.ctx.userRegistrationGen.get(userId) ?? 0) + 1);
           this.ctx.stats.activeConnections++;
           await this.helpers.persistConnectionIds();
         }
