@@ -74,6 +74,11 @@ jobs:
       - name: Check installer worker bundle is fresh
         run: bun run check:worker-bundle || echo "::warning title=Stale installer bundle::Run 'bun run build:worker-bundle' before releasing the installer."
 
+      # The installer replays its own bundled migrations; fail when they lack a table, column,
+      # index or unique key that production (docs/architecture/SCHEMA.md) has.
+      - name: Check installer schema matches SCHEMA.md
+        run: bun run check:installer-schema
+
       # Every @media width must come from frontend/src/config/breakpoints.ts so
       # layouts switch at one shared set of widths instead of ad-hoc numbers.
       - name: Check responsive breakpoint scale
