@@ -88,12 +88,16 @@ export function useUnreadConversationTotal() {
     if (!authStore.isAuthenticated || inFlight) { return }
     if (maxAgeMs > 0 && Date.now() - fetchedAt < maxAgeMs) { return }
     inFlight = true
+    // 請求期間發生的轉換不在伺服器快照內,校正後要保留(否則數字會退回舊值直到下次校正)
+    const deltaAtStart = delta.value
     try {
       const response = await conversationApi.getStats()
       const value = response.success ? response.data?.unreadConversations : undefined
       if (typeof value === 'number') {
         const at = Date.now()
+        const sinceStart = delta.value - deltaAtStart
         adopt(value, at)
+        delta.value = sinceStart
         channel?.postMessage({ total: value, at })
       }
     } catch {
