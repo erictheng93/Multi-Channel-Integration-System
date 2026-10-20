@@ -1,7 +1,7 @@
 import { defineApiContract } from './core'
 import type { Platform } from '../types/core'
 
-export type ConversationStatusForApi = 'active' | 'assigned' | 'pending'
+export type ConversationStatusForApi = 'active' | 'assigned' | 'pending' | 'closed'
 
 export interface RawConversationData {
   id: string
