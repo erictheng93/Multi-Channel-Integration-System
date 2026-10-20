@@ -1,5 +1,12 @@
-import { describe, it, expect } from 'vitest'
-import { diffUnreadTransitions } from './useUnreadConversationTotal'
+import { describe, it, expect, vi } from 'vitest'
+import { effectScope, nextTick, reactive } from 'vue'
+import { diffUnreadTransitions, useUnreadConversationTotal } from './useUnreadConversationTotal'
+
+const store = vi.hoisted(() => ({ conversations: [] as Array<{ id: string; unreadCount: number }> }))
+const getStats = vi.hoisted(() => vi.fn())
+vi.mock('@/stores/conversations', () => ({ useConversationsStore: () => reactive(store) }))
+vi.mock('@/stores/auth', () => ({ useAuthStore: () => ({ isAuthenticated: true }) }))
+vi.mock('@/api/conversations', () => ({ conversationApi: { getStats } }))
 
 const m = (entries: Array<[string, boolean]>) => new Map(entries)
 
@@ -38,5 +45,28 @@ describe('diffUnreadTransitions', () => {
     const prev = m([['a', true], ['b', false], ['c', false]])
     const next = m([['a', false], ['b', true], ['c', true]])
     expect(diffUnreadTransitions(prev, next).delta).toBe(1)
+  })
+})
+
+describe('reconcile', () => {
+  it('保留請求期間發生的已讀/未讀轉換', async () => {
+    const state = reactive(store)
+    state.conversations = [{ id: 'a', unreadCount: 0 }, { id: 'b', unreadCount: 1 }]
+    getStats.mockResolvedValueOnce({ success: true, data: { unreadConversations: 1 } }) // 登入後的初次校正
+    const scope = effectScope()
+    const unread = scope.run(() => useUnreadConversationTotal())!
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    let resolveStats!: (_v: unknown) => void
+    getStats.mockReturnValueOnce(new Promise((resolve) => { resolveStats = resolve }))
+    const pending = unread.reconcile()
+    state.conversations = [{ id: 'a', unreadCount: 1 }, { id: 'b', unreadCount: 1 }]
+    await nextTick()
+    resolveStats({ success: true, data: { unreadConversations: 5 } })
+    await pending
+
+    // 伺服器快照 5(早於 a 變為未讀) + 請求期間的 +1
+    expect(unread.total.value).toBe(6)
+    scope.stop()
   })
 })
