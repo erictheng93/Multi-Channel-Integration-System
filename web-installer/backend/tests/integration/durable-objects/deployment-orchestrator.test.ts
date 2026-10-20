@@ -56,6 +56,11 @@ const MOCK_ROUTES: Array<{ method: string; pattern: RegExp; body: unknown }> = [
     body: { success: true, result: { name: 'test-crm-system-files' } }
   },
   {
+    method: 'GET',
+    pattern: /^https:\/\/api\.cloudflare\.com\/client\/v4\/accounts\/.*\/queues\/[^/]+\/consumers$/,
+    body: { success: true, result: [] }
+  },
+  {
     method: 'POST',
     pattern: /^https:\/\/api\.cloudflare\.com\/client\/v4\/accounts\/.*\/queues/,
     body: { success: true, result: { queue_id: 'test-queue-id', queue_name: 'test-crm-system-queue' } }
