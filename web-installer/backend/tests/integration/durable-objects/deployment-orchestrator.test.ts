@@ -62,8 +62,18 @@ const MOCK_ROUTES: Array<{ method: string; pattern: RegExp; body: unknown }> = [
   },
   {
     method: 'PUT',
+    pattern: /^https:\/\/api\.cloudflare\.com\/client\/v4\/accounts\/.*\/workers\/scripts\/.*\/schedules$/,
+    body: { success: true, result: { schedules: [] } }
+  },
+  {
+    method: 'PUT',
     pattern: /^https:\/\/api\.cloudflare\.com\/client\/v4\/accounts\/.*\/workers\/scripts\/.*/,
     body: { success: true, result: { etag: 'test-etag-789' } }
+  },
+  {
+    method: 'POST',
+    pattern: /^https:\/\/api\.cloudflare\.com\/client\/v4\/accounts\/.*\/workers\/scripts\/[^/]+\/subdomain$/,
+    body: { success: true, result: { enabled: true } }
   },
   // Pages deployments — must precede the Pages projects route it extends.
   {
@@ -100,18 +110,27 @@ describe('DeploymentOrchestrator - Workers Runtime Tests', () => {
   let deploymentId: string;
   let realFetch: typeof globalThis.fetch;
   let deployedBindings: { name: string; type: string; text?: string }[];
+  let deployedMetadata: Record<string, unknown> | undefined;
+  let recordedCalls: { method: string; path: string; body?: unknown }[];
 
   beforeEach(() => {
     realFetch = globalThis.fetch;
     deployedBindings = [];
+    deployedMetadata = undefined;
+    recordedCalls = [];
     globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
       const request = new Request(input, init);
       if (request.method === 'GET' && /\/workers\/scripts\/[^/]+$/.test(new URL(request.url).pathname)) {
         return new Response('Worker not found', { status: 404 });
       }
-      if (request.method === 'PUT' && request.url.includes('/workers/scripts/')) {
+      const pathname = new URL(request.url).pathname;
+      if (request.method === 'PUT' && /\/workers\/scripts\/[^/]+$/.test(pathname)) {
         const form = await request.formData();
-        deployedBindings = JSON.parse(form.get('metadata') as string).bindings;
+        deployedMetadata = JSON.parse(form.get('metadata') as string);
+        deployedBindings = (deployedMetadata as { bindings: typeof deployedBindings }).bindings;
+      } else if (request.method !== 'GET') {
+        const text = await request.clone().text();
+        recordedCalls.push({ method: request.method, path: pathname, body: text ? JSON.parse(text) : undefined });
       }
       const route = MOCK_ROUTES.find(
         (candidate) => candidate.method === request.method && candidate.pattern.test(request.url)
@@ -130,6 +149,34 @@ describe('DeploymentOrchestrator - Workers Runtime Tests', () => {
     vi.clearAllMocks();
   });
 
+
+  describe('Worker runtime provisioning', () => {
+    it('registers the queue consumer, sets cron triggers and records the DO migration tag', async () => {
+      const stub = env.DEPLOYMENT_ORCHESTRATOR.get(env.DEPLOYMENT_ORCHESTRATOR.idFromName('test-deployment-runtime'));
+      const response = await stub.fetch('http://localhost/deploy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${validConfig.oauthToken}` },
+        body: JSON.stringify(validConfig)
+      });
+      expect(response.status).toBe(200);
+
+      // The deploy runs in the background; wait for the last provisioning call.
+      for (let i = 0; i < 40 && !recordedCalls.some(c => c.path.endsWith('/schedules')); i++) {
+        await new Promise(resolve => setTimeout(resolve, 50));
+      }
+
+      const consumer = recordedCalls.find(c => c.method === 'POST' && c.path.endsWith('/queues/test-queue-id/consumers'));
+      expect(consumer?.body).toEqual({
+        script_name: 'test-crm-system-worker',
+        type: 'worker',
+        settings: { batch_size: 10, max_wait_time_ms: 1000, max_retries: 3 }
+      });
+      const schedules = recordedCalls.find(c => c.method === 'PUT' && c.path.endsWith('/schedules'));
+      expect(schedules?.body).toEqual([{ cron: '*/5 * * * *' }, { cron: '0 18 * * *' }]);
+      expect(deployedMetadata?.migrations).toMatchObject({ new_tag: 'installer-v2' });
+      expect(JSON.stringify(deployedMetadata?.migrations)).not.toContain('MetricsCollectorDO');
+    });
+  });
 
   describe('Deployment Initialization', () => {
     it('should initialize deployment with valid configuration', async () => {

@@ -72,6 +72,13 @@ export interface CreateQueueRequest {
   queue_name: string;
 }
 
+/** Push-consumer settings for POST /queues/{queue_id}/consumers. */
+export interface QueueConsumerSettings {
+  batch_size: number;
+  max_wait_time_ms: number;
+  max_retries: number;
+}
+
 // Worker Types
 export interface Worker {
   id: string;
@@ -80,12 +87,23 @@ export interface Worker {
   etag: string;
 }
 
+/** One step of a Durable Object migration (the Workers upload API takes steps without a tag). */
 export interface DurableObjectMigration {
-  tag: string;
   new_classes?: string[];
   new_sqlite_classes?: string[];
   renamed_classes?: Array<{ from: string; to: string }>;
   deleted_classes?: string[];
+}
+
+/**
+ * Migration payload of the Workers script upload metadata. `old_tag` is a precondition
+ * (the upload is rejected when the script's current tag differs); `new_tag` is recorded
+ * on success so the next deploy can tell whether the migration already ran.
+ */
+export interface DurableObjectMigrations {
+  old_tag?: string;
+  new_tag?: string;
+  steps: DurableObjectMigration[];
 }
 
 export interface DeployWorkerRequest {
@@ -95,7 +113,7 @@ export interface DeployWorkerRequest {
   bindings: WorkerBinding[];
   compatibility_date: string;
   compatibility_flags?: string[];
-  migrations?: { steps: DurableObjectMigration[] };
+  migrations?: DurableObjectMigrations;
 }
 
 export interface WorkerBinding {

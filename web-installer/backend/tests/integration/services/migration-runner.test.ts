@@ -508,3 +508,26 @@ describe('MigrationRunner Service - Integration Tests', () => {
     });
   });
 });
+
+describe('MigrationRunner - retry of a half-applied ADD COLUMN', () => {
+  it('tolerates duplicate column errors but not other failures', async () => {
+    const query = vi.fn(async (_db: string, sql: string) => {
+      if (/ADD COLUMN/i.test(sql)) throw new Error('Cloudflare API Error: duplicate column name: custom_name');
+      return { success: true, meta: {}, results: [] };
+    });
+    const api = { executeD1Query: query, executeD1QueryWithParams: vi.fn(async () => ({ success: true, meta: {}, results: [] })) } as any;
+    const result = await new MigrationRunner(api).runAllMigrations('db-1');
+    expect(result.success).toBe(true);
+
+    const failing = {
+      executeD1Query: vi.fn(async (_db: string, sql: string) => {
+        if (/CREATE TABLE IF NOT EXISTS broadcasts/i.test(sql)) throw new Error('boom');
+        return { success: true, meta: {}, results: [] };
+      }),
+      executeD1QueryWithParams: vi.fn(async () => ({ success: true, meta: {}, results: [] }))
+    } as any;
+    const bad = await new MigrationRunner(failing).runAllMigrations('db-1');
+    expect(bad.success).toBe(false);
+    expect(bad.errors[0]).toContain('0019');
+  });
+});

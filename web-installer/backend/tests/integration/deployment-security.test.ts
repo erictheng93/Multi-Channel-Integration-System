@@ -51,11 +51,14 @@ describe('deployment ownership', () => {
 
   it('keeps resident encryption keys when redeploying a legacy Worker', async () => {
     const deployment = storedDeployment();
+    deployment.resources.queueId = 'queue-1';
+    deployment.resources.queueName = 'queue-name';
     const { object } = coldObject(deployment);
-    let metadata: { bindings: { name: string }[]; keep_bindings?: string[] } | undefined;
+    let metadata: { bindings: { name: string }[]; keep_bindings?: string[]; migrations?: unknown } | undefined;
     const network = vi.spyOn(globalThis, 'fetch').mockImplementation(async (url, init) => {
       const path = new URL(String(url)).pathname;
       if (path.endsWith('/secrets')) return Response.json({ success: true, result: [{ name: 'JWT_SECRET', type: 'secret_text' }, { name: 'ENCRYPTION_KEY', type: 'secret_text' }] });
+      if (init?.method === 'PUT' && path.endsWith('/schedules')) return Response.json({ success: true, result: {} });
       if (init?.method === 'PUT') {
         metadata = JSON.parse((init.body as FormData).get('metadata') as string);
         return Response.json({ success: true, result: { etag: 'worker' } });
@@ -74,6 +77,8 @@ describe('deployment ownership', () => {
       expect(metadata?.keep_bindings).toEqual(['secret_text']);
       expect(metadata?.bindings.map(binding => binding.name)).not.toContain('ENCRYPTION_KEY');
       expect(metadata?.bindings.map(binding => binding.name)).not.toContain('JWT_SECRET');
+      // No recorded tag on a legacy Worker: the removal migration is sent without a precondition.
+      expect(metadata?.migrations).toEqual({ new_tag: 'installer-v2', steps: [{ deleted_classes: ['MetricsCollectorDO'] }] });
     } finally { network.mockRestore(); }
   });
   it('preserves persisted runtime keys on owner redeployment without exposing them in status', async () => {

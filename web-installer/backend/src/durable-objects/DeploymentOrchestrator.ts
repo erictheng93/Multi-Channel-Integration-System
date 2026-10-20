@@ -13,6 +13,13 @@ import { WorkerBundleService } from '../services/WorkerBundleService';
 import { FrontendBundleService } from '../services/FrontendBundleService';
 import { DURABLE_OBJECT_CLASS_NAMES } from '../constants/durable-objects';
 import {
+  DO_MIGRATION_TAG,
+  LINE_QUEUE_CONSUMER_SETTINGS,
+  REMOVED_DURABLE_OBJECT_CLASSES,
+  WORKER_CRON_SCHEDULES
+} from '../constants/worker-runtime';
+import type { DurableObjectMigrations } from '../types/cloudflare';
+import {
   DEPLOYMENT_STEPS,
   type DeploymentConfig,
   type DeploymentState,
@@ -749,7 +756,11 @@ export class DeploymentOrchestrator implements DurableObject {
     if (!this.deploymentState.resources.d1DatabaseId) {
       throw new Error('D1 database not created');
     }
-    await this.migrationRunner.runAllMigrations(this.deploymentState.resources.d1DatabaseId);
+    const result = await this.migrationRunner.runAllMigrations(this.deploymentState.resources.d1DatabaseId);
+    if (!result.success) {
+      // Never continue to deploy a Worker against a half-built schema.
+      throw new Error(result.errors.join('; ') || 'Database migrations failed');
+    }
     this.log('success', 'Database migrations completed');
   }
 
@@ -794,51 +805,50 @@ export class DeploymentOrchestrator implements DurableObject {
     const keep_bindings = existingWorker ? ['secret_text'] : undefined;
     this.log('info', `Deploying Worker with ${bindings.length} bindings...`);
 
-    // Durable Object migrations — only include on FRESH deployment
-    // Re-deployments must omit migrations to avoid "Cannot apply migration" conflict
-    let migrations: { steps: { tag: string; new_sqlite_classes: string[] }[] } | undefined;
-
+    // Durable Object migrations. A fresh Worker creates every class and records the tag.
+    // An existing Worker only gets the removal step, and only while its recorded tag
+    // differs; sending a migration the account already applied is rejected.
+    let migrations: DurableObjectMigrations | undefined;
     if (!existingWorker) {
       this.log('info', 'Fresh deployment detected — including DO migrations...');
       migrations = {
-        steps: [
-          {
-            tag: 'v1',
-            new_sqlite_classes: DURABLE_OBJECT_CLASS_NAMES
-          }
-        ]
+        new_tag: DO_MIGRATION_TAG,
+        steps: [{ new_sqlite_classes: DURABLE_OBJECT_CLASS_NAMES }]
       };
     } else {
-      this.log('info', 'Existing Worker detected — skipping DO migrations to avoid conflict...');
+      const currentTag = await this.api.getWorkerMigrationTag(workerName).catch(() => null);
+      if (currentTag === DO_MIGRATION_TAG) {
+        this.log('info', 'Existing Worker is already at the current DO migration — skipping...');
+      } else {
+        this.log('info', `Existing Worker detected — removing retired Durable Object classes (${REMOVED_DURABLE_OBJECT_CLASSES.join(', ')})...`);
+        migrations = {
+          ...(currentTag ? { old_tag: currentTag } : {}),
+          new_tag: DO_MIGRATION_TAG,
+          steps: [{ deleted_classes: [...REMOVED_DURABLE_OBJECT_CLASSES] }]
+        };
+      }
     }
 
-    // Deploy the Worker using Cloudflare API
-    // If migration tag precondition fails (stale DO state from previous deploy),
-    // retry without migrations since they're already applied at the account level
+    // Deploy the Worker using the Cloudflare API.
+    // If the migration is rejected (tag precondition, or the class was never created on a
+    // Worker installed after the removal), retry without it: the Worker code is what matters.
     let worker;
+    const deploy = (withMigrations?: DurableObjectMigrations) => this.api.deployWorker({
+      name: workerName,
+      script: workerScript,
+      bindings,
+      keep_bindings,
+      compatibility_date: '2024-01-01',
+      compatibility_flags: ['nodejs_compat'],
+      migrations: withMigrations
+    });
     try {
-      worker = await this.api.deployWorker({
-        name: workerName,
-        script: workerScript,
-        bindings,
-        keep_bindings,
-        compatibility_date: '2024-01-01',
-        compatibility_flags: ['nodejs_compat'],
-        migrations
-      });
+      worker = await deploy(migrations);
     } catch (err: unknown) {
       const errMsg = err instanceof Error ? err.message : String(err);
-      if (migrations && errMsg.includes('migration tag precondition failed')) {
-        this.log('warning', 'DO migrations already exist at account level — retrying without migrations...');
-        worker = await this.api.deployWorker({
-          name: workerName,
-          script: workerScript,
-          bindings,
-          keep_bindings,
-          compatibility_date: '2024-01-01',
-          compatibility_flags: ['nodejs_compat'],
-          migrations: undefined
-        });
+      if (migrations && /migration|durable object class|deleted_classes/i.test(errMsg)) {
+        this.log('warning', `DO migration rejected (${errMsg}) — retrying without migrations...`);
+        worker = await deploy(undefined);
       } else {
         throw err;
       }
@@ -861,6 +871,33 @@ export class DeploymentOrchestrator implements DurableObject {
     await this.api.enableWorkersDevRoute(workerName);
 
     this.log('success', `Deployed Worker: ${workerName} (etag: ${worker.etag})`);
+
+    await this.registerQueueConsumer(workerName);
+
+    // Cron triggers live on the script, not in the bundle: without them the 5-minute
+    // reminder/report sweep and the daily LINE quota poll never run.
+    await this.api.setWorkerSchedules(workerName, WORKER_CRON_SCHEDULES);
+    this.log('success', `Configured cron triggers: ${WORKER_CRON_SCHEDULES.join(' | ')}`);
+  }
+
+  /**
+   * Inbound LINE webhooks are acknowledged and pushed to the queue; without a consumer
+   * they would sit there forever. Must run after the Worker exists (and exports queue()).
+   */
+  private async registerQueueConsumer(workerName: string): Promise<void> {
+    if (!this.deploymentState) return;
+    const queueId = this.deploymentState.resources.queueId;
+    if (!queueId) throw new Error('Queue not created; cannot register the queue consumer');
+    try {
+      await this.api.createQueueConsumer(queueId, workerName, LINE_QUEUE_CONSUMER_SETTINGS);
+      this.log('success', `Registered ${workerName} as consumer of queue ${this.deploymentState.resources.queueName}`);
+    } catch (error) {
+      if (error instanceof Error && /already|exists/i.test(error.message)) {
+        this.log('info', 'Queue already has a consumer, reusing...');
+        return;
+      }
+      throw error;
+    }
   }
 
   private async stepBuildFrontend(): Promise<void> {

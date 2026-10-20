@@ -595,3 +595,48 @@ describe('CloudflareAPI Service - Integration Tests', () => {
     });
   });
 });
+
+describe('CloudflareAPI - runtime provisioning calls', () => {
+  const make = () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ success: true, errors: [], messages: [], result: [] })
+    });
+    global.fetch = fetchMock as unknown as typeof globalThis.fetch;
+    return { fetchMock, api: new CloudflareAPI({ accountId: 'acc', apiToken: 'tok', baseUrl: 'https://api.cloudflare.com/client/v4' }) };
+  };
+
+  it('creates a worker queue consumer with settings', async () => {
+    const { fetchMock, api } = make();
+    await api.createQueueConsumer('q1', 'w1', { batch_size: 10, max_wait_time_ms: 1000, max_retries: 3 });
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe('https://api.cloudflare.com/client/v4/accounts/acc/queues/q1/consumers');
+    expect(init.method).toBe('POST');
+    expect(JSON.parse(init.body)).toEqual({
+      script_name: 'w1', type: 'worker', settings: { batch_size: 10, max_wait_time_ms: 1000, max_retries: 3 }
+    });
+  });
+
+  it('puts cron schedules as an array of {cron}', async () => {
+    const { fetchMock, api } = make();
+    await api.setWorkerSchedules('w1', ['*/5 * * * *', '0 18 * * *']);
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe('https://api.cloudflare.com/client/v4/accounts/acc/workers/scripts/w1/schedules');
+    expect(init.method).toBe('PUT');
+    expect(JSON.parse(init.body)).toEqual([{ cron: '*/5 * * * *' }, { cron: '0 18 * * *' }]);
+  });
+
+  it('reads the migration tag of a deployed worker, null when absent', async () => {
+    const { fetchMock, api } = make();
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ success: true, errors: [], messages: [], result: [{ id: 'w1', migration_tag: 'v1' }, { id: 'w2' }] })
+    });
+    expect(await api.getWorkerMigrationTag('w1')).toBe('v1');
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ success: true, errors: [], messages: [], result: [{ id: 'w2' }] })
+    });
+    expect(await api.getWorkerMigrationTag('w2')).toBeNull();
+  });
+});
