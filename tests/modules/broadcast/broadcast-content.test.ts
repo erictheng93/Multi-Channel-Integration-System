@@ -4,6 +4,7 @@ import {
   assertObjectsExist,
   buildBroadcastLineMessages,
   buildWriteBackAttachmentRows,
+  ImageObjectMissingError,
   groupWriteBackUnits,
   type AttachmentCandidate,
 } from '@/modules/broadcast/services/broadcast-content';
@@ -162,5 +163,11 @@ describe('assertObjectsExist', () => {
     const head = vi.fn(async (key: string) => (key === 'b' ? null : {}));
     await expect(assertObjectsExist(['a', 'b', 'c'], head)).rejects.toThrow(/b/);
     expect(head).toHaveBeenCalledTimes(3);
+  });
+
+  it('tells a missing object apart from R2 failing to answer', async () => {
+    await expect(assertObjectsExist(['a'], async () => null)).rejects.toBeInstanceOf(ImageObjectMissingError);
+    const down = new Error('R2 unavailable');
+    await expect(assertObjectsExist(['a'], async () => { throw down; })).rejects.toBe(down);
   });
 });
