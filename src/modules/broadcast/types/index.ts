@@ -121,7 +121,8 @@ export type BroadcastServiceErrorCode =
   | 'BROADCAST_NOT_FOUND'
   | 'INVALID_BROADCAST_STATUS'
   | 'LINE_RECIPIENT_LIMIT_EXCEEDED'
-  | 'QUOTA_INSUFFICIENT';
+  | 'QUOTA_INSUFFICIENT'
+  | 'STORAGE_UNAVAILABLE';
 
 export class BroadcastServiceError extends Error {
   constructor(

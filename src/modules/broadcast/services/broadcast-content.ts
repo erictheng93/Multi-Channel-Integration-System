@@ -41,6 +41,14 @@ export function assertBroadcastAttachments(
 
 // LINE accepts a multicast without fetching image URLs, so a missing R2 object
 // would be delivered as a broken image to every recipient. Check before sending.
+/** R2 answered and the object is not there (as opposed to R2 failing to answer). */
+export class ImageObjectMissingError extends Error {
+  constructor(public readonly key: string) {
+    super(`Image object missing in storage: ${key}`);
+    this.name = 'ImageObjectMissingError';
+  }
+}
+
 export async function assertObjectsExist(
   keys: string[],
   head: (key: string) => Promise<unknown | null>
@@ -48,7 +56,7 @@ export async function assertObjectsExist(
   const results = await Promise.all(keys.map(async (key) => ({ key, found: (await head(key)) !== null })));
   const missing = results.find((result) => !result.found);
   if (missing) {
-    throw new Error(`Image object missing in storage: ${missing.key}`);
+    throw new ImageObjectMissingError(missing.key);
   }
 }
 
