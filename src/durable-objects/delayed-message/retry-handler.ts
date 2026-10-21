@@ -361,8 +361,12 @@ async function releaseFailedMessage(
   recordedInDlq: boolean,
   deps: RetryHandlerDeps
 ): Promise<void> {
-  if (recordedInDlq) await deps.storage.delete(`msg:${message.id}`);
-  else await deps.storage.put(`msg:${message.id}`, message);
+  if (recordedInDlq) {
+    await deps.storage.delete(`msg:${message.id}`);
+  } else {
+    message.failedAt = nowMs(); // restoreState ages fallback rows from this, not scheduledAt
+    await deps.storage.put(`msg:${message.id}`, message);
+  }
 }
 
 /**
