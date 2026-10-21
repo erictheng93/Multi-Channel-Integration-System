@@ -241,9 +241,13 @@
   )
   const composeRoot = ref<HTMLElement | null>(null)
   let disposed = false
-  // Who owns the uploaded files: this form, a create request still in flight (which validates and
-  // references them), or the created broadcast (even if sending then fails).
-  let uploadsOwner: 'form' | 'creating' | 'broadcast' = 'form'
+  // Uploads this form must not delete, by attachment: those a create request in flight is
+  // validating, and those a created broadcast references (even if sending then fails). Tracked per
+  // attachment because images can still be added or removed while the request runs.
+  const submittedIds = new Set<string>()
+  const ownedByBroadcastIds = new Set<string>()
+  const ownedByForm = (attachment: BroadcastAttachmentInput) =>
+    !submittedIds.has(attachment.attachmentId) && !ownedByBroadcastIds.has(attachment.attachmentId)
 
   async function onPick(event: Event) {
     const fileInput = event.target as HTMLInputElement
@@ -310,7 +314,7 @@
     const [removed] = images.value.splice(index, 1)
     if (removed) {
       URL.revokeObjectURL(removed.objectUrl)
-      if (removed.attachment) {void cleanupBroadcastImage(removed.attachment)}
+      if (removed.attachment && ownedByForm(removed.attachment)) {void cleanupBroadcastImage(removed.attachment)}
     }
     await nextTick()
     const nextImage = images.value[Math.min(index, images.value.length - 1)]
@@ -349,7 +353,7 @@
     disposed = true
     images.value.forEach(image => {
       URL.revokeObjectURL(image.objectUrl)
-      if (uploadsOwner === 'form' && image.attachment) {void cleanupBroadcastImage(image.attachment)}
+      if (image.attachment && ownedByForm(image.attachment)) {void cleanupBroadcastImage(image.attachment)}
     })
   })
 
@@ -403,11 +407,20 @@
     )
     if (confirmed) {
       const sent = input.value.attachments
-      uploadsOwner = 'creating'
+      sent.forEach(attachment => submittedIds.add(attachment.attachmentId))
       emit('send', input.value, created => {
-        uploadsOwner = created ? 'broadcast' : 'form'
-        // Left mid-create: unmount deferred the cleanup to here, as nothing else will reclaim them.
-        if (!created && disposed) {sent.forEach(attachment => void cleanupBroadcastImage(attachment))}
+        sent.forEach(attachment => {
+          submittedIds.delete(attachment.attachmentId)
+          if (created) {
+            ownedByBroadcastIds.add(attachment.attachmentId)
+            return
+          }
+          // Not created: the form owns it again, unless it was removed or the form unmounted
+          // meanwhile; that cleanup was deferred to here.
+          const stillInForm =
+            !disposed && images.value.some(image => image.attachment?.attachmentId === attachment.attachmentId)
+          if (!stillInForm) {void cleanupBroadcastImage(attachment)}
+        })
       })
     }
   }
