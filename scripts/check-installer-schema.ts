@@ -28,16 +28,23 @@ const sections = doc
   .slice(1);
 
 const ref = new Database(':memory:');
-const refIndexes: { table: string; name: string; unique: boolean; partial: boolean; cols: string }[] = [];
+const refIndexes: { table: string; name: string; unique: boolean; partial: boolean; predicate: string; cols: string }[] = [];
+
+// Quoting, case, spacing and outer parentheses are cosmetic; the rest of a WHERE clause is the contract.
+const normalizePredicate = (sql: string): string => {
+  let p = sql.replace(/[`"]/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
+  while (p.startsWith('(') && p.endsWith(')')) p = p.slice(1, -1).trim();
+  return p;
+};
 for (const section of sections) {
   const sql = section.match(/```sql\n([\s\S]*?)\n```/)?.[1];
   if (!sql) throw new Error(`No CREATE TABLE block for section ${section.slice(0, 40)}`);
   ref.exec(sql);
   for (const line of section.split('\n')) {
-    const m = line.match(/^- `([^`]+)`((?: \*\([a-zA-Z]+\)\*)*) — \((.*)\)/);
+    const m = line.match(/^- `([^`]+)`((?: \*\([a-zA-Z]+\)\*)*) — \(([^)]*)\)(?: WHERE (.*))?$/);
     if (m) {
       const cols = m[3].replace(/[`\s]/g, '');
-      refIndexes.push({ table: section.split('`')[0], name: m[1], unique: m[2].includes('UNIQUE'), partial: m[2].includes('partial'), cols });
+      refIndexes.push({ table: section.split('`')[0], name: m[1], unique: m[2].includes('UNIQUE'), partial: m[2].includes('partial'), predicate: normalizePredicate(m[4] ?? ''), cols });
     }
   }
 }
@@ -69,11 +76,16 @@ const uniqueSets = (d: Database, t: string): string[] =>
     .map((i) => (d.query(`PRAGMA index_info(${i.name})`).all() as { name: string }[]).map((c) => c.name).join(','));
 
 // Partial-ness is part of a unique key's identity: WHERE status = 'pending' stops it protecting other rows.
-// ponytail: the doc records only that an index is partial, not its predicate, so a changed predicate still passes.
+// Partial-ness and the WHERE predicate (SCHEMA.md records both) are part of a unique key's identity.
 const uniqueIndexKeys = (d: Database, t: string): string[] =>
   (d.query(`PRAGMA index_list(${t})`).all() as { name: string; unique: number; partial: number }[])
     .filter((i) => i.unique)
-    .map((i) => (d.query(`PRAGMA index_info(${i.name})`).all() as { name: string }[]).map((c) => c.name).join(',') + (i.partial ? ' [partial]' : ''));
+    .map((i) => {
+      const cols = (d.query(`PRAGMA index_info(${i.name})`).all() as { name: string }[]).map((c) => c.name).join(',');
+      if (!i.partial) return cols;
+      const sql = (d.query('SELECT sql FROM sqlite_master WHERE name = ?').get(i.name) as { sql: string }).sql;
+      return `${cols} [partial WHERE ${normalizePredicate(/\bWHERE\b([\s\S]*)$/i.exec(sql)?.[1] ?? '')}]`;
+    });
 
 const instTables = tableNames(inst);
 for (const table of tableNames(ref)) {
@@ -93,7 +105,7 @@ for (const idx of refIndexes) {
   // table-level check above. A unique index is satisfied by any unique key on the same
   // columns and the same partial-ness, however declared (a same-named non-unique index does not count);
   // other indexes match by name.
-  const key = idx.cols + (idx.partial ? ' [partial]' : '');
+  const key = idx.cols + (idx.partial ? ` [partial WHERE ${idx.predicate}]` : '');
   if (idx.unique ? instTables.includes(idx.table) && uniqueIndexKeys(inst, idx.table).includes(key) : instIndexNames.includes(idx.name)) continue;
   problems.push(idx.unique ? `missing unique key: ${idx.table}(${key}) [${idx.name}]` : `missing index: ${idx.name}`);
 }

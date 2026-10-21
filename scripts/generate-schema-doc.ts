@@ -233,7 +233,8 @@ function renderTable(
       const unique = /CREATE\s+UNIQUE\s+INDEX/i.test(idx.sql ?? '') ? ' *(UNIQUE)*' : '';
       const partial = /\bWHERE\b/i.test(idx.sql ?? '') ? ' *(partial)*' : '';
       const cols = /\(([^)]*)\)/.exec(idx.sql ?? '')?.[1]?.replace(/\s+/g, ' ').trim() ?? '';
-      parts.push(`- \`${idx.name}\`${unique}${partial} — (${cols})`);
+      const predicate = /\bWHERE\b([\s\S]*)$/i.exec(idx.sql ?? '')?.[1]?.replace(/\s+/g, ' ').trim();
+      parts.push(`- \`${idx.name}\`${unique}${partial} — (${cols})${predicate ? ` WHERE ${predicate}` : ''}`);
     }
     parts.push('');
   }
