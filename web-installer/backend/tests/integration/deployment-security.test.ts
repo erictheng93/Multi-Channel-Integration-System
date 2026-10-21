@@ -493,6 +493,13 @@ describe('deployment ownership', () => {
 
     // Once backfilled the entry takes the hash path and stays listed on every later request.
     expect((await list()).deployments).toMatchObject([{ projectName: 'owned-crm' }]);
+
+    // Unverified callers rotating tokens cannot grow storage: cursors share one capped key.
+    for (let n = 0; n < 105; n++) {
+      await deploymentRoutes.request('/deployments', { headers: { Authorization: `Bearer rotating-${n}` } }, env);
+    }
+    expect([...indexValues.keys()].sort()).toEqual(['deploymentIndex', 'legacyProbeCursors']);
+    expect(indexValues.get('legacyProbeCursors')).toHaveLength(100);
   });
 
   it('bounds list status calls to the requested owner page', async () => {
