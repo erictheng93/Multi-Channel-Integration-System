@@ -593,11 +593,6 @@ export class DeploymentOrchestrator implements DurableObject {
   }
 
   private async rollbackDeployment(): Promise<void> {
-    // Services are not retained across eviction, and a cancel can arrive on a fresh instance.
-    this.api ||= new CloudflareAPI({
-      accountId: this.deploymentState!.config.accountId,
-      apiToken: this.deploymentState!.config.oauthToken
-    });
     try {
       await this.restorePriorQueueConsumer();
     } catch (error) {
