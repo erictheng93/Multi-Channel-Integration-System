@@ -80,8 +80,8 @@ async function handlePreview(input: BroadcastPreviewRequest) {
   await broadcastsStore.fetchPreview(input)
 }
 
-async function handleSend(input: CreateBroadcastRequest) {
-  await broadcastsStore.createAndSend(input)
+async function handleSend(input: CreateBroadcastRequest, onCreated: () => void) {
+  await broadcastsStore.createAndSend(input, onCreated)
   if (broadcastsStore.selectedBroadcast) {
     await openDetail(broadcastsStore.selectedBroadcast.id)
   }

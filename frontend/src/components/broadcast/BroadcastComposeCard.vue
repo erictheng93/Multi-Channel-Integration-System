@@ -212,7 +212,8 @@
 
   const emit = defineEmits<{
     preview: [input: BroadcastPreviewRequest]
-    send: [input: CreateBroadcastRequest]
+    // The parent calls onCreated once the broadcast exists and references the uploads.
+    send: [input: CreateBroadcastRequest, onCreated: () => void]
   }>()
 
   const title = ref('')
@@ -239,7 +240,7 @@
   )
   const composeRoot = ref<HTMLElement | null>(null)
   let disposed = false
-  // Once sent, the parent owns the uploaded files (the broadcast references them).
+  // Once the broadcast is created it owns the uploaded files (even if sending then fails).
   let submitted = false
 
   async function onPick(event: Event) {
@@ -399,8 +400,9 @@
       `即將發送「${parts.join(' + ')}」給 ${currentPreview.value?.sendable ?? 0} 位 LINE 客戶，送出後無法復原。`
     )
     if (confirmed) {
-      submitted = true
-      emit('send', input.value)
+      emit('send', input.value, () => {
+        submitted = true
+      })
     }
   }
 </script>
