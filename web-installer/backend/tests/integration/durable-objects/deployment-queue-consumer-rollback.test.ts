@@ -83,9 +83,14 @@ describe('queue consumer rollback on a reused queue', () => {
 
 describe('queue consumer added to a reused queue that had none', () => {
   let consumers: { consumer_id: string; script: string }[];
+  // What the create response carries: the consumer, or (as the API allows) nothing.
+  let createResult: 'consumer' | 'empty';
+  let listShowsCreated: boolean;
 
   beforeEach(() => {
     consumers = [];
+    createResult = 'consumer';
+    listShowsCreated = true;
     calls = [];
     realFetch = globalThis.fetch;
     globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -96,8 +101,8 @@ describe('queue consumer added to a reused queue that had none', () => {
       if (request.method === 'GET') return Response.json({ success: true, result: consumers });
       if (request.method === 'POST') {
         const created = { consumer_id: 'new-c', script: (JSON.parse(text) as { script_name: string }).script_name };
-        consumers.push(created);
-        return Response.json({ success: true, result: created });
+        if (listShowsCreated) consumers.push(created);
+        return Response.json({ success: true, result: createResult === 'consumer' ? created : {} });
       }
       return Response.json({ success: true, result: {} });
     }) as typeof globalThis.fetch;
@@ -127,6 +132,26 @@ describe('queue consumer added to a reused queue that had none', () => {
     expect(response.status).toBe(200);
     expect(calls.some(c => c.method === 'DELETE' && c.path.endsWith('/queues/q1/consumers/new-c'))).toBe(true);
     expect(calls.some(c => c.method === 'PUT')).toBe(false);
+  });
+
+  it('looks up the added consumer when the create response omits its ID', async () => {
+    const { internals } = orchestrator();
+    internals.api = new CloudflareAPI({ accountId: 'acc', apiToken: 'tok' });
+    createResult = 'empty';
+
+    await (internals.registerQueueConsumer as (name: string) => Promise<void>).call(internals, 'new-worker');
+
+    expect((internals.deploymentState as DeploymentState).createdQueueConsumerId).toBe('new-c');
+  });
+
+  it('fails the step when the added consumer ID cannot be found', async () => {
+    const { internals } = orchestrator();
+    internals.api = new CloudflareAPI({ accountId: 'acc', apiToken: 'tok' });
+    createResult = 'empty';
+    listShowsCreated = false;
+
+    await expect((internals.registerQueueConsumer as (name: string) => Promise<void>).call(internals, 'new-worker'))
+      .rejects.toThrow(/could not read the consumer ID/);
   });
 
   it('does not record a consumer on a queue this deployment created', async () => {
