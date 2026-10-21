@@ -98,4 +98,33 @@ describe('reconcile', () => {
     scope.stop()
     vi.unstubAllGlobals()
   })
+
+  it('請求期間的轉換已含於其他分頁快照,回應時不重複套用', async () => {
+    let channel!: { onmessage: ((_e: { data: unknown }) => void) | null }
+    vi.stubGlobal('BroadcastChannel', class {
+      onmessage = null
+      constructor() { channel = this }
+      postMessage() {}
+      close() {}
+    })
+    const state = reactive(store)
+    state.conversations = [{ id: 'a', unreadCount: 0 }, { id: 'b', unreadCount: 1 }]
+    getStats.mockResolvedValueOnce({ success: true, data: { unreadConversations: 1 } })
+    const scope = effectScope()
+    const unread = scope.run(() => useUnreadConversationTotal())!
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    let resolveStats!: (_v: unknown) => void
+    getStats.mockReturnValueOnce(new Promise((resolve) => { resolveStats = resolve }))
+    const pending = unread.reconcile()
+    state.conversations = [{ id: 'a', unreadCount: 1 }, { id: 'b', unreadCount: 1 }]
+    await nextTick() // 請求期間 a 變為未讀
+    channel.onmessage?.({ data: { total: 2, at: Date.now() + 1000 } }) // 其他分頁的快照已含 a
+    resolveStats({ success: true, data: { unreadConversations: 2 } }) // 本請求快照同樣已含 a
+    await pending
+
+    expect(unread.total.value).toBe(2)
+    scope.stop()
+    vi.unstubAllGlobals()
+  })
 })

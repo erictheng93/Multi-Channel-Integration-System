@@ -131,6 +131,8 @@ export function useUnreadConversationTotal() {
       const { total: value, at } = event.data ?? {}
       if (typeof value === 'number' && typeof at === 'number' && at > fetchedAt) {
         adopt(value, at)
+        // 此前的轉換已視為含於該快照(delta 已歸零),進行中的請求回應時不可再重複套用
+        inFlightDelta = 0
       }
     }
   }
