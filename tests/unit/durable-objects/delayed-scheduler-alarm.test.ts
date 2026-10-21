@@ -6,6 +6,8 @@ vi.mock('../../../src/modules/conversations/services/message-delivery-service', 
 }))
 
 import { DelayedMessageScheduler } from '../../../src/durable-objects/DelayedMessageScheduler'
+import { handleCatastrophicError } from '../../../src/durable-objects/delayed-message/retry-handler'
+import { restoreState } from '../../../src/durable-objects/delayed-message/schedule-manager'
 
 function harness(extra: Array<[string, unknown]> = [], failDlq = false) {
   let alarm: number | null = null
@@ -34,7 +36,7 @@ function harness(extra: Array<[string, unknown]> = [], failDlq = false) {
   }
   const scheduler = new DelayedMessageScheduler(state as any, {} as any)
   return {
-    ready: () => ready, alarm: () => alarm, values, scheduler,
+    ready: () => ready, alarm: () => alarm, values, scheduler, storage: state.storage as any,
     async restart() {
       new DelayedMessageScheduler(state as any, {} as any)
       await ready
@@ -119,6 +121,27 @@ describe('DelayedMessageScheduler alarm chain', () => {
     expect(h.values.has('msg:f2')).toBe(true)
     expect(h.values.has('dlq:old')).toBe(false)
     expect(h.values.has('msg:m1')).toBe(true)
+  })
+
+  it('keeps a fresh catastrophic failure of a long-overdue message when the DLQ write fails', async () => {
+    vi.useFakeTimers()
+    const day = 86_400_000
+    const h = harness([], true)
+    await h.ready()
+    const logger = { info: vi.fn(), success: vi.fn(), warn: vi.fn(), error: vi.fn(), critical: vi.fn() }
+    const storage = h.storage
+    const message = { id: 'late', conversationId: 'c1', platform: 'line', status: 'pending', scheduledAt: Date.now() - 31 * day, createdAt: Date.now() - 31 * day } as any
+    const failing = handleCatastrophicError(message, new Error('boom'), {
+      env: {} as any, storage, doId: 'do-1', pendingMessages: new Map(),
+      metrics: { dlqWritesTotal: 0, dlqWriteFailuresTotal: 0 } as any, logger,
+    })
+    await vi.runAllTimersAsync()
+    await failing
+    expect(h.values.has('dlq:late')).toBe(false)
+    expect(h.values.get('msg:late')).toMatchObject({ status: 'failed', failedAt: Date.now() })
+    await restoreState(storage, new Map(), logger)
+    expect(h.values.get('msg:late')).toMatchObject({ status: 'failed' })
+    vi.restoreAllMocks()
   })
 
   describe('cancel ownership (requireAgentId)', () => {
