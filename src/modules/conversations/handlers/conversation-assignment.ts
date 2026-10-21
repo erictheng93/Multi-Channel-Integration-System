@@ -582,6 +582,8 @@ conversationAssignmentHandler.post('/:id/transfer', jwtAuth, async (c) => {
           id: conversations.id,
           customerId: conversations.customerId,
           customerName: customerNameSql,
+          customName: customers.customName,           // nickname editor seeds from this
+          platformName: customers.displayName,        // header shows the platform name beside a nickname
           platformUserId: customers.platformUserId,  // LINE user id (U...) — needed for customer card
           avatarUrl: customers.avatarUrl,             // avatar lost on transfer without this
           platform: customers.platform,  // platform is from customers table
@@ -609,6 +611,8 @@ conversationAssignmentHandler.post('/:id/transfer', jwtAuth, async (c) => {
           id: conversationId,
           customerId: conversationDetails?.customerId || undefined,
           customerName: conversationDetails?.customerName || '未知客戶',
+          customName: conversationDetails?.customName ?? null,
+          platformName: conversationDetails?.platformName ?? null,
           platformUserId: conversationDetails?.platformUserId || undefined,
           avatarUrl: conversationDetails?.avatarUrl || undefined,
           platform: conversationDetails?.platform || undefined,

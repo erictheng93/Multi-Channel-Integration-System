@@ -92,6 +92,9 @@ export class ConversationEventBroadcaster extends EventBroadcasterBase {
       id: string;
       customerId?: number;
       customerName?: string;
+      // Raw name parts so the receiver keeps the nickname editor and platform name.
+      customName?: string | null;
+      platformName?: string | null;
       // LINE/platform identity — required by the receiving client to render the
       // customer card after a cross-team transfer (avatar + platform user id).
       platformUserId?: string;
