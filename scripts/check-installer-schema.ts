@@ -30,9 +30,14 @@ const sections = doc
 const ref = new Database(':memory:');
 const refIndexes: { table: string; name: string; unique: boolean; partial: boolean; predicate: string; cols: string }[] = [];
 
-// Quoting, case, spacing and outer parentheses are cosmetic; the rest of a WHERE clause is the contract.
+// Identifier quoting, keyword case, spacing and outer parentheses are cosmetic; the rest of a WHERE
+// clause is the contract. '...' literals are kept verbatim: SQLite text equality is case-sensitive.
 const normalizePredicate = (sql: string): string => {
-  let p = sql.replace(/[`"]/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
+  let p = sql
+    .split(/('(?:[^']|'')*')/)
+    .map((part, i) => (i % 2 ? part : part.replace(/[`"]/g, '').replace(/\s+/g, ' ').toLowerCase()))
+    .join('')
+    .trim();
   while (p.startsWith('(') && p.endsWith(')')) p = p.slice(1, -1).trim();
   return p;
 };
