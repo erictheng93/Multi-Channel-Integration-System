@@ -75,7 +75,6 @@ const uniqueSets = (d: Database, t: string): string[] =>
     .filter((i) => i.unique)
     .map((i) => (d.query(`PRAGMA index_info(${i.name})`).all() as { name: string }[]).map((c) => c.name).join(','));
 
-// Partial-ness is part of a unique key's identity: WHERE status = 'pending' stops it protecting other rows.
 // Partial-ness and the WHERE predicate (SCHEMA.md records both) are part of a unique key's identity.
 const uniqueIndexKeys = (d: Database, t: string): string[] =>
   (d.query(`PRAGMA index_list(${t})`).all() as { name: string; unique: number; partial: number }[])
