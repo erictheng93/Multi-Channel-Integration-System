@@ -70,7 +70,7 @@ describe('reconcile', () => {
     scope.stop()
   })
 
-  it('請求期間其他分頁 adopt 歸零 delta,不會造出負的轉換', async () => {
+  it('請求期間採用較新的跨分頁快照,較舊的本請求回應不覆蓋它', async () => {
     let channel!: { onmessage: ((_e: { data: unknown }) => void) | null }
     vi.stubGlobal('BroadcastChannel', class {
       onmessage = null
@@ -90,11 +90,12 @@ describe('reconcile', () => {
     let resolveStats!: (_v: unknown) => void
     getStats.mockReturnValueOnce(new Promise((resolve) => { resolveStats = resolve }))
     const pending = unread.reconcile()
-    channel.onmessage?.({ data: { total: 9, at: Date.now() + 1000 } })
+    channel.onmessage?.({ data: { total: 9, at: Date.now() + 1000 } }) // 邊界晚於本請求發出
     resolveStats({ success: true, data: { unreadConversations: 5 } })
     await pending
 
-    expect(unread.total.value).toBe(5)
+    // 請求前的 +1 早於該快照邊界,已含於 9;本請求的 5 較舊而被忽略
+    expect(unread.total.value).toBe(9)
     scope.stop()
     vi.unstubAllGlobals()
   })
@@ -122,6 +123,31 @@ describe('reconcile', () => {
     channel.onmessage?.({ data: { total: 2, at: Date.now() + 1000 } }) // 其他分頁的快照已含 a
     resolveStats({ success: true, data: { unreadConversations: 2 } }) // 本請求快照同樣已含 a
     await pending
+
+    expect(unread.total.value).toBe(2)
+    scope.stop()
+    vi.unstubAllGlobals()
+  })
+
+  it('跨分頁快照的請求早於本地轉換發出時,保留該轉換', async () => {
+    let channel!: { onmessage: ((_e: { data: unknown }) => void) | null }
+    vi.stubGlobal('BroadcastChannel', class {
+      onmessage = null
+      constructor() { channel = this }
+      postMessage() {}
+      close() {}
+    })
+    const state = reactive(store)
+    state.conversations = [{ id: 'a', unreadCount: 0 }, { id: 'b', unreadCount: 1 }]
+    getStats.mockResolvedValueOnce({ success: true, data: { unreadConversations: 1 } })
+    const scope = effectScope()
+    const unread = scope.run(() => useUnreadConversationTotal())!
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    const otherTabStartedAt = performance.timeOrigin + performance.now() // 其他分頁發出請求
+    state.conversations = [{ id: 'a', unreadCount: 1 }, { id: 'b', unreadCount: 1 }]
+    await nextTick() // 之後 a 才變為未讀
+    channel.onmessage?.({ data: { total: 1, at: otherTabStartedAt } }) // 回應晚到,但不含 a
 
     expect(unread.total.value).toBe(2)
     scope.stop()
