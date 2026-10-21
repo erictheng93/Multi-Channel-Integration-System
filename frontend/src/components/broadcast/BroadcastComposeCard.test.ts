@@ -104,6 +104,40 @@ describe('BroadcastComposeCard images', () => {
     onCreateSettled(true)
     expect(cleanup).not.toHaveBeenCalled()
   })
+  it('cleans up an image picked during a successful create, but keeps the submitted one', async () => {
+    const wrapper = mountCard()
+    await pick(wrapper, [image('1.jpg')])
+    await wrapper.find('input[type="text"]').setValue('Promo')
+    await wrapper.find('select').setValue(7)
+    await wrapper.find('form').trigger('submit')
+    const onCreateSettled = wrapper.emitted('send')?.[0]?.[1] as (_created: boolean) => void
+    await pick(wrapper, [image('2.jpg')]) // picked while the create request is in flight
+    onCreateSettled(true)
+    wrapper.unmount()
+    expect(cleanup).toHaveBeenCalledExactlyOnceWith({ attachmentId: 'a-2.jpg', previewAttachmentId: 'p-2.jpg' })
+  })
+  it('defers deleting an image removed mid-create until the create request rejects', async () => {
+    const wrapper = mountCard()
+    await pick(wrapper, [image('1.jpg')])
+    await wrapper.find('input[type="text"]').setValue('Promo')
+    await wrapper.find('select').setValue(7)
+    await wrapper.find('form').trigger('submit')
+    const onCreateSettled = wrapper.emitted('send')?.[0]?.[1] as (_created: boolean) => void
+    await wrapper.find('button[aria-label="移除圖片 1"]').trigger('click')
+    expect(cleanup).not.toHaveBeenCalled() // the request may still be validating it
+    onCreateSettled(false)
+    expect(cleanup).toHaveBeenCalledExactlyOnceWith({ attachmentId: 'a-1.jpg', previewAttachmentId: 'p-1.jpg' })
+  })
+  it('never deletes an image a created broadcast references, even when removed afterwards', async () => {
+    const wrapper = mountCard()
+    await pick(wrapper, [image('1.jpg')])
+    await wrapper.find('input[type="text"]').setValue('Promo')
+    await wrapper.find('select').setValue(7)
+    await wrapper.find('form').trigger('submit')
+    ;(wrapper.emitted('send')?.[0]?.[1] as (_created: boolean) => void)(true)
+    await wrapper.find('button[aria-label="移除圖片 1"]').trigger('click')
+    expect(cleanup).not.toHaveBeenCalled()
+  })
   beforeEach(() => {
     upload.mockReset()
     cleanup.mockReset().mockResolvedValue(undefined)
