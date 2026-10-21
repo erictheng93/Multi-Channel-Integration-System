@@ -56,6 +56,8 @@ export function useUnreadConversationTotal() {
   const delta = ref(0)
   let fetchedAt = 0
   let inFlight = false
+  // 請求期間發生的轉換;獨立於 delta,因為跨分頁 adopt() 會把 delta 歸零
+  let inFlightDelta = 0
   let pendingTimer: ReturnType<typeof setTimeout> | null = null
   let pollTimer: ReturnType<typeof setInterval> | null = null
   const channel = typeof window.BroadcastChannel === 'undefined' ? null : new window.BroadcastChannel(CHANNEL_NAME)
@@ -89,15 +91,14 @@ export function useUnreadConversationTotal() {
     if (maxAgeMs > 0 && Date.now() - fetchedAt < maxAgeMs) { return }
     inFlight = true
     // 請求期間發生的轉換不在伺服器快照內,校正後要保留(否則數字會退回舊值直到下次校正)
-    const deltaAtStart = delta.value
+    inFlightDelta = 0
     try {
       const response = await conversationApi.getStats()
       const value = response.success ? response.data?.unreadConversations : undefined
       if (typeof value === 'number') {
         const at = Date.now()
-        const sinceStart = delta.value - deltaAtStart
         adopt(value, at)
-        delta.value = sinceStart
+        delta.value = inFlightDelta
         channel?.postMessage({ total: value, at })
       }
     } catch {
@@ -121,6 +122,7 @@ export function useUnreadConversationTotal() {
     if (serverTotal.value === null) { return }
     const result = diffUnreadTransitions(prev, next)
     delta.value += result.delta
+    if (inFlight) { inFlightDelta += result.delta }
     if (result.appearedUnread) { scheduleReconcile() }
   })
 
