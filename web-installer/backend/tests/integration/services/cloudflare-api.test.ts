@@ -668,6 +668,31 @@ describe('CloudflareAPI - runtime provisioning calls', () => {
     expect(JSON.parse(init.body)).toEqual([{ cron: '*/5 * * * *' }, { cron: '0 18 * * *' }]);
   });
 
+  it('reads cron schedules and the workers.dev route of a script', async () => {
+    const { fetchMock, api } = make();
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ success: true, errors: [], messages: [], result: { schedules: [{ cron: '0 3 * * *', created_on: '', modified_on: '' }] } })
+    });
+    expect(await api.getWorkerSchedules('w1')).toEqual(['0 3 * * *']);
+    expect(fetchMock.mock.calls[0][0]).toBe('https://api.cloudflare.com/client/v4/accounts/acc/workers/scripts/w1/schedules');
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ success: true, errors: [], messages: [], result: { enabled: false, previews_enabled: true } })
+    });
+    expect(await api.getWorkersDevRoute('w1')).toEqual({ enabled: false, previews_enabled: true });
+    expect(fetchMock.mock.calls[1][0]).toBe('https://api.cloudflare.com/client/v4/accounts/acc/workers/scripts/w1/subdomain');
+  });
+
+  it('posts the workers.dev route state', async () => {
+    const { fetchMock, api } = make();
+    await api.setWorkersDevRoute('w1', { enabled: false, previews_enabled: false });
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe('https://api.cloudflare.com/client/v4/accounts/acc/workers/scripts/w1/subdomain');
+    expect(init.method).toBe('POST');
+    expect(JSON.parse(init.body)).toEqual({ enabled: false, previews_enabled: false });
+  });
+
   it('reads the migration tag of a deployed worker, null when absent', async () => {
     const { fetchMock, api } = make();
     fetchMock.mockResolvedValueOnce({

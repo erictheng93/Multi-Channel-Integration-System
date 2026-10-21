@@ -610,9 +610,9 @@ export class DeploymentOrchestrator implements DurableObject {
   }
 
   /**
-   * Put an overwritten Worker back on the versions it served before this deployment.
-   * Returns false when a Worker was replaced and could not be restored, so it is still running
-   * this deployment's code and bindings.
+   * Put an overwritten Worker back on the versions, cron triggers and workers.dev route it had
+   * before this deployment. Returns false when a Worker was replaced and could not be fully
+   * restored, so it is still running some of this deployment's code, bindings or settings.
    */
   private async restorePriorWorker(): Promise<boolean> {
     const prior = this.deploymentState?.priorWorker;
@@ -624,10 +624,31 @@ export class DeploymentOrchestrator implements DurableObject {
     try {
       await this.api.createWorkerDeployment(prior.scriptName, prior.versions, 'Installer rollback: restore the pre-deployment version');
       this.log('success', `Restored ${prior.scriptName} to its previous deployment`);
-      return true;
     } catch (error) {
       // Cloudflare refuses a rollback across a Durable Object migration or to a version whose bindings are gone.
       this.log('error', `Restoring the previous Worker failed: ${error instanceof Error ? error.message : 'Unknown'}`);
+      return false;
+    }
+    // Script settings are restored independently: one failing does not skip the other.
+    const schedulesRestored = await this.restorePriorWorkerSetting(prior.scriptName, 'cron triggers', prior.crons,
+      crons => this.api.setWorkerSchedules(prior.scriptName, crons));
+    const routeRestored = await this.restorePriorWorkerSetting(prior.scriptName, 'workers.dev route', prior.workersDevRoute,
+      route => this.api.setWorkersDevRoute(prior.scriptName, route));
+    return schedulesRestored && routeRestored;
+  }
+
+  /** Re-apply one snapshotted script setting; null (or a pre-snapshot state's undefined) means it was never read. */
+  private async restorePriorWorkerSetting<T>(scriptName: string, label: string, value: T | null | undefined, restore: (value: T) => Promise<void>): Promise<boolean> {
+    if (value === null || value === undefined) {
+      this.log('warning', `Previous ${label} of ${scriptName} could not be read and must be restored manually`);
+      return false;
+    }
+    try {
+      await restore(value);
+      this.log('success', `Restored the previous ${label} of ${scriptName}`);
+      return true;
+    } catch (error) {
+      this.log('error', `Restoring the previous ${label} failed: ${error instanceof Error ? error.message : 'Unknown'}`);
       return false;
     }
   }
@@ -916,9 +937,13 @@ export class DeploymentOrchestrator implements DurableObject {
       // The upload below replaces the live Worker. Remember what it served so a later failure can
       // put it back; persisted before the overwrite so a rollback always knows a Worker was replaced.
       // ??=: a retry finds this deployment's own version live, which is not the one to restore.
+      // Crons and the workers.dev route are script settings, not part of a version, so a
+      // version rollback alone would leave this deployment's values on them.
       this.deploymentState.priorWorker ??= {
         scriptName: workerName,
-        versions: await this.api.getActiveWorkerDeployment(workerName).catch(() => null)
+        versions: await this.api.getActiveWorkerDeployment(workerName).catch(() => null),
+        crons: await this.api.getWorkerSchedules(workerName).catch(() => null),
+        workersDevRoute: await this.api.getWorkersDevRoute(workerName).catch(() => null)
       };
       await this.updateState();
     }
