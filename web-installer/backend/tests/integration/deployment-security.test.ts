@@ -82,6 +82,101 @@ describe('deployment ownership', () => {
       expect(metadata?.migrations).toEqual({ new_tag: 'installer-v2', steps: [{ deleted_classes: ['MetricsCollectorDO'] }] });
     } finally { network.mockRestore(); }
   });
+  it('snapshots the live deployment of a Worker it is about to overwrite', async () => {
+    const deployment = storedDeployment();
+    deployment.resources.queueId = 'queue-1';
+    deployment.resources.queueName = 'queue-name';
+    const { object, values } = coldObject(deployment);
+    const order: string[] = [];
+    const network = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const request = new Request(input, init);
+      const path = new URL(request.url).pathname;
+      if (request.method === 'GET' && path.endsWith('/deployments')) {
+        order.push('read-deployments');
+        return Response.json({ success: true, result: { deployments: [{ id: 'dep-old', versions: [{ version_id: 'old-version', percentage: 100 }] }] } });
+      }
+      if (path.endsWith('/secrets')) return Response.json({ success: true, result: [] });
+      if (path.endsWith('/consumers') && request.method === 'GET') return Response.json({ success: true, result: [] });
+      if (request.method === 'PUT' && path.endsWith('/schedules')) return Response.json({ success: true, result: {} });
+      if (request.method === 'PUT') {
+        order.push('upload');
+        expect((values.get('deploymentState') as DeploymentState).priorWorker?.versions).toEqual([{ version_id: 'old-version', percentage: 100 }]);
+        return Response.json({ success: true, result: { etag: 'worker' } });
+      }
+      if (path.endsWith('/workers/subdomain')) return Response.json({ success: true, result: { subdomain: 'account' } });
+      if (request.method === 'POST') return Response.json({ success: true });
+      return Response.json({ success: true, result: [] });
+    });
+    try {
+      const instance = object as unknown as { deploymentState: DeploymentState; api: CloudflareAPI; workerBundleService: WorkerBundleService; generatedSecrets: { jwtSecret: string; encryptionKey: string }; stepDeployWorker(): Promise<void> };
+      instance.deploymentState = deployment;
+      instance.api = new CloudflareAPI({ accountId: deployment.config.accountId, apiToken: 'owner-token' });
+      instance.workerBundleService = new WorkerBundleService();
+      instance.generatedSecrets = { jwtSecret: 'new-jwt', encryptionKey: 'new-encryption' };
+      await instance.stepDeployWorker();
+      expect(order).toEqual(['read-deployments', 'upload']);
+      expect(deployment.priorWorker).toEqual({ scriptName: 'owned-crm-worker', versions: [{ version_id: 'old-version', percentage: 100 }] });
+      // An overwritten Worker is not this deployment's to delete.
+      expect(deployment.createdResources ?? []).not.toContain('workerId');
+    } finally { network.mockRestore(); }
+  });
+
+  it('restores an overwritten Worker before deleting the resources this deployment created', async () => {
+    const deployment = storedDeployment();
+    deployment.status = 'in_progress';
+    deployment.resources.kvSessionNamespaceId = 'new-kv';
+    deployment.resources.pagesProjectName = 'owned-crm';
+    deployment.createdResources = ['kvSessionNamespaceId', 'pagesProjectName'];
+    deployment.priorWorker = { scriptName: 'owned-crm-worker', versions: [{ version_id: 'old-version', percentage: 100 }] };
+    const { object } = coldObject(deployment);
+    const calls: { method: string; path: string; body?: unknown }[] = [];
+    const network = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const request = new Request(input, init);
+      const text = await request.text();
+      calls.push({ method: request.method, path: new URL(request.url).pathname, body: text ? JSON.parse(text) : undefined });
+      return Response.json({ success: true, result: {} });
+    });
+    try {
+      expect((await object.fetch(new Request('http://do/cancel', { method: 'POST', headers: { Authorization: 'Bearer owner-token' } }))).status).toBe(200);
+      const account = `/client/v4/accounts/${'a'.repeat(32)}`;
+      expect(calls[0]).toEqual({
+        method: 'POST',
+        path: `${account}/workers/scripts/owned-crm-worker/deployments`,
+        body: { strategy: 'percentage', versions: [{ version_id: 'old-version', percentage: 100 }], annotations: { 'workers/message': expect.any(String) } }
+      });
+      const deleted = calls.filter(call => call.method === 'DELETE').map(call => call.path);
+      expect(deleted).toEqual([`${account}/pages/projects/owned-crm`, `${account}/storage/kv/namespaces/new-kv`]);
+    } finally { network.mockRestore(); }
+  });
+
+  it('keeps the resources a replaced Worker is bound to when it cannot be restored', async () => {
+    const deployment = storedDeployment();
+    deployment.status = 'in_progress';
+    deployment.resources.kvSessionNamespaceId = 'new-kv';
+    deployment.resources.pagesProjectName = 'owned-crm';
+    deployment.createdResources = ['kvSessionNamespaceId', 'pagesProjectName'];
+    deployment.priorWorker = { scriptName: 'owned-crm-worker', versions: [{ version_id: 'old-version', percentage: 100 }] };
+    const { object, values } = coldObject(deployment);
+    const deleted: string[] = [];
+    const network = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const request = new Request(input, init);
+      const path = new URL(request.url).pathname;
+      if (request.method === 'POST' && path.endsWith('/deployments')) {
+        return Response.json({ success: false, errors: [{ message: 'Cannot roll back across a Durable Object migration' }] }, { status: 400 });
+      }
+      if (request.method === 'DELETE') deleted.push(path);
+      return Response.json({ success: true, result: {} });
+    });
+    try {
+      expect((await object.fetch(new Request('http://do/cancel', { method: 'POST', headers: { Authorization: 'Bearer owner-token' } }))).status).toBe(200);
+      // The Pages project is not a Worker binding and is still removed; the KV namespace is kept.
+      expect(deleted).toEqual([`/client/v4/accounts/${'a'.repeat(32)}/pages/projects/owned-crm`]);
+      const logs = (values.get('deploymentState') as DeploymentState).logs.map(log => log.message).join(' | ');
+      expect(logs).toContain('Restoring the previous Worker failed');
+      expect(logs).toContain('are kept');
+    } finally { network.mockRestore(); }
+  });
+
   it('preserves persisted runtime keys on owner redeployment without exposing them in status', async () => {
     const deployment = Object.assign(storedDeployment(), { generatedSecrets: { jwtSecret: 'existing-jwt-key', encryptionKey: 'existing-encryption-key' } });
     const { object, values } = coldObject(deployment);
