@@ -16,6 +16,7 @@ import type {
   CreateR2Request,
   Queue,
   CreateQueueRequest,
+  QueueJurisdiction,
   QueueConsumerInfo,
   QueueConsumerSettings,
   WorkerDeploymentVersion,
@@ -213,8 +214,8 @@ export class CloudflareAPI {
   /**
    * Queue Operations
    */
-  async createQueue(queueName: string): Promise<Queue> {
-    const body: CreateQueueRequest = { queue_name: queueName };
+  async createQueue(queueName: string, jurisdiction?: QueueJurisdiction): Promise<Queue> {
+    const body: CreateQueueRequest = { queue_name: queueName, ...(jurisdiction && { jurisdiction }) };
     const response = await this.request<Queue>({
       method: 'POST',
       path: `/accounts/${this.accountId}/queues`,

@@ -139,3 +139,61 @@ describe('queue consumer added to a reused queue that had none', () => {
     expect((internals.deploymentState as DeploymentState).createdQueueConsumerId).toBeUndefined();
   });
 });
+
+describe('dead-letter queue jurisdiction', () => {
+  afterEach(() => { globalThis.fetch = realFetch; });
+
+  it('creates the DLQ in the jurisdiction of a reused main queue', async () => {
+    calls = [];
+    realFetch = globalThis.fetch;
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const request = new Request(input, init);
+      const path = new URL(request.url).pathname;
+      const text = request.method === 'GET' ? '' : await request.text();
+      const body = text ? JSON.parse(text) as { queue_name: string; jurisdiction?: string } : undefined;
+      calls.push({ method: request.method, path, body });
+      if (request.method === 'GET') {
+        return Response.json({ success: true, result: [{ queue_id: 'q1', queue_name: 'p-queue', jurisdiction: 'eu' }] });
+      }
+      if (body?.queue_name === 'p-queue') {
+        return Response.json({ success: false, errors: [{ message: 'Queue name already exists' }] }, { status: 409 });
+      }
+      return Response.json({ success: true, result: { queue_id: 'dlq1', queue_name: body?.queue_name, jurisdiction: body?.jurisdiction } });
+    }) as typeof globalThis.fetch;
+
+    const { internals } = orchestrator();
+    internals.api = new CloudflareAPI({ accountId: 'acc', apiToken: 'tok' });
+    const state = internals.deploymentState as DeploymentState;
+    state.resources = {};
+
+    await (internals.stepCreateQueue as () => Promise<void>).call(internals);
+
+    const dlqCreate = calls.find(c => c.method === 'POST' && c.body?.queue_name === 'p-dlq');
+    expect(dlqCreate?.body).toEqual({ queue_name: 'p-dlq', jurisdiction: 'eu' });
+    expect(state.resources).toMatchObject({ queueId: 'q1', dlqId: 'dlq1', dlqName: 'p-dlq' });
+    expect(state.createdResources).toEqual(['dlqId']);
+  });
+
+  it('refuses to reuse a DLQ whose jurisdiction differs from the main queue', async () => {
+    realFetch = globalThis.fetch;
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const request = new Request(input, init);
+      if (request.method === 'GET') {
+        return Response.json({ success: true, result: [
+          { queue_id: 'q1', queue_name: 'p-queue', jurisdiction: 'eu' },
+          { queue_id: 'dlq1', queue_name: 'p-dlq' }
+        ] });
+      }
+      return Response.json({ success: false, errors: [{ message: 'Queue name already exists' }] }, { status: 409 });
+    }) as typeof globalThis.fetch;
+
+    const { internals } = orchestrator();
+    internals.api = new CloudflareAPI({ accountId: 'acc', apiToken: 'tok' });
+    const state = internals.deploymentState as DeploymentState;
+    state.resources = {};
+
+    await expect((internals.stepCreateQueue as () => Promise<void>).call(internals))
+      .rejects.toThrow(/jurisdiction 'default' but its source queue is in 'eu'/);
+    expect(state.resources.dlqId).toBeUndefined();
+  });
+});

@@ -66,10 +66,16 @@ export interface Queue {
   modified_on: string;
   producers: number;
   consumers: number;
+  /** Data-location restriction; absent for a default (global) queue. */
+  jurisdiction?: QueueJurisdiction;
 }
+
+/** A dead-letter queue must share its source queue's jurisdiction. */
+export type QueueJurisdiction = 'eu' | 'us' | 'fedramp';
 
 export interface CreateQueueRequest {
   queue_name: string;
+  jurisdiction?: QueueJurisdiction;
 }
 
 /** Push-consumer settings for POST /queues/{queue_id}/consumers. */
