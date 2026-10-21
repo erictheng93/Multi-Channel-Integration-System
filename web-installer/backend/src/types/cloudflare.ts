@@ -100,6 +100,12 @@ export interface WorkerDeploymentVersion {
   percentage: number;
 }
 
+/** A Worker's workers.dev route state (GET/POST /workers/scripts/{name}/subdomain). */
+export interface WorkersDevRoute {
+  enabled: boolean;
+  previews_enabled?: boolean;
+}
+
 export interface Worker {
   id: string;
   created_on: string;

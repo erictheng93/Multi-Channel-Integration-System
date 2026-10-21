@@ -20,6 +20,7 @@ import type {
   QueueConsumerInfo,
   QueueConsumerSettings,
   WorkerDeploymentVersion,
+  WorkersDevRoute,
   Worker,
   DeployWorkerRequest,
   PagesProject,
@@ -389,6 +390,16 @@ export class CloudflareAPI {
     }
   }
 
+  /** The Worker's current cron expressions. */
+  async getWorkerSchedules(scriptName: string): Promise<string[]> {
+    const response = await this.request<{ schedules?: Array<{ cron: string }> }>({
+      method: 'GET',
+      path: `/accounts/${this.accountId}/workers/scripts/${scriptName}/schedules`
+    });
+    if (!response.success) throw new Error(`Failed to read cron triggers: ${response.errors[0]?.message}`);
+    return (response.result?.schedules ?? []).map(schedule => schedule.cron);
+  }
+
   /**
    * Durable Object migration tag currently recorded on a deployed Worker, or null when
    * none is recorded (or the API does not report one).
@@ -413,11 +424,14 @@ export class CloudflareAPI {
     return versions?.length ? versions.map(({ version_id, percentage }) => ({ version_id, percentage })) : null;
   }
 
-  /** Point the Worker's traffic at existing versions (a rollback is a new deployment of an old version). */
+  /**
+   * Point the Worker's traffic at existing versions (a rollback is a new deployment of an old version).
+   * force: without it Cloudflare refuses to deploy a version older than the latest secret change.
+   */
   async createWorkerDeployment(name: string, versions: WorkerDeploymentVersion[], message: string): Promise<void> {
     const response = await this.request({
       method: 'POST',
-      path: `/accounts/${this.accountId}/workers/scripts/${name}/deployments`,
+      path: `/accounts/${this.accountId}/workers/scripts/${name}/deployments?force=true`,
       body: { strategy: 'percentage', versions, annotations: { 'workers/message': message } }
     });
     if (!response.success) throw new Error(`Failed to create Worker deployment: ${response.errors[0]?.message}`);
@@ -603,11 +617,28 @@ export class CloudflareAPI {
    * Required for the worker to be accessible via <name>.<subdomain>.workers.dev
    */
   async enableWorkersDevRoute(scriptName: string): Promise<void> {
-    await this.request({
+    await this.setWorkersDevRoute(scriptName, { enabled: true });
+  }
+
+  /** Whether the Worker is served on workers.dev (and on preview URLs). */
+  async getWorkersDevRoute(scriptName: string): Promise<WorkersDevRoute> {
+    const response = await this.request<WorkersDevRoute>({
+      method: 'GET',
+      path: `/accounts/${this.accountId}/workers/scripts/${scriptName}/subdomain`
+    });
+    if (!response.success) throw new Error(`Failed to read workers.dev route: ${response.errors[0]?.message}`);
+    const { enabled, previews_enabled } = response.result;
+    return { enabled, previews_enabled };
+  }
+
+  /** previews_enabled left out follows enabled. */
+  async setWorkersDevRoute(scriptName: string, route: WorkersDevRoute): Promise<void> {
+    const response = await this.request({
       method: 'POST',
       path: `/accounts/${this.accountId}/workers/scripts/${scriptName}/subdomain`,
-      body: { enabled: true }
+      body: route
     });
+    if (!response.success) throw new Error(`Failed to set workers.dev route: ${response.errors[0]?.message}`);
   }
 
   /**
