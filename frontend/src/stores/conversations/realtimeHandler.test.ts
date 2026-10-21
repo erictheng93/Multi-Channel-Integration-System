@@ -102,3 +102,36 @@ describe('conversation_transferred (assigned)', () => {
     })
   })
 })
+
+describe('customer_profile_updated', () => {
+  const seed = (customName: string | null): Conversation => ({
+    id: 'conv-1',
+    customer: {
+      id: '9', name: customName ?? 'Old LINE', customName, platformName: 'Old LINE',
+      platform: 'line', platformUserId: 'U1', createdAt: 0
+    }
+  }) as unknown as Conversation
+  const profileMessage = {
+    type: 'customer_profile_updated',
+    data: { customerId: 9, changes: { displayName: 'New LINE' }, conversationIds: ['conv-1'] }
+  } as unknown as WebSocketMessage
+
+  it('updates platformName but keeps an active nickname as the display name', () => {
+    const { deps } = makeDeps()
+    const conv = seed('Boss')
+    deps.conversations.value = [conv]
+    deps.currentConversation.value = conv
+    createRealtimeHandler(deps).handleRealtimeUpdate(profileMessage)
+
+    expect(conv.customer).toMatchObject({ name: 'Boss', customName: 'Boss', platformName: 'New LINE' })
+  })
+
+  it('updates the display name when there is no nickname', () => {
+    const { deps } = makeDeps()
+    const conv = seed(null)
+    deps.conversations.value = [conv]
+    createRealtimeHandler(deps).handleRealtimeUpdate(profileMessage)
+
+    expect(conv.customer).toMatchObject({ name: 'New LINE', platformName: 'New LINE' })
+  })
+})
