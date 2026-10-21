@@ -56,12 +56,18 @@ export const useBroadcastsStore = defineStore('broadcasts', () => {
     }
   }
 
-  async function createAndSend(input: CreateBroadcastRequest, onCreated?: () => void) {
+  async function createAndSend(
+    input: CreateBroadcastRequest,
+    onCreateSettled?: (_created: boolean) => void
+  ) {
     sending.value = true
     error.value = null
     try {
-      const created = await createBroadcast(input)
-      onCreated?.()
+      const created = await createBroadcast(input).catch((err: unknown) => {
+        onCreateSettled?.(false)
+        throw err
+      })
+      onCreateSettled?.(true)
       selectedBroadcast.value = created
       lastSendStats.value = await sendBroadcast(created.id)
       await fetchBroadcast(created.id)
