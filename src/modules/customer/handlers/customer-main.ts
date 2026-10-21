@@ -18,7 +18,7 @@ import { getConversationVisibilitySql } from '@/services/conversation-visibility
 // (or null, treated as a shared pool consistent with conversations).
 function canAccessCustomer(
   customer: { sourceTeamId?: number | null | undefined },
-  user: Pick<JWTPayload, 'role' | 'allowedTeamIds'>
+  user: Pick<DbUser, 'role' | 'allowedTeamIds'>
 ): boolean {
   if (user.role === 'admin') return true;
   const sourceTeamId = customer.sourceTeamId;
@@ -33,7 +33,7 @@ function canAccessCustomer(
 async function canEditCustomerName(
   db: D1Database,
   customer: { id: number; sourceTeamId?: number | null | undefined },
-  user: Pick<JWTPayload, 'role' | 'allowedTeamIds'>
+  user: Pick<DbUser, 'role' | 'allowedTeamIds'>
 ): Promise<boolean> {
   if (canAccessCustomer(customer, user)) return true;
   const visibility = getConversationVisibilitySql(user, 'conversations.assigned_team_id');
@@ -94,7 +94,7 @@ customerHandler.get('/platform/:platform/:platformUserId', async (c) => {
   try {
     const platform = c.req.param('platform');
     const platformUserId = c.req.param('platformUserId');
-    const userPayload = c.get('jwtPayload') as JWTPayload;
+    const user = c.get('user');
     const { getCustomerByPlatformId, getCustomerConversations } = await import('@/utils/database');
 
     const customer = await getCustomerByPlatformId(c.env.DB, platform, platformUserId);
@@ -108,7 +108,7 @@ customerHandler.get('/platform/:platform/:platformUserId', async (c) => {
 
     // F10: gate by team. Return 404 (not 403) so the lookup doesn't leak
     // whether a given LINE/FB user is in another team's customer book.
-    if (!canAccessCustomer(customer, userPayload)) {
+    if (!canAccessCustomer(customer, user)) {
       return c.json({
         success: false,
         error: 'Customer not found',
@@ -142,7 +142,7 @@ customerHandler.get('/:customerId/tags', requireIntId('customerId'), customerTag
 customerHandler.get('/:customerId', requireIntId('customerId'), async (c) => {
   try {
     const customerId = getValidatedParam<number>(c, 'customerId');
-    const userPayload = c.get('jwtPayload') as JWTPayload;
+    const user = c.get('user');
     const { getCustomerById, getCustomerConversations } = await import('@/utils/database');
 
     const customer = await getCustomerById(c.env.DB, customerId);
@@ -156,7 +156,7 @@ customerHandler.get('/:customerId', requireIntId('customerId'), async (c) => {
 
     // F10: same team-scope gate as the platform-lookup route. 404 hides
     // existence to avoid enumeration of customers in other teams.
-    if (!canAccessCustomer(customer, userPayload)) {
+    if (!canAccessCustomer(customer, user)) {
       return c.json({
         success: false,
         error: 'Customer not found',
@@ -187,6 +187,8 @@ customerHandler.patch('/:customerId', requireIntId('customerId'), async (c) => {
   try {
     const customerId = getValidatedParam<number>(c, 'customerId');
     const userPayload = c.get('jwtPayload') as JWTPayload;
+    // Authorize with the memberships jwtAuth loaded from the DB; the JWT copy is stale until refresh.
+    const user = c.get('user');
 
     const body: unknown = await c.req.json().catch(() => null);
     const raw = typeof body === 'object' && body !== null ? (body as Record<string, unknown>).customName : undefined;
@@ -205,7 +207,7 @@ customerHandler.patch('/:customerId', requireIntId('customerId'), async (c) => {
     const service = new CustomerCrudService(c.env.DB);
     const { getCustomerById } = await import('@/utils/database');
     const existing = await getCustomerById(c.env.DB, customerId); // excludes soft-deleted
-    if (!existing || !(await canEditCustomerName(c.env.DB, existing, userPayload))) {
+    if (!existing || !(await canEditCustomerName(c.env.DB, existing, user))) {
       return c.json({ success: false, error: 'Customer not found', timestamp: nowISO() }, HTTP_STATUS.NOT_FOUND);
     }
 
@@ -261,7 +263,7 @@ customerHandler.patch('/:customerId', requireIntId('customerId'), async (c) => {
 // 客戶資訊查詢端點 - 列表所有客戶 (moved from line 24 to after /:customerId)
 customerHandler.get('/', async (c) => {
   try {
-    const userPayload = c.get('jwtPayload') as JWTPayload;
+    const user = c.get('user');
     const { getAllCustomers } = await import('@/utils/database');
     const allCustomers = await getAllCustomers(c.env.DB);
 
@@ -272,7 +274,7 @@ customerHandler.get('/', async (c) => {
     // limit; a follow-up pagination redesign should push the filter into
     // the SQL WHERE clause.
     const visibleCustomers = allCustomers.filter((customer) =>
-      canAccessCustomer(customer, userPayload)
+      canAccessCustomer(customer, user)
     );
 
     return c.json({
