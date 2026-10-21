@@ -1071,9 +1071,15 @@ export class DeploymentOrchestrator implements DurableObject {
       return;
     }
     const consumerId = await this.api.createQueueConsumer(queueId, workerName, LINE_QUEUE_CONSUMER_SETTINGS, dlq);
-    // A queue we created is deleted whole on rollback; a reused one only loses the consumer we added.
-    if (!queueIsOurs && consumerId) {
-      this.deploymentState.createdQueueConsumerId = consumerId;
+    // A queue we created is deleted whole on rollback; a reused one only loses the consumer we added,
+    // so its ID must be known. The create response may omit it: look it up, and fail if it stays unknown.
+    if (!queueIsOurs) {
+      const resolvedId = consumerId
+        ?? (await this.api.listQueueConsumers(queueId)).find(consumer => consumer.scriptName === workerName)?.consumerId;
+      if (!resolvedId) {
+        throw new Error(`Registered ${workerName} on reused queue ${queueName} but could not read the consumer ID; remove that consumer manually`);
+      }
+      this.deploymentState.createdQueueConsumerId = resolvedId;
       await this.updateState();
     }
     this.log('success', `Registered ${workerName} as consumer of queue ${queueName}`);
