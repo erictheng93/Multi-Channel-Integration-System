@@ -18,7 +18,7 @@ import {
   REMOVED_DURABLE_OBJECT_CLASSES,
   WORKER_CRON_SCHEDULES
 } from '../constants/worker-runtime';
-import type { DurableObjectMigrations } from '../types/cloudflare';
+import type { DurableObjectMigrations, QueueJurisdiction } from '../types/cloudflare';
 import {
   DEPLOYMENT_STEPS,
   type DeploymentConfig,
@@ -813,31 +813,47 @@ export class DeploymentOrchestrator implements DurableObject {
   private async stepCreateQueue(): Promise<void> {
     if (!this.deploymentState) return;
     const { projectName } = this.deploymentState.config;
-    // Dead-letter queue first: inbound LINE events that exhaust their retries are kept there
-    // (wrangler.toml parity) instead of being discarded.
-    await this.createOrReuseQueue(`${projectName}-dlq`, 'dlqId', 'dlqName');
-    await this.createOrReuseQueue(`${projectName}-queue`, 'queueId', 'queueName');
+    // Main queue first: a reused one may be jurisdiction-restricted, and its dead-letter queue
+    // (where inbound LINE events that exhaust their retries are kept, wrangler.toml parity)
+    // must be created in the same jurisdiction. The DLQ is only referenced at consumer registration.
+    const jurisdiction = await this.createOrReuseQueue(`${projectName}-queue`, 'queueId', 'queueName');
+    await this.createOrReuseQueue(`${projectName}-dlq`, 'dlqId', 'dlqName', jurisdiction);
   }
 
-  private async createOrReuseQueue(name: string, idKey: 'queueId' | 'dlqId', nameKey: 'queueName' | 'dlqName'): Promise<void> {
-    if (!this.deploymentState) return;
+  /** Returns the queue's jurisdiction (undefined for a default queue). */
+  private async createOrReuseQueue(
+    name: string,
+    idKey: 'queueId' | 'dlqId',
+    nameKey: 'queueName' | 'dlqName',
+    jurisdiction?: QueueJurisdiction
+  ): Promise<QueueJurisdiction | undefined> {
+    if (!this.deploymentState) return undefined;
     const { resources } = this.deploymentState;
     try {
-      const queue = await this.api.createQueue(name);
+      const queue = await this.api.createQueue(name, jurisdiction);
       resources[idKey] = queue.queue_id;
       this.deploymentState.createdResources!.push(idKey);
       resources[nameKey] = queue.queue_name;
       this.log('success', `Created queue: ${queue.queue_name} (ID: ${queue.queue_id})`);
+      return queue.jurisdiction ?? jurisdiction;
     } catch (error) {
       if (isAlreadyExistsError(error)) {
         this.log('info', `Queue '${name}' already exists, reusing...`);
         const queues = await this.api.listQueues();
         const existing = queues.find((q: { queue_name: string }) => q.queue_name === name);
         if (existing) {
+          // A jurisdiction is fixed at creation, and a DLQ must share its source queue's. Fail here,
+          // before the Worker deploys, rather than at consumer registration with an opaque API error.
+          if (idKey === 'dlqId' && (existing.jurisdiction || undefined) !== (jurisdiction || undefined)) {
+            throw new Error(
+              `Queue '${name}' exists in jurisdiction '${existing.jurisdiction || 'default'}' but its source queue is in ` +
+              `'${jurisdiction || 'default'}'; delete or rename it so it can be recreated in the same jurisdiction`
+            );
+          }
           resources[idKey] = existing.queue_id;
           resources[nameKey] = existing.queue_name;
           this.log('success', `Reusing existing queue: ${existing.queue_name} (ID: ${existing.queue_id})`);
-          return;
+          return existing.jurisdiction;
         }
       }
       throw error;

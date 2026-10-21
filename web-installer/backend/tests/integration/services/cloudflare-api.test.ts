@@ -653,6 +653,12 @@ describe('CloudflareAPI - runtime provisioning calls', () => {
     expect(await api.createQueueConsumer('q1', 'w1', { batch_size: 10, max_wait_time_ms: 1000, max_retries: 3 })).toBe('c9');
   });
 
+  it('passes a jurisdiction when creating a queue', async () => {
+    const { fetchMock, api } = make();
+    await api.createQueue('p-dlq', 'eu');
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ queue_name: 'p-dlq', jurisdiction: 'eu' });
+  });
+
   it('puts cron schedules as an array of {cron}', async () => {
     const { fetchMock, api } = make();
     await api.setWorkerSchedules('w1', ['*/5 * * * *', '0 18 * * *']);
