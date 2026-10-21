@@ -32,6 +32,10 @@ import {
 } from '../types/deployment';
 import type { DeploymentIndexItem, LegacyProbeCursor } from '../types';
 
+/** Storage key and size cap for the per-caller legacy ownership probe cursors of the deployment index. */
+const LEGACY_PROBE_CURSORS_KEY = 'legacyProbeCursors';
+const MAX_LEGACY_PROBE_CURSORS = 100;
+
 // Cloudflare Worker environment type
 interface Env {
   DEPLOYMENT_ORCHESTRATOR: DurableObjectNamespace;
@@ -239,20 +243,29 @@ export class DeploymentOrchestrator implements DurableObject {
     return Response.json({ success: true });
   }
 
-  /** Keyed by owner hash, so one caller's probing never moves another caller's position. */
+  /**
+   * Keyed by owner hash, so one caller's probing never moves another caller's position. Any bearer
+   * token reaches this before proving ownership, so all cursors share one key capped at
+   * MAX_LEGACY_PROBE_CURSORS, the least recently saved evicted first; an evicted caller restarts
+   * from the beginning of the legacy set.
+   */
   private async saveLegacyProbeCursor(ownerTokenHash: string, cursor: LegacyProbeCursor): Promise<Response> {
     if (!/^[0-9a-f]{64}$/.test(ownerTokenHash) || typeof cursor?.projectName !== 'string'
       || !Number.isSafeInteger(cursor.position) || cursor.position < 0) {
       return Response.json({ success: false }, { status: 400 });
     }
-    await this.state.storage.put(`legacyProbeCursor:${ownerTokenHash}`, { projectName: cursor.projectName, position: cursor.position });
+    const cursors = new Map(await this.state.storage.get<[string, LegacyProbeCursor][]>(LEGACY_PROBE_CURSORS_KEY) ?? []);
+    cursors.delete(ownerTokenHash); // re-inserted last: Map order is the eviction order
+    cursors.set(ownerTokenHash, { projectName: cursor.projectName, position: cursor.position });
+    const kept = [...cursors].slice(-MAX_LEGACY_PROBE_CURSORS);
+    await this.state.storage.put(LEGACY_PROBE_CURSORS_KEY, kept);
     return Response.json({ success: true });
   }
 
   private async listDeploymentIndexItems(ownerTokenHash: string | null): Promise<Response> {
     const items = await this.state.storage.get<DeploymentIndexItem[]>('deploymentIndex') || [];
-    const legacyProbeCursor = ownerTokenHash && /^[0-9a-f]{64}$/.test(ownerTokenHash)
-      ? await this.state.storage.get<LegacyProbeCursor>(`legacyProbeCursor:${ownerTokenHash}`)
+    const legacyProbeCursor = ownerTokenHash
+      ? new Map(await this.state.storage.get<[string, LegacyProbeCursor][]>(LEGACY_PROBE_CURSORS_KEY) ?? []).get(ownerTokenHash)
       : undefined;
     return new Response(JSON.stringify({ deployments: items, legacyProbeCursor }), {
       headers: { 'Content-Type': 'application/json' }
