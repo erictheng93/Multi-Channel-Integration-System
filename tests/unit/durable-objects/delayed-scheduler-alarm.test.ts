@@ -107,8 +107,13 @@ describe('DelayedMessageScheduler alarm chain', () => {
       ['dlq:f1', { id: 'f1', failedAt: Date.now() }],
       ['msg:f2', { id: 'f2', status: 'failed' }], // DLQ write failed: keep as the only record
       ['dlq:old', { id: 'old', failedAt: Date.now() - 31 * day }],
+      // fallback written before failedAt existed: ages from scheduledAt
+      ['msg:legacy', { id: 'legacy', status: 'failed', scheduledAt: Date.now() - 31 * day }],
+      ['msg:legacy-new', { id: 'legacy-new', status: 'failed', scheduledAt: Date.now() - day }],
     ])
     await h.ready()
+    expect(h.values.has('msg:legacy')).toBe(false)
+    expect(h.values.has('msg:legacy-new')).toBe(true)
     expect(h.values.has('msg:f1')).toBe(false)
     expect(h.values.has('dlq:f1')).toBe(true)
     expect(h.values.has('msg:f2')).toBe(true)
