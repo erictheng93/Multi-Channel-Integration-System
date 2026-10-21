@@ -6,9 +6,11 @@ import { describe, test, expect, beforeEach, vi } from 'vitest';
 import { Hono } from 'hono';
 import Database from 'better-sqlite3';
 
+const ADMIN = { userId: 'admin-001', username: 'admin', role: 'admin', teamId: 1 };
+let jwtPayload: Record<string, unknown> = ADMIN;
 vi.mock('@/middleware/auth', () => ({
   jwtAuth: vi.fn((c: any, next: any) => {
-    c.set('jwtPayload', { userId: 'admin-001', username: 'admin', role: 'admin', teamId: 1 });
+    c.set('jwtPayload', jwtPayload);
     return next();
   }),
   requireRole: vi.fn(() => (_c: any, next: any) => next()),
@@ -53,12 +55,15 @@ describe('PATCH /api/customers/:customerId customName', () => {
 
   beforeEach(() => {
     broadcast.mockClear();
+    jwtPayload = ADMIN;
     sqlite = new Database(':memory:');
     sqlite.exec(`CREATE TABLE customers (
       id INTEGER PRIMARY KEY, platform TEXT NOT NULL, platform_user_id TEXT NOT NULL,
       display_name TEXT, custom_name TEXT, avatar_url TEXT, email TEXT, phone TEXT,
       source_team_id INTEGER, metadata TEXT, created_at TEXT, updated_at TEXT, deleted_at TEXT,
       UNIQUE (platform, platform_user_id));
+      CREATE TABLE conversations (
+        id TEXT PRIMARY KEY, customer_id INTEGER, assigned_team_id INTEGER, deleted_at TEXT);
       INSERT INTO customers (id, platform, platform_user_id, display_name) VALUES (1, 'line', 'U1', 'Platform Name');`);
     env = { DB: d1Shim(sqlite) };
   });
@@ -84,5 +89,35 @@ describe('PATCH /api/customers/:customerId customName', () => {
     await patch({ customName: 'Boss' });
     await findOrCreateCustomer(env.DB, 'line', 'U1', { displayName: 'Renamed On LINE' });
     expect(row()).toEqual({ display_name: 'Renamed On LINE', custom_name: 'Boss' });
+  });
+
+  describe('agent authorization (team scope)', () => {
+    const agentOf = (teamIds: number[]) => ({
+      userId: 'agent-001', username: 'agent', role: 'agent', allowedTeamIds: teamIds,
+    });
+    beforeEach(() => {
+      // Customer came in through team 1, conversation was later transferred to team 2.
+      sqlite.exec(`UPDATE customers SET source_team_id = 1 WHERE id = 1;
+        INSERT INTO conversations (id, customer_id, assigned_team_id) VALUES ('conv-1', 1, 2);`);
+    });
+
+    test('destination-team agent can edit after a transfer (sourceTeamId unchanged)', async () => {
+      jwtPayload = agentOf([2]);
+      const res = await patch({ customName: 'Boss' });
+      expect(res.status).toBe(200);
+      expect(row()).toMatchObject({ custom_name: 'Boss' });
+    });
+
+    test('agent of an unrelated team still gets 404', async () => {
+      jwtPayload = agentOf([3]);
+      expect((await patch({ customName: 'Boss' })).status).toBe(404);
+      expect(row()).toMatchObject({ custom_name: null });
+    });
+
+    test('soft-deleted customer is 404 even for a team that sees its conversation', async () => {
+      sqlite.exec(`UPDATE customers SET deleted_at = '2026-01-01' WHERE id = 1`);
+      jwtPayload = agentOf([2]);
+      expect((await patch({ customName: 'Boss' })).status).toBe(404);
+    });
   });
 });

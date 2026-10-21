@@ -11,6 +11,7 @@ import { createContextLogger } from '@/utils/logger'
 import { CustomerCrudService } from '../services/customer-crud';
 import { WebSocketBroadcastService } from '@/services/websocket-broadcast-service';
 import { ActivityCapture, ACTIVITY_ACTIONS, RESOURCE_TYPES } from '@modules/activities';
+import { getConversationVisibilitySql } from '@/services/conversation-visibility';
 
 // F10: gate a customer record by the caller's team scope. Admins see all.
 // Other agents see customers whose sourceTeamId is in their allowedTeamIds
@@ -23,6 +24,30 @@ function canAccessCustomer(
   const sourceTeamId = customer.sourceTeamId;
   if (sourceTeamId === null || sourceTeamId === undefined) return true;
   return (user.allowedTeamIds ?? []).includes(sourceTeamId);
+}
+
+// The nickname is edited from the conversation header, so anyone who can see
+// one of the customer's conversations may edit it. sourceTeamId alone is not
+// enough: a transfer moves conversations.assigned_team_id but never the
+// customer's sourceTeamId, which would lock the receiving team out.
+async function canEditCustomerName(
+  db: D1Database,
+  customer: { id: number; sourceTeamId?: number | null | undefined },
+  user: Pick<JWTPayload, 'role' | 'allowedTeamIds'>
+): Promise<boolean> {
+  if (canAccessCustomer(customer, user)) return true;
+  const visibility = getConversationVisibilitySql(user, 'conversations.assigned_team_id');
+  const row = await db
+    .prepare(
+      `SELECT 1 AS ok FROM conversations
+       WHERE conversations.customer_id = ?
+         AND conversations.deleted_at IS NULL
+         AND ${visibility.clause}
+       LIMIT 1`
+    )
+    .bind(customer.id, ...visibility.params)
+    .first<{ ok: number }>();
+  return row !== null;
 }
 
 const log = createContextLogger('CustomerMain')
@@ -180,7 +205,7 @@ customerHandler.patch('/:customerId', requireIntId('customerId'), async (c) => {
     const service = new CustomerCrudService(c.env.DB);
     const { getCustomerById } = await import('@/utils/database');
     const existing = await getCustomerById(c.env.DB, customerId); // excludes soft-deleted
-    if (!existing || !canAccessCustomer(existing, userPayload)) {
+    if (!existing || !(await canEditCustomerName(c.env.DB, existing, userPayload))) {
       return c.json({ success: false, error: 'Customer not found', timestamp: nowISO() }, HTTP_STATUS.NOT_FOUND);
     }
 
