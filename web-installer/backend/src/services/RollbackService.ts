@@ -94,15 +94,27 @@ export class RollbackService {
    * Rollback Queue
    */
   private async rollbackQueue(resources: CloudflareResources): Promise<void> {
-    if (resources.queueId) {
-      await this.api.deleteQueue(resources.queueId);
-    } else if (resources.queueName) {
-      // Fallback warning if only queue name available
-      this.log('warning', `Queue ${resources.queueName} may need manual deletion - ID not stored`);
+    let queueError: unknown;
+    try {
+      if (resources.queueId) {
+        await this.api.deleteQueue(resources.queueId);
+      } else if (resources.queueName) {
+        // Fallback warning if only queue name available
+        this.log('warning', `Queue ${resources.queueName} may need manual deletion - ID not stored`);
+      }
+    } catch (error) {
+      queueError = error;
     }
     // After the queue: its consumer references the DLQ. Independent of queueId, since the
-    // DLQ can be ours while the main queue was reused.
-    if (resources.dlqId) await this.api.deleteQueue(resources.dlqId);
+    // DLQ can be ours while the main queue was reused, and attempted even when the main
+    // queue could not be deleted.
+    try {
+      if (resources.dlqId) await this.api.deleteQueue(resources.dlqId);
+    } catch (error) {
+      if (!queueError) throw error;
+      this.log('warning', `Failed to delete dead-letter queue: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+    if (queueError) throw queueError;
   }
 
   /**
