@@ -602,7 +602,15 @@ export class DeploymentOrchestrator implements DurableObject {
   private async restorePriorQueueConsumer(): Promise<void> {
     const prior = this.deploymentState?.priorQueueConsumer;
     const queueId = this.deploymentState?.resources.queueId;
-    const createdConsumerId = this.deploymentState?.createdQueueConsumerId;
+    const createdScript = this.deploymentState?.createdQueueConsumerScript;
+    let createdConsumerId = this.deploymentState?.createdQueueConsumerId;
+    if (!createdConsumerId && createdScript && queueId) {
+      createdConsumerId = (await this.api.listQueueConsumers(queueId)).find(consumer => consumer.scriptName === createdScript)?.consumerId;
+      if (!createdConsumerId) {
+        this.log('warning', `The queue consumer added for ${createdScript} could not be found; check the queue and remove it manually`);
+        return;
+      }
+    }
     if (createdConsumerId && queueId) {
       // The reused queue had no consumer before this deployment: remove the one we added.
       await this.api.deleteQueueConsumer(queueId, createdConsumerId);
@@ -1061,7 +1069,9 @@ export class DeploymentOrchestrator implements DurableObject {
       // A queue this deployment created cannot have a prior consumer worth restoring; a reused one can.
       // ??=: a retry finds the consumer already repointed at this Worker, which is not the one to restore.
       // Nor is a consumer an earlier attempt of this deployment added.
-      if (!queueIsOurs && existing.consumerId !== this.deploymentState.createdQueueConsumerId) {
+      const addedByEarlierAttempt = existing.consumerId === this.deploymentState.createdQueueConsumerId
+        || (!!existing.scriptName && existing.scriptName === this.deploymentState.createdQueueConsumerScript);
+      if (!queueIsOurs && !addedByEarlierAttempt) {
         this.deploymentState.priorQueueConsumer ??= existing;
       }
       await this.updateState();
@@ -1070,17 +1080,21 @@ export class DeploymentOrchestrator implements DurableObject {
       this.log('success', `Updated queue ${queueName} consumer to ${workerName}${note}`);
       return;
     }
-    const consumerId = await this.api.createQueueConsumer(queueId, workerName, LINE_QUEUE_CONSUMER_SETTINGS, dlq);
-    // A queue we created is deleted whole on rollback; a reused one only loses the consumer we added,
-    // so its ID must be known. The create response may omit it: look it up, and fail if it stays unknown.
+    // A queue we created is deleted whole on rollback; a reused one only loses the consumer we added.
+    // Mark it before creating, so a rollback can find it even if the ID is never read.
     if (!queueIsOurs) {
+      this.deploymentState.createdQueueConsumerScript = workerName;
+      await this.updateState();
+    }
+    const consumerId = await this.api.createQueueConsumer(queueId, workerName, LINE_QUEUE_CONSUMER_SETTINGS, dlq);
+    if (!queueIsOurs) {
+      // The create response may omit the ID; rollback falls back to the marker when this lookup misses too.
       const resolvedId = consumerId
         ?? (await this.api.listQueueConsumers(queueId)).find(consumer => consumer.scriptName === workerName)?.consumerId;
-      if (!resolvedId) {
-        throw new Error(`Registered ${workerName} on reused queue ${queueName} but could not read the consumer ID; remove that consumer manually`);
+      if (resolvedId) {
+        this.deploymentState.createdQueueConsumerId = resolvedId;
+        await this.updateState();
       }
-      this.deploymentState.createdQueueConsumerId = resolvedId;
-      await this.updateState();
     }
     this.log('success', `Registered ${workerName} as consumer of queue ${queueName}`);
   }

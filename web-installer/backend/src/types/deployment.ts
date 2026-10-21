@@ -90,6 +90,11 @@ export interface DeploymentState {
   /** Consumer this deployment added to a reused queue that had none; deleted on rollback. */
   createdQueueConsumerId?: string;
   /**
+   * Worker that consumer was added for, persisted before the create call: rollback resolves the
+   * consumer by it when the ID was never read.
+   */
+  createdQueueConsumerScript?: string;
+  /**
    * A Worker that already existed and was overwritten by this deployment, with the versions its
    * active deployment served beforehand, its cron triggers and its workers.dev route state
    * (each null when it could not be read); restored on rollback.

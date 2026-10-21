@@ -144,14 +144,32 @@ describe('queue consumer added to a reused queue that had none', () => {
     expect((internals.deploymentState as DeploymentState).createdQueueConsumerId).toBe('new-c');
   });
 
-  it('fails the step when the added consumer ID cannot be found', async () => {
-    const { internals } = orchestrator();
+  it('rolls back an added consumer whose ID was never read, found by its Worker', async () => {
+    const { o, internals } = orchestrator();
     internals.api = new CloudflareAPI({ accountId: 'acc', apiToken: 'tok' });
     createResult = 'empty';
-    listShowsCreated = false;
+    listShowsCreated = false; // not listed yet while registering
+    await (internals.registerQueueConsumer as (name: string) => Promise<void>).call(internals, 'new-worker');
+    const state = internals.deploymentState as DeploymentState;
+    expect(state.createdQueueConsumerId).toBeUndefined();
+    expect(state.createdQueueConsumerScript).toBe('new-worker');
 
-    await expect((internals.registerQueueConsumer as (name: string) => Promise<void>).call(internals, 'new-worker'))
-      .rejects.toThrow(/could not read the consumer ID/);
+    consumers.push({ consumer_id: 'new-c', script: 'new-worker' }); // listed by rollback time
+    const response = await (internals.cancelDeployment as () => Promise<Response>).call(o);
+
+    expect(response.status).toBe(200);
+    expect(calls.some(c => c.method === 'DELETE' && c.path.endsWith('/queues/q1/consumers/new-c'))).toBe(true);
+  });
+
+  it('does not mistake a consumer added under the marker for a prior one on retry', async () => {
+    const { internals } = orchestrator();
+    internals.api = new CloudflareAPI({ accountId: 'acc', apiToken: 'tok' });
+    (internals.deploymentState as DeploymentState).createdQueueConsumerScript = 'new-worker';
+    consumers.push({ consumer_id: 'new-c', script: 'new-worker' });
+
+    await (internals.registerQueueConsumer as (name: string) => Promise<void>).call(internals, 'new-worker');
+
+    expect((internals.deploymentState as DeploymentState).priorQueueConsumer).toBeUndefined();
   });
 
   it('does not record a consumer on a queue this deployment created', async () => {
