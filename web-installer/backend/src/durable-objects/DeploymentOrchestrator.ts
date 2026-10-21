@@ -30,7 +30,7 @@ import {
   type CloudflareResources,
   type AdminCredentials
 } from '../types/deployment';
-import type { DeploymentIndexItem } from '../types';
+import type { DeploymentIndexItem, LegacyProbeCursor } from '../types';
 
 // Cloudflare Worker environment type
 interface Env {
@@ -116,9 +116,15 @@ export class DeploymentOrchestrator implements DurableObject {
         return await this.backfillDeploymentIndexOwner(projectName, ownerTokenHash);
       }
 
+      // Remember where a caller's next legacy ownership probe batch starts
+      if (path === '/index/legacy-cursor' && request.method === 'POST') {
+        const { ownerTokenHash, cursor } = await request.json<{ ownerTokenHash: string; cursor: LegacyProbeCursor }>();
+        return await this.saveLegacyProbeCursor(ownerTokenHash, cursor);
+      }
+
       // List deployment metadata from the global deployment index
       if (path === '/index/list' && request.method === 'GET') {
-        return await this.listDeploymentIndexItems();
+        return await this.listDeploymentIndexItems(url.searchParams.get('owner'));
       }
 
       // Start deployment
@@ -233,9 +239,22 @@ export class DeploymentOrchestrator implements DurableObject {
     return Response.json({ success: true });
   }
 
-  private async listDeploymentIndexItems(): Promise<Response> {
+  /** Keyed by owner hash, so one caller's probing never moves another caller's position. */
+  private async saveLegacyProbeCursor(ownerTokenHash: string, cursor: LegacyProbeCursor): Promise<Response> {
+    if (!/^[0-9a-f]{64}$/.test(ownerTokenHash) || typeof cursor?.projectName !== 'string'
+      || !Number.isSafeInteger(cursor.position) || cursor.position < 0) {
+      return Response.json({ success: false }, { status: 400 });
+    }
+    await this.state.storage.put(`legacyProbeCursor:${ownerTokenHash}`, { projectName: cursor.projectName, position: cursor.position });
+    return Response.json({ success: true });
+  }
+
+  private async listDeploymentIndexItems(ownerTokenHash: string | null): Promise<Response> {
     const items = await this.state.storage.get<DeploymentIndexItem[]>('deploymentIndex') || [];
-    return new Response(JSON.stringify({ deployments: items }), {
+    const legacyProbeCursor = ownerTokenHash && /^[0-9a-f]{64}$/.test(ownerTokenHash)
+      ? await this.state.storage.get<LegacyProbeCursor>(`legacyProbeCursor:${ownerTokenHash}`)
+      : undefined;
+    return new Response(JSON.stringify({ deployments: items, legacyProbeCursor }), {
       headers: { 'Content-Type': 'application/json' }
     });
   }
