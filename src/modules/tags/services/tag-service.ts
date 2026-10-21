@@ -158,15 +158,19 @@ const extractActivityMeta = (c: Context<{ Bindings: Bindings }>) => {
 
 // Security: tags are global, so listings reached through a tag must apply the
 // same scopes as GET /api/customers (source_team_id) and conversations.
-type ScopeColumn = 'c.source_team_id' | 'cust.source_team_id' | 'conv.assigned_team_id'
+// Static fragments instead of sql.raw: the column text can never come from a caller.
+const SCOPE_COLUMNS = {
+  'c.source_team_id': sql`c.source_team_id`,
+  'cust.source_team_id': sql`cust.source_team_id`,
+  'conv.assigned_team_id': sql`conv.assigned_team_id`
+}
+type ScopeColumn = keyof typeof SCOPE_COLUMNS
 
 function teamScope(c: Context<{ Bindings: Bindings }>, col: ScopeColumn) {
   const user = c.get('user') as DbUser
   if (user.role === 'admin') return sql`1 = 1`
   const teams = JSON.stringify([...new Set((user.allowedTeamIds ?? []).filter(Number.isFinite))])
-  // Safe: col is typed as a fixed union of column literals above; never caller input.
-  // eslint-disable-next-line no-unsafe-sql-raw
-  const column = sql.raw(col)
+  const column = SCOPE_COLUMNS[col]
   return sql`(${column} IS NULL OR ${column} IN (SELECT value FROM json_each(${teams})))`
 }
 
