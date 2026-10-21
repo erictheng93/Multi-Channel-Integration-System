@@ -80,3 +80,62 @@ describe('queue consumer rollback on a reused queue', () => {
     expect(restore?.body).toMatchObject({ script_name: 'old-worker', dead_letter_queue: 'old-dlq', settings: original.settings });
   });
 });
+
+describe('queue consumer added to a reused queue that had none', () => {
+  let consumers: { consumer_id: string; script: string }[];
+
+  beforeEach(() => {
+    consumers = [];
+    calls = [];
+    realFetch = globalThis.fetch;
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const request = new Request(input, init);
+      const path = new URL(request.url).pathname;
+      const text = request.method === 'GET' || request.method === 'DELETE' ? '' : await request.text();
+      calls.push({ method: request.method, path, body: text ? JSON.parse(text) : undefined });
+      if (request.method === 'GET') return Response.json({ success: true, result: consumers });
+      if (request.method === 'POST') {
+        const created = { consumer_id: 'new-c', script: (JSON.parse(text) as { script_name: string }).script_name };
+        consumers.push(created);
+        return Response.json({ success: true, result: created });
+      }
+      return Response.json({ success: true, result: {} });
+    }) as typeof globalThis.fetch;
+  });
+
+  afterEach(() => { globalThis.fetch = realFetch; });
+
+  it('records the added consumer and does not mistake it for a prior one on retry', async () => {
+    const { internals } = orchestrator();
+    internals.api = new CloudflareAPI({ accountId: 'acc', apiToken: 'tok' });
+    const register = (internals.registerQueueConsumer as (name: string) => Promise<void>).bind(internals);
+
+    await register('new-worker');
+    await register('new-worker'); // retry: finds the consumer the first attempt added
+
+    const state = internals.deploymentState as DeploymentState;
+    expect(state.createdQueueConsumerId).toBe('new-c');
+    expect(state.priorQueueConsumer).toBeUndefined();
+  });
+
+  it('deletes the added consumer when a rebuilt object cancels the deployment', async () => {
+    const { o, internals } = orchestrator();
+    (internals.deploymentState as DeploymentState).createdQueueConsumerId = 'new-c';
+
+    const response = await (internals.cancelDeployment as () => Promise<Response>).call(o);
+
+    expect(response.status).toBe(200);
+    expect(calls.some(c => c.method === 'DELETE' && c.path.endsWith('/queues/q1/consumers/new-c'))).toBe(true);
+    expect(calls.some(c => c.method === 'PUT')).toBe(false);
+  });
+
+  it('does not record a consumer on a queue this deployment created', async () => {
+    const { internals } = orchestrator();
+    internals.api = new CloudflareAPI({ accountId: 'acc', apiToken: 'tok' });
+    (internals.deploymentState as DeploymentState).createdResources = ['queueId'];
+
+    await (internals.registerQueueConsumer as (name: string) => Promise<void>).call(internals, 'new-worker');
+
+    expect((internals.deploymentState as DeploymentState).createdQueueConsumerId).toBeUndefined();
+  });
+});

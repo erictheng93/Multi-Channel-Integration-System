@@ -636,6 +636,23 @@ describe('CloudflareAPI - runtime provisioning calls', () => {
     expect(JSON.parse(init.body).script_name).toBe('w1');
   });
 
+  it('deletes a queue consumer by id', async () => {
+    const { fetchMock, api } = make();
+    await api.deleteQueueConsumer('q1', 'c1');
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe('https://api.cloudflare.com/client/v4/accounts/acc/queues/q1/consumers/c1');
+    expect(init.method).toBe('DELETE');
+  });
+
+  it('returns the id of a created queue consumer', async () => {
+    const { fetchMock, api } = make();
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ success: true, errors: [], messages: [], result: { consumer_id: 'c9' } })
+    });
+    expect(await api.createQueueConsumer('q1', 'w1', { batch_size: 10, max_wait_time_ms: 1000, max_retries: 3 })).toBe('c9');
+  });
+
   it('puts cron schedules as an array of {cron}', async () => {
     const { fetchMock, api } = make();
     await api.setWorkerSchedules('w1', ['*/5 * * * *', '0 18 * * *']);

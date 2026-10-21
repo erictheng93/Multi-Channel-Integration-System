@@ -263,20 +263,31 @@ export class CloudflareAPI {
     }));
   }
 
-  /** Register a Worker as the push consumer of a queue that has none. */
+  /** Register a Worker as the push consumer of a queue that has none. Returns the new consumer's ID. */
   async createQueueConsumer(
     queueId: string,
     scriptName: string,
     settings: Partial<QueueConsumerSettings>,
     deadLetterQueue?: string
-  ): Promise<void> {
-    const response = await this.request({
+  ): Promise<string | undefined> {
+    const response = await this.request<{ consumer_id?: string }>({
       method: 'POST',
       path: `/accounts/${this.accountId}/queues/${queueId}/consumers`,
       body: { script_name: scriptName, type: 'worker', settings, ...(deadLetterQueue && { dead_letter_queue: deadLetterQueue }) }
     });
     if (!response.success) {
       throw new Error(`Failed to create queue consumer: ${response.errors[0]?.message}`);
+    }
+    return response.result?.consumer_id;
+  }
+
+  async deleteQueueConsumer(queueId: string, consumerId: string): Promise<void> {
+    const response = await this.request({
+      method: 'DELETE',
+      path: `/accounts/${this.accountId}/queues/${queueId}/consumers/${consumerId}`
+    });
+    if (!response.success) {
+      throw new Error(`Failed to delete queue consumer: ${response.errors[0]?.message}`);
     }
   }
 
