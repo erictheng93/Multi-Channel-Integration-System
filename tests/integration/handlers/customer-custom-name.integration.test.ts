@@ -8,8 +8,11 @@ import Database from 'better-sqlite3';
 
 const ADMIN = { userId: 'admin-001', username: 'admin', role: 'admin', teamId: 1 };
 let jwtPayload: Record<string, unknown> = ADMIN;
+// jwtAuth loads the user from the DB; null means it matches the token.
+let dbUser: Record<string, unknown> | null = null;
 vi.mock('@/middleware/auth', () => ({
   jwtAuth: vi.fn((c: any, next: any) => {
+    c.set('user', dbUser ?? jwtPayload);
     c.set('jwtPayload', jwtPayload);
     return next();
   }),
@@ -56,6 +59,7 @@ describe('PATCH /api/customers/:customerId customName', () => {
   beforeEach(() => {
     broadcast.mockClear();
     jwtPayload = ADMIN;
+    dbUser = null;
     sqlite = new Database(':memory:');
     sqlite.exec(`CREATE TABLE customers (
       id INTEGER PRIMARY KEY, platform TEXT NOT NULL, platform_user_id TEXT NOT NULL,
@@ -110,6 +114,13 @@ describe('PATCH /api/customers/:customerId customName', () => {
 
     test('agent of an unrelated team still gets 404', async () => {
       jwtPayload = agentOf([3]);
+      expect((await patch({ customName: 'Boss' })).status).toBe(404);
+      expect(row()).toMatchObject({ custom_name: null });
+    });
+
+    test('agent removed from the team is 404 while the JWT still lists it', async () => {
+      jwtPayload = agentOf([2]);
+      dbUser = agentOf([]);
       expect((await patch({ customName: 'Boss' })).status).toBe(404);
       expect(row()).toMatchObject({ custom_name: null });
     });
