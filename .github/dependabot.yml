@@ -3,7 +3,7 @@ updates:
   # Each sub-project has its own lockfile, so each needs its own entry.
   # Dependabot opens PRs only; nothing is merged or deployed automatically.
   - package-ecosystem: bun
-    directories: ["/", "/frontend", "/web-installer/frontend"]
+    directories: ["/", "/frontend", "/web-installer/frontend", "/tests"]
     schedule:
       interval: weekly
     groups:
