@@ -1,7 +1,6 @@
 {
   "description": "Authoritative list of /api registrations that must run before RouteRegistry in src/index.ts. Keep this in source order.",
   "preRegistry": [
-    { "method": "USE", "route": "/api/*", "category": "system", "access": "middleware", "reason": "Metrics middleware must wrap API traffic before route handlers." },
     { "method": "USE", "route": "/api/websocket/metrics", "category": "auth", "access": "auth", "reason": "Protect sensitive WebSocket metrics while leaving health endpoints public." },
     { "method": "USE", "route": "/api/websocket/health-detail", "category": "auth", "access": "auth", "reason": "Protect detailed WebSocket diagnostics." },
     { "method": "ROUTE", "route": "/api/websocket", "category": "public", "access": "public", "reason": "WebSocket health/readiness/liveness must be reachable before catch-all handlers." },
