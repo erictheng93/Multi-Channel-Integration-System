@@ -18,6 +18,7 @@ import type {
   CreateQueueRequest,
   QueueConsumerInfo,
   QueueConsumerSettings,
+  WorkerDeploymentVersion,
   Worker,
   DeployWorkerRequest,
   PagesProject,
@@ -387,6 +388,27 @@ export class CloudflareAPI {
     });
     if (!response.success || !Array.isArray(response.result)) return null;
     return response.result.find(script => script.id === name)?.migration_tag || null;
+  }
+
+  /** Versions served by the Worker's active (most recent) deployment, or null when it has none. */
+  async getActiveWorkerDeployment(name: string): Promise<WorkerDeploymentVersion[] | null> {
+    const response = await this.request<{ deployments?: Array<{ versions?: WorkerDeploymentVersion[] }> }>({
+      method: 'GET',
+      path: `/accounts/${this.accountId}/workers/scripts/${name}/deployments`
+    });
+    if (!response.success) throw new Error(`Failed to read Worker deployments: ${response.errors[0]?.message}`);
+    const versions = response.result?.deployments?.[0]?.versions;
+    return versions?.length ? versions.map(({ version_id, percentage }) => ({ version_id, percentage })) : null;
+  }
+
+  /** Point the Worker's traffic at existing versions (a rollback is a new deployment of an old version). */
+  async createWorkerDeployment(name: string, versions: WorkerDeploymentVersion[], message: string): Promise<void> {
+    const response = await this.request({
+      method: 'POST',
+      path: `/accounts/${this.accountId}/workers/scripts/${name}/deployments`,
+      body: { strategy: 'percentage', versions, annotations: { 'workers/message': message } }
+    });
+    if (!response.success) throw new Error(`Failed to create Worker deployment: ${response.errors[0]?.message}`);
   }
 
   async deleteWorker(name: string): Promise<void> {
