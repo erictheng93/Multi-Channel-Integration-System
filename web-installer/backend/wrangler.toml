@@ -21,7 +21,7 @@ new_sqlite_classes = ["DeploymentOrchestrator"]
 # The following are placeholders - actual values set via secrets
 [vars]
 # Frontend URL for CORS
-FRONTEND_URL = "https://install.your-domain.com"
+FRONTEND_URL = "https://crm-installer-frontend.pages.dev"
 # Environment identifier
 ENVIRONMENT = "production"
 # Email sender name
