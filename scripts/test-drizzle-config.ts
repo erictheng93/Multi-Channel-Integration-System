@@ -1,10 +1,7 @@
 /**
  * 測試 Drizzle Studio 設定
  */
-import { config } from 'dotenv';
-
-// 載入環境變數
-config();
+// Bun 會自動載入 .env，不需要 dotenv
 
 console.log('=== Drizzle Studio 設定檢查 ===\n');
 
