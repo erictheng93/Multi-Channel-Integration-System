@@ -69,4 +69,33 @@ describe('reconcile', () => {
     expect(unread.total.value).toBe(6)
     scope.stop()
   })
+
+  it('請求期間其他分頁 adopt 歸零 delta,不會造出負的轉換', async () => {
+    let channel!: { onmessage: ((_e: { data: unknown }) => void) | null }
+    vi.stubGlobal('BroadcastChannel', class {
+      onmessage = null
+      constructor() { channel = this }
+      postMessage() {}
+      close() {}
+    })
+    const state = reactive(store)
+    state.conversations = [{ id: 'a', unreadCount: 0 }, { id: 'b', unreadCount: 1 }]
+    getStats.mockResolvedValueOnce({ success: true, data: { unreadConversations: 1 } })
+    const scope = effectScope()
+    const unread = scope.run(() => useUnreadConversationTotal())!
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    state.conversations = [{ id: 'a', unreadCount: 1 }, { id: 'b', unreadCount: 1 }]
+    await nextTick() // 請求前 delta = +1
+
+    let resolveStats!: (_v: unknown) => void
+    getStats.mockReturnValueOnce(new Promise((resolve) => { resolveStats = resolve }))
+    const pending = unread.reconcile()
+    channel.onmessage?.({ data: { total: 9, at: Date.now() + 1000 } })
+    resolveStats({ success: true, data: { unreadConversations: 5 } })
+    await pending
+
+    expect(unread.total.value).toBe(5)
+    scope.stop()
+    vi.unstubAllGlobals()
+  })
 })
