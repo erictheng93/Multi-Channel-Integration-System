@@ -443,6 +443,56 @@ describe('deployment ownership', () => {
     expect(stored.find(item => item.projectName === 'owned-crm')?.ownerTokenHash).toBe(ownerHash);
   });
 
+  it('reaches a legacy entry beyond the first probe batch through successive bounded requests', async () => {
+    const ownerHash = Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode('owner-token'))), byte => byte.toString(16).padStart(2, '0')).join('');
+    // 150 foreign legacy entries stay hash-less forever and sit ahead of the caller's entry.
+    const legacyIndex = [
+      ...Array.from({ length: 150 }, (_, number) => ({ projectName: `foreign-${number}`, adminEmail: 'victim@example.com', accountId: 'b'.repeat(32), createdAt: 1, updatedAt: 2 })),
+      { projectName: 'owned-crm', adminEmail: 'owner@example.com', accountId: 'a'.repeat(32), createdAt: 1, updatedAt: 1 }
+    ];
+    const indexObject = coldObject().object;
+    const indexValues = new Map<string, unknown>([['deploymentIndex', legacyIndex]]);
+    Object.assign(indexObject, { state: { storage: { get: async (key: string) => indexValues.get(key), put: async (key: string, value: unknown) => { indexValues.set(key, value); } } } });
+    const owned = coldObject().object;
+    const foreignState = storedDeployment('foreign-crm');
+    foreignState.config.oauthToken = 'foreign-token';
+    const foreign = coldObject(foreignState).object;
+    const statusCalls: string[] = [];
+    const namespace = { idFromName: (name: string) => name, get: (name: string) => ({ fetch: (url: string, init: RequestInit) => {
+      if (name === '__deployment-index__') return indexObject.fetch(new Request(url, init));
+      statusCalls.push(name);
+      return (name === 'owned-crm' ? owned : foreign).fetch(new Request(url, init));
+    } }) };
+    const env = { DEPLOYMENT_ORCHESTRATOR: namespace } as unknown as Env;
+    const list = async () => (await deploymentRoutes.request('/deployments', { headers: { Authorization: 'Bearer owner-token' } }, env)).json<{ deployments: { projectName: string }[]; total: number }>();
+
+    // Another caller's probing keeps its own cursor and does not advance the owner's.
+    await deploymentRoutes.request('/deployments', { headers: { Authorization: 'Bearer attacker-token' } }, env);
+    statusCalls.length = 0;
+
+    const first = await list();
+    expect(first.total).toBe(0);
+    expect(statusCalls).toHaveLength(100);
+    expect(statusCalls).not.toContain('owned-crm');
+    statusCalls.length = 0;
+
+    // The next batch continues after the first and wraps around, so it reaches the caller's entry.
+    const second = await list();
+    // The caller's entry is one of the 100 probes and its status is reused, not fetched again.
+    expect(statusCalls).toHaveLength(100);
+    expect(statusCalls.filter(name => name === 'owned-crm')).toHaveLength(1);
+    expect(statusCalls[0]).toBe('foreign-100');
+    expect(second.total).toBe(1);
+    expect(second.deployments).toMatchObject([{ projectName: 'owned-crm' }]);
+    const stored = indexValues.get('deploymentIndex') as { projectName: string; ownerTokenHash?: string }[];
+    expect(stored.find(item => item.projectName === 'owned-crm')?.ownerTokenHash).toBe(ownerHash);
+    expect(stored.filter(item => item.ownerTokenHash)).toHaveLength(1);
+    statusCalls.length = 0;
+
+    // Once backfilled the entry takes the hash path and stays listed on every later request.
+    expect((await list()).deployments).toMatchObject([{ projectName: 'owned-crm' }]);
+  });
+
   it('bounds list status calls to the requested owner page', async () => {
     const ownerTokenHash = Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode('owner-token'))), byte => byte.toString(16).padStart(2, '0')).join('');
     const index = Array.from({ length: 75 }, (_, number) => ({ projectName: `project-${number}`, ownerTokenHash, adminEmail: 'owner@example.com', accountId: 'a'.repeat(32), createdAt: 1, updatedAt: 2 }));
