@@ -87,6 +87,8 @@ export interface DeploymentState {
   createdResources?: (keyof CloudflareResources)[];
   /** Consumer of a reused queue before this deployment repointed it; restored on rollback. */
   priorQueueConsumer?: QueueConsumerInfo;
+  /** Consumer this deployment added to a reused queue that had none; deleted on rollback. */
+  createdQueueConsumerId?: string;
   /**
    * A Worker that already existed and was overwritten by this deployment, with the versions its
    * active deployment served beforehand (null when they could not be read); restored on rollback.
