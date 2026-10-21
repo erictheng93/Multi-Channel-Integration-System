@@ -147,7 +147,7 @@
     "qrcode": "^1.5.4",
     "uuid": "^14.0.3",
     "vue-i18n": "^11.4.14",
-    "zod": "^4.6.5"
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20261016.1",
