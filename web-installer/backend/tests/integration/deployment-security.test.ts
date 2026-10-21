@@ -59,6 +59,7 @@ describe('deployment ownership', () => {
       const path = new URL(String(url)).pathname;
       if (path.endsWith('/secrets')) return Response.json({ success: true, result: [{ name: 'JWT_SECRET', type: 'secret_text' }, { name: 'ENCRYPTION_KEY', type: 'secret_text' }] });
       if (path.endsWith('/consumers') && (init?.method ?? 'GET') === 'GET') return Response.json({ success: true, result: [] });
+      if (path.endsWith('/consumers') && init?.method === 'POST') return Response.json({ success: true, result: { consumer_id: 'new-consumer' } });
       if (init?.method === 'PUT' && path.endsWith('/schedules')) return Response.json({ success: true, result: {} });
       if (init?.method === 'PUT') {
         metadata = JSON.parse((init.body as FormData).get('metadata') as string);
@@ -105,6 +106,7 @@ describe('deployment ownership', () => {
       }
       if (path.endsWith('/secrets')) return Response.json({ success: true, result: [] });
       if (path.endsWith('/consumers') && request.method === 'GET') return Response.json({ success: true, result: [] });
+      if (path.endsWith('/consumers') && request.method === 'POST') return Response.json({ success: true, result: { consumer_id: 'new-consumer' } });
       if (request.method === 'PUT' && path.endsWith('/schedules')) return Response.json({ success: true, result: {} });
       if (request.method === 'PUT') {
         order.push('upload');
