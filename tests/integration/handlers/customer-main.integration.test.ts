@@ -22,6 +22,7 @@ import { Hono } from 'hono';
 
 vi.mock('@/middleware/auth', () => ({
   jwtAuth: vi.fn((_c: any, next: any) => {
+    _c.set('user', { role: 'admin' });
     _c.set('jwtPayload', {
       userId: 'admin-001',
       username: 'testadmin',
