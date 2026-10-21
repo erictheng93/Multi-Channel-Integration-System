@@ -457,6 +457,13 @@ export function createRealtimeHandler(deps: RealtimeHandlerDeps) {
               // 才回退到 customerId，避免覆蓋成內部數字 ID。
               const platformUserId = (incomingConversation.platformUserId as string) || customerId
               const avatarUrl = incomingConversation.avatarUrl as string | undefined
+              // 暱稱與平台原名：標頭顯示平台名、暱稱編輯器以 customName 初始化
+              const customName = typeof incomingConversation.customName === 'string'
+                ? incomingConversation.customName
+                : null
+              const platformName = typeof incomingConversation.platformName === 'string'
+                ? incomingConversation.platformName
+                : null
 
               // 構建完整的 Conversation 對象
               // Note: Individual assignment (assignedAgentId) removed - only team assignment is supported now
@@ -478,6 +485,8 @@ export function createRealtimeHandler(deps: RealtimeHandlerDeps) {
                   platform: platform as Platform,
                   platformUserId,
                   avatarUrl,
+                  customName,
+                  platformName,
                   createdAt: Date.now()
                 },
                 lastMessage: incomingConversation.lastMessage as Conversation['lastMessage'],

@@ -1,11 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { ref } from 'vue'
 import type { Conversation, ConversationFilters } from '@/types'
+import type { WebSocketMessage } from '@/services/websocketClient'
 
 const listMock = vi.hoisted(() => vi.fn())
 vi.mock('@/api/conversations', () => ({ conversationApi: { list: listMock } }))
-vi.mock('@/services/cacheManager', () => ({ conversationCache: {} }))
-vi.mock('../auth', () => ({ useAuthStore: () => ({}) }))
+vi.mock('@/services/cacheManager', () => ({
+  conversationCache: { setConversation: vi.fn(), invalidateConversation: vi.fn() }
+}))
+vi.mock('../auth', () => ({ useAuthStore: () => ({ allowedTeamIds: [2], currentAgent: { role: 'agent' } }) }))
 
 import { createRealtimeHandler, type RealtimeHandlerDeps } from './realtimeHandler'
 
@@ -62,5 +65,40 @@ describe('pollConversations stale-result guard', () => {
 
     expect(loadError.value).toBeNull()
     expect(updateIncremental).toHaveBeenCalled()
+  })
+})
+
+describe('conversation_transferred (assigned)', () => {
+  const transferMessage = (customName: string | null) => ({
+    type: 'conversation_transferred',
+    conversationId: 'conv-1',
+    data: {
+      action: 'assigned',
+      conversationId: 'conv-1',
+      toTeamId: 2,
+      toTeamName: 'Team B',
+      conversation: {
+        id: 'conv-1', customerId: 9, customerName: customName ?? 'LINE Name',
+        customName, platformName: 'LINE Name', platform: 'line', status: 'active'
+      }
+    }
+  }) as unknown as WebSocketMessage
+
+  it('keeps the nickname and platform name on the received conversation', () => {
+    const { deps } = makeDeps()
+    createRealtimeHandler(deps).handleRealtimeUpdate(transferMessage('Boss'))
+
+    expect(deps.conversations.value[0]?.customer).toMatchObject({
+      name: 'Boss', customName: 'Boss', platformName: 'LINE Name'
+    })
+  })
+
+  it('uses null customName when the customer has no nickname', () => {
+    const { deps } = makeDeps()
+    createRealtimeHandler(deps).handleRealtimeUpdate(transferMessage(null))
+
+    expect(deps.conversations.value[0]?.customer).toMatchObject({
+      name: 'LINE Name', customName: null, platformName: 'LINE Name'
+    })
   })
 })
