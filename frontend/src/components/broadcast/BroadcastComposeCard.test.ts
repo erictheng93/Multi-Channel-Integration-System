@@ -75,8 +75,20 @@ describe('BroadcastComposeCard images', () => {
     await sent.find('select').setValue(7)
     await sent.find('form').trigger('submit')
     expect(sent.emitted('send')).toHaveLength(1)
+    const onCreated = sent.emitted('send')?.[0]?.[1] as () => void
+    onCreated()
     sent.unmount()
     expect(cleanup).not.toHaveBeenCalled()
+  })
+  it('still deletes uploads on leave when the broadcast was never created', async () => {
+    const wrapper = mountCard()
+    await pick(wrapper, [image('1.jpg')])
+    await wrapper.find('input[type="text"]').setValue('Promo')
+    await wrapper.find('select').setValue(7)
+    await wrapper.find('form').trigger('submit')
+    expect(wrapper.emitted('send')).toHaveLength(1)
+    wrapper.unmount() // createBroadcast rejected: onCreated never called
+    expect(cleanup).toHaveBeenCalledExactlyOnceWith({ attachmentId: 'a-1.jpg', previewAttachmentId: 'p-1.jpg' })
   })
   beforeEach(() => {
     upload.mockReset()

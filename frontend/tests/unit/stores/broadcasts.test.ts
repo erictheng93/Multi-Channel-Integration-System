@@ -1,14 +1,18 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { useBroadcastsStore } from '@/stores/broadcasts'
-import { previewBroadcastAudience } from '@/api/broadcasts'
+import { createBroadcast, previewBroadcastAudience, sendBroadcast } from '@/api/broadcasts'
 import type * as BroadcastsApi from '@/api/broadcasts'
 
 vi.mock('@/api/broadcasts', async (importOriginal) => {
   const actual = await importOriginal<typeof BroadcastsApi>()
   return {
     ...actual,
-    previewBroadcastAudience: vi.fn()
+    previewBroadcastAudience: vi.fn(),
+    createBroadcast: vi.fn(),
+    sendBroadcast: vi.fn(),
+    getBroadcast: vi.fn(),
+    listBroadcasts: vi.fn()
   }
 })
 
@@ -47,5 +51,23 @@ describe('useBroadcastsStore', () => {
 
     expect(store.preview).toEqual(secondPreview)
     expect(store.previewTagId).toBe(2)
+  })
+
+  // The compose card keeps its uploads alive only after onCreated, so it must fire exactly
+  // when a broadcast exists: after create succeeds (even if send then fails), never before.
+  it('acknowledges creation only once the broadcast exists', async () => {
+    const input = { title: 't', content: 'c', tagIds: [1], attachments: [] }
+    const store = useBroadcastsStore()
+
+    vi.mocked(createBroadcast).mockRejectedValueOnce(new Error('create failed'))
+    const notCreated = vi.fn()
+    await expect(store.createAndSend(input, notCreated)).rejects.toThrow('create failed')
+    expect(notCreated).not.toHaveBeenCalled()
+
+    vi.mocked(createBroadcast).mockResolvedValueOnce({ id: 'b1' } as never)
+    vi.mocked(sendBroadcast).mockRejectedValueOnce(new Error('send failed'))
+    const created = vi.fn()
+    await expect(store.createAndSend(input, created)).rejects.toThrow('send failed')
+    expect(created).toHaveBeenCalledOnce()
   })
 })
