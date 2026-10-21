@@ -319,7 +319,9 @@ describe('deployment ownership', () => {
     const namespace = { idFromName: (name: string) => name, get: (name: string) => ({ fetch: (url: string, init: RequestInit) => { if (name === '__deployment-index__') return Promise.resolve(Response.json({ deployments: index })); statusCalls.push(name); return (name === 'owned-crm' ? owned : foreign).fetch(new Request(url, init)); } }) };
     const denied = await deploymentRoutes.request('/deployments', { headers: { Authorization: 'Bearer attacker-token' } }, { DEPLOYMENT_ORCHESTRATOR: namespace } as unknown as Env);
     expect(await denied.json()).toMatchObject({ deployments: [], count: 0 });
-    expect(statusCalls).toEqual([]);
+    // Hashed entries are filtered without a call; only the hash-less legacy entry is asked to verify the token.
+    expect(statusCalls).toEqual(['legacy']);
+    statusCalls.length = 0;
     const response = await deploymentRoutes.request('/deployments', { headers: { Authorization: 'Bearer owner-token' } }, { DEPLOYMENT_ORCHESTRATOR: namespace } as unknown as Env);
     expect(response.status).toBe(200);
     const text = await response.text();
@@ -328,7 +330,44 @@ describe('deployment ownership', () => {
     expect(text).not.toContain('victim@example.com');
     expect(text).not.toContain('ownerTokenHash');
     expect(text).not.toContain(ownerHash);
-    expect(statusCalls).toEqual(['owned-crm']);
+    expect(text).not.toContain('legacy@example.com');
+    expect(statusCalls).toEqual(['legacy', 'owned-crm']);
+  });
+
+  it('lists a legacy index entry its project object accepts and backfills only that owner hash', async () => {
+    const ownerHash = Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode('owner-token'))), byte => byte.toString(16).padStart(2, '0')).join('');
+    const legacyIndex = [
+      { projectName: 'owned-crm', adminEmail: 'owner@example.com', accountId: 'a'.repeat(32), createdAt: 1, updatedAt: 3 },
+      { projectName: 'foreign-crm', adminEmail: 'victim@example.com', accountId: 'b'.repeat(32), createdAt: 1, updatedAt: 2 }
+    ];
+    const indexObject = coldObject().object;
+    const indexValues = new Map<string, unknown>([['deploymentIndex', legacyIndex]]);
+    Object.assign(indexObject, { state: { storage: { get: async (key: string) => indexValues.get(key), put: async (key: string, value: unknown) => { indexValues.set(key, value); } } } });
+    const owned = coldObject().object;
+    const foreignState = storedDeployment('foreign-crm');
+    foreignState.config.oauthToken = 'foreign-token';
+    const foreign = coldObject(foreignState).object;
+    const objects: Record<string, DeploymentOrchestrator> = { '__deployment-index__': indexObject, 'owned-crm': owned, 'foreign-crm': foreign };
+    const namespace = { idFromName: (name: string) => name, get: (name: string) => ({ fetch: (url: string, init: RequestInit) => objects[name].fetch(new Request(url, init)) }) };
+    const env = { DEPLOYMENT_ORCHESTRATOR: namespace } as unknown as Env;
+
+    const denied = await deploymentRoutes.request('/deployments', { headers: { Authorization: 'Bearer attacker-token' } }, env);
+    expect(await denied.json()).toMatchObject({ deployments: [], total: 0 });
+    expect((indexValues.get('deploymentIndex') as { ownerTokenHash?: string }[]).every(item => !item.ownerTokenHash)).toBe(true);
+
+    const response = await deploymentRoutes.request('/deployments', { headers: { Authorization: 'Bearer owner-token' } }, env);
+    const body = await response.json<{ deployments: { projectName: string; status: string }[]; total: number }>();
+    expect(body.total).toBe(1);
+    expect(body.deployments).toMatchObject([{ projectName: 'owned-crm', status: 'completed' }]);
+    expect(JSON.stringify(body)).not.toContain('victim@example.com');
+    const stored = indexValues.get('deploymentIndex') as { projectName: string; ownerTokenHash?: string }[];
+    expect(stored.find(item => item.projectName === 'owned-crm')?.ownerTokenHash).toBe(ownerHash);
+    expect(stored.find(item => item.projectName === 'foreign-crm')?.ownerTokenHash).toBeUndefined();
+
+    // A backfill never reassigns an entry that already names an owner.
+    const overwrite = await indexObject.fetch(new Request('http://do/index/backfill-owner', { method: 'POST', body: JSON.stringify({ projectName: 'owned-crm', ownerTokenHash: 'f'.repeat(64) }) }));
+    expect(overwrite.status).toBe(409);
+    expect(stored.find(item => item.projectName === 'owned-crm')?.ownerTokenHash).toBe(ownerHash);
   });
 
   it('bounds list status calls to the requested owner page', async () => {
