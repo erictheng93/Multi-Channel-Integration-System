@@ -42,6 +42,11 @@ interface Env {
  * Check if a Cloudflare API error indicates the resource already exists.
  * Centralizes fragile string matching so it's maintained in one place.
  */
+/** Resources the deployed Worker binds to; never deleted while a replaced Worker may still use them. */
+const WORKER_BOUND_RESOURCES: ReadonlySet<keyof CloudflareResources> = new Set<keyof CloudflareResources>([
+  'd1DatabaseId', 'kvSessionNamespaceId', 'kvCacheNamespaceId', 'r2BucketName', 'queueId', 'dlqId'
+]);
+
 function isAlreadyExistsError(error: unknown): boolean {
   return error instanceof Error &&
     (error.message.includes('already exists') || error.message.includes('already taken'));
@@ -103,6 +108,12 @@ export class DeploymentOrchestrator implements DurableObject {
       if (path === '/index/register' && request.method === 'POST') {
         const item: DeploymentIndexItem = await request.json();
         return await this.registerDeploymentIndexItem(item);
+      }
+
+      // Record the owner hash on a pre-upgrade index entry once its project object accepted the token
+      if (path === '/index/backfill-owner' && request.method === 'POST') {
+        const { projectName, ownerTokenHash } = await request.json<{ projectName: string; ownerTokenHash: string }>();
+        return await this.backfillDeploymentIndexOwner(projectName, ownerTokenHash);
       }
 
       // List deployment metadata from the global deployment index
@@ -208,6 +219,18 @@ export class DeploymentOrchestrator implements DurableObject {
     return new Response(JSON.stringify({ success: true }), {
       headers: { 'Content-Type': 'application/json' }
     });
+  }
+
+  /** Only fills a missing hash: an entry that already names an owner is never reassigned here. */
+  private async backfillDeploymentIndexOwner(projectName: string, ownerTokenHash: string): Promise<Response> {
+    const items = await this.state.storage.get<DeploymentIndexItem[]>('deploymentIndex') || [];
+    const item = items.find((existing) => existing.projectName === projectName);
+    if (!item || item.ownerTokenHash || !/^[0-9a-f]{64}$/.test(ownerTokenHash)) {
+      return Response.json({ success: false }, { status: 409 });
+    }
+    item.ownerTokenHash = ownerTokenHash;
+    await this.state.storage.put('deploymentIndex', items);
+    return Response.json({ success: true });
   }
 
   private async listDeploymentIndexItems(): Promise<Response> {
@@ -570,18 +593,54 @@ export class DeploymentOrchestrator implements DurableObject {
   }
 
   private async rollbackDeployment(): Promise<void> {
+    // Services are not retained across eviction, and a cancel can arrive on a fresh instance.
+    this.api ||= new CloudflareAPI({
+      accountId: this.deploymentState!.config.accountId,
+      apiToken: this.deploymentState!.config.oauthToken
+    });
     try {
       await this.restorePriorQueueConsumer();
     } catch (error) {
       this.log('error', `Restoring the previous queue consumer failed: ${error instanceof Error ? error.message : 'Unknown'}`);
     }
-    await this.rollbackService.rollback(this.createdResourcesForRollback());
+    const workerRestored = await this.restorePriorWorker();
+    await this.rollbackService.rollback(this.createdResourcesForRollback(workerRestored));
   }
 
-  private createdResourcesForRollback(): CloudflareResources {
+  /**
+   * Put an overwritten Worker back on the versions it served before this deployment.
+   * Returns false when a Worker was replaced and could not be restored, so it is still running
+   * this deployment's code and bindings.
+   */
+  private async restorePriorWorker(): Promise<boolean> {
+    const prior = this.deploymentState?.priorWorker;
+    if (!prior) return true;
+    if (!prior.versions) {
+      this.log('warning', `Previous deployment of ${prior.scriptName} could not be read; it must be restored manually`);
+      return false;
+    }
+    try {
+      await this.api.createWorkerDeployment(prior.scriptName, prior.versions, 'Installer rollback: restore the pre-deployment version');
+      this.log('success', `Restored ${prior.scriptName} to its previous deployment`);
+      return true;
+    } catch (error) {
+      // Cloudflare refuses a rollback across a Durable Object migration or to a version whose bindings are gone.
+      this.log('error', `Restoring the previous Worker failed: ${error instanceof Error ? error.message : 'Unknown'}`);
+      return false;
+    }
+  }
+
+  private createdResourcesForRollback(workerRestored = true): CloudflareResources {
     const deployment = this.deploymentState!;
     // Legacy deployments have no reliable provenance; preserve their resources.
-    return Object.fromEntries((deployment.createdResources || []).map(key => [key, deployment.resources[key]]));
+    const createdResources = deployment.createdResources || [];
+    // A replaced Worker left on this deployment's version is bound to what it created;
+    // deleting those would break a live Worker, so they are kept for manual cleanup.
+    const deletable = workerRestored ? createdResources : createdResources.filter(key => !WORKER_BOUND_RESOURCES.has(key));
+    if (deletable.length < createdResources.length) {
+      this.log('warning', 'The replaced Worker is still live on the bindings of this deployment, so the D1/KV/R2/queue resources it created are kept');
+    }
+    return Object.fromEntries(deletable.map(key => [key, deployment.resources[key]]));
   }
 
   private log(level: DeploymentLog['level'], message: string, details?: Record<string, unknown>): void {
@@ -835,6 +894,16 @@ export class DeploymentOrchestrator implements DurableObject {
       bindings.push({ type: ['ENVIRONMENT', 'FRONTEND_URL', 'BACKEND_URL'].includes(name) ? 'plain_text' : 'secret_text', name, text });
     }
     const keep_bindings = existingWorker ? ['secret_text'] : undefined;
+    if (existingWorker) {
+      // The upload below replaces the live Worker. Remember what it served so a later failure can
+      // put it back; persisted before the overwrite so a rollback always knows a Worker was replaced.
+      // ??=: a retry finds this deployment's own version live, which is not the one to restore.
+      this.deploymentState.priorWorker ??= {
+        scriptName: workerName,
+        versions: await this.api.getActiveWorkerDeployment(workerName).catch(() => null)
+      };
+      await this.updateState();
+    }
     this.log('info', `Deploying Worker with ${bindings.length} bindings...`);
 
     // Durable Object migrations. A fresh Worker creates every class and records the tag.

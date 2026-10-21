@@ -1,4 +1,4 @@
-import type { QueueConsumerInfo } from './cloudflare';
+import type { QueueConsumerInfo, WorkerDeploymentVersion } from './cloudflare';
 /**
  * Web Installer - Deployment Types
  *
@@ -87,6 +87,11 @@ export interface DeploymentState {
   createdResources?: (keyof CloudflareResources)[];
   /** Consumer of a reused queue before this deployment repointed it; restored on rollback. */
   priorQueueConsumer?: QueueConsumerInfo;
+  /**
+   * A Worker that already existed and was overwritten by this deployment, with the versions its
+   * active deployment served beforehand (null when they could not be read); restored on rollback.
+   */
+  priorWorker?: { scriptName: string; versions: WorkerDeploymentVersion[] | null };
   generatedSecrets?: { jwtSecret: string; encryptionKey: string };
   logs: DeploymentLog[];
   error?: DeploymentError;

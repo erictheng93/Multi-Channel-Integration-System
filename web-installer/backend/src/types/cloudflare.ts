@@ -88,6 +88,12 @@ export interface QueueConsumerInfo {
 }
 
 // Worker Types
+/** One version's traffic share in a Worker deployment (GET/POST /workers/scripts/{name}/deployments). */
+export interface WorkerDeploymentVersion {
+  version_id: string;
+  percentage: number;
+}
+
 export interface Worker {
   id: string;
   created_on: string;
