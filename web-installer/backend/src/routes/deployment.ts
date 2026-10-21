@@ -20,6 +20,11 @@ interface DeploymentIndexResponse {
   deployments?: DeploymentIndexItem[];
 }
 
+type ProjectStatus = Partial<DeploymentState> & { urls?: DeploymentSummary['urls'] };
+
+/** Upper bound on hash-less (pre-upgrade) index entries one list request verifies against their project objects. */
+const MAX_LEGACY_OWNERSHIP_PROBES = 100;
+
 interface DeploymentSummary {
   projectName: string;
   deploymentId?: string;
@@ -229,17 +234,40 @@ deployment.get('/deployments', async (c) => {
     }
 
     const index = await indexResponse.json<DeploymentIndexResponse>();
-    const ownedItems = (index.deployments || []).filter(item => item.ownerTokenHash === ownerTokenHash);
-    const results = await Promise.all(ownedItems.slice(offset, offset + limit).map(async (item): Promise<DeploymentSummary | null> => {
-      const doId = c.env.DEPLOYMENT_ORCHESTRATOR.idFromName(item.projectName);
-      const doStub = c.env.DEPLOYMENT_ORCHESTRATOR.get(doId);
-      const statusResponse = await doStub.fetch('http://do/status', { method: 'GET', headers: { Authorization: authorization } });
+    const fetchStatus = (projectName: string) => c.env.DEPLOYMENT_ORCHESTRATOR
+      .get(c.env.DEPLOYMENT_ORCHESTRATOR.idFromName(projectName))
+      .fetch('http://do/status', { method: 'GET', headers: { Authorization: authorization } });
 
-      if (!statusResponse.ok) {
-        return null;
+    // Entries registered before owner hashes existed carry none. The project object still
+    // enforces its owner token, so ask it; a 200 proves ownership and the hash is backfilled,
+    // after which the entry takes the hash path. No new entry is ever registered without a
+    // hash, so this set only shrinks; the cap bounds what one request can fan out to.
+    const legacyStatuses = new Map<string, ProjectStatus>();
+    const legacyItems = (index.deployments || []).filter(item => !item.ownerTokenHash).slice(0, MAX_LEGACY_OWNERSHIP_PROBES);
+    await Promise.all(legacyItems.map(async (item) => {
+      const statusResponse = await fetchStatus(item.projectName);
+      if (!statusResponse.ok) return;
+      legacyStatuses.set(item.projectName, await statusResponse.json<ProjectStatus>());
+      await indexStub.fetch('http://do/index/backfill-owner', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ projectName: item.projectName, ownerTokenHash })
+      });
+    }));
+
+    const ownedItems = (index.deployments || []).filter(item => item.ownerTokenHash
+      ? item.ownerTokenHash === ownerTokenHash
+      : legacyStatuses.has(item.projectName));
+    const results = await Promise.all(ownedItems.slice(offset, offset + limit).map(async (item): Promise<DeploymentSummary | null> => {
+      let status = legacyStatuses.get(item.projectName);
+      if (!status) {
+        const statusResponse = await fetchStatus(item.projectName);
+        if (!statusResponse.ok) {
+          return null;
+        }
+        status = await statusResponse.json<ProjectStatus>();
       }
 
-      const status = await statusResponse.json<Partial<DeploymentState> & { urls?: DeploymentSummary['urls'] }>();
       const { ownerTokenHash: _ownerTokenHash, ...publicItem } = item;
       return {
         ...publicItem,
