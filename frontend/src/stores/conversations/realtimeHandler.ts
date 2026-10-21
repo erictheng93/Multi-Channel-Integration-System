@@ -647,6 +647,18 @@ export function createRealtimeHandler(deps: RealtimeHandlerDeps) {
 
         if (profileData?.changes && profileData?.conversationIds) {
           const { changes, conversationIds: affectedIds } = profileData
+          // displayName 是平台原名：一律更新 platformName，但只有在沒有暱稱時才改顯示名稱
+          const applyProfile = (customer: NonNullable<Conversation['customer']>) => {
+            if (changes.displayName !== undefined) {
+              customer.platformName = changes.displayName
+              if (!customer.customName) {
+                customer.name = changes.displayName
+              }
+            }
+            if (changes.avatarUrl !== undefined) {
+              customer.avatarUrl = changes.avatarUrl ?? undefined
+            }
+          }
 
           for (const convId of affectedIds) {
             const convIndex = conversations.value.findIndex(c => c.id === convId)
@@ -654,21 +666,11 @@ export function createRealtimeHandler(deps: RealtimeHandlerDeps) {
               const conv = conversations.value[convIndex]
               // Update the customer fields on the conversation object
               if (conv?.customer) {
-                if (changes.displayName !== undefined) {
-                  conv.customer.name = changes.displayName
-                }
-                if (changes.avatarUrl !== undefined) {
-                  conv.customer.avatarUrl = changes.avatarUrl ?? undefined
-                }
+                applyProfile(conv.customer)
               }
               // Also update currentConversation if it's the one being viewed
               if (currentConversation.value?.id === convId && currentConversation.value.customer) {
-                if (changes.displayName !== undefined) {
-                  currentConversation.value.customer.name = changes.displayName
-                }
-                if (changes.avatarUrl !== undefined) {
-                  currentConversation.value.customer.avatarUrl = changes.avatarUrl ?? undefined
-                }
+                applyProfile(currentConversation.value.customer)
               }
             }
           }
