@@ -223,8 +223,10 @@ export async function restoreState(
         pendingMessages.set(message.id, message);
       } else if (dlq.has(`dlq:${message.id}`)) {
         staleKeys.push(key); // failed copy; the DLQ entry is the durable record
-      } else if (message.status === 'failed' && typeof message.failedAt === 'number' && message.failedAt < nowMs() - DLQ_RETENTION_MS) {
-        staleKeys.push(key); // fallback record (DLQ write failed), same retention as dlq: rows
+      } else if (message.status === 'failed' && (message.failedAt ?? message.lastRetryAt ?? message.scheduledAt) < nowMs() - DLQ_RETENTION_MS) {
+        // Fallback record (DLQ write failed), same retention as dlq: rows. Rows written before
+        // failedAt existed age from their last retry or schedule time instead.
+        staleKeys.push(key);
       }
     }
 
