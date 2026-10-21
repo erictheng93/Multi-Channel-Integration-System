@@ -95,6 +95,14 @@ describe('deployment ownership', () => {
         order.push('read-deployments');
         return Response.json({ success: true, result: { deployments: [{ id: 'dep-old', versions: [{ version_id: 'old-version', percentage: 100 }] }] } });
       }
+      if (request.method === 'GET' && path.endsWith('/schedules')) {
+        order.push('read-schedules');
+        return Response.json({ success: true, result: { schedules: [{ cron: '0 3 * * *', created_on: '', modified_on: '' }] } });
+      }
+      if (request.method === 'GET' && path.endsWith('/owned-crm-worker/subdomain')) {
+        order.push('read-route');
+        return Response.json({ success: true, result: { enabled: false, previews_enabled: false } });
+      }
       if (path.endsWith('/secrets')) return Response.json({ success: true, result: [] });
       if (path.endsWith('/consumers') && request.method === 'GET') return Response.json({ success: true, result: [] });
       if (request.method === 'PUT' && path.endsWith('/schedules')) return Response.json({ success: true, result: {} });
@@ -114,8 +122,13 @@ describe('deployment ownership', () => {
       instance.workerBundleService = new WorkerBundleService();
       instance.generatedSecrets = { jwtSecret: 'new-jwt', encryptionKey: 'new-encryption' };
       await instance.stepDeployWorker();
-      expect(order).toEqual(['read-deployments', 'upload']);
-      expect(deployment.priorWorker).toEqual({ scriptName: 'owned-crm-worker', versions: [{ version_id: 'old-version', percentage: 100 }] });
+      expect(order).toEqual(['read-deployments', 'read-schedules', 'read-route', 'upload']);
+      expect(deployment.priorWorker).toEqual({
+        scriptName: 'owned-crm-worker',
+        versions: [{ version_id: 'old-version', percentage: 100 }],
+        crons: ['0 3 * * *'],
+        workersDevRoute: { enabled: false, previews_enabled: false }
+      });
       // An overwritten Worker is not this deployment's to delete.
       expect(deployment.createdResources ?? []).not.toContain('workerId');
     } finally { network.mockRestore(); }
@@ -127,13 +140,16 @@ describe('deployment ownership', () => {
     deployment.resources.kvSessionNamespaceId = 'new-kv';
     deployment.resources.pagesProjectName = 'owned-crm';
     deployment.createdResources = ['kvSessionNamespaceId', 'pagesProjectName'];
-    deployment.priorWorker = { scriptName: 'owned-crm-worker', versions: [{ version_id: 'old-version', percentage: 100 }] };
+    deployment.priorWorker = { scriptName: 'owned-crm-worker', versions: [{ version_id: 'old-version', percentage: 100 }], crons: ['0 3 * * *'], workersDevRoute: { enabled: false, previews_enabled: false } };
     const { object } = coldObject(deployment);
     const calls: { method: string; path: string; body?: unknown }[] = [];
+    const searches: string[] = [];
     const network = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
       const request = new Request(input, init);
       const text = await request.text();
-      calls.push({ method: request.method, path: new URL(request.url).pathname, body: text ? JSON.parse(text) : undefined });
+      const url = new URL(request.url);
+      calls.push({ method: request.method, path: url.pathname, body: text ? JSON.parse(text) : undefined });
+      searches.push(url.search);
       return Response.json({ success: true, result: {} });
     });
     try {
@@ -144,8 +160,65 @@ describe('deployment ownership', () => {
         path: `${account}/workers/scripts/owned-crm-worker/deployments`,
         body: { strategy: 'percentage', versions: [{ version_id: 'old-version', percentage: 100 }], annotations: { 'workers/message': expect.any(String) } }
       });
+      // The rollback deployment is sent with force=true.
+      expect(searches[0]).toBe('?force=true');
+      // Script settings are not part of a version: the prior crons and the disabled workers.dev route come back too.
+      expect(calls[1]).toEqual({ method: 'PUT', path: `${account}/workers/scripts/owned-crm-worker/schedules`, body: [{ cron: '0 3 * * *' }] });
+      expect(calls[2]).toEqual({ method: 'POST', path: `${account}/workers/scripts/owned-crm-worker/subdomain`, body: { enabled: false, previews_enabled: false } });
       const deleted = calls.filter(call => call.method === 'DELETE').map(call => call.path);
       expect(deleted).toEqual([`${account}/pages/projects/owned-crm`, `${account}/storage/kv/namespaces/new-kv`]);
+    } finally { network.mockRestore(); }
+  });
+
+  it('reports a replaced Worker as not restored when its prior crons or workers.dev route were never read', async () => {
+    const deployment = storedDeployment();
+    deployment.status = 'in_progress';
+    deployment.resources.kvSessionNamespaceId = 'new-kv';
+    deployment.createdResources = ['kvSessionNamespaceId'];
+    deployment.priorWorker = { scriptName: 'owned-crm-worker', versions: [{ version_id: 'old-version', percentage: 100 }], crons: null, workersDevRoute: null };
+    const { object, values } = coldObject(deployment);
+    const calls: string[] = [];
+    const network = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const request = new Request(input, init);
+      calls.push(`${request.method} ${new URL(request.url).pathname}`);
+      return Response.json({ success: true, result: {} });
+    });
+    try {
+      expect((await object.fetch(new Request('http://do/cancel', { method: 'POST', headers: { Authorization: 'Bearer owner-token' } }))).status).toBe(200);
+      const script = `/client/v4/accounts/${'a'.repeat(32)}/workers/scripts/owned-crm-worker`;
+      // The version is still restored; unknown settings are never guessed at, and the KV namespace is kept.
+      expect(calls).toEqual([`POST ${script}/deployments`]);
+      const logs = (values.get('deploymentState') as DeploymentState).logs.map(log => log.message).join(' | ');
+      expect(logs).toContain('Previous cron triggers of owned-crm-worker could not be read and must be restored manually');
+      expect(logs).toContain('Previous workers.dev route of owned-crm-worker could not be read and must be restored manually');
+      expect(logs).toContain('are kept');
+    } finally { network.mockRestore(); }
+  });
+
+  it('reports a replaced Worker as not restored when re-applying its workers.dev route fails', async () => {
+    const deployment = storedDeployment();
+    deployment.status = 'in_progress';
+    deployment.resources.kvSessionNamespaceId = 'new-kv';
+    deployment.createdResources = ['kvSessionNamespaceId'];
+    deployment.priorWorker = { scriptName: 'owned-crm-worker', versions: [{ version_id: 'old-version', percentage: 100 }], crons: [], workersDevRoute: { enabled: false } };
+    const { object, values } = coldObject(deployment);
+    const calls: { method: string; path: string; body?: unknown }[] = [];
+    const network = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const request = new Request(input, init);
+      const path = new URL(request.url).pathname;
+      const text = await request.text();
+      calls.push({ method: request.method, path, body: text ? JSON.parse(text) : undefined });
+      if (request.method === 'POST' && path.endsWith('/subdomain')) return Response.json({ success: false, errors: [{ message: 'denied' }] }, { status: 403 });
+      return Response.json({ success: true, result: {} });
+    });
+    try {
+      expect((await object.fetch(new Request('http://do/cancel', { method: 'POST', headers: { Authorization: 'Bearer owner-token' } }))).status).toBe(200);
+      // A Worker that had no crons gets an empty list back, not this deployment's.
+      expect(calls.find(call => call.method === 'PUT')?.body).toEqual([]);
+      expect(calls.some(call => call.method === 'DELETE')).toBe(false);
+      const logs = (values.get('deploymentState') as DeploymentState).logs.map(log => log.message).join(' | ');
+      expect(logs).toContain('Restoring the previous workers.dev route failed');
+      expect(logs).toContain('are kept');
     } finally { network.mockRestore(); }
   });
 
@@ -155,7 +228,7 @@ describe('deployment ownership', () => {
     deployment.resources.kvSessionNamespaceId = 'new-kv';
     deployment.resources.pagesProjectName = 'owned-crm';
     deployment.createdResources = ['kvSessionNamespaceId', 'pagesProjectName'];
-    deployment.priorWorker = { scriptName: 'owned-crm-worker', versions: [{ version_id: 'old-version', percentage: 100 }] };
+    deployment.priorWorker = { scriptName: 'owned-crm-worker', versions: [{ version_id: 'old-version', percentage: 100 }], crons: ['0 3 * * *'], workersDevRoute: { enabled: false, previews_enabled: false } };
     const { object, values } = coldObject(deployment);
     const deleted: string[] = [];
     const network = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {

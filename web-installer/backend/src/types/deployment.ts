@@ -1,4 +1,4 @@
-import type { QueueConsumerInfo, WorkerDeploymentVersion } from './cloudflare';
+import type { QueueConsumerInfo, WorkerDeploymentVersion, WorkersDevRoute } from './cloudflare';
 /**
  * Web Installer - Deployment Types
  *
@@ -91,9 +91,15 @@ export interface DeploymentState {
   createdQueueConsumerId?: string;
   /**
    * A Worker that already existed and was overwritten by this deployment, with the versions its
-   * active deployment served beforehand (null when they could not be read); restored on rollback.
+   * active deployment served beforehand, its cron triggers and its workers.dev route state
+   * (each null when it could not be read); restored on rollback.
    */
-  priorWorker?: { scriptName: string; versions: WorkerDeploymentVersion[] | null };
+  priorWorker?: {
+    scriptName: string;
+    versions: WorkerDeploymentVersion[] | null;
+    crons: string[] | null;
+    workersDevRoute: WorkersDevRoute | null;
+  };
   generatedSecrets?: { jwtSecret: string; encryptionKey: string };
   logs: DeploymentLog[];
   error?: DeploymentError;
