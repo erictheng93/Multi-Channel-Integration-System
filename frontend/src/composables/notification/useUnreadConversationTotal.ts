@@ -7,6 +7,9 @@
  *
  * 校正時機:登入後、分頁回到前景、網路恢復、定時(僅前景)、出現未知的新未讀對話。
  * 多分頁:以 BroadcastChannel 分享最新權威值,避免各分頁各算各的、重複打 /stats。
+ *
+ * 快照邊界:每份快照以其請求的「發出時間」為邊界,視為含此前、不含此後的轉換。
+ * 本地轉換帶時間戳記錄;採用快照時只捨棄邊界前的轉換,跨分頁快照亦同。
  */
 
 import { computed, ref, watch, getCurrentScope, onScopeDispose } from 'vue'
@@ -53,11 +56,12 @@ export function useUnreadConversationTotal() {
   const authStore = useAuthStore()
 
   const serverTotal = ref<number | null>(null)
-  const delta = ref(0)
+  // 晚於目前快照邊界的本地轉換
+  const transitions = ref<{ at: number; delta: number }[]>([])
+  const delta = computed(() => transitions.value.reduce((sum, t) => sum + t.delta, 0))
+  // 目前快照的邊界(其請求發出時間)
   let fetchedAt = 0
   let inFlight = false
-  // 請求期間發生的轉換;獨立於 delta,因為跨分頁 adopt() 會把 delta 歸零
-  let inFlightDelta = 0
   let pendingTimer: ReturnType<typeof setTimeout> | null = null
   let pollTimer: ReturnType<typeof setInterval> | null = null
   const channel = typeof window.BroadcastChannel === 'undefined' ? null : new window.BroadcastChannel(CHANNEL_NAME)
@@ -80,25 +84,28 @@ export function useUnreadConversationTotal() {
     return Math.max(0, serverTotal.value + delta.value)
   })
 
+  // 跨分頁比較時間,需同一時鐘;高解析度以減少與轉換同毫秒的情形
+  const now = (): number => performance.timeOrigin + performance.now()
+
+  // 邊界不晚於目前快照者較舊,忽略;同時刻的轉換保留(與請求同時發生者視為不在快照內)
   const adopt = (value: number, at: number): void => {
+    if (at <= fetchedAt) { return }
     serverTotal.value = value
-    delta.value = 0
     fetchedAt = at
+    transitions.value = transitions.value.filter((t) => t.at >= at)
   }
 
   const reconcile = async (maxAgeMs = 0): Promise<void> => {
     if (!authStore.isAuthenticated || inFlight) { return }
     if (maxAgeMs > 0 && Date.now() - fetchedAt < maxAgeMs) { return }
     inFlight = true
-    // 請求期間發生的轉換不在伺服器快照內,校正後要保留(否則數字會退回舊值直到下次校正)
-    inFlightDelta = 0
+    // 請求期間發生的轉換不在伺服器快照內,adopt 以發出時間為邊界而保留之
+    const at = now()
     try {
       const response = await conversationApi.getStats()
       const value = response.success ? response.data?.unreadConversations : undefined
       if (typeof value === 'number') {
-        const at = Date.now()
         adopt(value, at)
-        delta.value = inFlightDelta
         channel?.postMessage({ total: value, at })
       }
     } catch {
@@ -121,19 +128,14 @@ export function useUnreadConversationTotal() {
   watch(unreadMap, (next, prev) => {
     if (serverTotal.value === null) { return }
     const result = diffUnreadTransitions(prev, next)
-    delta.value += result.delta
-    if (inFlight) { inFlightDelta += result.delta }
+    if (result.delta !== 0) { transitions.value.push({ at: now(), delta: result.delta }) }
     if (result.appearedUnread) { scheduleReconcile() }
   })
 
   if (channel) {
     channel.onmessage = (event: MessageEvent<{ total?: unknown; at?: unknown }>) => {
       const { total: value, at } = event.data ?? {}
-      if (typeof value === 'number' && typeof at === 'number' && at > fetchedAt) {
-        adopt(value, at)
-        // 此前的轉換已視為含於該快照(delta 已歸零),進行中的請求回應時不可再重複套用
-        inFlightDelta = 0
-      }
+      if (typeof value === 'number' && typeof at === 'number') { adopt(value, at) }
     }
   }
 
@@ -157,7 +159,7 @@ export function useUnreadConversationTotal() {
     if (pollTimer) { clearInterval(pollTimer); pollTimer = null }
     if (pendingTimer) { clearTimeout(pendingTimer); pendingTimer = null }
     serverTotal.value = null
-    delta.value = 0
+    transitions.value = []
     fetchedAt = 0
   }
 
