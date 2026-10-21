@@ -212,8 +212,9 @@
 
   const emit = defineEmits<{
     preview: [input: BroadcastPreviewRequest]
-    // The parent calls onCreated once the broadcast exists and references the uploads.
-    send: [input: CreateBroadcastRequest, onCreated: () => void]
+    // The parent calls onCreateSettled once the create request ends: true when the broadcast
+    // exists and references the uploads, false when it was not created.
+    send: [input: CreateBroadcastRequest, onCreateSettled: (_created: boolean) => void]
   }>()
 
   const title = ref('')
@@ -240,8 +241,9 @@
   )
   const composeRoot = ref<HTMLElement | null>(null)
   let disposed = false
-  // Once the broadcast is created it owns the uploaded files (even if sending then fails).
-  let submitted = false
+  // Who owns the uploaded files: this form, a create request still in flight (which validates and
+  // references them), or the created broadcast (even if sending then fails).
+  let uploadsOwner: 'form' | 'creating' | 'broadcast' = 'form'
 
   async function onPick(event: Event) {
     const fileInput = event.target as HTMLInputElement
@@ -347,7 +349,7 @@
     disposed = true
     images.value.forEach(image => {
       URL.revokeObjectURL(image.objectUrl)
-      if (!submitted && image.attachment) {void cleanupBroadcastImage(image.attachment)}
+      if (uploadsOwner === 'form' && image.attachment) {void cleanupBroadcastImage(image.attachment)}
     })
   })
 
@@ -400,8 +402,12 @@
       `即將發送「${parts.join(' + ')}」給 ${currentPreview.value?.sendable ?? 0} 位 LINE 客戶，送出後無法復原。`
     )
     if (confirmed) {
-      emit('send', input.value, () => {
-        submitted = true
+      const sent = input.value.attachments
+      uploadsOwner = 'creating'
+      emit('send', input.value, created => {
+        uploadsOwner = created ? 'broadcast' : 'form'
+        // Left mid-create: unmount deferred the cleanup to here, as nothing else will reclaim them.
+        if (!created && disposed) {sent.forEach(attachment => void cleanupBroadcastImage(attachment))}
       })
     }
   }

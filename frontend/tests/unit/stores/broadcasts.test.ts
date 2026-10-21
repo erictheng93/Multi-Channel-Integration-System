@@ -53,8 +53,8 @@ describe('useBroadcastsStore', () => {
     expect(store.previewTagId).toBe(2)
   })
 
-  // The compose card keeps its uploads alive only after onCreated, so it must fire exactly
-  // when a broadcast exists: after create succeeds (even if send then fails), never before.
+  // The compose card defers upload cleanup until onCreateSettled, so it must fire exactly once
+  // per create request: true after create succeeds (even if send then fails), false if it fails.
   it('acknowledges creation only once the broadcast exists', async () => {
     const input = { title: 't', content: 'c', tagIds: [1], attachments: [] }
     const store = useBroadcastsStore()
@@ -62,12 +62,12 @@ describe('useBroadcastsStore', () => {
     vi.mocked(createBroadcast).mockRejectedValueOnce(new Error('create failed'))
     const notCreated = vi.fn()
     await expect(store.createAndSend(input, notCreated)).rejects.toThrow('create failed')
-    expect(notCreated).not.toHaveBeenCalled()
+    expect(notCreated).toHaveBeenCalledExactlyOnceWith(false)
 
     vi.mocked(createBroadcast).mockResolvedValueOnce({ id: 'b1' } as never)
     vi.mocked(sendBroadcast).mockRejectedValueOnce(new Error('send failed'))
     const created = vi.fn()
     await expect(store.createAndSend(input, created)).rejects.toThrow('send failed')
-    expect(created).toHaveBeenCalledOnce()
+    expect(created).toHaveBeenCalledExactlyOnceWith(true)
   })
 })
