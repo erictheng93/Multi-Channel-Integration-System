@@ -137,6 +137,26 @@ describe('RollbackService - Integration Tests', () => {
     });
   });
 
+  describe('Dead-letter queue', () => {
+    it('deletes the main queue first, then the DLQ', async () => {
+      await rollbackService.rollback({ ...resources, dlqId: 'dlq-1' });
+
+      expect(vi.mocked(mockAPI.deleteQueue).mock.calls.map(c => c[0])).toEqual(['queue-345', 'dlq-1']);
+    });
+
+    it('still deletes the DLQ when deleting the main queue fails', async () => {
+      vi.mocked(mockAPI.deleteQueue).mockImplementation(async (id: string) => {
+        if (id === 'queue-345') throw new Error('main queue busy');
+      });
+
+      await rollbackService.rollback({ ...resources, dlqId: 'dlq-1' });
+
+      expect(mockAPI.deleteQueue).toHaveBeenCalledWith('dlq-1');
+      const messages = rollbackService.getLogs().map(l => l.message);
+      expect(messages.some(m => m.includes('Failed to rollback Queue') && m.includes('main queue busy'))).toBe(true);
+    });
+  });
+
   describe('Error Handling', () => {
     it('should handle 404 errors gracefully (resource already deleted)', async () => {
       vi.spyOn(mockAPI, 'deleteD1Database').mockRejectedValueOnce(
