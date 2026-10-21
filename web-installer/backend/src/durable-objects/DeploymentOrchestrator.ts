@@ -528,10 +528,11 @@ export class DeploymentOrchestrator implements DurableObject {
     }
 
     // Services are not retained across object eviction.
-    this.rollbackService ||= new RollbackService(new CloudflareAPI({
+    this.api ||= new CloudflareAPI({
       accountId: this.deploymentState.config.accountId,
       apiToken: this.deploymentState.config.oauthToken
-    }));
+    });
+    this.rollbackService ||= new RollbackService(this.api);
 
     // Initiate rollback
     this.deploymentState.status = 'rolling_back';
@@ -926,7 +927,8 @@ export class DeploymentOrchestrator implements DurableObject {
     const [existing] = await this.api.listQueueConsumers(queueId);
     if (existing) {
       // A queue this deployment created cannot have a prior consumer worth restoring; a reused one can.
-      if (!this.deploymentState.createdResources?.includes('queueId')) this.deploymentState.priorQueueConsumer = existing;
+      // ??=: a retry finds the consumer already repointed at this Worker, which is not the one to restore.
+      if (!this.deploymentState.createdResources?.includes('queueId')) this.deploymentState.priorQueueConsumer ??= existing;
       await this.updateState();
       await this.api.updateQueueConsumer(queueId, existing.consumerId, workerName, LINE_QUEUE_CONSUMER_SETTINGS, dlq);
       const note = existing.scriptName && existing.scriptName !== workerName ? ` (was ${existing.scriptName})` : '';
