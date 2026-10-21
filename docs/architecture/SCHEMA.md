@@ -3,7 +3,7 @@
 > **此文件由程式產生，請勿手動編輯。**
 > 重新產生：`bun run db:doc:schema`（正式庫）或 `bun scripts/generate-schema-doc.ts`（本地鏡像）
 >
-> **產生時間**: 2026-10-14T06:39:09.079Z
+> **產生時間**: 2026-10-21T00:47:02.639Z
 > **資料來源**: REMOTE production D1 (mcis-db)
 >
 > 內容直接讀自資料庫的 `sqlite_master` 與 pragma 函式，**不是**讀 `src/db/schema.ts`
@@ -163,7 +163,7 @@ CREATE TABLE `activities` (
 
 - `agent_teams_agent_id_team_id_unique` *(UNIQUE)* — (`agent_id`,`team_id`)
 - `idx_agent_teams_agent_id` — (agent_id)
-- `idx_agent_teams_is_primary` *(partial)* — (agent_id, is_primary)
+- `idx_agent_teams_is_primary` *(partial)* — (agent_id, is_primary) WHERE is_primary = 1
 - `idx_agent_teams_role` — (team_id, role_in_team)
 - `idx_agent_teams_team_id` — (team_id)
 
@@ -207,7 +207,7 @@ CREATE TABLE `agent_teams` (
 **索引**:
 
 - `agents_email_unique` *(UNIQUE)* — (`email`)
-- `idx_agents_deleted_at` *(partial)* — (deleted_at)
+- `idx_agents_deleted_at` *(partial)* — (deleted_at) WHERE deleted_at IS NOT NULL
 
 <details><summary>CREATE TABLE</summary>
 
@@ -440,8 +440,8 @@ CREATE TABLE `auto_reply_logs` (
 
 **索引**:
 
-- `idx_auto_reply_rules_global_active` *(partial)* — (`is_active`)
-- `idx_auto_reply_rules_team_active` *(partial)* — (`team_id`, `is_active`)
+- `idx_auto_reply_rules_global_active` *(partial)* — (`is_active`) WHERE `team_id` IS NULL AND `deleted_at` IS NULL
+- `idx_auto_reply_rules_team_active` *(partial)* — (`team_id`, `is_active`) WHERE `deleted_at` IS NULL
 
 <details><summary>CREATE TABLE</summary>
 
@@ -903,7 +903,7 @@ CREATE TABLE `conversation_transfers` (
 **索引**:
 
 - `idx_conversations_customer_status` — (customer_id, status)
-- `idx_conversations_deleted_at` *(partial)* — (deleted_at)
+- `idx_conversations_deleted_at` *(partial)* — (deleted_at) WHERE deleted_at IS NOT NULL
 - `idx_conversations_last_message` — (last_message_at)
 - `idx_conversations_updated_at` — (updated_at, id)
 
@@ -948,9 +948,9 @@ CREATE TABLE `conversations` (
 
 **索引**:
 
-- `idx_cors_events_allowed_origin` *(partial)* — (type, origin, timestamp DESC)
+- `idx_cors_events_allowed_origin` *(partial)* — (type, origin, timestamp DESC) WHERE type = 'allowed'
 - `idx_cors_events_origin` — (origin)
-- `idx_cors_events_rejected_origin` *(partial)* — (type, origin, timestamp DESC)
+- `idx_cors_events_rejected_origin` *(partial)* — (type, origin, timestamp DESC) WHERE type = 'rejected'
 - `idx_cors_events_timestamp` — (timestamp DESC)
 - `idx_cors_events_type` — (type)
 
@@ -997,7 +997,7 @@ CREATE TABLE `cors_events` (
 
 **索引**:
 
-- `idx_customer_feedback_agent` *(partial)* — (agent_id)
+- `idx_customer_feedback_agent` *(partial)* — (agent_id) WHERE agent_id IS NOT NULL
 - `idx_customer_feedback_conversation` — (conversation_id)
 - `idx_customer_feedback_created_at` — (created_at)
 - `idx_customer_feedback_customer` — (customer_id)
@@ -1145,7 +1145,7 @@ CREATE TABLE `customer_team_assignments` (
 **索引**:
 
 - `customers_platform_platform_user_id_unique` *(UNIQUE)* — (`platform`,`platform_user_id`)
-- `idx_customers_deleted_at` *(partial)* — (deleted_at)
+- `idx_customers_deleted_at` *(partial)* — (deleted_at) WHERE deleted_at IS NOT NULL
 - `idx_customers_id` — (id)
 - `idx_customers_platform` — (platform)
 - `idx_customers_platform_id` — (platform, id)
@@ -1200,7 +1200,7 @@ CREATE TABLE `customers` (
 - `idx_delayed_messages_conversation` — (conversation_id)
 - `idx_delayed_messages_scheduled_at` — (scheduled_at)
 - `idx_delayed_messages_status` — (status)
-- `idx_delayed_messages_status_scheduled` *(partial)* — (status, scheduled_at)
+- `idx_delayed_messages_status_scheduled` *(partial)* — (status, scheduled_at) WHERE status = 'pending'
 
 <details><summary>CREATE TABLE</summary>
 
@@ -1254,7 +1254,7 @@ CREATE TABLE `delayed_messages` (
 - `idx_file_attachments_conversation_id` — (conversation_id)
 - `idx_file_attachments_created_at` — (created_at)
 - `idx_file_attachments_message` — (message_id)
-- `idx_file_attachments_upload_status` *(partial)* — (upload_status)
+- `idx_file_attachments_upload_status` *(partial)* — (upload_status) WHERE upload_status != 'completed'
 - `idx_file_attachments_uploaded_by` — (uploaded_by)
 
 <details><summary>CREATE TABLE</summary>
@@ -1356,14 +1356,14 @@ CREATE TABLE `message_recall_logs` (
 
 **索引**:
 
-- `idx_messages_agent_sender_created` *(partial)* — (agent_sender_id, created_at DESC)
+- `idx_messages_agent_sender_created` *(partial)* — (agent_sender_id, created_at DESC) WHERE agent_sender_id IS NOT NULL
 - `idx_messages_conv_sender_deleted_created` — (conversation_id, sender_type, deleted_at, created_at)
-- `idx_messages_customer_sender_created` *(partial)* — (customer_sender_id, created_at DESC)
-- `idx_messages_deleted_at` *(partial)* — (deleted_at)
-- `idx_messages_reply_to` *(partial)* — (reply_to_message_id)
-- `idx_messages_thread_id_sequence` *(partial)* — (thread_id, session_sequence)
-- `idx_messages_updated_at` *(partial)* — (updated_at DESC)
-- `messages_platform_message_id_unique` *(UNIQUE)* *(partial)* — (platform_message_id)
+- `idx_messages_customer_sender_created` *(partial)* — (customer_sender_id, created_at DESC) WHERE customer_sender_id IS NOT NULL
+- `idx_messages_deleted_at` *(partial)* — (deleted_at) WHERE deleted_at IS NOT NULL
+- `idx_messages_reply_to` *(partial)* — (reply_to_message_id) WHERE reply_to_message_id IS NOT NULL
+- `idx_messages_thread_id_sequence` *(partial)* — (thread_id, session_sequence) WHERE thread_id IS NOT NULL
+- `idx_messages_updated_at` *(partial)* — (updated_at DESC) WHERE updated_at IS NOT NULL
+- `messages_platform_message_id_unique` *(UNIQUE)* *(partial)* — (platform_message_id) WHERE platform_message_id IS NOT NULL
 
 <details><summary>CREATE TABLE</summary>
 
@@ -1463,7 +1463,7 @@ CREATE TABLE `metrics` (
 **索引**:
 
 - `idx_notifications_user_priority` — (user_id, priority)
-- `idx_notifications_user_unread` *(partial)* — (user_id, is_read)
+- `idx_notifications_user_unread` *(partial)* — (user_id, is_read) WHERE is_read = 0
 
 <details><summary>CREATE TABLE</summary>
 
@@ -1945,7 +1945,7 @@ CREATE TABLE `system_settings` (
 
 **索引**:
 
-- `idx_tags_team_active` *(partial)* — (team_id, is_active)
+- `idx_tags_team_active` *(partial)* — (team_id, is_active) WHERE is_active = 1
 - `tags_name_team_id_unique` *(UNIQUE)* — (`name`,`team_id`)
 
 <details><summary>CREATE TABLE</summary>
@@ -1996,10 +1996,10 @@ CREATE TABLE `tags` (
 
 **索引**:
 
-- `idx_task_reminders_conversation` *(partial)* — (conversation_id)
-- `idx_task_reminders_conversation_id` *(partial)* — (conversation_id)
-- `idx_task_reminders_pending` *(partial)* — (remind_at)
-- `idx_task_reminders_user_remind` *(partial)* — (user_id, remind_at)
+- `idx_task_reminders_conversation` *(partial)* — (conversation_id) WHERE conversation_id IS NOT NULL
+- `idx_task_reminders_conversation_id` *(partial)* — (conversation_id) WHERE conversation_id IS NOT NULL
+- `idx_task_reminders_pending` *(partial)* — (remind_at) WHERE is_completed = 0 AND is_sent = 0
+- `idx_task_reminders_user_remind` *(partial)* — (user_id, remind_at) WHERE is_completed = 0 AND is_sent = 0
 
 <details><summary>CREATE TABLE</summary>
 
@@ -2085,7 +2085,7 @@ CREATE TABLE `team_liff_qr_codes` (
 
 **索引**:
 
-- `idx_teams_deleted_at` *(partial)* — (deleted_at)
+- `idx_teams_deleted_at` *(partial)* — (deleted_at) WHERE deleted_at IS NOT NULL
 
 <details><summary>CREATE TABLE</summary>
 
