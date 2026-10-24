@@ -91,11 +91,18 @@ export function useUnreadConversationTotal() {
   // ponytail: 毫秒解析度,轉換與請求同毫秒時可能多計 1,下次校正即修正
 
   // 邊界早於目前快照者較舊,忽略;同毫秒的邊界照收(後到者不舊於現值);同時刻的轉換保留(與請求同時發生者視為不在快照內)
-  const adopt = (value: number, at: number): void => {
-    if (at < fetchedAt && fetchedAt <= Date.now() + CLOCK_SKEW_TOLERANCE_MS) { return }
+  // 回傳是否採用,未採用的快照不可再廣播
+  const adopt = (value: number, at: number): boolean => {
+    const now = Date.now()
+    if (at < fetchedAt && fetchedAt <= now + CLOCK_SKEW_TOLERANCE_MS) { return false }
     serverTotal.value = value
     fetchedAt = at
-    transitions.value = transitions.value.filter((t) => t.at >= at)
+    // 時間戳晚於現在者記於時鐘往回調之前,早於這份快照,已含在內
+    transitions.value = transitions.value.filter((t) => t.at >= at && t.at <= now)
+    // 伺服器何時讀取狀態不得而知,請求期間的轉換可能已被計入;保留之並稍後再校正一次以收斂
+    // ponytail: 請求期間有轉換時,最多 ±該數,至遲 NEW_UNREAD_MIN_GAP_MS 後修正;要精確需伺服器回傳版本號
+    if (transitions.value.length > 0) { scheduleReconcile() }
+    return true
   }
 
   const reconcile = async (maxAgeMs = 0): Promise<void> => {
@@ -109,8 +116,7 @@ export function useUnreadConversationTotal() {
     try {
       const response = await conversationApi.getStats()
       const value = response.success ? response.data?.unreadConversations : undefined
-      if (typeof value === 'number') {
-        adopt(value, at)
+      if (typeof value === 'number' && adopt(value, at)) {
         channel?.postMessage({ total: value, at })
       }
     } catch {
