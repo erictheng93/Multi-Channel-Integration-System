@@ -90,9 +90,9 @@ export function useUnreadConversationTotal() {
   // performance.timeOrigin + now() 在部分平台睡眠時停走,久開的分頁會落後而丟棄自己的校正。
   // ponytail: 毫秒解析度,轉換與請求同毫秒時可能多計 1,下次校正即修正
 
-  // 邊界不晚於目前快照者較舊,忽略;同時刻的轉換保留(與請求同時發生者視為不在快照內)
+  // 邊界早於目前快照者較舊,忽略;同毫秒的邊界照收(後到者不舊於現值);同時刻的轉換保留(與請求同時發生者視為不在快照內)
   const adopt = (value: number, at: number): void => {
-    if (at <= fetchedAt && fetchedAt <= Date.now() + CLOCK_SKEW_TOLERANCE_MS) { return }
+    if (at < fetchedAt && fetchedAt <= Date.now() + CLOCK_SKEW_TOLERANCE_MS) { return }
     serverTotal.value = value
     fetchedAt = at
     transitions.value = transitions.value.filter((t) => t.at >= at)

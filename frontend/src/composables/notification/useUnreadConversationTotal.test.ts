@@ -50,6 +50,7 @@ describe('diffUnreadTransitions', () => {
 
 describe('reconcile', () => {
   it('保留請求期間發生的已讀/未讀轉換', async () => {
+    const nowSpy = vi.spyOn(Date, 'now').mockReturnValue(1_000_000) // 兩次校正同毫秒發出,後者仍採用
     const state = reactive(store)
     state.conversations = [{ id: 'a', unreadCount: 0 }, { id: 'b', unreadCount: 1 }]
     getStats.mockResolvedValueOnce({ success: true, data: { unreadConversations: 1 } }) // 登入後的初次校正
@@ -68,6 +69,7 @@ describe('reconcile', () => {
     // 伺服器快照 5(早於 a 變為未讀) + 請求期間的 +1
     expect(unread.total.value).toBe(6)
     scope.stop()
+    nowSpy.mockRestore()
   })
 
   it('請求期間採用較新的跨分頁快照,較舊的本請求回應不覆蓋它', async () => {
