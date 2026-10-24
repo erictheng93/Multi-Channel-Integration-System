@@ -7,7 +7,7 @@
 import { Hono } from 'hono';
 import { validator } from 'hono/validator';
 import { validateProjectName, validateEmail } from '../utils/validation';
-import type { Env, StartDeploymentRequest, DeploymentConfig, DeploymentIndexItem, DeploymentState, LegacyProbeCursor } from '../types';
+import type { Env, StartDeploymentRequest, DeploymentConfig, DeploymentIndexItem, DeploymentState } from '../types';
 
 const deployment = new Hono<{ Bindings: Env }>();
 
@@ -18,7 +18,6 @@ async function hashOwnerToken(token: string): Promise<string> {
 
 interface DeploymentIndexResponse {
   deployments?: DeploymentIndexItem[];
-  legacyProbeCursor?: LegacyProbeCursor;
 }
 
 type ProjectStatus = Partial<DeploymentState> & { urls?: DeploymentSummary['urls'] };
@@ -228,7 +227,7 @@ deployment.get('/deployments', async (c) => {
     const ownerTokenHash = await hashOwnerToken(authorization.match(/^Bearer (\S+)$/i)![1]);
     const indexId = c.env.DEPLOYMENT_ORCHESTRATOR.idFromName('__deployment-index__');
     const indexStub = c.env.DEPLOYMENT_ORCHESTRATOR.get(indexId);
-    const indexResponse = await indexStub.fetch(`http://do/index/list?owner=${ownerTokenHash}`, { method: 'GET' });
+    const indexResponse = await indexStub.fetch('http://do/index/list', { method: 'GET' });
 
     if (!indexResponse.ok) {
       return c.json({ error: 'Failed to read deployment index' }, 500);
@@ -244,23 +243,16 @@ deployment.get('/deployments', async (c) => {
     // after which the entry takes the hash path. No new entry is ever registered without a
     // hash, so this set only shrinks; the cap bounds what one request can fan out to.
     // Entries owned by other callers stay hash-less, so a fixed first batch could hide the
-    // caller's entry forever. Each request instead probes the next batch after a per-caller
-    // cursor, wrapping around, so successive requests cover the whole set.
+    // caller's entry forever. Each request instead probes a batch at a random start, wrapping
+    // around. Nothing is stored before ownership is proven, so other callers cannot reset it.
+    // ponytail: random start, so an entry is found in about N/100 requests on average, not
+    // guaranteed in ceil(N/100); add a cursor the client sends back if that ever matters.
     const legacyStatuses = new Map<string, ProjectStatus>();
     const allLegacyItems = (index.deployments || []).filter(item => !item.ownerTokenHash);
     let legacyItems = allLegacyItems;
     if (allLegacyItems.length > MAX_LEGACY_OWNERSHIP_PROBES) {
-      const cursor = index.legacyProbeCursor;
-      const cursorIndex = cursor ? allLegacyItems.findIndex(item => item.projectName === cursor.projectName) : -1;
-      const start = cursorIndex >= 0 ? cursorIndex : (cursor?.position ?? 0) % allLegacyItems.length;
+      const start = Math.floor(Math.random() * allLegacyItems.length);
       legacyItems = Array.from({ length: MAX_LEGACY_OWNERSHIP_PROBES }, (_, step) => allLegacyItems[(start + step) % allLegacyItems.length]);
-      // The set is larger than the batch, so the entry after it was not probed (or backfilled) here.
-      const nextPosition = (start + MAX_LEGACY_OWNERSHIP_PROBES) % allLegacyItems.length;
-      await indexStub.fetch('http://do/index/legacy-cursor', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ownerTokenHash, cursor: { projectName: allLegacyItems[nextPosition].projectName, position: nextPosition } })
-      });
     }
     await Promise.all(legacyItems.map(async (item) => {
       const statusResponse = await fetchStatus(item.projectName);
