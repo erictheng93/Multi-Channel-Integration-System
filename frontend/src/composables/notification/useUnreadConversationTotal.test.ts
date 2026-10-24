@@ -179,4 +179,78 @@ describe('reconcile', () => {
     scope.stop()
     vi.unstubAllGlobals()
   })
+
+  it('時鐘往回調後採用新快照,調時前的本地轉換已含於其中而捨棄', async () => {
+    const state = reactive(store)
+    state.conversations = [{ id: 'a', unreadCount: 0 }, { id: 'b', unreadCount: 1 }]
+    getStats.mockResolvedValueOnce({ success: true, data: { unreadConversations: 1 } })
+    const scope = effectScope()
+    const unread = scope.run(() => useUnreadConversationTotal())!
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    state.conversations = [{ id: 'a', unreadCount: 1 }, { id: 'b', unreadCount: 1 }]
+    await nextTick() // 1 + 1
+
+    const rolledBack = Date.now() - 3_600_000
+    const nowSpy = vi.spyOn(Date, 'now').mockReturnValue(rolledBack)
+    getStats.mockResolvedValueOnce({ success: true, data: { unreadConversations: 2 } }) // 已含 a
+    await unread.reconcile()
+
+    expect(unread.total.value).toBe(2)
+    scope.stop()
+    nowSpy.mockRestore()
+  })
+
+  it('被較新快照取代的回應不再廣播', async () => {
+    let channel!: { onmessage: ((_e: { data: unknown }) => void) | null }
+    const posted: unknown[] = []
+    vi.stubGlobal('BroadcastChannel', class {
+      onmessage = null
+      constructor() { channel = this }
+      postMessage(message: unknown) { posted.push(message) }
+      close() {}
+    })
+    const state = reactive(store)
+    state.conversations = [{ id: 'b', unreadCount: 1 }]
+    getStats.mockResolvedValueOnce({ success: true, data: { unreadConversations: 1 } })
+    const scope = effectScope()
+    const unread = scope.run(() => useUnreadConversationTotal())!
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    posted.length = 0
+
+    let resolveStats!: (_v: unknown) => void
+    getStats.mockReturnValueOnce(new Promise((resolve) => { resolveStats = resolve }))
+    const pending = unread.reconcile()
+    channel.onmessage?.({ data: { total: 9, at: Date.now() + 1000 } })
+    resolveStats({ success: true, data: { unreadConversations: 5 } })
+    await pending
+
+    expect(posted).toEqual([])
+    scope.stop()
+    vi.unstubAllGlobals()
+  })
+
+  it('請求期間有轉換時,稍後再校正一次', async () => {
+    vi.useFakeTimers()
+    const state = reactive(store)
+    state.conversations = [{ id: 'a', unreadCount: 0 }, { id: 'b', unreadCount: 1 }]
+    getStats.mockResolvedValueOnce({ success: true, data: { unreadConversations: 1 } })
+    const scope = effectScope()
+    const unread = scope.run(() => useUnreadConversationTotal())!
+    await vi.advanceTimersByTimeAsync(0)
+
+    let resolveStats!: (_v: unknown) => void
+    getStats.mockReturnValueOnce(new Promise((resolve) => { resolveStats = resolve }))
+    const pending = unread.reconcile()
+    state.conversations = [{ id: 'a', unreadCount: 1 }, { id: 'b', unreadCount: 1 }]
+    await nextTick()
+    resolveStats({ success: true, data: { unreadConversations: 2 } }) // 伺服器在 a 之後才讀取,已含 a
+    await pending
+    expect(unread.total.value).toBe(3) // 暫時多計
+
+    getStats.mockResolvedValueOnce({ success: true, data: { unreadConversations: 2 } })
+    await vi.advanceTimersByTimeAsync(30_000)
+    expect(unread.total.value).toBe(2)
+    scope.stop()
+    vi.useRealTimers()
+  })
 })
