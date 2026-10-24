@@ -22,6 +22,8 @@ const FOCUS_MAX_AGE_MS = 30_000
 const POLL_INTERVAL_MS = 120_000
 const POLL_MAX_AGE_MS = 100_000
 const NEW_UNREAD_MIN_GAP_MS = 30_000
+// 邊界晚於現在超過此值,表示系統時鐘曾被往回調,該邊界不再可信
+const CLOCK_SKEW_TOLERANCE_MS = 60_000
 
 export interface UnreadTransitions {
   /** 已存在於兩份清單、且未讀狀態改變的對話之淨增減 */
@@ -84,12 +86,13 @@ export function useUnreadConversationTotal() {
     return Math.max(0, serverTotal.value + delta.value)
   })
 
-  // 跨分頁比較時間,需同一時鐘;高解析度以減少與轉換同毫秒的情形
-  const now = (): number => performance.timeOrigin + performance.now()
+  // 跨分頁比較時間一律用 Date.now():各分頁共用系統時鐘且睡眠時照走。
+  // performance.timeOrigin + now() 在部分平台睡眠時停走,久開的分頁會落後而丟棄自己的校正。
+  // ponytail: 毫秒解析度,轉換與請求同毫秒時可能多計 1,下次校正即修正
 
   // 邊界不晚於目前快照者較舊,忽略;同時刻的轉換保留(與請求同時發生者視為不在快照內)
   const adopt = (value: number, at: number): void => {
-    if (at <= fetchedAt) { return }
+    if (at <= fetchedAt && fetchedAt <= Date.now() + CLOCK_SKEW_TOLERANCE_MS) { return }
     serverTotal.value = value
     fetchedAt = at
     transitions.value = transitions.value.filter((t) => t.at >= at)
@@ -97,10 +100,12 @@ export function useUnreadConversationTotal() {
 
   const reconcile = async (maxAgeMs = 0): Promise<void> => {
     if (!authStore.isAuthenticated || inFlight) { return }
-    if (maxAgeMs > 0 && Date.now() - fetchedAt < maxAgeMs) { return }
+    const age = Date.now() - fetchedAt
+    // 負值表示時鐘往回調過,視為過期而照常校正
+    if (maxAgeMs > 0 && age >= 0 && age < maxAgeMs) { return }
     inFlight = true
     // 請求期間發生的轉換不在伺服器快照內,adopt 以發出時間為邊界而保留之
-    const at = now()
+    const at = Date.now()
     try {
       const response = await conversationApi.getStats()
       const value = response.success ? response.data?.unreadConversations : undefined
@@ -118,7 +123,7 @@ export function useUnreadConversationTotal() {
   // 出現未知的新未讀對話:節流後校正(分頁載入更多亦會觸發,故至少間隔 NEW_UNREAD_MIN_GAP_MS)
   const scheduleReconcile = (): void => {
     if (pendingTimer) { return }
-    const wait = Math.max(0, NEW_UNREAD_MIN_GAP_MS - (Date.now() - fetchedAt))
+    const wait = Math.min(NEW_UNREAD_MIN_GAP_MS, Math.max(0, NEW_UNREAD_MIN_GAP_MS - (Date.now() - fetchedAt)))
     pendingTimer = setTimeout(() => {
       pendingTimer = null
       void reconcile()
@@ -128,7 +133,7 @@ export function useUnreadConversationTotal() {
   watch(unreadMap, (next, prev) => {
     if (serverTotal.value === null) { return }
     const result = diffUnreadTransitions(prev, next)
-    if (result.delta !== 0) { transitions.value.push({ at: now(), delta: result.delta }) }
+    if (result.delta !== 0) { transitions.value.push({ at: Date.now(), delta: result.delta }) }
     if (result.appearedUnread) { scheduleReconcile() }
   })
 
