@@ -144,12 +144,36 @@ describe('reconcile', () => {
     const unread = scope.run(() => useUnreadConversationTotal())!
     await new Promise((resolve) => setTimeout(resolve, 0))
 
-    const otherTabStartedAt = performance.timeOrigin + performance.now() // 其他分頁發出請求
+    const otherTabStartedAt = Date.now() // 其他分頁發出請求
     state.conversations = [{ id: 'a', unreadCount: 1 }, { id: 'b', unreadCount: 1 }]
     await nextTick() // 之後 a 才變為未讀
     channel.onmessage?.({ data: { total: 1, at: otherTabStartedAt } }) // 回應晚到,但不含 a
 
     expect(unread.total.value).toBe(2)
+    scope.stop()
+    vi.unstubAllGlobals()
+  })
+
+  it('系統時鐘往回調後,遠在未來的邊界不擋住本分頁的校正', async () => {
+    let channel!: { onmessage: ((_e: { data: unknown }) => void) | null }
+    vi.stubGlobal('BroadcastChannel', class {
+      onmessage = null
+      constructor() { channel = this }
+      postMessage() {}
+      close() {}
+    })
+    const state = reactive(store)
+    state.conversations = [{ id: 'a', unreadCount: 0 }, { id: 'b', unreadCount: 1 }]
+    getStats.mockResolvedValueOnce({ success: true, data: { unreadConversations: 1 } })
+    const scope = effectScope()
+    const unread = scope.run(() => useUnreadConversationTotal())!
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    channel.onmessage?.({ data: { total: 9, at: Date.now() + 3_600_000 } }) // 調時前發出的快照
+    getStats.mockResolvedValueOnce({ success: true, data: { unreadConversations: 5 } })
+    await unread.reconcile()
+
+    expect(unread.total.value).toBe(5)
     scope.stop()
     vi.unstubAllGlobals()
   })
