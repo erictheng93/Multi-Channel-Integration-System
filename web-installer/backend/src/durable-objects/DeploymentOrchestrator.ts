@@ -30,11 +30,7 @@ import {
   type CloudflareResources,
   type AdminCredentials
 } from '../types/deployment';
-import type { DeploymentIndexItem, LegacyProbeCursor } from '../types';
-
-/** Storage key and size cap for the per-caller legacy ownership probe cursors of the deployment index. */
-const LEGACY_PROBE_CURSORS_KEY = 'legacyProbeCursors';
-const MAX_LEGACY_PROBE_CURSORS = 100;
+import type { DeploymentIndexItem } from '../types';
 
 // Cloudflare Worker environment type
 interface Env {
@@ -120,15 +116,9 @@ export class DeploymentOrchestrator implements DurableObject {
         return await this.backfillDeploymentIndexOwner(projectName, ownerTokenHash);
       }
 
-      // Remember where a caller's next legacy ownership probe batch starts
-      if (path === '/index/legacy-cursor' && request.method === 'POST') {
-        const { ownerTokenHash, cursor } = await request.json<{ ownerTokenHash: string; cursor: LegacyProbeCursor }>();
-        return await this.saveLegacyProbeCursor(ownerTokenHash, cursor);
-      }
-
       // List deployment metadata from the global deployment index
       if (path === '/index/list' && request.method === 'GET') {
-        return await this.listDeploymentIndexItems(url.searchParams.get('owner'));
+        return await this.listDeploymentIndexItems();
       }
 
       // Start deployment
@@ -243,31 +233,9 @@ export class DeploymentOrchestrator implements DurableObject {
     return Response.json({ success: true });
   }
 
-  /**
-   * Keyed by owner hash, so one caller's probing never moves another caller's position. Any bearer
-   * token reaches this before proving ownership, so all cursors share one key capped at
-   * MAX_LEGACY_PROBE_CURSORS, the least recently saved evicted first; an evicted caller restarts
-   * from the beginning of the legacy set.
-   */
-  private async saveLegacyProbeCursor(ownerTokenHash: string, cursor: LegacyProbeCursor): Promise<Response> {
-    if (!/^[0-9a-f]{64}$/.test(ownerTokenHash) || typeof cursor?.projectName !== 'string'
-      || !Number.isSafeInteger(cursor.position) || cursor.position < 0) {
-      return Response.json({ success: false }, { status: 400 });
-    }
-    const cursors = new Map(await this.state.storage.get<[string, LegacyProbeCursor][]>(LEGACY_PROBE_CURSORS_KEY) ?? []);
-    cursors.delete(ownerTokenHash); // re-inserted last: Map order is the eviction order
-    cursors.set(ownerTokenHash, { projectName: cursor.projectName, position: cursor.position });
-    const kept = [...cursors].slice(-MAX_LEGACY_PROBE_CURSORS);
-    await this.state.storage.put(LEGACY_PROBE_CURSORS_KEY, kept);
-    return Response.json({ success: true });
-  }
-
-  private async listDeploymentIndexItems(ownerTokenHash: string | null): Promise<Response> {
+  private async listDeploymentIndexItems(): Promise<Response> {
     const items = await this.state.storage.get<DeploymentIndexItem[]>('deploymentIndex') || [];
-    const legacyProbeCursor = ownerTokenHash
-      ? new Map(await this.state.storage.get<[string, LegacyProbeCursor][]>(LEGACY_PROBE_CURSORS_KEY) ?? []).get(ownerTokenHash)
-      : undefined;
-    return new Response(JSON.stringify({ deployments: items, legacyProbeCursor }), {
+    return new Response(JSON.stringify({ deployments: items }), {
       headers: { 'Content-Type': 'application/json' }
     });
   }

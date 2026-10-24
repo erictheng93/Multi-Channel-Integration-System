@@ -445,7 +445,7 @@ describe('deployment ownership', () => {
     expect(stored.find(item => item.projectName === 'owned-crm')?.ownerTokenHash).toBe(ownerHash);
   });
 
-  it('reaches a legacy entry beyond the first probe batch through successive bounded requests', async () => {
+  it('reaches a legacy entry beyond the first probe batch through bounded randomly started requests', async () => {
     const ownerHash = Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode('owner-token'))), byte => byte.toString(16).padStart(2, '0')).join('');
     // 150 foreign legacy entries stay hash-less forever and sit ahead of the caller's entry.
     const legacyIndex = [
@@ -468,38 +468,38 @@ describe('deployment ownership', () => {
     const env = { DEPLOYMENT_ORCHESTRATOR: namespace } as unknown as Env;
     const list = async () => (await deploymentRoutes.request('/deployments', { headers: { Authorization: 'Bearer owner-token' } }, env)).json<{ deployments: { projectName: string }[]; total: number }>();
 
-    // Another caller's probing keeps its own cursor and does not advance the owner's.
-    await deploymentRoutes.request('/deployments', { headers: { Authorization: 'Bearer attacker-token' } }, env);
+    const random = vi.spyOn(Math, 'random');
+    // Unverified callers rotating tokens between the owner's requests leave nothing behind to evict or reset.
+    for (let n = 0; n < 105; n++) {
+      await deploymentRoutes.request('/deployments', { headers: { Authorization: `Bearer rotating-${n}` } }, env);
+    }
+    expect([...indexValues.keys()]).toEqual(['deploymentIndex']);
     statusCalls.length = 0;
 
+    random.mockReturnValueOnce(0);
     const first = await list();
     expect(first.total).toBe(0);
     expect(statusCalls).toHaveLength(100);
     expect(statusCalls).not.toContain('owned-crm');
     statusCalls.length = 0;
 
-    // The next batch continues after the first and wraps around, so it reaches the caller's entry.
+    // A batch starting late in the set wraps around and reaches the caller's entry.
+    random.mockReturnValueOnce(0.9);
     const second = await list();
     // The caller's entry is one of the 100 probes and its status is reused, not fetched again.
     expect(statusCalls).toHaveLength(100);
     expect(statusCalls.filter(name => name === 'owned-crm')).toHaveLength(1);
-    expect(statusCalls[0]).toBe('foreign-100');
+    expect(statusCalls[0]).toBe('foreign-135');
     expect(second.total).toBe(1);
     expect(second.deployments).toMatchObject([{ projectName: 'owned-crm' }]);
     const stored = indexValues.get('deploymentIndex') as { projectName: string; ownerTokenHash?: string }[];
     expect(stored.find(item => item.projectName === 'owned-crm')?.ownerTokenHash).toBe(ownerHash);
     expect(stored.filter(item => item.ownerTokenHash)).toHaveLength(1);
-    statusCalls.length = 0;
 
     // Once backfilled the entry takes the hash path and stays listed on every later request.
+    random.mockReturnValueOnce(0);
     expect((await list()).deployments).toMatchObject([{ projectName: 'owned-crm' }]);
-
-    // Unverified callers rotating tokens cannot grow storage: cursors share one capped key.
-    for (let n = 0; n < 105; n++) {
-      await deploymentRoutes.request('/deployments', { headers: { Authorization: `Bearer rotating-${n}` } }, env);
-    }
-    expect([...indexValues.keys()].sort()).toEqual(['deploymentIndex', 'legacyProbeCursors']);
-    expect(indexValues.get('legacyProbeCursors')).toHaveLength(100);
+    random.mockRestore();
   });
 
   it('bounds list status calls to the requested owner page', async () => {

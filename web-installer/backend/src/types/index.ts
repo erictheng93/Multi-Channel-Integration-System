@@ -76,15 +76,6 @@ export interface DeploymentIndexItem {
   updatedAt: number;
 }
 
-/**
- * Where a caller's next batch of hash-less index entries starts: the first entry not yet probed,
- * plus its position as a fallback for when that entry has since left the hash-less set.
- */
-export interface LegacyProbeCursor {
-  projectName: string;
-  position: number;
-}
-
 // OAuth Types
 export interface OAuthState {
   state: string;
