@@ -1,7 +1,7 @@
 // 權限管理服務
 import { eq, and } from 'drizzle-orm';
 import { createDbClient } from '../db/drizzle-factory';
-import { agents, conversations } from '../db/schema';
+import { agents, agentTeams, conversations } from '../db/schema';
 import { getPrimaryTeamId } from '../modules/teams/services/agent-teams-service';
 import { createContextLogger } from '../utils/logger';
 import type {
@@ -125,8 +125,14 @@ export class PermissionService {
       return false;
     }
 
+    // Team conditions use EVERY team the agent belongs to, matching the conversation list
+    // (conversation-visibility.ts / canConversationBeAccessedBy). Comparing against the primary
+    // team only refused agents with no primary team, or with several teams, on their own work.
+    const inUserTeam = (teamId: unknown) =>
+      teamId !== undefined && teamId !== null && (user.teamIds ?? []).includes(Number(teamId)); // malformed user data fails closed
+
     // 團隊範圍限制
-    if (conditions.teamScope && context.teamId !== user.primaryTeamId) {
+    if (conditions.teamScope && !inUserTeam(context.teamId)) {
       return false;
     }
 
@@ -146,7 +152,7 @@ export class PermissionService {
           log.debug('Conversation team assignment checked', {
             conversationId: context.resourceId,
             assignedTeamId: conversation?.assignedTeamId,
-            userTeamId: user.primaryTeamId
+            userTeamIds: user.teamIds
           });
 
           // 如果對話未指派給任何團隊，允許訪問
@@ -154,8 +160,8 @@ export class PermissionService {
             return true;
           }
 
-          // 檢查是否指派給用戶的團隊
-          return conversation.assignedTeamId === user.primaryTeamId;
+          // 檢查是否指派給用戶的任一團隊
+          return inUserTeam(conversation.assignedTeamId);
         } catch (error) {
           log.error(
             'Failed to check conversation team assignment',
@@ -166,7 +172,7 @@ export class PermissionService {
         }
       } else {
         // 對於非對話資源，檢查 teamId
-        return context.teamId === user.primaryTeamId;
+        return inUserTeam(context.teamId);
       }
     }
 
@@ -176,7 +182,7 @@ export class PermissionService {
     }
 
     // 只能管理自己的團隊
-    if (conditions.ownTeam && context.teamId !== user.primaryTeamId) {
+    if (conditions.ownTeam && !inUserTeam(context.teamId)) {
       return false;
     }
 
@@ -236,11 +242,17 @@ export class PermissionService {
 
       // Get primary team from agent_teams (single source of truth)
       const primaryTeamId = await getPrimaryTeamId(drizzleDb, userIdStr);
+      const memberships = await drizzleDb
+        .select({ teamId: agentTeams.teamId })
+        .from(agentTeams)
+        .where(eq(agentTeams.agentId, userIdStr))
+        .all();
 
       const userData = {
         id: user.id,
         role: user.role as string,
         primaryTeamId: primaryTeamId || 0, // Default to 0 if null
+        teamIds: memberships.map((m) => m.teamId),
         isActive: Boolean(user.isActive)
       };
       
