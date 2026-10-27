@@ -16,7 +16,7 @@ import {
   parseCookieHeader,
   requireRole,
 } from '@/middleware/auth';
-import { loginRateLimiter, authRateLimiter } from '@/middleware/rate-limiter';
+import { loginRateLimiter, loginAccountRateLimiter, authRateLimiter } from '@/middleware/rate-limiter';
 import { ActivityCapture, ActivityService, ACTIVITY_ACTIONS, RESOURCE_TYPES } from '@modules/activities';
 import { createDbClient } from '@/db/drizzle-factory';
 import { withD1Retry } from '@/utils/db-retry';
@@ -276,7 +276,7 @@ function mapLegacyRefreshUser(row: unknown): RefreshUserRow | undefined {
 // 不再需要 handler 級別的 CORS middleware
 
 // 用戶登入
-authHandler.post('/login', loginRateLimiter, async (c) => {
+authHandler.post('/login', loginRateLimiter, loginAccountRateLimiter, async (c) => {
   try {
     const { email, password } = await c.req.json();
 
