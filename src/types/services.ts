@@ -45,6 +45,8 @@ export interface UserPermissionData {
   id: string | number;
   role: string;
   primaryTeamId?: number;  // From agent_teams WHERE isPrimary=true
+  /** Every team the agent belongs to (agent_teams), same source as DbUser.allowedTeamIds. */
+  teamIds: number[];
   permissions?: string[];
   isActive: boolean;
 }
