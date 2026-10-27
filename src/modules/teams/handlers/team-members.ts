@@ -7,7 +7,7 @@ import { createContextLogger } from '@/utils/logger';
 const log = createContextLogger('TeamMembers');
 
 import { TeamService } from '@modules/teams/services/team-service';
-import { AgentTeamsService, checkTeamRoleAssignment } from '@modules/teams/services/agent-teams-service';
+import { AgentTeamsService, checkTeamRoleAssignment, authorizeMembershipMutation } from '@modules/teams/services/agent-teams-service';
 import { ActivityService, ACTIVITY_ACTIONS, RESOURCE_TYPES } from '@/modules/activities';
 import { triggerTeamMemberChangeEvent } from '@/utils/notification-trigger';
 import { HTTP_STATUS } from '@/constants/http-status';
@@ -56,6 +56,11 @@ app.post('/:id/members/bulk-remove', jwtAuth, requireTeamRole('lead'), requireIn
         error: 'Cannot remove more than 50 members at once'
       }, HTTP_STATUS.BAD_REQUEST);
     }
+
+    const denial = await authorizeMembershipMutation(
+      new AgentTeamsService(c.env.DB, c.env), c.get('user'), teamId, body.agentIds, { allowSelf: true }
+    );
+    if (denial) return c.json({ success: false, error: denial.error }, denial.status);
 
     const teamService = new TeamService(c.env.DB, c.env);
     const result = await teamService.bulkRemoveMembers(teamId, body.agentIds);
@@ -210,6 +215,11 @@ app.put('/:id/members/:agentId', jwtAuth, requireTeamRole('lead'), requireIntId(
       }, HTTP_STATUS.BAD_REQUEST);
     }
 
+    const denial = await authorizeMembershipMutation(
+      new AgentTeamsService(c.env.DB, c.env), user, teamId, [agentId], { allowSelf: true }
+    );
+    if (denial) return c.json({ success: false, error: denial.error }, denial.status);
+
     const teamService = new TeamService(c.env.DB, c.env);
     const member = await teamService.updateMember(teamId, agentId, body);
 
@@ -233,6 +243,11 @@ app.delete('/:id/members/:agentId', jwtAuth, requireTeamRole('lead'), requireInt
     }
 
     const user = c.get('user');
+    const denial = await authorizeMembershipMutation(
+      new AgentTeamsService(c.env.DB, c.env), user, teamId, [agentId], { allowSelf: true }
+    );
+    if (denial) return c.json({ success: false, error: denial.error }, denial.status);
+
     const teamService = new TeamService(c.env.DB, c.env);
     const success = await teamService.removeMember(teamId, agentId, {
       id: String(user.id),

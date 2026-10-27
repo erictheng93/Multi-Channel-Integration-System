@@ -10,7 +10,7 @@ const log = createContextLogger('AgentTeamsService')
 import type { DrizzleD1Database } from 'drizzle-orm/d1';
 import { eq, and, sql, inArray } from 'drizzle-orm';
 import { agentTeams, agents, teams } from '@/db/schema';
-import type { D1Database } from '@cloudflare/workers-types';
+import type { D1Database, D1PreparedStatement } from '@cloudflare/workers-types';
 import { nowISO } from '@/utils/timestamp'
 import type { Bindings, DbUser, TeamRoleInTeam } from '@/types';
 import { TEAM_ROLE_HIERARCHY, getUserTeamRole } from '@/utils/auth';
@@ -74,10 +74,40 @@ export function isTeamRole(role: unknown): role is TeamRoleInTeam {
 }
 
 /**
+ * Shared rank rule for every membership mutation (role change, removal, primary change).
+ * Returns an error message when `caller` may not act on `targetAgentId`, whose current role in
+ * the team is `targetCurrentRole`; null when allowed.
+ *
+ * Rule: admin is unrestricted. Any other caller must belong to the team and may only act on a
+ * member of STRICTLY LOWER rank (member < lead < supervisor). Acting on yourself is refused
+ * unless `allowSelf` is set (removal / primary change: leaving or re-pointing your own default
+ * team is harmless; promoting or demoting yourself is not).
+ * A missing `targetCurrentRole` means the target holds no role yet (e.g. being added).
+ */
+export function checkTeamMemberManagement(
+  caller: DbUser,
+  teamId: number,
+  targetAgentId: string | null,
+  targetCurrentRole?: string | null,
+  opts: { allowSelf?: boolean } = {}
+): string | null {
+  if (caller.role === 'admin') return null;
+  const callerRole = getUserTeamRole(caller, teamId);
+  if (!callerRole) return 'Not a member of this team';
+  const callerLevel = TEAM_ROLE_HIERARCHY[callerRole];
+  if (targetAgentId !== null && String(caller.id) === targetAgentId) {
+    return opts.allowSelf ? null : 'Cannot change your own team role';
+  }
+  if (targetCurrentRole && (!isTeamRole(targetCurrentRole) || TEAM_ROLE_HIERARCHY[targetCurrentRole] >= callerLevel)) {
+    return 'Cannot modify a member at or above your own team role';
+  }
+  return null;
+}
+
+/**
  * Team-role ceiling (F26). Returns an error message when `caller` may not set `newRole`
  * on `targetAgentId` (whose current role in the team is `targetCurrentRole`, if any).
- * Admin is unrestricted; others may only assign roles strictly below their own, never
- * change themselves, and never touch someone at or above their own level.
+ * Non-admins may only assign roles strictly below their own, on top of checkTeamMemberManagement.
  */
 export function checkTeamRoleAssignment(
   caller: DbUser,
@@ -90,11 +120,34 @@ export function checkTeamRoleAssignment(
   if (caller.role === 'admin') return null;
   const callerRole = getUserTeamRole(caller, teamId);
   if (!callerRole) return 'Not a member of this team';
-  const callerLevel = TEAM_ROLE_HIERARCHY[callerRole];
-  if (TEAM_ROLE_HIERARCHY[newRole] >= callerLevel) return 'Cannot assign a team role at or above your own';
-  if (targetAgentId !== null && String(caller.id) === targetAgentId) return 'Cannot change your own team role';
-  if (targetCurrentRole && (!isTeamRole(targetCurrentRole) || TEAM_ROLE_HIERARCHY[targetCurrentRole] >= callerLevel)) {
-    return 'Cannot modify a member at or above your own team role';
+  if (TEAM_ROLE_HIERARCHY[newRole] >= TEAM_ROLE_HIERARCHY[callerRole]) return 'Cannot assign a team role at or above your own';
+  return checkTeamMemberManagement(caller, teamId, targetAgentId, targetCurrentRole);
+}
+
+export interface MembershipMutationDenial {
+  status: 403 | 404;
+  error: string;
+}
+
+/**
+ * Async guard for handlers: loads the targets' current roles in `teamId` and applies
+ * checkTeamMemberManagement to each. Any denied target denies the whole request.
+ * Non-admin callers get 404 for a target that is not in the team; admins skip the lookup.
+ */
+export async function authorizeMembershipMutation(
+  service: AgentTeamsService,
+  caller: DbUser,
+  teamId: number,
+  targetAgentIds: string[],
+  opts: { allowSelf?: boolean } = {}
+): Promise<MembershipMutationDenial | null> {
+  if (caller.role === 'admin') return null;
+  const roles = await service.getMemberRoles(teamId, targetAgentIds);
+  for (const id of targetAgentIds) {
+    const role = roles.get(id);
+    if (!role) return { status: 404, error: 'Target is not a member of this team' };
+    const denied = checkTeamMemberManagement(caller, teamId, id, role, opts);
+    if (denied) return { status: 403, error: denied };
   }
   return null;
 }
@@ -102,8 +155,20 @@ export function checkTeamRoleAssignment(
 export class AgentTeamsService {
   private db: ReturnType<typeof drizzle>;
 
-  constructor(database: D1Database, private env?: Bindings) {
-    this.db = drizzle(database);
+  constructor(private d1: D1Database, private env?: Bindings) {
+    this.db = drizzle(d1);
+  }
+
+  /** Current team role of each given agent in `teamId` (agents outside the team are absent). */
+  async getMemberRoles(teamId: number, agentIds: string[]): Promise<Map<string, string>> {
+    const result = new Map<string, string>();
+    if (agentIds.length === 0) return result;
+    const rows = await this.db
+      .select({ agentId: agentTeams.agentId, roleInTeam: agentTeams.roleInTeam })
+      .from(agentTeams)
+      .where(and(eq(agentTeams.teamId, teamId), inArray(agentTeams.agentId, agentIds)));
+    for (const r of rows) result.set(r.agentId, r.roleInTeam || 'member');
+    return result;
   }
 
   /**
@@ -472,48 +537,32 @@ export class AgentTeamsService {
     teamId: number,
     data: UpdateTeamRoleRequest
   ): Promise<AgentTeamMembership> {
-    const updateData: Partial<typeof agentTeams.$inferInsert> = {};
+    if (data.roleInTeam !== undefined && !isTeamRole(data.roleInTeam)) throw new Error('Invalid roleInTeam');
 
-    if (data.roleInTeam !== undefined) {
-      if (!isTeamRole(data.roleInTeam)) throw new Error('Invalid roleInTeam');
-      updateData.roleInTeam = data.roleInTeam;
+    // Verify membership BEFORE any write: nothing outside this team may be touched.
+    const existing = await this.getAgentTeamMembership(agentId, teamId);
+    if (!existing) throw new Error('Membership not found');
+    if (data.roleInTeam === undefined && data.isPrimary === undefined) return existing;
+
+    // Scoped writes in one D1 batch (atomic): clear the agent's other primaries only when
+    // this team becomes primary, then update this membership row.
+    const stmts: D1PreparedStatement[] = [];
+    if (data.isPrimary) {
+      stmts.push(this.d1.prepare('UPDATE agent_teams SET is_primary = 0 WHERE agent_id = ?').bind(agentId));
     }
+    const sets: string[] = [];
+    const binds: (string | number)[] = [];
+    if (data.roleInTeam !== undefined) { sets.push('role_in_team = ?'); binds.push(data.roleInTeam); }
+    if (data.isPrimary !== undefined) { sets.push('is_primary = ?'); binds.push(data.isPrimary ? 1 : 0); }
+    stmts.push(
+      this.d1.prepare(`UPDATE agent_teams SET ${sets.join(', ')} WHERE agent_id = ? AND team_id = ?`)
+        .bind(...binds, agentId, teamId)
+    );
+    await this.d1.batch(stmts);
 
-    if (data.isPrimary !== undefined) {
-      updateData.isPrimary = data.isPrimary;
-
-      // If setting as primary, unset other teams first
-      if (data.isPrimary) {
-        await this.db
-          .update(agentTeams)
-          .set({ isPrimary: false })
-          .where(eq(agentTeams.agentId, agentId));
-
-      }
-    }
-
-    const [updated] = await this.db
-      .update(agentTeams)
-      .set(updateData)
-      .where(and(
-        eq(agentTeams.agentId, agentId),
-        eq(agentTeams.teamId, teamId)
-      ))
-      .returning();
-
-    if (!updated) {
-      throw new Error('Membership not found');
-    }
-
-    return {
-      id: updated.id,
-      agentId: updated.agentId,
-      teamId: updated.teamId,
-      roleInTeam: updated.roleInTeam || 'member',
-      isPrimary: !!updated.isPrimary,
-      joinedAt: updated.joinedAt || '',
-      createdAt: updated.createdAt || ''
-    };
+    const updated = await this.getAgentTeamMembership(agentId, teamId);
+    if (!updated) throw new Error('Membership not found');
+    return updated;
   }
 
   /**
@@ -526,21 +575,11 @@ export class AgentTeamsService {
       throw new Error('Agent is not a member of this team');
     }
 
-    // Unset all other primary flags
-    await this.db
-      .update(agentTeams)
-      .set({ isPrimary: false })
-      .where(eq(agentTeams.agentId, agentId));
-
-    // Set this team as primary
-    await this.db
-      .update(agentTeams)
-      .set({ isPrimary: true })
-      .where(and(
-        eq(agentTeams.agentId, agentId),
-        eq(agentTeams.teamId, teamId)
-      ));
-
+    // Unset the agent's other primaries and set this one, atomically
+    await this.d1.batch([
+      this.d1.prepare('UPDATE agent_teams SET is_primary = 0 WHERE agent_id = ?').bind(agentId),
+      this.d1.prepare('UPDATE agent_teams SET is_primary = 1 WHERE agent_id = ? AND team_id = ?').bind(agentId, teamId)
+    ]);
   }
 
   /**
