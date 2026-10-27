@@ -54,6 +54,11 @@ export const RATE_LIMIT_PRESETS = {
     maxRequests: 5,
     windowMs: 5 * 60 * 1000,
   },
+  // Per-account ceiling across all IPs (distributed brute-force bound).
+  loginAccount: {
+    maxRequests: 40,
+    windowMs: 15 * 60 * 1000,
+  },
   upload: {
     maxRequests: 20,
     windowMs: 60 * 1000,
@@ -87,32 +92,61 @@ export function getClientIP(c: Context): string {
 }
 
 /**
- * Identifier for the login endpoint.
+ * Read the normalised (trimmed, lowercased) account email from the login body,
+ * or null when the body has no usable email / is not valid JSON.
  *
- * Login is rate-limited PER ACCOUNT (by email), not per IP. Keying by IP
- * collapses every user behind a shared corporate NAT into one bucket, so a
- * handful of colleagues logging in within the window locks out the whole
- * office (even with correct credentials). Per-account keying preserves
- * brute-force protection for each account while isolating one user's attempts
- * from another's.
- *
- * The email is read from the (cached) JSON body; Hono caches the parsed body,
- * so the login handler can still read it afterwards. Falls back to the client
- * IP when the body has no email or is not valid JSON (malformed requests still
- * get a bounded budget).
+ * Hono caches the parsed body, so the login handler can still read it afterwards.
  */
-export async function getLoginIdentifier(c: Context): Promise<string> {
+async function getLoginEmail(c: Context): Promise<string | null> {
   try {
     const body = await c.req.json<{ email?: unknown }>();
     const rawEmail = body?.email;
     if (typeof rawEmail === 'string') {
       const email = rawEmail.trim().toLowerCase();
       if (email) {
-        return `account:${email}`;
+        return email;
       }
     }
   } catch {
-    // Malformed / missing body — fall through to IP-based limiting.
+    // Malformed / missing body - caller falls back to IP-based limiting.
+  }
+  return null;
+}
+
+/**
+ * Tight login bucket: keyed on (account email + client IP).
+ *
+ * - Keying by IP alone collapses every colleague behind a shared office NAT
+ *   into one bucket and locks the whole office out.
+ * - Keying by email alone lets ANY anonymous caller who knows a staff email
+ *   burn that account's budget from anywhere and lock the real user out
+ *   indefinitely (the limiter runs before the password check).
+ *
+ * Combining both means an attacker's attempts only consume the bucket for
+ * (victim email, attacker IP); the victim, coming from a different IP, has a
+ * separate bucket. Brute force against one account from one IP stays bounded
+ * by the preset. Distributed brute force is bounded by getLoginAccountIdentifier.
+ *
+ * Falls back to the client IP when the body has no email or is not valid JSON
+ * (malformed requests still get a bounded budget).
+ */
+export async function getLoginIdentifier(c: Context): Promise<string> {
+  const email = await getLoginEmail(c);
+  if (email) {
+    return `account:${email}|ip:${getClientIP(c)}`;
+  }
+  return getClientIP(c);
+}
+
+/**
+ * Loose per-account bucket across ALL IPs: a distributed brute-force ceiling.
+ * Deliberately much larger than the per-(email+IP) bucket so an attacker
+ * cannot cheaply exhaust it, while still capping a botnet guessing passwords.
+ */
+export async function getLoginAccountIdentifier(c: Context): Promise<string> {
+  const email = await getLoginEmail(c);
+  if (email) {
+    return `account:${email}`;
   }
   return getClientIP(c);
 }
@@ -142,6 +176,11 @@ function getIPPrefix(ip: string): string {
  * Generate DO ID for rate limiting
  */
 function generateDOId(endpoint: string, clientId: string): string {
+  // Account-scoped keys contain emails (dots are part of the name, not IPv4
+  // octet separators) - never truncate them into a shared IP-style prefix.
+  if (clientId.startsWith('account:')) {
+    return `ratelimit:${endpoint}:${clientId}`;
+  }
   const ipPrefix = getIPPrefix(clientId);
   return `ratelimit:${endpoint}:${ipPrefix}`;
 }
@@ -271,11 +310,29 @@ export const authRateLimiter = createRateLimiter({
 export const loginRateLimiter = createRateLimiter({
   ...RATE_LIMIT_PRESETS.login,
   keyPrefix: 'login',
-  // Per-account keying: isolate each account so a shared office IP does not
-  // collapse all colleagues into one bucket. See getLoginIdentifier.
+  // Keyed on email + IP: a shared office IP does not collapse colleagues into
+  // one bucket, and an outsider cannot lock out a real user. See getLoginIdentifier.
   identifier: getLoginIdentifier,
   onLimitReached: (c, info) => {
     console.warn(`[Security] Login rate limit reached - possible brute force`, {
+      ip: getClientIP(c),
+      path: c.req.path,
+      retryAfter: info.retryAfter,
+    });
+  },
+});
+
+/**
+ * Loose per-account ceiling across all IPs. Register AFTER loginRateLimiter so
+ * a single attacker IP is stopped by its own tight bucket first and cannot burn
+ * this shared ceiling faster than ~5 attempts per 5 minutes.
+ */
+export const loginAccountRateLimiter = createRateLimiter({
+  ...RATE_LIMIT_PRESETS.loginAccount,
+  keyPrefix: 'login-account',
+  identifier: getLoginAccountIdentifier,
+  onLimitReached: (c, info) => {
+    console.warn(`[Security] Per-account login ceiling reached - possible distributed brute force`, {
       ip: getClientIP(c),
       path: c.req.path,
       retryAfter: info.retryAfter,
