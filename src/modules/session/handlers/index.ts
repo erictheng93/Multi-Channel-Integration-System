@@ -1,6 +1,7 @@
 // Session Handlers 路由註冊
 // 註冊所有 Session 相關的 API 路由
 
+import { escapeCsvField } from '@/utils/csv';
 import { Hono } from 'hono';
 import { createContextLogger } from '@/utils/logger'
 
@@ -327,7 +328,7 @@ sessionRouter.post(
       if (r2) {
         const key = `exports/sessions/${Date.now()}.${format}`;
         const content = format === 'csv'
-          ? 'id,conversationId,sessionType,topic,startTime,endTime,messageCount,isActive,createdAt\n' + sessions.map(s => `${s.id},${s.conversationId},${s.sessionType || ''},${s.topic || ''},${s.startTime},${s.endTime || ''},${s.messageCount || 0},${s.isActive},${s.createdAt || ''}`).join('\n')
+          ? 'id,conversationId,sessionType,topic,startTime,endTime,messageCount,isActive,createdAt\n' + sessions.map(s => [s.id, s.conversationId, s.sessionType || null, s.topic || null, s.startTime, s.endTime || null, s.messageCount || 0, s.isActive, s.createdAt || null].map(escapeCsvField).join(',')).join('\n')
           : JSON.stringify({ sessions, messages: includeMessages ? exportMessages : undefined }, null, 2);
         await r2.put(key, content, { httpMetadata: { contentType: format === 'csv' ? 'text/csv' : 'application/json' } });
         downloadUrl = `/api/storage/${key}`;
