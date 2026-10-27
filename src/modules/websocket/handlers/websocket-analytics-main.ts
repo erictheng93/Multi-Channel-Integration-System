@@ -2,7 +2,8 @@
 // Phase 2: Long-term optimization - Error trend analysis dashboard API
 // Multi-Channel Support MVP - WebSocket Monitoring System
 
-import { Hono } from 'hono';
+import { Hono, type Context } from 'hono';
+import { z } from 'zod';
 import { createContextLogger } from '@/utils/logger'
 
 const log = createContextLogger('WebsocketAnalytics')
@@ -85,21 +86,79 @@ analyticsHandler.get('/trends', jwtAuth, async (c) => {
 
 // =================== Error Recording API ===================
 
-// Record WebSocket error (for internal system use)
-analyticsHandler.post('/errors', async (c) => {
+// SECURITY: both telemetry writers share the CACHE KV namespace with `revoked:` JWT
+// revocation keys, so they require an authenticated session and a bounded body.
+// No frontend code calls these two routes today; they are for authenticated clients only.
+export const ANALYTICS_LIMITS = {
+  /** Max request body characters before parsing. */
+  maxBodyBytes: 4096,
+  maxShortString: 128,
+  maxMessage: 512,
+  maxUserAgent: 256,
+} as const;
+
+const finiteNum = z.number().finite();
+const shortStr = z.string().max(ANALYTICS_LIMITS.maxShortString);
+
+const errorSchema = z.object({
+  timestamp: finiteNum.positive(),
+  errorCode: finiteNum.int().min(1).max(99999),
+  errorType: shortStr.min(1),
+  message: z.string().max(ANALYTICS_LIMITS.maxMessage).optional(),
+  conversationId: shortStr.optional(),
+  userAgent: z.string().max(ANALYTICS_LIMITS.maxUserAgent).optional(),
+  duration: finiteNum.min(0).max(86_400_000).optional(),
+  retryAttempt: finiteNum.int().min(0).max(1000).optional(),
+});
+
+const qualitySchema = z.object({
+  timestamp: finiteNum.positive(),
+  connectionId: shortStr.min(1),
+  latency: finiteNum.min(0).max(600_000),
+  connectionTime: finiteNum.min(0).max(600_000),
+  messagesPerSecond: finiteNum.min(0).max(100_000),
+  errorRate: finiteNum.min(0).max(1),
+  isStable: z.boolean(),
+  deviceType: shortStr.optional(),
+});
+
+type BoundedJson = { ok: true; body: unknown } | { ok: false; status: 400 | 413 };
+
+async function readBoundedJson(c: Context): Promise<BoundedJson> {
+  const declared = Number(c.req.header('content-length') ?? '0');
+  if (declared > ANALYTICS_LIMITS.maxBodyBytes) return { ok: false, status: 413 };
+  const text = await c.req.text();
+  if (text.length > ANALYTICS_LIMITS.maxBodyBytes) return { ok: false, status: 413 };
   try {
-    // This endpoint is mainly called by internal systems, so JWT auth is not required
-    // But source verification is needed (e.g., checking IP or internal token)
+    return { ok: true, body: JSON.parse(text) };
+  } catch {
+    return { ok: false, status: 400 };
+  }
+}
 
-    const errorData = await c.req.json() as WebSocketErrorStats;
+// Record WebSocket error (authenticated clients)
+analyticsHandler.post('/errors', jwtAuth, async (c) => {
+  try {
+    const user = c.get('user');
+    const raw = await readBoundedJson(c);
+    if (!raw.ok) {
+      return c.json({ error: raw.status === 413 ? 'Payload too large' : 'Invalid JSON' }, raw.status);
+    }
 
-    // Basic validation
-    if (!errorData.timestamp || !errorData.errorCode || !errorData.errorType) {
+    const parsed = errorSchema.safeParse(raw.body);
+    if (!parsed.success) {
       return c.json({
         error: 'Invalid error data',
-        message: 'timestamp, errorCode, and errorType are required'
+        message: 'timestamp, errorCode, and errorType are required and must be within size limits'
       }, HTTP_STATUS.BAD_REQUEST);
     }
+
+    // Identity comes from the session, never from the body. clientIP is not accepted from callers.
+    const errorData: WebSocketErrorStats = {
+      ...parsed.data,
+      message: parsed.data.message ?? '',
+      userId: String(user.id),
+    };
 
     const analyticsService = createAnalyticsService(c.env);
     await analyticsService.recordError(errorData);
@@ -116,18 +175,25 @@ analyticsHandler.post('/errors', async (c) => {
   }
 });
 
-// Record connection quality data
-analyticsHandler.post('/quality', async (c) => {
+// Record connection quality data (authenticated clients)
+analyticsHandler.post('/quality', jwtAuth, async (c) => {
   try {
-    const qualityData = await c.req.json() as ConnectionQualityMetrics;
+    const user = c.get('user');
+    const raw = await readBoundedJson(c);
+    if (!raw.ok) {
+      return c.json({ error: raw.status === 413 ? 'Payload too large' : 'Invalid JSON' }, raw.status);
+    }
 
-    // Basic validation
-    if (!qualityData.timestamp || !qualityData.userId || !qualityData.connectionId) {
+    const parsed = qualitySchema.safeParse(raw.body);
+    if (!parsed.success) {
       return c.json({
         error: 'Invalid quality data',
-        message: 'timestamp, userId, and connectionId are required'
+        message: 'timestamp and connectionId are required and metrics must be within bounds'
       }, HTTP_STATUS.BAD_REQUEST);
     }
+
+    // userId is taken from the session so a caller cannot write another user's stats key.
+    const qualityData: ConnectionQualityMetrics = { ...parsed.data, userId: String(user.id) };
 
     const analyticsService = createAnalyticsService(c.env);
     await analyticsService.recordConnectionQuality(qualityData);
