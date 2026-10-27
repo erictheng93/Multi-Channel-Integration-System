@@ -146,9 +146,10 @@ export class BroadcastService {
     return { ...mapBroadcastRecord(row), attachments: await this.loadAttachments(id) };
   }
 
-  async exists(id: string, createdBy: string | null): Promise<boolean> {
+  /** Title of a live broadcast the caller may see (createdBy null = any author), or null. */
+  async findTitle(id: string, createdBy: string | null): Promise<string | null> {
     const rows = await this.db
-      .select({ id: broadcasts.id })
+      .select({ title: broadcasts.title })
       .from(broadcasts)
       .where(and(
         eq(broadcasts.id, id),
@@ -156,7 +157,7 @@ export class BroadcastService {
         createdBy === null ? undefined : eq(broadcasts.createdBy, createdBy)
       ))
       .limit(1);
-    return rows.length > 0;
+    return rows[0]?.title ?? null;
   }
 
   private async assertAttachments(input: CreateBroadcastInput, actorId: string): Promise<void> {

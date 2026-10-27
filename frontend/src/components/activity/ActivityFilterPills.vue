@@ -127,6 +127,14 @@
             客戶取消追蹤
           </option>
         </optgroup>
+        <optgroup label="群發">
+          <option value="broadcast_create">
+            建立群發
+          </option>
+          <option value="broadcast_send">
+            發送群發
+          </option>
+        </optgroup>
         <optgroup label="系統">
           <option value="settings_update">
             設定更新
@@ -175,6 +183,9 @@
         </option>
         <option value="delayed_message">
           延遲訊息
+        </option>
+        <option value="broadcast">
+          群發
         </option>
         <option value="qr_code">
           QR碼
