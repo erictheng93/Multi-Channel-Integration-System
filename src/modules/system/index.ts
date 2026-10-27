@@ -50,9 +50,6 @@ export const SYSTEM_MODULE_INFO = {
 
       // 進階功能
       'GET /messages/recall-stats', // 召回統計
-      'GET /messages/:messageId/replies', // 訊息回覆
-      'GET /conversations/:conversationId/message-tree', // 對話樹
-      'GET /conversations/:conversationId/sessions', // 會話統計
 
       // 模組資訊
       'GET /module-info' // 模組資訊

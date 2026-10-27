@@ -815,7 +815,6 @@ Capabilities:
 - Maintenance mode.
 - Credentials storage.
 - Feedback collection and stats.
-- Message tree and replies.
 - Conversation sessions.
 
 Primary API surface:
@@ -834,9 +833,6 @@ Primary API surface:
 | GET/POST | `/api/system/maintenance` | Maintenance |
 | POST/GET/DELETE | `/api/credentials` | Credentials |
 | POST/GET | `/api/feedback` | Feedback |
-| GET | `/api/conversations/:id/message-tree` | Message tree |
-| GET | `/api/messages/:id/replies` | Replies |
-| GET | `/api/conversations/:id/sessions` | Conversation sessions |
 
 ## 6. Cross-Cutting Rules
 
