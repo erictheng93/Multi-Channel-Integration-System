@@ -16,7 +16,7 @@ vi.mock('@/middleware/auth', () => ({
     c.set('user', {
       id: 'agent-1',
       role: 'agent',
-      teamRoles: { 1: 'lead' },
+      teamRoles: {}, // a plain agent: broadcasting no longer needs a lead/supervisor role
     });
     return next();
   }),
