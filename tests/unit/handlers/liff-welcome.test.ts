@@ -610,3 +610,52 @@ describe('LIFF Welcome - Integration Flow', () => {
     );
   });
 });
+
+describe('LIFF Welcome Endpoint - quota abuse guards', () => {
+  const team = { id: 1, name: 'Test Team' };
+  const post = (env: ReturnType<typeof createMockEnv>, teamId: unknown) =>
+    createTestApp(env).request('/api/liff/welcome', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ idToken: 'valid', teamId })
+    });
+  const withLimiter = (status: number) => {
+    const fetch = vi.fn().mockResolvedValue(new Response('{}', { status }));
+    const env = { ...createMockEnv(), RATE_LIMITER: { idFromName: vi.fn(() => 'id'), get: vi.fn(() => ({ fetch })) } };
+    return { env, fetch };
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockLineApiFetch(true);
+    mockDbResults = { team, customer: null, conversation: null };
+  });
+  afterEach(() => {
+    global.fetch = originalFetch;
+  });
+
+  it.each(['01', '1.0', ' 1', -1, 1.5, '1e0'])('rejects non-canonical teamId %j', async (teamId) => {
+    expect((await post(createMockEnv(), teamId)).status).toBe(400);
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  it('dedupes per LINE user, not per team', async () => {
+    const env = createMockEnv();
+    expect((await post(env, '1')).status).toBe(200);
+    expect(env.CACHE.put).toHaveBeenCalledWith('liff:welcome:U1234567890', '1', { expirationTtl: 300 });
+  });
+
+  it('skips the push when the limiter has already been claimed', async () => {
+    const { env } = withLimiter(429);
+    expect((await post(env as never, 1)).status).toBe(200);
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  it('releases the claim when the LINE push fails', async () => {
+    mockLineApiFetch(false);
+    const { env, fetch } = withLimiter(200);
+    expect((await post(env as never, 1)).status).toBe(500);
+    const actions = fetch.mock.calls.map(([, init]) => JSON.parse(init.body).action);
+    expect(actions).toEqual(['check', 'reset']);
+  });
+});
