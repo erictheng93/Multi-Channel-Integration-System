@@ -17,7 +17,7 @@ import {
   parseCookieHeader,
   requireRole,
 } from '@/middleware/auth';
-import { loginRateLimiter, loginAccountRateLimiter, authRateLimiter } from '@/middleware/rate-limiter';
+import { loginRateLimiter, loginAccountCeiling, rememberLoginIp, authRateLimiter } from '@/middleware/rate-limiter';
 import { ActivityCapture, ActivityService, ACTIVITY_ACTIONS, RESOURCE_TYPES } from '@modules/activities';
 import { createDbClient } from '@/db/drizzle-factory';
 import { withD1Retry } from '@/utils/db-retry';
@@ -277,7 +277,7 @@ function mapLegacyRefreshUser(row: unknown): RefreshUserRow | undefined {
 // 不再需要 handler 級別的 CORS middleware
 
 // 用戶登入
-authHandler.post('/login', loginRateLimiter, loginAccountRateLimiter, async (c) => {
+authHandler.post('/login', loginRateLimiter, loginAccountCeiling, async (c) => {
   try {
     const { email, password } = await c.req.json();
 
@@ -456,6 +456,8 @@ authHandler.post('/login', loginRateLimiter, loginAccountRateLimiter, async (c) 
     });
 
     setAuthCookies(c, token, refreshToken);
+    // This IP proved the password: it skips the per-account ceiling from now on.
+    await rememberLoginIp(c, user.email);
 
     return contractJson(c, authContracts.login, {
       success: true,

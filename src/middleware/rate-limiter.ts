@@ -55,10 +55,11 @@ export const RATE_LIMIT_PRESETS = {
     windowMs: 5 * 60 * 1000,
   },
   // Per-account ceiling across all IPs (distributed brute-force bound).
-  // ponytail: one IP can feed at most 45 per 15 min through the tight bucket, so a 3-IP attacker
-  // can still trip this and lock the account for 15 min; raise it, or add a known-device bypass, if that bites.
+  // One IP feeds at most 45 per 15 min through the tight bucket, so tripping this
+  // takes 7+ IPs. IPs that have logged into the account before skip it entirely
+  // (loginAccountCeiling), so even a tripped ceiling does not lock out the real user.
   loginAccount: {
-    maxRequests: 100,
+    maxRequests: 300,
     windowMs: 15 * 60 * 1000,
   },
   upload: {
@@ -323,6 +324,53 @@ export const loginRateLimiter = createRateLimiter({
     });
   },
 });
+
+// =================== Known login IPs ===================
+
+/** 30 days: an IP that proved the password recently keeps bypassing the per-account ceiling. */
+const KNOWN_LOGIN_IP_TTL = 30 * 24 * 60 * 60;
+const knownLoginIpKey = (email: string, ip: string) => `login-known-ip:${email}|${ip}`;
+
+/**
+ * Only Cloudflare's own header is trusted here: X-Forwarded-For / X-Real-IP are client-supplied,
+ * and a forged known IP would bypass the per-account ceiling.
+ */
+function trustedClientIP(c: Context): string | null {
+  return c.req.header('CF-Connecting-IP') || null;
+}
+
+/** Record, after a successful login, that this IP knows the account's password. Best-effort. */
+export async function rememberLoginIp(c: Context<{ Bindings: Bindings }>, email: string): Promise<void> {
+  const ip = trustedClientIP(c);
+  if (!ip) return;
+  try {
+    await c.env.CACHE.put(knownLoginIpKey(email.trim().toLowerCase(), ip), '1', { expirationTtl: KNOWN_LOGIN_IP_TTL });
+  } catch (error) {
+    console.warn('[RateLimiter] Could not record known login IP', { error });
+  }
+}
+
+/**
+ * Per-account ceiling, skipped for IPs that have logged into this account before.
+ * An attacker cannot make their IP "known" without the password, so a distributed
+ * flood that trips the ceiling still cannot lock the real user out of their usual
+ * devices. The tight email+IP bucket (loginRateLimiter) applies to everyone.
+ */
+export async function loginAccountCeiling(c: Context<{ Bindings: Bindings }>, next: Next): Promise<Response | void> {
+  const email = await getLoginEmail(c);
+  const ip = trustedClientIP(c);
+  if (email && ip) {
+    try {
+      if (await c.env.CACHE.get(knownLoginIpKey(email, ip))) {
+        await next();
+        return;
+      }
+    } catch {
+      // KV unreadable: fall through to the ceiling (fail closed to the stricter path).
+    }
+  }
+  return loginAccountRateLimiter(c, next);
+}
 
 /**
  * Loose per-account ceiling across all IPs. Register AFTER loginRateLimiter so
