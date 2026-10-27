@@ -64,6 +64,10 @@ export const ACTIVITY_ACTIONS = {
   DELAYED_MESSAGE_SCHEDULE: 'delayed_message_schedule',
   DELAYED_MESSAGE_CANCEL: 'delayed_message_cancel',
 
+  // 群發訊息 (Broadcast)
+  BROADCAST_CREATE: 'broadcast_create',
+  BROADCAST_SEND: 'broadcast_send',
+
   // 對話額外操作 (Conversation Additional)
   CONVERSATION_UNASSIGN: 'conversation_unassign',
   CONVERSATION_BULK_ASSIGN: 'conversation_bulk_assign',

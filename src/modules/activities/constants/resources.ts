@@ -14,7 +14,8 @@ export const RESOURCE_TYPES = {
   INTEGRATION: 'integration',
   TAG: 'tag',
   TEAM_MEMBER: 'team_member',
-  DELAYED_MESSAGE: 'delayed_message'
+  DELAYED_MESSAGE: 'delayed_message',
+  BROADCAST: 'broadcast'
 } as const
 
 export type ResourceType = typeof RESOURCE_TYPES[keyof typeof RESOURCE_TYPES]

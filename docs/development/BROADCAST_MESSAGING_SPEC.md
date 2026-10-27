@@ -55,7 +55,7 @@
 |---|------|------|
 | D1 | **Token 解析** | `customers.sourceTeamId` → `channelIntegrations`（`platform='line'`, `isActive=1`）解密取 token；解不到時 fallback 到 `env.LINE_CHANNEL_ACCESS_TOKEN`；兩者皆無 → 該收件人標 `skipped: no_channel_credentials` |
 | D2 | **寫回對話** | 發送成功的收件人，若已有對話（最近一筆未軟刪），插入一筆 message（`senderType='agent'`、`metadata` 含 `broadcastId`）；無對話者不建新對話（僅記錄在 recipients 表） |
-| D3 | **權限** | Phase 1: 系統 `admin`，或任一團隊角色為 `lead`/`supervisor` 者可群發；Phase 2 細化 |
+| D3 | **權限** | ~~Phase 1: 系統 `admin`，或任一團隊角色為 `lead`/`supervisor` 者可群發~~ → 2026-10-27 起任何登入客服可群發；非 admin 只能看/發自己建立的群發；建立與發送寫入活動紀錄 |
 | D4 | **受眾快照** | 建立群發時即展開受眾寫入 `broadcast_recipients`（快照 `platform_user_id`），發送以快照為準，不受後續標籤變動影響 |
 | D5 | **Phase 1 同步發送上限** | 單次群發 LINE 可發人數上限 **5,000**（10 次 multicast API 呼叫內），超過回 `422` 要求等 Phase 2 |
 | D6 | **create 與 send 分離** | `POST /api/broadcasts`（建立+快照）與 `POST /api/broadcasts/:id/send`（執行）分開，為排程與審核預留 |
