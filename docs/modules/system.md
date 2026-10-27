@@ -15,7 +15,6 @@ System 模組提供「系統層」的對外端點：健康檢查、KPI 統計（
 |---|---|
 | 老闆問「系統還活著嗎」 | `GET /health` 一秒回答 |
 | 早會看「今天表現」 | `GET /stats` 給 KPI 卡片 |
-| 客服想看訊息回覆關聯樹 | `GET /conversations/:id/message-tree` |
 | 開發者想知道有哪些 API | `GET /api` 機讀清單 |
 
 ## 3. 主要功能
@@ -42,9 +41,6 @@ System 模組提供「系統層」的對外端點：健康檢查、KPI 統計（
 | GET | `/api/health` | 公開健康檢查 |
 | GET | `/api/system/status` | 詳細狀態（需 JWT） |
 | GET | `/api/stats` | 儀表板 KPI |
-| GET | `/api/conversations/:id/message-tree` | 訊息樹 |
-| GET | `/api/messages/:id/replies` | 回覆鏈 |
-| GET | `/api/conversations/:id/sessions` | 會話統計 |
 | GET | `/api/api` | API 索引 |
 
 ## 6. 涉及的 Durable Objects
