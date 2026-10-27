@@ -113,7 +113,7 @@ describe('broadcast recipient existence check', () => {
     mocks.listRecipients.mockResolvedValue({ items: [], page: 2, total: 0 });
     const response = await broadcastRouter.request('/b-1/recipients?page=2&status=sent', {}, { DB: {} } as Bindings);
     expect(response.status).toBe(200);
-    expect(mocks.exists).toHaveBeenCalledWith('b-1');
+    expect(mocks.exists).toHaveBeenCalledWith('b-1', 'agent-1');
     expect(mocks.listRecipients).toHaveBeenCalledWith('b-1', 2, 20, 'sent');
     expect(mocks.getById).not.toHaveBeenCalled();
   });
@@ -123,6 +123,25 @@ describe('broadcast recipient existence check', () => {
     const response = await broadcastRouter.request('/missing/recipients', {}, { DB: {} } as Bindings);
     expect(response.status).toBe(404);
     expect(mocks.listRecipients).not.toHaveBeenCalled();
+  });
+});
+
+describe('broadcast ownership scope', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("hides another user's broadcast from a lead", async () => {
+    mocks.getById.mockResolvedValue({ id: 'b-2', createdBy: 'agent-2' });
+    const response = await broadcastRouter.request('/b-2', {}, { DB: {} } as Bindings);
+    expect(response.status).toBe(404);
+  });
+
+  it("refuses to send another user's draft before the sender runs", async () => {
+    const { BroadcastSenderService } = await import('@modules/broadcast/services/broadcast-sender-service');
+    mocks.exists.mockResolvedValue(false);
+    const response = await broadcastRouter.request('/b-2/send', { method: 'POST' }, { DB: {} } as Bindings);
+    expect(response.status).toBe(404);
+    expect(mocks.exists).toHaveBeenCalledWith('b-2', 'agent-1');
+    expect(BroadcastSenderService).not.toHaveBeenCalled();
   });
 });
 

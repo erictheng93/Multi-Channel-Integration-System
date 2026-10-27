@@ -68,7 +68,8 @@ broadcastRouter.post('/', async (c) => {
 });
 
 broadcastRouter.get('/', async (c) => {
-  const permission = requireBroadcastPermission(c.get('user'));
+  const user = c.get('user');
+  const permission = requireBroadcastPermission(user);
   if (!permission.allowed) {
     return forbiddenResponse(c, permission.message);
   }
@@ -76,7 +77,7 @@ broadcastRouter.get('/', async (c) => {
   const service = new BroadcastService(createDbClient(c.env.DB), c.env);
   const page = parsePositiveInt(c.req.query('page'), 1);
   const pageSize = parsePositiveInt(c.req.query('pageSize') ?? c.req.query('limit'), 20);
-  const result = await service.list(page, pageSize);
+  const result = await service.list(page, pageSize, broadcastOwnerScope(user));
   return successResponse(c, result, 'Broadcasts retrieved');
 });
 
@@ -102,7 +103,8 @@ broadcastRouter.post('/line-quota/refresh', async (c) => {
 });
 
 broadcastRouter.get('/:id/recipients', async (c) => {
-  const permission = requireBroadcastPermission(c.get('user'));
+  const user = c.get('user');
+  const permission = requireBroadcastPermission(user);
   if (!permission.allowed) {
     return forbiddenResponse(c, permission.message);
   }
@@ -115,7 +117,7 @@ broadcastRouter.get('/:id/recipients', async (c) => {
   }
 
   const service = new BroadcastService(createDbClient(c.env.DB), c.env);
-  if (!await service.exists(c.req.param('id'))) {
+  if (!await service.exists(c.req.param('id'), broadcastOwnerScope(user))) {
     return errorResponse(c, { code: 'NOT_FOUND', message: 'Broadcast not found' }, 404);
   }
 
@@ -132,7 +134,12 @@ broadcastRouter.post('/:id/send', async (c) => {
     return forbiddenResponse(c, permission.message);
   }
 
-  const sender = new BroadcastSenderService(createDbClient(c.env.DB), c.env);
+  const db = createDbClient(c.env.DB);
+  if (!await new BroadcastService(db, c.env).exists(c.req.param('id'), broadcastOwnerScope(user))) {
+    return errorResponse(c, { code: 'BROADCAST_NOT_FOUND', message: 'Broadcast not found' }, 404);
+  }
+
+  const sender = new BroadcastSenderService(db, c.env);
   try {
     const stats = await sender.send(c.req.param('id'), user);
     return successResponse(c, stats, 'Broadcast sent');
@@ -142,14 +149,16 @@ broadcastRouter.post('/:id/send', async (c) => {
 });
 
 broadcastRouter.get('/:id', async (c) => {
-  const permission = requireBroadcastPermission(c.get('user'));
+  const user = c.get('user');
+  const permission = requireBroadcastPermission(user);
   if (!permission.allowed) {
     return forbiddenResponse(c, permission.message);
   }
 
   const service = new BroadcastService(createDbClient(c.env.DB), c.env);
   const broadcast = await service.getById(c.req.param('id'));
-  if (!broadcast) {
+  const owner = broadcastOwnerScope(user);
+  if (!broadcast || (owner !== null && broadcast.createdBy !== owner)) {
     return errorResponse(c, { code: 'NOT_FOUND', message: 'Broadcast not found' }, 404);
   }
   return successResponse(c, broadcast, 'Broadcast retrieved');
@@ -167,6 +176,11 @@ function requireBroadcastPermission(user: DbUser): { allowed: true } | { allowed
   return hasBroadcastRole
     ? { allowed: true }
     : { allowed: false, message: 'Broadcast messaging requires admin, lead, or supervisor role' };
+}
+
+/** Non-admins only see and send their own broadcasts; null = everyone's (admin). */
+function broadcastOwnerScope(user: DbUser): string | null {
+  return user.role === 'admin' ? null : String(user.id);
 }
 
 async function parseCreateInput(

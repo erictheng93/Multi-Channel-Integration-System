@@ -107,17 +107,22 @@ export class BroadcastService {
     return created;
   }
 
-  async list(page: number, pageSize: number): Promise<BroadcastListResult> {
+  /** createdBy limits the list to one author (non-admin callers); null lists everyone's. */
+  async list(page: number, pageSize: number, createdBy: string | null): Promise<BroadcastListResult> {
     const normalized = normalizePagination(page, pageSize);
+    const filters = and(
+      isNull(broadcasts.deletedAt),
+      createdBy === null ? undefined : eq(broadcasts.createdBy, createdBy)
+    );
     const [{ total = 0 } = { total: 0 }] = await this.db
       .select({ total: count() })
       .from(broadcasts)
-      .where(isNull(broadcasts.deletedAt));
+      .where(filters);
 
     const rows = await this.db
       .select()
       .from(broadcasts)
-      .where(isNull(broadcasts.deletedAt))
+      .where(filters)
       .orderBy(desc(broadcasts.createdAt), asc(broadcasts.id))
       .limit(normalized.pageSize)
       .offset((normalized.page - 1) * normalized.pageSize);
@@ -141,11 +146,15 @@ export class BroadcastService {
     return { ...mapBroadcastRecord(row), attachments: await this.loadAttachments(id) };
   }
 
-  async exists(id: string): Promise<boolean> {
+  async exists(id: string, createdBy: string | null): Promise<boolean> {
     const rows = await this.db
       .select({ id: broadcasts.id })
       .from(broadcasts)
-      .where(and(eq(broadcasts.id, id), isNull(broadcasts.deletedAt)))
+      .where(and(
+        eq(broadcasts.id, id),
+        isNull(broadcasts.deletedAt),
+        createdBy === null ? undefined : eq(broadcasts.createdBy, createdBy)
+      ))
       .limit(1);
     return rows.length > 0;
   }

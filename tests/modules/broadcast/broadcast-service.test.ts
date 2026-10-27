@@ -14,10 +14,12 @@ describe('BroadcastService pagination ordering', () => {
       const service = new BroadcastService(db, {} as Bindings);
       // Removing the attachments table proves this path cannot hydrate/sign attachments.
       sqlite.exec('DROP TABLE broadcast_attachments');
-      expect(await service.exists('b-1')).toBe(true);
-      expect(await service.exists('missing')).toBe(false);
+      expect(await service.exists('b-1', null)).toBe(true);
+      expect(await service.exists('b-1', 'agent-1')).toBe(true);
+      expect(await service.exists('b-1', 'agent-2')).toBe(false);
+      expect(await service.exists('missing', null)).toBe(false);
       await db.update(broadcasts).set({ deletedAt: '2026-10-13T00:00:00Z' }).where(eq(broadcasts.id, 'b-1'));
-      expect(await service.exists('b-1')).toBe(false);
+      expect(await service.exists('b-1', null)).toBe(false);
     } finally {sqlite.close();}
   });
   it('uses a stable id tiebreaker for broadcast history pagination', async () => {
@@ -29,7 +31,7 @@ describe('BroadcastService pagination ordering', () => {
     const db = createBroadcastListDb(orderBy);
     const service = new BroadcastService(db, {} as Bindings);
 
-    await service.list(1, 20);
+    await service.list(1, 20, null);
 
     expect(orderBy).toHaveBeenCalledTimes(1);
     expect(orderBy.mock.calls[0]).toHaveLength(2);
