@@ -623,7 +623,7 @@ export class UserConnection implements DurableObject {
    * Returns true when D1 could not answer. Sockets and subscriptions are then
    * kept and the check retried in 30s: only a definite answer revokes access.
    */
-  private async revalidateGlobalAccess(closeAgents: boolean): Promise<boolean> {
+  private async revalidateGlobalAccess(closeAgents: boolean, closeAll = false): Promise<boolean> {
     let user: Awaited<ReturnType<typeof getUserById>> | undefined;
     try { user = await getUserById(this.env.DB as D1Database, this.userId); }
     catch (error) {
@@ -632,7 +632,7 @@ export class UserConnection implements DurableObject {
     }
     const currentRole = user?.role;
     for (const connection of this.stateManager.getAllConnections()) {
-      if (!currentRole || connection.role !== currentRole || (closeAgents && currentRole !== 'admin')) {
+      if (closeAll || !currentRole || connection.role !== currentRole || (closeAgents && currentRole !== 'admin')) {
         try { connection.websocket.serializeAttachment(null); }
         catch (error) { console.warn('[UserConnection] Clearing revoked attachment failed:', error); }
         try { connection.websocket.close(4403, 'Access revoked'); }
@@ -685,8 +685,11 @@ export class UserConnection implements DurableObject {
       return new Response('Invalid userId', { status: 400 });
     }
     this.userId = body.userId;
+    // revokeSessions (logout / password change): close every socket of the user, admins included,
+    // and have the rooms close theirs although the account itself still has access.
+    const revokeSessions = body.revokeSessions === true;
     this.restoreConnectionsFromHibernation();
-    const deferred = await this.revalidateGlobalAccess(true);
+    const deferred = await this.revalidateGlobalAccess(true, revokeSessions);
     await this.scheduleNextTokenExpiryAlarm();
     const rooms = await this.state.storage.list<string>({ prefix: 'room:' });
     const namespace = this.env.CONVERSATION_ROOM as DurableObjectNamespace | undefined;
@@ -695,7 +698,7 @@ export class UserConnection implements DurableObject {
       const response = await namespace!.get(namespace!.idFromName(conversationId)).fetch(
         new Request('https://internal/evict', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userIds: [this.userId] })
+          body: JSON.stringify(revokeSessions ? { userIds: [this.userId], force: true } : { userIds: [this.userId] })
         })
       );
       if (!response.ok) throw new Error(`Room eviction returned ${response.status}`);
