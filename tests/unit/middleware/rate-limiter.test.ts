@@ -5,7 +5,8 @@ import {
   getLoginIdentifier,
   getLoginAccountIdentifier,
   loginRateLimiter,
-  loginAccountRateLimiter,
+  loginAccountCeiling,
+  rememberLoginIp,
   RATE_LIMIT_PRESETS
 } from '@/middleware/rate-limiter'
 
@@ -107,13 +108,13 @@ describe('login rate limiting chain (lockout resistance)', () => {
   const TIGHT = RATE_LIMIT_PRESETS.login.maxRequests
   const CEILING = RATE_LIMIT_PRESETS.loginAccount.maxRequests
 
-  it('uses the agreed limits: 15 per 5 min per email+IP, 100 per 15 min per email', () => {
+  it('uses the agreed limits: 15 per 5 min per email+IP, 300 per 15 min per email', () => {
     expect(RATE_LIMIT_PRESETS.login).toEqual({ maxRequests: 15, windowMs: 5 * 60 * 1000 })
-    expect(RATE_LIMIT_PRESETS.loginAccount).toEqual({ maxRequests: 100, windowMs: 15 * 60 * 1000 })
+    expect(RATE_LIMIT_PRESETS.loginAccount).toEqual({ maxRequests: 300, windowMs: 15 * 60 * 1000 })
   })
 
   const app = new Hono()
-  app.post('/login', loginRateLimiter, loginAccountRateLimiter, (c) => c.json({ ok: true }))
+  app.post('/login', loginRateLimiter, loginAccountCeiling, (c) => c.json({ ok: true }))
 
   const attempt = (env: unknown, email: string, ip: string) =>
     app.request(
@@ -160,5 +161,39 @@ describe('login rate limiting chain (lockout resistance)', () => {
     for (let i = 0; i < TIGHT; i++) await attempt(env, 'john.smith@x.co.uk', '203.0.113.45')
     expect((await attempt(env, 'john.smith@x.co.uk', '203.0.113.45')).status).toBe(429)
     expect((await attempt(env, 'john.doe@x.co.uk', '203.0.113.45')).status).toBe(200)
+  })
+
+  function fakeKv() {
+    const store = new Map<string, string>()
+    return { store, get: async (k: string) => store.get(k) ?? null, put: async (k: string, v: string) => { store.set(k, v) } }
+  }
+
+  async function tripCeiling(env: unknown) {
+    for (let i = 0; i < CEILING; i++) await attempt(env, 'victim@dacit.net', `192.0.2.${i % 250}.${Math.floor(i / 250)}`)
+  }
+
+  it('an IP that logged in before keeps getting in after the ceiling is tripped', async () => {
+    const CACHE = fakeKv()
+    const env = { RATE_LIMITER: fakeRateLimiterNamespace(), CACHE }
+    const known = new Hono<{ Bindings: { CACHE: typeof CACHE } }>()
+    known.post('/ok', async (c) => { await rememberLoginIp(c as never, ' Victim@Dacit.net '); return c.json({ ok: true }) })
+    await known.request('/ok', { method: 'POST', headers: { 'CF-Connecting-IP': '203.0.113.45' } }, env as never)
+
+    await tripCeiling(env)
+    expect((await attempt(env, 'victim@dacit.net', '198.51.100.200')).status).toBe(429)
+    expect((await attempt(env, 'victim@dacit.net', '203.0.113.45')).status).toBe(200)
+  })
+
+  it('a forged X-Forwarded-For cannot claim a known IP', async () => {
+    const CACHE = fakeKv()
+    CACHE.store.set('login-known-ip:victim@dacit.net|203.0.113.45', '1')
+    const env = { RATE_LIMITER: fakeRateLimiterNamespace(), CACHE }
+    await tripCeiling(env)
+    const res = await app.request('/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Forwarded-For': '203.0.113.45' },
+      body: JSON.stringify({ email: 'victim@dacit.net', password: 'x' })
+    }, env as never)
+    expect(res.status).toBe(429)
   })
 })
