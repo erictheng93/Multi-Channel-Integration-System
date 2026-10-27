@@ -67,6 +67,8 @@ export class WebSocketAnalyticsService {
   private readonly STATS_KEY_PREFIX = 'ws_stats:';
   private readonly TRENDS_KEY_PREFIX = 'ws_trends:';
   private readonly ALERTS_KEY_PREFIX = 'ws_alerts:';
+  /** Cap on per-hour detail entries; errorCount keeps counting past it. */
+  static readonly MAX_HOURLY_ERROR_ENTRIES = 200;
 
   // 預設告警配置
   private readonly DEFAULT_ALERT_CONFIG: AlertConfig = {
@@ -380,11 +382,16 @@ export class WebSocketAnalyticsService {
       const stats = existing ? JSON.parse(existing) : { errorCount: 0, errors: [] };
 
       stats.errorCount++;
+      if (!Array.isArray(stats.errors)) stats.errors = [];
       stats.errors.push({
         code: error.errorCode,
         type: error.errorType,
         timestamp: error.timestamp
       });
+      // Ring buffer: drop oldest so the hourly blob stays bounded
+      if (stats.errors.length > WebSocketAnalyticsService.MAX_HOURLY_ERROR_ENTRIES) {
+        stats.errors = stats.errors.slice(-WebSocketAnalyticsService.MAX_HOURLY_ERROR_ENTRIES);
+      }
 
       await this.env.CACHE?.put(hourKey, JSON.stringify(stats), {
         expirationTtl: 48 * 60 * 60 // 保存 48 小時
