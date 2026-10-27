@@ -6,6 +6,7 @@ import type { Bindings } from '@/types';
 import { jwtAuth, requireManagerOrAdmin } from '@/middleware/auth';
 import { getUserById, verifyJWT } from '@/utils/auth';
 import { bumpTokensValidAfter } from '@/utils/auth-jwt';
+import { revokeUserWebSocketSessions } from '@/services/websocket-access-revocation';
 import { createDbClient } from '@/db/drizzle-factory';
 import { eq } from 'drizzle-orm';
 import { agents } from '@/db/schema';
@@ -131,6 +132,7 @@ passwordHandler.post('/:memberId/reset', jwtAuth, requireManagerOrAdmin(), async
 
     // F09: kill the member's outstanding access/refresh tokens
     await bumpTokensValidAfter(c.env.CACHE, memberId);
+    await revokeUserWebSocketSessions(c.env, memberId);
 
     return contractJson(c, teamContracts.resetPasswordWithPolicy, {
       success: true,
@@ -223,6 +225,7 @@ passwordHandler.post('/change-password', changePasswordAuth, async (c) => {
 
     // F09: kill all outstanding access/refresh tokens issued before this change
     await bumpTokensValidAfter(c.env.CACHE, userId);
+    await revokeUserWebSocketSessions(c.env, userId);
 
     if (usingTempPasswordToken && jwtPayload?.jti) {
       const nowSeconds = Math.floor(Date.now() / 1000);

@@ -28,3 +28,31 @@ export async function revalidateWebSocketAccess(
     }
   }
 }
+
+/**
+ * Logout / password change: close every realtime socket the user holds (UserConnection and the
+ * conversation rooms it tracks). Sockets are not tagged with a token jti, so this ends all of the
+ * user's sessions, not only the one that logged out. Best-effort: never throws.
+ * CustomerConversationDO sockets are per conversation and unreachable from a user id; they remain
+ * bounded by token expiry.
+ */
+export async function revokeUserWebSocketSessions(
+  env: Pick<Bindings, 'USER_CONNECTION'> | undefined,
+  userId: string | number
+): Promise<void> {
+  const namespace = env?.USER_CONNECTION
+  if (!namespace) return
+  const id = String(userId)
+  try {
+    const response = await namespace.get(namespace.idFromName(id)).fetch(
+      new Request('https://internal/evict', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: id, revokeSessions: true })
+      })
+    )
+    if (!response.ok) throw new Error(`Eviction returned ${response.status}`)
+  } catch (error) {
+    console.error('[WebSocketAccess] Session revocation failed', { userId: id, error })
+  }
+}

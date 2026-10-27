@@ -1,4 +1,5 @@
 // 認證處理器 - 主要實現
+import { revokeUserWebSocketSessions } from '@/services/websocket-access-revocation';
 import { Hono, type Context } from 'hono';
 import { HTTP_STATUS } from '@/constants/http-status';
 import { globalErrorHandler } from '@/core/error-handler';
@@ -650,6 +651,9 @@ authHandler.post('/logout', jwtAuth, async (c) => {
         error: err instanceof Error ? err.message : String(err),
       });
     }
+
+    // Close the user's open WebSockets (best-effort: logged on failure, never fails logout)
+    if (user) await revokeUserWebSocketSessions(c.env, user.id);
 
     // 記錄登出活動
     if (user) {

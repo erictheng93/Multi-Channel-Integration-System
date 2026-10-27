@@ -316,7 +316,7 @@ export class RoomConnectionManager {
    * for a user, that user's sockets stay open and the access check is retried
    * in 30s, so a transient outage never mass-evicts the room.
    */
-  async evictUnauthorizedConnections(userIds?: string[]): Promise<{ evicted: number; deferred: boolean }> {
+  async evictUnauthorizedConnections(userIds?: string[], force = false): Promise<{ evicted: number; deferred: boolean }> {
     this.restoreHibernatedConnections();
     const auth = new WebSocketAuthService(this.ctx.env as Bindings);
     const decisions = new Map<string, boolean>();
@@ -324,6 +324,7 @@ export class RoomConnectionManager {
     let deferred = false;
     for (const connection of this.ctx.connections.values()) {
       if (userIds && !userIds.includes(connection.userId)) continue;
+      if (force) { revoked.push(connection); continue; } // session revoked: no access check
       if (!decisions.has(connection.userId)) {
         try {
           decisions.set(connection.userId, await auth.hasLiveConversationAccess(
@@ -371,12 +372,16 @@ export class RoomConnectionManager {
     if (!body || typeof body !== 'object' || Array.isArray(body)) {
       return new Response('Invalid eviction request', { status: 400 });
     }
-    const { userIds } = body as { userIds?: unknown };
+    const { userIds, force } = body as { userIds?: unknown; force?: unknown };
+    // force closes the listed users' sockets unconditionally, so it is never allowed without a user list.
+    if (force !== undefined && (force !== true || userIds === undefined)) {
+      return new Response('Invalid force', { status: 400 });
+    }
     if (userIds !== undefined && (!Array.isArray(userIds) ||
         !userIds.every(id => typeof id === 'string' && id.length > 0))) {
       return new Response('Invalid userIds', { status: 400 });
     }
-    const { evicted, deferred } = await this.evictUnauthorizedConnections(userIds as string[] | undefined);
+    const { evicted, deferred } = await this.evictUnauthorizedConnections(userIds as string[] | undefined, force === true);
     // Report surviving sockets so UserConnection can prune stale room registrations.
     const connectionIds = Array.from(this.ctx.connections.values())
       .filter(connection => !userIds || (userIds as string[]).includes(connection.userId))
