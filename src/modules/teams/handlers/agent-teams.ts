@@ -10,7 +10,7 @@ const log = createContextLogger('AgentTeams')
 import { eq, inArray } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/d1';
 import type { Bindings } from '@/types';
-import { AgentTeamsService, checkTeamRoleAssignment } from '@modules/teams/services/agent-teams-service';
+import { AgentTeamsService, checkTeamRoleAssignment, authorizeMembershipMutation } from '@modules/teams/services/agent-teams-service';
 import { jwtAuth, requireManagerOrAdmin, requireTeamRole } from '@/middleware/auth';
 import { requireIntId, getValidatedParam } from '@/middleware/param-validator';
 import { ActivityService, ACTIVITY_ACTIONS, RESOURCE_TYPES } from '@/modules/activities';
@@ -319,6 +319,11 @@ agentTeamsHandler.delete('/:agentId/leave/:teamId', jwtAuth, requireTeamRole('le
     const teamId = getValidatedParam<number>(c, 'teamId');
     const db = drizzle(c.env.DB);
 
+    const denial = await authorizeMembershipMutation(
+      new AgentTeamsService(c.env.DB, c.env), user, teamId, [agentId], { allowSelf: true }
+    );
+    if (denial) return c.json({ success: false, error: denial.error }, denial.status);
+
     // Step 1: Get team name for notification
     const [teamInfo] = await db
       .select({ name: teams.name })
@@ -424,6 +429,12 @@ agentTeamsHandler.put('/:agentId/role/:teamId', jwtAuth, requireTeamRole('lead',
     const { roleInTeam, isPrimary } = await c.req.json();
     const db = drizzle(c.env.DB);
     const service = new AgentTeamsService(c.env.DB, c.env);
+    // Rank check for every change (role or primary): only members strictly below the caller.
+    // A primary-only change on yourself is harmless, so it is allowed; a role change never is.
+    const rankDenial = await authorizeMembershipMutation(
+      service, user, teamId, [agentId], { allowSelf: roleInTeam === undefined }
+    );
+    if (rankDenial) return c.json({ success: false, error: rankDenial.error }, rankDenial.status);
     if (roleInTeam !== undefined) {
       const current = await service.getAgentTeamMembership(agentId, teamId);
       const denied = checkTeamRoleAssignment(user, teamId, roleInTeam, agentId, current?.roleInTeam);
@@ -480,6 +491,8 @@ agentTeamsHandler.put('/:agentId/primary/:teamId', jwtAuth, requireTeamRole('lea
     const teamId = getValidatedParam<number>(c, 'teamId');
     const db = drizzle(c.env.DB);
     const service = new AgentTeamsService(c.env.DB, c.env);
+    const denial = await authorizeMembershipMutation(service, user, teamId, [agentId], { allowSelf: true });
+    if (denial) return c.json({ success: false, error: denial.error }, denial.status);
     await service.setPrimaryTeam(agentId, teamId);
 
     // Fetch names for activity log

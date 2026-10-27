@@ -126,7 +126,18 @@ vi.mock('@/db/schema', () => ({
 import { AgentTeamsService } from '@/modules/teams/services/agent-teams-service';
 
 const NOW = '2026-03-27T00:00:00.000Z';
-const MOCK_D1 = {} as any;
+let d1Statements: { sql: string; binds: unknown[] }[] = [];
+let d1Batches = 0;
+const MOCK_D1 = {
+  prepare: (sql: string) => ({
+    bind: (...binds: unknown[]) => ({ sql, binds }),
+  }),
+  batch: async (stmts: { sql: string; binds: unknown[] }[]) => {
+    d1Batches++;
+    d1Statements.push(...stmts);
+    return [];
+  },
+} as any;
 
 describe('AgentTeamsService', () => {
   let service: AgentTeamsService;
@@ -134,6 +145,8 @@ describe('AgentTeamsService', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     dbOperations = [];
+    d1Statements = [];
+    d1Batches = 0;
     selectResultsQueue = [];
     insertResultsQueue = [];
     updateResultsQueue = [];
@@ -376,54 +389,53 @@ describe('AgentTeamsService', () => {
   // updateAgentTeamRole
   // ---------------------------------------------------------------------------
   describe('updateAgentTeamRole', () => {
-    it('updates roleInTeam without touching primary flag', async () => {
-      updateResultsQueue.push([
-        {
-          id: 1,
-          agentId: 'agent-1',
-          teamId: 10,
-          roleInTeam: 'lead',
-          isPrimary: false,
-          joinedAt: NOW,
-          createdAt: NOW,
-        },
-      ]);
+    const membershipRow = (over: Record<string, unknown> = {}) => ({
+      id: 1, agentId: 'agent-1', teamId: 10, roleInTeam: 'member', isPrimary: false,
+      joinedAt: NOW, createdAt: NOW, ...over,
+    });
+
+    it('updates roleInTeam in a single scoped statement, no primary clearing', async () => {
+      selectResultsQueue.push([membershipRow()]); // pre-check
+      selectResultsQueue.push([membershipRow({ roleInTeam: 'lead' })]); // re-read
 
       const result = await service.updateAgentTeamRole('agent-1', 10, { roleInTeam: 'lead' });
 
       expect(result.roleInTeam).toBe('lead');
-      expect(dbOperations).toContain('update:agent_teams');
-      // No extra unset-primary update
-      expect(dbOperations.filter(op => op === 'update:agent_teams')).toHaveLength(1);
+      expect(d1Statements).toHaveLength(1);
+      expect(d1Statements[0].sql).toContain('role_in_team = ?');
+      expect(d1Statements[0].sql).toContain('team_id = ?');
+      expect(d1Batches).toBe(1);
     });
 
-    it('unsets other primaries then updates when setting isPrimary true', async () => {
-      // First update: unset all primaries; second update: the actual set
-      updateResultsQueue.push(undefined); // unset
-      updateResultsQueue.push([
-        {
-          id: 1,
-          agentId: 'agent-1',
-          teamId: 10,
-          roleInTeam: 'member',
-          isPrimary: true,
-          joinedAt: NOW,
-          createdAt: NOW,
-        },
-      ]);
+    it('clears other primaries and sets this one in ONE batch when isPrimary is true', async () => {
+      selectResultsQueue.push([membershipRow()]);
+      selectResultsQueue.push([membershipRow({ isPrimary: true })]);
 
       const result = await service.updateAgentTeamRole('agent-1', 10, { isPrimary: true });
 
       expect(result.isPrimary).toBe(true);
-      expect(dbOperations.filter(op => op === 'update:agent_teams')).toHaveLength(2);
+      expect(d1Batches).toBe(1);
+      expect(d1Statements).toHaveLength(2);
+      expect(d1Statements[0].sql).toBe('UPDATE agent_teams SET is_primary = 0 WHERE agent_id = ?');
+      expect(d1Statements[1].sql).toContain('WHERE agent_id = ? AND team_id = ?');
     });
 
-    it('throws when membership not found', async () => {
-      updateResultsQueue.push([]); // returning() yields empty
+    it('performs NO write when the agent is not a member of this team (finding #6)', async () => {
+      selectResultsQueue.push([]); // membership pre-check finds nothing
 
       await expect(
-        service.updateAgentTeamRole('agent-x', 99, { roleInTeam: 'lead' })
+        service.updateAgentTeamRole('agent-x', 99, { isPrimary: true })
       ).rejects.toThrow('Membership not found');
+
+      expect(d1Statements).toHaveLength(0);
+      expect(d1Batches).toBe(0);
+    });
+
+    it('rejects an unknown role before touching the database', async () => {
+      await expect(
+        service.updateAgentTeamRole('agent-1', 10, { roleInTeam: 'owner' })
+      ).rejects.toThrow('Invalid roleInTeam');
+      expect(d1Batches).toBe(0);
     });
   });
 
@@ -431,33 +443,27 @@ describe('AgentTeamsService', () => {
   // setPrimaryTeam
   // ---------------------------------------------------------------------------
   describe('setPrimaryTeam', () => {
-    it('updates primary team flags correctly', async () => {
-      // SELECT inside getAgentTeamMembership
+    it('unsets then sets the primary flag in one atomic batch', async () => {
       selectResultsQueue.push([
-        {
-          id: 1,
-          agentId: 'agent-1',
-          teamId: 10,
-          roleInTeam: 'member',
-          isPrimary: false,
-          joinedAt: NOW,
-          createdAt: NOW,
-        },
+        { id: 1, agentId: 'agent-1', teamId: 10, roleInTeam: 'member', isPrimary: false, joinedAt: NOW, createdAt: NOW },
       ]);
 
       await service.setPrimaryTeam('agent-1', 10);
 
-      // Should have two updates: unset all, then set specific
-      expect(dbOperations.filter(op => op === 'update:agent_teams')).toHaveLength(2);
+      expect(d1Batches).toBe(1);
+      expect(d1Statements.map(s => s.sql)).toEqual([
+        'UPDATE agent_teams SET is_primary = 0 WHERE agent_id = ?',
+        'UPDATE agent_teams SET is_primary = 1 WHERE agent_id = ? AND team_id = ?',
+      ]);
     });
 
-    it('throws when agent is not a member of the team', async () => {
-      // getAgentTeamMembership returns null
+    it('throws and writes nothing when agent is not a member of the team', async () => {
       selectResultsQueue.push([]);
 
       await expect(service.setPrimaryTeam('agent-1', 99)).rejects.toThrow(
         'Agent is not a member of this team'
       );
+      expect(d1Batches).toBe(0);
     });
   });
 
