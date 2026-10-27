@@ -31,8 +31,8 @@ describe('SidebarNav', () => {
     expect(items).not.toContain('系統設定')
   })
 
-  it('keeps 群發訊息 right after 標籤管理 for a team lead', () => {
-    const items = labels('agent', { 1: 'lead' })
+  it('keeps 群發訊息 right after 標籤管理 for an agent with no team role', () => {
+    const items = labels('agent', {})
     expect(items.indexOf('群發訊息')).toBe(items.indexOf('標籤管理') + 1)
     expect(items).toContain('通知中心')
   })

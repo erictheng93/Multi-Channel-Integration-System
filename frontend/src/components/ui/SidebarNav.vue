@@ -140,15 +140,12 @@
 
   const navigationItems = computed(() => {
     const isAdmin = authStore.currentAgent?.role === 'admin'
-    const canBroadcast = isAdmin || Object.values(authStore.teamRoles).some(
-      (role) => role === 'lead' || role === 'supervisor'
-    )
     // Broadcast goes right after the tags item; insert by path, not index, so items added above it stay safe
     const withBroadcast = (items: NavItem[]) => items.flatMap((item) => item.path === '/tags'
       ? [item, { path: '/broadcasts', label: '\u7FA4\u767C\u8A0A\u606F', icon: SendIcon }]
       : [item]
     )
-    if (!isAdmin) { return canBroadcast ? withBroadcast(baseNavigationItems) : baseNavigationItems }
+    if (!isAdmin) { return withBroadcast(baseNavigationItems) }
     // 資料備份 is admin-only — inject it under 資料管理 for admins only
     return withBroadcast(adminNavigationItems.map((item) =>
       item.path === '/data'
