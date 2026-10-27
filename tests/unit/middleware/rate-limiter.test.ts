@@ -5,7 +5,8 @@ import {
   getLoginIdentifier,
   getLoginAccountIdentifier,
   loginRateLimiter,
-  loginAccountRateLimiter
+  loginAccountRateLimiter,
+  RATE_LIMIT_PRESETS
 } from '@/middleware/rate-limiter'
 
 /**
@@ -103,6 +104,14 @@ function fakeRateLimiterNamespace() {
 }
 
 describe('login rate limiting chain (lockout resistance)', () => {
+  const TIGHT = RATE_LIMIT_PRESETS.login.maxRequests
+  const CEILING = RATE_LIMIT_PRESETS.loginAccount.maxRequests
+
+  it('uses the agreed limits: 15 per 5 min per email+IP, 100 per 15 min per email', () => {
+    expect(RATE_LIMIT_PRESETS.login).toEqual({ maxRequests: 15, windowMs: 5 * 60 * 1000 })
+    expect(RATE_LIMIT_PRESETS.loginAccount).toEqual({ maxRequests: 100, windowMs: 15 * 60 * 1000 })
+  })
+
   const app = new Hono()
   app.post('/login', loginRateLimiter, loginAccountRateLimiter, (c) => c.json({ ok: true }))
 
@@ -120,18 +129,18 @@ describe('login rate limiting chain (lockout resistance)', () => {
   it('an attacker spamming a victim email cannot lock the victim out from another IP', async () => {
     const env = { RATE_LIMITER: fakeRateLimiterNamespace() }
     const statuses: number[] = []
-    for (let i = 0; i < 20; i++) {
+    for (let i = 0; i < TIGHT + 15; i++) {
       statuses.push((await attempt(env, 'victim@dacit.net', '198.51.100.9')).status)
     }
-    expect(statuses.filter((s) => s === 200)).toHaveLength(5)
-    expect(statuses.slice(5).every((s) => s === 429)).toBe(true)
+    expect(statuses.filter((s) => s === 200)).toHaveLength(TIGHT)
+    expect(statuses.slice(TIGHT).every((s) => s === 429)).toBe(true)
     // The real user (office IP) is unaffected.
     expect((await attempt(env, 'victim@dacit.net', '203.0.113.45')).status).toBe(200)
   })
 
   it('colleagues behind one NAT do not share a bucket', async () => {
     const env = { RATE_LIMITER: fakeRateLimiterNamespace() }
-    for (let i = 0; i < 5; i++) await attempt(env, 'a@dacit.net', '203.0.113.45')
+    for (let i = 0; i < TIGHT; i++) await attempt(env, 'a@dacit.net', '203.0.113.45')
     expect((await attempt(env, 'a@dacit.net', '203.0.113.45')).status).toBe(429)
     expect((await attempt(env, 'b@dacit.net', '203.0.113.45')).status).toBe(200)
   })
@@ -139,16 +148,16 @@ describe('login rate limiting chain (lockout resistance)', () => {
   it('distributed guessing across many IPs is capped by the per-account ceiling', async () => {
     const env = { RATE_LIMITER: fakeRateLimiterNamespace() }
     let allowed = 0
-    for (let i = 0; i < 100; i++) {
+    for (let i = 0; i < CEILING + 50; i++) {
       const res = await attempt(env, 'victim@dacit.net', `192.0.2.${i + 1}`)
       if (res.status === 200) allowed++
     }
-    expect(allowed).toBe(40)
+    expect(allowed).toBe(CEILING)
   })
 
   it('emails with dots are not truncated into a shared bucket', async () => {
     const env = { RATE_LIMITER: fakeRateLimiterNamespace() }
-    for (let i = 0; i < 5; i++) await attempt(env, 'john.smith@x.co.uk', '203.0.113.45')
+    for (let i = 0; i < TIGHT; i++) await attempt(env, 'john.smith@x.co.uk', '203.0.113.45')
     expect((await attempt(env, 'john.smith@x.co.uk', '203.0.113.45')).status).toBe(429)
     expect((await attempt(env, 'john.doe@x.co.uk', '203.0.113.45')).status).toBe(200)
   })

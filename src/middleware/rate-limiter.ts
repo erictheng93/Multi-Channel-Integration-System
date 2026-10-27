@@ -51,12 +51,14 @@ export const RATE_LIMIT_PRESETS = {
     windowMs: 60 * 1000,
   },
   login: {
-    maxRequests: 5,
+    maxRequests: 15,
     windowMs: 5 * 60 * 1000,
   },
   // Per-account ceiling across all IPs (distributed brute-force bound).
+  // ponytail: one IP can feed at most 45 per 15 min through the tight bucket, so a 3-IP attacker
+  // can still trip this and lock the account for 15 min; raise it, or add a known-device bypass, if that bites.
   loginAccount: {
-    maxRequests: 40,
+    maxRequests: 100,
     windowMs: 15 * 60 * 1000,
   },
   upload: {
@@ -325,7 +327,7 @@ export const loginRateLimiter = createRateLimiter({
 /**
  * Loose per-account ceiling across all IPs. Register AFTER loginRateLimiter so
  * a single attacker IP is stopped by its own tight bucket first and cannot burn
- * this shared ceiling faster than ~5 attempts per 5 minutes.
+ * this shared ceiling faster than ~15 attempts per 5 minutes.
  */
 export const loginAccountRateLimiter = createRateLimiter({
   ...RATE_LIMIT_PRESETS.loginAccount,
