@@ -6,7 +6,9 @@ import { BroadcastServiceError } from '@/modules/broadcast/types';
 const mocks = vi.hoisted(() => ({
   preview: vi.fn(),
   create: vi.fn(),
-  exists: vi.fn(),
+  findTitle: vi.fn(),
+  send: vi.fn(),
+  logActivity: vi.fn(async () => null),
   listRecipients: vi.fn(),
   getById: vi.fn(),
 }));
@@ -15,6 +17,8 @@ vi.mock('@/middleware/auth', () => ({
   jwtAuth: vi.fn((c, next) => {
     c.set('user', {
       id: 'agent-1',
+      displayName: 'Agent One',
+      email: 'agent1@example.com',
       role: 'agent',
       teamRoles: {}, // a plain agent: broadcasting no longer needs a lead/supervisor role
     });
@@ -31,7 +35,7 @@ vi.mock('@modules/broadcast/services/broadcast-service', () => ({
     return {
       preview: mocks.preview,
       create: mocks.create,
-      exists: mocks.exists,
+      findTitle: mocks.findTitle,
       listRecipients: mocks.listRecipients,
       getById: mocks.getById,
     };
@@ -39,7 +43,16 @@ vi.mock('@modules/broadcast/services/broadcast-service', () => ({
 }));
 
 vi.mock('@modules/broadcast/services/broadcast-sender-service', () => ({
-  BroadcastSenderService: vi.fn(),
+  BroadcastSenderService: vi.fn(function () {
+    return { send: mocks.send };
+  }),
+}));
+
+vi.mock('@modules/activities', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@modules/activities')>()),
+  ActivityService: vi.fn(function () {
+    return { logActivity: mocks.logActivity };
+  }),
 }));
 
 import broadcastRouter from '@/modules/broadcast/handlers/broadcast-main';
@@ -108,18 +121,18 @@ describe('broadcast preview route', () => {
 describe('broadcast recipient existence check', () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it('uses exists without loading or signing attachments on each page', async () => {
-    mocks.exists.mockResolvedValue(true);
+  it('uses findTitle without loading or signing attachments on each page', async () => {
+    mocks.findTitle.mockResolvedValue('通知');
     mocks.listRecipients.mockResolvedValue({ items: [], page: 2, total: 0 });
     const response = await broadcastRouter.request('/b-1/recipients?page=2&status=sent', {}, { DB: {} } as Bindings);
     expect(response.status).toBe(200);
-    expect(mocks.exists).toHaveBeenCalledWith('b-1', 'agent-1');
+    expect(mocks.findTitle).toHaveBeenCalledWith('b-1', 'agent-1');
     expect(mocks.listRecipients).toHaveBeenCalledWith('b-1', 2, 20, 'sent');
     expect(mocks.getById).not.toHaveBeenCalled();
   });
 
   it('returns 404 without listing recipients for missing or deleted broadcasts', async () => {
-    mocks.exists.mockResolvedValue(false);
+    mocks.findTitle.mockResolvedValue(null);
     const response = await broadcastRouter.request('/missing/recipients', {}, { DB: {} } as Bindings);
     expect(response.status).toBe(404);
     expect(mocks.listRecipients).not.toHaveBeenCalled();
@@ -137,10 +150,10 @@ describe('broadcast ownership scope', () => {
 
   it("refuses to send another user's draft before the sender runs", async () => {
     const { BroadcastSenderService } = await import('@modules/broadcast/services/broadcast-sender-service');
-    mocks.exists.mockResolvedValue(false);
+    mocks.findTitle.mockResolvedValue(null);
     const response = await broadcastRouter.request('/b-2/send', { method: 'POST' }, { DB: {} } as Bindings);
     expect(response.status).toBe(404);
-    expect(mocks.exists).toHaveBeenCalledWith('b-2', 'agent-1');
+    expect(mocks.findTitle).toHaveBeenCalledWith('b-2', 'agent-1');
     expect(BroadcastSenderService).not.toHaveBeenCalled();
   });
 });
@@ -205,5 +218,53 @@ describe('broadcast create route', () => {
     const response = await post({ title: 'Promo', content: 'Hi', tagIds: [1], attachments });
     expect(response.status).toBe(422);
     expect(mocks.create).not.toHaveBeenCalled();
+  });
+});
+
+describe('broadcast activity log', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('records who created a broadcast', async () => {
+    mocks.create.mockResolvedValue({ id: 'b-1', title: '通知', tagIds: [1], totalRecipients: 3 });
+    const response = await broadcastRouter.request('/', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title: '通知', content: 'Hi', tagIds: [1] }),
+    }, { DB: {} } as Bindings);
+    expect(response.status).toBe(201);
+    expect(mocks.logActivity).toHaveBeenCalledWith(expect.objectContaining({
+      userId: 'agent-1', userName: 'Agent One', userRole: 'agent',
+      action: 'broadcast_create', resourceType: 'broadcast', resourceId: 'b-1',
+      details: { title: '通知', tagIds: [1], totalRecipients: 3, imageCount: 0 },
+    }));
+  });
+
+  it('records who sent a broadcast and the outcome', async () => {
+    mocks.findTitle.mockResolvedValue('通知');
+    mocks.send.mockResolvedValue({
+      broadcastId: 'b-1', status: 'completed', totalRecipients: 3, sentCount: 2, failedCount: 1, skippedCount: 0,
+    });
+    const response = await broadcastRouter.request('/b-1/send', { method: 'POST' }, { DB: {} } as Bindings);
+    expect(response.status).toBe(200);
+    expect(mocks.logActivity).toHaveBeenCalledWith(expect.objectContaining({
+      userId: 'agent-1', action: 'broadcast_send', resourceId: 'b-1',
+      details: { title: '通知', status: 'completed', totalRecipients: 3, sentCount: 2, failedCount: 1, skippedCount: 0 },
+    }));
+  });
+
+  it('records a send attempt stopped by insufficient quota', async () => {
+    mocks.findTitle.mockResolvedValue('通知');
+    mocks.send.mockRejectedValue(new BroadcastServiceError('QUOTA_INSUFFICIENT', 'no quota', 409));
+    const response = await broadcastRouter.request('/b-1/send', { method: 'POST' }, { DB: {} } as Bindings);
+    expect(response.status).toBe(409);
+    expect(mocks.logActivity).toHaveBeenCalledWith(expect.objectContaining({
+      action: 'broadcast_send', details: { title: '通知', status: 'failed', errorCode: 'QUOTA_INSUFFICIENT' },
+    }));
+  });
+
+  it('does not log when another error stops the send', async () => {
+    mocks.findTitle.mockResolvedValue('通知');
+    mocks.send.mockRejectedValue(new BroadcastServiceError('INVALID_BROADCAST_STATUS', 'not draft', 409));
+    expect((await broadcastRouter.request('/b-1/send', { method: 'POST' }, { DB: {} } as Bindings)).status).toBe(409);
+    expect(mocks.logActivity).not.toHaveBeenCalled();
   });
 });

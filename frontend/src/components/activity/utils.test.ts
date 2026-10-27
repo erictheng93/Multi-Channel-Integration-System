@@ -422,3 +422,14 @@ describe('getRoleBadgeClasses', () => {
     expect(classes).toContain('green')
   })
 })
+
+describe('broadcast activity descriptions', () => {
+  const act = (action: string, details: Record<string, unknown>) =>
+    getActivityDescription({ action, details, resourceId: 'b-1' } as unknown as Parameters<typeof getActivityDescription>[0])
+
+  it('names the broadcast and its outcome', () => {
+    expect(act('broadcast_create', { title: '週年慶' })).toBe('建立群發「週年慶」')
+    expect(act('broadcast_send', { title: '週年慶', sentCount: 12 })).toBe('發送群發「週年慶」，成功 12 位')
+    expect(act('broadcast_send', { title: '週年慶', errorCode: 'QUOTA_INSUFFICIENT' })).toBe('發送群發「週年慶」失敗：LINE 額度不足')
+  })
+})

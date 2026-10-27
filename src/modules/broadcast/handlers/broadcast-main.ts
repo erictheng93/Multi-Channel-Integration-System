@@ -1,9 +1,10 @@
-import { Hono } from 'hono';
+import { Hono, type Context } from 'hono';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
 import type { Bindings, DbUser } from '@/types';
 import { createDbClient } from '@/db/drizzle-factory';
 import { jwtAuth } from '@/middleware/auth';
 import { errorResponse, successResponse, validationErrorResponse } from '@/utils/api-response';
+import { ActivityService, ACTIVITY_ACTIONS, RESOURCE_TYPES } from '@modules/activities';
 import { BroadcastService } from '@modules/broadcast/services/broadcast-service';
 import { BROADCAST_MAX_IMAGES } from '@modules/broadcast/services/broadcast-content';
 import { BroadcastSenderService } from '@modules/broadcast/services/broadcast-sender-service';
@@ -53,6 +54,12 @@ broadcastRouter.post('/', async (c) => {
   const service = new BroadcastService(createDbClient(c.env.DB), c.env);
   try {
     const broadcast = await service.create(parsed.input, String(user.id));
+    await logBroadcastActivity(c, user, ACTIVITY_ACTIONS.BROADCAST_CREATE, broadcast.id, {
+      title: broadcast.title,
+      tagIds: broadcast.tagIds,
+      totalRecipients: broadcast.totalRecipients,
+      imageCount: parsed.input.attachments.length,
+    });
     return successResponse(c, broadcast, 'Broadcast created', 201);
   } catch (error) {
     return handleBroadcastError(c, error);
@@ -93,7 +100,7 @@ broadcastRouter.get('/:id/recipients', async (c) => {
   }
 
   const service = new BroadcastService(createDbClient(c.env.DB), c.env);
-  if (!await service.exists(c.req.param('id'), broadcastOwnerScope(user))) {
+  if (await service.findTitle(c.req.param('id'), broadcastOwnerScope(user)) === null) {
     return errorResponse(c, { code: 'NOT_FOUND', message: 'Broadcast not found' }, 404);
   }
 
@@ -106,16 +113,34 @@ broadcastRouter.get('/:id/recipients', async (c) => {
 broadcastRouter.post('/:id/send', async (c) => {
   const user = c.get('user');
 
+  const id = c.req.param('id');
   const db = createDbClient(c.env.DB);
-  if (!await new BroadcastService(db, c.env).exists(c.req.param('id'), broadcastOwnerScope(user))) {
+  const title = await new BroadcastService(db, c.env).findTitle(id, broadcastOwnerScope(user));
+  if (title === null) {
     return errorResponse(c, { code: 'BROADCAST_NOT_FOUND', message: 'Broadcast not found' }, 404);
   }
 
   const sender = new BroadcastSenderService(db, c.env);
   try {
-    const stats = await sender.send(c.req.param('id'), user);
+    const stats = await sender.send(id, user);
+    await logBroadcastActivity(c, user, ACTIVITY_ACTIONS.BROADCAST_SEND, id, {
+      title,
+      status: stats.status,
+      totalRecipients: stats.totalRecipients,
+      sentCount: stats.sentCount,
+      failedCount: stats.failedCount,
+      skippedCount: stats.skippedCount,
+    });
     return successResponse(c, stats, 'Broadcast sent');
   } catch (error) {
+    // QUOTA_INSUFFICIENT finalizes the broadcast without delivering; record the attempt too.
+    if (error instanceof BroadcastServiceError && error.code === 'QUOTA_INSUFFICIENT') {
+      await logBroadcastActivity(c, user, ACTIVITY_ACTIONS.BROADCAST_SEND, id, {
+        title,
+        status: 'failed',
+        errorCode: error.code,
+      });
+    }
     return handleBroadcastError(c, error);
   }
 });
@@ -131,6 +156,27 @@ broadcastRouter.get('/:id', async (c) => {
   }
   return successResponse(c, broadcast, 'Broadcast retrieved');
 });
+
+/** Who created or sent a broadcast; awaited so the Worker cannot drop it after responding. */
+async function logBroadcastActivity(
+  c: Context<{ Bindings: Bindings }>,
+  user: DbUser,
+  action: typeof ACTIVITY_ACTIONS.BROADCAST_CREATE | typeof ACTIVITY_ACTIONS.BROADCAST_SEND,
+  broadcastId: string,
+  details: Record<string, unknown>
+): Promise<void> {
+  await new ActivityService(c.env.DB).logActivity({
+    userId: String(user.id),
+    userName: user.displayName || user.email,
+    userRole: user.role,
+    action,
+    resourceType: RESOURCE_TYPES.BROADCAST,
+    resourceId: broadcastId,
+    details,
+    ipAddress: c.req.header('CF-Connecting-IP'),
+    userAgent: c.req.header('User-Agent'),
+  });
+}
 
 /** Non-admins only see and send their own broadcasts; null = everyone's (admin). */
 function broadcastOwnerScope(user: DbUser): string | null {

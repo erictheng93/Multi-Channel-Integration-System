@@ -46,7 +46,7 @@
 | `stores/broadcasts.ts`(Pinia) | 狀態管理:`fetchPreview`、`createAndSend`、`fetchList`、`fetchDetail`、`fetchRecipients`,以及 `loading`/`previewLoading`/`sending`/`error` 旗標 |
 | `api/broadcasts.ts` | 對應六個後端端點的 API client |
 
-側邊欄「群發訊息」入口對權限不足者隱藏(見下方權限規則)。
+側邊欄「群發訊息」入口對所有登入使用者顯示(見下方權限規則)。
 
 ## 5. 主要 API 端點
 
@@ -61,7 +61,9 @@
 | GET | `/api/broadcasts/:id` | 單筆詳情 |
 | GET | `/api/broadcasts/:id/recipients` | 收件人明細(分頁,可 `?status=` 過濾) |
 
-**權限**:`user.role === 'admin'` 或任一團隊角色為 `lead`/`supervisor`,否則所有端點回 `403`(`requireBroadcastPermission`,`handlers/broadcast-main.ts`)。
+**權限**:任何登入的客服都可群發(2026-10-27 起,不再要求 `lead`/`supervisor`)。受眾依標籤決定,不分客戶所屬團隊。非 admin 只看得到、只能發送自己建立的群發(其他人的回 `404`);admin 看得到全部。
+
+**操作紀錄**:建立寫入 `broadcast_create`、發送寫入 `broadcast_send`(資源類型 `broadcast`),記錄操作者、標題與發送結果(成功/失敗/略過人數;配額不足的嘗試也會記錄),可在活動紀錄頁以「群發」篩選。
 
 ## 6. 涉及的 Durable Objects
 
@@ -82,7 +84,8 @@
 | Preview 顯示人數與預期不符 | 確認標籤 `is_active=1` 且客戶未被軟刪;快照時間點與查詢時間點可能有落差 |
 | 收件人一直是 `skipped: no_channel_credentials` | 檢查該客戶所屬團隊是否有啟用中的 LINE `channelIntegrations`,或確認 `env.LINE_CHANNEL_ACCESS_TOKEN` fallback 是否設定 |
 | 送出後對話沒看到訊息 | 確認該客戶本來就有(未軟刪的)對話——無對話者不會建立新對話,只會記錄在 `broadcast_recipients` |
-| 401/403 存不到群發頁 | 確認使用者是 `admin` 或在至少一個團隊有 `lead`/`supervisor` 角色 |
+| 401 存不到群發頁 | 確認登入未過期;任何客服都有權限 |
+| 看不到別人的群發 | 設計如此:非 admin 只看得到自己建立的群發 |
 
 ---
 

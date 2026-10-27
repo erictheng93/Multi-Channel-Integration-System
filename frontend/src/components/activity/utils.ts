@@ -160,6 +160,16 @@ const ACTION_ICON_MAP: Record<string, ActionIconStyle> = {
     colorClass: 'text-[#FF3B30]',
     icon: UserIcon,
   },
+  'broadcast_create': {
+    bgClass: 'bg-green-50',
+    colorClass: 'text-[#34C759]',
+    icon: ChatIcon,
+  },
+  'broadcast_send': {
+    bgClass: 'bg-green-50',
+    colorClass: 'text-[#34C759]',
+    icon: ChatIcon,
+  },
 }
 
 const DEFAULT_ICON_STYLE: ActionIconStyle = {
@@ -218,6 +228,12 @@ const FIELD_LABELS: Record<string, string> = {
   description: '描述',
   status: '狀態',
   password: '密碼',
+  totalRecipients: '收件人數',
+  sentCount: '已發送',
+  failedCount: '發送失敗',
+  skippedCount: '略過',
+  imageCount: '圖片數',
+  errorCode: '錯誤代碼',
 }
 
 function humanizeKey(key: string): string {
@@ -235,6 +251,7 @@ const DESCRIPTION_FIELDS = new Set([
   'targetName', 'teamName', 'addedAgentName', 'removedAgentName',
   'tagName', 'assigneeName', 'fromTeamName', 'toTeamName',
   'previousTeamName', 'customerName', 'updatedAgentName', 'invitedEmail',
+  'title',
 ])
 
 function isIdField(key: string): boolean {
@@ -462,6 +479,16 @@ const ACTION_TEMPLATES: Record<string, DescriptionResolver> = {
   qr_code_generate: () => d('產生 QR Code'),
   delayed_message_schedule: () => d('排程延遲訊息'),
   delayed_message_cancel: () => d('取消延遲訊息'),
+  broadcast_create: (det) => {
+    const t = name(det, 'title')
+    return t ? `建立群發「${t}」` : '建立群發'
+  },
+  broadcast_send: (det) => {
+    const t = name(det, 'title')
+    const base = t ? `發送群發「${t}」` : '發送群發'
+    if (det['errorCode'] === 'QUOTA_INSUFFICIENT') {return `${base}失敗：LINE 額度不足`}
+    return typeof det['sentCount'] === 'number' ? `${base}，成功 ${det['sentCount']} 位` : base
+  },
   file_upload: () => d('上傳檔案'),
   file_delete: () => d('刪除檔案'),
   settings_update: () => d('更新系統設定'),
