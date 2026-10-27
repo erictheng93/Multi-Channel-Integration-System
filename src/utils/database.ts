@@ -383,24 +383,6 @@ export async function getMessageStats(
 }
 
 /**
- * 獲取訊息的回覆鏈
- */
-export async function getMessageReplies(
-  db: D1Database,
-  messageId: string
-): Promise<DbMessage[]> {
-  const drizzleDb = createDbClient(db);
-  
-  const replies = await drizzleDb
-    .select()
-    .from(messages)
-    .where(eq(messages.replyToMessageId, messageId))
-    .orderBy(asc(messages.createdAt));
-
-  return replies.map(convertMessage);
-}
-
-/**
  * 獲取訊息線程
  */
 export async function getMessageThread(
@@ -416,51 +398,6 @@ export async function getMessageThread(
     .orderBy(asc(messages.createdAt));
 
   return threadMessages.map(convertMessage);
-}
-
-/**
- * 獲取對話的訊息樹狀結構
- */
-export async function getConversationMessageTree(
-  db: D1Database,
-  conversationId: string
-): Promise<{
-  messages: DbMessage[];
-  messageMap: Map<string, DbMessage>;
-  replyMap: Map<string, DbMessage[]>;
-}> {
-  const drizzleDb = createDbClient(db);
-
-  // 獲取對話的所有訊息
-  const messageList = await drizzleDb
-    .select()
-    .from(messages)
-    .where(eq(messages.conversationId, conversationId))
-    .orderBy(asc(messages.createdAt));
-
-  const messageMap = new Map<string, DbMessage>();
-  const replyMap = new Map<string, DbMessage[]>();
-
-  const convertedMessages = messageList.map(convertMessage);
-  
-  // 建立訊息映射
-  convertedMessages.forEach(message => {
-    messageMap.set(message.id, message);
-    
-    // 如果是回覆訊息，加入回覆映射
-    if (message.replyToMessageId) {
-      if (!replyMap.has(message.replyToMessageId)) {
-        replyMap.set(message.replyToMessageId, []);
-      }
-      replyMap.get(message.replyToMessageId)!.push(message);
-    }
-  });
-
-  return {
-    messages: convertedMessages,
-    messageMap,
-    replyMap
-  };
 }
 
 /**
