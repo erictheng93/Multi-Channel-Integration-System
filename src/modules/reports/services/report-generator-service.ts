@@ -1,6 +1,7 @@
 // Report Generator Service
 // Handles report data generation, querying, formatting and serialization
 
+import { escapeCsvField } from '@/utils/csv';
 import type { Bindings } from '@/types';
 import type { drizzle } from 'drizzle-orm/d1';
 import { createContextLogger } from '@/utils/logger'
@@ -611,14 +612,14 @@ export class ReportGeneratorService {
 
   private convertToCSV(data: FormattedReportData): string {
     const lines: string[] = [];
-    lines.push(`Report: ${data.reportInfo.title}`);
-    lines.push(`Generated: ${data.reportInfo.generatedAt}`);
+    lines.push(`Report,${escapeCsvField(data.reportInfo.title)}`);
+    lines.push(`Generated,${escapeCsvField(data.reportInfo.generatedAt)}`);
     lines.push('');
 
     if (isRecord(data.data) && isRecord(data.data.summary)) {
       lines.push('Summary');
       Object.entries(data.data.summary).forEach(([key, value]) => {
-        lines.push(`${key},${value}`);
+        lines.push(`${escapeCsvField(key)},${escapeCsvField(value)}`);
       });
     }
 
