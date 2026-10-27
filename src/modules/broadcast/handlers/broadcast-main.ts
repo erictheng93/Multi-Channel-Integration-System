@@ -3,7 +3,7 @@ import type { ContentfulStatusCode } from 'hono/utils/http-status';
 import type { Bindings, DbUser } from '@/types';
 import { createDbClient } from '@/db/drizzle-factory';
 import { jwtAuth } from '@/middleware/auth';
-import { errorResponse, forbiddenResponse, successResponse, validationErrorResponse } from '@/utils/api-response';
+import { errorResponse, successResponse, validationErrorResponse } from '@/utils/api-response';
 import { BroadcastService } from '@modules/broadcast/services/broadcast-service';
 import { BROADCAST_MAX_IMAGES } from '@modules/broadcast/services/broadcast-content';
 import { BroadcastSenderService } from '@modules/broadcast/services/broadcast-sender-service';
@@ -20,10 +20,6 @@ const broadcastRouter = new Hono<{ Bindings: Bindings }>();
 broadcastRouter.use('/*', jwtAuth);
 
 broadcastRouter.post('/preview', async (c) => {
-  const permission = requireBroadcastPermission(c.get('user'));
-  if (!permission.allowed) {
-    return forbiddenResponse(c, permission.message);
-  }
 
   const parsed = await parsePreviewInput(c.req.json());
   if (!parsed.ok) {
@@ -48,10 +44,6 @@ broadcastRouter.post('/preview', async (c) => {
 
 broadcastRouter.post('/', async (c) => {
   const user = c.get('user');
-  const permission = requireBroadcastPermission(user);
-  if (!permission.allowed) {
-    return forbiddenResponse(c, permission.message);
-  }
 
   const parsed = await parseCreateInput(c.req.json());
   if (!parsed.ok) {
@@ -69,10 +61,6 @@ broadcastRouter.post('/', async (c) => {
 
 broadcastRouter.get('/', async (c) => {
   const user = c.get('user');
-  const permission = requireBroadcastPermission(user);
-  if (!permission.allowed) {
-    return forbiddenResponse(c, permission.message);
-  }
 
   const service = new BroadcastService(createDbClient(c.env.DB), c.env);
   const page = parsePositiveInt(c.req.query('page'), 1);
@@ -83,20 +71,12 @@ broadcastRouter.get('/', async (c) => {
 
 // Registered before '/:id' so 'line-quota' is not captured as a broadcast id.
 broadcastRouter.get('/line-quota', async (c) => {
-  const permission = requireBroadcastPermission(c.get('user'));
-  if (!permission.allowed) {
-    return forbiddenResponse(c, permission.message);
-  }
 
   const service = new LineQuotaMonitorService(createDbClient(c.env.DB), c.env);
   return successResponse(c, await service.getSnapshot(), 'LINE quota snapshot retrieved');
 });
 
 broadcastRouter.post('/line-quota/refresh', async (c) => {
-  const permission = requireBroadcastPermission(c.get('user'));
-  if (!permission.allowed) {
-    return forbiddenResponse(c, permission.message);
-  }
 
   const service = new LineQuotaMonitorService(createDbClient(c.env.DB), c.env);
   return successResponse(c, await service.refresh('manual'), 'LINE quota refreshed');
@@ -104,10 +84,6 @@ broadcastRouter.post('/line-quota/refresh', async (c) => {
 
 broadcastRouter.get('/:id/recipients', async (c) => {
   const user = c.get('user');
-  const permission = requireBroadcastPermission(user);
-  if (!permission.allowed) {
-    return forbiddenResponse(c, permission.message);
-  }
 
   const status = parseRecipientStatus(c.req.query('status'));
   if (status.invalid) {
@@ -129,10 +105,6 @@ broadcastRouter.get('/:id/recipients', async (c) => {
 
 broadcastRouter.post('/:id/send', async (c) => {
   const user = c.get('user');
-  const permission = requireBroadcastPermission(user);
-  if (!permission.allowed) {
-    return forbiddenResponse(c, permission.message);
-  }
 
   const db = createDbClient(c.env.DB);
   if (!await new BroadcastService(db, c.env).exists(c.req.param('id'), broadcastOwnerScope(user))) {
@@ -150,10 +122,6 @@ broadcastRouter.post('/:id/send', async (c) => {
 
 broadcastRouter.get('/:id', async (c) => {
   const user = c.get('user');
-  const permission = requireBroadcastPermission(user);
-  if (!permission.allowed) {
-    return forbiddenResponse(c, permission.message);
-  }
 
   const service = new BroadcastService(createDbClient(c.env.DB), c.env);
   const broadcast = await service.getById(c.req.param('id'));
@@ -163,20 +131,6 @@ broadcastRouter.get('/:id', async (c) => {
   }
   return successResponse(c, broadcast, 'Broadcast retrieved');
 });
-
-function requireBroadcastPermission(user: DbUser): { allowed: true } | { allowed: false; message: string } {
-  if (user.role === 'admin') {
-    return { allowed: true };
-  }
-
-  const hasBroadcastRole = Object.values(user.teamRoles ?? {}).some(
-    (role) => role === 'lead' || role === 'supervisor'
-  );
-
-  return hasBroadcastRole
-    ? { allowed: true }
-    : { allowed: false, message: 'Broadcast messaging requires admin, lead, or supervisor role' };
-}
 
 /** Non-admins only see and send their own broadcasts; null = everyone's (admin). */
 function broadcastOwnerScope(user: DbUser): string | null {
