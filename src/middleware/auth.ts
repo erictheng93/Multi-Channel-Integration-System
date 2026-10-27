@@ -153,7 +153,19 @@ export async function validateAccessToken(
     });
   }
 
-  return { payload, user };
+  // The signed claims for role and team membership are only as fresh as the
+  // token (up to 2h). Authorization must follow the row we just loaded, so a
+  // demoted admin or a removed team member loses access on the next request.
+  // Identity and token fields (userId, jti, iat, exp, type) stay as signed.
+  const freshPayload: JWTPayload = {
+    ...payload,
+    role: user.role,
+    primaryTeamId: user.primaryTeamId ?? undefined,
+    allowedTeamIds: user.allowedTeamIds ?? [],
+    teamRoles: user.teamRoles ?? {}
+  };
+
+  return { payload: freshPayload, user };
 }
 
 // ======================== Context 變數類型定義 ========================
