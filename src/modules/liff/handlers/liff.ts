@@ -7,7 +7,7 @@ import { HTTP_STATUS } from '@/constants/http-status';
 import { globalErrorHandler } from '@/core/error-handler';
 import type { Bindings } from '@/types';
 import { createDbClient } from '@/db/drizzle-factory';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, isNull } from 'drizzle-orm';
 import { customers, conversations, teams } from '@/db/schema';
 import { v4 as uuidv4 } from 'uuid';
 import { createContextLogger } from '@/utils/logger';
@@ -16,6 +16,50 @@ import { findCustomerConversation, getReopenStatus } from '@/services/customer-c
 import { verifyLiffIdToken } from './line-id-token';
 
 const log = createContextLogger('LIFF');
+
+/** Body teamId as a positive integer; strings like "01" would otherwise match team 1 in SQLite. */
+function parseTeamId(value: unknown): number | null {
+  if (typeof value === 'number') {
+    return Number.isInteger(value) && value > 0 ? value : null;
+  }
+  return typeof value === 'string' && /^[1-9]\d*$/.test(value) ? Number(value) : null;
+}
+
+const activeTeam = (teamId: number) => and(eq(teams.id, teamId), eq(teams.isActive, true), isNull(teams.deletedAt));
+
+const WELCOME_WINDOW_MS = 300_000;
+// ponytail: one RateLimiterDO shard for every welcome; shard by user if LIFF traffic ever needs it.
+const WELCOME_LIMITER_SHARD = 'ratelimit:liff-welcome';
+
+/**
+ * Claims ('check') or releases ('reset') the one welcome push a LINE user may trigger per
+ * 5 minutes, whatever the team. The DO serialises requests, so a burst of concurrent calls
+ * claims once, which a KV get/put race cannot guarantee. Fails closed: every push spends
+ * OA quota. Without the binding (tests, local) only the KV marker dedupes.
+ */
+async function welcomeLimiter(env: Bindings, lineUserId: string, action: 'check' | 'reset'): Promise<boolean> {
+  const ns = env.RATE_LIMITER;
+  if (!ns) {
+    return true;
+  }
+  try {
+    const res = await ns.get(ns.idFromName(WELCOME_LIMITER_SHARD)).fetch('https://rate-limiter.internal/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action,
+        clientId: `liff-welcome:${lineUserId}`,
+        config: { maxRequests: 1, windowMs: WELCOME_WINDOW_MS },
+      }),
+    });
+    return res.ok;
+  } catch (error) {
+    log.warn('Welcome limiter unavailable; skipping push', {
+      error: error instanceof Error ? error.message : String(error)
+    });
+    return false;
+  }
+}
 
 const liffHandler = new Hono<{ Bindings: Bindings }>();
 
@@ -95,7 +139,7 @@ liffHandler.get('/teams/:teamId', async (c) => {
     const team = await db
       .select()
       .from(teams)
-      .where(eq(teams.id, teamId))
+      .where(activeTeam(teamId))
       .get();
 
     if (!team) {
@@ -123,7 +167,8 @@ liffHandler.get('/teams/:teamId', async (c) => {
 liffHandler.post('/assign-team', async (c) => {
   try {
     const body = await c.req.json();
-    const { teamId, displayName } = body;
+    const { displayName } = body;
+    const teamId = parseTeamId(body.teamId);
 
     // Identity comes from the LINE-verified ID token, never from the body.
     const lineUserId = await verifyLiffIdToken(body.idToken, c.env.LINE_LIFF_ID);
@@ -140,7 +185,7 @@ liffHandler.post('/assign-team', async (c) => {
     const team = await db
       .select()
       .from(teams)
-      .where(eq(teams.id, teamId))
+      .where(activeTeam(teamId))
       .get();
 
     if (!team) {
@@ -285,7 +330,7 @@ liffHandler.post('/assign-team', async (c) => {
 liffHandler.post('/welcome', async (c) => {
   try {
     const body = await c.req.json();
-    const { teamId } = body;
+    const teamId = parseTeamId(body.teamId);
 
     const lineUserId = await verifyLiffIdToken(body.idToken, c.env.LINE_LIFF_ID);
     if (!lineUserId) {
@@ -301,7 +346,7 @@ liffHandler.post('/welcome', async (c) => {
     const team = await db
       .select()
       .from(teams)
-      .where(eq(teams.id, teamId))
+      .where(activeTeam(teamId))
       .get();
 
     if (!team) {
@@ -463,10 +508,10 @@ liffHandler.post('/welcome', async (c) => {
       });
     }
 
-    // Dedupe pushes: at most one welcome per verified user+team per 5 minutes.
-    // ponytail: KV get/put is not atomic; a tight race can send 2, not unbounded.
-    const dedupeKey = `liff:welcome:${lineUserId}:${teamId}`;
-    if (await c.env.CACHE.get(dedupeKey)) {
+    // Dedupe pushes: at most one welcome per verified user per 5 minutes, across teams,
+    // so cycling teamId cannot multiply quota-counted pushes.
+    const dedupeKey = `liff:welcome:${lineUserId}`;
+    if (await c.env.CACHE.get(dedupeKey) || !await welcomeLimiter(c.env, lineUserId, 'check')) {
       return c.json({ success: true, data: { message: '歡迎消息已發送' } });
     }
 
@@ -498,6 +543,7 @@ liffHandler.post('/welcome', async (c) => {
     if (!response.ok) {
       const errorText = await response.text();
       log.error('LINE API error', { error: errorText });
+      await welcomeLimiter(c.env, lineUserId, 'reset'); // a failed push stays retryable
       return c.json({ success: false, error: '發送歡迎消息失敗' }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
 
