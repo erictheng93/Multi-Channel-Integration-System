@@ -71,6 +71,11 @@ router.get('/', async (c) => {
       // Lets the DO close the socket at token expiry (sibling DOs do the same).
       url.searchParams.delete('tokenExp');
       if (typeof payload.exp === 'number') url.searchParams.set('tokenExp', String(payload.exp));
+      // Lets the DO's periodic re-check close the socket after logout (jti) or a password change (iat).
+      for (const name of ['tokenJti', 'tokenIat', 'tokenIatMs']) url.searchParams.delete(name);
+      if (typeof payload.jti === 'string') url.searchParams.set('tokenJti', payload.jti);
+      if (typeof payload.iat === 'number') url.searchParams.set('tokenIat', String(payload.iat));
+      if (typeof payload.iatMs === 'number') url.searchParams.set('tokenIatMs', String(payload.iatMs));
 
       const modifiedRequest = new Request(url.toString(), c.req.raw);
 

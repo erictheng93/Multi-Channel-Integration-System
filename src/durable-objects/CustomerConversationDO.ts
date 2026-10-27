@@ -6,6 +6,7 @@ import { DurableObject } from 'cloudflare:workers';
 import type { Bindings } from '../types';
 import { nowMs } from '@/utils/timestamp'
 import { WebSocketAuthService } from '@/services/websocket-auth-service'
+import { isIssuedBeforeTokenEpoch } from '@/utils/auth-jwt'
 
 /**
  * Session data structure for validation
@@ -57,6 +58,14 @@ interface ConnectionInfo {
   connectedAt: number;
   /** Access-token expiry, seconds since epoch (absent for legacy sockets). */
   tokenExp?: number;
+  /** Access-token identity, so the periodic re-check sees logout / password change (absent for legacy sockets). */
+  token?: SocketToken;
+}
+
+interface SocketToken {
+  jti: string;
+  iat?: number;
+  iatMs?: number;
 }
 
 interface ConnectionAttachment {
@@ -67,6 +76,7 @@ interface ConnectionAttachment {
   conversationId: string;
   connectedAt: number;
   tokenExp?: number;
+  token?: SocketToken;
 }
 
 /**
@@ -147,7 +157,8 @@ export class CustomerConversationDO extends DurableObject<Bindings> {
         role: attachment.role,
         conversationId: attachment.conversationId,
         connectedAt: attachment.connectedAt,
-        tokenExp: attachment.tokenExp
+        tokenExp: attachment.tokenExp,
+        token: attachment.token
       });
 
       if (!this.conversationId) {
@@ -167,7 +178,8 @@ export class CustomerConversationDO extends DurableObject<Bindings> {
     role: string,
     conversationId: string,
     connectedAt: number,
-    tokenExp?: number
+    tokenExp?: number,
+    token?: SocketToken
   ): ConnectionAttachment {
     return {
       connectionId,
@@ -176,7 +188,8 @@ export class CustomerConversationDO extends DurableObject<Bindings> {
       role,
       conversationId,
       connectedAt,
-      tokenExp
+      tokenExp,
+      token
     };
   }
 
@@ -190,7 +203,8 @@ export class CustomerConversationDO extends DurableObject<Bindings> {
       role: attachment.role,
       conversationId: attachment.conversationId,
       connectedAt: attachment.connectedAt,
-      tokenExp: attachment.tokenExp
+      tokenExp: attachment.tokenExp,
+      token: attachment.token
     });
   }
 
@@ -248,6 +262,12 @@ export class CustomerConversationDO extends DurableObject<Bindings> {
         const validatedDisplayName = url.searchParams.get('validatedDisplayName');
         const tokenExp = Number(url.searchParams.get('tokenExp'));
         const tokenExpiresAt = Number.isFinite(tokenExp) && tokenExp > 0 ? tokenExp : undefined;
+        const tokenJti = url.searchParams.get('tokenJti');
+        const positive = (name: string) => {
+          const v = Number(url.searchParams.get(name));
+          return Number.isFinite(v) && v > 0 ? v : undefined;
+        };
+        const token = tokenJti ? { jti: tokenJti, iat: positive('tokenIat'), iatMs: positive('tokenIatMs') } : undefined;
 
         this.conversationId = conversationId;
 
@@ -258,7 +278,8 @@ export class CustomerConversationDO extends DurableObject<Bindings> {
             validatedRole || 'agent',
             validatedDisplayName || 'User',
             conversationId,
-            tokenExpiresAt
+            tokenExpiresAt,
+            token
           );
         }
 
@@ -419,7 +440,8 @@ export class CustomerConversationDO extends DurableObject<Bindings> {
     role: string,
     displayName: string,
     conversationId: string,
-    tokenExp?: number
+    tokenExp?: number,
+    token?: SocketToken
   ): Promise<Response> {
     const webSocketPair = new WebSocketPair();
     const [client, server] = Object.values(webSocketPair);
@@ -443,7 +465,8 @@ export class CustomerConversationDO extends DurableObject<Bindings> {
       role,
       conversationId,
       connectedAt,
-      tokenExp
+      tokenExp,
+      token
     );
 
     this.addHibernatableConnection(server, attachment);
@@ -530,7 +553,16 @@ export class CustomerConversationDO extends DurableObject<Bindings> {
           deferred = true;
         }
       }
-      if (!decisions.get(key)) revoked.push(conn);
+      if (!decisions.get(key)) { revoked.push(conn); continue; }
+      // Logout revokes the jti; a password change moves the token epoch. Both end the socket here.
+      if (conn.token) {
+        try {
+          if (await this.isSocketTokenRevoked(conn.userId, conn.token)) revoked.push(conn);
+        } catch (error) {
+          console.error('[CustomerConversationDO] Revocation check unavailable, retrying later:', error);
+          deferred = true;
+        }
+      }
     }
     if (deferred) {
       // Retry chain stops by count: backoff 30s, 60s, 120s, 240s, then after
@@ -547,6 +579,11 @@ export class CustomerConversationDO extends DurableObject<Bindings> {
     }
     await this.closeConnections(revoked, 4403, 'Access revoked');
     return deferred;
+  }
+
+  private async isSocketTokenRevoked(userId: string, token: SocketToken): Promise<boolean> {
+    if (await this.env.CACHE.get(`revoked:${token.jti}`)) return true;
+    return isIssuedBeforeTokenEpoch(this.env.CACHE, { userId, iat: token.iat, iatMs: token.iatMs });
   }
 
   /** Earliest of token expiry / access re-check. Stops when no socket remains. */
