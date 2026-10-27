@@ -11,7 +11,7 @@ import { eq, inArray } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/d1';
 import type { Bindings } from '@/types';
 import { AgentTeamsService, checkTeamRoleAssignment, authorizeMembershipMutation } from '@modules/teams/services/agent-teams-service';
-import { jwtAuth, requireManagerOrAdmin, requireTeamRole } from '@/middleware/auth';
+import { jwtAuth, requireManagerOrAdmin, requireTeamAccess, requireTeamRole } from '@/middleware/auth';
 import { requireIntId, getValidatedParam } from '@/middleware/param-validator';
 import { ActivityService, ACTIVITY_ACTIONS, RESOURCE_TYPES } from '@/modules/activities';
 import { triggerAgentRemovedFromTeamNotification, triggerTeamMemberChangeEvent } from '@/utils/notification-trigger';
@@ -35,7 +35,7 @@ const agentTeamsHandler = new Hono<{ Bindings: Bindings }>();
  * GET /api/teams/agent-teams/team/:teamId/members
  * NOTE: This route MUST be registered before /:agentId to prevent interception
  */
-agentTeamsHandler.get('/team/:teamId/members', jwtAuth, requireIntId('teamId'), async (c) => {
+agentTeamsHandler.get('/team/:teamId/members', jwtAuth, requireIntId('teamId'), requireTeamAccess('teamId'), async (c) => {
   try {
     const teamId = getValidatedParam<number>(c, 'teamId');
     const service = new AgentTeamsService(c.env.DB, c.env);
