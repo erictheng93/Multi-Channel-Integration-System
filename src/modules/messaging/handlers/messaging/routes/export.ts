@@ -16,6 +16,7 @@ import { messages, conversations, agents, customers, customerNameSql } from '@/d
 import { jwtAuth } from '@/middleware/auth';
 import { BULK_OPERATION_LIMITS } from '@/constants/limits';
 import { nowISO, nowMs } from '@/utils/timestamp'
+import { escapeCsvField } from '@/utils/csv';
 import { exportContracts } from '@shared/api-contracts';
 import { contractJson } from '@/utils/api-contract-response';
 
@@ -305,13 +306,13 @@ exportRoutes.get('/export', jwtAuth, async (c) => {
           msg.id,
           msg.conversationId,
           msg.senderType,
-          `"${(getSenderName(msg)).replace(/"/g, '""')}"`,
-          `"${msg.content.replace(/"/g, '""')}"`,
+          getSenderName(msg),
+          msg.content,
           msg.messageType,
-          msg.sentAt || '',
-          msg.deliveryStatus || '',
-          msg.createdAt || ''
-        ].join(',');
+          msg.sentAt || null,
+          msg.deliveryStatus || null,
+          msg.createdAt || null
+        ].map(escapeCsvField).join(',');
       });
 
       const csvContent = [csvHeaders, ...csvRows].join('\n');
