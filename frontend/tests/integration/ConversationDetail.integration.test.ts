@@ -14,6 +14,19 @@ import { createRouter, createMemoryHistory } from 'vue-router'
 import { createPinia, setActivePinia } from 'pinia'
 import { ref } from 'vue'
 import ConversationDetail from '@/views/ConversationDetail.vue'
+import { useConversationController } from '@/composables/conversation'
+
+const replyWindowMock = vi.hoisted(() => ({ refresh: vi.fn(), hide: vi.fn() }))
+vi.mock('@/composables/useReplyWindow', async () => {
+  const { computed } = await import('vue')
+  return {
+    useReplyWindow: () => ({
+      ...replyWindowMock,
+      visible: computed(() => false),
+      secondsLeft: computed(() => 0),
+    }),
+  }
+})
 
 // Mock the controller composable with realistic return values
 vi.mock('@/composables/conversation', () => ({
@@ -258,6 +271,37 @@ describe('ConversationDetail Integration', () => {
       // Verify all our custom components exist in the component tree
       expect(wrapper.findComponent({ name: 'QuickReplies' }).exists()).toBe(true)
       expect(wrapper.findComponent({ name: 'NewMessageNotification' }).exists()).toBe(true)
+    })
+  })
+
+  describe('Free-reply window', () => {
+    it('refreshes on customer messages and hides on any settled agent reply', async () => {
+      router.push('/conversations/1')
+      await router.isReady()
+      mountComponent()
+      const { messages } = vi.mocked(useConversationController).mock.results.at(-1)!.value
+      const flush = () => new Promise(r => setTimeout(r))
+      replyWindowMock.refresh.mockClear()
+      replyWindowMock.hide.mockClear()
+
+      messages.value = [{ id: 'c1', senderType: 'customer' }]
+      await flush()
+      expect(replyWindowMock.refresh).toHaveBeenCalledTimes(1)
+
+      // a failed bubble has not used the token
+      messages.value = [...messages.value, { id: 'a1', senderType: 'agent', status: 'failed' }]
+      await flush()
+      expect(replyWindowMock.hide).not.toHaveBeenCalled()
+
+      // retry succeeds in place: same id, status flips to sent
+      messages.value = messages.value.map((m: { id: string }) => m.id === 'a1' ? { ...m, status: 'sent' } : m)
+      await flush()
+      expect(replyWindowMock.hide).toHaveBeenCalledTimes(1)
+
+      // reply from another tab arrives over WebSocket after a new customer message
+      messages.value = [...messages.value, { id: 'c2', senderType: 'customer' }, { id: 'a2', senderType: 'agent' }]
+      await flush()
+      expect(replyWindowMock.hide).toHaveBeenCalledTimes(2)
     })
   })
 })
