@@ -8,6 +8,8 @@ const dbMocks = vi.hoisted(() => ({
   updateSet: vi.fn(),
   updateWhere: vi.fn(),
   pushLineMessage: vi.fn(),
+  sendLineReply: vi.fn(),
+  claimReturning: vi.fn(),
   createTextMessage: vi.fn((text: string) => ({ type: 'text', text })),
   createImageMessage: vi.fn((url: string) => ({
     type: 'image',
@@ -55,6 +57,7 @@ vi.mock('@/db/drizzle-factory', () => ({
 
 vi.mock('@/utils/line', () => ({
   pushLineMessage: dbMocks.pushLineMessage,
+  sendLineReply: dbMocks.sendLineReply,
   createTextMessage: dbMocks.createTextMessage,
   createImageMessage: dbMocks.createImageMessage,
   createFileFlexMessage: dbMocks.createFileFlexMessage,
@@ -285,5 +288,74 @@ describe('MessageDeliveryService.deliver', () => {
     dbMocks.updateWhere.mockRejectedValue(new Error('d1 unavailable'));
 
     await expect(new MessageDeliveryService(makeEnv()).deliver('msg-1')).resolves.toBeUndefined();
+  });
+
+  describe('LINE replyToken claim', () => {
+    // The first update(...).where(...) is the atomic claim (.returning); later ones are plain awaits.
+    function mockClaim(rows: Array<{ token: string | null }>) {
+      dbMocks.claimReturning.mockResolvedValue(rows);
+      dbMocks.updateWhere.mockReturnValue({ returning: dbMocks.claimReturning });
+    }
+
+    it('uses the Reply API for the first batch when a token is claimed', async () => {
+      mockClaim([{ token: 'reply-token-1' }]);
+      dbMocks.sendLineReply.mockResolvedValue(true);
+      dbMocks.selectResults = [makeMessage({ deliveryStatus: 'buffered' }), makeConversationData()];
+
+      await new MessageDeliveryService(makeEnv()).deliver('msg-1');
+
+      expect(dbMocks.sendLineReply).toHaveBeenCalledWith('line-token', 'reply-token-1', [{ type: 'text', text: 'hello' }]);
+      expect(dbMocks.pushLineMessage).not.toHaveBeenCalled();
+      const metadata = JSON.parse(
+        (dbMocks.updateSet.mock.calls.find(c => c[0]?.deliveryStatus)?.[0] as { metadata: string }).metadata
+      ) as Record<string, unknown>;
+      expect(metadata.lineDeliveryMethod).toBe('reply');
+      expect(dbMocks.updateSet).toHaveBeenCalledWith(expect.objectContaining({ isSent: true, deliveryStatus: 'sent' }));
+    });
+
+    it('pushes when the token is expired or absent (claim returns no row)', async () => {
+      mockClaim([]);
+      dbMocks.selectResults = [makeMessage({ deliveryStatus: 'buffered' }), makeConversationData()];
+
+      await new MessageDeliveryService(makeEnv()).deliver('msg-1');
+
+      expect(dbMocks.sendLineReply).not.toHaveBeenCalled();
+      expect(dbMocks.pushLineMessage).toHaveBeenCalledTimes(1);
+      const metadata = JSON.parse(
+        (dbMocks.updateSet.mock.calls.find(c => c[0]?.deliveryStatus)?.[0] as { metadata: string }).metadata
+      ) as Record<string, unknown>;
+      expect(metadata.lineDeliveryMethod).toBe('push');
+    });
+
+    it('falls back to push for the same batch when the Reply API fails', async () => {
+      mockClaim([{ token: 'reply-token-1' }]);
+      dbMocks.sendLineReply.mockResolvedValue(false);
+      dbMocks.selectResults = [makeMessage({ deliveryStatus: 'buffered' }), makeConversationData()];
+
+      await new MessageDeliveryService(makeEnv()).deliver('msg-1');
+
+      expect(dbMocks.sendLineReply).toHaveBeenCalledTimes(1);
+      expect(dbMocks.pushLineMessage).toHaveBeenCalledWith('line-token', 'line-user-1', [{ type: 'text', text: 'hello' }]);
+      const update = dbMocks.updateSet.mock.calls.find(c => c[0]?.deliveryStatus)?.[0] as { deliveryStatus: string; metadata: string };
+      expect(update.deliveryStatus).toBe('sent');
+      expect((JSON.parse(update.metadata) as Record<string, unknown>).lineDeliveryMethod).toBe('reply_fallback_push');
+    });
+
+    it('replies only the first batch of five and pushes the remainder', async () => {
+      mockClaim([{ token: 'reply-token-1' }]);
+      dbMocks.sendLineReply.mockResolvedValue(true);
+      const attachmentIds = ['a1', 'a2', 'a3', 'a4', 'a5', 'a6'];
+      dbMocks.selectResults = [
+        makeMessage({ content: '', deliveryStatus: 'buffered', metadata: JSON.stringify({ attachmentIds }) }),
+        makeConversationData(),
+        attachmentIds.map(id => ({ id, filename: `${id}.png`, mimeType: 'image/png', fileUrl: `https://files.test/${id}.png`, r2Key: null })),
+      ];
+
+      await new MessageDeliveryService(makeEnv()).deliver('msg-1');
+
+      expect(dbMocks.sendLineReply.mock.calls[0][2]).toHaveLength(5);
+      expect(dbMocks.pushLineMessage).toHaveBeenCalledTimes(1);
+      expect(dbMocks.pushLineMessage.mock.calls[0][2]).toHaveLength(1);
+    });
   });
 });

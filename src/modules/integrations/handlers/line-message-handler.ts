@@ -3,7 +3,7 @@
 
 import { eq, desc } from 'drizzle-orm';
 import { createDbClient } from '@/db/drizzle-factory';
-import { customerTeamAssignments } from '@/db/schema';
+import { conversations, customerTeamAssignments } from '@/db/schema';
 import type { Bindings, LineEvent, LineMediaData } from '@/types';
 import { ActivityService } from '@modules/activities';
 import { WebSocketBroadcastService } from '@/services/websocket-broadcast-service';
@@ -23,6 +23,23 @@ const log = createContextLogger('Webhook');
 // Safe logging function
 function logSecurely(platform: string, userId: string, messageLength: number) {
   log.info(`Processed ${platform} message`, { userIdPrefix: userId.slice(0, 8), messageLength });
+}
+
+// Persist the unused replyToken on the conversation (latest customer message wins).
+// received_at is the earlier of the webhook event time and now, so skew only shortens the window.
+async function storeLineReplyToken(env: Bindings, conversationId: string, replyToken: string, eventTimestamp?: number) {
+  try {
+    const now = nowMs();
+    const receivedAt = typeof eventTimestamp === 'number' && eventTimestamp > 0 ? Math.min(eventTimestamp, now) : now;
+    await createDbClient(env.DB)
+      .update(conversations)
+      .set({ lineReplyToken: replyToken, lineReplyTokenReceivedAt: receivedAt })
+      .where(eq(conversations.id, conversationId));
+  } catch (error) {
+    log.warn('LINE Message: Failed to store replyToken (non-critical)', {
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
 }
 
 // Process LINE message events
@@ -266,6 +283,12 @@ export async function processLineMessage(env: Bindings, event: LineEvent, defer:
           });
         } else {
           log.debug('Auto-reply: no matching rule');
+        }
+
+        // Keep the replyToken for a later free agent reply, unless auto-reply may have spent it.
+        // matched = a rule ran (a Reply API call was attempted); error = outcome unknown.
+        if (event.replyToken && !autoReplyResult.matched && !autoReplyResult.error) {
+          await storeLineReplyToken(env, conversation.id, event.replyToken, event.timestamp);
         }
       } catch (autoReplyError) {
         log.warn('LINE Webhook: Auto-reply evaluation failed (non-critical)', {

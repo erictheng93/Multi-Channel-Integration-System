@@ -226,6 +226,12 @@ export const PLATFORM_MESSAGE_LIMITS = {
  */
 export const LINE_PREVIEW_IMAGE_MAX_BYTES = 1024 * 1024;
 
+/**
+ * LINE replyTokens are valid for one minute after the webhook is received. Use them only
+ * within 50s so clock skew and network latency cannot turn a Reply API call into a failure.
+ */
+export const LINE_REPLY_TOKEN_SAFE_WINDOW_MS = 50_000;
+
 // ============================================================================
 // 數量和頻率限制
 // ============================================================================

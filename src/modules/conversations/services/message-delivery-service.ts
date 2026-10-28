@@ -7,7 +7,7 @@
 // （不依賴 request 物件），DO alarm 才能以 messageId 單獨觸發投遞。
 
 import { createDbClient, type Database } from '@/db/drizzle-factory';
-import { eq, inArray } from 'drizzle-orm';
+import { and, eq, gt, isNotNull, inArray } from 'drizzle-orm';
 import { messages, conversations, customers, fileAttachments } from '@/db/schema';
 import type { Bindings } from '@/types';
 import type { LineReplyMessage } from '@/types';
@@ -15,7 +15,7 @@ import { WebSocketBroadcastService } from '@/services/websocket-broadcast-servic
 import { nowISO, nowMs } from '@/utils/timestamp';
 import { createContextLogger } from '@/utils/logger';
 import { getSignedFileUrl, PERSISTENT_ATTACHMENT_URL_TTL_SECONDS } from '@/utils/file-url';
-import { LINE_PREVIEW_IMAGE_MAX_BYTES } from '@/constants/limits';
+import { LINE_PREVIEW_IMAGE_MAX_BYTES, LINE_REPLY_TOKEN_SAFE_WINDOW_MS } from '@/constants/limits';
 
 const log = createContextLogger('MessageDeliveryService');
 
@@ -35,6 +35,32 @@ export class MessageDeliveryService {
   constructor(bindings: Bindings) {
     this.db = createDbClient(bindings.DB);
     this.bindings = bindings;
+  }
+
+  /**
+   * Atomically claim the conversation's unused LINE replyToken. A single UPDATE ... RETURNING
+   * clears it, so two concurrent deliveries can never both get the same single-use token.
+   * Returns null when there is no token, it is outside the safe window, or the claim fails.
+   */
+  private async claimLineReplyToken(conversationId: string): Promise<string | null> {
+    try {
+      const rows = await this.db
+        .update(conversations)
+        .set({ lineReplyToken: null, lineReplyTokenReceivedAt: null })
+        .where(and(
+          eq(conversations.id, conversationId),
+          isNotNull(conversations.lineReplyToken),
+          gt(conversations.lineReplyTokenReceivedAt, nowMs() - LINE_REPLY_TOKEN_SAFE_WINDOW_MS)
+        ))
+        .returning({ token: conversations.lineReplyToken });
+      return rows[0]?.token ?? null;
+    } catch (error) {
+      log.warn('Failed to claim LINE replyToken, using Push API', {
+        conversationId,
+        error: error instanceof Error ? error.message : String(error)
+      });
+      return null;
+    }
   }
 
   /**
@@ -112,11 +138,12 @@ export class MessageDeliveryService {
       let deliveryStatus: 'sent' | 'failed' | 'partial' = 'failed';
       let platformMessageId: string | null = null;
       let errorMessage: string | undefined;
+      let lineDeliveryMethod: 'reply' | 'push' | 'reply_fallback_push' | undefined;
 
       // LINE Sending Logic
       if (customer.platform === 'line' && customer.platformUserId) {
         try {
-          const { pushLineMessage, createTextMessage, createImageMessage, createFileFlexMessage } = await import('@/utils/line');
+          const { pushLineMessage, sendLineReply, createTextMessage, createImageMessage, createFileFlexMessage } = await import('@/utils/line');
           const lineMessages: LineReplyMessage[] = [];
 
           const hasAttachments = attachmentIds.length > 0;
@@ -259,6 +286,10 @@ export class MessageDeliveryService {
 
             log.info('Sending messages in batches', { totalMessages, batches });
 
+            // Free Reply API for the first batch when a fresh replyToken exists; Push for the rest.
+            const replyToken = await this.claimLineReplyToken(msg.conversationId);
+            let replyBatchStatus: 'none' | 'reply' | 'reply_fallback_push' = 'none';
+
             let allBatchesSuccessful = true;
             let successfulBatches = 0;
             let failedBatches = 0;
@@ -269,11 +300,19 @@ export class MessageDeliveryService {
 
               log.debug('Sending batch', { batchNumber, batches, batchSize: batch.length });
 
-              const sendSuccess = await pushLineMessage(
-                this.bindings.LINE_CHANNEL_ACCESS_TOKEN,
-                customer.platformUserId,
-                batch
-              );
+              let sendSuccess = false;
+              if (i === 0 && replyToken) {
+                sendSuccess = await sendLineReply(this.bindings.LINE_CHANNEL_ACCESS_TOKEN, replyToken, batch);
+                replyBatchStatus = sendSuccess ? 'reply' : 'reply_fallback_push';
+              }
+              if (!sendSuccess) {
+                // Push when there is no token, or when Reply failed (nothing was delivered, so no duplicate)
+                sendSuccess = await pushLineMessage(
+                  this.bindings.LINE_CHANNEL_ACCESS_TOKEN,
+                  customer.platformUserId,
+                  batch
+                );
+              }
 
               if (sendSuccess) {
                 successfulBatches++;
@@ -289,6 +328,9 @@ export class MessageDeliveryService {
                 await new Promise(resolve => setTimeout(resolve, 100));
               }
             }
+
+            lineDeliveryMethod = replyBatchStatus === 'none' ? 'push' : replyBatchStatus;
+            log.info('LINE delivery method', { messageId, lineDeliveryMethod });
 
             if (allBatchesSuccessful) {
               platformMessageId = `line_${nowMs()}`;
@@ -328,6 +370,7 @@ export class MessageDeliveryService {
         ...(isSent && { sentAt: nowISO() }),
         metadata: JSON.stringify({
           ...storedMetadata,
+          ...(lineDeliveryMethod && { lineDeliveryMethod }),
           ...(errorMessage && { error: errorMessage })
         })
       }).where(eq(messages.id, messageId));

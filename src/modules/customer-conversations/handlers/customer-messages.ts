@@ -8,6 +8,12 @@ import { globalErrorHandler } from '@/core/error-handler';
 import { AUTH_COOKIE_NAMES, parseCookieHeader } from '@/middleware/auth';
 import { verifyConversationAccess } from '../utils/conversation-auth';
 import { createContextLogger } from '@/utils/logger';
+import { eq } from 'drizzle-orm';
+import { createDbClient } from '@/db/drizzle-factory';
+import { conversations } from '@/db/schema';
+import { LINE_REPLY_TOKEN_SAFE_WINDOW_MS } from '@/constants/limits';
+import { getRecallWindowSeconds } from '@/services/recall-window-config';
+import { nowMs } from '@/utils/timestamp';
 
 const log = createContextLogger('CustomerMessages');
 
@@ -49,6 +55,46 @@ function hasValidCsrf(c: CustomerMessageContext): boolean {
   const csrfHeader = c.req.header('X-CSRF-Token');
   return Boolean(csrfCookie && csrfHeader && csrfCookie === csrfHeader);
 }
+
+// Whether an agent reply sent now can still use the free LINE Reply API.
+// expiresAt is when the stored replyToken stops being usable for a reply sent now:
+// safe window end minus the recall window, because delivery is delayed by that long.
+router.get('/:id/reply-window', async (c) => {
+  const conversationId = c.req.param('id');
+  const { token: sessionId } = getSessionToken(c);
+
+  if (!sessionId) {
+    return c.json({ success: false, error: 'Authentication required' }, 401);
+  }
+
+  try {
+    await verifyConversationAccess(c.env, sessionId, conversationId, 'Reply Window');
+  } catch (authError: unknown) {
+    const { status, message } = getAuthErrorResponse(authError);
+    return c.json({ success: false, error: message }, status);
+  }
+
+  try {
+    const row = await createDbClient(c.env.DB)
+      .select({
+        token: conversations.lineReplyToken,
+        receivedAt: conversations.lineReplyTokenReceivedAt
+      })
+      .from(conversations)
+      .where(eq(conversations.id, conversationId))
+      .get();
+
+    if (!row?.token || row.receivedAt == null) {
+      return c.json({ success: true, data: { available: false, expiresAt: null } });
+    }
+
+    const recallWindowSeconds = await getRecallWindowSeconds(c.env);
+    const expiresAt = row.receivedAt + LINE_REPLY_TOKEN_SAFE_WINDOW_MS - recallWindowSeconds * 1000;
+    return c.json({ success: true, data: { available: expiresAt > nowMs(), expiresAt } });
+  } catch (error) {
+    return globalErrorHandler.handleError(c, error);
+  }
+});
 
 // Message operations endpoint (GET messages, POST new message)
 router.all('/:id/messages', async (c) => {

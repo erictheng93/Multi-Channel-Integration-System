@@ -110,6 +110,9 @@ export const conversations = sqliteTable('conversations', {
   closedAt: text('closed_at'),
   // Set on close, kept on reopen: unread floor so pre-close backlog stays read (Migration 0064)
   unreadFloorAt: text('unread_floor_at'),
+  // Latest unused LINE replyToken + webhook receive time (epoch ms); claimed by agent replies to use the free Reply API (Migration 0065)
+  lineReplyToken: text('line_reply_token'),
+  lineReplyTokenReceivedAt: integer('line_reply_token_received_at'),
   lastMessageAt: text('last_message_at'),
   // DEPRECATED (Migration 0060): read state is now per-agent in
   // conversation_read_states. These two columns are no longer read by the
