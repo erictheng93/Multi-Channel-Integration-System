@@ -127,6 +127,21 @@ describe('BroadcastSenderService send flow', () => {
       expect(await withLimit('3').send('b-1', agent)).toMatchObject({ status: 'completed' });
     });
 
+    it('lets only one of two concurrent drafts through when together they exceed the cap', async () => {
+      await fixture.db.insert(broadcasts).values({ id: 'b-2', title: '通知2', content: 'x', tagIds: '[1]', createdBy: 'agent-1' });
+      await fixture.db.insert(broadcastRecipients).values({ broadcastId: 'b-2', customerId: 1, platform: 'line', platformUserId: 'U2' });
+      const limited = withLimit('1');
+
+      const results = await Promise.allSettled([limited.send('b-1', agent), limited.send('b-2', agent)]);
+
+      expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(1);
+      expect(results.find((r) => r.status === 'rejected')).toMatchObject({
+        reason: expect.objectContaining({ code: 'DAILY_RECIPIENT_LIMIT_EXCEEDED' }),
+      });
+      expect(mocks.multicast).toHaveBeenCalledTimes(1);
+      expect((await fixture.db.select().from(broadcasts)).map((b) => b.status).sort()).toEqual(['completed', 'draft']);
+    });
+
     it('exempts admins from the daily cap', async () => {
       await seedEarlier(10, new Date().toISOString());
       expect(await withLimit('3').send('b-1', admin)).toMatchObject({ status: 'completed' });

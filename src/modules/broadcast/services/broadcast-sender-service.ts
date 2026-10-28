@@ -85,15 +85,25 @@ export class BroadcastSenderService {
       throw new BroadcastServiceError('BROADCAST_NOT_FOUND', 'Broadcast not found', 404);
     }
 
-    await this.assertDailyRecipientAllowance(broadcastId, actor);
+    const allowance = this.dailyAllowance(broadcastId, actor);
+    await this.assertDailyRecipientAllowance(allowance);
 
+    // The cap is re-checked inside the transition itself: D1 runs one statement at a time, so a
+    // concurrent send of another draft that already moved to 'sending' is counted here and two
+    // requests can never both pass the pre-check above and overshoot the cap together.
     const transitioned = await this.db
       .update(broadcasts)
       .set({ status: 'sending', updatedAt: nowISO() })
-      .where(and(eq(broadcasts.id, broadcastId), eq(broadcasts.status, 'draft')))
+      .where(and(
+        eq(broadcasts.id, broadcastId),
+        eq(broadcasts.status, 'draft'),
+        allowance ? sql`(${allowance.used}) + (${allowance.wanted}) <= ${allowance.limit}` : undefined
+      ))
       .returning({ id: broadcasts.id });
 
     if (transitioned.length === 0) {
+      // Lost the cap to a concurrent send: report it as the cap, not as a status conflict.
+      await this.assertDailyRecipientAllowance(allowance);
       throw new BroadcastServiceError(
         'INVALID_BROADCAST_STATUS',
         'Broadcast is not in draft status',
@@ -182,13 +192,14 @@ export class BroadcastSenderService {
   }
 
   /**
-   * Per-agent daily cap, checked before draft -> sending so a rejection sends nothing.
+   * Per-agent daily cap queries; null for admins (exempt).
    * Today's usage = non-skipped recipients of this agent's broadcasts finalized today (sentAt)
    * or still sending today (updatedAt), excluding the broadcast being sent.
+   * Used both as a pre-check (for the error message) and inside the draft -> sending UPDATE (atomic).
    */
-  private async assertDailyRecipientAllowance(broadcastId: string, actor: DbUser): Promise<void> {
+  private dailyAllowance(broadcastId: string, actor: DbUser) {
     if (actor.role === 'admin') {
-      return;
+      return null;
     }
 
     const limit = parseEnvNumber(
@@ -198,7 +209,7 @@ export class BroadcastSenderService {
     );
     const dayStart = taipeiDayStartISO(Date.now());
 
-    const [usedRow] = await this.db
+    const used = this.db
       .select({ count: sql<number>`count(*)` })
       .from(broadcastRecipients)
       .innerJoin(broadcasts, eq(broadcasts.id, broadcastRecipients.broadcastId))
@@ -214,7 +225,7 @@ export class BroadcastSenderService {
           )
         )
       );
-    const [pendingRow] = await this.db
+    const wanted = this.db
       .select({ count: sql<number>`count(*)` })
       .from(broadcastRecipients)
       .where(
@@ -224,11 +235,22 @@ export class BroadcastSenderService {
           eq(broadcastRecipients.platform, 'line')
         )
       );
+    return { limit, used, wanted };
+  }
 
+  /** Throws DAILY_RECIPIENT_LIMIT_EXCEEDED when the cap is already reached; sends nothing. */
+  private async assertDailyRecipientAllowance(
+    allowance: ReturnType<BroadcastSenderService['dailyAllowance']>
+  ): Promise<void> {
+    if (!allowance) {
+      return;
+    }
+
+    const [[usedRow], [pendingRow]] = await Promise.all([allowance.used, allowance.wanted]);
     const used = Number(usedRow?.count ?? 0);
     const wanted = Number(pendingRow?.count ?? 0);
-    if (used + wanted > limit) {
-      const remaining = Math.max(0, limit - used);
+    if (used + wanted > allowance.limit) {
+      const remaining = Math.max(0, allowance.limit - used);
       throw new BroadcastServiceError(
         'DAILY_RECIPIENT_LIMIT_EXCEEDED',
         `今日群發人數已達上限（剩餘 ${remaining} 人），本次需要 ${wanted} 人`,
