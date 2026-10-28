@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, inArray, isNull } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, inArray, isNull, ne, or, sql } from 'drizzle-orm';
 import type { Bindings, DbUser, LineReplyMessage } from '@/types';
 import type { Database } from '@/db/drizzle-factory';
 import {
@@ -11,6 +11,10 @@ import {
   messages,
 } from '@/db/schema';
 import { nowISO } from '@/utils/timestamp';
+import {
+  BROADCAST_DAILY_RECIPIENT_LIMIT_PER_AGENT,
+  BROADCAST_QUOTA_RESERVE_RATIO,
+} from '@/constants/limits';
 import {
   getLineMessageQuota,
   getLineMessageUsage,
@@ -42,6 +46,19 @@ import {
 const log = createContextLogger('BroadcastSender');
 const PHASE1_LINE_RECIPIENT_LIMIT = 5000;
 
+const TAIPEI_OFFSET_MS = 8 * 60 * 60 * 1000;
+
+/** ISO instant of 00:00 Asia/Taipei (UTC+8, no DST) for the day containing `now`. */
+function taipeiDayStartISO(now: number): string {
+  const shifted = now + TAIPEI_OFFSET_MS;
+  return new Date(shifted - (shifted % (24 * 60 * 60 * 1000)) - TAIPEI_OFFSET_MS).toISOString();
+}
+
+function parseEnvNumber(raw: string | undefined, fallback: number, valid: (n: number) => boolean): number {
+  const parsed = raw === undefined || raw.trim() === '' ? Number.NaN : Number(raw);
+  return valid(parsed) ? parsed : fallback;
+}
+
 type PendingRecipient = typeof broadcastRecipients.$inferSelect;
 
 type TokenGroup = {
@@ -67,6 +84,8 @@ export class BroadcastSenderService {
     if (!broadcast) {
       throw new BroadcastServiceError('BROADCAST_NOT_FOUND', 'Broadcast not found', 404);
     }
+
+    await this.assertDailyRecipientAllowance(broadcastId, actor);
 
     const transitioned = await this.db
       .update(broadcasts)
@@ -116,7 +135,7 @@ export class BroadcastSenderService {
       const quotaPassedGroups: TokenGroup[] = [];
       let quotaBlockedCount = 0;
       for (const group of tokenGroups.sendable) {
-        const quotaPassed = await this.hasQuota(group.token, group.recipients.length);
+        const quotaPassed = await this.hasQuota(group.token, group.recipients.length * lineMessages.length);
         if (quotaPassed) {
           quotaPassedGroups.push(group);
         } else {
@@ -159,6 +178,62 @@ export class BroadcastSenderService {
       log.error('Broadcast send failed unexpectedly', { broadcastId }, error instanceof Error ? error : String(error));
       await this.failRemainingPendingRecipients(broadcastId);
       return this.finalizeBroadcast(broadcastId);
+    }
+  }
+
+  /**
+   * Per-agent daily cap, checked before draft -> sending so a rejection sends nothing.
+   * Today's usage = non-skipped recipients of this agent's broadcasts finalized today (sentAt)
+   * or still sending today (updatedAt), excluding the broadcast being sent.
+   */
+  private async assertDailyRecipientAllowance(broadcastId: string, actor: DbUser): Promise<void> {
+    if (actor.role === 'admin') {
+      return;
+    }
+
+    const limit = parseEnvNumber(
+      this.env.BROADCAST_DAILY_RECIPIENT_LIMIT_PER_AGENT,
+      BROADCAST_DAILY_RECIPIENT_LIMIT_PER_AGENT,
+      (n) => Number.isInteger(n) && n >= 0
+    );
+    const dayStart = taipeiDayStartISO(Date.now());
+
+    const [usedRow] = await this.db
+      .select({ count: sql<number>`count(*)` })
+      .from(broadcastRecipients)
+      .innerJoin(broadcasts, eq(broadcasts.id, broadcastRecipients.broadcastId))
+      .where(
+        and(
+          eq(broadcasts.createdBy, String(actor.id)),
+          ne(broadcasts.id, broadcastId),
+          isNull(broadcasts.deletedAt),
+          ne(broadcastRecipients.status, 'skipped'),
+          or(
+            gte(broadcasts.sentAt, dayStart),
+            and(eq(broadcasts.status, 'sending'), gte(broadcasts.updatedAt, dayStart))
+          )
+        )
+      );
+    const [pendingRow] = await this.db
+      .select({ count: sql<number>`count(*)` })
+      .from(broadcastRecipients)
+      .where(
+        and(
+          eq(broadcastRecipients.broadcastId, broadcastId),
+          eq(broadcastRecipients.status, 'pending'),
+          eq(broadcastRecipients.platform, 'line')
+        )
+      );
+
+    const used = Number(usedRow?.count ?? 0);
+    const wanted = Number(pendingRow?.count ?? 0);
+    if (used + wanted > limit) {
+      const remaining = Math.max(0, limit - used);
+      throw new BroadcastServiceError(
+        'DAILY_RECIPIENT_LIMIT_EXCEEDED',
+        `今日群發人數已達上限（剩餘 ${remaining} 人），本次需要 ${wanted} 人`,
+        429
+      );
     }
   }
 
@@ -267,7 +342,8 @@ export class BroadcastSenderService {
     return credentials.accessToken ?? null;
   }
 
-  private async hasQuota(token: string, recipientCount: number): Promise<boolean> {
+  /** `messageCount` = recipients x message objects (LINE bills each object per recipient). */
+  private async hasQuota(token: string, messageCount: number): Promise<boolean> {
     const [quota, usage] = await Promise.all([
       getLineMessageQuota(token),
       getLineMessageUsage(token),
@@ -285,8 +361,16 @@ export class BroadcastSenderService {
       return true;
     }
 
-    const remaining = (quota.value ?? 0) - (usage.totalUsage ?? 0);
-    return remaining >= recipientCount;
+    // ponytail: assumes LINE counts every message object per recipient (up to 5 per request);
+    // if LINE bills per request-recipient instead this over-estimates, which only errs safe.
+    const total = quota.value ?? 0;
+    const reserve = Math.ceil(total * parseEnvNumber(
+      this.env.BROADCAST_QUOTA_RESERVE_RATIO,
+      BROADCAST_QUOTA_RESERVE_RATIO,
+      (n) => n >= 0 && n < 1
+    ));
+    const remaining = total - (usage.totalUsage ?? 0);
+    return remaining - messageCount >= reserve;
   }
 
   private async sendLineGroup(group: TokenGroup, lineMessages: LineReplyMessage[]): Promise<PendingRecipient[]> {

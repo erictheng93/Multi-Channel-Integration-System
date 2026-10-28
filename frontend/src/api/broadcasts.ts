@@ -176,13 +176,16 @@ async function unwrap<T>(promise: ReturnType<typeof apiClient.get<T>>): Promise<
       BROADCAST_NOT_FOUND: '找不到此群發紀錄',
       INVALID_BROADCAST_STATUS: '此群發已開始發送，無法再次送出',
       LINE_RECIPIENT_LIMIT_EXCEEDED: '一次最多可發送給 5000 位 LINE 客戶',
-      QUOTA_INSUFFICIENT: 'LINE 訊息額度不足，請確認額度後再試',
+      QUOTA_INSUFFICIENT: 'LINE 訊息額度不足（需保留部分額度給客服回覆），請確認額度後再試',
+      DAILY_RECIPIENT_LIMIT_EXCEEDED: '今日群發人數已達上限，請明日再試或聯絡管理員',
       FORBIDDEN: '您沒有群發訊息的權限',
       NOT_FOUND: '找不到此群發紀錄',
     }
     throw new Error(
       response.code
-        ? messages[response.code] || '請求內容有誤，請檢查後再試'
+        ? response.code === 'DAILY_RECIPIENT_LIMIT_EXCEEDED' && response.error
+          ? response.error
+          : messages[response.code] || '請求內容有誤，請檢查後再試'
         : response.status === 422
           ? '請求內容有誤，請檢查後再試'
           : response.error || '群發請求失敗，請稍後再試'
