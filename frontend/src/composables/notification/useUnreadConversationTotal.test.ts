@@ -200,6 +200,35 @@ describe('reconcile', () => {
     nowSpy.mockRestore()
   })
 
+  it('請求期間時鐘往回調,請求期間的轉換仍保留並排程再校正', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(1000)
+    const state = reactive(store)
+    state.conversations = [{ id: 'a', unreadCount: 0 }, { id: 'b', unreadCount: 1 }]
+    getStats.mockResolvedValueOnce({ success: true, data: { unreadConversations: 1 } })
+    const scope = effectScope()
+    const unread = scope.run(() => useUnreadConversationTotal())!
+    await vi.advanceTimersByTimeAsync(0)
+
+    let resolveStats!: (_v: unknown) => void
+    getStats.mockReturnValueOnce(new Promise((resolve) => { resolveStats = resolve }))
+    const pending = unread.reconcile() // 發出時 total = 1
+    vi.setSystemTime(1100)
+    state.conversations = [{ id: 'a', unreadCount: 1 }, { id: 'b', unreadCount: 1 }]
+    await nextTick()
+    vi.setSystemTime(100) // 時鐘往回調
+    resolveStats({ success: true, data: { unreadConversations: 1 } }) // 快照早於 a 變為未讀
+    await pending
+    expect(unread.total.value).toBe(2)
+
+    getStats.mockResolvedValueOnce({ success: true, data: { unreadConversations: 2 } })
+    await vi.advanceTimersByTimeAsync(30_000)
+    expect(getStats).toHaveBeenCalledTimes(3) // 已排程再校正
+    expect(unread.total.value).toBe(2)
+    scope.stop()
+    vi.useRealTimers()
+  })
+
   it('被較新快照取代的回應不再廣播', async () => {
     let channel!: { onmessage: ((_e: { data: unknown }) => void) | null }
     const posted: unknown[] = []

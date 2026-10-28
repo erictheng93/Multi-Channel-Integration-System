@@ -59,7 +59,9 @@ export function useUnreadConversationTotal() {
 
   const serverTotal = ref<number | null>(null)
   // 晚於目前快照邊界的本地轉換
-  const transitions = ref<{ at: number; delta: number }[]>([])
+  const transitions = ref<{ at: number; seq: number; delta: number }[]>([])
+  // 本分頁轉換的單調序號:本地請求以序號(而非時鐘)判斷轉換在請求前或後,不受時鐘往回調影響
+  let transitionSeq = 0
   const delta = computed(() => transitions.value.reduce((sum, t) => sum + t.delta, 0))
   // 目前快照的邊界(其請求發出時間)
   let fetchedAt = 0
@@ -92,13 +94,17 @@ export function useUnreadConversationTotal() {
 
   // 邊界早於目前快照者較舊,忽略;同毫秒的邊界照收(後到者不舊於現值);同時刻的轉換保留(與請求同時發生者視為不在快照內)
   // 回傳是否採用,未採用的快照不可再廣播
-  const adopt = (value: number, at: number): boolean => {
+  // seq 僅本分頁自己的請求提供(其發出時的轉換序號);跨分頁快照無從得知,退回以時間戳判斷
+  const adopt = (value: number, at: number, seq?: number): boolean => {
     const now = Date.now()
     if (at < fetchedAt && fetchedAt <= now + CLOCK_SKEW_TOLERANCE_MS) { return false }
     serverTotal.value = value
     fetchedAt = at
-    // 時間戳晚於現在者記於時鐘往回調之前,早於這份快照,已含在內
-    transitions.value = transitions.value.filter((t) => t.at >= at && t.at <= now)
+    // 本地請求:序號晚於請求發出時者才不在快照內(時鐘往回調亦然)。
+    // 跨分頁:時間戳晚於現在者記於時鐘往回調之前,早於這份快照,已含在內
+    transitions.value = seq === undefined
+      ? transitions.value.filter((t) => t.at >= at && t.at <= now)
+      : transitions.value.filter((t) => t.seq > seq)
     // 伺服器何時讀取狀態不得而知,請求期間的轉換可能已被計入;保留之並稍後再校正一次以收斂
     // ponytail: 請求期間有轉換時,最多 ±該數,至遲 NEW_UNREAD_MIN_GAP_MS 後修正;要精確需伺服器回傳版本號
     if (transitions.value.length > 0) { scheduleReconcile() }
@@ -113,10 +119,11 @@ export function useUnreadConversationTotal() {
     inFlight = true
     // 請求期間發生的轉換不在伺服器快照內,adopt 以發出時間為邊界而保留之
     const at = Date.now()
+    const seq = transitionSeq
     try {
       const response = await conversationApi.getStats()
       const value = response.success ? response.data?.unreadConversations : undefined
-      if (typeof value === 'number' && adopt(value, at)) {
+      if (typeof value === 'number' && adopt(value, at, seq)) {
         channel?.postMessage({ total: value, at })
       }
     } catch {
@@ -139,7 +146,7 @@ export function useUnreadConversationTotal() {
   watch(unreadMap, (next, prev) => {
     if (serverTotal.value === null) { return }
     const result = diffUnreadTransitions(prev, next)
-    if (result.delta !== 0) { transitions.value.push({ at: Date.now(), delta: result.delta }) }
+    if (result.delta !== 0) { transitions.value.push({ at: Date.now(), seq: ++transitionSeq, delta: result.delta }) }
     if (result.appearedUnread) { scheduleReconcile() }
   })
 
