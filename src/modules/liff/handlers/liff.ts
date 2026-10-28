@@ -35,12 +35,17 @@ const WELCOME_LIMITER_SHARD = 'ratelimit:liff-welcome';
  * Claims ('check') or releases ('reset') the one welcome push a LINE user may trigger per
  * 5 minutes, whatever the team. The DO serialises requests, so a burst of concurrent calls
  * claims once, which a KV get/put race cannot guarantee. Fails closed: every push spends
- * OA quota. Without the binding (tests, local) only the KV marker dedupes.
+ * OA quota, so 'unavailable' (DO threw or returned anything but 200/429) must not push either,
+ * but unlike 'denied' it is retryable. Without the binding (tests, local) only the KV marker dedupes.
  */
-async function welcomeLimiter(env: Bindings, lineUserId: string, action: 'check' | 'reset'): Promise<boolean> {
+async function welcomeLimiter(
+  env: Bindings,
+  lineUserId: string,
+  action: 'check' | 'reset'
+): Promise<'allowed' | 'denied' | 'unavailable'> {
   const ns = env.RATE_LIMITER;
   if (!ns) {
-    return true;
+    return 'allowed';
   }
   try {
     const res = await ns.get(ns.idFromName(WELCOME_LIMITER_SHARD)).fetch('https://rate-limiter.internal/', {
@@ -52,12 +57,15 @@ async function welcomeLimiter(env: Bindings, lineUserId: string, action: 'check'
         config: { maxRequests: 1, windowMs: WELCOME_WINDOW_MS },
       }),
     });
-    return res.ok;
+    if (res.ok) {return 'allowed';}
+    if (res.status === HTTP_STATUS.TOO_MANY_REQUESTS) {return 'denied';}
+    log.warn('Welcome limiter unavailable; skipping push', { status: res.status });
+    return 'unavailable';
   } catch (error) {
     log.warn('Welcome limiter unavailable; skipping push', {
       error: error instanceof Error ? error.message : String(error)
     });
-    return false;
+    return 'unavailable';
   }
 }
 
@@ -511,8 +519,12 @@ liffHandler.post('/welcome', async (c) => {
     // Dedupe pushes: at most one welcome per verified user per 5 minutes, across teams,
     // so cycling teamId cannot multiply quota-counted pushes.
     const dedupeKey = `liff:welcome:${lineUserId}`;
-    if (await c.env.CACHE.get(dedupeKey) || !await welcomeLimiter(c.env, lineUserId, 'check')) {
+    const claim = await c.env.CACHE.get(dedupeKey) ? 'denied' : await welcomeLimiter(c.env, lineUserId, 'check');
+    if (claim === 'denied') {
       return c.json({ success: true, data: { message: '歡迎消息已發送' } });
+    }
+    if (claim === 'unavailable') {
+      return c.json({ success: false, error: '歡迎消息暫時無法發送，請稍後再試' }, HTTP_STATUS.SERVICE_UNAVAILABLE);
     }
 
     // Send welcome message via LINE API
