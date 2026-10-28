@@ -1,16 +1,17 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { eq } from 'drizzle-orm';
 import type { Bindings, DbUser } from '@/types';
 import { broadcasts, broadcastRecipients, broadcastAttachments, conversations, fileAttachments, messages } from '@/db/schema';
 import { BroadcastSenderService } from '@/modules/broadcast/services/broadcast-sender-service';
 import { createBroadcastFixture } from './broadcast-fixture';
 import { getDisplayContent } from '@/modules/conversations/utils/message-helpers';
 
-const mocks = vi.hoisted(() => ({ multicast: vi.fn(), head: vi.fn(), error: vi.fn() }));
+const mocks = vi.hoisted(() => ({ multicast: vi.fn(), head: vi.fn(), error: vi.fn(), quota: vi.fn(), usage: vi.fn() }));
 vi.mock('@/utils/line', async (importOriginal) => ({
   ...await importOriginal<typeof import('@/utils/line')>(),
   multicastLineMessage: mocks.multicast,
-  getLineMessageQuota: vi.fn(async () => ({ success: true, type: 'none' })),
-  getLineMessageUsage: vi.fn(async () => ({ success: true, totalUsage: 0 })),
+  getLineMessageQuota: mocks.quota,
+  getLineMessageUsage: mocks.usage,
 }));
 vi.mock('@/utils/file-url', () => ({
   getSignedFileUrl: vi.fn(async (_env, key) => `https://files.test/${key}`),
@@ -26,6 +27,8 @@ describe('BroadcastSenderService send flow', () => {
   beforeEach(async () => {
     vi.clearAllMocks();
     mocks.head.mockResolvedValue({});
+    mocks.quota.mockResolvedValue({ success: true, type: 'none' });
+    mocks.usage.mockResolvedValue({ success: true, totalUsage: 0 });
     mocks.multicast.mockResolvedValue({ success: true, failedUserIds: [] });
     fixture = createBroadcastFixture();
     sender = new BroadcastSenderService(fixture.db, {
@@ -84,5 +87,70 @@ describe('BroadcastSenderService send flow', () => {
     expect(mocks.error).toHaveBeenCalledWith('Broadcast write-back failed', { broadcastId: 'b-1', sentCount: 1 }, expect.any(Error));
     expect(await fixture.db.select().from(broadcasts)).toEqual([expect.objectContaining({ status: 'completed', sentCount: 1 })]);
     expect(await fixture.db.select().from(messages)).toEqual([]);
+  });
+
+  describe('send guards', () => {
+    const agent = { id: 'agent-1', role: 'agent', displayName: '客服' } as DbUser;
+    const admin = { ...agent, role: 'admin' } as DbUser;
+    const withLimit = (limit: string) => new BroadcastSenderService(fixture.db, {
+      LINE_CHANNEL_ACCESS_TOKEN: 'test-only-token', R2_BUCKET: { head: mocks.head },
+      BROADCAST_DAILY_RECIPIENT_LIMIT_PER_AGENT: limit,
+    } as unknown as Bindings);
+    // An earlier broadcast by the same agent that already delivered `count` recipients at `sentAt`.
+    const seedEarlier = async (count: number, sentAt: string) => {
+      await fixture.db.insert(broadcasts).values({
+        id: 'b-old', title: '舊', content: 'x', tagIds: '[1]', createdBy: 'agent-1', status: 'completed', sentAt,
+      });
+      await fixture.db.insert(broadcastRecipients).values(Array.from({ length: count }, (_, i) => ({
+        broadcastId: 'b-old', platform: 'line', platformUserId: `O${i}`, status: 'sent',
+      })));
+    };
+
+    it('lets an agent under the daily cap send', async () => {
+      await seedEarlier(2, new Date().toISOString());
+      expect(await withLimit('3').send('b-1', agent)).toMatchObject({ status: 'completed', sentCount: 1 });
+    });
+
+    it('rejects an agent over the cap before any LINE call and keeps the draft', async () => {
+      await seedEarlier(3, new Date().toISOString());
+      await expect(withLimit('3').send('b-1', agent)).rejects.toMatchObject({
+        code: 'DAILY_RECIPIENT_LIMIT_EXCEEDED', status: 429, message: expect.stringContaining('剩餘 0 人'),
+      });
+      expect(mocks.multicast).not.toHaveBeenCalled();
+      expect(mocks.quota).not.toHaveBeenCalled();
+      expect(await fixture.db.select().from(broadcasts).where(eq(broadcasts.id, 'b-1')))
+        .toEqual([expect.objectContaining({ status: 'draft' })]);
+    });
+
+    it('ignores broadcasts sent before today (Asia/Taipei)', async () => {
+      await seedEarlier(5, new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString());
+      expect(await withLimit('3').send('b-1', agent)).toMatchObject({ status: 'completed' });
+    });
+
+    it('exempts admins from the daily cap', async () => {
+      await seedEarlier(10, new Date().toISOString());
+      expect(await withLimit('3').send('b-1', admin)).toMatchObject({ status: 'completed' });
+    });
+
+    it('blocks when the send would eat into the support-reply reserve, even for admins', async () => {
+      // 1000 quota, 20% reserve = 200. Remaining 202, cost 2 messages (image + text) -> 200 is ok, 201 used would not be.
+      fixture.sqlite.prepare('UPDATE broadcasts SET content = ? WHERE id = ?').run('文字', 'b-1');
+      mocks.quota.mockResolvedValue({ success: true, type: 'limited', value: 1000 });
+      mocks.usage.mockResolvedValue({ success: true, totalUsage: 799 });
+      await expect(sender.send('b-1', admin)).rejects.toMatchObject({ code: 'QUOTA_INSUFFICIENT' });
+      expect(mocks.multicast).not.toHaveBeenCalled();
+    });
+
+    it('sends when the reserve stays intact', async () => {
+      fixture.sqlite.prepare('UPDATE broadcasts SET content = ? WHERE id = ?').run('文字', 'b-1');
+      mocks.quota.mockResolvedValue({ success: true, type: 'limited', value: 1000 });
+      mocks.usage.mockResolvedValue({ success: true, totalUsage: 798 });
+      expect(await sender.send('b-1', admin)).toMatchObject({ status: 'completed' });
+    });
+
+    it('skips the reserve rule on an unlimited plan', async () => {
+      mocks.usage.mockResolvedValue({ success: true, totalUsage: 999999 });
+      expect(await sender.send('b-1', agent)).toMatchObject({ status: 'completed' });
+    });
   });
 });

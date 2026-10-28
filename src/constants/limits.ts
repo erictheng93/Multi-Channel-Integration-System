@@ -232,6 +232,19 @@ export const LINE_PREVIEW_IMAGE_MAX_BYTES = 1024 * 1024;
  */
 export const LINE_REPLY_TOKEN_SAFE_WINDOW_MS = 50_000;
 
+/**
+ * Broadcasts and agent push fallbacks share the OA's monthly LINE quota.
+ * Per-agent daily recipient cap (calendar day, Asia/Taipei); admins are exempt.
+ * Override with the BROADCAST_DAILY_RECIPIENT_LIMIT_PER_AGENT env var.
+ */
+export const BROADCAST_DAILY_RECIPIENT_LIMIT_PER_AGENT = 2000;
+
+/**
+ * Fraction of the monthly quota a broadcast must leave untouched for support replies.
+ * Applies to everyone, admins included. Override with BROADCAST_QUOTA_RESERVE_RATIO.
+ */
+export const BROADCAST_QUOTA_RESERVE_RATIO = 0.2;
+
 // ============================================================================
 // 數量和頻率限制
 // ============================================================================
