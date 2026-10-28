@@ -514,7 +514,7 @@ function handleReceivedDismiss() {
 // Message event handlers (use controller methods directly)
 const handleMessageSent = controller.onMessageSent
 
-// LINE free-reply window: refetch on open, on each new customer message, and after the agent sends
+// LINE free-reply window: refetch on open and on each new customer message; hide once the agent sends
 const replyWindow = useReplyWindow({
   conversationId: () => conversationId.value,
   enabled: () => conversation.value?.platform === 'line',
@@ -530,7 +530,7 @@ const handleMessagePending = controller.onMessagePending
 const handleUploadProgress = controller.onUploadProgress
 const handleMessageConfirmed: typeof controller.onMessageConfirmed = (...args) => {
   controller.onMessageConfirmed(...args)
-  void replyWindow.refresh()
+  replyWindow.hide()
 }
 const handleMessageFailed = controller.onMessageFailed
 const handleTypingStart = controller.onTypingStart
