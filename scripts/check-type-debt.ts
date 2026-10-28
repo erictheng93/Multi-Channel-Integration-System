@@ -38,8 +38,6 @@ const emptyCounts: TypeDebtCounts = {
 const roots = [
   'src',
   'frontend/src',
-  'web-installer/backend/src',
-  'web-installer/frontend/src',
   'scripts',
   'frontend/scripts',
 ];

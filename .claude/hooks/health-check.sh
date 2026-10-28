@@ -84,20 +84,6 @@ if [[ "$FILE_PATH" == *"frontend/"* ]] || [[ "$FILE_PATH" == *"frontend\\"* ]]; 
       ;;
   esac
 
-elif [[ "$FILE_PATH" == *"web-installer/"* ]]; then
-  # =============================================
-  #  WEB INSTALLER: tsc only
-  # =============================================
-  if [[ "$FILE_PATH" == *"web-installer/backend/"* ]]; then
-    cd web-installer/backend 2>/dev/null || exit 0
-    TSC_OUT=$(bunx tsc --noEmit 2>&1)
-    if [ $? -ne 0 ]; then
-      HAS_ERRORS=1
-      TSC_FILTERED=$(echo "$TSC_OUT" | grep -i "error TS" | head -20)
-      ERRORS="${ERRORS}--- tsc Errors (web-installer/backend) ---\n${TSC_FILTERED:-$(echo "$TSC_OUT" | tail -20)}\n\n"
-    fi
-  fi
-
 else
   # =============================================
   #  BACKEND: tsc --noEmit
