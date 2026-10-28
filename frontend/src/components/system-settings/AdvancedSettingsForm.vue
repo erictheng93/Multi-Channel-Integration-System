@@ -235,6 +235,9 @@ const { t } = useI18n()
 // 撤回窗口選項（值需與後端 RECALL_WINDOW_ALLOWED_VALUES 一致）
 const recallWindowOptions = computed(() => [
   { value: 0, label: t('systemSettings.advanced.recallWindow.off') },
+  { value: 5, label: t('systemSettings.advanced.recallWindow.s5') },
+  { value: 10, label: t('systemSettings.advanced.recallWindow.s10') },
+  { value: 15, label: t('systemSettings.advanced.recallWindow.s15') },
   { value: 30, label: t('systemSettings.advanced.recallWindow.s30') },
   { value: 60, label: t('systemSettings.advanced.recallWindow.m1') },
   { value: 120, label: t('systemSettings.advanced.recallWindow.m2') },

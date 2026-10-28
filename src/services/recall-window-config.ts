@@ -12,7 +12,7 @@ import { createContextLogger } from '@/utils/logger';
 const log = createContextLogger('RecallWindowConfig');
 
 /** 撤回窗口合法值（秒）；0 = 關閉（立即發送，與既有行為一致） */
-export const RECALL_WINDOW_ALLOWED_VALUES = [0, 30, 60, 120, 300] as const;
+export const RECALL_WINDOW_ALLOWED_VALUES = [0, 5, 10, 15, 30, 60, 120, 300] as const;
 
 /** system_settings 中的扁平化 key（沿用 updateSettings 的 dot-notation flatten 規則） */
 export const RECALL_WINDOW_SETTING_KEY = 'advanced.recallWindowSeconds';

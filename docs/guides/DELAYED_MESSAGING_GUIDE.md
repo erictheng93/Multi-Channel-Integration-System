@@ -77,7 +77,7 @@ POST /api/conversations/:id/messages
 
 ## 設定撤回窗口秒數
 
-管理員在「進階設定」(`AdvancedSettingsForm.vue`)選擇窗口秒數,允許值為 `[0, 30, 60, 120, 300]`(見 `RECALL_WINDOW_ALLOWED_VALUES`,`src/services/recall-window-config.ts`)。`0` = 關閉,行為等同「立即發送」的舊行為。讀取順序:KV 快取(60s TTL)→ D1 `system_settings`(key: `advanced.recallWindowSeconds`)→ 預設 `0`。任何讀取失敗一律 fallback `0`,確保設定讀取失敗不會卡住訊息發送。
+管理員在「進階設定」(`AdvancedSettingsForm.vue`)選擇窗口秒數,允許值為 `[0, 5, 10, 15, 30, 60, 120, 300]`(見 `RECALL_WINDOW_ALLOWED_VALUES`,`src/services/recall-window-config.ts`)。`0` = 關閉,行為等同「立即發送」的舊行為。讀取順序:KV 快取(60s TTL)→ D1 `system_settings`(key: `advanced.recallWindowSeconds`)→ 預設 `0`。任何讀取失敗一律 fallback `0`,確保設定讀取失敗不會卡住訊息發送。
 
 ## 測試涵蓋
 
