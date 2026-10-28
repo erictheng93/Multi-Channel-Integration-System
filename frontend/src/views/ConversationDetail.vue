@@ -514,24 +514,27 @@ function handleReceivedDismiss() {
 // Message event handlers (use controller methods directly)
 const handleMessageSent = controller.onMessageSent
 
-// LINE free-reply window: refetch on open and on each new customer message; hide once the agent sends
+// LINE free-reply window: refetch when the customer speaks last, hide once an agent reply lands.
+// Keyed on the latest settled message so composer sends, retries and other tabs' replies all count;
+// unsent bubbles are skipped because they have not consumed the single-use token.
+const UNSETTLED_STATUSES = new Set(['pending', 'sending', 'failed', 'recalled'])
 const replyWindow = useReplyWindow({
   conversationId: () => conversationId.value,
   enabled: () => conversation.value?.platform === 'line',
 })
-const lastCustomerMessageId = computed(() => {
-  const lastCustomer = [...messages.value].reverse().find(m => m.senderType === 'customer')
-  return lastCustomer?.id ?? null
+const lastSettledMessageKey = computed(() => {
+  const last = [...messages.value].reverse().find(m =>
+    (m.senderType === 'customer' || m.senderType === 'agent') &&
+    !UNSETTLED_STATUSES.has(m.status ?? ''))
+  return last ? `${last.senderType}:${last.id}` : null
 })
-watch(lastCustomerMessageId, (id, prev) => {
-  if (id && id !== prev) {void replyWindow.refresh()}
+watch(lastSettledMessageKey, (key, prev) => {
+  if (!key || key === prev) {return}
+  if (key.startsWith('customer:')) {void replyWindow.refresh()} else {replyWindow.hide()}
 })
 const handleMessagePending = controller.onMessagePending
 const handleUploadProgress = controller.onUploadProgress
-const handleMessageConfirmed: typeof controller.onMessageConfirmed = (...args) => {
-  controller.onMessageConfirmed(...args)
-  replyWindow.hide()
-}
+const handleMessageConfirmed = controller.onMessageConfirmed
 const handleMessageFailed = controller.onMessageFailed
 const handleTypingStart = controller.onTypingStart
 const handleTypingStop = controller.onTypingStop
