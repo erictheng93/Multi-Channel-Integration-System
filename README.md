@@ -18,7 +18,6 @@
 - **系統總覽圖** [Master User Flow](docs/MASTER_USER_FLOW.html) - 四大角色（客戶端 / 客服 / 團隊主管 / Admin）一頁式流程圖，含共通服務與外部相依；瀏覽器直接開啟
 - **本文件** (README.md) - 完整技術文件與架構說明
 - **API 文件** [ API 參考](docs/reference/api/API_REFERENCE.md) - 完整 API 端點文件
-- **自動部署** Web Installer 自助部署工具（`web-installer/`）
 
  **使用者入口**
 - **使用指南** [ 使用者指南](docs/guides/USER_GUIDE.md) - 完整使用與操作指南
@@ -53,22 +52,17 @@
 ┌─────────────────┐ ┌──────────────────────┐ ┌─────────────┐
 │ Vue 3 前端 │◄──►│  Cloudflare Workers │◄──►│  外部 API │
 │  (TypeScript) │    │  (Hono + 26 模組) │    │  (LINE/FB)  │
-└────────┬────────┘ └──────────┬───────────┘ └─────────────┘
-         │ │
-         │ ┌─────────┴──────────┐
-         │ │   Cloudflare 平台 │
-         │ ├────────────────────┤
-         │ │  D1 KV R2 │
-         │ │ (資料庫)(快取)(儲存) │
-         │ ├────────────────────┤
-         │ │ Durable Objects ×12 │
-         │ │ (即時通訊/狀態管理) │
-         │ └────────────────────┘
-         │
-    ┌────┴─────────────┐
-    │  Web Installer │
-    │  (自助部署工具) │
-    └──────────────────┘
+└─────────────────┘ └──────────┬───────────┘ └─────────────┘
+           │
+           ┌─────────┴──────────┐
+           │   Cloudflare 平台 │
+           ├────────────────────┤
+           │  D1 KV R2 │
+           │ (資料庫)(快取)(儲存) │
+           ├────────────────────┤
+           │ Durable Objects ×12 │
+           │ (即時通訊/狀態管理) │
+           └────────────────────┘
 ```
 
 ### 後端技術棧 (Cloudflare Workers)
@@ -230,12 +224,6 @@ bun run build
 bun run deploy:pages
 ```
 
-### 自助部署工具 (Web Installer)
-專案內建 Web Installer（`web-installer/`），提供視覺化的自助部署流程：
-- 瀏覽器操作介面，無需命令列
-- 引導式配置填寫
-- 自動化部署流程
-
 ### 驗證部署
 - **後端 API**: https://your-api-domain.example.com
 - **前端**: https://mcis-ey7.pages.dev
@@ -370,7 +358,6 @@ Multi_Channel_Integration_System/
 │ └── config/runtime.ts # 前端執行時配置
 ├── tests/ # 後端測試
 ├── frontend/tests/ # 前端測試
-├── web-installer/ # 自助部署工具
 ├── scripts/ # 120+ 自動化腳本
 ├── docs/ # 技術文件
 └── wrangler.toml # Cloudflare Workers 配置
@@ -437,7 +424,6 @@ VITE_DEV_MODE=false
 A:
 - 後端部署：`bun run deploy`
 - 前端部署：`cd frontend && bun run deploy:pages`
-- 自助部署：使用 `web-installer/` 視覺化工具
 
 **Q: 部署失敗怎麼辦？**
 A:

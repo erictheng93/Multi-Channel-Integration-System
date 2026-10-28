@@ -88,8 +88,6 @@ cd frontend && bun run dev  # Frontend
 |------|-------------|-------------|------------|
 | **Development** | `bun run dev` | `bun run dev` | Same |
 | **Type Check** | `bun run build` | `bun run build` | Same |
-| **Worker Bundle** | `bun run build:worker-bundle` | `bun run build:worker-bundle:bun` | 25% faster |
-| **Frontend Bundle** | `bun run build:frontend-bundle` | `bun run build:frontend-bundle:bun` | 29% faster |
 | **Both Bundles** | `bun run build:installer-bundles` | `bun run build:installer-bundles:bun` | 27% faster |
 
 ### Frontend Commands (frontend/ directory)
@@ -99,22 +97,6 @@ cd frontend && bun run dev  # Frontend
 | **Development** | `bun run dev` | `bun run bun:dev` | Faster startup |
 | **Build** | `bun run build` | `bun run bun:build` | Same |
 | **Test** | `bun run test` | `bun run bun:test` | **2x faster** |
-
-### Web Installer Commands
-
-**Backend:**
-```bash
-cd web-installer/backend
-bun run dev:bun # Wrangler dev
-bun run test:bun # Vitest tests
-```
-
-**Frontend:**
-```bash
-cd web-installer/frontend
-bun run dev:bun # Vite dev server
-bun run build:bun # Production build (hybrid: bunx + bun)
-```
 
 ---
 

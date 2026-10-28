@@ -28,7 +28,7 @@ Preserve UTF-8 when editing files, especially Vue SFCs and files containing Chin
 Backend and frontend both use Vitest; the frontend also uses Playwright for browser flows. Name tests `*.test.ts` or `*.spec.ts` and colocate them near the feature when practical, otherwise place them under `tests/` or `frontend/tests/`. Before opening a PR, run the smallest relevant suite plus `bun run check`.
 
 ## Commit & Pull Request Guidelines
-Recent history follows Conventional Commit style, for example `fix(conversations): ...`, `refactor(files): ...`, and `chore(web-installer): ...`. Keep the scope specific to the module you changed. PRs should include a short summary, linked issue or task, affected areas, and screenshots for UI changes. Call out migration, env, or Cloudflare configuration impact explicitly.
+Recent history follows Conventional Commit style, for example `fix(conversations): ...`, `refactor(files): ...`, and `chore(deps): ...`. Keep the scope specific to the module you changed. PRs should include a short summary, linked issue or task, affected areas, and screenshots for UI changes. Call out migration, env, or Cloudflare configuration impact explicitly.
 
 ## Security & Agent Notes
 Do not commit `.env*` secrets or production credentials. Validate route and config changes with `bun run validate:all` when touching routing or runtime config.

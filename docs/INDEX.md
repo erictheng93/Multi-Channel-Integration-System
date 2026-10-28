@@ -46,7 +46,6 @@ docs/
 ### Deployment (`guides/deployment/`)
 - [Deployment Guide](guides/deployment/DEPLOYMENT_GUIDE.md) - Production deployment
 - [Customer Deployment](guides/deployment/CUSTOMER_DEPLOYMENT_GUIDE.md) - Customer setup
-- [Web Installer](guides/deployment/WEB_INSTALLER_DOCUMENTATION.md) - Self-hosted deployment
 
 ### Features (`guides/features/`)
 - Feature usage guides and tutorials
@@ -122,7 +121,6 @@ docs/
 - [Environment Config](claude/ENVIRONMENT_CONFIG.md) - Environment configuration guide
 - [Testing](claude/TESTING.md) - Testing strategy and infrastructure
 - [Route Registration](claude/ROUTE_REGISTRATION.md) - Route registration rules
-- [Web Installer](claude/WEB_INSTALLER.md) - Web installer documentation
 - [Team Management](claude/TEAM_MANAGEMENT.md) - Team management architecture
 
 ---
@@ -157,7 +155,6 @@ docs/
 
 ### For Deployment
 1. Review [Deployment Guide](guides/deployment/DEPLOYMENT_GUIDE.md)
-2. Follow [Web Installer](guides/deployment/WEB_INSTALLER_DOCUMENTATION.md) for self-hosted setup
 
 ### For API Integration
 1. Start with [API Reference](reference/api/API_REFERENCE.md)
