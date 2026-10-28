@@ -51,7 +51,7 @@ describe('recall-window-config', () => {
   });
 
   it('accepts only the configured numeric recall-window values', () => {
-    expect([0, 30, 60, 120, 300].every(isValidRecallWindow)).toBe(true);
+    expect([0, 5, 10, 15, 30, 60, 120, 300].every(isValidRecallWindow)).toBe(true);
 
     expect(isValidRecallWindow(45)).toBe(false);
     expect(isValidRecallWindow(-1)).toBe(false);
