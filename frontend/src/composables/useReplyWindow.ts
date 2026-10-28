@@ -12,7 +12,8 @@ interface ReplyWindowOptions {
  * LINE free-reply window indicator.
  * The backend reports whether the next reply can use the free Reply API and until when.
  * Sending is never blocked; after expiry replies fall back to Push, so we simply hide.
- * Call `refresh()` when a customer message arrives or after the agent sends.
+ * Call `refresh()` when a customer message arrives and `hide()` after the agent sends: the token
+ * is single-use, and with a recall window the backend has not claimed it yet when the send returns.
  */
 export function useReplyWindow(options: ReplyWindowOptions) {
   const expiresAt = ref<number | null>(null)
@@ -89,5 +90,10 @@ export function useReplyWindow(options: ReplyWindowOptions) {
     clear()
   })
 
-  return { secondsLeft, visible, refresh }
+  const hide = () => {
+    requestSeq++
+    clear()
+  }
+
+  return { secondsLeft, visible, refresh, hide }
 }

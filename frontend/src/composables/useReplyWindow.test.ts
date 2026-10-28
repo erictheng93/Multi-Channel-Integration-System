@@ -91,6 +91,20 @@ describe('useReplyWindow', () => {
     expect(vi.getTimerCount()).toBe(0)
   })
 
+  it('hide() clears the indicator without a fetch and drops an in-flight refresh', async () => {
+    fetchMock.mockResolvedValueOnce(windowResponse(true, Date.now() + 30000))
+    const w = setup()
+    await flush()
+    expect(w.visible.value).toBe(true)
+
+    fetchMock.mockResolvedValueOnce(windowResponse(true, Date.now() + 30000))
+    const inFlight = w.refresh()
+    w.hide()
+    await inFlight
+    expect(w.visible.value).toBe(false)
+    expect(vi.getTimerCount()).toBe(0)
+  })
+
   it('refetches on conversation change and clears the interval on scope stop', async () => {
     fetchMock.mockResolvedValue(windowResponse(true, Date.now() + 30000))
     const w = setup()
