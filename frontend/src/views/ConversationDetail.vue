@@ -143,6 +143,13 @@
         v-if="!isCurrentConversationTransferred"
         class="input-section"
       >
+        <div
+          v-if="replyWindow.visible.value"
+          class="reply-window-chip"
+        >
+          免費回覆 {{ replyWindow.secondsLeft.value }} 秒
+        </div>
+
         <MessageInput
           ref="messageInputRef"
           :conversation-id="conversationId"
@@ -256,6 +263,7 @@ import { useNewMessageNotification } from '@/composables/useNewMessageNotificati
 import { useDragAndDrop } from '@/composables/useDragAndDrop'
 import { useClipboardPaste } from '@/composables/useClipboardPaste'
 import { useQuickReplies } from '@/composables/useQuickReplies'
+import { useReplyWindow } from '@/composables/useReplyWindow'
 import type { QuickReply } from '@/composables/useQuickReplies'
 
 // Core components
@@ -505,9 +513,25 @@ function handleReceivedDismiss() {
 
 // Message event handlers (use controller methods directly)
 const handleMessageSent = controller.onMessageSent
+
+// LINE free-reply window: refetch on open, on each new customer message, and after the agent sends
+const replyWindow = useReplyWindow({
+  conversationId: () => conversationId.value,
+  enabled: () => conversation.value?.platform === 'line',
+})
+const lastCustomerMessageId = computed(() => {
+  const lastCustomer = [...messages.value].reverse().find(m => m.senderType === 'customer')
+  return lastCustomer?.id ?? null
+})
+watch(lastCustomerMessageId, (id, prev) => {
+  if (id && id !== prev) {void replyWindow.refresh()}
+})
 const handleMessagePending = controller.onMessagePending
 const handleUploadProgress = controller.onUploadProgress
-const handleMessageConfirmed = controller.onMessageConfirmed
+const handleMessageConfirmed: typeof controller.onMessageConfirmed = (...args) => {
+  controller.onMessageConfirmed(...args)
+  void replyWindow.refresh()
+}
 const handleMessageFailed = controller.onMessageFailed
 const handleTypingStart = controller.onTypingStart
 const handleTypingStop = controller.onTypingStop
@@ -718,6 +742,19 @@ defineExpose({
   /* Fix: Ensure input section creates a stacking context above messages */
   position: relative;
   z-index: 50;
+}
+
+/* LINE free-reply countdown capsule */
+.reply-window-chip {
+  display: inline-block;
+  margin-bottom: 8px;
+  padding: 2px 10px;
+  border-radius: 9999px;
+  background: rgba(52, 199, 89, 0.12);
+  color: #34C759;
+  font-size: 12px;
+  line-height: 18px;
+  font-variant-numeric: tabular-nums;
 }
 
 /* Closed State */
