@@ -11,7 +11,6 @@ Production deployment and customer setup guides.
 - [DEPLOYMENT_GUIDE.md](deployment/DEPLOYMENT_GUIDE.md) - Production deployment guide
 - [CUSTOMER_DEPLOYMENT_GUIDE.md](deployment/CUSTOMER_DEPLOYMENT_GUIDE.md) - Customer deployment
 - [NEW_USER_DEPLOYMENT_GUIDE.md](deployment/NEW_USER_DEPLOYMENT_GUIDE.md) - New user setup
-- [WEB_INSTALLER_DOCUMENTATION.md](deployment/WEB_INSTALLER_DOCUMENTATION.md) - Self-hosted installer
 
 ---
 

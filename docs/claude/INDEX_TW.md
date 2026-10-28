@@ -42,17 +42,6 @@
   - 調試技巧
 - **使用場景：** 添加新 API 端點、調試 401 錯誤、解決路由衝突
 
-####  **Web 安裝程式 (Web Installer)**
-- **文件：** [`WEB_INSTALLER.md`](WEB_INSTALLER.md)
-- **大小：** 約 5,000 字元
-- **內容：**
-  - 完整架構概覽
-  - 15 步部署流水線
-  - 測試結果與覆蓋率
-  - 文檔引用
-  - 成本估算
-- **使用場景：** 瞭解 Web 安裝程式、為客戶進行部署、故障排除
-
 ####  **團隊管理 (Team Management)** (新)
 - **文件：** [`TEAM_MANAGEMENT.md`](TEAM_MANAGEMENT.md)
 - **大小：** 約 8,000 字元
@@ -75,7 +64,6 @@
 - **切換開發與生產環境** → [ENVIRONMENT_CONFIG.md](ENVIRONMENT_CONFIG.md#environment-switching-guide)
 - **添加新的 API 端點** → [ROUTE_REGISTRATION.md](ROUTE_REGISTRATION.md)
 - **為程式碼編寫測試** → [TESTING.md](TESTING.md)
-- **瞭解 Web 安裝程式** → [WEB_INSTALLER.md](WEB_INSTALLER.md)
 - **開發團隊管理功能** → [TEAM_MANAGEMENT.md](TEAM_MANAGEMENT.md)
 - **實現排序/拖放功能** → [TEAM_MANAGEMENT.md](TEAM_MANAGEMENT.md#dynamic-sorting-system)
 - **修復 CORS 問題** → [CLAUDE.md CORS 文檔](../../CLAUDE.md#cors-configuration-documentation)
@@ -115,7 +103,6 @@ CLAUDE.md：約 28,000 字元 (已更新新功能)
 ├── ENVIRONMENT_CONFIG.md  (約 6,000 字元)
 ├── TESTING.md (約 2,000 字元)
 ├── ROUTE_REGISTRATION.md  (約 4,000 字元)
-├── WEB_INSTALLER.md (約 5,000 字元)
 └── TEAM_MANAGEMENT.md (約 8,000 字元) [新]
 
 維護性：6 個專注的文件，更易於導覽

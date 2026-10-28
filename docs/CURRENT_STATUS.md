@@ -101,7 +101,6 @@ JWT payload 包含 `primaryTeamId`、`allowedTeamIds[]`、`teamRoles{teamId: rol
 | 系統設定 | 訊息佇列、快取、會話、平台連線、備份還原 |
 | 監控 | API 健康檢查（D1/KV/R2 探測 + 渠道檢查）；每端點 API 指標收集（MetricsCollectorDO）已移除 |
 | 活動日誌 | 完整操作追蹤 + WebSocket 即時推送 |
-| 自助部署 | `web-installer/` 視覺化部署工具 |
 
 ---
 

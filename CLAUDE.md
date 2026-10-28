@@ -23,7 +23,6 @@ Frontend: frontend/src/main.ts → Vue 3 + Pinia stores + Vue Router
 - **Schema**: `src/db/schema.ts`
 - **Auth middleware**: `src/middleware/auth.ts` (JWT + team role enforcement)
 - **CORS**: `src/config/cors.ts` (single source of truth)
-- **Web Installer**: `web-installer/` (self-hosted deployment, see `docs/claude/WEB_INSTALLER.md`)
 
 ## Development Commands
 
@@ -207,8 +206,6 @@ Desktop-first: phone is `max-width: 768px`, tablet is 769-1024px. CSS cannot rea
 |------------|--------------|--------|
 | Backend (`src/`) | `tsc --noEmit` | No `.vue` SFCs |
 | Frontend (`frontend/`) | `vue-tsc --noEmit` (via `bun run type-check`) | Needs Volar to read `<script setup>` named exports |
-| `web-installer/backend/` | `tsc --noEmit` | No `.vue` SFCs |
-| `web-installer/frontend/` | `vue-tsc --noEmit` | SFC project |
 
 **Rule:** Never run plain `tsc` against `frontend/` — it cannot see named type exports inside `<script setup lang="ts">` blocks (the `*.vue` shim from `vite/client` only declares the default component export). It will produce phantom `TS2614 Module '"*.vue"' has no exported member 'X'` errors that do not exist under `vue-tsc`. Always use `bun run type-check` (or `bunx vue-tsc --noEmit`).
 
