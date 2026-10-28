@@ -100,19 +100,6 @@
 
 ---
 
-##  Web Installer 文檔 (../web-installer/)
-
-| 文檔 | 說明 |
-|------|------|
-| [PROJECT_SUMMARY.md](../web-installer/PROJECT_SUMMARY.md) | Web Installer 專案總覽 |
-| [WEB_INSTALLER_RELEASE_NOTES.md](../web-installer/docs/WEB_INSTALLER_RELEASE_NOTES.md) | Web Installer 發佈說明 |
-| [CLOUDFLARE_OAUTH_SETUP.md](../web-installer/CLOUDFLARE_OAUTH_SETUP.md) | Cloudflare OAuth 設定指南 |
-| [DEPLOYMENT_GUIDE.md](../web-installer/DEPLOYMENT_GUIDE.md) | Web Installer 部署指南 |
-| [PRODUCTION_CHECKLIST.md](../web-installer/PRODUCTION_CHECKLIST.md) | 生產環境檢查清單 |
-| [SETUP_GUIDE.md](../web-installer/SETUP_GUIDE.md) | Web Installer 設定指南 |
-
----
-
 **最後更新**: 2025-11-05 13:30 UTC+8
 **維護者**: Development Team
 **狀態**:  所有文檔已重組至標準目錄結構
