@@ -3,7 +3,7 @@
 > **此文件由程式產生，請勿手動編輯。**
 > 重新產生：`bun run db:doc:schema`（正式庫）或 `bun scripts/generate-schema-doc.ts`（本地鏡像）
 >
-> **產生時間**: 2026-10-21T00:47:02.639Z
+> **產生時間**: 2026-10-28T01:51:51.774Z
 > **資料來源**: REMOTE production D1 (mcis-db)
 >
 > 內容直接讀自資料庫的 `sqlite_master` 與 pragma 函式，**不是**讀 `src/db/schema.ts`
@@ -60,7 +60,7 @@
 - [`conversation_sessions`](#conversation-sessions) — 10 欄；Conversation sessions table - 對話會話管理
 - [`conversation_tags`](#conversation-tags) — 4 欄；Conversation tags junction table - 對話標籤關聯
 - [`conversation_transfers`](#conversation-transfers) — 8 欄；Conversation transfers table - 對話轉移記錄 Note: fromUserId/toUserId removed - only team-based transfers are supported now
-- [`conversations`](#conversations) — 14 欄；Conversations table - 對話
+- [`conversations`](#conversations) — 16 欄；Conversations table - 對話
 - [`cors_events`](#cors-events) — 9 欄；CORS Events table - CORS 事件記錄
 - [`customer_feedback`](#customer-feedback) — 10 欄；Customer Feedback table - 客户满意度反馈 (Migration 0032)
 - [`customer_tags`](#customer-tags) — 4 欄；Customer tags junction table - 客戶標籤關聯
@@ -894,6 +894,8 @@ CREATE TABLE `conversation_transfers` (
 | `deleted_at` | TEXT | - | - |
 | `marked_unread_at` | TEXT | - | - |
 | `unread_floor_at` | TEXT | - | - |
+| `line_reply_token` | TEXT | - | - |
+| `line_reply_token_received_at` | INTEGER | - | - |
 
 **外鍵**:
 
@@ -922,7 +924,7 @@ CREATE TABLE `conversations` (
 	`last_read_at` text,
 	`created_at` text DEFAULT CURRENT_TIMESTAMP,
 	`updated_at` text DEFAULT CURRENT_TIMESTAMP,
-	`deleted_at` text, marked_unread_at TEXT, unread_floor_at TEXT,
+	`deleted_at` text, marked_unread_at TEXT, unread_floor_at TEXT, line_reply_token TEXT, line_reply_token_received_at INTEGER,
 	FOREIGN KEY (`customer_id`) REFERENCES `customers`(`id`) ON UPDATE no action ON DELETE restrict,
 	FOREIGN KEY (`assigned_team_id`) REFERENCES `teams`(`id`) ON UPDATE no action ON DELETE set null
 )
