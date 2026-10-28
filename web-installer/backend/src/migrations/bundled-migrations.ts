@@ -1069,6 +1069,15 @@ CREATE INDEX IF NOT EXISTS idx_webhook_security_events_integration ON webhook_se
 CREATE INDEX IF NOT EXISTS idx_webhook_security_events_platform ON webhook_security_events(platform);
 CREATE INDEX IF NOT EXISTS idx_webhook_security_events_platform_severity ON webhook_security_events(platform, severity, created_at DESC);
     `
+  },
+  {
+    version: '0022',
+    filename: '0022_line_reply_token.sql',
+    description: 'Store the latest unused LINE replyToken per conversation so agent replies can use the free Reply API',
+    sql: `
+ALTER TABLE conversations ADD COLUMN line_reply_token TEXT;
+ALTER TABLE conversations ADD COLUMN line_reply_token_received_at INTEGER;
+    `
   }
 ];
 
