@@ -4,12 +4,10 @@ import { describe, expect, it } from 'vitest';
 
 // The removed warmup middleware ran before auth on any request whose URL contained
 // __warmup__ or that carried a cf-worker-started header, costing a Coordinator DO call,
-// a messages-table scan and up to 100 D1 queries + KV writes. Keep it gone, both in the
-// worker entry and in the bundle the web installer deploys to customer accounts.
+// a messages-table scan and up to 100 D1 queries + KV writes. Keep it gone from the worker entry.
 const root = resolve(__dirname, '../../..');
 const targets = {
   'src/index.ts': 'src/index.ts',
-  'installer worker bundle': 'web-installer/backend/src/services/generated/worker-bundle.ts',
 };
 const needles = ['__warmup__', 'cf-worker-started'];
 

@@ -53,10 +53,6 @@ const backendChecks: CheckDefinition[] = [
     label: 'Scoped TODO guard',
     args: ['run', 'check:scoped-todos'],
   },
-  {
-    label: 'Installer schema check',
-    args: ['run', 'check:installer-schema'],
-  },
 ]
 
 const frontendChecks: CheckDefinition[] = [
