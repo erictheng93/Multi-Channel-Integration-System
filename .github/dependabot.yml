@@ -3,7 +3,7 @@ updates:
   # Each sub-project has its own lockfile, so each needs its own entry.
   # Dependabot opens PRs only; nothing is merged or deployed automatically.
   - package-ecosystem: bun
-    directories: ["/", "/frontend", "/web-installer/frontend", "/tests"]
+    directories: ["/", "/frontend", "/tests"]
     schedule:
       interval: weekly
     groups:
@@ -18,23 +18,3 @@ updates:
       # Drop this once vue-tsc and typescript-eslint support TS 7.
       - dependency-name: typescript
         versions: [">=7"]
-
-  # web-installer/backend runs tests in the Workers pool, whose peer range is vitest ^4.1
-  # (@cloudflare/vitest-pool-workers 0.23). Drop the ignore once the pool supports vitest 5.
-  - package-ecosystem: bun
-    directory: "/web-installer/backend"
-    schedule:
-      interval: weekly
-    groups:
-      wrangler:
-        patterns: ["wrangler"]
-      vitest:
-        patterns: ["vitest", "@vitest/*"]
-    open-pull-requests-limit: 5
-    ignore:
-      - dependency-name: typescript
-        versions: [">=7"]
-      - dependency-name: vitest
-        update-types: ["version-update:semver-major"]
-      - dependency-name: "@vitest/*"
-        update-types: ["version-update:semver-major"]

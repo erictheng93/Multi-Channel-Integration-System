@@ -169,8 +169,8 @@ describe('Auth Module - Password Functions', () => {
       expect(isValid).toBe(true);
     });
 
-    test('should verify PBKDF2 hash (web-installer format)', async () => {
-      // Generate a PBKDF2 hash the same way web-installer's MigrationRunner does
+    test('should verify PBKDF2 hash', async () => {
+      // PBKDF2 hashes created by the removed web installer may still exist on accounts
       const salt = crypto.getRandomValues(new Uint8Array(16));
       const encoder = new TextEncoder();
       const keyMaterial = await crypto.subtle.importKey(
