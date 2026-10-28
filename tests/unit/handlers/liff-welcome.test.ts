@@ -651,6 +651,19 @@ describe('LIFF Welcome Endpoint - quota abuse guards', () => {
     expect(global.fetch).not.toHaveBeenCalled();
   });
 
+  it.each([500, 503])('returns a retryable 503 without pushing when the limiter answers %i', async (status) => {
+    const { env } = withLimiter(status);
+    expect((await post(env as never, 1)).status).toBe(503);
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  it('returns a retryable 503 without pushing when the limiter throws', async () => {
+    const fetch = vi.fn().mockRejectedValue(new Error('DO down'));
+    const env = { ...createMockEnv(), RATE_LIMITER: { idFromName: vi.fn(() => 'id'), get: vi.fn(() => ({ fetch })) } };
+    expect((await post(env as never, 1)).status).toBe(503);
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
   it('releases the claim when the LINE push fails', async () => {
     mockLineApiFetch(false);
     const { env, fetch } = withLimiter(200);
