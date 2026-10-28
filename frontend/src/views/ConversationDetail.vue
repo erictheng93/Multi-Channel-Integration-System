@@ -518,6 +518,9 @@ const handleMessageSent = controller.onMessageSent
 // Keyed on the latest settled message so composer sends, retries and other tabs' replies all count;
 // unsent bubbles are skipped because they have not consumed the single-use token.
 const UNSETTLED_STATUSES = new Set(['pending', 'sending', 'failed', 'recalled'])
+// Recall is a flag, not a status: history exposes isRecalled, the WS recall event writes metadata.isRecalled
+const isRecalledMessage = (m: { isRecalled?: boolean; metadata?: Record<string, unknown> }) =>
+  m.isRecalled === true || m.metadata?.isRecalled === true
 const replyWindow = useReplyWindow({
   conversationId: () => conversationId.value,
   enabled: () => conversation.value?.platform === 'line',
@@ -525,7 +528,8 @@ const replyWindow = useReplyWindow({
 const lastSettledMessageKey = computed(() => {
   const last = [...messages.value].reverse().find(m =>
     (m.senderType === 'customer' || m.senderType === 'agent') &&
-    !UNSETTLED_STATUSES.has(m.status ?? ''))
+    !UNSETTLED_STATUSES.has(m.status ?? '') &&
+    !isRecalledMessage(m))
   return last ? `${last.senderType}:${last.id}` : null
 })
 watch(lastSettledMessageKey, (key, prev) => {
@@ -534,7 +538,13 @@ watch(lastSettledMessageKey, (key, prev) => {
 })
 const handleMessagePending = controller.onMessagePending
 const handleUploadProgress = controller.onUploadProgress
-const handleMessageConfirmed = controller.onMessageConfirmed
+// Also hide on the composer's own confirmation: the watcher keys on the last message in sort order,
+// and a customer message that arrived mid-send can sort after the outbound bubble (its createdAt is
+// set at send start and never updated), so the watcher alone would miss a send that used the token.
+const handleMessageConfirmed: typeof controller.onMessageConfirmed = (...args) => {
+  controller.onMessageConfirmed(...args)
+  replyWindow.hide()
+}
 const handleMessageFailed = controller.onMessageFailed
 const handleTypingStart = controller.onTypingStart
 const handleTypingStop = controller.onTypingStop

@@ -303,5 +303,54 @@ describe('ConversationDetail Integration', () => {
       await flush()
       expect(replyWindowMock.hide).toHaveBeenCalledTimes(2)
     })
+
+    it('hides on send confirmation even when a customer message sorts after the outbound bubble', async () => {
+      router.push('/conversations/1')
+      await router.isReady()
+      const wrapper = mountComponent()
+      const { messages } = vi.mocked(useConversationController).mock.results.at(-1)!.value
+      const flush = () => new Promise(r => setTimeout(r))
+
+      // customer message arrived while the outbound bubble was still uploading
+      messages.value = [
+        { id: 'c1', senderType: 'customer' },
+        { id: 'temp-1', senderType: 'agent', status: 'sending' },
+        { id: 'c2', senderType: 'customer' },
+      ]
+      await flush()
+      replyWindowMock.refresh.mockClear()
+      replyWindowMock.hide.mockClear()
+
+      wrapper.findComponent({ name: 'MessageInput' }).vm.$emit('message-confirmed', { tempId: 'temp-1', realId: 'a1' })
+      messages.value = messages.value.map((m: { id: string }) =>
+        m.id === 'temp-1' ? { ...m, id: 'a1', status: 'sent' } : m)
+      await flush()
+
+      // last settled message is still the customer's, so only the explicit handler can hide
+      expect(replyWindowMock.hide).toHaveBeenCalledTimes(1)
+    })
+
+    it.each([
+      ['isRecalled', { isRecalled: true }],
+      ['metadata.isRecalled', { metadata: { isRecalled: true } }],
+    ])('keeps the window available when the latest agent reply is recalled (%s)', async (_label, recallFlag) => {
+      router.push('/conversations/1')
+      await router.isReady()
+      mountComponent()
+      const { messages } = vi.mocked(useConversationController).mock.results.at(-1)!.value
+      const flush = () => new Promise(r => setTimeout(r))
+      replyWindowMock.refresh.mockClear()
+      replyWindowMock.hide.mockClear()
+
+      // status stays 'sent' on recall; only the flag changes
+      messages.value = [
+        { id: 'c1', senderType: 'customer' },
+        { id: 'a1', senderType: 'agent', status: 'sent', ...recallFlag },
+      ]
+      await flush()
+
+      expect(replyWindowMock.refresh).toHaveBeenCalledTimes(1)
+      expect(replyWindowMock.hide).not.toHaveBeenCalled()
+    })
   })
 })
