@@ -137,34 +137,31 @@ export class BroadcastSenderService {
         );
       }
 
-      await this.markRecipients(unsupportedRecipients, 'skipped', 'platform_not_supported_phase1');
-
       const tokenGroups = await this.resolveTokenGroups(lineRecipients);
-      await this.markRecipients(tokenGroups.skippedNoCredentials, 'skipped', 'no_channel_credentials');
 
-      const quotaPassedGroups: TokenGroup[] = [];
+      // All-or-nothing quota check BEFORE any recipient is marked: if any channel would dip into the
+      // support-reply reserve (or its quota cannot be read), nothing is sent and the broadcast goes back
+      // to draft with every recipient still pending, so the agent can resend it later unchanged.
       let quotaBlockedCount = 0;
       for (const group of tokenGroups.sendable) {
-        const quotaPassed = await this.hasQuota(group.token, group.recipients.length);
-        if (quotaPassed) {
-          quotaPassedGroups.push(group);
-        } else {
+        if (!(await this.hasQuota(group.token, group.recipients.length))) {
           quotaBlockedCount += group.recipients.length;
-          await this.markRecipients(group.recipients, 'skipped', 'quota_insufficient');
         }
       }
-
-      if (quotaPassedGroups.length === 0 && lineRecipients.length > 0 && quotaBlockedCount > 0) {
-        const stats = await this.finalizeBroadcast(broadcastId);
+      if (quotaBlockedCount > 0) {
+        await this.restoreDraftStatus(broadcastId);
         throw new BroadcastServiceError(
           'QUOTA_INSUFFICIENT',
-          `LINE quota is insufficient for ${stats.skippedCount} recipient(s)`,
+          `LINE quota is insufficient for ${quotaBlockedCount} recipient(s)`,
           409
         );
       }
 
+      await this.markRecipients(unsupportedRecipients, 'skipped', 'platform_not_supported_phase1');
+      await this.markRecipients(tokenGroups.skippedNoCredentials, 'skipped', 'no_channel_credentials');
+
       const sentRecipients: PendingRecipient[] = [];
-      for (const group of quotaPassedGroups) {
+      for (const group of tokenGroups.sendable) {
         const groupSent = await this.sendLineGroup(group, lineMessages);
         sentRecipients.push(...groupSent);
       }

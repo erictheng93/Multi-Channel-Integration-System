@@ -154,6 +154,12 @@ describe('BroadcastSenderService send flow', () => {
       mocks.usage.mockResolvedValue({ success: true, totalUsage: 800 });
       await expect(sender.send('b-1', admin)).rejects.toMatchObject({ code: 'QUOTA_INSUFFICIENT' });
       expect(mocks.multicast).not.toHaveBeenCalled();
+      // Kept as a draft with recipients untouched, so the agent can resend it later.
+      expect((await fixture.db.select().from(broadcasts)).find((b) => b.id === 'b-1')?.status).toBe('draft');
+      expect((await fixture.db.select().from(broadcastRecipients)).every((r) => r.status === 'pending')).toBe(true);
+
+      mocks.usage.mockResolvedValue({ success: true, totalUsage: 799 });
+      expect(await sender.send('b-1', admin)).toMatchObject({ status: 'completed' });
     });
 
     it('sends when the reserve stays intact', async () => {
