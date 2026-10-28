@@ -291,16 +291,19 @@ describe('MessageDeliveryService.deliver', () => {
   });
 
   describe('LINE replyToken claim', () => {
-    // The first update(...).where(...) is the atomic claim (.returning); later ones are plain awaits.
-    function mockClaim(rows: Array<{ token: string | null }>) {
-      dbMocks.claimReturning.mockResolvedValue(rows);
-      dbMocks.updateWhere.mockReturnValue({ returning: dbMocks.claimReturning });
+    // The claim is a compare-and-swap: its select (the last one deliver() makes) reads the token,
+    // then the first update(...).where(...).returning clears it; later updates are plain awaits.
+    // Call after setting selectResults.
+    function mockClaim(token: string | null, won = true) {
+      dbMocks.selectResults.push(token === null ? undefined : { token });
+      dbMocks.claimReturning.mockResolvedValue(won ? [{ id: 'conv-1' }] : []);
+      dbMocks.updateWhere.mockReturnValueOnce({ returning: dbMocks.claimReturning });
     }
 
     it('uses the Reply API for the first batch when a token is claimed', async () => {
-      mockClaim([{ token: 'reply-token-1' }]);
       dbMocks.sendLineReply.mockResolvedValue(true);
       dbMocks.selectResults = [makeMessage({ deliveryStatus: 'buffered' }), makeConversationData()];
+      mockClaim('reply-token-1');
 
       await new MessageDeliveryService(makeEnv()).deliver('msg-1');
 
@@ -314,8 +317,8 @@ describe('MessageDeliveryService.deliver', () => {
     });
 
     it('pushes when the token is expired or absent (claim returns no row)', async () => {
-      mockClaim([]);
       dbMocks.selectResults = [makeMessage({ deliveryStatus: 'buffered' }), makeConversationData()];
+      mockClaim(null);
 
       await new MessageDeliveryService(makeEnv()).deliver('msg-1');
 
@@ -327,10 +330,20 @@ describe('MessageDeliveryService.deliver', () => {
       expect(metadata.lineDeliveryMethod).toBe('push');
     });
 
+    it('pushes when another delivery cleared the token first (lost compare-and-swap)', async () => {
+      dbMocks.selectResults = [makeMessage({ deliveryStatus: 'buffered' }), makeConversationData()];
+      mockClaim('reply-token-1', false);
+
+      await new MessageDeliveryService(makeEnv()).deliver('msg-1');
+
+      expect(dbMocks.sendLineReply).not.toHaveBeenCalled();
+      expect(dbMocks.pushLineMessage).toHaveBeenCalledTimes(1);
+    });
+
     it('falls back to push for the same batch when the Reply API fails', async () => {
-      mockClaim([{ token: 'reply-token-1' }]);
       dbMocks.sendLineReply.mockResolvedValue(false);
       dbMocks.selectResults = [makeMessage({ deliveryStatus: 'buffered' }), makeConversationData()];
+      mockClaim('reply-token-1');
 
       await new MessageDeliveryService(makeEnv()).deliver('msg-1');
 
@@ -342,7 +355,6 @@ describe('MessageDeliveryService.deliver', () => {
     });
 
     it('replies only the first batch of five and pushes the remainder', async () => {
-      mockClaim([{ token: 'reply-token-1' }]);
       dbMocks.sendLineReply.mockResolvedValue(true);
       const attachmentIds = ['a1', 'a2', 'a3', 'a4', 'a5', 'a6'];
       dbMocks.selectResults = [
@@ -350,6 +362,7 @@ describe('MessageDeliveryService.deliver', () => {
         makeConversationData(),
         attachmentIds.map(id => ({ id, filename: `${id}.png`, mimeType: 'image/png', fileUrl: `https://files.test/${id}.png`, r2Key: null })),
       ];
+      mockClaim('reply-token-1');
 
       await new MessageDeliveryService(makeEnv()).deliver('msg-1');
 

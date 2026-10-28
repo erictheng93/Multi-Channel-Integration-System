@@ -38,22 +38,31 @@ export class MessageDeliveryService {
   }
 
   /**
-   * Atomically claim the conversation's unused LINE replyToken. A single UPDATE ... RETURNING
-   * clears it, so two concurrent deliveries can never both get the same single-use token.
-   * Returns null when there is no token, it is outside the safe window, or the claim fails.
+   * Claim the conversation's unused LINE replyToken with a compare-and-swap: read the fresh token,
+   * then clear it only if it is still that token. Exactly one concurrent delivery wins the clear,
+   * so a single-use token is never handed out twice. (UPDATE ... RETURNING cannot do this alone:
+   * SQLite returns the post-update value, which is the NULL just written.)
+   * Returns null when there is no token, it is outside the safe window, or the claim is lost or fails.
    */
   private async claimLineReplyToken(conversationId: string): Promise<string | null> {
     try {
-      const rows = await this.db
-        .update(conversations)
-        .set({ lineReplyToken: null, lineReplyTokenReceivedAt: null })
+      const row = await this.db
+        .select({ token: conversations.lineReplyToken })
+        .from(conversations)
         .where(and(
           eq(conversations.id, conversationId),
           isNotNull(conversations.lineReplyToken),
           gt(conversations.lineReplyTokenReceivedAt, nowMs() - LINE_REPLY_TOKEN_SAFE_WINDOW_MS)
         ))
-        .returning({ token: conversations.lineReplyToken });
-      return rows[0]?.token ?? null;
+        .get();
+      if (!row?.token) return null;
+
+      const claimed = await this.db
+        .update(conversations)
+        .set({ lineReplyToken: null, lineReplyTokenReceivedAt: null })
+        .where(and(eq(conversations.id, conversationId), eq(conversations.lineReplyToken, row.token)))
+        .returning({ id: conversations.id });
+      return claimed.length > 0 ? row.token : null;
     } catch (error) {
       log.warn('Failed to claim LINE replyToken, using Push API', {
         conversationId,
