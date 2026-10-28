@@ -133,10 +133,10 @@ describe('BroadcastSenderService send flow', () => {
     });
 
     it('blocks when the send would eat into the support-reply reserve, even for admins', async () => {
-      // 1000 quota, 20% reserve = 200. Remaining 202, cost 2 messages (image + text) -> 200 is ok, 201 used would not be.
+      // 1000 quota, 20% reserve = 200. LINE counts per recipient: remaining 200, cost 1 -> 199 < 200.
       fixture.sqlite.prepare('UPDATE broadcasts SET content = ? WHERE id = ?').run('文字', 'b-1');
       mocks.quota.mockResolvedValue({ success: true, type: 'limited', value: 1000 });
-      mocks.usage.mockResolvedValue({ success: true, totalUsage: 799 });
+      mocks.usage.mockResolvedValue({ success: true, totalUsage: 800 });
       await expect(sender.send('b-1', admin)).rejects.toMatchObject({ code: 'QUOTA_INSUFFICIENT' });
       expect(mocks.multicast).not.toHaveBeenCalled();
     });
@@ -144,7 +144,7 @@ describe('BroadcastSenderService send flow', () => {
     it('sends when the reserve stays intact', async () => {
       fixture.sqlite.prepare('UPDATE broadcasts SET content = ? WHERE id = ?').run('文字', 'b-1');
       mocks.quota.mockResolvedValue({ success: true, type: 'limited', value: 1000 });
-      mocks.usage.mockResolvedValue({ success: true, totalUsage: 798 });
+      mocks.usage.mockResolvedValue({ success: true, totalUsage: 799 });
       expect(await sender.send('b-1', admin)).toMatchObject({ status: 'completed' });
     });
 

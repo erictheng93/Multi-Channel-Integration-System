@@ -135,7 +135,7 @@ export class BroadcastSenderService {
       const quotaPassedGroups: TokenGroup[] = [];
       let quotaBlockedCount = 0;
       for (const group of tokenGroups.sendable) {
-        const quotaPassed = await this.hasQuota(group.token, group.recipients.length * lineMessages.length);
+        const quotaPassed = await this.hasQuota(group.token, group.recipients.length);
         if (quotaPassed) {
           quotaPassedGroups.push(group);
         } else {
@@ -342,8 +342,8 @@ export class BroadcastSenderService {
     return credentials.accessToken ?? null;
   }
 
-  /** `messageCount` = recipients x message objects (LINE bills each object per recipient). */
-  private async hasQuota(token: string, messageCount: number): Promise<boolean> {
+  /** LINE counts one message per recipient per request, whatever the number of message objects. */
+  private async hasQuota(token: string, recipientCount: number): Promise<boolean> {
     const [quota, usage] = await Promise.all([
       getLineMessageQuota(token),
       getLineMessageUsage(token),
@@ -361,8 +361,6 @@ export class BroadcastSenderService {
       return true;
     }
 
-    // ponytail: assumes LINE counts every message object per recipient (up to 5 per request);
-    // if LINE bills per request-recipient instead this over-estimates, which only errs safe.
     const total = quota.value ?? 0;
     const reserve = Math.ceil(total * parseEnvNumber(
       this.env.BROADCAST_QUOTA_RESERVE_RATIO,
@@ -370,7 +368,7 @@ export class BroadcastSenderService {
       (n) => n >= 0 && n < 1
     ));
     const remaining = total - (usage.totalUsage ?? 0);
-    return remaining - messageCount >= reserve;
+    return remaining - recipientCount >= reserve;
   }
 
   private async sendLineGroup(group: TokenGroup, lineMessages: LineReplyMessage[]): Promise<PendingRecipient[]> {
