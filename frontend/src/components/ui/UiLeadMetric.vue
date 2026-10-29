@@ -40,7 +40,7 @@
 <template>
   <div
     class="ui-lead"
-    :class="[`is-${tone}`, { 'is-dim': dim }]"
+    :class="[`is-${tone}`, { 'is-dim': dim, 'is-word': isWord }]"
     role="group"
     :aria-label="label"
   >
@@ -117,6 +117,8 @@ const props = withDefaults(defineProps<{
 })
 
 const discTone = computed(() => props.tone)
+/** A verdict word (正常, 部分降級) rather than a figure: Latin digits sit well at weight 300, CJK strokes do not */
+const isWord = computed(() => typeof props.value === 'string' && /[^\d.,\s—-]/.test(props.value))
 const shown = computed(() => {
   if (props.value === null || props.value === undefined || props.value === '') {
     return '—'
@@ -132,6 +134,8 @@ const shown = computed(() => {
   isolation: isolate;
   display: flex;
   min-width: 0;
+  /* fills a grid cell that stretches it, so the numeral sits on the card's floor, never mid-card */
+  height: 100%;
   min-height: 188px;
   background: linear-gradient(160deg, var(--ui-lead-tint), transparent 70%);
 }
@@ -161,11 +165,12 @@ const shown = computed(() => {
   pointer-events: none;
 }
 
-/* The disc is cropped by the top-right corner: a deliberate quarter-disc, never behind text */
+/* The disc is centred exactly on the card's top-right corner: a clean quarter-disc that bleeds off the
+   card's own edge (the art layer clips it), never a ring sliced mid-way beside text */
 .ui-lead-disc {
   position: absolute;
-  top: -150px;
-  right: -150px;
+  top: -180px;
+  right: -180px;
   opacity: 0.85;
 }
 
@@ -181,6 +186,8 @@ const shown = computed(() => {
 
 .ui-lead-label {
   display: flex;
+  /* label rides the top edge, numeral and meaning sit on the floor: a stretched card never has a floating middle */
+  margin-bottom: auto;
   gap: 4px;
   align-items: center;
   font-size: var(--ui-t-meta);
@@ -199,6 +206,12 @@ const shown = computed(() => {
   letter-spacing: var(--ui-track-lead);
   font-variant-numeric: tabular-nums;
   color: var(--ui-ink);
+}
+
+.ui-lead.is-word .ui-lead-value {
+  font-size: var(--ui-t-lead-word, 48px);
+  font-weight: 600;
+  letter-spacing: -0.02em;
 }
 
 .ui-lead.is-dim .ui-lead-value {
@@ -251,13 +264,17 @@ const shown = computed(() => {
   }
 
   .ui-lead-disc {
-    top: -190px;
-    right: -190px;
+    top: -180px;
+    right: -180px;
   }
 
   .ui-lead-value {
     min-height: var(--ui-t-lead-sm);
     font-size: var(--ui-t-lead-sm);
+  }
+
+  .ui-lead.is-word .ui-lead-value {
+    font-size: 40px;
   }
 }
 </style>
