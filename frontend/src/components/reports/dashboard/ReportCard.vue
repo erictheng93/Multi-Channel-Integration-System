@@ -166,7 +166,7 @@ const pillClass = computed(() => {
 const statusLabel = computed(() => props.getStatusLabel(props.report.status))
 const formatLabel = computed(() => props.getFormatLabel(props.report.format))
 const formattedTime = computed(() => props.formatRelativeTime(props.report.createdAt))
-const formattedSize = computed(() => props.report.fileSize ? props.formatFileSize(props.report.fileSize) : '-')
+const formattedSize = computed(() => props.report.fileSize ? props.formatFileSize(props.report.fileSize) : '—')
 const truncatedDescription = computed(() => {
   return props.report.description ? props.truncateText(props.report.description, 60) : ''
 })

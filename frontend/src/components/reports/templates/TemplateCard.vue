@@ -3,12 +3,6 @@
     class="ui-card template-card"
     :class="{ selected: isSelected }"
   >
-    <DiscRing
-      class="card-disc"
-      variant="hero"
-      :size="240"
-      fade="soft"
-    />
     <button
       type="button"
       class="card-body"
@@ -58,7 +52,6 @@
 </template>
 
 <script setup lang="ts">
-import DiscRing from '@/components/ui/DiscRing.vue';
 import type { ReportTemplate } from '@/types/reports';
 import { formatEstimatedTime, getCategoryLabel, getChartTypeLabel } from './templateHelpers';
 
@@ -95,15 +88,6 @@ defineEmits<{
 .template-card.selected {
   background: color-mix(in srgb, var(--ui-accent-soft) 60%, var(--ui-surface));
   box-shadow: var(--ui-shadow-raised);
-}
-
-/* A deliberate quarter-disc cropped by the card corner; text stays clear of it */
-.card-disc {
-  position: absolute;
-  top: -120px;
-  right: -120px;
-  opacity: 0.55;
-  pointer-events: none;
 }
 
 .card-body {
@@ -191,6 +175,10 @@ defineEmits<{
   gap: 8px;
 }
 
+.category-badge {
+  font-weight: 600;
+}
+
 .category-badge.enterprise {
   background: var(--ui-p-lavender);
   color: var(--ui-p-lavender-ink);
@@ -220,11 +208,6 @@ defineEmits<{
   .card-top {
     flex-direction: row;
     align-items: center;
-  }
-
-  .card-disc {
-    top: -130px;
-    right: -130px;
   }
 }
 </style>
