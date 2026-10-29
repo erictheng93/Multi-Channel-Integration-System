@@ -35,7 +35,7 @@
       </UiPageHead>
 
       <!-- KPI row -->
-      <section class="ui-grid ui-cols-4">
+      <section class="ui-kpi-grid">
         <article class="ui-card ui-kpi">
           <div class="ui-kpi-top">
             <span
@@ -233,7 +233,14 @@
             </div>
             <template v-if="summary.data.value && topWaiting.length > 0">
               <div class="big">
-                {{ oldestWait.value }}<span class="big-unit">{{ oldestWait.unit }}</span>
+                <DiscRing
+                  class="focus-disc"
+                  :size="150"
+                  :weight="1.6"
+                  tone="orange"
+                  fade="strong"
+                  spin
+                />{{ oldestWait.value }}<span class="big-unit">{{ oldestWait.unit }}</span>
               </div>
               <div class="lead-sub">
                 {{ topWaiting[0]?.customerName || '未命名客戶' }} · {{ teamLabel(topWaiting[0]?.assignedTeamId ?? null) }}
@@ -241,7 +248,13 @@
             </template>
             <template v-else-if="summary.data.value">
               <div class="big dim">
-                0
+                <DiscRing
+                  class="focus-disc"
+                  :size="150"
+                  :weight="1.6"
+                  tone="muted"
+                  fade="strong"
+                />0
               </div>
               <div class="lead-sub">
                 沒有待回覆的客戶
@@ -325,32 +338,38 @@
                 </div>
               </li>
             </ul>
-            <div
+            <UiEmptyState
               v-else-if="summary.data.value"
-              class="ui-empty"
+              title="目前沒有待回覆的客戶"
+              description="客戶來訊後，尚未有客服回覆的對話會依等待時間排在這裡。"
+              tone="green"
             >
-              <div class="ui-empty-art">
+              <template #icon>
                 <svg
-                  class="ico"
                   viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
                 ><path d="m5 12 5 5L20 7" /></svg>
-              </div>
-              <h3>目前沒有待回覆的客戶</h3>
-              <p>客戶來訊後，尚未有客服回覆的對話會依等待時間排在這裡。</p>
-            </div>
-            <div
+              </template>
+            </UiEmptyState>
+            <UiEmptyState
               v-else-if="summary.error.value"
-              class="ui-empty"
+              title="無法載入待回覆清單"
             >
-              <h3>無法載入待回覆清單</h3>
-              <button
-                type="button"
-                class="btn btn-secondary btn-sm"
-                @click="refreshAll"
-              >
-                重試
-              </button>
-            </div>
+              <template #action>
+                <button
+                  type="button"
+                  class="btn btn-secondary btn-sm"
+                  @click="refreshAll"
+                >
+                  重試
+                </button>
+              </template>
+            </UiEmptyState>
             <div
               v-else
               class="skel-rows"
@@ -426,12 +445,11 @@
               >{{ p.online ? '在線' : '離線' }}</span>
             </li>
           </ul>
-          <div
+          <UiEmptyState
             v-else-if="members.data.value || members.error.value"
-            class="ui-empty compact"
-          >
-            <p>{{ members.error.value ? '無法載入成員清單' : '尚無團隊成員' }}</p>
-          </div>
+            class="compact"
+            :description="members.error.value ? '無法載入成員清單' : '尚無團隊成員'"
+          />
           <div
             v-else
             class="skel-rows pad"
@@ -481,19 +499,21 @@
             v-if="volume.data.value"
             :data="volume.data.value"
           />
-          <div
+          <UiEmptyState
             v-else-if="volume.error.value"
-            class="ui-empty compact"
+            class="compact"
+            title="無法載入訊息量"
           >
-            <h3>無法載入訊息量</h3>
-            <button
-              type="button"
-              class="btn btn-secondary btn-sm"
-              @click="refreshAll"
-            >
-              重試
-            </button>
-          </div>
+            <template #action>
+              <button
+                type="button"
+                class="btn btn-secondary btn-sm"
+                @click="refreshAll"
+              >
+                重試
+              </button>
+            </template>
+          </UiEmptyState>
           <div
             v-else
             class="chart-skel"
@@ -542,12 +562,11 @@
               <span class="v">{{ summary.data.value.firstResponse.today.count }}<small>個新對話</small></span>
             </div>
           </div>
-          <div
+          <UiEmptyState
             v-else-if="summary.error.value"
-            class="ui-empty compact"
-          >
-            <p>無法載入今日表現</p>
-          </div>
+            class="compact"
+            description="無法載入今日表現"
+          />
           <div
             v-else
             class="skel-rows pad"
@@ -629,6 +648,8 @@
 </template>
 
 <script setup lang="ts">
+import DiscRing from '@/components/ui/DiscRing.vue'
+import UiEmptyState from '@/components/ui/UiEmptyState.vue'
 import UiPageHead from '@/components/ui/UiPageHead.vue'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
@@ -887,9 +908,22 @@ onBeforeUnmount(() => {
 }
 
 .focus-lead .big {
+  /* The disc ring sits behind the number only (never behind the caption lines) */
+  position: relative;
+  align-self: flex-start;
+  isolation: isolate;
+  margin-bottom: 8px;
   font: 600 52px / 1 var(--ui-font-display);
   letter-spacing: -0.04em;
   font-variant-numeric: tabular-nums;
+}
+
+.focus-disc {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: -1;
+  translate: -50% -50%;
 }
 
 .focus-lead .big.dim {

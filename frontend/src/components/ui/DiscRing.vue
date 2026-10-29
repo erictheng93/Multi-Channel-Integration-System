@@ -17,10 +17,12 @@
 
   Props
     size         px number or any CSS length (default '100%': fills its box)
-    tone         'accent' | 'ink' | 'muted' | 'red' | 'green' (colour token; default accent)
+    tone         'accent' | 'ink' | 'muted' | 'red' | 'green' | 'orange' (colour token; default accent)
     spin         rotate slowly (default false)
     spinSeconds  seconds per turn when spinning (default 120)
     grain        draw the rim grain ticks (default true; drop it below ~120px)
+    weight       line-weight multiplier for small discs where hairlines read too faint
+                 (default 1: 1px rings; pass 1.5 below ~150px)
     fade         radial mask strength: 'soft' keeps the rim visible, 'strong' dissolves it
                  (default 'soft')
 
@@ -45,7 +47,7 @@
           cx="320"
           cy="320"
           :r="ring.r"
-          :stroke-width="ring.w"
+          :style="{ strokeWidth: `calc(${ring.w} * var(--ui-disc-weight, 1) * 1px)` }"
           :opacity="ring.o"
         />
       </g>
@@ -60,7 +62,7 @@
           :y1="tick.y1"
           :x2="tick.x2"
           :y2="tick.y2"
-          stroke-width="1"
+          style="stroke-width: calc(var(--ui-disc-weight, 1) * 1px)"
           :opacity="tick.o"
         />
       </g>
@@ -74,11 +76,12 @@ import { DISC_GRAIN, DISC_RINGS } from './disc-ring-geometry'
 
 const props = withDefaults(defineProps<{
   size?: number | string
-  tone?: 'accent' | 'ink' | 'muted' | 'red' | 'green'
+  tone?: 'accent' | 'ink' | 'muted' | 'red' | 'green' | 'orange'
   spin?: boolean
   spinSeconds?: number
   grain?: boolean
   fade?: 'soft' | 'strong'
+  weight?: number
 }>(), {
   size: '100%',
   tone: 'accent',
@@ -86,11 +89,17 @@ const props = withDefaults(defineProps<{
   spinSeconds: 120,
   grain: true,
   fade: 'soft',
+  weight: undefined,
 })
 
 const rootStyle = computed(() => {
   const size = typeof props.size === 'number' ? `${props.size}px` : props.size
-  return { width: size, height: size, '--ui-disc-turn': `${props.spinSeconds}s` }
+  return {
+    width: size,
+    height: size,
+    '--ui-disc-turn': `${props.spinSeconds}s`,
+    ...(props.weight === undefined ? {} : { '--ui-disc-weight': String(props.weight) }),
+  }
 })
 </script>
 
@@ -125,14 +134,21 @@ const rootStyle = computed(() => {
   color: var(--ui-green);
 }
 
+.ui-disc.is-orange {
+  color: var(--ui-orange);
+}
+
 .ui-disc-ring {
   fill: none;
   stroke: currentColor;
+  /* hairlines stay 1px at any size (the viewBox is 640 wide, so a scaled stroke would vanish) */
+  vector-effect: non-scaling-stroke;
 }
 
 .ui-disc-grain line {
   stroke: currentColor;
   stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
 }
 
 .ui-disc-spin {

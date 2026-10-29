@@ -38,6 +38,7 @@
         v-if="!compact"
         class="ui-empty-disc"
         :size="112"
+        :weight="1.2"
         :tone="discTone"
         :grain="false"
       />
@@ -79,6 +80,5 @@ const props = withDefaults(defineProps<{
   tone: 'neutral',
 })
 
-// DiscRing has no orange tone: neutral and orange tiles sit on a muted ring
-const discTone = computed(() => (props.tone === 'neutral' || props.tone === 'orange' ? 'muted' : props.tone))
+const discTone = computed(() => (props.tone === 'neutral' ? 'muted' : props.tone))
 </script>
