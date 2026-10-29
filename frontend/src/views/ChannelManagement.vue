@@ -221,6 +221,12 @@
                 </button>
                 <button
                   role="menuitem"
+                  @click="copyWebhookUrl(channel)"
+                >
+                  複製 Webhook URL
+                </button>
+                <button
+                  role="menuitem"
                   @click="verifyChannel(channel)"
                 >
                   驗證配置
@@ -278,76 +284,72 @@
             >Webhook 需注意</span>
           </div>
 
-          <div
-            v-if="webhookNotice(channel)"
-            class="notice"
-            :class="{ quiet: webhookNotice(channel)?.tone === 'quiet' }"
-          >
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              aria-hidden="true"
-            ><circle
-              cx="12"
-              cy="12"
-              r="9"
-            /><path d="M12 8v5M12 16.5h.01" /></svg>
-            <span>{{ webhookNotice(channel)?.text }}</span>
-          </div>
-
-          <!-- Activity (per platform, not per channel) -->
-          <template v-if="channel.activity">
-            <div class="scope">
-              此平台訊息量 · 近 24 小時
-            </div>
-            <div class="stats">
-              <div class="stat-i">
-                <div class="l">
-                  客戶來訊
-                </div>
-                <div class="n">
-                  {{ formatCount(channel.activity.customerMessages24h) }}
-                </div>
-                <div class="s">
-                  累計 {{ formatCount(channel.activity.customerMessagesTotal) }}
-                </div>
-              </div>
-              <div class="stat-i">
-                <div class="l">
-                  客服發送
-                </div>
-                <div class="n">
-                  {{ formatCount(channel.activity.agentMessages24h) }}
-                </div>
-                <div class="s">
-                  累計 {{ formatCount(channel.activity.agentMessagesTotal) }}
-                </div>
-              </div>
-            </div>
-            <div class="last">
-              此平台最後活動 {{ channel.activity.lastActivityAt ? formatLastLogin(channel.activity.lastActivityAt) : '尚無活動' }}
-            </div>
-          </template>
-          <div
-            v-else
-            class="last"
-          >
-            暫時無法取得訊息量
-          </div>
-
-          <!-- Card Footer -->
-          <div class="chfoot">
-            <button
-              type="button"
-              class="btn btn-secondary btn-sm"
-              @click="copyWebhookUrl(channel)"
+          <!-- Notice slot: its own grid row, so the stat rows below line up across cards -->
+          <div class="notice-slot">
+            <div
+              v-if="webhookNotice(channel)"
+              class="notice"
+              :class="{ quiet: webhookNotice(channel)?.tone === 'quiet' }"
             >
-              複製 Webhook URL
-            </button>
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              ><circle
+                cx="12"
+                cy="12"
+                r="9"
+              /><path d="M12 8v5M12 16.5h.01" /></svg>
+              <span>{{ webhookNotice(channel)?.text }}</span>
+            </div>
+          </div>
+
+          <!-- Activity: platform totals, so a disabled channel shows none of it -->
+          <div class="activity">
+            <template v-if="!channel.isActive" />
+            <template v-else-if="channel.activity">
+              <div class="stats">
+                <div class="stat-i">
+                  <div class="l">
+                    客戶來訊 · 24 小時
+                  </div>
+                  <div class="n">
+                    {{ formatCount(channel.activity.customerMessages24h) }}
+                  </div>
+                  <div class="s">
+                    累計 {{ formatCount(channel.activity.customerMessagesTotal) }}
+                  </div>
+                </div>
+                <div class="stat-i">
+                  <div class="l">
+                    客服發送 · 24 小時
+                  </div>
+                  <div class="n">
+                    {{ formatCount(channel.activity.agentMessages24h) }}
+                  </div>
+                  <div class="s">
+                    累計 {{ formatCount(channel.activity.agentMessagesTotal) }}
+                  </div>
+                </div>
+              </div>
+              <div class="last">
+                平台合計 · 最後活動 {{ channel.activity.lastActivityAt ? formatLastLogin(channel.activity.lastActivityAt) : '尚無活動' }}
+              </div>
+            </template>
+            <div
+              v-else
+              class="last"
+            >
+              暫時無法取得訊息量
+            </div>
+          </div>
+
+          <!-- Card Footer: one clear action -->
+          <div class="chfoot">
             <button
               type="button"
               class="btn btn-sm"
@@ -534,9 +536,13 @@ const selectedPlatformLabel = computed(() =>
   gap: 16px;
   align-items: stretch;
 }
+/* Each card spans six rows of the grid and hands them to its children (subgrid), so the
+   head, meta, notice, stats and footer line up across a row of cards. */
 .chcard {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-row: span 6;
+  grid-template-rows: subgrid;
+  row-gap: 0;
 }
 /* Disabled channel: muted text, not opacity (opacity drops text below WCAG AA contrast) */
 .chcard.off .chhead,
@@ -697,18 +703,18 @@ const selectedPlatformLabel = computed(() =>
   background: var(--ui-surface-2);
   color: var(--ui-muted);
 }
-.scope {
-  margin: 14px 20px 0;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--ui-muted);
+.notice-slot {
+  min-width: 0;
+}
+.activity {
+  min-width: 0;
 }
 .stats {
   position: relative;
   display: grid;
   grid-template-columns: 1fr 1fr;
-  margin: 6px 20px 0;
-  padding: 10px 0 12px;
+  margin: 14px 20px 0;
+  padding: 0 0 10px;
 }
 .stat-i + .stat-i {
   position: relative;
@@ -743,15 +749,15 @@ const selectedPlatformLabel = computed(() =>
   color: var(--ui-muted);
   font-variant-numeric: tabular-nums;
 }
-.chcard > .last:first-of-type {
+.activity > .last:first-child {
   padding-top: 14px;
 }
 .chfoot {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin-top: auto;
-  padding: 0 20px 18px;
+  align-self: end;
+  padding: 14px 20px 18px;
 }
 .chfoot .btn {
   flex: 1;
