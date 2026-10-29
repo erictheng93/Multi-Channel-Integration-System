@@ -67,6 +67,8 @@ interface Props {
   stats?: ApiStatistics | null
   /** false = endpoint metrics are not set up, so the endpoint counts are meaningless */
   metricsConfigured?: boolean
+  /** Failing components, named in the subtitle (e.g. 「Facebook Messenger 連線錯誤」) */
+  causes?: string[]
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -77,6 +79,7 @@ const props = withDefaults(defineProps<Props>(), {
   lastUpdated: null,
   stats: null,
   metricsConfigured: true,
+  causes: () => [],
 })
 
 const emit = defineEmits<{
@@ -98,17 +101,18 @@ const subtitle = computed(() => {
     hour12: false,
   }).format(props.lastUpdated)
   const checked = `最後檢查 ${time}。`
+  const causeText = props.causes.length > 0 ? `${props.causes.join('、')}。` : ''
   if (!props.metricsConfigured) {
-    return `尚未設定端點指標，基礎設施與頻道狀態仍會顯示。${checked}`
+    return `${causeText}尚未設定端點指標，基礎設施與頻道狀態仍會顯示。${checked}`
   }
   const stats = props.stats
   if (!stats || stats.totalEndpoints === 0) {
-    return `目前沒有端點資料。${checked}`
+    return `${causeText}目前沒有端點資料。${checked}`
   }
   if (stats.errorCount === 0 && stats.warningCount === 0) {
-    return `全部 ${stats.totalEndpoints} 個端點正常。${checked}`
+    return `${causeText}全部 ${stats.totalEndpoints} 個端點正常。${checked}`
   }
-  return `${stats.errorCount} 個端點異常、${stats.warningCount} 個需留意，其餘 ${stats.healthyCount} 個正常。${checked}`
+  return `${causeText}${stats.errorCount} 個端點異常、${stats.warningCount} 個需留意，其餘 ${stats.healthyCount} 個正常。${checked}`
 })
 
 const statusLabel = computed(() => {

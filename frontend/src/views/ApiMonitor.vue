@@ -9,6 +9,7 @@
         :last-updated="controller.lastUpdated.value"
         :stats="controller.stats.value"
         :metrics-configured="controller.metricsConfigured.value"
+        :causes="controller.statusCauses.value.map(c => c.text)"
         @refresh="controller.refreshAll"
         @toggle-auto-refresh="controller.toggleAutoRefresh"
       />
