@@ -211,10 +211,27 @@ const goBack = () => {
 
 <style scoped>
 .bare-shell {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
   min-height: 100vh;
   min-height: 100dvh;
   padding: 32px 20px;
   background: var(--ui-canvas);
+}
+
+/* The whole block (header + cards) sits in the vertical middle of the space under the top bar,
+   so a short page never leaves the lower half of the viewport blank */
+@media (min-width: 769px) {
+  .not-found-page {
+    justify-content: center;
+    min-height: calc(100vh - var(--ui-topbar-h) - 56px);
+    min-height: calc(100dvh - var(--ui-topbar-h) - 56px);
+  }
+
+  .bare-shell .not-found-page {
+    min-height: 0;
+  }
 }
 
 .ico {
@@ -281,18 +298,20 @@ const goBack = () => {
   margin-top: 10px;
   padding: 12px 14px;
   font-size: 13px;
+  background: var(--ui-fill);
 }
 
 .asked .k {
   flex: none;
-  color: var(--ui-muted);
+  color: var(--ui-ink-2);
 }
 
 .asked .mono {
   min-width: 0;
   overflow: hidden;
   font-family: var(--ui-font-mono);
-  color: var(--ui-ink-2);
+  font-weight: 500;
+  color: var(--ui-ink);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -395,6 +414,14 @@ const goBack = () => {
 @media (max-width: 1024px) {
   .nf {
     grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  /* Both header buttons share the row equally */
+  .not-found-page :deep(.ui-page-actions) > .btn {
+    flex: 1 1 0;
+    justify-content: center;
   }
 }
 
