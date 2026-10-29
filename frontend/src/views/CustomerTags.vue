@@ -15,7 +15,12 @@
       aria-label="客戶標籤管理頁面"
     >
       <!-- Page Header -->
-      <TagsHeader @create-tag="openCreateModal" />
+      <TagsHeader
+        :total-tags="stats.totalTags"
+        :total-conversations="stats.totalConversations"
+        :unused-tag-names="unusedTagNames"
+        @create-tag="openCreateModal"
+      />
 
       <!-- Stats Overview -->
       <TagsStats :stats="stats" />
@@ -32,34 +37,55 @@
         @clear-selection="selection.clearSelection"
       />
 
-      <!-- Tags List -->
+      <!-- Tags List + conversations side panel -->
       <section
-        class="tags-content"
-        role="region"
-        aria-label="標籤列表"
-        :aria-busy="loading"
+        class="tags-layout"
+        :class="{ 'has-panel': panelVisible }"
       >
-        <!-- Loading State -->
         <div
-          v-if="loading && tags.length === 0"
-          class="loading-state"
+          class="tags-content"
+          role="region"
+          aria-label="標籤列表"
+          :aria-busy="loading"
         >
-          <LoadingSpinner size="lg" />
-          <p>載入標籤中...</p>
+          <!-- Loading State -->
+          <div
+            v-if="loading && tags.length === 0"
+            class="ui-card loading-state"
+          >
+            <LoadingSpinner size="lg" />
+            <p>載入標籤中...</p>
+          </div>
+
+          <!-- Tags Grid -->
+          <TagsList
+            v-else
+            :tags="tags"
+            :loading="loading"
+            :is-selected="selection.isTagSelected"
+            :active-tag-id="isWide ? conversationsTag?.id ?? null : null"
+            :is-searching="search.isSearching.value"
+            @select-tag="selection.toggleTagSelection"
+            @edit-tag="openEditModal"
+            @delete-tag="openDeleteModal"
+            @view-stats="openStatsModal"
+            @view-conversations="openConversationsModal"
+          />
         </div>
 
-        <!-- Tags Grid -->
-        <TagsList
-          v-else
-          :tags="tags"
-          :loading="loading"
-          :is-selected="selection.isTagSelected"
-          @select-tag="selection.toggleTagSelection"
-          @edit-tag="openEditModal"
-          @delete-tag="openDeleteModal"
-          @view-stats="openStatsModal"
-          @view-conversations="openConversationsModal"
-        />
+        <!-- Desktop: persistent side panel -->
+        <aside
+          v-if="panelVisible"
+          class="tags-panel"
+          aria-live="polite"
+        >
+          <TagConversationsModal
+            :key="conversationsTag?.id"
+            :visible="true"
+            :tag="conversationsTag"
+            inline
+          />
+        </aside>
       </section>
 
       <!-- Create/Edit Modal -->
@@ -89,17 +115,18 @@
       <!-- Tag Stats Modal (if needed) -->
       <!-- Can reuse existing TagStatsModal from original component -->
 
-      <!-- Tag Conversations Modal -->
+      <!-- Tag Conversations Modal (tablet / phone; desktop uses the side panel) -->
       <TagConversationsModal
-        v-model:visible="showConversationsModal"
+        :visible="showConversationsModal && !isWide"
         :tag="conversationsTag"
+        @update:visible="showConversationsModal = $event"
       />
     </div>
   </AppLayout>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useCustomerTagsController } from '@/composables/customerTags/useCustomerTagsController'
 import AppLayout from '@/components/ui/AppLayout.vue'
 import LoadingSpinner from '@/components/ui/LoadingSpinner.vue'
@@ -123,6 +150,7 @@ const controller = useCustomerTagsController()
 const {
   loading,
   tags,
+  allTags,
   stats,
   showCreateModal,
   showEditModal,
@@ -169,6 +197,36 @@ const showFormModal = computed({
   }
 })
 
+const unusedTagNames = computed(() =>
+  allTags.value.filter((tag) => !(tag.conversationCount || 0)).map((tag) => tag.name)
+)
+
+// Side panel on wide screens (> 1280px), modal below
+const WIDE_QUERY = '(min-width: 1281px)'
+const wideMql = typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+  ? window.matchMedia(WIDE_QUERY)
+  : null
+const isWide = ref(wideMql?.matches ?? false)
+const onWideChange = (event: { matches: boolean }) => {
+  isWide.value = event.matches
+  showConversationsModal.value = false
+}
+const panelVisible = computed(() => isWide.value && !!conversationsTag.value)
+
+// Keep the panel's tag in sync with the loaded list: select the first used
+// tag by default, and drop a tag that no longer exists.
+watch(allTags, (list) => {
+  if (!isWide.value) { return }
+  const current = conversationsTag.value
+  if (current) {
+    const fresh = list.find((tag) => tag.id === current.id)
+    if (!fresh) { conversationsTag.value = null }
+    return
+  }
+  const first = list.find((tag) => (tag.conversationCount || 0) > 0) ?? list[0]
+  if (first) { conversationsTag.value = first }
+}, { immediate: true })
+
 // ==================== Methods ====================
 
 /**
@@ -186,11 +244,13 @@ const handleBulkDelete = async () => {
 
 // Initialize on mount
 onMounted(async () => {
+  wideMql?.addEventListener('change', onWideChange)
   await initialize()
 })
 
 // Cleanup on unmount
 onUnmounted(() => {
+  wideMql?.removeEventListener('change', onWideChange)
   cleanup()
 })
 </script>
@@ -198,16 +258,31 @@ onUnmounted(() => {
 <style scoped>
 /* ==================== Page Layout ==================== */
 .customer-tags {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
   width: 100%;
-  max-width: clamp(1200px, 85vw, 1650px);
+  max-width: 1280px;
   margin: 0 auto;
-  padding: clamp(1rem, 2vw, 2rem) clamp(0.5rem, 2vw, 1.5rem);
+  padding: 20px;
   min-height: 100%;
 }
 
 /* ==================== Content Section ==================== */
-.tags-content {
-  min-height: 400px;
+.tags-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.tags-layout.has-panel {
+  grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+}
+
+.tags-panel {
+  position: sticky;
+  top: 16px;
 }
 
 .loading-state {
@@ -215,19 +290,20 @@ onUnmounted(() => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: var(--space-16);
+  padding: 56px 24px;
   text-align: center;
 }
 
 .loading-state p {
-  margin-top: var(--space-4);
-  color: var(--gray-500);
+  margin: 12px 0 0;
+  font-size: 13.5px;
+  color: var(--ui-muted);
 }
 
 /* ==================== Responsive Design ==================== */
 @media (max-width: 768px) {
   .customer-tags {
-    padding: var(--space-4);
+    padding: 16px;
   }
 }
 </style>

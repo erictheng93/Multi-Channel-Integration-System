@@ -1,32 +1,24 @@
 <template>
-  <div class="toolbar-section">
-    <!-- Search Box -->
+  <section class="ui-card toolbar-section">
     <div class="search-box">
       <SearchIcon class="search-icon" />
       <input
         v-model="localSearchQuery"
-        type="text"
-        class="search-input"
-        placeholder="搜尋標籤名稱或描述..."
+        type="search"
+        class="ui-input search-input"
+        placeholder="搜尋標籤名稱或描述"
+        aria-label="搜尋標籤"
         @input="$emit('update:search-query', localSearchQuery)"
         @keydown.escape="handleClear"
       >
-      <button
-        v-if="localSearchQuery"
-        class="search-clear"
-        @click="handleClear"
-      />
-      <span
-        v-if="isSearching"
-        class="search-stats"
-      >
-        找到 {{ filteredCount }} / {{ totalCount }}
-      </span>
     </div>
+    <span class="count">
+      <template v-if="isSearching">找到 {{ filteredCount }} / {{ totalCount }}</template>
+      <template v-else>共 {{ totalCount }} 個標籤</template>
+    </span>
 
-    <!-- Toolbar Actions -->
     <div class="toolbar-actions">
-      <!-- Bulk Actions (shown when tags are selected) -->
+      <!-- Bulk actions (shown when tags are selected) -->
       <div
         v-if="hasSelection"
         class="selection-indicator"
@@ -43,17 +35,16 @@
           class="btn btn-secondary btn-sm"
           @click="$emit('clear-selection')"
         >
-          <XIcon />
           <span>取消選擇</span>
         </button>
       </div>
     </div>
-  </div>
+  </section>
 </template>
 
 <script setup lang="ts">
 import { ref, watch } from 'vue'
-import { SearchIcon, TrashIcon, XIcon } from '@/components/icons'
+import { SearchIcon, TrashIcon } from '@/components/icons'
 
 const props = defineProps<{
   searchQuery: string
@@ -85,129 +76,73 @@ function handleClear() {
 <style scoped>
 .toolbar-section {
   display: flex;
-  justify-content: space-between;
+  flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-4);
-  margin-bottom: var(--space-8);
-  padding: var(--space-4);
-  background: white;
-  border-radius: var(--radius-2xl);
-  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1);
-  border: 1px solid var(--gray-100);
+  gap: 12px;
+  padding: 12px 14px;
 }
 
 .search-box {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  flex: 1;
-  max-width: 400px;
-  padding: var(--space-3) var(--space-4);
-  background: var(--gray-50);
-  border-radius: var(--radius-lg);
-  border: 1px solid var(--gray-200);
-  transition: all var(--transition-fast);
-}
-
-.search-box:focus-within {
-  background: white;
-  border-color: var(--primary-500);
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  position: relative;
+  flex: 1 1 260px;
+  max-width: 420px;
 }
 
 .search-icon {
-  width: 20px;
-  height: 20px;
-  color: var(--gray-400);
-  flex-shrink: 0;
+  position: absolute;
+  top: 50%;
+  left: 13px;
+  width: 16px;
+  height: 16px;
+  color: var(--ui-muted);
+  transform: translateY(-50%);
+  pointer-events: none;
 }
 
 .search-input {
-  flex: 1;
-  border: none;
-  background: transparent;
-  color: var(--gray-900);
-  font-size: 0.9375rem;
-  outline: none;
+  height: 38px;
+  padding-left: 38px;
+  border-radius: 999px;
 }
 
-.search-input::placeholder {
-  color: var(--gray-400);
-}
-
-.search-clear {
-  background: none;
-  border: none;
-  color: var(--gray-400);
-  cursor: pointer;
-  font-size: 0.875rem;
-  padding: 0.25rem;
-  line-height: 1;
-  border-radius: 4px;
-  transition: all 0.15s;
-  flex-shrink: 0;
-}
-
-.search-clear:hover {
-  color: var(--gray-600);
-  background: var(--gray-200);
-}
-
-.search-stats {
-  font-size: 0.75rem;
-  color: var(--primary-600);
-  font-weight: 600;
-  white-space: nowrap;
-  padding: 0.25rem 0.5rem;
-  background: var(--primary-50);
-  border-radius: 4px;
-  flex-shrink: 0;
+.count {
+  font-size: 12.5px;
+  color: var(--ui-muted);
+  font-variant-numeric: tabular-nums;
 }
 
 .toolbar-actions {
   display: flex;
-  gap: var(--space-3);
   align-items: center;
+  margin-left: auto;
 }
 
 .selection-indicator {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-2) var(--space-3);
-  background: var(--primary-50);
-  border-radius: var(--radius-lg);
-  border: 1px solid var(--primary-200);
+  gap: 8px;
 }
 
 .selection-count {
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: var(--primary-700);
+  font-size: 13px;
+  font-weight: 600;
   white-space: nowrap;
+  font-variant-numeric: tabular-nums;
 }
 
 .btn svg {
-  width: 16px;
-  height: 16px;
+  width: 15px;
+  height: 15px;
 }
 
-@media (max-width: 768px) {
-  .toolbar-section {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
+@media (max-width: 640px) {
   .search-box {
     max-width: none;
   }
-
   .toolbar-actions {
-    justify-content: flex-start;
-  }
-
-  .selection-indicator {
-    flex-wrap: wrap;
+    width: 100%;
+    margin-left: 0;
   }
 }
 </style>
