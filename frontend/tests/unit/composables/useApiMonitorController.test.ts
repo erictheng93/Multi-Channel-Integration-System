@@ -390,6 +390,40 @@ describe('useApiMonitorController', () => {
       expect(controller.stats.value.totalEndpoints).toBe(1)
     })
 
+    it('reflects a failing channel in the headline status and names it', async () => {
+      const data = buildMonitorData({
+        status: 'operational',
+        channels: [
+          { id: 'line', name: 'LINE', status: 'connected', details: 'ok', latencyMs: 60, lastCheck: new Date().toISOString() },
+          { id: 'facebook', name: 'Facebook Messenger', status: 'error', details: 'bad token', latencyMs: 340, lastCheck: new Date().toISOString() }
+        ]
+      })
+      mockSuccessfulFetch(data)
+
+      await controller.initialize()
+
+      expect(controller.systemStatus.value).toBe('degraded')
+      expect(controller.statusCauses.value.map(c => c.text)).toEqual(['Facebook Messenger 連線錯誤'])
+    })
+
+    it('escalates to outage when two infrastructure probes fail, and ignores a disconnected channel', async () => {
+      const now = new Date().toISOString()
+      const data = buildMonitorData({
+        status: 'degraded',
+        infrastructure: [
+          { id: 'd1', name: 'D1 Database', status: 'red', latencyMs: -1, lastCheck: now },
+          { id: 'kv', name: 'KV Cache', status: 'red', latencyMs: 900, lastCheck: now }
+        ] as never,
+        channels: [{ id: 'line', name: 'LINE', status: 'disconnected', details: 'not set up', latencyMs: 0, lastCheck: now }]
+      })
+      mockSuccessfulFetch(data)
+
+      await controller.initialize()
+
+      expect(controller.systemStatus.value).toBe('outage')
+      expect(controller.statusCauses.value).toHaveLength(2)
+    })
+
     it('should set loading true during fetch', async () => {
       let resolvePromise: (_v: unknown) => void
       mockFetch.mockReturnValueOnce(
