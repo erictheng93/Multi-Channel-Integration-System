@@ -81,100 +81,100 @@ export function groupActivitiesByDate(activities: ActivityLog[]): ActivityDateGr
 
 const ACTION_ICON_MAP: Record<string, ActionIconStyle> = {
   'user_login': {
-    bgClass: 'bg-blue-50',
-    colorClass: 'text-[#007AFF]',
+    bgClass: 'bg-[var(--ui-accent-soft)]',
+    colorClass: 'text-[var(--ui-accent)]',
     icon: LoginIcon,
   },
   'user_logout': {
-    bgClass: 'bg-blue-50',
-    colorClass: 'text-[#007AFF]',
+    bgClass: 'bg-[var(--ui-accent-soft)]',
+    colorClass: 'text-[var(--ui-accent)]',
     icon: LogoutIcon,
   },
   'message_send': {
-    bgClass: 'bg-green-50',
-    colorClass: 'text-[#34C759]',
+    bgClass: 'bg-[var(--ui-green-soft)]',
+    colorClass: 'text-[var(--ui-green-ink)]',
     icon: ChatIcon,
   },
   'message_recall': {
-    bgClass: 'bg-green-50',
-    colorClass: 'text-[#34C759]',
+    bgClass: 'bg-[var(--ui-green-soft)]',
+    colorClass: 'text-[var(--ui-green-ink)]',
     icon: ChatIcon,
   },
   'conversation_assign': {
-    bgClass: 'bg-orange-50',
-    colorClass: 'text-[#FF9500]',
+    bgClass: 'bg-[var(--ui-orange-soft)]',
+    colorClass: 'text-[var(--ui-orange-ink)]',
     icon: UsersIcon,
   },
   'conversation_transfer': {
-    bgClass: 'bg-orange-50',
-    colorClass: 'text-[#FF9500]',
+    bgClass: 'bg-[var(--ui-orange-soft)]',
+    colorClass: 'text-[var(--ui-orange-ink)]',
     icon: ForwardIcon,
   },
   'conversation_close': {
-    bgClass: 'bg-red-50',
-    colorClass: 'text-[#FF3B30]',
+    bgClass: 'bg-[var(--ui-red-soft)]',
+    colorClass: 'text-[var(--ui-red-ink)]',
     icon: XIcon,
   },
   'conversation_reopen': {
-    bgClass: 'bg-red-50',
-    colorClass: 'text-[#FF3B30]',
+    bgClass: 'bg-[var(--ui-red-soft)]',
+    colorClass: 'text-[var(--ui-red-ink)]',
     icon: RefreshIcon,
   },
   'settings_update': {
-    bgClass: 'bg-[#F2E8FB]',
-    colorClass: 'text-[#AF52DE]',
+    bgClass: 'bg-[var(--ui-indigo-soft)]',
+    colorClass: 'text-[var(--ui-indigo)]',
     icon: CogIcon,
   },
   'team_invite': {
-    bgClass: 'bg-[#E6F7FA]',
-    colorClass: 'text-[#30B0C7]',
+    bgClass: 'bg-[var(--ui-teal-soft)]',
+    colorClass: 'text-[var(--ui-teal)]',
     icon: UserPlusIcon,
   },
   'team_create': {
-    bgClass: 'bg-[#E6F7FA]',
-    colorClass: 'text-[#30B0C7]',
+    bgClass: 'bg-[var(--ui-teal-soft)]',
+    colorClass: 'text-[var(--ui-teal)]',
     icon: UserPlusIcon,
   },
   'team_update': {
-    bgClass: 'bg-[#E6F7FA]',
-    colorClass: 'text-[#30B0C7]',
+    bgClass: 'bg-[var(--ui-teal-soft)]',
+    colorClass: 'text-[var(--ui-teal)]',
     icon: UserPlusIcon,
   },
   'team_delete': {
-    bgClass: 'bg-[#E6F7FA]',
-    colorClass: 'text-[#30B0C7]',
+    bgClass: 'bg-[var(--ui-teal-soft)]',
+    colorClass: 'text-[var(--ui-teal)]',
     icon: UserPlusIcon,
   },
   'user_create': {
-    bgClass: 'bg-red-50',
-    colorClass: 'text-[#FF3B30]',
+    bgClass: 'bg-[var(--ui-red-soft)]',
+    colorClass: 'text-[var(--ui-red-ink)]',
     icon: UserIcon,
   },
   'user_update': {
-    bgClass: 'bg-red-50',
-    colorClass: 'text-[#FF3B30]',
+    bgClass: 'bg-[var(--ui-red-soft)]',
+    colorClass: 'text-[var(--ui-red-ink)]',
     icon: UserIcon,
   },
   'user_delete': {
-    bgClass: 'bg-red-50',
-    colorClass: 'text-[#FF3B30]',
+    bgClass: 'bg-[var(--ui-red-soft)]',
+    colorClass: 'text-[var(--ui-red-ink)]',
     icon: UserIcon,
   },
   'broadcast_create': {
-    bgClass: 'bg-green-50',
-    colorClass: 'text-[#34C759]',
+    bgClass: 'bg-[var(--ui-green-soft)]',
+    colorClass: 'text-[var(--ui-green-ink)]',
     icon: ChatIcon,
   },
   'broadcast_send': {
-    bgClass: 'bg-green-50',
-    colorClass: 'text-[#34C759]',
+    bgClass: 'bg-[var(--ui-green-soft)]',
+    colorClass: 'text-[var(--ui-green-ink)]',
     icon: ChatIcon,
   },
 }
 
 const DEFAULT_ICON_STYLE: ActionIconStyle = {
-  bgClass: 'bg-gray-50',
-  colorClass: 'text-gray-400',
+  bgClass: 'bg-[var(--ui-fill)]',
+  colorClass: 'text-[var(--ui-faint)]',
   icon: FileIcon,
 }
 
@@ -186,8 +186,8 @@ export function getActionIconStyle(action: string): ActionIconStyle {
   // Match team_* prefix not already in the map
   if (action.startsWith('team_')) {
     return {
-      bgClass: 'bg-[#E6F7FA]',
-      colorClass: 'text-[#30B0C7]',
+      bgClass: 'bg-[var(--ui-teal-soft)]',
+      colorClass: 'text-[var(--ui-teal)]',
       icon: UserPlusIcon,
     }
   }

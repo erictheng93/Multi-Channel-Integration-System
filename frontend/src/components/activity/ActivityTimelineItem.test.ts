@@ -179,10 +179,10 @@ describe('ActivityTimelineItem', () => {
     expect(toggle.attributes('aria-expanded')).toBe('false')
   })
 
-  it('applies correct icon background for message actions (classes contain green)', () => {
+  it('applies correct icon background for message actions (classes use the green token)', () => {
     const wrapper = mountItem(makeActivity({ action: 'message_send' }))
     const iconEl = wrapper.find('.timeline-item__icon')
-    expect(iconEl.classes().join(' ')).toContain('green')
+    expect(iconEl.classes().join(' ')).toContain('--ui-green-soft')
   })
 
   it('renders relative time (.timeline-item__time exists)', () => {
