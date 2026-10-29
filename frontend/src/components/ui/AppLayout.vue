@@ -110,7 +110,8 @@
 
   // Section the page belongs to (same grouping as the sidebar); empty for pages like /profile
   const currentSectionLabel = computed(() => {
-    const label = sectionForPath(route.path)?.label ?? ''
+    // /profile sits outside the sidebar groups: 帳號 is its parent segment
+    const label = sectionForPath(route.path)?.label ?? (route.path === '/profile' ? '帳號' : '')
     return label === currentPageTitle.value ? '' : label
   })
 

@@ -32,7 +32,7 @@
           :sidebar-collapsed="sidebarCollapsed"
           :is-mobile="isMobile"
           :items="item.submenu"
-          @toggle="toggleSubmenu(item.path)"
+          @toggle="toggleSubmenu(item.path, item.submenu[0]?.path)"
         />
 
         <!-- Regular navigation items -->
@@ -68,7 +68,7 @@
 
 <script setup lang="ts">
   import { computed, watch, reactive, ref, nextTick, onMounted, onBeforeUnmount, type Component } from 'vue'
-  import { useRoute } from 'vue-router'
+  import { useRoute, useRouter } from 'vue-router'
   import { useAuthStore } from '@/stores/auth'
   import { useUnreadStore } from '@/stores/unread'
   import { useNotificationsStore } from '@/stores/notifications'
@@ -105,6 +105,7 @@
   }>()
 
   const route = useRoute()
+  const router = useRouter()
   const authStore = useAuthStore()
   const currentPath = computed(() => route.path)
   const unreadStore = useUnreadStore()
@@ -127,8 +128,16 @@
   // Submenu expansion state keyed by route prefix
   const expandedMenus = reactive<Record<string, boolean>>({})
 
-  const toggleSubmenu = (path: string) => {
-    expandedMenus[path] = !expandedMenus[path]
+  // Accordion: only the section you are in shows its children. Another section's parent row
+  // navigates to that section's first child (the route watcher then opens it).
+  const toggleSubmenu = (path: string, firstChild?: string) => {
+    if (expandedMenus[path]) {
+      expandedMenus[path] = false
+    } else if (firstChild) {
+      void router.push(firstChild)
+    } else {
+      expandedMenus[path] = true
+    }
     // the submenu animates open: re-evaluate the fades once it settled
     scheduleSettle()
   }
@@ -138,8 +147,8 @@
   const moreAbove = ref(false)
   const moreBelow = ref(false)
   const EDGE_GAP = 28 // keep the revealed item clear of the fade
-  const GROUP_GAP = 24 // .nav-group + .nav-group margin; must stay >= --nav-fade-top
-  const NAV_PAD_BOTTOM = 12 // .sidebar-nav padding-bottom
+  const GROUP_GAP = 16 // .nav-group + .nav-group margin; must stay >= --nav-fade-top
+  const NAV_PAD_BOTTOM = 10 // .sidebar-nav padding-bottom
 
   const updateFades = () => {
     const el = navEl.value
@@ -151,8 +160,14 @@
   const revealActive = () => {
     const el = navEl.value
     if (!el) { return }
-    // the open submenu's own item wins over its group header
     el.style.paddingBottom = ''
+    // Everything fits (the common 900px-tall case): nothing to reveal, never scroll
+    if (el.scrollHeight <= el.clientHeight + 1) {
+      el.scrollTop = 0
+      updateFades()
+      return
+    }
+    // the open submenu's own item wins over its group header
     const active = el.querySelector<HTMLElement>('.submenu-item.active') ?? el.querySelector<HTMLElement>('.nav-item.active')
     if (active) {
       const box = el.getBoundingClientRect()
@@ -250,14 +265,8 @@
   watch(
     () => route.path,
     (newPath) => {
-      if (newPath.startsWith('/reports')) {
-        expandedMenus['/reports'] = true
-      }
-      if (newPath.startsWith('/data')) {
-        expandedMenus['/data'] = true
-      }
-      if (newPath.startsWith('/settings')) {
-        expandedMenus['/settings'] = true
+      for (const prefix of ['/reports', '/data', '/settings']) {
+        expandedMenus[prefix] = newPath === prefix || newPath.startsWith(`${prefix}/`)
       }
     },
     { flush: 'post', immediate: true },
@@ -269,7 +278,7 @@
 <style scoped>
   .sidebar-nav {
     flex: 1;
-    padding: 4px 10px 12px;
+    padding: 2px 10px 10px;
     overflow-y: auto;
     overflow-x: hidden;
     min-height: 0;
@@ -287,7 +296,7 @@
   }
 
   .sidebar-nav.has-above {
-    --nav-fade-top: 22px;
+    --nav-fade-top: 16px;
   }
 
   .sidebar-nav.has-below {
@@ -307,14 +316,14 @@
     border-radius: 2px;
   }
 
-  /* Group labels: 11.5px / 600, with 24px of air above every group after the first */
+  /* Group labels: 11.5px / 600, with 16px of air above every group after the first */
   .nav-group + .nav-group {
-    margin-top: 24px;
+    margin-top: 16px;
   }
 
   .nav-label {
     display: block;
-    padding: 0 10px 6px;
+    padding: 0 10px 3px;
     font-size: var(--ui-t-nav-label);
     font-weight: 600;
     letter-spacing: 0.04em;
@@ -326,7 +335,7 @@
     display: flex;
     align-items: center;
     gap: 10px;
-    height: 34px;
+    height: 32px;
     padding: 0 10px;
     margin-bottom: 1px;
     border-radius: 9px;

@@ -9,7 +9,7 @@ const auth = { currentAgent: { role: 'agent' } as { role: string } | null, teamR
 vi.mock('@/stores/auth', () => ({ useAuthStore: () => auth }))
 vi.mock('@/stores/unread', () => ({ useUnreadStore: () => ({ total: 4 }) }))
 vi.mock('@/stores/notifications', () => ({ useNotificationsStore: () => ({ unreadCount: 2 }) }))
-vi.mock('vue-router', () => ({ useRoute: () => ({ path: '/dashboard' }) }))
+vi.mock('vue-router', () => ({ useRoute: () => ({ path: '/dashboard' }), useRouter: () => ({ push: vi.fn() }) }))
 
 function labels(role: string, teamRoles: Record<string, string> = {}) {
   auth.currentAgent = { role }

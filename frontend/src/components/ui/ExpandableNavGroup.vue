@@ -92,7 +92,7 @@
     align-items: center;
     gap: 10px;
     width: 100%;
-    height: 34px;
+    height: 32px;
     padding: 0 10px;
     border: none;
     border-radius: 9px;
@@ -165,13 +165,13 @@
   .submenu {
     display: grid;
     gap: 1px;
-    padding: 2px 0 4px 37px;
+    padding: 2px 0 3px 37px;
     overflow: hidden;
   }
 
   .submenu-item {
     display: block;
-    padding: 6px 10px;
+    padding: 5px 10px;
     border-radius: 8px;
     color: var(--ui-muted);
     font-size: 13px;
