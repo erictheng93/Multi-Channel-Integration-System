@@ -60,6 +60,10 @@
               :title="replyOutcome"
             >回覆 {{ replyOutcome }}</span>
           </div>
+          <!-- phone only: priority joins the meta line so the row keeps one trailing control -->
+          <div class="rule-card__prio-line">
+            優先序 {{ rule.priority }} · {{ rule.conditions.length }} 條件 · {{ rule.actions.length }} 動作
+          </div>
         </div>
       </div>
 
@@ -396,6 +400,10 @@ const triggerTypeLabel = computed(() => {
   white-space: nowrap;
 }
 
+.rule-card__prio-line {
+  display: none;
+}
+
 /* Meta text */
 .rule-card__meta {
   font-size: 13px;
@@ -437,9 +445,8 @@ const triggerTypeLabel = computed(() => {
     display: none;
   }
 
-  /* name, badges and the condition wrap instead of clipping; priority drops under the text */
+  /* name, badges and the condition wrap instead of clipping; the chevron is the one trailing control */
   .rule-card__header {
-    flex-wrap: wrap;
     align-items: flex-start;
   }
 
@@ -461,9 +468,19 @@ const triggerTypeLabel = computed(() => {
   }
 
   .rule-card__right {
-    flex: 1 1 100%;
-    justify-content: space-between;
-    padding-left: 58px;
+    margin-top: 3px;
+  }
+
+  .rule-card__priority {
+    display: none;
+  }
+
+  .rule-card__prio-line {
+    display: block;
+    margin-top: 4px;
+    font-size: 13px;
+    color: var(--ui-muted);
+    font-variant-numeric: tabular-nums;
   }
 
   /* the full reply stays readable on a phone: no clamp */
@@ -480,10 +497,6 @@ const triggerTypeLabel = computed(() => {
 
   .rule-card__then {
     display: none;
-  }
-
-  .rule-card__priority {
-    margin-right: auto;
   }
 
   .rule-card__reply {
