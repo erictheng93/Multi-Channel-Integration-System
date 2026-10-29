@@ -1,73 +1,79 @@
 <template>
   <div
     class="report-row"
+    role="row"
+    tabindex="0"
     @click="$emit('view-report', report.id)"
+    @keydown.enter="$emit('view-report', report.id)"
   >
-    <!-- 類型徽章 -->
-    <div class="row-cell type-cell">
-      <div
-        class="report-type-badge"
-        :class="typeBadgeClass"
-      >
-        {{ typeIcon }}
-      </div>
-    </div>
-
-    <!-- 標題和描述 -->
     <div class="row-cell title-cell">
       <h4 class="report-title">
         {{ report.title }}
       </h4>
-      <p
-        v-if="report.description"
-        class="report-description"
-      >
-        {{ truncatedDescription }}
-      </p>
+      <span class="ui-tag report-type-badge">{{ typeLabel }}</span>
     </div>
 
-    <!-- 狀態 -->
     <div class="row-cell status-cell">
       <span
-        class="status-badge"
-        :class="statusClass"
+        class="ui-pill ui-pill-dot status-badge"
+        :class="pillClass"
       >
-        {{ statusIcon }} {{ statusLabel }}
+        {{ statusLabel }}
       </span>
     </div>
 
-    <!-- 格式 -->
     <div class="row-cell format-cell">
-      <span class="format-text">
-        {{ formatIcon }} {{ formatLabel }}
-      </span>
+      <span class="format-text">{{ formatLabel }}</span>
     </div>
 
-    <!-- 建立時間 -->
     <div class="row-cell time-cell">
       <span class="time-text">{{ formattedTime }}</span>
+      <span
+        v-if="expiryText"
+        class="expiry-text"
+      >{{ expiryText }}</span>
     </div>
 
-    <!-- 文件大小 -->
     <div class="row-cell size-cell">
       <span class="size-text">{{ formattedSize }}</span>
     </div>
 
-    <!-- 操作按鈕 -->
     <div class="row-cell actions-cell">
       <div class="row-actions">
         <button
           class="action-btn"
           :disabled="!canDownload"
           title="下載"
+          aria-label="下載"
           @click.stop="$emit('download-report', report)"
-        />
+        >
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          ><path d="M12 4v11m0 0 4-4m-4 4-4-4M5 20h14" /></svg>
+        </button>
         <button
-          class="action-btn"
+          class="action-btn action-btn--danger"
           :disabled="!canDelete"
           title="刪除"
+          aria-label="刪除"
           @click.stop="$emit('delete-report', report)"
-        />
+        >
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          ><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14" /></svg>
+        </button>
       </div>
     </div>
   </div>
@@ -142,6 +148,11 @@ export interface ReportRowProps {
    * 截断文本
    */
   truncateText: (_text: string, _length: number) => string
+
+  /**
+   * 获取报表类型标签
+   */
+  getReportTypeLabel?: (_type: ReportType) => string
 }
 
 const props = defineProps<ReportRowProps>()
@@ -152,18 +163,31 @@ defineEmits<{
   'delete-report': [report: ReportBase]
 }>()
 
-const typeBadgeClass = computed(() => props.getTypeBadgeClass(props.report.type))
-const typeIcon = computed(() => props.getReportTypeIcon(props.report.type))
-const statusIcon = computed(() => props.getStatusIcon(props.report.status))
+const typeLabel = computed(() => props.getReportTypeLabel ? props.getReportTypeLabel(props.report.type) : props.report.type)
+const pillClass = computed(() => {
+  switch (props.report.status) {
+    case 'completed':
+      return 'ui-pill-green'
+    case 'failed':
+      return 'ui-pill-red'
+    case 'generating':
+    case 'pending':
+      return 'ui-pill-orange'
+    default:
+      return ''
+  }
+})
+// Completed files are deleted after expiresAt; show it so users know how long the download stays
+const expiryText = computed(() => {
+  const at = props.report.expiresAt
+  if (!at || props.report.status !== 'completed') { return '' }
+  const d = new Date(at)
+  return Number.isNaN(d.getTime()) ? '' : `到期 ${  d.getMonth() + 1  }/${  d.getDate()}`
+})
 const statusLabel = computed(() => props.getStatusLabel(props.report.status))
-const statusClass = computed(() => props.getStatusClass(props.report.status))
-const formatIcon = computed(() => props.getFormatIcon(props.report.format))
 const formatLabel = computed(() => props.getFormatLabel(props.report.format))
 const formattedTime = computed(() => props.formatRelativeTime(props.report.createdAt))
 const formattedSize = computed(() => props.report.fileSize ? props.formatFileSize(props.report.fileSize) : '-')
-const truncatedDescription = computed(() => {
-  return props.report.description ? props.truncateText(props.report.description, 60) : ''
-})
 
 const canDownload = computed(() => {
   return props.report.status === 'completed' && !!props.report.downloadUrl
@@ -176,246 +200,152 @@ const canDelete = computed(() => {
 
 <style scoped>
 .report-row {
+  position: relative;
   display: grid;
-  grid-template-columns: 60px 1fr 140px 100px 140px 100px 100px;
-  gap: 1rem;
+  grid-template-columns: minmax(0, 2.4fr) 110px 70px minmax(100px, 1fr) 80px 76px;
   align-items: center;
-  padding: 1rem;
-  background: white;
-  border-bottom: 1px solid #e5e7eb;
-  transition: background-color 0.2s;
+  gap: 12px;
+  padding: 14px 22px;
   cursor: pointer;
+  transition: background var(--ui-dur) var(--ui-ease);
 }
 
-.report-row:hover {
-  background: #f9fafb;
+.report-row + .report-row::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 22px;
+  left: 22px;
+  height: 0.5px;
+  background: var(--ui-sep);
+}
+
+.report-row:hover,
+.report-row:focus-visible {
+  background: color-mix(in srgb, var(--ui-fill) 45%, transparent);
+  outline: none;
 }
 
 .row-cell {
-  display: flex;
-  align-items: center;
-}
-
-/* Type Badge */
-.type-cell {
-  justify-content: center;
-}
-
-.report-type-badge {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 8px;
-  font-size: 1.1rem;
-}
-
-.report-type-badge.basic {
-  background: #dbeafe;
-}
-
-.report-type-badge.enterprise {
-  background: linear-gradient(135deg, #fbbf24, #f59e0b);
-}
-
-.report-type-badge.business-intelligence {
-  background: linear-gradient(135deg, #8b5cf6, #7c3aed);
-}
-
-.report-type-badge.advanced {
-  background: linear-gradient(135deg, #ef4444, #dc2626);
-}
-
-/* Title Cell */
-.title-cell {
-  flex-direction: column;
-  align-items: flex-start;
   min-width: 0;
 }
 
+.title-cell {
+  display: grid;
+  justify-items: start;
+  gap: 6px;
+}
+
 .report-title {
-  font-size: 1rem;
-  font-weight: 600;
-  color: #1f2937;
+  max-width: 100%;
   margin: 0;
-  white-space: nowrap;
   overflow: hidden;
+  font-size: 14.5px;
+  font-weight: 600;
   text-overflow: ellipsis;
-  width: 100%;
-}
-
-.report-description {
-  font-size: 0.85rem;
-  color: #6b7280;
-  margin: 0.25rem 0 0 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  width: 100%;
-}
-
-/* Status Cell */
-.status-cell {
-  justify-content: center;
-}
-
-.status-badge {
-  padding: 0.25rem 0.75rem;
-  border-radius: 12px;
-  font-size: 0.8rem;
-  font-weight: 500;
   white-space: nowrap;
 }
 
-.status-badge.pending {
-  background: #fef3c7;
-  color: #92400e;
+.format-text,
+.size-text {
+  font-size: 13px;
+  color: var(--ui-ink-2);
+  font-variant-numeric: tabular-nums;
 }
 
-.status-badge.generating {
-  background: #dbeafe;
-  color: #1e40af;
-}
-
-.status-badge.completed {
-  background: #dcfce7;
-  color: #166534;
-}
-
-.status-badge.failed {
-  background: #fee2e2;
-  color: #991b1b;
-}
-
-.status-badge.expired {
-  background: #f3f4f6;
-  color: #374151;
-}
-
-/* Format Cell */
-.format-cell {
-  justify-content: center;
-}
-
-.format-text {
-  color: #374151;
-  font-weight: 500;
-  font-size: 0.9rem;
-  white-space: nowrap;
-}
-
-/* Time Cell */
 .time-cell {
-  justify-content: center;
+  display: grid;
+  gap: 2px;
 }
 
 .time-text {
-  color: #6b7280;
-  font-size: 0.9rem;
-  white-space: nowrap;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
 }
 
-/* Size Cell */
+.expiry-text {
+  font-size: 11.5px;
+  color: var(--ui-muted);
+}
+
 .size-cell {
-  justify-content: center;
-}
-
-.size-text {
-  color: #374151;
-  font-weight: 500;
-  font-size: 0.9rem;
-  white-space: nowrap;
-}
-
-/* Actions Cell */
-.actions-cell {
-  justify-content: flex-end;
+  text-align: right;
 }
 
 .row-actions {
   display: flex;
-  gap: 0.5rem;
+  justify-content: flex-end;
+  gap: 2px;
 }
 
 .action-btn {
+  display: grid;
   width: 32px;
   height: 32px;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
-  background: white;
+  place-items: center;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--ui-muted);
   cursor: pointer;
-  font-size: 1rem;
-  transition: all 0.2s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  transition:
+    background var(--ui-dur) var(--ui-ease),
+    color var(--ui-dur) var(--ui-ease);
+}
+
+.action-btn svg {
+  width: 16px;
+  height: 16px;
 }
 
 .action-btn:hover:not(:disabled) {
-  background: #f3f4f6;
-  border-color: #9ca3af;
+  background: var(--ui-fill);
+  color: var(--ui-ink);
+}
+
+.action-btn--danger:hover:not(:disabled) {
+  background: var(--ui-red-soft);
+  color: var(--ui-red-ink);
 }
 
 .action-btn:disabled {
-  opacity: 0.5;
+  opacity: 0.35;
   cursor: not-allowed;
-}
-
-/* Responsive */
-@media (max-width: 1280px) {
-  .report-row {
-    grid-template-columns: 60px 1fr 120px 90px 120px 90px 90px;
-    gap: 0.75rem;
-  }
-
-  .report-title {
-    font-size: 0.95rem;
-  }
-
-  .report-description {
-    font-size: 0.8rem;
-  }
 }
 
 @media (max-width: 768px) {
   .report-row {
-    grid-template-columns: 1fr;
-    gap: 0.75rem;
-    padding: 1rem;
-  }
-
-  .row-cell {
-    justify-content: flex-start !important;
-  }
-
-  .type-cell {
-    display: none;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px 12px;
+    padding: 14px 16px;
   }
 
   .title-cell {
-    order: 1;
+    grid-column: 1;
   }
 
   .status-cell {
-    order: 2;
+    grid-column: 2;
+    grid-row: 1;
   }
 
   .format-cell,
-  .time-cell,
   .size-cell {
-    display: inline-flex;
-    width: auto;
+    display: none;
+  }
+
+  .time-cell {
+    grid-column: 1;
   }
 
   .actions-cell {
-    order: 6;
-    justify-content: flex-start !important;
+    grid-column: 2;
+    grid-row: 2;
   }
 
-  .report-title,
-  .report-description {
-    white-space: normal;
+  .action-btn {
+    width: 44px;
+    height: 44px;
   }
 }
 </style>
