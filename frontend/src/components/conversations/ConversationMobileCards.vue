@@ -58,12 +58,22 @@
           </div>
           <div class="card-pills">
             <span
-              v-if="isAwaitingReply(conversation)"
+              v-if="awaitingKind(conversation, now) === 'waiting'"
               class="ui-pill ui-pill-orange"
               :title="WAITING_HINT"
             >待回覆</span>
+            <template v-else-if="awaitingKind(conversation, now) === 'stale'">
+              <span
+                class="ui-pill"
+                :title="STALE_HINT"
+              >{{ staleWaitText(conversation.awaitingSince, now) }}</span>
+              <span
+                v-if="conversation.neverReplied"
+                class="ui-pill ui-pill-red never-pill"
+              >從未回覆</span>
+            </template>
             <span
-              v-else-if="isReplied(conversation)"
+              v-else-if="isReplied(conversation, now)"
               class="replied"
             >已回覆</span>
             <span
@@ -98,7 +108,9 @@ import {
   WAITING_HINT,
   freeReplySeconds,
   initialOf,
-  isAwaitingReply,
+  STALE_HINT,
+  awaitingKind,
+  staleWaitText,
   isReplied,
   relativeTime,
   statusOf,

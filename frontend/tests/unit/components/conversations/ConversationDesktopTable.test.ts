@@ -73,7 +73,7 @@ describe('ConversationDesktopTable.vue', () => {
 
     it('explains 未讀 and 待回覆 on the reply-status header', () => {
       const wrapper = mountTable([])
-      expect(wrapper.findAll('th')[2].attributes('title')).toBe('未讀＝你尚未開啟；待回覆＝尚無客服回覆')
+      expect(wrapper.findAll('th')[2].attributes('title')).toBe('未讀＝你尚未開啟；待回覆＝近 7 天內，客戶來訊後尚無客服回覆')
     })
 
     it('should render no rows when conversations is empty', () => {
@@ -166,6 +166,31 @@ describe('ConversationDesktopTable.vue', () => {
     it('shows 已回覆 when an agent replied last', () => {
       const wrapper = mountTable([createConversation({ lastMessage: lastMessage('agent') })])
       expect(wrapper.find('.reply-cell').text()).toBe('已回覆')
+    })
+
+    const daysAgo = (d: number): string => new Date(Date.now() - d * 86_400_000).toISOString()
+
+    it('uses the backend marker: a sticker or thanks after a reply (awaitingSince null) is answered, not waiting', () => {
+      const wrapper = mountTable([createConversation({ lastMessage: lastMessage('customer', '謝謝'), awaitingSince: null })])
+      expect(wrapper.find('.reply-cell').text()).toBe('已回覆')
+    })
+
+    it('shows 待回覆 for a wait inside the 7-day window', () => {
+      const wrapper = mountTable([createConversation({ lastMessage: lastMessage('customer'), awaitingSince: daysAgo(6) })])
+      expect(wrapper.find('.reply-cell').text()).toBe('待回覆')
+    })
+
+    it('shows a stale wait as 已等 N 天 (not 待回覆), with 從未回覆 only when no human ever replied', () => {
+      const wrapper = mountTable([
+        createConversation({ id: 'a', lastMessage: lastMessage('customer'), awaitingSince: daysAgo(30), neverReplied: true }),
+        createConversation({ id: 'b', lastMessage: lastMessage('customer'), awaitingSince: daysAgo(9), neverReplied: false })
+      ])
+      const cells = wrapper.findAll('.reply-cell')
+      expect(cells[0]!.text()).toContain('已等 30 天')
+      expect(cells[0]!.text()).toContain('從未回覆')
+      expect(cells[0]!.text()).not.toContain('待回覆')
+      expect(cells[1]!.text()).toContain('已等 9 天')
+      expect(cells[1]!.text()).not.toContain('從未回覆')
     })
 
     it('shows neither on a closed conversation', () => {

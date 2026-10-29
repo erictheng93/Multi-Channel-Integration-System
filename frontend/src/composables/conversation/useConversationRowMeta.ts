@@ -3,17 +3,20 @@
  *
  * Two terms, never mixed:
  * - 未讀 (personal): conversations I have not opened -> conversation.unreadCount
- * - 待回覆 (team-wide): the customer wrote last and no agent replied -> lastMessage.senderType === 'customer'
- *   on an open conversation. The list shows a pill only; wait minutes live on the dashboard.
+ * - 待回覆 (team-wide): the customer wrote and no agent replied -> conversation.awaitingSince (the backend marker; a
+ *   sticker or thanks after a reply is not a wait). Waits older than WAITING_WINDOW_DAYS are 逾期 (stale), not 待回覆.
+ *   The list shows a pill only; wait minutes live on the dashboard.
  */
 
 import { computed, onUnmounted, ref, watch, type Ref } from 'vue'
 import type { Conversation } from '@/types'
+import { WAITING_WINDOW_DAYS } from '@shared/api-contracts'
 
 export type StatusTone = 'closed' | 'active' | 'pending'
 
 export const UNREAD_HINT = '未讀＝你尚未開啟'
-export const WAITING_HINT = '待回覆＝尚無客服回覆'
+export const WAITING_HINT = `待回覆＝近 ${WAITING_WINDOW_DAYS} 天內，客戶來訊後尚無客服回覆`
+export const STALE_HINT = `逾期＝客戶來訊後超過 ${WAITING_WINDOW_DAYS} 天仍未回覆（不計入待回覆）`
 export const LEGEND_TEXT = `${UNREAD_HINT}；${WAITING_HINT}`
 
 /** closed -> 已結案, assigned to a team -> 進行中, otherwise 待處理 */
@@ -27,14 +30,43 @@ export function isClosed(conversation: Conversation): boolean {
   return conversation.status === 'closed'
 }
 
-/** 待回覆: open conversation whose last message came from the customer */
-export function isAwaitingReply(conversation: Conversation): boolean {
-  return !isClosed(conversation) && conversation.lastMessage?.senderType === 'customer'
+const DAY_MS = 24 * 60 * 60 * 1000
+
+export type AwaitingKind = 'waiting' | 'stale' | null
+
+/**
+ * Where an open conversation stands on a reply: 'waiting' (待回覆, wait started within the window),
+ * 'stale' (逾期, older) or null. Uses the backend marker; falls back to the last sender only when the API
+ * did not provide it (older cached rows).
+ */
+export function awaitingKind(conversation: Conversation, nowMs: number): AwaitingKind {
+  if (isClosed(conversation)) { return null }
+  if (conversation.awaitingSince !== undefined) {
+    if (!conversation.awaitingSince) { return null }
+    const since = Date.parse(conversation.awaitingSince)
+    if (Number.isNaN(since)) { return 'waiting' }
+    return nowMs - since > WAITING_WINDOW_DAYS * DAY_MS ? 'stale' : 'waiting'
+  }
+  return conversation.lastMessage?.senderType === 'customer' ? 'waiting' : null
 }
 
-/** 已回覆: open conversation whose last message came from an agent */
-export function isReplied(conversation: Conversation): boolean {
-  return !isClosed(conversation) && conversation.lastMessage?.senderType === 'agent'
+/** 待回覆: open conversation with an unanswered customer message that started within the window */
+export function isAwaitingReply(conversation: Conversation, nowMs: number = Date.now()): boolean {
+  return awaitingKind(conversation, nowMs) === 'waiting'
+}
+
+/** 已回覆: open, not waiting, and the customer has been answered (a sign-off after the reply still counts) */
+export function isReplied(conversation: Conversation, nowMs: number = Date.now()): boolean {
+  if (isClosed(conversation) || awaitingKind(conversation, nowMs) !== null) { return false }
+  const sender = conversation.lastMessage?.senderType
+  return sender === 'agent' || (conversation.awaitingSince === null && sender === 'customer')
+}
+
+/** "已等 N 天" for a stale wait */
+export function staleWaitText(since: string | null | undefined, nowMs: number): string {
+  const start = since ? Date.parse(since) : Number.NaN
+  if (Number.isNaN(start)) { return '' }
+  return `已等 ${Math.max(0, Math.floor((nowMs - start) / DAY_MS))} 天`
 }
 
 export function unreadOf(conversation: Conversation): number {

@@ -30,6 +30,7 @@ const summaryFixture = () => ({
       { conversationId: 'c2', customerId: 2, customerName: '林志明', avatarUrl: null, platform: 'facebook', assignedTeamId: 1, waitingSince: minutesAgo(5.5), waitingSeconds: 300, unansweredCount: 1, lastCustomerMessage: '好的' }
     ]
   },
+  staleWaiting: { count: 119, neverRepliedCount: 24 },
   firstResponse: { today: { count: 14, avgSeconds: 190 }, yesterdaySameTime: { count: 11, avgSeconds: 240 } }
 })
 
@@ -188,8 +189,43 @@ describe('Dashboard.vue', () => {
     }))
     const wrapper = mountDashboard()
     await flushPromises()
-    expect(wrapper.find('.ui-page-sub').text()).toContain('目前沒有待回覆的客戶')
+    expect(wrapper.find('.ui-page-sub').text()).toContain('近 7 天內沒有待回覆的客戶')
     expect(wrapper.find('.focus .ui-empty').text()).toContain('目前沒有待回覆的客戶')
+  })
+
+  it('states the 7-day window on the 待回覆 KPI and the focus card', async () => {
+    const wrapper = mountDashboard()
+    await flushPromises()
+    expect(wrapper.find('.ui-kpi-foot[title^="待回覆"]').text()).toContain('近 7 天內')
+    expect(wrapper.find('.focus-lead .note').text()).toContain('近 7 天內')
+  })
+
+  it('points to the stale list under the 等待最久 card, with the never-replied count', async () => {
+    const wrapper = mountDashboard()
+    await flushPromises()
+    const link = wrapper.find('[data-testid="stale-waiting-link"]')
+    expect(link.exists()).toBe(true)
+    expect(link.text()).toBe('另有 119 件超過 7 天未回覆，其中 24 位從未獲得回覆 →')
+  })
+
+  it('omits the never-replied clause when everyone got a reply, and hides the line at zero', async () => {
+    api.getSummary.mockImplementation(() => ok({ ...summaryFixture(), staleWaiting: { count: 3, neverRepliedCount: 0 } }))
+    const some = mountDashboard()
+    await flushPromises()
+    expect(some.find('[data-testid="stale-waiting-link"]').text()).toBe('另有 3 件超過 7 天未回覆 →')
+
+    api.getSummary.mockImplementation(() => ok({ ...summaryFixture(), staleWaiting: { count: 0, neverRepliedCount: 0 } }))
+    const none = mountDashboard()
+    await flushPromises()
+    expect(none.find('[data-testid="stale-waiting-link"]').exists()).toBe(false)
+  })
+
+  it('does not break on a cached summary without staleWaiting', async () => {
+    const { staleWaiting: _omitted, ...legacy } = summaryFixture()
+    api.getSummary.mockImplementation(() => ok(legacy))
+    const wrapper = mountDashboard()
+    await flushPromises()
+    expect(wrapper.find('[data-testid="stale-waiting-link"]').exists()).toBe(false)
   })
 
   it('shows an error state with retry when the summary fails', async () => {

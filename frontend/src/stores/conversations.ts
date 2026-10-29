@@ -428,6 +428,7 @@ export const useConversationsStore = defineStore('conversations', () => {
     try {
       const cleanFilters: Record<string, unknown> = {}
       if (filters.value.scope) { cleanFilters.scope = filters.value.scope }
+      if (filters.value.awaiting) { cleanFilters.awaiting = filters.value.awaiting }
       if (filters.value.status) { cleanFilters.status = filters.value.status }
       if (filters.value.platform) { cleanFilters.platform = filters.value.platform }
       if (filters.value.teamId) { cleanFilters.teamId = filters.value.teamId }
