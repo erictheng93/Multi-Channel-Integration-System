@@ -783,15 +783,14 @@ onUnmounted(() => {
     padding: 14px;
   }
 
-  /* No scroll strip on phone: tabs wrap and every row fills the track */
+  /* One row on phone: the labels fit at 390, so they share the track evenly.
+     Narrower than that the row scrolls with its edge fade instead of wrapping into a grid. */
   .filter-top > .ui-seg {
-    flex-wrap: wrap;
     width: 100%;
-    overflow: visible;
   }
 
   .filter-top > .ui-seg .scope-tab {
-    flex: 1 1 112px;
+    flex: 1 0 auto;
     justify-content: center;
     padding-right: 8px;
     padding-left: 8px;

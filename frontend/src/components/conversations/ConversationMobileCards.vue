@@ -46,7 +46,13 @@
               :title="UNREAD_HINT"
               :aria-label="`未讀 ${unreadOf(conversation)} 則訊息（${UNREAD_HINT}）`"
             >{{ unreadOf(conversation) }}</span>
-            <span class="card-time">{{ relativeTime(getUpdatedAt(conversation), now) }}</span>
+            <span class="card-time">
+              <span
+                v-if="freeReplySeconds(conversation, now) !== null"
+                class="free-pill"
+              >免費回覆 {{ freeReplySeconds(conversation, now) }} 秒</span>
+              {{ relativeTime(getUpdatedAt(conversation), now) }}
+            </span>
           </div>
           <div
             class="last-message"
@@ -57,6 +63,7 @@
             </template>{{ getLastMessageText(conversation) }}
           </div>
           <div class="card-pills">
+            <!-- Pills only for exceptions (waiting / stale); quiet text for everything else -->
             <template v-if="replyStateOf(conversation, now).state === 'stale'">
               <span
                 class="ui-pill"
@@ -68,22 +75,22 @@
               >從未回覆</span>
             </template>
             <span
-              v-else
-              class="ui-pill"
-              :class="replyPillClass(replyStateOf(conversation, now).state)"
-              :title="replyStateOf(conversation, now).state === 'waiting' ? WAITING_HINT : undefined"
+              v-else-if="replyStateOf(conversation, now).state === 'waiting'"
+              class="ui-pill ui-pill-orange"
+              :title="WAITING_HINT"
             >{{ replyStateOf(conversation, now).text }}</span>
             <span
-              v-if="freeReplySeconds(conversation, now) !== null"
-              class="ui-pill ui-pill-green ui-pill-dot"
-            >免費回覆 {{ freeReplySeconds(conversation, now) }} 秒</span>
+              v-else
+              class="state-text"
+              :class="`state-${replyStateOf(conversation, now).state}`"
+            >{{ replyStateOf(conversation, now).text }}</span>
             <span
               v-if="conversation.assignedTeam?.name"
-              class="ui-pill"
+              class="team-text"
             >{{ conversation.assignedTeam.name }}</span>
             <span
               v-else
-              class="ui-pill ui-pill-orange unassigned"
+              class="team-text unassigned"
             >未指派</span>
           </div>
         </div>
@@ -103,7 +110,6 @@ import {
   initialOf,
   STALE_HINT,
   replyStateOf,
-  type ReplyState,
   relativeTime,
   unreadOf,
   useRowClock
@@ -157,9 +163,6 @@ const getUpdatedAt = (conversation: Conversation) => {
   const legacyConversation = withLegacyFields(conversation)
   return conversation.updatedAt || legacyConversation.updated_at
 }
-
-const replyPillClass = (state: ReplyState): string =>
-  state === 'waiting' ? 'ui-pill-orange' : state === 'replied' ? 'ui-pill-green' : ''
 
 const getLastMessageText = (conversation: Conversation) => {
   const content = conversation.lastMessage?.content || '暫無訊息'
@@ -317,12 +320,47 @@ const getLastMessageText = (conversation: Conversation) => {
   flex-wrap: wrap;
   gap: 6px;
   align-items: center;
-  margin-top: 8px;
+  margin-top: 6px;
 }
 
-.replied {
+.state-text,
+.team-text {
   font-size: 13px;
   color: var(--ui-muted);
+}
+
+.state-text {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.state-text::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ui-faint);
+}
+
+.state-text.state-replied::before {
+  background: var(--ui-green);
+}
+
+.team-text:not(.unassigned) {
+  color: var(--ui-ink-2);
+}
+
+.team-text::before {
+  content: '\00b7';
+  margin-right: 6px;
+  color: var(--ui-faint);
+}
+
+.free-pill {
+  margin-right: 6px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ui-green-ink);
 }
 
 @media (max-width: 768px) {
