@@ -21,6 +21,7 @@ import { teamApi } from '@/api/team'
 import { activitiesApi, type ActivityLog } from '@/api/activities'
 import type { ConversationStats } from '@shared/api-contracts'
 import type { TeamMember } from '@/types'
+import { createVisibleInterval } from '@/utils/visibleInterval'
 
 export type VolumeDays = 7 | 30 | 90
 
@@ -131,24 +132,24 @@ export function useDashboardOverview() {
     await Promise.all([loadSummary(), loadVolume(), loadStats(), loadPresence(), loadActivities()])
   }
 
-  let summaryTimer: ReturnType<typeof setInterval> | null = null
-  let presenceTimer: ReturnType<typeof setInterval> | null = null
+  // Polling stops while the tab is hidden and refreshes once on return (D1 is billed per row read).
+  const refreshSummary = (): void => { void Promise.all([loadSummary(), loadStats()]) }
+  const summaryPoll = createVisibleInterval(refreshSummary, SUMMARY_REFRESH_MS, { onVisible: refreshSummary })
+  const presencePoll = createVisibleInterval(() => { void loadPresence() }, PRESENCE_REFRESH_MS, {
+    onVisible: () => { void loadPresence() }
+  })
   let clockTimer: ReturnType<typeof setInterval> | null = null
 
   onMounted(() => {
     void Promise.all([refresh(), loadMembers(), loadTeamNames()])
-    summaryTimer = setInterval(() => {
-      if (document.visibilityState === 'visible') { void Promise.all([loadSummary(), loadStats()]) }
-    }, SUMMARY_REFRESH_MS)
-    presenceTimer = setInterval(() => {
-      if (document.visibilityState === 'visible') { void loadPresence() }
-    }, PRESENCE_REFRESH_MS)
+    summaryPoll.start()
+    presencePoll.start()
     clockTimer = setInterval(() => { now.value = Date.now() }, CLOCK_TICK_MS)
   })
 
   onUnmounted(() => {
-    if (summaryTimer) { clearInterval(summaryTimer) }
-    if (presenceTimer) { clearInterval(presenceTimer) }
+    summaryPoll.stop()
+    presencePoll.stop()
     if (clockTimer) { clearInterval(clockTimer) }
   })
 
