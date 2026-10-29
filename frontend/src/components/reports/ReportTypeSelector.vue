@@ -1,51 +1,52 @@
 <template>
-  <div class="form-group">
-    <label class="form-label required">報表類型</label>
-    <div class="report-type-grid report-type-selector">
-      <div
-        v-for="typeGroup in groupedReportTypes"
-        :key="typeGroup.category"
-        class="type-category"
-      >
-        <h3 class="category-title">
-          {{ typeGroup.title }}
+  <section class="ui-card step-card report-type-selector">
+    <div class="ui-card-head">
+      <span
+        class="step-n"
+        :class="{ done: !!selectedType }"
+      >1</span>
+      <div>
+        <h3 class="ui-card-title">
+          報表類型
         </h3>
-        <div class="type-options">
-          <div
-            v-for="option in typeGroup.types"
-            :key="option.value"
-            class="type-option"
-            :class="{ 'selected': selectedType === option.value }"
-            @click="$emit('select', option.value)"
-          >
-            <div class="type-icon">
-              {{ getReportTypeIcon(option.value) }}
-            </div>
-            <div class="type-info">
-              <div class="type-name">
-                {{ option.label }}
-              </div>
-              <div class="type-desc">
-                {{ option.description }}
-              </div>
-            </div>
-            <div
-              v-if="getTypeBadgeClass(option.value) === 'enterprise'"
-              class="type-badge"
-            >
-              Enterprise
-            </div>
-          </div>
-        </div>
+        <p class="ui-card-sub">
+          {{ selectedType ? '已選：' + selectedLabel : '選擇要產生的報表' }}
+        </p>
       </div>
     </div>
     <div
+      class="type-options"
+      role="radiogroup"
+      aria-label="報表類型"
+    >
+      <button
+        v-for="option in typeOptions"
+        :key="option.value"
+        type="button"
+        role="radio"
+        class="type-option"
+        :class="{ selected: selectedType === option.value }"
+        :aria-checked="selectedType === option.value"
+        @click="$emit('select', option.value)"
+      >
+        <span
+          class="radio"
+          aria-hidden="true"
+        />
+        <span class="type-info">
+          <span class="type-name">{{ option.label }}</span>
+          <span class="type-desc">{{ option.description }}</span>
+        </span>
+      </button>
+    </div>
+    <p
       v-if="error"
       class="error-message"
+      role="alert"
     >
       {{ error }}
-    </div>
-  </div>
+    </p>
+  </section>
 </template>
 
 <script setup lang="ts">
@@ -58,191 +59,115 @@ interface Props {
   error?: string;
 }
 
-defineProps<Props>();
+const props = withDefaults(defineProps<Props>(), {
+  error: undefined
+});
 
 defineEmits<{
   select: [type: ReportType];
 }>();
 
-// Grouped report types for the selector grid
-const groupedReportTypes = computed(() => {
-  const types = ReportsAPI.getAvailableReportTypes() || [];
+// Only the types the backend can actually generate
+const typeOptions = computed(() => ReportsAPI.getGeneratableOptions().types);
 
-  return [
-    {
-      category: 'basic',
-      title: '基礎報表',
-      types: types.filter(t => ['conversation_summary', 'agent_performance', 'team_analytics', 'customer_satisfaction', 'platform_usage', 'message_statistics', 'response_time_analysis', 'workload_distribution', 'system_health', 'custom'].includes(t.value))
-    },
-    {
-      category: 'enterprise',
-      title: '企業級報表',
-      types: types.filter(t => ['cost_analysis', 'sla_compliance', 'anomaly_detection', 'audit_trail', 'resource_utilization'].includes(t.value))
-    },
-    {
-      category: 'business_intelligence',
-      title: '商業智能',
-      types: types.filter(t => ['trend_forecast', 'customer_insights', 'channel_integration', 'goal_achievement', 'automation_effectiveness'].includes(t.value))
-    },
-    {
-      category: 'advanced_analytics',
-      title: '高級分析',
-      types: types.filter(t => ['security_risk', 'knowledge_base', 'call_quality', 'executive_summary'].includes(t.value))
-    }
-  ];
-});
-
-// Icon mapping for report types
-const getReportTypeIcon = (type: ReportType): string => {
-  const iconMap: Record<ReportType, string> = {
-    'conversation_summary': '\uD83D\uDCAC',
-    'agent_performance': '\uD83D\uDC64',
-    'team_analytics': '\uD83D\uDC65',
-    'customer_satisfaction': '\uD83D\uDE0A',
-    'platform_usage': '\uD83D\uDCF1',
-    'message_statistics': '\uD83D\uDCCA',
-    'response_time_analysis': '\u23F1\uFE0F',
-    'workload_distribution': '\u2696\uFE0F',
-    'system_health': '\uD83C\uDFE5',
-    'custom': '\uD83D\uDD27',
-    'cost_analysis': '\uD83D\uDCB0',
-    'sla_compliance': '\u2696\uFE0F',
-    'anomaly_detection': '\uD83D\uDEA8',
-    'audit_trail': '\uD83D\uDCCB',
-    'resource_utilization': '\u26A1',
-    'trend_forecast': '\uD83D\uDCC8',
-    'customer_insights': '\uD83D\uDCA1',
-    'channel_integration': '\uD83C\uDF10',
-    'goal_achievement': '\uD83C\uDFAF',
-    'automation_effectiveness': '\uD83E\uDD16',
-    'security_risk': '\uD83D\uDD12',
-    'knowledge_base': '\uD83D\uDCDA',
-    'call_quality': '\uD83D\uDCDE',
-    'executive_summary': '\uD83D\uDCBC'
-  };
-  return iconMap[type] || '\uD83D\uDCCA';
-};
-
-// Badge classification for report types
-const getTypeBadgeClass = (type: ReportType): string => {
-  if (['cost_analysis', 'sla_compliance', 'anomaly_detection', 'audit_trail', 'resource_utilization'].includes(type)) {
-    return 'enterprise';
-  }
-  if (['trend_forecast', 'customer_insights', 'channel_integration', 'goal_achievement', 'automation_effectiveness'].includes(type)) {
-    return 'business-intelligence';
-  }
-  if (['security_risk', 'knowledge_base', 'call_quality', 'executive_summary'].includes(type)) {
-    return 'advanced';
-  }
-  return 'basic';
-};
-
-// Expose for parent usage
-defineExpose({ getReportTypeIcon });
+const selectedLabel = computed(
+  () => typeOptions.value.find(option => option.value === props.selectedType)?.label ?? ''
+);
 </script>
 
 <style scoped>
-.form-group {
-  margin-bottom: 1.5rem;
+.step-card .ui-card-head {
+  align-items: center;
 }
 
-.form-label {
-  display: block;
-  font-weight: 600;
-  color: #374151;
-  margin-bottom: 0.5rem;
+.step-n {
+  display: grid;
+  flex: none;
+  width: 26px;
+  height: 26px;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--ui-fill);
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--ui-muted);
 }
 
-.form-label.required::after {
-  content: ' *';
-  color: #ef4444;
-}
-
-.report-type-grid {
-  margin-top: 1rem;
-}
-
-.type-category {
-  margin-bottom: 2rem;
-}
-
-.category-title {
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: #374151;
-  margin-bottom: 1rem;
-  padding-bottom: 0.5rem;
-  border-bottom: 1px solid #e5e7eb;
+.step-n.done {
+  background: var(--ui-accent);
+  color: #fff;
 }
 
 .type-options {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 1rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  padding: 4px 22px 20px;
 }
 
 .type-option {
   display: flex;
-  align-items: center;
-  padding: 1rem;
-  border: 2px solid #e5e7eb;
-  border-radius: 8px;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px;
+  border: 0;
+  border-radius: var(--ui-r-inner);
+  background: var(--ui-surface-2);
+  box-shadow: inset 0 0 0 0.5px var(--ui-sep);
+  color: inherit;
+  font: inherit;
+  text-align: left;
   cursor: pointer;
-  transition: all 0.2s;
-  position: relative;
-}
-
-.type-option:hover {
-  border-color: #3b82f6;
-  background-color: #f8fafc;
+  transition:
+    background var(--ui-dur) var(--ui-ease),
+    box-shadow var(--ui-dur) var(--ui-ease);
 }
 
 .type-option.selected {
-  border-color: #3b82f6;
-  background-color: #eff6ff;
+  background: color-mix(in srgb, var(--ui-accent-soft) 60%, var(--ui-surface));
+  box-shadow: var(--ui-sel-ring);
 }
 
-.type-icon {
-  font-size: 1.5rem;
-  margin-right: 0.75rem;
+.radio {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1.5px var(--ui-faint);
+}
+
+.selected .radio {
+  background: radial-gradient(circle, #fff 0 30%, var(--ui-accent) 32%);
+  box-shadow: none;
 }
 
 .type-info {
-  flex: 1;
+  display: grid;
+  gap: 2px;
 }
 
 .type-name {
+  font-size: 14px;
   font-weight: 600;
-  color: #1f2937;
-  margin-bottom: 0.25rem;
 }
 
 .type-desc {
-  font-size: 0.9rem;
-  color: #6b7280;
-}
-
-.type-badge {
-  position: absolute;
-  top: 0.5rem;
-  right: 0.5rem;
-  background: linear-gradient(135deg, #fbbf24, #f59e0b);
-  color: white;
-  font-size: 0.75rem;
-  font-weight: 600;
-  padding: 0.25rem 0.5rem;
-  border-radius: 4px;
+  font-size: 12.5px;
+  color: var(--ui-muted);
 }
 
 .error-message {
-  color: #ef4444;
-  font-size: 0.9rem;
-  margin-top: 0.25rem;
+  margin: 0;
+  padding: 0 22px 16px;
+  font-size: 12.5px;
+  color: var(--ui-red-ink);
 }
 
-@media (max-width: 1024px) {
+@media (max-width: 768px) {
   .type-options {
     grid-template-columns: 1fr;
+    padding: 4px 16px 16px;
   }
 }
 </style>
