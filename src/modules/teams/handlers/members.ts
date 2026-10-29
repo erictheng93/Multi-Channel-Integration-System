@@ -17,7 +17,8 @@ import { ActivityService, ACTIVITY_ACTIONS, RESOURCE_TYPES } from '@/modules/act
 import { createDbClient } from '@/db/drizzle-factory';
 import { blockSystemAgentTarget } from '@/middleware/block-system-agent';
 import { agents } from '@/db/schema';
-import { desc, sql, isNull } from 'drizzle-orm';
+import { notSystemAgent } from '@/constants/system-agent';
+import { and, desc, sql, isNull } from 'drizzle-orm';
 import { HTTP_STATUS } from '@/constants/http-status';
 import { globalErrorHandler } from '@/core/error-handler';
 import { teamContracts, type ContractResponse, type TeamMemberApiDto } from '@shared/api-contracts';
@@ -124,7 +125,7 @@ membersHandler.get('/', jwtAuth, async (c) => {
         lastActive: agents.lastLoginAt
       })
       .from(agents)
-      .where(isNull(agents.deletedAt))
+      .where(and(isNull(agents.deletedAt), notSystemAgent(agents.id)))
       .orderBy(desc(agents.createdAt));
 
     // Fetch multi-team membership information
