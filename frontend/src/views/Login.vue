@@ -46,7 +46,7 @@
                 <circle
                   v-for="ring in wheelRings"
                   :key="ring.r"
-                  class="ring"
+                  class="wheel-ring"
                   cx="320"
                   cy="320"
                   :r="ring.r"
@@ -576,7 +576,7 @@ const handleLogin = async (event?: Event) => {
   animation: spin 90s linear infinite;
 }
 
-.wheel .ring {
+.wheel .wheel-ring {
   fill: none;
   stroke: currentColor;
 }
@@ -597,7 +597,7 @@ const handleLogin = async (event?: Event) => {
   color: #fff;
 }
 
-.login-page[data-theme='dark'] .wheel .ring {
+.login-page[data-theme='dark'] .wheel .wheel-ring {
   stroke-width: 1.8;
 }
 
