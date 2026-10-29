@@ -37,3 +37,32 @@ describe('ReportManagerService.batchOperation — export action', () => {
     expect(mockGenerator.downloadReport).toHaveBeenCalledWith('report-1', 'user-1', mockUtils);
   });
 });
+
+describe('ReportManagerService.batchOperation - visibility', () => {
+  const report = { id: 'r1', createdBy: 'someone-else', teamId: 9, type: 'custom', title: 'T', format: 'json', metadata: {} };
+
+  it('regenerate of a report the caller cannot see is "not found" and generates nothing', async () => {
+    const { ReportAccessDeniedError } = await import('@modules/reports/types/report-types');
+    const generator = { getReportStatus: vi.fn().mockResolvedValue(report), generateReport: vi.fn() };
+    const utils = { checkDownloadPermission: vi.fn().mockRejectedValue(new ReportAccessDeniedError('no')) };
+
+    const result = await new ReportManagerService({} as any).batchOperation(
+      { reportIds: ['r1'], action: 'regenerate' }, 'agent-1', generator as any, utils as any
+    );
+
+    expect(result.results[0]).toEqual({ reportId: 'r1', success: false, error: 'Report not found' });
+    expect(generator.generateReport).not.toHaveBeenCalled();
+  });
+
+  it('regenerate works for a visible report', async () => {
+    const generator = { getReportStatus: vi.fn().mockResolvedValue(report), generateReport: vi.fn().mockResolvedValue({}) };
+    const utils = { checkDownloadPermission: vi.fn().mockResolvedValue(undefined) };
+
+    const result = await new ReportManagerService({} as any).batchOperation(
+      { reportIds: ['r1'], action: 'regenerate' }, 'admin-1', generator as any, utils as any
+    );
+
+    expect(result.results[0].success).toBe(true);
+    expect(generator.generateReport).toHaveBeenCalledOnce();
+  });
+});
