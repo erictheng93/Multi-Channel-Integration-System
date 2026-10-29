@@ -52,13 +52,6 @@
         </template>
       </UiPageHead>
 
-      <!-- Stats Overview -->
-      <TeamStatsOverview
-        :stats="stats"
-        :members="members"
-        :teams="teams"
-      />
-
       <!-- Member Management Section -->
       <MemberListSection
         :members="members"
@@ -203,7 +196,6 @@ import { teamApi } from '@/api/team'
 import type { MemberSortField, TeamSortField } from '@/composables/useListSorting'
 import AppLayout from '@/components/ui/AppLayout.vue'
 import RefreshButton from '@/components/ui/RefreshButton.vue'
-import TeamStatsOverview from '@/components/team/TeamStatsOverview.vue'
 import MemberListSection from '@/components/team/MemberListSection.vue'
 import TeamListSection from '@/components/team/TeamListSection.vue'
 import AddMemberModal from '@/components/team/AddMemberModal.vue'

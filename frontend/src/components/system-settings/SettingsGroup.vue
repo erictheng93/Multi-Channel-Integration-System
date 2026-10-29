@@ -5,7 +5,10 @@
 -->
 
 <template>
-  <section class="settings-group">
+  <section
+    class="settings-group"
+    :class="{ 'is-danger': danger }"
+  >
     <h2
       v-if="title"
       class="group-title"
@@ -27,6 +30,8 @@
 <script setup lang="ts">
 defineProps<{
   title?: string
+  /** Destructive group: red caption and extra space above it */
+  danger?: boolean
 }>()
 </script>
 
@@ -37,6 +42,14 @@ defineProps<{
   font-size: 13px;
   font-weight: 600;
   color: var(--ui-muted);
+}
+
+/* 22px stack gap + 18px = 40px above a danger zone */
+.settings-group.is-danger {
+  margin-top: 18px;
+}
+.settings-group.is-danger .group-title {
+  color: var(--ui-red-ink);
 }
 
 .group-note {

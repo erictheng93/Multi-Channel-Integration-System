@@ -34,12 +34,6 @@
     >
       {{ tile.value }}<small>{{ tile.unit }}</small>
     </div>
-    <div class="bar4">
-      <i
-        :class="tile.tone"
-        :style="{ width: tile.pct + '%' }"
-      />
-    </div>
   </button>
 </template>
 
@@ -55,17 +49,6 @@ defineEmits<{
   (_e: 'stat-click', _type: string): void
 }>()
 
-const total = computed(() => props.stats.totalEndpoints || 1)
-
-function pct(count: number): number {
-  return Math.min(100, Math.round((count / total.value) * 100))
-}
-
-// Avg response bar: capped at 1000 ms for the visual scale
-const responsePct = computed(() =>
-  Math.min(100, Math.round((props.stats.avgResponseTime / 1000) * 100)),
-)
-
 // Inner SVG markup below is static, never user input
 const tiles = computed(() => [
   {
@@ -74,7 +57,6 @@ const tiles = computed(() => [
     tone: 'green',
     value: props.stats.healthyCount,
     unit: ` / ${props.stats.totalEndpoints}`,
-    pct: pct(props.stats.healthyCount),
     clickable: true,
     icon: '<circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/>',
   },
@@ -84,7 +66,6 @@ const tiles = computed(() => [
     tone: 'orange',
     value: props.stats.warningCount,
     unit: ` / ${props.stats.totalEndpoints}`,
-    pct: pct(props.stats.warningCount),
     clickable: true,
     icon: '<path d="M12 3 2 20h20Z"/><path d="M12 10v4M12 17h.01"/>',
   },
@@ -94,7 +75,6 @@ const tiles = computed(() => [
     tone: 'red',
     value: props.stats.errorCount,
     unit: ` / ${props.stats.totalEndpoints}`,
-    pct: pct(props.stats.errorCount),
     clickable: true,
     icon: '<circle cx="12" cy="12" r="9"/><path d="m9 9 6 6M15 9l-6 6"/>',
   },
@@ -104,7 +84,6 @@ const tiles = computed(() => [
     tone: 'blue',
     value: props.stats.avgResponseTime,
     unit: ' ms',
-    pct: responsePct.value,
     clickable: false,
     icon: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
   },
@@ -179,7 +158,7 @@ const tiles = computed(() => [
 }
 
 .tile-value {
-  margin: 12px 0 10px;
+  margin: 12px 0 0;
   font: 600 34px / 1 var(--ui-font-display);
   letter-spacing: -0.03em;
   font-variant-numeric: tabular-nums;
@@ -200,33 +179,13 @@ const tiles = computed(() => [
   color: var(--ui-muted);
 }
 
-.bar4 {
-  height: 4px;
-  overflow: hidden;
-  border-radius: 999px;
-  background: var(--ui-fill);
-}
-
-.bar4 i {
-  display: block;
-  height: 100%;
-  border-radius: inherit;
-  transition: width 300ms var(--ui-ease);
-}
-
-.bar4 i.green {
-  background: var(--ui-green);
-}
-
-.bar4 i.orange {
-  background: var(--ui-orange);
-}
-
-.bar4 i.red {
-  background: var(--ui-red);
-}
-
-.bar4 i.blue {
-  background: var(--ui-accent);
+@media (max-width: 768px) {
+  .tile {
+    padding: 12px 14px;
+  }
+  .tile-value {
+    margin-top: 8px;
+    font-size: 26px;
+  }
 }
 </style>
