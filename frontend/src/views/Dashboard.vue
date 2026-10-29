@@ -595,7 +595,7 @@
               >
                 <span
                   class="ico-tile"
-                  :class="`tone-${feedKind(a.action)}`"
+                  :class="isSystemActor(a) ? 'tone-system' : `tone-${feedKind(a.action)}`"
                 >
                   <svg
                     class="ico"
@@ -632,7 +632,7 @@
                   </svg>
                 </span>
                 <div>
-                  {{ a.userName }} {{ describeActivity(a) }}
+                  {{ getActorName(a) }} {{ describeActivity(a) }}
                   <time :datetime="a.createdAt">{{ relativeTime(a.createdAt) }}</time>
                 </div>
               </li>
@@ -659,7 +659,7 @@ import {
 } from '@/composables/dashboard/useDashboardOverview'
 import { WAITING_WINDOW_DAYS } from '@shared/api-contracts'
 import { useUnreadStore } from '@/stores/unread'
-import { getActivityDescription, hasActivityLabel } from '@/components/activity/utils'
+import { getActivityDescription, hasActivityLabel, getActorName, isSystemActor } from '@/components/activity/utils'
 import type { ActivityLog } from '@/api/activities'
 import AppLayout from '@/components/ui/AppLayout.vue'
 import MessageVolumeChart from '@/components/dashboard/MessageVolumeChart.vue'

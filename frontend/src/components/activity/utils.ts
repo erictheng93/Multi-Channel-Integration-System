@@ -534,6 +534,18 @@ const ROLE_LABEL_MAP: Record<string, string> = {
   agent: '\u5ba2\u670d',
 }
 
+/** Id of the built-in system actor (auto-close and other system-initiated activity); not a team member. */
+export const SYSTEM_ACTOR_ID = 'system'
+
+export function isSystemActor(activity: { userId?: string | number | null }): boolean {
+  return activity.userId === SYSTEM_ACTOR_ID
+}
+
+/** 系統 for the system actor, otherwise the recorded user name. */
+export function getActorName(activity: { userId?: string | number | null; userName: string }): string {
+  return isSystemActor(activity) ? '系統' : activity.userName
+}
+
 export function getRoleLabel(role: string): string {
   return ROLE_LABEL_MAP[role] ?? role
 }
