@@ -23,6 +23,16 @@ export interface GeneralSettings {
 }
 
 /**
+ * Result of the most recent connection test (persisted server-side, no secrets)
+ */
+export interface IntegrationLastTest {
+  status: 'success' | 'error'
+  message: string
+  latencyMs: number
+  testedAt: string
+}
+
+/**
  * LINE integration configuration
  */
 export interface LineIntegration {
@@ -30,6 +40,7 @@ export interface LineIntegration {
   channelSecret: string
   accessToken: string
   status: IntegrationStatus
+  lastTest?: IntegrationLastTest | null
 }
 
 /**
@@ -41,6 +52,7 @@ export interface FacebookIntegration {
   pageId: string
   pageToken: string
   status: IntegrationStatus
+  lastTest?: IntegrationLastTest | null
 }
 
 /**
