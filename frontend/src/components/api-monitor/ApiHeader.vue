@@ -5,6 +5,7 @@
   >
     <template #actions>
       <span
+        v-if="showStatus"
         class="ui-pill ui-pill-dot"
         :class="statusPillClass"
       >{{ statusLabel }}</span>
@@ -61,6 +62,8 @@ interface Props {
   metricsConfigured?: boolean
   /** Failing components, named in the subtitle (e.g. 「Facebook Messenger 連線錯誤」) */
   causes?: string[]
+  /** Show the status pill; pages that carry the status in a lead metric turn it off */
+  showStatus?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -72,6 +75,7 @@ const props = withDefaults(defineProps<Props>(), {
   stats: null,
   metricsConfigured: true,
   causes: () => [],
+  showStatus: true,
 })
 
 const emit = defineEmits<{

@@ -112,15 +112,12 @@ describe('ApiFilter', () => {
     expect(emitted.status).toBe('healthy')
   })
 
-  it('should emit update:filters when category pill is clicked', async () => {
+  it('should emit update:filters when category is chosen from the dropdown', async () => {
     const wrapper = mount(ApiFilter, {
       props: { filters: defaultFilters }
     })
 
-    const buttons = wrapper.findAll('button')
-    const systemBtn = buttons.find(btn => btn.text() === '系統')
-    expect(systemBtn).toBeDefined()
-    await systemBtn!.trigger('click')
+    await wrapper.find('select').setValue('system')
 
     expect(wrapper.emitted('update:filters')).toBeTruthy()
     const emitted = wrapper.emitted('update:filters')![0][0] as FilterState

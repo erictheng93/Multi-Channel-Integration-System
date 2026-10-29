@@ -49,143 +49,124 @@
         {{ error }}
       </div>
 
-      <!-- 即時指標 -->
-      <section class="ui-kpi-grid">
-        <article class="ui-card ui-kpi">
-          <div class="ui-kpi-top">
+      <!-- 即時指標：已註冊連線是主指標，其餘三項並列 -->
+      <section class="top">
+        <article class="ui-card lead-card">
+          <UiLeadMetric
+            label="已註冊連線"
+            :value="metrics ? metrics.registeredConnections : null"
+            unit="條"
+            :loading="isRefreshing && !metrics"
+            :meaning="metrics ? `${metrics.onlineAgents} 位在線客服，多分頁與裝置各算一條` : ''"
+          >
             <span
-              class="ui-kpi-ico blue"
-              aria-hidden="true"
-            >
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              ><circle
-                cx="12"
-                cy="12"
-                r="2"
-              /><path d="M16.2 7.8a6 6 0 0 1 0 8.5M7.8 16.2a6 6 0 0 1 0-8.5" /></svg>
-            </span>
-            已註冊連線
-          </div>
-          <div class="ui-kpi-value">
-            {{ metrics ? metrics.registeredConnections : '—' }}
-          </div>
-          <div class="ui-kpi-foot">
-            <template v-if="metrics">
+              v-if="metrics && connectionDelta !== null"
+              class="ui-delta lead-delta"
+              :class="connectionDelta >= 0 ? 'ui-delta-up' : 'ui-delta-down'"
+            >{{ connectionDelta > 0 ? '+' : '' }}{{ connectionDelta }} 比上次刷新</span>
+          </UiLeadMetric>
+        </article>
+        <div class="kpis">
+          <article class="ui-card ui-kpi">
+            <div class="ui-kpi-top">
               <span
-                v-if="connectionDelta !== null"
-                class="ui-delta"
-                :class="connectionDelta >= 0 ? 'ui-delta-up' : 'ui-delta-down'"
-              >{{ connectionDelta > 0 ? '+' : '' }}{{ connectionDelta }}</span>
-              {{ connectionDelta === null ? `${metrics.onlineAgents} 位在線客服` : '比上次刷新' }}
-            </template>
-          </div>
-        </article>
+                class="ui-kpi-ico green"
+                aria-hidden="true"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                ><path d="M7 4v16M7 20l-3-3M7 20l3-3M17 20V4M17 4l-3 3M17 4l3 3" /></svg>
+              </span>
+              事件 / 秒
+            </div>
+            <div class="ui-kpi-value">
+              {{ eventsTotal === null ? '—' : fmt(eventsTotal, 2) }}
+            </div>
+            <div class="ui-kpi-foot">
+              <template v-if="eventsTotal === null">
+                {{ metrics ? RESAMPLE_HINT : '' }}
+              </template>
+              <template v-else>
+                入 <b>{{ fmt(eventsIn, 2) }}</b> / 出 <b>{{ fmt(eventsOut, 2) }}</b>
+              </template>
+            </div>
+          </article>
 
-        <article class="ui-card ui-kpi">
-          <div class="ui-kpi-top">
-            <span
-              class="ui-kpi-ico green"
-              aria-hidden="true"
-            >
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              ><path d="M7 4v16M7 20l-3-3M7 20l3-3M17 20V4M17 4l-3 3M17 4l3 3" /></svg>
-            </span>
-            事件 / 秒
-          </div>
-          <div class="ui-kpi-value">
-            {{ eventsTotal === null ? '—' : fmt(eventsTotal, 2) }}
-          </div>
-          <div class="ui-kpi-foot">
-            <template v-if="eventsTotal === null">
-              {{ metrics ? RESAMPLE_HINT : '' }}
-            </template>
-            <template v-else>
-              入 <b>{{ fmt(eventsIn, 2) }}</b> / 出 <b>{{ fmt(eventsOut, 2) }}</b>
-            </template>
-          </div>
-        </article>
-
-        <article class="ui-card ui-kpi">
-          <div class="ui-kpi-top">
-            <span
-              class="ui-kpi-ico orange"
-              aria-hidden="true"
-            >
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              ><circle
-                cx="12"
-                cy="12"
-                r="9"
-              /><path d="M12 7v5l3 2" /></svg>
-            </span>
-            平均處理延遲
-          </div>
-          <div class="ui-kpi-value">
-            {{ latencyKnown ? fmt(metrics?.averageLatency, 0) : '—' }}<small v-if="latencyKnown">ms</small>
-          </div>
-          <div class="ui-kpi-foot">
-            <template v-if="metrics && !latencyKnown">
-              {{ RESAMPLE_HINT }}
-            </template>
-            <template v-else-if="metrics">
+          <article class="ui-card ui-kpi">
+            <div class="ui-kpi-top">
               <span
-                class="ui-pill ui-pill-dot"
-                :class="latency.pill"
-              >{{ latency.label }}</span>{{ latency.hint }}
-            </template>
-          </div>
-        </article>
+                class="ui-kpi-ico orange"
+                aria-hidden="true"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                ><circle
+                  cx="12"
+                  cy="12"
+                  r="9"
+                /><path d="M12 7v5l3 2" /></svg>
+              </span>
+              平均處理延遲
+            </div>
+            <div class="ui-kpi-value">
+              {{ latencyKnown ? fmt(metrics?.averageLatency, 0) : '—' }}<small v-if="latencyKnown">ms</small>
+            </div>
+            <div class="ui-kpi-foot">
+              <template v-if="metrics && !latencyKnown">
+                {{ RESAMPLE_HINT }}
+              </template>
+              <template v-else-if="metrics">
+                <span
+                  class="ui-pill ui-pill-dot"
+                  :class="latency.pill"
+                >{{ latency.label }}</span>{{ latency.hint }}
+              </template>
+            </div>
+          </article>
 
-        <article class="ui-card ui-kpi">
-          <div class="ui-kpi-top">
-            <span
-              class="ui-kpi-ico red"
-              aria-hidden="true"
-            >
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              ><path d="M12 3 2 20h20Z" /><path d="M12 10v4M12 17h.01" /></svg>
-            </span>
-            錯誤率
-          </div>
-          <div class="ui-kpi-value">
-            {{ errorRate === null ? '—' : (errorRate * 100).toFixed(2) }}<small v-if="errorRate !== null">%</small>
-          </div>
-          <div class="ui-kpi-foot">
-            <template v-if="errorRate === null">
-              {{ metrics ? RESAMPLE_HINT : '' }}
-            </template>
-            <template v-else>
+          <article class="ui-card ui-kpi">
+            <div class="ui-kpi-top">
               <span
-                class="ui-pill ui-pill-dot"
-                :class="errorStatus.pill"
-              >{{ errorStatus.label }}</span>{{ errorStatus.hint }}
-            </template>
-          </div>
-        </article>
+                class="ui-kpi-ico red"
+                aria-hidden="true"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                ><path d="M12 3 2 20h20Z" /><path d="M12 10v4M12 17h.01" /></svg>
+              </span>
+              錯誤率
+            </div>
+            <div class="ui-kpi-value">
+              {{ errorRate === null ? '—' : (errorRate * 100).toFixed(2) }}<small v-if="errorRate !== null">%</small>
+            </div>
+            <div class="ui-kpi-foot">
+              <template v-if="errorRate === null">
+                {{ metrics ? RESAMPLE_HINT : '' }}
+              </template>
+              <template v-else>
+                <span
+                  class="ui-pill ui-pill-dot"
+                  :class="errorStatus.pill"
+                >{{ errorStatus.label }}</span>{{ errorStatus.hint }}
+              </template>
+            </div>
+          </article>
+        </div>
       </section>
 
       <section class="bento">
@@ -222,7 +203,10 @@
             <span><i class="swatch-area" />已註冊連線<b
               v-if="chart.lastConnections !== null"
               class="is-conn"
-            >{{ chart.lastConnections }}</b></span><span><i class="swatch-dash" />事件 / 秒<b
+            >{{ chart.lastConnections }}</b></span><span><i
+              class="swatch-dash"
+              :class="{ 'is-phone-hidden': phone }"
+            />事件 / 秒<b
               v-if="chart.lastEvents !== null"
               class="is-evt"
             >{{ fmt(chart.lastEvents, 2) }}</b></span>
@@ -231,7 +215,7 @@
             <svg
               v-if="chart.connections.count > 0"
               class="chart"
-              :viewBox="`0 0 ${CHART.width} ${CHART.height}`"
+              :viewBox="`0 0 ${geom.width} ${geom.height}`"
               role="img"
               :aria-label="`${rangeLabel}已註冊連線與每秒事件趨勢`"
             >
@@ -239,8 +223,8 @@
                 <line
                   v-for="tick in chart.yLeft"
                   :key="`g${tick.pos}`"
-                  :x1="CHART.left"
-                  :x2="CHART.right"
+                  :x1="geom.left"
+                  :x2="geom.right"
                   :y1="tick.pos"
                   :y2="tick.pos"
                 />
@@ -249,15 +233,18 @@
                 <text
                   v-for="tick in chart.yLeft"
                   :key="`l${tick.pos}`"
-                  :x="CHART.left - 8"
+                  :x="geom.left - 8"
                   :y="tick.pos + 4"
                 >{{ tick.label }}</text>
               </g>
-              <g text-anchor="start">
+              <g
+                v-if="!phone"
+                text-anchor="start"
+              >
                 <text
                   v-for="tick in chart.yRight"
                   :key="`r${tick.pos}`"
-                  :x="CHART.right + 8"
+                  :x="geom.right + 8"
                   :y="tick.pos + 4"
                 >{{ tick.label }}</text>
               </g>
@@ -266,7 +253,7 @@
                   v-for="tick in chart.x"
                   :key="`x${tick.pos}`"
                   :x="tick.pos"
-                  :y="CHART.bottom + 24"
+                  :y="geom.bottom + 24"
                 >{{ tick.label }}</text>
               </g>
               <path
@@ -287,7 +274,7 @@
                 stroke-linecap="round"
               />
               <path
-                v-for="(d, i) in chart.events.lines"
+                v-for="(d, i) in phoneEvents"
                 :key="`e${i}`"
                 :d="d"
                 fill="none"
@@ -305,7 +292,7 @@
                 fill="var(--ui-accent)"
               />
               <circle
-                v-if="chart.events.last"
+                v-if="chart.events.last && !phone"
                 :cx="chart.events.last.x"
                 :cy="chart.events.last.y"
                 r="3.5"
@@ -323,7 +310,7 @@
               v-if="chart.connections.count > 0"
               class="axis-note"
             >
-              左軸：連線數；右軸：事件 / 秒。事件資料缺漏的時段不連線。
+              {{ phone ? '縱軸：已註冊連線數。事件量見上方圖例。' : '左軸：連線數；右軸：事件 / 秒。事件資料缺漏的時段不連線。' }}
             </p>
           </div>
         </article>
@@ -437,7 +424,8 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { apiClient } from '@/api'
 import { presenceApi, type WsMetricsPointDto, type WsMetricsRange } from '@/api/presence'
 import AppLayout from '@/components/ui/AppLayout.vue'
-import { CHART, RANGE_MS, buildSeries, xTicks, yTicks } from '@/utils/ws-metrics-chart'
+import UiLeadMetric from '@/components/ui/UiLeadMetric.vue'
+import { CHART, CHART_COMPACT, RANGE_MS, buildSeries, xTicks, yTicks } from '@/utils/ws-metrics-chart'
 
 interface Metrics {
   totalConnections: number
@@ -489,6 +477,17 @@ const historyError = ref<string | null>(null)
 /** Window end for the chart; moves with each history load */
 const historyNow = ref(Date.now())
 
+/** Phone: a taller single-axis chart (events stay in the legend as a number) */
+const PHONE_QUERY = '(max-width: 768px)'
+const phone = ref(typeof window !== 'undefined' && window.matchMedia?.(PHONE_QUERY).matches === true)
+let phoneQuery: ReturnType<typeof window.matchMedia> | null = null
+function onPhoneChange(event: { matches: boolean }) {
+  phone.value = event.matches
+}
+/** Events line: wide screens only */
+const phoneEvents = computed(() => (phone.value ? [] : chart.value.events.lines))
+const geom = computed(() => (phone.value ? CHART_COMPACT : CHART))
+
 let refreshInterval: ReturnType<typeof setInterval> | null = null
 let pollCount = 0
 
@@ -501,11 +500,10 @@ const eventsTotal = computed(() =>
 const errorRate = computed(() => (sampled.value ? metrics.value?.errorRate ?? 0 : null))
 
 const subtitle = computed(() => {
-  const m = metrics.value
-  if (!m) {
+  if (!metrics.value) {
     return isRefreshing.value ? '載入中...' : '目前沒有可顯示的連線資料。'
   }
-  const base = `目前有 ${m.registeredConnections} 條已註冊連線（${m.onlineAgents} 位在線客服，多分頁與裝置各算一條）。`
+  const base = `連線數、事件量與處理延遲，每 ${POLL_SECONDS} 秒更新。`
   return alerts.value.length > 0 ? `${base}有 ${alerts.value.length} 則告警待處理。` : base
 })
 
@@ -547,12 +545,14 @@ const chart = computed(() => {
   const newest = points.length > 0 ? (points[points.length - 1]?.ts ?? historyNow.value) : historyNow.value
   const to = newest
   const from = to - RANGE_MS[period.value]
-  const connections = buildSeries(points, p => p.activeConnections, from, to)
+  const g = geom.value
+  const connections = buildSeries(points, p => p.activeConnections, from, to, g)
   const events = buildSeries(
     points,
     p => (p.eventsInPerS === null || p.eventsOutPerS === null ? null : p.eventsInPerS + p.eventsOutPerS),
     from,
-    to
+    to,
+    g
   )
   const lastValue = (pick: (_p: WsMetricsPointDto) => number | null): number | null => {
     for (let i = points.length - 1; i >= 0; i--) {
@@ -569,13 +569,15 @@ const chart = computed(() => {
     events,
     lastConnections: lastValue(p => p.activeConnections),
     lastEvents: lastValue(p => (p.eventsInPerS === null || p.eventsOutPerS === null ? null : p.eventsInPerS + p.eventsOutPerS)),
-    yLeft: yTicks(connections.max),
-    yRight: yTicks(events.max),
-    x: xTicks(from, to, period.value)
+    yLeft: yTicks(connections.max, undefined, g),
+    yRight: yTicks(events.max, undefined, g),
+    x: xTicks(from, to, period.value, 5, g)
   }
 })
 
 onMounted(async () => {
+  phoneQuery = window.matchMedia?.(PHONE_QUERY) ?? null
+  phoneQuery?.addEventListener('change', onPhoneChange)
   document.addEventListener('visibilitychange', handleVisibility)
   await Promise.all([refreshData(), loadHistory()])
   if (autoRefresh.value) {
@@ -584,6 +586,7 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
+  phoneQuery?.removeEventListener('change', onPhoneChange)
   document.removeEventListener('visibilitychange', handleVisibility)
   stopAutoRefresh()
 })
@@ -772,6 +775,35 @@ function formatTime(timestamp: number) {
   to {
     transform: rotate(360deg);
   }
+}
+
+.top {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  gap: 16px;
+}
+
+.lead-card {
+  overflow: hidden;
+}
+
+.lead-card :deep(.ui-lead-meaning) {
+  max-width: min(100%, 300px);
+}
+
+.lead-delta {
+  align-self: flex-start;
+  margin-top: 10px;
+}
+
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.is-phone-hidden {
+  display: none;
 }
 
 .error-message {
@@ -1005,6 +1037,12 @@ svg.chart .g line {
   height: 14px;
 }
 
+@media (max-width: 1024px) {
+  .top {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 @media (max-width: 1280px) {
   .s8,
   .s4 {
@@ -1013,6 +1051,15 @@ svg.chart .g line {
 }
 
 @media (max-width: 768px) {
+  .kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .kpis > :last-child {
+    grid-column: span 2;
+  }
+
   .legend,
   .chart-wrap,
   .facts {
@@ -1041,9 +1088,9 @@ svg.chart .g line {
   }
 }
 
-@media (max-width: 480px) {
+@media (max-width: 768px) {
   svg.chart text {
-    font-size: 18px;
+    font-size: 11px;
   }
 }
 </style>

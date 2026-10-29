@@ -9,7 +9,8 @@
         :last-updated="controller.lastUpdated.value"
         :stats="controller.stats.value"
         :metrics-configured="controller.metricsConfigured.value"
-        :causes="controller.statusCauses.value.map(c => c.text)"
+        :causes="[]"
+        :show-status="false"
         @refresh="controller.refreshAll"
         @toggle-auto-refresh="controller.toggleAutoRefresh"
       />
@@ -23,15 +24,30 @@
         {{ controller.error.value }}
       </div>
 
-      <template v-if="hasMetrics">
-        <!-- KPI tiles: click opens the endpoint list for that status -->
-        <section class="grid-4">
+      <!-- Lead metric: the overall verdict, with the four counts beside it -->
+      <section
+        class="top"
+        :class="{ 'is-solo': !hasMetrics }"
+      >
+        <article class="ui-card lead-card">
+          <UiLeadMetric
+            label="整體狀態"
+            :value="leadValue"
+            :loading="controller.loading.value && !controller.lastUpdated.value"
+            :meaning="leadMeaning"
+            :tone="leadTone"
+          />
+        </article>
+        <div
+          v-if="hasMetrics"
+          class="kpis"
+        >
           <ApiStatsGrid
             :stats="controller.stats.value"
             @stat-click="handleStatClick"
           />
-        </section>
-      </template>
+        </div>
+      </section>
 
       <section class="bento">
         <div class="s8 stack">
@@ -73,13 +89,14 @@
           >
             載入中...
           </div>
-
-          <RecentEventsCard :events="controller.events.value" />
         </div>
 
         <div class="s4 stack">
           <InfrastructureCard :infrastructure="controller.infrastructure.value" />
           <ChannelIntegrationsCard :channels="controller.channels.value" />
+        </div>
+        <div class="s12">
+          <RecentEventsCard :events="controller.events.value" />
         </div>
       </section>
 
@@ -109,6 +126,7 @@ import {
   RecentEventsCard,
 } from '@/components/api-monitor'
 import ApiMetricsSetup from '@/components/api-monitor/ApiMetricsSetup.vue'
+import UiLeadMetric from '@/components/ui/UiLeadMetric.vue'
 import type { ApiStatus, FilterState } from '@/types/api-monitor'
 
 // Initialize controller
@@ -127,6 +145,27 @@ const statusCounts = computed(() => {
     warning: endpoints.filter(e => e.status === 'warning').length,
     error: endpoints.filter(e => e.status === 'error').length,
   }
+})
+
+const LEAD_LABEL = { operational: '運作正常', degraded: '部分降級', outage: '服務中斷' } as const
+const LEAD_TONE = { operational: 'green', degraded: 'orange', outage: 'red' } as const
+
+/** The overall verdict; null until the first check lands */
+const leadValue = computed<string | null>(() =>
+  controller.lastUpdated.value ? LEAD_LABEL[controller.systemStatus.value] : null,
+)
+const leadTone = computed(() => LEAD_TONE[controller.systemStatus.value])
+
+/** One line of why: the failing components (the header subtitle carries the endpoint counts) */
+const leadMeaning = computed(() => {
+  const causes = controller.statusCauses.value.map(c => c.text)
+  if (causes.length > 0) {
+    return `${causes.join('、')}。`
+  }
+  if (!hasMetrics.value) {
+    return '尚未設定端點指標，僅檢查基礎設施與頻道。'
+  }
+  return controller.systemStatus.value === 'operational' ? '基礎設施、頻道與端點皆正常。' : '部分端點延遲或錯誤率偏高。'
 })
 
 // Lifecycle
@@ -159,9 +198,28 @@ function handleFilterUpdate(filters: FilterState) {
   color: var(--ui-red-ink);
 }
 
-.grid-4 {
+.top {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  gap: 16px;
+}
+
+.top.is-solo {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.lead-card {
+  overflow: hidden;
+}
+
+/* keep the one-line reason clear of the disc crop in the corner */
+.lead-card :deep(.ui-lead-meaning) {
+  max-width: min(100%, 300px);
+}
+
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
 }
 
@@ -204,14 +262,14 @@ function handleFilterUpdate(filters: FilterState) {
 }
 
 @media (max-width: 1024px) {
-  .grid-4 {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .top {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
 /* Phone: a compact 2 x 2 grid */
 @media (max-width: 768px) {
-  .grid-4 {
+  .kpis {
     gap: 12px;
   }
 }

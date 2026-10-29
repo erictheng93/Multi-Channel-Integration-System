@@ -6,76 +6,30 @@
 
 <template>
   <div class="health-stack">
-    <article
-      class="ui-card hero"
-      :class="`tone-${overallTone}`"
-    >
-      <div
-        class="hero-ico"
-        aria-hidden="true"
+    <article class="ui-card hero">
+      <UiLeadMetric
+        label="整體狀態"
+        :value="heroValue"
+        :loading="controller.processing.value && !controller.healthOverall.value"
+        :meaning="heroSubtitle"
+        :tone="leadTone"
       >
-        <DiscRing
-          class="hero-disc"
-          :size="116"
-          :weight="1.6"
-          :tone="discTone"
-          fade="strong"
-          :grain="false"
-          spin
-        />
-        <svg
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
+        <ul
+          v-if="rows.length > 0"
+          class="hero-counts"
+          aria-label="服務狀態統計"
         >
-          <path
-            v-if="overallTone === 'ok'"
-            d="M5 12.5 10 17.5 19 7"
-          />
-          <path
-            v-else-if="overallTone === 'unknown'"
-            d="M12 8v5M12 17h.01"
-          />
-          <template v-else>
-            <path d="M12 8v5M12 17h.01" />
-            <path d="M10.3 3.9 2.4 17.5A2 2 0 0 0 4.1 20.5h15.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z" />
-          </template>
-        </svg>
-      </div>
-      <div class="hero-main">
-        <div class="hero-t">
-          {{ heroTitle }}
-        </div>
-        <div class="hero-s">
-          {{ heroSubtitle }}
-        </div>
-      </div>
-      <div
-        v-if="rows.length > 0"
-        class="hero-stats"
-      >
-        <div
-          class="hs g"
-          :class="{ zero: counts.healthy === 0 }"
-        >
-          <b>{{ counts.healthy }}</b><span>正常</span>
-        </div>
-        <div
-          class="hs o"
-          :class="{ zero: counts.warning === 0 }"
-        >
-          <b>{{ counts.warning }}</b><span>警告</span>
-        </div>
-        <div
-          class="hs r"
-          :class="{ zero: counts.critical === 0 }"
-        >
-          <b>{{ counts.critical }}</b><span>異常</span>
-        </div>
-      </div>
+          <li :class="{ zero: counts.healthy === 0 }">
+            <span class="dot g" />{{ counts.healthy }} 正常
+          </li>
+          <li :class="{ zero: counts.warning === 0 }">
+            <span class="dot o" />{{ counts.warning }} 警告
+          </li>
+          <li :class="{ zero: counts.critical === 0 }">
+            <span class="dot r" />{{ counts.critical }} 異常
+          </li>
+        </ul>
+      </UiLeadMetric>
     </article>
 
     <SettingsGroup title="服務檢查">
@@ -163,7 +117,7 @@
 </template>
 
 <script setup lang="ts">
-import DiscRing from '@/components/ui/DiscRing.vue'
+import UiLeadMetric from '@/components/ui/UiLeadMetric.vue'
 import UiEmptyState from '@/components/ui/UiEmptyState.vue'
 import { computed, inject, onMounted } from 'vue'
 import { SETTINGS_CONTROLLER_KEY } from '@/types/system-settings'
@@ -275,7 +229,6 @@ const counts = computed(() => ({
   critical: rows.value.filter(row => row.tone === 'bad').length
 }))
 
-const discTone = computed(() => ({ ok: 'green', warn: 'orange', bad: 'red', unknown: 'muted' } as const)[overallTone.value])
 
 const overallTone = computed<'ok' | 'warn' | 'bad' | 'unknown'>(() => {
   if (counts.value.critical > 0) {
@@ -288,18 +241,20 @@ const overallTone = computed<'ok' | 'warn' | 'bad' | 'unknown'>(() => {
   return overall ? toneOf(overall.status) : 'unknown'
 })
 
-const heroTitle = computed(() => {
+const heroValue = computed<string | null>(() => {
   if (!controller.healthOverall.value) {
-    return controller.processing.value ? '檢查中' : '尚未檢查'
+    return null
   }
   if (counts.value.critical > 0) {
-    return '系統異常'
+    return '異常'
   }
   if (counts.value.warning > 0) {
-    return '部分降級'
+    return '降級'
   }
-  return overallTone.value === 'ok' ? '系統正常' : '狀態未知'
+  return overallTone.value === 'ok' ? '正常' : null
 })
+
+const leadTone = computed(() => ({ ok: 'green', warn: 'orange', bad: 'red', unknown: 'ink' } as const)[overallTone.value])
 
 const heroSubtitle = computed(() => {
   if (!controller.healthOverall.value) {
@@ -357,121 +312,54 @@ onMounted(() => {
 }
 
 .hero {
-  position: relative;
   overflow: hidden;
+}
+
+.hero-counts {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
-  gap: 16px;
-  padding: 20px 22px;
-  background: var(--ui-surface);
-}
-
-.hero.tone-ok {
-  background: linear-gradient(180deg, var(--ui-green-soft), transparent 90%), var(--ui-surface);
-}
-
-.hero.tone-warn {
-  background: linear-gradient(180deg, var(--ui-orange-soft), transparent 90%), var(--ui-surface);
-}
-
-.hero.tone-bad {
-  background: linear-gradient(180deg, var(--ui-red-soft), transparent 90%), var(--ui-surface);
-}
-
-.hero-ico {
-  display: grid;
-  flex: none;
-  place-items: center;
-  width: 52px;
-  height: 52px;
-  border-radius: 16px;
-  background: var(--ui-muted);
-  color: #fff;
-}
-
-.tone-ok .hero-ico {
-  background: var(--ui-green);
-}
-
-.tone-warn .hero-ico {
-  background: var(--ui-orange);
-}
-
-.tone-bad .hero-ico {
-  background: var(--ui-red);
-}
-
-.hero-ico > svg:not(.ui-disc) {
-  position: relative;
-  width: 28px;
-  height: 28px;
-}
-
-/* Signature disc ring behind the status tile; fades out before the title text */
-.hero-disc {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  translate: -50% -50%;
-}
-
-.hero-ico {
-  position: relative;
-}
-
-.hero-main {
-  flex: 1;
-  min-width: 220px;
-}
-
-.hero-t {
-  font: 600 22px / 1.2 var(--ui-font-display);
-  letter-spacing: -0.02em;
-}
-
-.hero-s {
-  margin-top: 3px;
-  font-size: 13.5px;
-  color: var(--ui-muted);
-}
-
-.hero-stats {
-  display: flex;
-  gap: 28px;
-}
-
-.hs {
-  display: grid;
-  gap: 2px;
-}
-
-.hs b {
-  font: 600 26px / 1 var(--ui-font-display);
-  letter-spacing: -0.02em;
+  gap: 6px 20px;
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--ui-t-meta);
+  font-weight: 600;
+  color: var(--ui-ink-2);
   font-variant-numeric: tabular-nums;
 }
 
-.hs span {
-  font-size: 13px;
+.hero-counts li {
+  display: inline-flex;
+  gap: 7px;
+  align-items: center;
+}
+
+/* A zero is not news: quiet it down */
+.hero-counts li.zero {
+  font-weight: 500;
   color: var(--ui-muted);
 }
 
-.hs.g b {
-  color: var(--ui-green-ink);
+.hero-counts .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
 }
 
-.hs.o b {
-  color: var(--ui-orange-ink);
+.hero-counts .dot.g {
+  background: var(--ui-green);
 }
 
-.hs.r b {
-  color: var(--ui-red-ink);
+.hero-counts .dot.o {
+  background: var(--ui-orange);
 }
 
-/* A zero is not news: grey, not a green/orange/red numeral */
-.hs.zero b {
-  color: var(--ui-muted);
+.hero-counts .dot.r {
+  background: var(--ui-red);
+}
+
+.hero-counts li.zero .dot {
+  background: var(--ui-fill-strong);
 }
 
 .hrow {
@@ -551,11 +439,6 @@ onMounted(() => {
 @media (max-width: 768px) {
   .lat-n {
     width: auto;
-  }
-
-  .hero-stats {
-    gap: 24px;
-    width: 100%;
   }
 
   .hrow {
