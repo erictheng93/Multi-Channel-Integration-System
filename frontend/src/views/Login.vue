@@ -34,6 +34,19 @@
       <div class="wrap">
         <!-- Brand side (desktop only) -->
         <section class="brand-side">
+          <!-- The abrasive disc anchors the brand panel and bleeds off its outer edge (the panel clips it) -->
+          <div
+            class="zone"
+            aria-hidden="true"
+          >
+            <DiscRing
+              class="wheel"
+              variant="hero"
+              :spin-seconds="180"
+              spin
+            />
+          </div>
+
           <div class="brand-top">
             <div class="brand-mark">
               <svg viewBox="0 0 24 24"><path d="M12 3C6.5 3 2 6.6 2 11c0 2.5 1.4 4.7 3.7 6.2L5 21l4.1-2.3c.9.2 1.9.3 2.9.3 5.5 0 10-3.6 10-8s-4.5-8-10-8Z" /></svg>
@@ -56,19 +69,6 @@
             Daiwan Abrasives Corp
           </div>
         </section>
-
-        <!-- Open zone between the brand column and the card: the abrasive disc lives here -->
-        <div
-          class="zone"
-          aria-hidden="true"
-        >
-          <DiscRing
-            class="wheel"
-            variant="hero"
-            :spin-seconds="180"
-            spin
-          />
-        </div>
 
         <!-- Form side -->
         <section class="form-side">
@@ -200,11 +200,10 @@
                 type="submit"
                 class="btn btn-primary submit-btn"
                 :class="{ 'is-loading': loading }"
-                :disabled="loading || !isValid"
+                :disabled="loading"
               >
                 <span class="btn-text">{{ submitLabel }}</span>
                 <svg
-                  v-if="isValid"
                   class="ico"
                   viewBox="0 0 24 24"
                   aria-hidden="true"
@@ -240,7 +239,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuth } from '@/composables/useAuth'
 import { useAuthStore } from '@/stores/auth'
@@ -339,8 +338,14 @@ const handleLogin = async (event?: Event) => {
   // Mark form as submitted
   formSubmitted.value = true
 
-  // Validate form
-  if (!isValid.value) {return}
+  // Validate form: the button stays enabled, the fields explain what is missing
+  validateForm()
+  if (!isValid.value) {
+    const firstInvalid = errors.value.email ? 'email' : 'password'
+    await nextTick()
+    document.getElementById(firstInvalid)?.focus()
+    return
+  }
 
   clearError()
 
@@ -412,22 +417,16 @@ const handleLogin = async (event?: Event) => {
 }
 
 .stage {
+  /* Desktop: a full-height split. Brand panel (inset, tinted, clips the disc) beside the form column */
   display: grid;
-  place-items: center;
+  grid-template-columns: minmax(0, 1.15fr) minmax(440px, 1fr);
   min-height: 100vh;
   min-height: 100dvh;
-  padding: 40px 24px;
   overflow: hidden;
 }
 
 .wrap {
-  /* Brand + card read as ONE unit, centred; the disc is anchored behind the brand side */
-  position: relative;
-  width: min(900px, 100%);
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 400px;
-  gap: 72px;
-  align-items: center;
+  display: contents;
 }
 
 .theme-btn {
@@ -452,13 +451,17 @@ const handleLogin = async (event?: Event) => {
   box-shadow: var(--ui-shadow-raised);
 }
 
-/* Brand side */
+/* Brand side: the inset panel */
 .brand-side {
   position: relative;
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  padding: 8px 0;
+  justify-content: space-between;
+  margin: 16px 0 16px 16px;
+  padding: 44px 56px 40px;
+  overflow: hidden;
+  border-radius: 32px;
+  background: var(--ui-accent-soft);
 }
 
 .brand-top {
@@ -467,7 +470,6 @@ const handleLogin = async (event?: Event) => {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-bottom: 28px;
 }
 
 .brand-mark {
@@ -492,11 +494,11 @@ const handleLogin = async (event?: Event) => {
 .brand-copy {
   position: relative;
   z-index: 1;
-  max-width: 420px;
+  max-width: 460px;
 }
 
 .brand-copy h1 {
-  font: 700 40px/1.15 var(--ui-font-display);
+  font: 700 44px/1.15 var(--ui-font-display);
   letter-spacing: -0.03em;
 }
 
@@ -505,7 +507,7 @@ const handleLogin = async (event?: Event) => {
   margin-top: 14px;
   font-size: 16px;
   line-height: 1.6;
-  color: var(--ui-muted);
+  color: var(--ui-ink-2);
 }
 
 .channels {
@@ -524,30 +526,27 @@ const handleLogin = async (event?: Event) => {
 .brand-foot {
   position: relative;
   z-index: 1;
-  margin-top: 40px;
   font-size: var(--ui-t-cap);
   font-weight: 500;
-  color: var(--ui-muted);
+  color: var(--ui-ink-2);
 }
 
-/* The hero disc is anchored behind the brand column and runs off the LEFT viewport edge on
-   purpose (the stage clips it). A mask fades its right side so it never reaches the card. */
+/* The hero disc sits in the panel's lower right and runs off its outer edge on purpose
+   (the panel clips it); a mask fades it before it reaches the copy. */
 .zone {
   position: absolute;
-  top: 50%;
-  left: -590px;
-  width: 640px;
-  height: 640px;
-  margin-top: -320px;
+  right: -240px;
+  bottom: -200px;
+  width: 760px;
+  height: 760px;
   pointer-events: none;
-  -webkit-mask-image: linear-gradient(to right, #000 0%, #000 62%, transparent 96%);
-  mask-image: linear-gradient(to right, #000 0%, #000 62%, transparent 96%);
+  -webkit-mask-image: linear-gradient(to left, #000 0%, #000 55%, transparent 92%);
+  mask-image: linear-gradient(to left, #000 0%, #000 55%, transparent 92%);
 }
 
 .wheel {
   width: 100%;
   height: 100%;
-  opacity: 0.8;
 }
 
 /* Dark: the rim turns white for contrast on the black canvas */
@@ -561,6 +560,12 @@ const handleLogin = async (event?: Event) => {
 .form-side {
   position: relative;
   z-index: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  width: min(420px, 100%);
+  margin: 0 auto;
+  padding: 40px 24px;
 }
 
 .auth {
@@ -705,44 +710,47 @@ const handleLogin = async (event?: Event) => {
 .m-disc {
   position: absolute;
   left: 50%;
-  top: 78px;
+  top: 46px;
   z-index: -1;
   margin: -180px 0 0 -180px;
   opacity: 0.85;
   pointer-events: none;
   /* radial fade: the whole disc dissolves into the canvas instead of being cut by the screen top */
-  -webkit-mask-image: radial-gradient(circle at center, #000 38%, transparent 70%);
-  mask-image: radial-gradient(circle at center, #000 38%, transparent 70%);
+  -webkit-mask-image: radial-gradient(circle at center, #000 14%, transparent 34%);
+  mask-image: radial-gradient(circle at center, #000 14%, transparent 34%);
 }
 
 @media (max-width: 1024px) {
   .stage {
-    align-content: center;
-    padding: 96px 16px 24px;
+    display: block;
+    padding: 0 16px;
   }
 
   .wrap {
-    grid-template-columns: minmax(0, 420px);
-    justify-content: center;
-    gap: 0;
+    display: block;
   }
 
-  .brand-side,
-  .zone {
+  .form-side {
+    min-height: 100vh;
+    min-height: 100dvh;
+    padding: 24px 0;
+  }
+
+  .brand-side {
     display: none;
   }
 
   .m-brand {
     display: block;
-    margin-bottom: 20px;
-    padding-top: 56px;
+    margin-bottom: 24px;
+    padding-top: 24px;
     text-align: center;
   }
 
   .m-brand .brand-mark {
     width: 44px;
     height: 44px;
-    margin: 0 auto 12px;
+    margin: 0 auto 28px;
     border-radius: 14px;
   }
 
