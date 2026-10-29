@@ -267,7 +267,7 @@ conversationQueriesHandler.get('/waiting', jwtAuth, async (c) => {
     const limit = clampWaitingLimit(Number.parseInt(c.req.query('limit') ?? '', 10));
     const data = await readThrough(
       c.env.CACHE,
-      `dashboard:v1:waiting:${visibilityScopeKey(user)}:${limit}`,
+      `dashboard:v2:waiting:${visibilityScopeKey(user)}:${limit}`,
       DASHBOARD_SUMMARY_TTL_SECONDS,
       async () => {
         const generatedAt = nowMs();
