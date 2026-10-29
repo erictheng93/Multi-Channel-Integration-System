@@ -12,6 +12,31 @@ import { successResponse, badRequestResponse } from '@/utils/api-response';
 
 const comparisonAPI = new Hono<{ Bindings: Bindings }>();
 
+// Every query period must be a valid range of at most a year: unbounded ranges scan the whole
+// messages table and each distinct range writes its own KV cache entry.
+export const MAX_COMPARISON_RANGE_DAYS = 366;
+const PERIOD_PARAM_PAIRS: Array<[string, string]> = [
+  ['currentStart', 'currentEnd'],
+  ['previousStart', 'previousEnd']
+];
+
+comparisonAPI.use('*', async (c, next) => {
+  for (const [startKey, endKey] of PERIOD_PARAM_PAIRS) {
+    const startRaw = c.req.query(startKey);
+    const endRaw = c.req.query(endKey);
+    if (startRaw === undefined && endRaw === undefined) { continue; }
+    const start = Date.parse(startRaw ?? '');
+    const end = Date.parse(endRaw ?? '');
+    if (Number.isNaN(start) || Number.isNaN(end) || end < start) {
+      return badRequestResponse(c, `${startKey}/${endKey} must be valid ISO dates with end after start`);
+    }
+    if (end - start > MAX_COMPARISON_RANGE_DAYS * 86_400_000) {
+      return badRequestResponse(c, `Period must not exceed ${MAX_COMPARISON_RANGE_DAYS} days`);
+    }
+  }
+  return next();
+});
+
 // CORS 處理已移至 src/index.ts 統一管理
 // 不再需要模組級別的 CORS middleware
 
