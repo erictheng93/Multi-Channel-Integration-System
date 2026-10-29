@@ -57,19 +57,28 @@
             <span
               v-if="replyOutcome"
               class="rule-card__reply"
+              :title="replyOutcome"
             >回覆 {{ replyOutcome }}</span>
           </div>
         </div>
       </div>
 
       <div class="rule-card__right">
-        <!-- Priority badge -->
+        <!-- Priority: the word makes the number self-explanatory -->
         <span
-          class="rule-card__priority-badge"
+          class="rule-card__priority"
           title="優先序：數字越小越先比對"
-          :aria-label="`優先序 ${rule.priority}`"
         >
-          {{ rule.priority }}
+          <span
+            class="rule-card__priority-label"
+            aria-hidden="true"
+          >優先</span>
+          <span
+            class="rule-card__priority-badge"
+            :aria-label="`優先序 ${rule.priority}`"
+          >
+            {{ rule.priority }}
+          </span>
         </span>
 
         <!-- Meta text -->
@@ -249,9 +258,8 @@ const triggerTypeLabel = computed(() => {
   min-width: 0;
   overflow: hidden;
   font-size: 13px;
+  line-height: 1.45;
   color: var(--ui-muted);
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .rule-card__when,
@@ -260,10 +268,23 @@ const triggerTypeLabel = computed(() => {
 }
 
 .rule-card__reply {
+  display: -webkit-box;
   min-width: 0;
   overflow: hidden;
   color: var(--ui-ink-2);
-  text-overflow: ellipsis;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.rule-card__priority {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.rule-card__priority-label {
+  font-size: 12.5px;
+  color: var(--ui-muted);
 }
 
 /* Toggle switch (same spec as .ui-switch) */
@@ -412,9 +433,43 @@ const triggerTypeLabel = computed(() => {
     padding: 14px 16px;
   }
 
-  .rule-card__meta,
-  .rule-card__priority-badge {
+  .rule-card__meta {
     display: none;
+  }
+
+  /* name, badges and the condition wrap instead of clipping; priority drops under the text */
+  .rule-card__header {
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+
+  .rule-card__left {
+    align-items: flex-start;
+  }
+
+  .rule-card__title {
+    flex-wrap: wrap;
+  }
+
+  .rule-card__name {
+    overflow: visible;
+    white-space: normal;
+  }
+
+  .rule-card__when {
+    flex: 1 1 100%;
+  }
+
+  .rule-card__right {
+    flex: 1 1 100%;
+    justify-content: space-between;
+    padding-left: 58px;
+  }
+
+  /* the full reply stays readable on a phone: no clamp */
+  .rule-card__reply {
+    display: block;
+    -webkit-line-clamp: unset;
   }
 
   /* condition on the first line, the reply outcome under it */
@@ -425,6 +480,10 @@ const triggerTypeLabel = computed(() => {
 
   .rule-card__then {
     display: none;
+  }
+
+  .rule-card__priority {
+    margin-right: auto;
   }
 
   .rule-card__reply {

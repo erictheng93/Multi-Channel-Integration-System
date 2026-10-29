@@ -150,7 +150,7 @@ function iconPath(status: string): string {
 
 <style scoped>
 .widget-content {
-  max-height: 420px;
+  max-height: 640px;
   overflow-y: auto;
 }
 

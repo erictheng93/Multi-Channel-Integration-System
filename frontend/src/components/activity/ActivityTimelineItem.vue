@@ -28,61 +28,6 @@
           :datetime="activity.createdAt"
           :title="fullTime"
         >{{ formatTime(activity.createdAt) }}</time>
-        <div class="timeline-item__restore-zone">
-          <span
-            v-if="restoreState.kind === 'eligible'"
-            class="ui-pill ui-pill-green"
-            data-test="restore-eligible"
-          >可還原</span>
-          <button
-            v-if="restoreState.kind === 'eligible'"
-            class="btn btn-secondary btn-sm"
-            data-test="restore-button"
-            :disabled="restoring"
-            @click.stop="openRestoreModal"
-          >
-            還原
-          </button>
-          <span
-            v-else-if="restoreState.kind === 'expired'"
-            class="ui-pill"
-            data-test="restore-expired"
-          >
-            已過期
-          </span>
-          <span
-            v-else-if="restoreState.kind === 'irreversible'"
-            class="ui-pill"
-            data-test="restore-irreversible"
-          >
-            不可還原
-          </span>
-          <span
-            v-else-if="restoreState.kind === 'already-restored'"
-            class="ui-pill ui-pill-green ui-pill-dot"
-            data-test="restore-done"
-          >
-            已還原
-          </span>
-          <button
-            v-if="formattedDetails.length > 0"
-            class="timeline-item__details-toggle"
-            type="button"
-            :aria-expanded="detailsExpanded"
-            :aria-label="detailsExpanded ? '隱藏詳情' : '查看詳情'"
-            @click.stop="detailsExpanded = !detailsExpanded"
-          >
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2.2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              aria-hidden="true"
-            ><path d="m6 9 6 6 6-6" /></svg>
-          </button>
-        </div>
       </div>
       <div class="timeline-item__description">
         {{ getActivityDescription(activity) }}
@@ -91,6 +36,61 @@
         :entries="formattedDetails"
         :show="detailsExpanded"
       />
+    </div>
+    <div class="timeline-item__restore-zone">
+      <span
+        v-if="restoreState.kind === 'eligible'"
+        class="ui-pill ui-pill-green"
+        data-test="restore-eligible"
+      >可還原</span>
+      <button
+        v-if="restoreState.kind === 'eligible'"
+        class="btn btn-secondary btn-sm"
+        data-test="restore-button"
+        :disabled="restoring"
+        @click.stop="openRestoreModal"
+      >
+        還原
+      </button>
+      <span
+        v-else-if="restoreState.kind === 'expired'"
+        class="ui-pill"
+        data-test="restore-expired"
+      >
+        已過期
+      </span>
+      <span
+        v-else-if="restoreState.kind === 'irreversible'"
+        class="ui-pill"
+        data-test="restore-irreversible"
+      >
+        不可還原
+      </span>
+      <span
+        v-else-if="restoreState.kind === 'already-restored'"
+        class="ui-pill ui-pill-green ui-pill-dot"
+        data-test="restore-done"
+      >
+        已還原
+      </span>
+      <button
+        v-if="formattedDetails.length > 0"
+        class="timeline-item__details-toggle"
+        type="button"
+        :aria-expanded="detailsExpanded"
+        :aria-label="detailsExpanded ? '隱藏詳情' : '查看詳情'"
+        @click.stop="detailsExpanded = !detailsExpanded"
+      >
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2.2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        ><path d="m6 9 6 6 6-6" /></svg>
+      </button>
     </div>
     <RestoreConfirmModal
       :open="modalOpen"
@@ -252,8 +252,9 @@ onUnmounted(() => {
 <style scoped>
 .timeline-item {
   display: grid;
-  grid-template-columns: 38px minmax(0, 1fr);
+  grid-template-columns: 38px minmax(0, 1fr) auto;
   gap: 14px;
+  align-items: start;
   padding: 16px 22px;
   transition: background-color var(--ui-dur) var(--ui-ease);
 }
@@ -299,11 +300,26 @@ onUnmounted(() => {
 }
 
 .timeline-item__restore-zone {
-  display: flex;
+  display: grid;
+  grid-template-columns: 84px 56px 28px;
   align-items: center;
-  flex-shrink: 0;
+  align-self: center;
   gap: 8px;
-  margin-left: auto;
+}
+
+/* One width for every status chip so 可還原 / 已過期 / 不可還原 line up down the column */
+.timeline-item__restore-zone .ui-pill {
+  grid-column: 1;
+  justify-content: center;
+  width: 100%;
+}
+
+.timeline-item__restore-zone .btn {
+  grid-column: 2;
+}
+
+.timeline-item__restore-zone .timeline-item__details-toggle {
+  grid-column: 3;
 }
 
 .timeline-item__description {
@@ -344,6 +360,7 @@ onUnmounted(() => {
 @media (max-width: 768px) {
   .timeline-item {
     grid-template-columns: 34px minmax(0, 1fr);
+    grid-template-areas: 'icon content' '. zone';
     gap: 12px;
     padding: 14px 16px;
   }
@@ -352,9 +369,28 @@ onUnmounted(() => {
     height: 34px;
     border-radius: 11px;
   }
-  /* Status stays at the right of the name line */
+  /* Status chip and actions sit on their own row under the text, left-aligned with it */
+  .timeline-item__icon {
+    grid-area: icon;
+  }
+
+  .timeline-item__content {
+    grid-area: content;
+  }
+
   .timeline-item__restore-zone {
-    gap: 6px;
+    grid-area: zone;
+    display: flex;
+    gap: 8px;
+  }
+
+  .timeline-item__restore-zone .timeline-item__details-toggle {
+    margin-left: auto;
+  }
+
+  .timeline-item__restore-zone .ui-pill {
+    width: auto;
+    min-width: 72px;
   }
   /* The 還原 button already says "restorable"; the chip would wrap the name line */
   .timeline-item__restore-zone [data-test='restore-eligible'] {

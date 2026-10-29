@@ -281,7 +281,7 @@ onUnmounted(() => {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: 16px;
-  align-items: start;
+  align-items: stretch;
 }
 
 .tags-layout.has-panel {
@@ -289,8 +289,22 @@ onUnmounted(() => {
 }
 
 .tags-panel {
-  position: sticky;
-  top: 16px;
+  position: relative;
+  min-width: 0;
+  min-height: 420px;
+}
+
+/* The panel is exactly as tall as the tag grid; a long list scrolls inside it */
+.tags-panel :deep(.modal-overlay.is-inline) {
+  position: absolute;
+  inset: 0;
+  display: block;
+}
+
+.tags-panel :deep(.is-inline .modal-container) {
+  width: 100%;
+  height: 100%;
+  max-height: none;
 }
 
 .loading-state {

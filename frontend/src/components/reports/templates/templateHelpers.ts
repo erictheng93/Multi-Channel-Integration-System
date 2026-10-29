@@ -65,6 +65,32 @@ export const formatEstimatedTime = (seconds: number): string => {
 };
 
 /**
+ * What a generated report actually contains, per type. Mirrors the fields the report generator
+ * (src/modules/reports/services/report-generator-service.ts) fills in; metrics it does not compute are not listed.
+ */
+export const REPORT_CONTENTS: Partial<Record<ReportType, Array<{ label: string; hint: string }>>> = {
+   
+  conversation_summary: [
+    { label: '對話總數', hint: '統計期間內建立的對話' },
+    { label: '進行中', hint: '仍在處理的對話數' },
+    { label: '已結案', hint: '已完成處理的對話數' },
+    { label: '統計期間', hint: '起訖日期隨報表一併記錄' }
+  ],
+  agent_performance: [
+    { label: '客服人數', hint: '期間內有回覆訊息的客服' },
+    { label: '各客服訊息數', hint: '每位客服發送的訊息量' },
+    { label: '客服名單', hint: '依客服姓名逐列呈現' },
+    { label: '統計期間', hint: '起訖日期隨報表一併記錄' }
+  ],
+  message_statistics: [
+    { label: '訊息總數', hint: '統計期間內的全部訊息' },
+    { label: '客戶 / 客服訊息', hint: '依寄件者類型拆分' },
+    { label: '訊息類型分布', hint: '文字、圖片等類型的數量' }
+  ]
+   
+};
+
+/**
  * Default preset template definitions
  * These are loaded when no backend API is available
  */
