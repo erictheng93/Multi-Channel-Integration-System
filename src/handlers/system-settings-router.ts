@@ -25,6 +25,8 @@ router.get('/metrics', jwtAuth, getMetrics);
 
 // Public system endpoints (no auth)
 router.get('/health', healthCheck);
-router.get('/api-status', jwtAuth, getApiStatus);
+
+// Admin-only: fans out to LINE/FB APIs (cached 60 s in KV)
+router.get('/api-status', jwtAuth, requireAdmin(), getApiStatus);
 
 export default router;

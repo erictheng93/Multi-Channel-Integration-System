@@ -114,6 +114,40 @@ export const healthCheck = async (c: Context<{ Bindings: Bindings }>) => {
   }
 }
 
+// Outbound LINE/FB checks cost an external API call each; the status page polls, so cache the result.
+export const CHANNEL_CHECK_TTL_SECONDS = 60
+
+export interface ChannelCheckResult {
+  status: boolean
+  message: string
+  latencyMs: number
+  checkedAt: string
+}
+
+async function cachedChannelCheck(
+  env: Bindings,
+  platform: 'line' | 'facebook',
+  check: (env: Bindings) => Promise<{ status: boolean; message: string }>
+): Promise<ChannelCheckResult> {
+  const key = `api-status:channel:${platform}`
+  try {
+    const cached = await env.CACHE?.get(key)
+    if (cached) return JSON.parse(cached) as ChannelCheckResult
+  } catch {
+    // cache miss on any KV/parse failure: fall through to a live check
+  }
+
+  const start = nowMs()
+  const result = await check(env)
+  const fresh: ChannelCheckResult = { ...result, latencyMs: nowMs() - start, checkedAt: nowISO() }
+  try {
+    await env.CACHE?.put(key, JSON.stringify(fresh), { expirationTtl: CHANNEL_CHECK_TTL_SECONDS })
+  } catch (error) {
+    log.warn('Failed to cache channel check', { platform, error: error instanceof Error ? error.message : String(error) })
+  }
+  return fresh
+}
+
 // API monitoring endpoint - get all endpoint statuses (infra probes + channel checks; per-endpoint API metrics were removed, so endpoints is always empty)
 export const getApiStatus = async (c: Context<{ Bindings: Bindings }>) => {
   try {
@@ -145,16 +179,8 @@ export const getApiStatus = async (c: Context<{ Bindings: Bindings }>) => {
       ]),
       // 2. Channel checks
       Promise.allSettled([
-        (async () => {
-          const start = nowMs()
-          const result = await checkLineIntegration(env)
-          return { ...result, latencyMs: nowMs() - start }
-        })(),
-        (async () => {
-          const start = nowMs()
-          const result = await checkFacebookIntegration(env)
-          return { ...result, latencyMs: nowMs() - start }
-        })(),
+        cachedChannelCheck(env, 'line', checkLineIntegration),
+        cachedChannelCheck(env, 'facebook', checkFacebookIntegration),
       ]),
     ])
 
@@ -186,7 +212,7 @@ export const getApiStatus = async (c: Context<{ Bindings: Bindings }>) => {
     const [lineResult, fbResult] = channelResults
 
     const mapChannelResult = (
-      settledResult: PromiseSettledResult<{ status: boolean; message: string; latencyMs: number }>,
+      settledResult: PromiseSettledResult<ChannelCheckResult>,
       id: string,
       name: string,
     ) => {
@@ -198,7 +224,7 @@ export const getApiStatus = async (c: Context<{ Bindings: Bindings }>) => {
           status: r.status ? 'connected' as const : 'disconnected' as const,
           details: r.message,
           latencyMs: r.latencyMs,
-          lastCheck: now,
+          lastCheck: r.checkedAt,
         }
       }
       return {
