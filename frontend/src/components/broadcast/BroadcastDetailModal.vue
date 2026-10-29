@@ -2,25 +2,33 @@
   <div
     v-if="open"
     class="modal-backdrop"
+    :class="{ 'is-inline': inline }"
     role="presentation"
-    @click.self="$emit('close')"
+    @click.self="!inline && $emit('close')"
   >
     <section
-      class="detail-modal"
-      role="dialog"
-      aria-modal="true"
+      class="ui-card detail-modal"
+      :role="inline ? 'region' : 'dialog'"
+      :aria-modal="inline ? undefined : 'true'"
       aria-labelledby="broadcast-detail-title"
     >
-      <header class="modal-header">
-        <div>
-          <h2 id="broadcast-detail-title">
+      <header class="ui-card-head modal-header">
+        <div class="head-main">
+          <h2
+            id="broadcast-detail-title"
+            class="ui-card-title"
+          >
             收件人明細
           </h2>
-          <p v-if="broadcast">
-            {{ broadcast.title }}
+          <p
+            v-if="broadcast"
+            class="ui-card-sub"
+          >
+            {{ broadcast.title }} · {{ formatDate(broadcast.sentAt || broadcast.createdAt) }}
           </p>
         </div>
         <button
+          v-if="!inline"
           class="btn btn-ghost btn-sm"
           type="button"
           @click="$emit('close')"
@@ -57,11 +65,15 @@
           v-for="option in statusOptions"
           :key="option.value || 'all'"
           type="button"
-          class="filter-chip"
-          :class="{ active: modelValue === option.value }"
+          class="ui-chip filter-chip"
+          :class="{ active: modelValue === option.value, 'is-on': modelValue === option.value }"
           @click="$emit('update:modelValue', option.value)"
         >
           {{ option.label }}
+          <span
+            v-if="option.count !== null"
+            class="chip-n"
+          >{{ option.count }}</span>
         </button>
       </div>
 
@@ -81,31 +93,48 @@
         v-else
         class="recipient-section"
       >
-        <div class="recipient-list">
-          <article
+        <ul class="ui-list recipient-list">
+          <li
             v-for="recipient in recipients.items"
             :key="recipient.id"
-            class="recipient-row"
+            class="ui-row recipient-row"
           >
-            <div>
-              <strong>{{ recipient.customerDisplayName || recipient.platformUserId }}</strong>
-              <small>{{ recipient.platform }} · {{ recipient.platformUserId }}</small>
+            <span class="avatar">
+              <img
+                v-if="recipient.customerAvatarUrl"
+                :src="recipient.customerAvatarUrl"
+                alt=""
+              >
+              <template v-else>{{ initial(recipient) }}</template>
+            </span>
+            <div class="ui-row-main">
+              <div class="ui-row-title">
+                {{ recipient.customerDisplayName || shortId(recipient.platformUserId) }}
+              </div>
+              <div class="ui-row-sub">
+                {{ platformLabel(recipient.platform) }} · {{ shortId(recipient.platformUserId) }}
+              </div>
+              <div
+                v-if="recipient.errorReason"
+                class="reason"
+              >
+                {{ reasonLabel(recipient.errorReason) }}
+              </div>
             </div>
-            <div class="recipient-status">
-              <span
-                class="status-pill"
-                :data-status="recipient.status"
-              >{{ recipient.status }}</span>
-              <small v-if="recipient.errorReason">{{ reasonLabel(recipient.errorReason) }}</small>
-            </div>
-          </article>
-        </div>
+            <span
+              class="ui-pill ui-pill-dot status-pill"
+              :class="recipientClass(recipient.status)"
+              :data-status="recipient.status"
+            >{{ recipientLabel(recipient.status) }}</span>
+          </li>
+        </ul>
 
         <nav
           v-if="recipients.totalPages > 1"
           class="pagination"
           aria-label="收件人明細分頁"
         >
+          <span>第 {{ recipients.page }} / {{ recipients.totalPages }} 頁，共 {{ recipients.total }} 筆</span>
           <button
             type="button"
             class="btn btn-secondary btn-sm"
@@ -115,7 +144,6 @@
           >
             上一頁
           </button>
-          <span>第 {{ recipients.page }} / {{ recipients.totalPages }} 頁，共 {{ recipients.total }} 筆</span>
           <button
             type="button"
             class="btn btn-secondary btn-sm"
@@ -132,18 +160,22 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
 import type {
-  BroadcastRecord,
+  BroadcastRecipientDetail,
   BroadcastRecipientErrorReason,
   BroadcastRecipientListResult,
-  BroadcastRecipientStatus
+  BroadcastRecipientStatus,
+  BroadcastRecord
 } from '@/api/broadcasts'
 
-defineProps<{
+const props = defineProps<{
   open: boolean
   broadcast: BroadcastRecord | null
   recipients: BroadcastRecipientListResult | null
   modelValue?: BroadcastRecipientStatus
+  /** Render in place as a side card instead of an overlay dialog */
+  inline?: boolean
 }>()
 
 defineEmits<{
@@ -152,17 +184,75 @@ defineEmits<{
   'page-change': [page: number]
 }>()
 
-const statusOptions: Array<{ label: string; value?: BroadcastRecipientStatus }> = [
-  { label: '全部' },
-  { label: '成功', value: 'sent' },
-  { label: '失敗', value: 'failed' },
-  { label: '略過', value: 'skipped' }
-]
+// Tab counts come from the broadcast record; a "processing" tab appears only while recipients are pending.
+const statusOptions = computed<Array<{ label: string; value?: BroadcastRecipientStatus; count: number | null }>>(() => {
+  const b = props.broadcast
+  const pending = b ? Math.max(b.totalRecipients - b.sentCount - b.failedCount - b.skippedCount, 0) : 0
+  const options: Array<{ label: string; value?: BroadcastRecipientStatus; count: number | null }> = [
+    { label: '全部', count: b ? b.totalRecipients : null },
+    { label: '成功', value: 'sent', count: b ? b.sentCount : null },
+    { label: '失敗', value: 'failed', count: b ? b.failedCount : null },
+    { label: '略過', value: 'skipped', count: b ? b.skippedCount : null }
+  ]
+  if (pending > 0) {
+    options.push({ label: '處理中', value: 'pending', count: pending })
+  }
+  return options
+})
+
+function recipientLabel(status: BroadcastRecipientStatus): string {
+  switch (status) {
+    case 'sent':
+      return '成功'
+    case 'failed':
+      return '失敗'
+    case 'skipped':
+      return '略過'
+    case 'pending':
+      return '處理中'
+  }
+}
+
+function recipientClass(status: BroadcastRecipientStatus): string {
+  switch (status) {
+    case 'sent':
+      return 'ui-pill-green'
+    case 'failed':
+      return 'ui-pill-red'
+    case 'pending':
+      return 'ui-pill-orange'
+    default:
+      return ''
+  }
+}
+
+function platformLabel(platform: string): string {
+  return platform === 'line' ? 'LINE' : platform === 'facebook' ? 'Facebook' : platform
+}
+
+function shortId(id: string): string {
+  return id.length > 12 ? `${id.slice(0, 5)}…${id.slice(-4)}` : id
+}
+
+function initial(recipient: BroadcastRecipientDetail): string {
+  return (recipient.customerDisplayName || recipient.platformUserId).charAt(0).toUpperCase() || '?'
+}
+
+function formatDate(value: string | null): string {
+  if (!value) {return ''}
+  return new Intl.DateTimeFormat('zh-TW', {
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false
+  }).format(new Date(value))
+}
 
 function reasonLabel(reason: BroadcastRecipientErrorReason): string {
   switch (reason) {
     case 'platform_not_supported_phase1':
-      return 'Phase 1 不支援此平台'
+      return '此平台本期不支援群發'
     case 'no_channel_credentials':
       return '缺少渠道憑證'
     case 'line_api_failed':
@@ -180,123 +270,123 @@ function reasonLabel(reason: BroadcastRecipientErrorReason): string {
   z-index: 50;
   display: grid;
   place-items: center;
-  padding: var(--space-4);
-  background: rgba(0, 0, 0, 0.28);
+  padding: 16px;
+  background: rgb(0 0 0 / 0.4);
+}
+
+.modal-backdrop.is-inline {
+  position: static;
+  z-index: auto;
+  display: block;
+  padding: 0;
+  background: none;
 }
 
 .detail-modal {
-  width: min(760px, 100%);
+  width: min(560px, 100%);
   max-height: min(760px, 90vh);
+  max-height: min(760px, 90dvh);
   overflow: auto;
-  background: #fff;
-  border-radius: 18px;
-  padding: var(--space-6);
-  box-shadow: var(--shadow-lg);
+  box-shadow: var(--ui-shadow-raised);
 }
 
-.modal-header,
-.recipient-row {
+.is-inline .detail-modal {
+  width: 100%;
+  max-height: none;
+  overflow: visible;
+  box-shadow: var(--ui-shadow-card);
+}
+
+.head-main {
+  min-width: 0;
+  flex: 1;
+}
+
+.attachment-strip {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--space-4);
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 2px 22px 8px;
 }
 
-.modal-header h2 {
-  margin: 0;
-}
-
-.modal-header p,
-.recipient-row small,
-.recipient-status small {
-  color: var(--gray-500);
+.attachment-strip img {
+  display: block;
+  width: 64px;
+  height: 64px;
+  border-radius: 12px;
+  object-fit: cover;
 }
 
 .filters {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-2);
-  margin: var(--space-5) 0;
+  gap: 8px;
+  padding: 4px 22px 10px;
 }
 
-.filter-chip {
-  border: 0;
-  border-radius: 999px;
-  background: #f2f2f7;
-  padding: var(--space-2) var(--space-4);
-  cursor: pointer;
-}
-
-.filter-chip.active {
-  background: var(--primary-100);
-  color: var(--primary-700);
-  font-weight: 700;
+.chip-n {
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.6;
 }
 
 .state {
-  padding: var(--space-8);
-  text-align: center;
-  color: var(--gray-500);
+  padding: 24px 22px 28px;
+  font-size: 13.5px;
+  color: var(--ui-muted);
 }
 
-.recipient-list {
+.avatar {
   display: grid;
-  gap: var(--space-3);
+  flex: none;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 50%;
+  background: var(--ui-fill-strong);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ui-ink-2);
 }
 
-.recipient-section {
-  display: grid;
-  gap: var(--space-4);
+.avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
-.recipient-row {
-  padding: var(--space-4);
-  border-radius: 14px;
-  background: #f2f2f7;
-}
-
-.recipient-row strong,
-.recipient-row small {
-  display: block;
-}
-
-.recipient-status {
-  display: grid;
-  justify-items: end;
-  gap: var(--space-1);
-}
-
-.status-pill {
-  border-radius: 999px;
-  padding: var(--space-1) var(--space-3);
-  background: #fff;
-  font-weight: 700;
-}
-
-.status-pill[data-status='failed'],
-.status-pill[data-status='skipped'] {
-  color: #ff3b30;
+.reason {
+  font-size: 12.5px;
+  color: var(--ui-red-ink);
 }
 
 .pagination {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
-  gap: var(--space-3);
-  color: var(--gray-500);
-  font-size: var(--text-sm);
+  gap: 8px;
+  padding: 10px 22px 14px;
+  font-size: 12.5px;
+  color: var(--ui-muted);
+  font-variant-numeric: tabular-nums;
 }
 
-.attachment-strip {
-  display: flex;
-  gap: var(--space-3);
-  margin-top: var(--space-4);
+.pagination span {
+  margin-right: auto;
 }
 
-.attachment-strip img {
-  width: 72px;
-  height: 72px;
-  object-fit: cover;
-  border-radius: 12px;
+@media (max-width: 768px) {
+  .modal-backdrop:not(.is-inline) {
+    place-items: end stretch;
+    padding: 0;
+  }
+  .modal-backdrop:not(.is-inline) .detail-modal {
+    width: 100%;
+    border-radius: var(--ui-r-card) var(--ui-r-card) 0 0;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .pagination .btn {
+    min-height: 44px;
+  }
 }
 </style>
