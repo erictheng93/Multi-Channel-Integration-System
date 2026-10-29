@@ -89,11 +89,19 @@
               class="bar-pending"
               :style="{ width: `${pendingPercent(channel)}%` }"
             />
+            <span
+              v-if="reservePercent(channel) > 0"
+              class="bar-reserve"
+              :style="{ width: `${reservePercent(channel)}%` }"
+            />
           </div>
 
           <div class="stats">
             <div class="stat ui-well">
-              <span class="stat-label"><i class="dot used" />已使用</span>
+              <span class="stat-label"><i
+                class="dot used"
+                :class="tone(channel)"
+              />已使用</span>
               <b>{{ channel.used.toLocaleString() }}<small>{{ percent(channel) }}%</small></b>
             </div>
             <div class="stat ui-well">
@@ -206,6 +214,15 @@ function pendingPercent(channel: LineQuotaChannel): number {
   }
   const raw = (pendingFor(channel) / channel.limit) * 100
   return Math.max(0, Math.min(raw, 100 - percent(channel)))
+}
+
+/** Width of the reserved-for-replies segment: what is left after used and this send */
+function reservePercent(channel: LineQuotaChannel): number {
+  if (!channel.limit || channel.used === null || !channel.reserve) {
+    return 0
+  }
+  const raw = (channel.reserve / channel.limit) * 100
+  return Math.max(0, Math.min(raw, 100 - percent(channel) - pendingPercent(channel)))
 }
 
 /** usableRemaining minus this broadcast; null when the channel has no cap */
@@ -346,7 +363,7 @@ function formatTime(iso: string): string {
   height: 10px;
   overflow: hidden;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--ui-green) 38%, var(--ui-surface));
+  background: var(--ui-fill-strong);
 }
 
 .bar-fill {
@@ -371,6 +388,12 @@ function formatTime(iso: string): string {
     var(--ui-orange) 0 4px,
     color-mix(in srgb, var(--ui-orange) 45%, var(--ui-surface)) 4px 8px
   );
+}
+
+.bar-reserve {
+  display: block;
+  height: 100%;
+  background: var(--ui-indigo);
 }
 
 .stats {
@@ -417,6 +440,14 @@ function formatTime(iso: string): string {
   background: var(--ui-accent);
 }
 
+.dot.used.warn {
+  background: var(--ui-orange);
+}
+
+.dot.used.danger {
+  background: var(--ui-red);
+}
+
 .dot.pend {
   background: var(--ui-orange);
 }
@@ -426,7 +457,8 @@ function formatTime(iso: string): string {
 }
 
 .dot.free {
-  background: var(--ui-green);
+  background: var(--ui-fill-strong);
+  box-shadow: inset 0 0 0 1px var(--ui-sep);
 }
 
 .stat.is-short {
