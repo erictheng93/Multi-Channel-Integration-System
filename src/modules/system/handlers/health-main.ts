@@ -13,6 +13,7 @@ import { successResponse, internalErrorResponse, forbiddenResponse } from '@/uti
 import { getConfigurationStatus } from '@/middleware/configuration-guard';
 import { nowISO } from '@/utils/timestamp'
 import { createContextLogger } from '@/utils/logger';
+import { SchemaIntegrityHealthChecker } from '@/health-checkers/schema-integrity';
 
 const log = createContextLogger('HealthMain');
 
@@ -32,6 +33,7 @@ function initializeHealthCheckers(env: HealthEnv) {
   healthCheckService.registerChecker(new R2HealthChecker(env.R2_BUCKET));
   healthCheckService.registerChecker(new DurableObjectHealthChecker(env.MESSAGE_BROADCASTER));
   healthCheckService.registerChecker(new QueueHealthChecker(env.LINE_MESSAGE_QUEUE));
+  healthCheckService.registerChecker(new SchemaIntegrityHealthChecker(env.DB));
 
   initialized = true;
 }
