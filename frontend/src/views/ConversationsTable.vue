@@ -783,16 +783,15 @@ onUnmounted(() => {
     padding: 14px;
   }
 
-  /* No scroll strip on phone: tabs sit on an equal-width grid that wraps to a second row */
+  /* No scroll strip on phone: tabs wrap and every row fills the track */
   .filter-top > .ui-seg {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(112px, 1fr));
+    flex-wrap: wrap;
     width: 100%;
     overflow: visible;
   }
 
   .filter-top > .ui-seg .scope-tab {
-    flex: none;
+    flex: 1 1 112px;
     justify-content: center;
     padding-right: 8px;
     padding-left: 8px;
