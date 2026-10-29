@@ -69,6 +69,7 @@
             unit="則"
             :meaning="leadMeaning(channel)"
             :tone="isShort(channel) ? 'orange' : 'accent'"
+            :ratio="usedRatio(channel)"
           />
           <div class="channel-main">
             <div class="big-row">
@@ -234,6 +235,14 @@ function leadValue(channel: LineQuotaChannel): number | string | null {
   return Math.max(channel.usableRemaining, 0)
 }
 
+/** Share of the monthly quota already used (the disc's arc) */
+function usedRatio(channel: LineQuotaChannel): number | null {
+  if (!channel.limit || channel.used === null) {
+    return null
+  }
+  return Math.min(1, channel.used / channel.limit)
+}
+
 function leadMeaning(channel: LineQuotaChannel): string {
   return channel.reserve ? '本月還能群發，已預留客服回覆額度' : '本月還能群發的則數'
 }
@@ -366,12 +375,6 @@ function formatTime(iso: string): string {
 
 .quota-lead {
   border-radius: var(--ui-r-inner);
-}
-
-/* push most of the disc out of the box so the figure and its caption stay clear of the rim */
-.quota-lead :deep(.ui-lead-disc) {
-  top: -200px;
-  right: -200px;
 }
 
 .channel-main {
