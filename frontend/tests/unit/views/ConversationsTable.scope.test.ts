@@ -21,13 +21,19 @@ const store = reactive({
 
 vi.mock('@/stores/conversations', () => ({ useConversationsStore: () => store }))
 vi.mock('@/stores/unread', () => ({ useUnreadStore: () => ({ total: 0 }) }))
+const waitingApi = vi.hoisted(() => ({ getWaiting: vi.fn() }))
+const routeState = vi.hoisted(() => ({ query: {} as Record<string, string> }))
+const routerReplace = vi.hoisted(() => vi.fn())
 vi.mock('@/api/conversations', () => ({
   conversationApi: {
     getStats: vi.fn().mockResolvedValue({ success: false }),
-    getWaiting: vi.fn().mockResolvedValue({ success: false })
+    getWaiting: waitingApi.getWaiting
   }
 }))
-vi.mock('vue-router', () => ({ useRouter: () => ({ push: vi.fn() }) }))
+vi.mock('vue-router', () => ({
+  useRouter: () => ({ push: vi.fn(), replace: routerReplace }),
+  useRoute: () => routeState
+}))
 vi.mock('@/services/tagCacheService', () => ({
   tagCacheService: { ensureTagsLoaded: vi.fn().mockResolvedValue([]) }
 }))
@@ -79,6 +85,8 @@ describe('ConversationsTable scope tabs', () => {
   beforeEach(() => {
     vi.useFakeTimers()
     vi.clearAllMocks()
+    waitingApi.getWaiting.mockResolvedValue({ success: false })
+    routeState.query = {}
     store.conversations = [conv('open-1', 'active'), conv('closed-1', 'closed'), conv('open-2', 'assigned')]
   })
   afterEach(() => {
@@ -157,5 +165,65 @@ describe('ConversationsTable scope tabs', () => {
     expect(lastScope()).toBe('all')
     expect(shownIds(wrapper)).toContain('closed-1')
     expect(wrapper.find('.scope-hint').text()).toContain('已結案')
+  })
+
+  describe('逾期待回覆 (stale) view', () => {
+    const withStale = (count: number) => waitingApi.getWaiting.mockResolvedValue({
+      success: true,
+      data: { total: 4, items: [], generatedAt: 'x', stale: { count, neverRepliedCount: 2 } }
+    })
+    const tabLabels = (wrapper: ReturnType<typeof mountView>) => wrapper.findAll('.scope-tab').map(t => t.text())
+
+    it('hides the tab when nothing is overdue and shows it with its count otherwise', async () => {
+      const none = mountView()
+      await flushPromises()
+      expect(tabLabels(none).some(t => t.includes('逾期待回覆'))).toBe(false)
+
+      withStale(119)
+      const some = mountView()
+      await flushPromises()
+      expect(tabLabels(some).find(t => t.includes('逾期待回覆'))).toContain('119')
+    })
+
+    it('selecting it asks the API for awaiting=stale on open conversations, drops status, and explains reversible closing', async () => {
+      withStale(5)
+      const wrapper = mountView()
+      await flushPromises()
+      expect(wrapper.find('[data-testid="stale-note"]').exists()).toBe(false)
+
+      await wrapper.find('[data-testid="scope-tab-stale"]').trigger('click')
+      vi.advanceTimersByTime(350)
+      await flushPromises()
+
+      expect(lastCall()?.awaiting).toBe('stale')
+      expect(lastScope()).toBe('open')
+      expect(lastCall()?.status).toBeUndefined()
+      expect(routerReplace).toHaveBeenCalledWith({ query: { view: 'stale' } })
+      const note = wrapper.find('[data-testid="stale-note"]').text()
+      expect(note).toContain('7 天')
+      expect(note).toContain('自動重新開啟')
+    })
+
+    it('?view=stale opens the stale view directly, even before the count is known', async () => {
+      routeState.query = { view: 'stale' }
+      const wrapper = mountView()
+      await flushPromises()
+
+      expect(store.loadWithCache.mock.calls[0]?.[0]?.awaiting).toBe('stale')
+      expect(wrapper.find('.scope-tab.is-on').text()).toContain('逾期待回覆')
+    })
+
+    it('leaving the stale view stops sending awaiting', async () => {
+      routeState.query = { view: 'stale' }
+      const wrapper = mountView()
+      await flushPromises()
+
+      await wrapper.findAll('.scope-tab').find(t => t.text() === '已結案')?.trigger('click')
+      vi.advanceTimersByTime(350)
+      await flushPromises()
+
+      expect(lastCall()?.awaiting).toBeUndefined()
+      expect(lastScope()).toBe('closed')
+    })
   })
 })

@@ -55,6 +55,10 @@ export interface RawConversationData {
   unreadCount?: number
   /** Age anchor of the unread badge: earliest unread customer message for THIS agent (ISO); null when nothing is unread */
   oldestUnreadAt?: string | null
+  /** Start of the unanswered wait (ISO); null = not waiting (sign-offs after a reply do not count) */
+  awaitingSince?: string | null
+  /** awaiting=stale list only: no human agent ever replied in this conversation */
+  neverReplied?: boolean
   /** Epoch ms until which the next LINE reply is free (Reply API); null/absent = no free reply available */
   replyWindowExpiresAt?: number | null
   // Manual unread override timestamp: when set, the backend floors
@@ -69,6 +73,8 @@ export interface ConversationListParams {
   page?: number
   pageSize?: number
   scope?: ConversationListScope
+  /** 'stale' = open conversations unanswered for longer than the 待回覆 window (逾期待回覆), never-replied first */
+  awaiting?: 'stale'
   status?: ConversationStatusForApi | ''
   platform?: Platform
   teamId?: number
@@ -150,8 +156,10 @@ export interface WaitingConversation {
 }
 
 export interface WaitingConversationsData {
-  /** All waiting conversations visible to the caller (not just the returned page) */
+  /** Waiting conversations (wait started within the 待回覆 window) visible to the caller, not just the returned page */
   total: number
+  /** Older unanswered conversations ("逾期待回覆"), outside `total` */
+  stale?: { count: number; neverRepliedCount: number }
   items: WaitingConversation[]
   generatedAt: string
 }
@@ -212,6 +220,9 @@ export function buildConversationQuery(params: ConversationListParams | Conversa
   }
   if (listParams.scope) {
     queryParams.append('scope', listParams.scope)
+  }
+  if (listParams.awaiting) {
+    queryParams.append('awaiting', listParams.awaiting)
   }
   if (listParams.status) {
     queryParams.append('status', listParams.status)

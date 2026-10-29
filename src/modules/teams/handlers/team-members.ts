@@ -24,6 +24,7 @@ import {
 } from '@/middleware/auth';
 import { requireIntId, getValidatedParam } from '@/middleware/param-validator';
 import { createDbClient } from '@/db/drizzle-factory';
+import { blockSystemAgentTarget } from '@/middleware/block-system-agent';
 import { teams, agents } from '@/db/schema';
 import { eq, inArray } from 'drizzle-orm';
 import { nowISO } from '@/utils/timestamp';
@@ -31,6 +32,7 @@ import { teamContracts, type ContractResponse } from '@shared/api-contracts';
 import { contractJson } from '@/utils/api-contract-response';
 
 const app = new Hono<{ Bindings: Bindings }>();
+app.use('*', blockSystemAgentTarget());
 
 // ==================== 3-segment routes (most specific first) ====================
 // Static segment routes MUST come BEFORE dynamic parameter routes!

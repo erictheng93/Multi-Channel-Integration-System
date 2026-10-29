@@ -7,7 +7,7 @@ import type { D1Database } from '@cloudflare/workers-types';
 import type { Bindings } from '../types/bindings';
 import { nowISO, nowMs } from '@/utils/timestamp';
 
-/** Triggers created by migrations 0070 (awaiting_since) and 0071 (message markers). Keep in sync. */
+/** Triggers created by migrations 0070 (awaiting_since; re-created by 0072 with the sign-off rule) and 0071 (message markers). Keep in sync. */
 export const REQUIRED_TRIGGERS = [
   'trg_messages_awaiting_customer',
   'trg_messages_awaiting_reply_insert',
@@ -71,7 +71,7 @@ export class SchemaIntegrityHealthChecker implements HealthChecker {
       if (missing.length > 0) {
         return {
           status: 'critical',
-          message: `Missing ${missing.length} database trigger(s); re-run the CREATE TRIGGER statements from migrations 0070/0071`,
+          message: `Missing ${missing.length} database trigger(s); re-run the CREATE TRIGGER statements from migrations 0072 (awaiting) and 0071 (markers)`,
           timestamp: nowISO(),
           responseTime,
           details: { missing, required: REQUIRED_TRIGGERS.length },

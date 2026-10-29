@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
   healRollup: vi.fn(),
   healAwaiting: vi.fn(),
   healMarkers: vi.fn(),
+  autoClose: vi.fn(),
 }));
 
 vi.mock('@modules/dashboard/services/message-rollup-service', () => ({
@@ -16,6 +17,7 @@ vi.mock('@modules/dashboard/services/message-rollup-service', () => ({
   healRecentMessageRollup: mocks.healRollup,
 }));
 vi.mock('@modules/conversations/services/message-markers-service', () => ({ healMessageMarkers: mocks.healMarkers }));
+vi.mock('@modules/conversations/services/auto-close-service', () => ({ autoCloseIdleConversations: mocks.autoClose }));
 vi.mock('@modules/dashboard/services/awaiting-service', () => ({ healAwaitingSince: mocks.healAwaiting }));
 vi.mock('@modules/queue/handlers/line-message-queue', () => ({ handleLineMessageQueue: vi.fn() }));
 vi.mock('@/db/drizzle-factory', () => ({ createDbClient: vi.fn(() => ({})) }));
@@ -50,6 +52,7 @@ describe('scheduled() cron dispatch', () => {
     mocks.healRollup.mockResolvedValue({ fromDay: '2026-10-28', healed: true });
     mocks.healAwaiting.mockResolvedValue({ corrected: 0 });
     mocks.healMarkers.mockResolvedValue({ corrected: 0 });
+    mocks.autoClose.mockResolvedValue({ enabled: true, idleDays: 14, candidates: 0, closed: 0 });
   });
 
   it('runs only the quota poll on the daily cron', async () => {
@@ -58,6 +61,19 @@ describe('scheduled() cron dispatch', () => {
     expect(mocks.refresh).toHaveBeenCalledWith('cron');
     expect(mocks.handleScheduledEvent).not.toHaveBeenCalled();
     expect(mocks.processScheduledReports).not.toHaveBeenCalled();
+  });
+
+  it('auto-closes idle conversations on the daily cron only, after the heals, and survives a failure', async () => {
+    await scheduled(event('0 18 * * *'), env, ctx);
+    expect(mocks.autoClose).toHaveBeenCalledTimes(1);
+    expect(mocks.healAwaiting.mock.invocationCallOrder[0]).toBeLessThan(mocks.autoClose.mock.invocationCallOrder[0]!);
+
+    mocks.autoClose.mockClear();
+    await scheduled(event('*/5 * * * *'), env, ctx);
+    expect(mocks.autoClose).not.toHaveBeenCalled();
+
+    mocks.autoClose.mockRejectedValue(new Error('d1 down'));
+    await expect(scheduled(event('0 18 * * *'), env, ctx)).resolves.toBeUndefined();
   });
 
   it('keeps the 5-minute cron on reminders and reports without polling quota', async () => {

@@ -314,3 +314,24 @@ describe('ActivityTimelineItem', () => {
     expect(modal.props('midChanges')).toHaveLength(1)
   })
 })
+
+describe('system actor', () => {
+  it('renders as 系統 with a neutral tile and no role pill, never as a member', () => {
+    setCurrentAgent('admin-1', 'admin')
+    const wrapper = mountItem(makeActivity({
+      userId: 'system', userName: 'System', userRole: 'system', action: 'conversation_auto_close', resourceType: 'conversation'
+    }))
+    expect(wrapper.find('.timeline-item__user').text()).toBe('系統')
+    expect(wrapper.find('.timeline-item__role').exists()).toBe(false)
+    const tile = wrapper.find('.timeline-item__icon')
+    expect(tile.attributes('data-system-actor')).toBeDefined()
+    expect(tile.classes().join(' ')).toContain('--ui-fill')
+  })
+
+  it('a member keeps their name and role pill', () => {
+    setCurrentAgent('admin-1', 'admin')
+    const wrapper = mountItem(makeActivity())
+    expect(wrapper.find('.timeline-item__user').text()).toBe('Alice Wang')
+    expect(wrapper.find('.timeline-item__role').exists()).toBe(true)
+  })
+})

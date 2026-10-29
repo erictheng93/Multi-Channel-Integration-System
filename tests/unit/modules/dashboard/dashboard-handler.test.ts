@@ -63,7 +63,7 @@ describe('GET /api/dashboard/summary', () => {
     expect(body.success).toBe(true);
     expect(body.data.timezone).toBe('Asia/Taipei');
     expect(body.data.waiting.count).toBe(0);
-    expect([...store.keys()]).toEqual(['dashboard:v1:summary:teams:7']);
+    expect([...store.keys()]).toEqual(['dashboard:v2:summary:teams:7']);
 
     // new unanswered conversation appears, but the cached value is served inside the TTL
     db.prepare("INSERT INTO conversations (id, customer_id) VALUES ('c1', 1)").run();
