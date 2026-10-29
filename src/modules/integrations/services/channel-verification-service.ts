@@ -27,9 +27,10 @@ export class ChannelVerificationService {
       if (!accessToken) return { success: false, verified: false, message: 'LINE Channel Access Token is missing' };
       const response = await fetch('https://api.line.me/v2/oauth/verify', { method: 'GET', headers: { 'Authorization': `Bearer ${accessToken}` } });
       if (!response.ok) {
+        // Upstream body is logged only; it is never stored or returned to the caller
         const errorText = await response.text();
         log.error('LINE API verification failed', { status: response.status, errorText });
-        await this.updateChannelError(channel.id, { timestamp: nowISO(), errorType: 'verification_failed', errorMessage: `LINE API returned ${response.status}: ${errorText}`, retryAttempt: (channel.errorCount || 0) + 1 });
+        await this.updateChannelError(channel.id, { timestamp: nowISO(), errorType: 'verification_failed', errorMessage: `LINE API returned ${response.status}`, retryAttempt: (channel.errorCount || 0) + 1 });
         return { success: false, verified: false, message: `LINE API verification failed: ${response.status} ${response.statusText}` };
       }
       const verificationData = await response.json() as { client_id: string; expires_in: number };
@@ -39,8 +40,8 @@ export class ChannelVerificationService {
       return { success: true, verified: true, message: 'LINE channel verified successfully', details: { channelId: verificationData.client_id, webhookUrl: parseChannelWebhookConfig(channel.webhookConfig).url || undefined, lastVerifiedAt: timestamp } };
     } catch (error) {
       log.error('Error verifying LINE channel', {}, error instanceof Error ? error : new Error(String(error)));
-      await this.updateChannelError(channel.id, { timestamp: nowISO(), errorType: 'verification_error', errorMessage: error instanceof Error ? error.message : 'Unknown error', retryAttempt: (channel.errorCount || 0) + 1, context: { stack: error instanceof Error ? error.stack : undefined } });
-      return { success: false, verified: false, message: error instanceof Error ? error.message : 'Verification failed', error: error instanceof Error ? error.stack : undefined };
+      await this.updateChannelError(channel.id, { timestamp: nowISO(), errorType: 'verification_error', errorMessage: 'Verification request failed', retryAttempt: (channel.errorCount || 0) + 1 });
+      return { success: false, verified: false, message: 'Verification failed: could not reach the platform API' };
     }
   }
 
@@ -56,7 +57,7 @@ export class ChannelVerificationService {
       if (!response.ok) {
         const errorText = await response.text();
         log.error('Facebook API verification failed', { status: response.status, errorText });
-        await this.updateChannelError(channel.id, { timestamp: nowISO(), errorType: 'verification_failed', errorMessage: `Facebook API returned ${response.status}: ${errorText}`, retryAttempt: (channel.errorCount || 0) + 1 });
+        await this.updateChannelError(channel.id, { timestamp: nowISO(), errorType: 'verification_failed', errorMessage: `Facebook API returned ${response.status}`, retryAttempt: (channel.errorCount || 0) + 1 });
         return { success: false, verified: false, message: `Facebook API verification failed: ${response.status} ${response.statusText}` };
       }
       const verificationData = await response.json() as { id: string; name: string };
@@ -66,8 +67,8 @@ export class ChannelVerificationService {
       return { success: true, verified: true, message: 'Facebook channel verified successfully', details: { pageId: verificationData.id, pageName: verificationData.name, lastVerifiedAt: timestamp } };
     } catch (error) {
       log.error('Error verifying Facebook channel', {}, error instanceof Error ? error : new Error(String(error)));
-      await this.updateChannelError(channel.id, { timestamp: nowISO(), errorType: 'verification_error', errorMessage: error instanceof Error ? error.message : 'Unknown error', retryAttempt: (channel.errorCount || 0) + 1, context: { platform: 'facebook' } });
-      return { success: false, verified: false, message: error instanceof Error ? error.message : 'Verification failed', error: error instanceof Error ? error.stack : undefined };
+      await this.updateChannelError(channel.id, { timestamp: nowISO(), errorType: 'verification_error', errorMessage: 'Verification request failed', retryAttempt: (channel.errorCount || 0) + 1, context: { platform: 'facebook' } });
+      return { success: false, verified: false, message: 'Verification failed: could not reach the platform API' };
     }
   }
 
@@ -83,7 +84,7 @@ export class ChannelVerificationService {
       if (!response.ok) {
         const errorText = await response.text();
         log.error('WhatsApp API verification failed', { status: response.status, errorText });
-        await this.updateChannelError(channel.id, { timestamp: nowISO(), errorType: 'verification_failed', errorMessage: `WhatsApp API returned ${response.status}: ${errorText}`, retryAttempt: (channel.errorCount || 0) + 1 });
+        await this.updateChannelError(channel.id, { timestamp: nowISO(), errorType: 'verification_failed', errorMessage: `WhatsApp API returned ${response.status}`, retryAttempt: (channel.errorCount || 0) + 1 });
         return { success: false, verified: false, message: `WhatsApp API verification failed: ${response.status} ${response.statusText}` };
       }
       const verificationData = await response.json() as { id: string; display_phone_number: string; verified_name: string };
@@ -93,8 +94,8 @@ export class ChannelVerificationService {
       return { success: true, verified: true, message: 'WhatsApp channel verified successfully', details: { phoneNumberId: verificationData.id, displayPhoneNumber: verificationData.display_phone_number, verifiedName: verificationData.verified_name, lastVerifiedAt: timestamp } };
     } catch (error) {
       log.error('Error verifying WhatsApp channel', {}, error instanceof Error ? error : new Error(String(error)));
-      await this.updateChannelError(channel.id, { timestamp: nowISO(), errorType: 'verification_error', errorMessage: error instanceof Error ? error.message : 'Unknown error', retryAttempt: (channel.errorCount || 0) + 1, context: { platform: 'whatsapp' } });
-      return { success: false, verified: false, message: error instanceof Error ? error.message : 'Verification failed', error: error instanceof Error ? error.stack : undefined };
+      await this.updateChannelError(channel.id, { timestamp: nowISO(), errorType: 'verification_error', errorMessage: 'Verification request failed', retryAttempt: (channel.errorCount || 0) + 1, context: { platform: 'whatsapp' } });
+      return { success: false, verified: false, message: 'Verification failed: could not reach the platform API' };
     }
   }
 

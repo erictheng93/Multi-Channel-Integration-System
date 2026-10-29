@@ -96,6 +96,8 @@ channelHandler.get('/:id/stats', requireIntId(), async (c: Context) => {
  *
  * Route Order: Registered before /:id to prevent route interception
  */
+const HEALTH_CACHE_TTL_SECONDS = 60;
+
 channelHandler.get('/:id/health', requireIntId(), async (c: Context) => {
   try {
     const user = c.get('user');
@@ -116,7 +118,22 @@ channelHandler.get('/:id/health', requireIntId(), async (c: Context) => {
       return c.json({ error: 'Access denied' }, HTTP_STATUS.FORBIDDEN);
     }
 
-    const health = await channelService.checkChannelHealth(channelId);
+    // Short KV cache so polling the health badge does not re-read the channel row on every hit
+    const cacheKey = `channel-health:v1:${channelId}`;
+    let health: ChannelHealthStatus | null = null;
+    try {
+      health = await (c.env as Bindings).CACHE?.get<ChannelHealthStatus>(cacheKey, 'json') ?? null;
+    } catch {
+      health = null;
+    }
+    if (!health) {
+      health = await channelService.checkChannelHealth(channelId);
+      try {
+        await (c.env as Bindings).CACHE?.put(cacheKey, JSON.stringify(health), { expirationTtl: HEALTH_CACHE_TTL_SECONDS });
+      } catch {
+        // cache is best effort
+      }
+    }
 
     return contractJson(c, channelContracts.checkHealth, {
       success: true,
@@ -142,6 +159,11 @@ channelHandler.post('/:id/verify', requireIntId(), async (c: Context) => {
       return c.json({ error: 'Team ID not found in user context' }, HTTP_STATUS.BAD_REQUEST);
     }
 
+    // Verification calls the platform API with the stored credential: admin only
+    if (user.role !== 'admin') {
+      return c.json({ success: false, error: 'Only administrators can verify channels' }, HTTP_STATUS.FORBIDDEN);
+    }
+
     const channelService = new ChannelService(c.env as Bindings);
     const channel = await channelService.getChannel(channelId);
 
@@ -162,6 +184,8 @@ channelHandler.post('/:id/verify', requireIntId(), async (c: Context) => {
     };
 
     const result = await channelService.verifyChannel(request);
+    // A fresh verification changes the health picture; drop the cached copy
+    await (c.env as Bindings).CACHE?.delete(`channel-health:v1:${channelId}`).catch(() => undefined);
 
     const statusCode = result.success ? HTTP_STATUS.OK : HTTP_STATUS.BAD_REQUEST;
     return contractJson(c, channelContracts.verify, result, statusCode);
