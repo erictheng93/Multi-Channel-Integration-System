@@ -68,9 +68,9 @@ const tone = computed(() => {
   object-fit: cover;
 }
 .team-avatar.is-sm {
-  width: 22px;
-  height: 22px;
-  font-size: 10px;
+  width: 28px;
+  height: 28px;
+  font-size: 12px;
   box-shadow: 0 0 0 2px var(--ui-surface);
 }
 .presence {

@@ -37,6 +37,10 @@
             :seed="m.id"
             :src="m.avatar"
           />
+          <span
+            v-if="overflowCount > 0"
+            class="avs-more"
+          >+{{ overflowCount }}</span>
         </span>
       </div>
     </div>
@@ -189,6 +193,9 @@ import { createLogger } from '@/utils/logger'
   const teamStore = useTeamStore()
   const qrCodeStore = useQRCodeStore()
   const teamModal = useTeamModal()
+
+  // Members beyond the avatar stack
+  const overflowCount = computed(() => Math.max(0, (props.team.memberCount || 0) - props.previewMembers.length))
 
   // 當前用戶資訊
   const currentUser = computed(() => authStore.currentAgent)
@@ -494,13 +501,27 @@ import { createLogger } from '@/utils/logger'
 }
 .avs {
   display: flex;
+  align-items: center;
   margin-left: 4px;
 }
 .avs > :deep(*) {
-  margin-left: -6px;
+  margin-left: -8px;
 }
 .avs > :deep(*:first-child) {
   margin-left: 0;
+}
+.avs-more {
+  display: grid;
+  min-width: 28px;
+  height: 28px;
+  padding: 0 6px;
+  place-items: center;
+  border-radius: 14px;
+  background: var(--ui-fill-strong);
+  box-shadow: 0 0 0 2px var(--ui-surface);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ui-ink-2);
 }
 .team-acts {
   display: flex;
