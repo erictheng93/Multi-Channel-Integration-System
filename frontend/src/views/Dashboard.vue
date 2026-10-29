@@ -228,76 +228,49 @@
       <section class="bento">
         <article class="ui-card focus">
           <div class="focus-lead">
-            <div class="lbl">
-              等待最久
-              <span class="info">
-                <button
-                  type="button"
-                  class="info-btn"
-                  aria-label="說明：待回覆與未讀"
-                  aria-describedby="wait-def"
-                >
-                  <svg
-                    class="ico"
-                    viewBox="0 0 24 24"
-                  ><circle
-                    cx="12"
-                    cy="12"
-                    r="9"
-                  /><path d="M12 11v5M12 8h.01" /></svg>
-                </button>
-                <span
-                  id="wait-def"
-                  role="tooltip"
-                  class="info-tip"
-                >待回覆＝近 {{ WAITING_WINDOW_DAYS }} 天內，客戶來訊後尚無客服回覆，依等待時間排序，超過 30 分鐘標為紅色。未讀＝你尚未開啟的對話。</span>
-              </span>
-            </div>
-            <template v-if="summary.data.value && topWaiting.length > 0">
-              <div class="big">
-                <DiscRing
-                  class="focus-disc"
-                  :size="150"
-                  :weight="1.6"
-                  tone="orange"
-                  fade="strong"
-                  spin
-                />{{ oldestWait.value }}<span class="big-unit">{{ oldestWait.unit }}</span>
-              </div>
-              <div class="lead-sub">
-                {{ topWaiting[0]?.customerName || '未命名客戶' }} · {{ teamLabel(topWaiting[0]?.assignedTeamId ?? null) }}
-              </div>
-            </template>
-            <template v-else-if="summary.data.value">
-              <div class="big dim">
-                <DiscRing
-                  class="focus-disc"
-                  :size="150"
-                  :weight="1.6"
-                  tone="muted"
-                  fade="strong"
-                />0
-              </div>
-              <div class="lead-sub">
-                沒有待回覆的客戶
-              </div>
-            </template>
-            <template v-else-if="summary.error.value">
-              <div class="big dim">
-                —
-              </div>
-            </template>
-            <template v-else>
-              <span class="sk sk-big" />
-            </template>
-            <router-link
-              v-if="staleWaiting && staleWaiting.count > 0"
-              to="/conversations?view=stale"
-              class="stale-line"
-              data-testid="stale-waiting-link"
+            <UiLeadMetric
+              label="等待最久"
+              :value="leadValue"
+              :unit="leadUnit"
+              :meaning="leadMeaning"
+              tone="orange"
+              :loading="!summary.data.value && !summary.error.value"
+              :dim="!!summary.data.value && topWaiting.length === 0"
             >
-              {{ staleLine }}
-            </router-link>
+              <template #label>
+                等待最久
+                <span class="info">
+                  <button
+                    type="button"
+                    class="info-btn"
+                    aria-label="說明：待回覆與未讀"
+                    aria-describedby="wait-def"
+                  >
+                    <svg
+                      class="ico"
+                      viewBox="0 0 24 24"
+                    ><circle
+                      cx="12"
+                      cy="12"
+                      r="9"
+                    /><path d="M12 11v5M12 8h.01" /></svg>
+                  </button>
+                  <span
+                    id="wait-def"
+                    role="tooltip"
+                    class="info-tip"
+                  >待回覆＝近 {{ WAITING_WINDOW_DAYS }} 天內，客戶來訊後尚無客服回覆，依等待時間排序，超過 30 分鐘標為紅色。未讀＝你尚未開啟的對話。</span>
+                </span>
+              </template>
+              <router-link
+                v-if="staleWaiting && staleWaiting.count > 0"
+                to="/conversations?view=stale"
+                class="stale-line"
+                data-testid="stale-waiting-link"
+              >
+                {{ staleLine }}
+              </router-link>
+            </UiLeadMetric>
           </div>
 
           <div class="focus-list">
@@ -676,7 +649,7 @@
 </template>
 
 <script setup lang="ts">
-import DiscRing from '@/components/ui/DiscRing.vue'
+import UiLeadMetric from '@/components/ui/UiLeadMetric.vue'
 import UiEmptyState from '@/components/ui/UiEmptyState.vue'
 import UiPageHead from '@/components/ui/UiPageHead.vue'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
@@ -749,6 +722,21 @@ const staleLine = computed(() => {
   return `另有 ${stale.count} 件超過 ${WAITING_WINDOW_DAYS} 天未回覆${never} →`
 })
 const oldestWait = computed(() => formatWait(oldestWaitSeconds.value ?? 0))
+
+// Lead metric (UiLeadMetric): the longest wait, a quiet 0 when nobody waits, an em dash on error
+const hasWaiting = computed(() => !!summary.data.value && topWaiting.value.length > 0)
+const leadValue = computed<string | number | null>(() => {
+  if (hasWaiting.value) { return oldestWait.value.value }
+  return summary.data.value ? 0 : null
+})
+const leadUnit = computed(() => (hasWaiting.value ? oldestWait.value.unit : ''))
+const leadMeaning = computed(() => {
+  if (hasWaiting.value) {
+    const top = topWaiting.value[0]
+    return `${top?.customerName || '未命名客戶'} · ${teamLabel(top?.assignedTeamId ?? null)}`
+  }
+  return summary.data.value ? '沒有待回覆的客戶' : ''
+})
 const waitClass = (seconds: number): string => seconds >= 30 * 60 ? 'hot' : seconds >= 15 * 60 ? 'warm' : ''
 
 const teamLabel = (teamId: number | null): string => {
@@ -918,25 +906,17 @@ onBeforeUnmount(() => {
 /* ---- focus card ---- */
 .focus {
   display: grid;
-  grid-template-columns: 220px minmax(0, 1fr);
+  grid-template-columns: 264px minmax(0, 1fr);
   overflow: hidden;
 }
 
 .focus-lead {
   display: flex;
-  flex-direction: column;
-  gap: 6px;
-  justify-content: center;
-  padding: 22px;
-  background: linear-gradient(180deg, var(--ui-orange-soft), transparent 85%);
+  min-width: 0;
 }
 
-.focus-lead .lbl {
-  display: flex;
-  gap: 4px;
-  align-items: center;
-  font-weight: 600;
-  color: var(--ui-ink-2);
+.focus-lead > :deep(.ui-lead) {
+  flex: 1;
 }
 
 /* Definition lives in an info tooltip instead of a paragraph that opens a dead zone */
@@ -989,45 +969,8 @@ onBeforeUnmount(() => {
   opacity: 1;
 }
 
-.focus-lead .big {
-  /* The disc ring sits behind the number only (never behind the caption lines) */
-  position: relative;
-  align-self: flex-start;
-  isolation: isolate;
-  margin-bottom: 8px;
-  font: 600 52px / 1 var(--ui-font-display);
-  letter-spacing: -0.04em;
-  font-variant-numeric: tabular-nums;
-}
-
-.focus-disc {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  z-index: -1;
-  translate: -50% -50%;
-}
-
-.focus-lead .big.dim {
-  color: var(--ui-faint);
-}
-
-.big-unit {
-  margin-left: 4px;
-  font-size: 20px;
-  font-weight: 500;
-  letter-spacing: 0;
-  color: var(--ui-muted);
-}
-
-.lead-sub {
-  font-size: 13px;
-  color: var(--ui-muted);
-}
-
 .stale-line {
   display: block;
-  margin-top: 10px;
   font-size: 13px;
   line-height: 1.5;
   color: var(--ui-muted);

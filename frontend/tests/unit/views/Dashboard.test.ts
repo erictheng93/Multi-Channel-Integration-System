@@ -148,7 +148,7 @@ describe('Dashboard.vue', () => {
     expect(rows[0].find('.wait').text()).toBe('42 分')
     expect(rows[0].find('.wait').classes()).toContain('hot')
     expect(rows[1].find('.wait').text()).toBe('5 分')
-    expect(wrapper.find('.focus-lead .big').text()).toContain('42')
+    expect(wrapper.find('.focus-lead .ui-lead-value').text()).toContain('42')
   })
 
   it('does not show satisfaction, per-agent load or away state', async () => {
