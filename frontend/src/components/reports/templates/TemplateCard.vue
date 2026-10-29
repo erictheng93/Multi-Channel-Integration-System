@@ -41,24 +41,8 @@
             <b>{{ item.label }}</b>
             <span>{{ item.hint }}</span>
           </span>
-          <code>{{ item.field }}</code>
         </li>
       </ul>
-      <div
-        v-if="shape"
-        class="tc-shape"
-        role="group"
-        :aria-label="`${template.name}的輸出欄位`"
-      >
-        <span class="tc-shape-h">輸出欄位</span>
-        <div class="tc-cols">
-          <code
-            v-for="column in shape.columns"
-            :key="column"
-          >{{ column }}</code>
-        </div>
-        <span class="tc-shape-row">{{ shape.row }}</span>
-      </div>
     </section>
 
     <dl class="tc-meta">
@@ -104,7 +88,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import type { ReportTemplate } from '@/types/reports';
-import { REPORT_CONTENTS, REPORT_OUTPUT_SHAPES, formatEstimatedTime, getCategoryLabel } from './templateHelpers';
+import { REPORT_CONTENTS, formatEstimatedTime, getCategoryLabel } from './templateHelpers';
 
 const props = withDefaults(defineProps<{
   template: ReportTemplate;
@@ -119,7 +103,6 @@ defineEmits<{
 }>();
 
 const contents = computed(() => REPORT_CONTENTS[props.template.type] ?? []);
-const shape = computed(() => REPORT_OUTPUT_SHAPES[props.template.type] ?? null);
 </script>
 
 <style scoped>
@@ -216,49 +199,6 @@ const shape = computed(() => REPORT_OUTPUT_SHAPES[props.template.type] ?? null);
 .tc-text span {
   font-size: 12.5px;
   line-height: 1.4;
-  color: var(--ui-muted);
-}
-
-.tc-list code,
-.tc-cols code {
-  flex: none;
-  padding: 2px 8px;
-  border-radius: 8px;
-  background: var(--ui-fill);
-  font: 12px / 1.5 var(--ui-font-mono);
-  color: var(--ui-ink-2);
-  overflow-wrap: anywhere;
-}
-
-/* A mini table header: the columns the report writes, and what one row stands for */
-.tc-shape {
-  display: grid;
-  gap: 8px;
-  margin-top: 14px;
-  padding: 12px 14px;
-  border-radius: var(--ui-r-inner);
-  background: var(--ui-surface-2);
-}
-
-.tc-shape-h {
-  font-size: 12.5px;
-  font-weight: 600;
-  color: var(--ui-ink-2);
-}
-
-.tc-cols {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.tc-cols code {
-  background: var(--ui-surface);
-  box-shadow: 0 0 0 0.5px var(--ui-sep);
-}
-
-.tc-shape-row {
-  font-size: 12.5px;
   color: var(--ui-muted);
 }
 
