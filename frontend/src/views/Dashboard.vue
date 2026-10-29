@@ -373,14 +373,15 @@
               />
             </div>
             <div
-              v-if="summary.data.value && waitingCount > topWaiting.length"
+              v-if="summary.data.value && (waitingCount > topWaiting.length || topWaiting.length > 2)"
               class="focus-foot"
             >
               <router-link
                 to="/conversations"
                 class="ui-link"
               >
-                還有 {{ waitingCount - topWaiting.length }} 件待回覆，前往對話
+                <span class="foot-wide">還有 {{ waitingCount - topWaiting.length }} 件待回覆，前往對話</span>
+                <span class="foot-phone">還有 {{ waitingCount - Math.min(2, topWaiting.length) }} 件待回覆，前往對話</span>
               </router-link>
             </div>
           </div>
@@ -906,7 +907,7 @@ onBeforeUnmount(() => {
 /* ---- focus card ---- */
 .focus {
   display: grid;
-  grid-template-columns: 264px minmax(0, 1fr);
+  grid-template-columns: 288px minmax(0, 1fr);
   overflow: hidden;
 }
 
@@ -917,6 +918,16 @@ onBeforeUnmount(() => {
 
 .focus-lead > :deep(.ui-lead) {
   flex: 1;
+}
+
+/* The disc fades out into the list, so hero and list read as one card (no hard edge) */
+.focus-lead > :deep(.ui-lead) .ui-lead-art {
+  -webkit-mask-image: linear-gradient(90deg, #000 55%, transparent 100%);
+  mask-image: linear-gradient(90deg, #000 55%, transparent 100%);
+}
+
+.focus-lead > :deep(.ui-lead) {
+  background: linear-gradient(110deg, var(--ui-lead-tint), transparent 90%);
 }
 
 /* Definition lives in an info tooltip instead of a paragraph that opens a dead zone */
@@ -970,15 +981,26 @@ onBeforeUnmount(() => {
 }
 
 .stale-line {
-  display: block;
+  display: inline-block;
+  align-self: flex-start;
+  max-width: 100%;
+  margin-top: 6px;
+  padding: 6px 12px;
+  border-radius: 16px;
+  background: var(--ui-surface);
+  box-shadow: var(--ui-shadow-pill);
   font-size: 13px;
-  line-height: 1.5;
-  color: var(--ui-muted);
+  font-weight: 500;
+  line-height: 1.45;
+  color: var(--ui-ink-2);
   text-decoration: none;
+  text-wrap: balance;
+  transition: color var(--ui-dur) var(--ui-ease), box-shadow var(--ui-dur) var(--ui-ease);
 }
 
 .stale-line:hover {
-  color: var(--ui-blue);
+  color: var(--ui-accent);
+  box-shadow: var(--ui-shadow-raised);
 }
 
 .focus-list {
@@ -998,6 +1020,10 @@ onBeforeUnmount(() => {
 
 .focus-foot {
   padding: 8px 22px 10px;
+}
+
+.foot-phone {
+  display: none;
 }
 
 .wait {
@@ -1315,6 +1341,19 @@ onBeforeUnmount(() => {
 @media (max-width: 768px) {
   .focus {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* Phone: the list shows the two longest waits; the link carries the rest */
+  .focus-list .ui-row:nth-child(n + 3) {
+    display: none;
+  }
+
+  .foot-wide {
+    display: none;
+  }
+
+  .foot-phone {
+    display: inline;
   }
 
   .stat-list {

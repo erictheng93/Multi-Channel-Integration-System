@@ -123,6 +123,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted } from 'vue'
+import { useRoute } from 'vue-router'
 import { useNotificationController } from '@/composables/notification/useNotificationController'
 import AppLayout from '@/components/ui/AppLayout.vue'
 import { LoadingSpinner } from '@/components/ui'
@@ -192,8 +193,11 @@ const groups = computed<DayGroup[]>(() => {
 
 // ==================== Lifecycle ====================
 
+// /notifications?settings=1 (linked from 個人設定) opens the settings dialog straight away
+const route = useRoute()
 onMounted(async () => {
   await controller.initialize()
+  if (route.query.settings === '1') { showSettings.value = true }
 })
 
 onUnmounted(() => {

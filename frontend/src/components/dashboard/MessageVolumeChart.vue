@@ -112,14 +112,19 @@
           <rect
             class="tip"
             :x="tipX"
-            y="0"
+            :y="tipY"
             width="80"
             height="26"
             rx="8"
           />
+          <!-- pointer from the callout down to the last point -->
+          <path
+            class="tip"
+            :d="`M${tipPointerX - 5} ${tipY + 25} L${tipPointerX + 5} ${tipY + 25} L${tipPointerX} ${tipY + 32} Z`"
+          />
           <text
             :x="tipX + 40"
-            y="17"
+            :y="tipY + 17"
             text-anchor="middle"
             class="tip-text"
           >今天 {{ fmt(lastPoint.value) }}</text>
@@ -233,7 +238,10 @@ const areaPath = computed(() => points.value.length === 0
   : `${currentPath.value} L${X1.value} ${Y_BASE.value} L${X0.value} ${Y_BASE.value} Z`)
 
 const lastPoint = computed(() => points.value[points.value.length - 1] ?? null)
-const tipX = computed(() => (lastPoint.value ? Math.min(lastPoint.value.x - 48, W.value - 84) : 0))
+// The callout is anchored to the last point: centred above it, kept inside the plot
+const tipX = computed(() => (lastPoint.value ? Math.min(Math.max(lastPoint.value.x - 40, 0), W.value - 84) : 0))
+const tipY = computed(() => (lastPoint.value ? Math.max(lastPoint.value.y - 46, 2) : 0))
+const tipPointerX = computed(() => (lastPoint.value ? Math.min(Math.max(lastPoint.value.x, tipX.value + 14), tipX.value + 66) : 0))
 
 type Anchor = 'start' | 'middle' | 'end'
 const xLabels = computed(() => {
