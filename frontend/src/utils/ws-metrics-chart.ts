@@ -213,10 +213,12 @@ export function buildSpark(
       run = []
     }
   }
+  // A genuinely flat series is a thin line, never a filled slab
+  const flat = finite.length > 0 && Math.min(...finite) === peak
   const path = (r: Array<{ x: number; y: number }>) => r.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x} ${p.y}`).join(' ')
   return {
     line: runs.map(path).join(' '),
-    area: runs.map((r) => {
+    area: flat ? '' : runs.map((r) => {
       const first = r[0]
       const last = r[r.length - 1]
       return `${path(r)} L${last?.x} ${geom.bottom} L${first?.x} ${geom.bottom}Z`
