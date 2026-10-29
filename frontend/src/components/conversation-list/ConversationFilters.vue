@@ -163,8 +163,12 @@
           </div>
 
           <div class="panel-field">
-            <label class="field-label">平台</label>
+            <label
+              class="field-label"
+              for="conv-filter-platform"
+            >平台</label>
             <select
+              id="conv-filter-platform"
               :value="filters.platform"
               class="field-select"
               @change="onFilterChange('platform', ($event.target as HTMLSelectElement).value)"
@@ -188,8 +192,12 @@
           </div>
 
           <div class="panel-field">
-            <label class="field-label">狀態</label>
+            <label
+              class="field-label"
+              for="conv-filter-status"
+            >狀態</label>
             <select
+              id="conv-filter-status"
               :value="filters.status"
               class="field-select"
               @change="onFilterChange('status', ($event.target as HTMLSelectElement).value)"
@@ -210,8 +218,12 @@
           </div>
 
           <div class="panel-field">
-            <label class="field-label">負責人</label>
+            <label
+              class="field-label"
+              for="conv-filter-team"
+            >負責人</label>
             <select
+              id="conv-filter-team"
               :value="filters.teamId ?? ''"
               class="field-select"
               @change="onFilterChange('teamId', ($event.target as HTMLSelectElement).value ? Number(($event.target as HTMLSelectElement).value) : undefined)"
@@ -655,7 +667,7 @@ function clearAll() {
 .trigger-placeholder {
   overflow: hidden;
   font-size: 14px;
-  color: var(--ui-faint);
+  color: var(--ui-muted);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
