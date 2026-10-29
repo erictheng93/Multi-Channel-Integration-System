@@ -44,6 +44,8 @@ describe('ws-metrics-chart', () => {
   })
 
   it('labels ticks without rounding noise', () => {
-    expect(yTicks(5).map(t => t.label)).toEqual(['0', '1.25', '2.5', '3.75', '5'])
+    // default steps are whole numbers from a maximum of 5 up; an explicit step count still divides evenly
+    expect(yTicks(5).map(t => t.label)).toEqual(['0', '1', '2', '3', '4', '5'])
+    expect(yTicks(5, 4).map(t => t.label)).toEqual(['0', '1.25', '2.5', '3.75', '5'])
   })
 })

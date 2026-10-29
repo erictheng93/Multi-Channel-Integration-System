@@ -15,6 +15,25 @@ export const CHART = {
   bottom: 220
 } as const
 
+export interface ChartGeometry {
+  width: number
+  height: number
+  left: number
+  right: number
+  top: number
+  bottom: number
+}
+
+/** Phone geometry: a taller plot (about 240px on a 360px screen) with one axis only */
+export const CHART_COMPACT: ChartGeometry = {
+  width: 360,
+  height: 250,
+  left: 34,
+  right: 348,
+  top: 16,
+  bottom: 208
+}
+
 export const RANGE_MS: Record<WsMetricsRange, number> = {
   '1h': 60 * 60 * 1000,
   '6h': 6 * 60 * 60 * 1000,
@@ -53,15 +72,15 @@ export function niceMax(value: number): number {
   return step * base
 }
 
-export function xFor(ts: number, from: number, to: number): number {
+export function xFor(ts: number, from: number, to: number, geom: ChartGeometry = CHART): number {
   const span = Math.max(1, to - from)
   const ratio = Math.min(1, Math.max(0, (ts - from) / span))
-  return CHART.left + ratio * (CHART.right - CHART.left)
+  return geom.left + ratio * (geom.right - geom.left)
 }
 
-export function yFor(value: number, max: number): number {
+export function yFor(value: number, max: number, geom: ChartGeometry = CHART): number {
   const ratio = Math.min(1, Math.max(0, value / max))
-  return CHART.bottom - ratio * (CHART.bottom - CHART.top)
+  return geom.bottom - ratio * (geom.bottom - geom.top)
 }
 
 function round(n: number): number {
@@ -72,7 +91,8 @@ export function buildSeries(
   points: WsMetricsPointDto[],
   pick: (_point: WsMetricsPointDto) => number | null,
   from: number,
-  to: number
+  to: number,
+  geom: ChartGeometry = CHART
 ): ChartSeries {
   const values = points.map(pick)
   const finite = values.filter((v): v is number => v !== null && Number.isFinite(v))
@@ -89,7 +109,7 @@ export function buildSeries(
       }
       return
     }
-    current.push({ x: round(xFor(point.ts, from, to)), y: round(yFor(value, max)) })
+    current.push({ x: round(xFor(point.ts, from, to, geom)), y: round(yFor(value, max, geom)) })
   })
   if (current.length > 0) {
     runs.push(current)
@@ -102,7 +122,7 @@ export function buildSeries(
       const first = run[0]
       const last = run[run.length - 1]
       const body = run.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x} ${p.y}`).join(' ')
-      return `${body} L${last?.x} ${CHART.bottom} L${first?.x} ${CHART.bottom}Z`
+      return `${body} L${last?.x} ${geom.bottom} L${first?.x} ${geom.bottom}Z`
     })
   const lastRun = runs[runs.length - 1]
   const last = lastRun ? (lastRun[lastRun.length - 1] ?? null) : null
@@ -110,18 +130,29 @@ export function buildSeries(
   return { lines, areas, last, max, count: finite.length }
 }
 
-export function yTicks(max: number, steps = 4): ChartTick[] {
+/**
+ * Number of gridline steps for an axis maximum from niceMax (1, 2, 5, 10, 20, 50 ...): five steps from 5 up
+ * (whole-number labels for counts), otherwise as many steps as the maximum or two for a maximum of 1.
+ */
+export function axisSteps(max: number): number {
+  if (max >= 5) {
+    return 5
+  }
+  return max >= 2 ? max : 2
+}
+
+export function yTicks(max: number, steps = axisSteps(max), geom: ChartGeometry = CHART): ChartTick[] {
   return Array.from({ length: steps + 1 }, (_, i) => {
     const value = (max / steps) * i
     return {
-      pos: round(yFor(value, max)),
+      pos: round(yFor(value, max, geom)),
       label: String(Number(value.toFixed(2)))
     }
   })
 }
 
 /** Evenly spaced time labels across the window; HH:mm for short ranges, M/D HH:mm for long ones. */
-export function xTicks(from: number, to: number, range: WsMetricsRange, count = 5): ChartTick[] {
+export function xTicks(from: number, to: number, range: WsMetricsRange, count = 5, geom: ChartGeometry = CHART): ChartTick[] {
   const formatter = new Intl.DateTimeFormat('zh-TW', {
     timeZone: 'Asia/Taipei',
     ...(range === '7d' ? { month: 'numeric', day: 'numeric' } : {}),
@@ -131,6 +162,6 @@ export function xTicks(from: number, to: number, range: WsMetricsRange, count = 
   })
   return Array.from({ length: count }, (_, i) => {
     const ts = from + ((to - from) / (count - 1)) * i
-    return { pos: round(xFor(ts, from, to)), label: formatter.format(new Date(ts)) }
+    return { pos: round(xFor(ts, from, to, geom)), label: formatter.format(new Date(ts)) }
   })
 }
