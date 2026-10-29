@@ -31,8 +31,6 @@ const EXPECTED_SFCS = [
   'src/components/conversation-list/CacheStatusIndicator.vue',
   'src/components/conversation/QuickAssignActions.vue',
   'src/components/conversation/TypingIndicator.vue',
-  'src/components/team/TeamCard.vue',
-  'src/components/team/TeamMemberCard.vue',
   'src/components/team/qr-section/TeamQRSection.vue',
   'src/components/ui/SkeletonLoader.vue',
   'src/views/ConversationList.vue',
@@ -54,8 +52,10 @@ describe('SFC @apply discovery', () => {
 
   it('accounts for every @apply call site', () => {
     const total = discovered.reduce((sum, entry) => sum + entry.applyCount, 0)
-    // ConversationFilters moved to --ui-* tokens (no @apply) in the workspace redesign, which removed ~60 call sites
-    expect(total).toBeGreaterThan(50)
+    // The UI redesign moved ConversationFilters, TeamCard and TeamMemberCard to --ui-* tokens (no @apply);
+    // 49 call sites remain. The floor only guards against this degrading into asserting nothing — the exact
+    // file list above is what catches a component gaining or losing @apply.
+    expect(total).toBeGreaterThanOrEqual(40)
   })
 })
 
