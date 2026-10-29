@@ -10,6 +10,16 @@ const log = createContextLogger('ChannelStats');
 
 export type GetChannelCallback = (channelId: number) => Promise<ChannelIntegration | null>;
 
+/** lastError holds JSON written by verification, but older webhook code stored plain text. Never throw on either. */
+function parseStoredError(raw: string | null | undefined): ChannelHealthStatus['lastError'] {
+  if (!raw) { return null; }
+  try {
+    return JSON.parse(raw) as ChannelHealthStatus['lastError'];
+  } catch {
+    return { timestamp: nowISO(), errorType: 'error', errorMessage: 'Channel reported an error', retryAttempt: 0 };
+  }
+}
+
 export class ChannelStatsService {
   constructor(private db: DrizzleD1Database) {}
 
@@ -53,6 +63,6 @@ export class ChannelStatsService {
     if (!channel) throw new Error('Channel not found');
     const errorCount = channel.errorCount || 0;
     const status: 'healthy' | 'degraded' | 'down' = errorCount > 5 ? 'down' : errorCount > 0 ? 'degraded' : 'healthy';
-    return { channelId: channel.id, platform: channel.platform as ChannelPlatform, status, lastCheckAt: nowISO(), consecutiveErrors: errorCount, lastError: channel.lastError ? JSON.parse(channel.lastError) : null, recommendations: [] };
+    return { channelId: channel.id, platform: channel.platform as ChannelPlatform, status, lastCheckAt: nowISO(), consecutiveErrors: errorCount, lastError: parseStoredError(channel.lastError), recommendations: [] };
   }
 }
