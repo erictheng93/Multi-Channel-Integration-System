@@ -189,7 +189,7 @@ export const getApiStatus = async (c: Context<{ Bindings: Bindings }>) => {
         id,
         name,
         status: 'error' as const,
-        details: settledResult.reason instanceof Error ? settledResult.reason.message : 'Unknown error',
+        details: 'Channel check failed',
         latencyMs: -1,
         lastCheck: now,
       }
@@ -301,7 +301,7 @@ async function checkLineIntegration(env: Bindings): Promise<{ status: boolean; m
     log.error(`LINE check failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
     return {
       status: false,
-      message: `LINE check failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+      message: 'LINE check failed'
     }
   }
 }
@@ -333,9 +333,10 @@ async function checkFacebookIntegration(env: Bindings): Promise<{ status: boolea
       return { status: false, message: `Facebook API error: ${response.status}` }
     }
   } catch (error) {
+    // The request URL carries the page token, so the exception text must not be returned or logged
     return {
       status: false,
-      message: `Facebook check failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+      message: 'Facebook check failed'
     }
   }
 }
