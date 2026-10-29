@@ -44,69 +44,60 @@
           />
         </div>
 
-        <div class="range-row">
-          <div class="ui-field">
-            <label for="timeRange">時間範圍 <span class="req">*</span></label>
-            <select
-              id="timeRange"
-              :value="timeRange"
-              class="ui-select"
-              :class="{ error: errors.timeRange }"
-              @change="emit('update:timeRange', ($event.target as HTMLSelectElement).value as ReportTimeRange | '')"
-            >
-              <option value="">
-                請選擇時間範圍
-              </option>
-              <option
-                v-for="range in timeRangeOptions"
-                :key="range.value"
-                :value="range.value"
-              >
-                {{ range.label }}
-              </option>
-            </select>
-            <p
-              v-if="errors.timeRange"
-              class="error-message"
-            >
-              {{ errors.timeRange }}
-            </p>
-          </div>
-
-          <div
-            v-if="timeRange === 'custom'"
-            class="ui-field"
+        <div class="ui-field">
+          <span
+            id="timeRangeLabel"
+            class="field-label"
+          >時間範圍 <span class="req">*</span></span>
+          <ReportChoiceGroup
+            :model-value="timeRange"
+            :options="timeRangeOptions"
+            label="時間範圍"
+            compact
+            :columns="4"
+            @update:model-value="emit('update:timeRange', $event as ReportTimeRange)"
+          />
+          <p
+            v-if="errors.timeRange"
+            class="error-message"
           >
-            <label for="startDate">自訂日期範圍</label>
-            <div class="date-range">
-              <input
-                id="startDate"
-                :value="startDate"
-                type="date"
-                class="ui-input"
-                aria-label="開始日期"
-                :max="endDate || today"
-                @input="$emit('update:startDate', ($event.target as HTMLInputElement).value)"
-              >
-              <span class="date-separator">至</span>
-              <input
-                id="endDate"
-                :value="endDate"
-                type="date"
-                class="ui-input"
-                aria-label="結束日期"
-                :min="startDate"
-                :max="today"
-                @input="$emit('update:endDate', ($event.target as HTMLInputElement).value)"
-              >
-            </div>
-            <p
-              v-if="errors.dateRange || errors.startDate || errors.endDate"
-              class="error-message"
+            {{ errors.timeRange }}
+          </p>
+        </div>
+
+        <div
+          v-if="timeRange === 'custom'"
+          class="ui-field"
+        >
+          <label for="startDate">自訂日期範圍</label>
+          <div class="date-range">
+            <input
+              id="startDate"
+              :value="startDate"
+              type="date"
+              class="ui-input"
+              aria-label="開始日期"
+              :max="endDate || today"
+              @input="$emit('update:startDate', ($event.target as HTMLInputElement).value)"
             >
-              {{ errors.dateRange || errors.startDate || errors.endDate }}
-            </p>
+            <span class="date-separator">至</span>
+            <input
+              id="endDate"
+              :value="endDate"
+              type="date"
+              class="ui-input"
+              aria-label="結束日期"
+              :min="startDate"
+              :max="today"
+              @input="$emit('update:endDate', ($event.target as HTMLInputElement).value)"
+            >
           </div>
+          <p
+            v-if="errors.dateRange || errors.startDate || errors.endDate"
+            class="error-message"
+          >
+            {{ errors.dateRange || errors.startDate || errors.endDate }}
+          </p>
         </div>
       </div>
     </section>
@@ -123,23 +114,13 @@
           </p>
         </div>
       </div>
-      <div
-        class="format-options"
-        role="radiogroup"
-        aria-label="輸出格式"
-      >
-        <button
-          v-for="fmt in availableFormats"
-          :key="fmt.value"
-          type="button"
-          role="radio"
-          class="format-option"
-          :class="{ selected: format === fmt.value }"
-          :aria-checked="format === fmt.value"
-          @click="$emit('update:format', fmt.value)"
-        >
-          {{ fmt.label }}
-        </button>
+      <div class="format-options">
+        <ReportChoiceGroup
+          :model-value="format"
+          :options="formatOptions"
+          label="輸出格式"
+          @update:model-value="emit('update:format', $event as ReportFormat)"
+        />
       </div>
       <p
         v-if="errors.format"
@@ -248,16 +229,15 @@
           </select>
         </div>
         <div class="ui-field">
-          <label for="maxRecords">最大記錄數</label>
+          <label for="maxRecords">最大記錄數（上限 50,000）</label>
           <input
             id="maxRecords"
-            :value="options.maxRecords"
-            type="number"
+            :value="options.maxRecords ? options.maxRecords.toLocaleString('en-US') : ''"
+            type="text"
+            inputmode="numeric"
             class="ui-input"
-            placeholder="例如 1000"
-            min="1"
-            max="50000"
-            @input="updateOption('maxRecords', Number(($event.target as HTMLInputElement).value))"
+            placeholder="例如 1,000"
+            @input="onMaxRecords($event)"
           >
         </div>
         <div class="ui-field">
@@ -284,6 +264,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import ReportsAPI from '@/api/reports';
+import ReportChoiceGroup from './ReportChoiceGroup.vue';
 import type {
   ReportFormat,
   ReportTimeRange,
@@ -317,13 +298,33 @@ const today = computed(() => {
   return new Date().toISOString().split('T')[0];
 });
 
-const availableFormats = computed(() => {
-  return ReportsAPI.getAvailableFormats() || [];
-});
+const FORMAT_HINTS: Record<string, string> = {
+  json: '完整結構，適合串接其他系統',
+  csv: '可直接用 Excel 開啟'
+};
+
+const formatOptions = computed(() =>
+  (ReportsAPI.getAvailableFormats() || []).map(fmt => ({
+    value: fmt.value,
+    label: fmt.label,
+    description: FORMAT_HINTS[fmt.value]
+  }))
+);
 
 const timeRangeOptions = computed(() => {
   return ReportsAPI.getTimeRangeOptions() || [];
 });
+
+const MAX_RECORDS = 50000;
+
+// Digits only, shown with thousands separators (10,000); clamped to the backend cap
+const onMaxRecords = (event: Event) => {
+  const input = event.target as HTMLInputElement;
+  const digits = input.value.replace(/\D/g, '');
+  const value = digits ? Math.min(Number(digits), MAX_RECORDS) : 0;
+  updateOption('maxRecords', value || undefined);
+  input.value = value ? value.toLocaleString('en-US') : '';
+};
 
 const updateOption = (key: string, value: unknown) => {
   emit('update:options', {
@@ -362,12 +363,6 @@ const updateOption = (key: string, value: unknown) => {
   color: var(--ui-red);
 }
 
-.range-row {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
-}
-
 .date-range {
   display: flex;
   align-items: center;
@@ -395,29 +390,19 @@ const updateOption = (key: string, value: unknown) => {
 }
 
 .format-options {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
   padding: 4px 22px 20px;
 }
 
-.format-option {
-  padding: 16px 12px;
-  border: 0;
-  border-radius: var(--ui-r-inner);
-  background: var(--ui-surface-2);
-  box-shadow: inset 0 0 0 0.5px var(--ui-sep);
-  color: inherit;
-  font: 600 14px var(--ui-font-display);
-  cursor: pointer;
-  transition:
-    background var(--ui-dur) var(--ui-ease),
-    box-shadow var(--ui-dur) var(--ui-ease);
+.field-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ui-ink-2);
 }
 
-.format-option.selected {
-  background: color-mix(in srgb, var(--ui-accent-soft) 60%, var(--ui-surface));
-  box-shadow: var(--ui-sel-ring);
+.field-hint {
+  margin: 0;
+  font-size: 13px;
+  color: var(--ui-muted);
 }
 
 .switch-list {
@@ -461,7 +446,6 @@ const updateOption = (key: string, value: unknown) => {
     padding-left: 16px;
   }
 
-  .range-row,
   .adv-grid {
     grid-template-columns: 1fr;
   }
