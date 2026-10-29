@@ -20,6 +20,7 @@
 <template>
   <nav
     class="ui-section-nav"
+    :class="{ 'is-overflowing': overflowing }"
     :aria-label="SECTION_NAV[section].ariaLabel"
   >
     <div
@@ -40,7 +41,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { getActivePinia } from 'pinia'
 import { useAuthStore } from '@/stores/auth'
@@ -70,6 +71,22 @@ const revealActive = async () => {
 }
 onMounted(revealActive)
 watch(() => route.path, revealActive)
+
+// The fade only means something when the row actually scrolls
+const overflowing = ref(false)
+const measure = () => {
+  const box = track.value
+  overflowing.value = !!box && box.scrollWidth > box.clientWidth + 1
+}
+let observer: globalThis.ResizeObserver | null = null
+onMounted(() => {
+  measure()
+  if (track.value && typeof window.ResizeObserver !== 'undefined') {
+    observer = new window.ResizeObserver(measure)
+    observer.observe(track.value)
+  }
+})
+onBeforeUnmount(() => observer?.disconnect())
 </script>
 
 <style scoped>
@@ -79,8 +96,8 @@ watch(() => route.path, revealActive)
   min-width: 0;
 }
 
-/* Edge fade: tells the user the row scrolls, without clipping a label */
-.ui-section-nav::after {
+/* Edge fade: tells the user the row scrolls, without clipping a label (only when it does scroll) */
+.ui-section-nav.is-overflowing::after {
   content: '';
   position: absolute;
   top: 0;
@@ -107,7 +124,9 @@ watch(() => route.path, revealActive)
 
 .ui-section-nav-track > a {
   display: inline-flex;
-  flex: none;
+  /* Segments share the width evenly when they fit; when they don't, they keep their size and scroll */
+  flex: 1 0 auto;
+  justify-content: center;
   align-items: center;
   height: 30px;
   padding: 0 14px;
