@@ -164,7 +164,7 @@ const conditionSummary = computed(() => {
     : rule.conditions.map(c => `${CONDITION_LABELS[c.conditionType] ?? c.conditionType}「${c.value}」`).join(' ')
 })
 
-const ACTION_LABELS: Record<string, string> = { reply_image: '圖片回覆', reply_flex: '卡片訊息' }
+const ACTION_LABELS: Record<string, string> = { 'reply_image': '圖片回覆', 'reply_flex': '卡片訊息' }
 const replyOutcome = computed(() => {
   const first = props.rule.actions[0]
   if (!first) { return '' }
