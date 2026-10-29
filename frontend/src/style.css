@@ -246,35 +246,43 @@
      Apple-Native Button System
      ============================================
      Design principles (per docs/UIUX-Design-System.md):
-     - Flat solid colors — no gradients, no glow shadows
-     - No visible borders — depth comes from color alone
-     - iOS system colors (#007AFF, #FF3B30, #34C759, #FF9500)
+     - Flat solid colors - no gradients, no glow shadows
+     - No visible borders - depth comes from color alone
+     - iOS system colors via the --ui-* tokens
      - No layout-shifting hover effects (never change font-weight)
-     - Background darken on hover, subtle opacity dim on press
-     - 250ms ease-out for smooth native feel
-     - rounded-xl (12px) — Apple standard button radius
+     - 36px control height, 12px radius, press scales to .97
+     - Secondary uses the iOS tertiary fill; danger is a soft red tint
      ============================================ */
   .btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 0.5rem;
-    padding: 0.5rem 1rem;
-    font-size: 0.875rem;
-    font-weight: 500;
+    gap: 6px;
+    min-height: 36px;
+    padding: 0 14px;
+    font-size: 13.5px;
+    font-weight: 600;
     line-height: 1.25rem;
     text-decoration: none;
     white-space: nowrap;
     user-select: none;
     cursor: pointer;
     border: none;
-    border-radius: 0.75rem;
-    transition: background-color 250ms ease-out, color 250ms ease-out, opacity 150ms ease-out;
+    border-radius: var(--ui-r-control);
+    transition:
+      background-color var(--ui-dur) var(--ui-ease),
+      color var(--ui-dur) var(--ui-ease),
+      transform 120ms var(--ui-ease),
+      opacity var(--ui-dur) var(--ui-ease);
+  }
+
+  .btn:active:not(:disabled) {
+    transform: scale(0.97);
   }
 
   .btn:focus-visible {
     outline: none;
-    box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.3);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--ui-accent) 35%, transparent);
   }
 
   .btn:disabled {
@@ -282,95 +290,90 @@
     cursor: not-allowed;
   }
 
-  /* Primary — iOS System Blue */
+  /* Primary - iOS System Blue */
   .btn-primary {
-    background-color: #007AFF;
-    color: white;
+    background-color: var(--ui-accent);
+    color: #fff;
   }
   .btn-primary:hover:not(:disabled) {
-    background-color: #0066D6;
+    background-color: color-mix(in srgb, var(--ui-accent) 88%, #000);
   }
   .btn-primary:active:not(:disabled) {
-    background-color: #0052AD;
-    opacity: 0.9;
+    background-color: color-mix(in srgb, var(--ui-accent) 78%, #000);
   }
 
-  /* Secondary — iOS System Gray (tinted) */
+  /* Secondary - iOS tertiary fill */
   .btn-secondary {
-    background-color: #F2F2F7;
-    color: #1C1C1E;
+    background-color: var(--ui-fill);
+    color: var(--ui-ink);
   }
   .btn-secondary:hover:not(:disabled) {
-    background-color: #E5E5EA;
+    background-color: var(--ui-fill-strong);
   }
   .btn-secondary:active:not(:disabled) {
-    background-color: #D1D1D6;
-    opacity: 0.9;
+    background-color: var(--ui-fill-strong);
   }
 
-  /* Success — iOS System Green */
+  /* Success - iOS System Green */
   .btn-success {
-    background-color: #34C759;
-    color: white;
+    background-color: var(--ui-green);
+    color: #fff;
   }
   .btn-success:hover:not(:disabled) {
-    background-color: #2CAB4B;
+    background-color: color-mix(in srgb, var(--ui-green) 88%, #000);
   }
   .btn-success:active:not(:disabled) {
-    background-color: #248F3F;
-    opacity: 0.9;
+    background-color: color-mix(in srgb, var(--ui-green) 78%, #000);
   }
 
-  /* Warning — iOS System Orange */
+  /* Warning - iOS System Orange */
   .btn-warning {
-    background-color: #FF9500;
-    color: white;
+    background-color: var(--ui-orange);
+    color: #fff;
   }
   .btn-warning:hover:not(:disabled) {
-    background-color: #E08300;
+    background-color: color-mix(in srgb, var(--ui-orange) 88%, #000);
   }
   .btn-warning:active:not(:disabled) {
-    background-color: #C27100;
-    opacity: 0.9;
+    background-color: color-mix(in srgb, var(--ui-orange) 78%, #000);
   }
 
-  /* Danger — iOS System Red */
+  /* Danger - soft red tint with red ink */
   .btn-danger {
-    background-color: #FF3B30;
-    color: white;
+    background-color: var(--ui-red-soft);
+    color: var(--ui-red-ink);
   }
   .btn-danger:hover:not(:disabled) {
-    background-color: #E0342B;
+    background-color: color-mix(in srgb, var(--ui-red) 20%, transparent);
   }
   .btn-danger:active:not(:disabled) {
-    background-color: #CC2D25;
-    opacity: 0.9;
+    background-color: color-mix(in srgb, var(--ui-red) 26%, transparent);
   }
 
-  /* Ghost — Transparent, tinted blue text */
+  /* Ghost - transparent, accent text */
   .btn-ghost {
     background-color: transparent;
-    color: #007AFF;
+    color: var(--ui-accent);
   }
   .btn-ghost:hover:not(:disabled) {
-    background-color: rgba(0, 122, 255, 0.1);
+    background-color: var(--ui-accent-soft);
   }
   .btn-ghost:active:not(:disabled) {
-    background-color: rgba(0, 122, 255, 0.15);
-    opacity: 0.9;
+    background-color: color-mix(in srgb, var(--ui-accent) 16%, transparent);
   }
 
   /* Size variants */
   .btn-sm {
-    padding: 0.375rem 0.75rem;
-    font-size: 0.75rem;
-    border-radius: 0.625rem;
+    min-height: 30px;
+    padding: 0 11px;
+    font-size: 12.5px;
+    border-radius: 10px;
   }
 
   .btn-lg {
-    padding: 0.75rem 1.5rem;
-    font-size: 1rem;
-    border-radius: 0.875rem;
+    min-height: 44px;
+    padding: 0 20px;
+    font-size: 15px;
   }
 
   /* Touch: a finger needs a 44px target (Apple HIG). Gated on coarse pointers so the dense
