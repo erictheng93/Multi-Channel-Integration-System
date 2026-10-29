@@ -711,8 +711,10 @@ export const tagHandler = {
             DATE(ct.assigned_at) as date,
             COUNT(*) as assignments
           FROM customer_tags ct
+          JOIN customers c ON ct.customer_id = c.id
           WHERE ct.tag_id = ${tagId}
           AND ct.assigned_at >= date('now', '-30 days')
+          AND ${customerScope(c, 'c.source_team_id')}
           GROUP BY DATE(ct.assigned_at)
           ORDER BY date DESC
           LIMIT 30
@@ -723,8 +725,10 @@ export const tagHandler = {
             COUNT(*) as assignments
           FROM customer_tags ct
           JOIN agents a ON ct.assigned_by = a.id
+          JOIN customers c ON ct.customer_id = c.id
           WHERE ct.tag_id = ${tagId}
           AND ct.assigned_at >= date('now', '-30 days')
+          AND ${customerScope(c, 'c.source_team_id')}
           GROUP BY ct.assigned_by, a.display_name
           ORDER BY assignments DESC
           LIMIT 10
