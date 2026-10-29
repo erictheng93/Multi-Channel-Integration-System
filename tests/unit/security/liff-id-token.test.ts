@@ -10,16 +10,16 @@ describe('verifyLiffIdToken', () => {
       new Response(JSON.stringify({ sub: 'Uabc', aud: '2007743547', exp: Date.now() / 1000 + 600 }))
     );
     vi.stubGlobal('fetch', f);
-    expect(await verifyLiffIdToken('tok', '2007743547-EnXG6puw')).toBe('Uabc');
+    expect(await verifyLiffIdToken('aaa.bbb.ccc', '2007743547-EnXG6puw')).toBe('Uabc');
     expect(String(f.mock.calls[0][1].body)).toContain('client_id=2007743547');
   });
   it('rejects LINE errors, wrong audience, missing token/config', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('{}', { status: 400 })));
-    expect(await verifyLiffIdToken('bad', '1-x')).toBeNull();
+    expect(await verifyLiffIdToken('aaa.bbb.ccc', '1-x')).toBeNull();
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ sub: 'U', aud: '999' }))));
-    expect(await verifyLiffIdToken('t', '1-x')).toBeNull();
+    expect(await verifyLiffIdToken('aaa.bbb.ccc', '1-x')).toBeNull();
     expect(await verifyLiffIdToken(undefined, '1-x')).toBeNull();
-    expect(await verifyLiffIdToken('t', undefined)).toBeNull();
+    expect(await verifyLiffIdToken('aaa.bbb.ccc', undefined)).toBeNull();
   });
 });
 

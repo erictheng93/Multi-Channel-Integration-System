@@ -2,7 +2,7 @@
 // 用於實現精確的 QR Code 團隊綁定
 // 注意：已移除舊的 token-based 系統，統一使用新 LIFF QR Code 系統
 
-import { Hono } from 'hono';
+import { Hono, type Context, type Next } from 'hono';
 import { HTTP_STATUS } from '@/constants/http-status';
 import { globalErrorHandler } from '@/core/error-handler';
 import type { Bindings } from '@/types';
@@ -69,7 +69,36 @@ async function welcomeLimiter(
   }
 }
 
+// Per-IP cap on the anonymous endpoints that call LINE to verify an ID token. Same RateLimiterDO pattern as
+// the welcome limiter (no alarms of its own). Fails open: the token check below still gates every request.
+const LIFF_IP_LIMIT = { maxRequests: 30, windowMs: 60_000 };
+const LIFF_IP_LIMITER_SHARD = 'ratelimit:liff-ip';
+
+async function liffIpRateLimit(c: Context<{ Bindings: Bindings }>, next: Next) {
+  const ns = c.env.RATE_LIMITER;
+  const ip = c.req.header('CF-Connecting-IP');
+  if (ns && ip) {
+    try {
+      const res = await ns.get(ns.idFromName(LIFF_IP_LIMITER_SHARD)).fetch('https://rate-limiter.internal/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'check', clientId: `liff-ip:${ip}`, config: LIFF_IP_LIMIT }),
+      });
+      if (res.status === HTTP_STATUS.TOO_MANY_REQUESTS) {
+        return c.json({ success: false, error: '請求過於頻繁，請稍後再試' }, HTTP_STATUS.TOO_MANY_REQUESTS);
+      }
+    } catch (error) {
+      log.warn('LIFF IP limiter unavailable; allowing request', {
+        error: error instanceof Error ? error.message : String(error)
+      });
+    }
+  }
+  return next();
+}
+
 const liffHandler = new Hono<{ Bindings: Bindings }>();
+liffHandler.use('/assign-team', liffIpRateLimit);
+liffHandler.use('/welcome', liffIpRateLimit);
 
 // ========================================
 // LIFF Team QR Code System Endpoints
