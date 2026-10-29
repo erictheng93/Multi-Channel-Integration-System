@@ -87,17 +87,19 @@
     --ui-sep: rgba(60, 60, 67, 0.1);
     --ui-ink: #1c1c1e;
     --ui-ink-2: #3a3a3c;
-    --ui-muted: #8e8e93;
+    /* WCAG AA: iOS #8E8E93 is 3.3:1 on white; #636366 is 6.0:1 (5.0:1 on the grey fills) */
+    --ui-muted: #636366;
     --ui-faint: #aeaeb2;
 
-    --ui-accent: #007aff;
-    --ui-accent-soft: rgba(0, 122, 255, 0.1);
+    /* WCAG AA: #007AFF is 4.0:1 on white and with white text; #0066CC is 5.6:1 */
+    --ui-accent: #0066cc;
+    --ui-accent-soft: rgba(0, 102, 204, 0.07); /* keeps --ui-accent text >= 4.5:1 on it, also over the grey canvas */
     --ui-green: #34c759;
     --ui-green-soft: rgba(52, 199, 89, 0.14);
-    --ui-green-ink: #1f8a3b;
+    --ui-green-ink: #18732f; /* 5.2:1 on --ui-green-soft */
     --ui-orange: #ff9500;
     --ui-orange-soft: rgba(255, 149, 0, 0.14);
-    --ui-orange-ink: #b25f00;
+    --ui-orange-ink: #9a5200; /* 5.3:1 on --ui-orange-soft */
     --ui-red: #ff3b30;
     --ui-red-soft: rgba(255, 59, 48, 0.12);
     --ui-red-ink: #c4261d;

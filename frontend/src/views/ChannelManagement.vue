@@ -559,10 +559,11 @@ const selectedPlatformLabel = computed(() =>
   display: flex;
   flex-direction: column;
 }
+/* Disabled channel: muted text, not opacity (opacity drops text below WCAG AA contrast) */
 .chcard.off .chhead,
 .chcard.off .stats,
 .chcard.off .meta {
-  opacity: 0.62;
+  color: var(--ui-muted);
 }
 .chhead {
   display: flex;

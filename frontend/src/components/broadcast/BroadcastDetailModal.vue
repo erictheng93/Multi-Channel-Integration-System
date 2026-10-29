@@ -327,8 +327,16 @@ function reasonLabel(reason: BroadcastRecipientErrorReason): string {
 .chip-n {
   font-size: 11.5px;
   font-variant-numeric: tabular-nums;
-  opacity: 0.6;
+  color: var(--ui-muted);
 }
+
+/* On the selected (dark) chip the count follows the chip's light text */
+.ui-chip.is-on .chip-n,
+.ui-chip[aria-pressed="true"] .chip-n {
+  color: inherit;
+  opacity: 0.8;
+}
+
 
 .state {
   padding: 24px 22px 28px;
