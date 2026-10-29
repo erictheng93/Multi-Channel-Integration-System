@@ -46,6 +46,27 @@ export interface ChannelStatsJson {
   lastMessageAt?: string
 }
 
+/** Per-platform message activity (all messages on that platform; KV-cached for 5 minutes). */
+export interface ChannelActivity {
+  customerMessages24h: number
+  agentMessages24h: number
+  customerMessagesTotal: number
+  agentMessagesTotal: number
+  lastActivityAt: string | null
+}
+
+/**
+ * Webhook failure health from KV alert records (7-day retention). These are processing and
+ * signature failures, not timeouts. signatureFailureMinutes24h counts one-minute windows with a
+ * rejected signature (writes are capped at one per minute), not individual requests.
+ */
+export interface ChannelWebhookHealth {
+  processingFailures24h: number
+  lastProcessingFailureAt: string | null
+  signatureFailureMinutes24h: number
+  lastSignatureFailureAt: string | null
+}
+
 export interface ChannelIntegration {
   id: number
   teamId: number
@@ -59,7 +80,11 @@ export interface ChannelIntegration {
   lastError?: string | null
   errorCount: number
   configuredBy?: string | null
+  /** Optional display name lives in configMetadata.name (max 60 chars) */
   configMetadata?: Record<string, unknown> | null
+  /** Present on the list response only; null when the stats query failed */
+  activity?: ChannelActivity | null
+  webhookHealth?: ChannelWebhookHealth
   createdAt: string
   updatedAt: string
 }
