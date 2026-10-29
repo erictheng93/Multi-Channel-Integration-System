@@ -71,6 +71,13 @@
         <!-- Form side -->
         <section class="form-side">
           <div class="m-brand">
+            <DiscRing
+              class="m-disc"
+              aria-hidden="true"
+              :size="340"
+              :grain="false"
+              fade="strong"
+            />
             <div class="brand-mark">
               <svg viewBox="0 0 24 24"><path d="M12 3C6.5 3 2 6.6 2 11c0 2.5 1.4 4.7 3.7 6.2L5 21l4.1-2.3c.9.2 1.9.3 2.9.3 5.5 0 10-3.6 10-8s-4.5-8-10-8Z" /></svg>
             </div>
@@ -191,8 +198,9 @@
                 :class="{ 'is-loading': loading }"
                 :disabled="loading || !isValid"
               >
-                <span class="btn-text">繼續</span>
+                <span class="btn-text">{{ submitLabel }}</span>
                 <svg
+                  v-if="isValid"
                   class="ico"
                   viewBox="0 0 24 24"
                   aria-hidden="true"
@@ -283,6 +291,14 @@ const showPassword = ref(false)
 // Errors show once the field was touched or the form was submitted
 const emailError = computed(() => (emailTouched.value || formSubmitted.value) ? errors.value.email : null)
 const passwordError = computed(() => (passwordTouched.value || formSubmitted.value) ? errors.value.password : null)
+
+// Validation-driven label: tells the user what is still missing instead of a dead "繼續"
+const submitLabel = computed(() => {
+  if (loading.value) {return '登入中'}
+  if (validateLoginEmail(formData.value.email)) {return '輸入電子郵件'}
+  if (validateLoginPassword(formData.value.password)) {return '輸入密碼'}
+  return '繼續'
+})
 
 // ===== Form Validators =====
 setValidator('email', (value) => validateLoginEmail(value))
@@ -513,15 +529,17 @@ const handleLogin = async (event?: Event) => {
 }
 
 /* Abrasive disc: bond rings plus fine grain at the rim, behind the brand column only */
+/* Offset to the right so the text column clears it; the form card sits over its right half */
 .wheel-box {
   position: absolute;
-  left: 50%;
+  left: calc(100% + 24px);
   top: 50%;
   z-index: 0;
-  width: 560px;
-  height: 560px;
-  margin: -280px 0 0 -280px;
+  width: 600px;
+  height: 600px;
+  margin: -300px 0 0 -300px;
   color: var(--ui-accent);
+  opacity: 0.6;
   pointer-events: none;
 }
 
@@ -655,8 +673,12 @@ const handleLogin = async (event?: Event) => {
 
 .submit-btn:disabled {
   opacity: 1;
-  background: var(--ui-fill-strong);
-  color: var(--ui-muted);
+  background: color-mix(in srgb, var(--ui-accent) 42%, var(--ui-surface));
+  color: #fff;
+}
+
+.submit-btn.is-loading:disabled {
+  background: var(--ui-accent);
 }
 
 .submit-btn.is-loading {
@@ -671,6 +693,23 @@ const handleLogin = async (event?: Event) => {
 .m-brand,
 .m-foot {
   display: none;
+}
+
+.m-brand {
+  position: relative;
+  isolation: isolate;
+}
+
+/* Phone: a cropped ring behind the logo (decorative, never behind body text) */
+.m-disc {
+  position: absolute;
+  left: 50%;
+  top: 8px;
+  z-index: -1;
+  margin: -170px 0 0 -170px;
+  color: var(--ui-accent);
+  opacity: 0.55;
+  pointer-events: none;
 }
 
 @media (max-width: 1024px) {
@@ -691,7 +730,7 @@ const handleLogin = async (event?: Event) => {
 
   .m-brand {
     display: block;
-    margin-bottom: 20px;
+    margin-bottom: 24px;
     text-align: center;
   }
 
