@@ -16,6 +16,7 @@ import {
 import { jwtAuth } from '@/middleware/auth';
 import { createContextLogger } from '@/utils/logger';
 import { getDisplayContent } from '../utils/message-helpers';
+import { publicConversationColumns } from '../utils/public-columns';
 import { nowISO } from '@/utils/timestamp'
 import { conversationContracts, type ConversationStats } from '@shared/api-contracts/conversations';
 import { contractJson } from '@/utils/api-contract-response';
@@ -299,7 +300,7 @@ conversationQueriesHandler.get('/:id', jwtAuth, async (c) => {
 
     // FIX: 使用完整的 JOIN 查詢，返回與 assign/unassign API 相同的數據結構
     const [result] = await drizzleDb
-      .select()
+      .select({ conversations: publicConversationColumns, teams, customers })
       .from(conversations)
       .leftJoin(teams, eq(conversations.assignedTeamId, teams.id))
       .leftJoin(customers, eq(conversations.customerId, customers.id))
@@ -524,7 +525,7 @@ conversationQueriesHandler.get('/', jwtAuth, async (c) => {
     // "USE TEMP B-TREE FOR ORDER BY", which reads and sorts every visible row
     // before the LIMIT can discard any of them.
     const listQuery = drizzleDb
-      .select()
+      .select({ conversations: publicConversationColumns, customers, teams })
       .from(conversations)
       .leftJoin(customers, eq(conversations.customerId, customers.id))
       .leftJoin(teams, eq(conversations.assignedTeamId, teams.id))
