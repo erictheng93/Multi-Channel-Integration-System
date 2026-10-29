@@ -15,6 +15,7 @@ import { useConfirmDialog } from '@/composables/useConfirmDialog'
 import { createLogger } from '@/utils/logger'
 import type { CredentialsStatus, MaskedCredential } from '@shared/api-contracts/system'
 import type {
+  IntegrationLastTest,
   SystemSettings,
   AdvancedSettings,
   SettingsTab,
@@ -228,6 +229,8 @@ export function useSystemSettingsController() {
         if (settingsResponse.data.integrations?.facebook?.status) {
           settings.integrations.facebook.status = settingsResponse.data.integrations.facebook.status
         }
+        settings.integrations.line.lastTest = settingsResponse.data.integrations?.line?.lastTest ?? null
+        settings.integrations.facebook.lastTest = settingsResponse.data.integrations?.facebook?.lastTest ?? null
       }
 
       // Load credentials data
@@ -323,6 +326,20 @@ export function useSystemSettingsController() {
       }
     }
     return { edits, missing }
+  }
+
+  /** Mirror the server-persisted result so the page can show "last tested ... N ms" without a reload. */
+  function recordLastTest(platform: 'line' | 'facebook', data: unknown): void {
+    const d = data as Partial<IntegrationLastTest> | undefined
+    if (!d || typeof d.latencyMs !== 'number' || typeof d.testedAt !== 'string') {
+      return
+    }
+    settings.integrations[platform].lastTest = {
+      status: d.status === 'success' ? 'success' : 'error',
+      message: d.message ?? '',
+      latencyMs: d.latencyMs,
+      testedAt: d.testedAt
+    }
   }
 
   async function refreshCredentialStatus(): Promise<void> {
@@ -492,10 +509,12 @@ export function useSystemSettingsController() {
 
       if (response.success) {
         settings.integrations.line.status = 'connected'
+        recordLastTest('line', response.data)
         showMessage('LINE 連線測試成功', 'success')
       } else {
         settings.integrations.line.status = 'error'
-        const errorMessage = response.message || 'LINE 連線測試失敗'
+        recordLastTest('line', response.data)
+        const errorMessage = response.error || response.message || 'LINE 連線測試失敗'
         showMessage(errorMessage, 'error')
       }
     } catch (error) {
@@ -532,10 +551,12 @@ export function useSystemSettingsController() {
 
       if (response.success) {
         settings.integrations.facebook.status = 'connected'
+        recordLastTest('facebook', response.data)
         showMessage('Facebook 連線測試成功', 'success')
       } else {
         settings.integrations.facebook.status = 'error'
-        const errorMessage = response.message || 'Facebook 連線測試失敗'
+        recordLastTest('facebook', response.data)
+        const errorMessage = response.error || response.message || 'Facebook 連線測試失敗'
         showMessage(errorMessage, 'error')
       }
     } catch (error) {
@@ -657,7 +678,10 @@ export function useSystemSettingsController() {
         // Map components to display list
         const componentNameMap: Record<string, string> = {
           'database': '資料庫 (D1)',
-          'cache': '快取 (KV)'
+          'cache': '快取 (KV)',
+          'r2': '物件儲存 (R2)',
+          'durable_object': 'Durable Object',
+          'queue': '佇列 (Queue)'
         }
 
         healthCheckResults.value = (data.components ?? []).map(c => ({

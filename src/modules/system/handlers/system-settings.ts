@@ -14,6 +14,7 @@ import { createDbClient } from '@/db/drizzle-factory'
 import { gte, count } from 'drizzle-orm'
 import { systemSettings, agents, conversations, messages } from '@/db/schema'
 import { nowISO } from '@/utils/timestamp'
+import { readLastIntegrationTest, type IntegrationTestRecord } from './system-integrations'
 import {
   RECALL_WINDOW_ALLOWED_VALUES,
   RECALL_WINDOW_SETTING_KEY,
@@ -91,9 +92,11 @@ interface SystemSettingsResponse extends Record<string, unknown> {
   integrations?: {
     line?: {
       status: 'connected' | 'disconnected' | 'error';
+      lastTest?: IntegrationTestRecord | null;
     };
     facebook?: {
       status: 'connected' | 'disconnected' | 'error';
+      lastTest?: IntegrationTestRecord | null;
     };
   };
   advanced?: {
@@ -185,6 +188,14 @@ export const getSettings = async (c: Context<{ Bindings: Bindings }>) => {
         }
       }
     })
+
+    // Last connection test per platform (KV, no secrets) for the integrations page
+    const [lineTest, facebookTest] = await Promise.all([
+      readLastIntegrationTest(c.env, 'line'),
+      readLastIntegrationTest(c.env, 'facebook')
+    ])
+    if (settings.integrations?.line) settings.integrations.line.lastTest = lineTest
+    if (settings.integrations?.facebook) settings.integrations.facebook.lastTest = facebookTest
 
     return successResponse(c, settings, 'Settings retrieved successfully')
   } catch (error) {

@@ -654,13 +654,22 @@ describe('Export Handler', () => {
       expect(body.data.exportInfo.filters.limit).toBe(5000);
     });
 
-    it('should default limit to 100 when not specified', async () => {
+    it('should default limit to the 5000 cap when not specified', async () => {
       mockQueryResults.messages = [];
 
       const res = await app.request('/api/messages/export?format=json');
       const body = await res.json();
 
-      expect(body.data.exportInfo.filters.limit).toBe(100);
+      expect(body.data.exportInfo.filters.limit).toBe(5000);
+    });
+
+    it('should fall back to the cap for an invalid limit, not to 100', async () => {
+      mockQueryResults.messages = [];
+
+      const res = await app.request('/api/messages/export?format=json&limit=abc');
+      const body = await res.json();
+
+      expect(body.data.exportInfo.filters.limit).toBe(5000);
     });
 
     it('should respect limit value under the cap', async () => {

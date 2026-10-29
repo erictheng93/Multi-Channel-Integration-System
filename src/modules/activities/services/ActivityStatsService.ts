@@ -2,7 +2,7 @@
 // 活動模組 - 活動統計分析服務
 
 import { createDbClient } from '@/db/drizzle-factory'
-import { sql, gte, count, desc } from 'drizzle-orm'
+import { sql, gte, count, countDistinct, desc, and, type SQL } from 'drizzle-orm'
 import { activities } from '@/db/schema'
 import { ActivityOverview } from '@modules/activities/types/interfaces'
 import { ActivityFormatter } from '@modules/activities/utils/formatters'
@@ -27,6 +27,33 @@ interface HeatmapRow {
 
 export class ActivityStatsService {
   constructor(private db: D1Database) {}
+
+  /**
+   * Distinct acting users, and activities an admin can still undo, within a period.
+   * Restorable = reversible, not yet restored, restore window still open. json_valid guards each
+   * json_extract (a malformed details value would otherwise fail the whole query).
+   */
+  private async countActiveAndRestorable(
+    drizzleDb: ReturnType<typeof createDbClient>,
+    period: SQL
+  ): Promise<{ activeUserCount: number; restorableCount: number }> {
+    const nowStr = nowISO()
+    const [active, restorable] = await Promise.all([
+      drizzleDb.select({ count: countDistinct(activities.userId) }).from(activities).where(period),
+      drizzleDb
+        .select({ count: count() })
+        .from(activities)
+        .where(and(
+          period,
+          sql`CASE WHEN json_valid(${activities.details}) THEN
+                json_extract(${activities.details}, '$.reversible') = 1
+                AND json_extract(${activities.details}, '$.restoredByActivityId') IS NULL
+                AND json_extract(${activities.details}, '$.restorePolicy.expiresAt') > ${nowStr}
+              ELSE 0 END`
+        ))
+    ])
+    return { activeUserCount: active[0]?.count || 0, restorableCount: restorable[0]?.count || 0 }
+  }
 
   /**
    * 獲取活動統計概覽
@@ -79,8 +106,15 @@ export class ActivityStatsService {
       .groupBy(sql`DATE(${activities.createdAt})`)
       .orderBy(sql`date DESC`)
 
+    const { activeUserCount, restorableCount } = await this.countActiveAndRestorable(
+      drizzleDb,
+      gte(activities.createdAt, startDateStr)
+    )
+
     return {
       totalActivities: totalResult[0]?.count || 0,
+      activeUserCount,
+      restorableCount,
       actionStats: actionStats.reduce((acc: Record<string, number>, row) => {
         acc[row.action] = row.count
         return acc
@@ -373,8 +407,15 @@ export class ActivityStatsService {
     const end = new Date(endDate)
     const days = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24))
 
+    const { activeUserCount, restorableCount } = await this.countActiveAndRestorable(
+      drizzleDb,
+      sql`${activities.createdAt} >= ${startDate} AND ${activities.createdAt} <= ${endDate}`
+    )
+
     return {
       totalActivities: totalResult[0]?.count || 0,
+      activeUserCount,
+      restorableCount,
       actionStats: actionStats.reduce((acc: Record<string, number>, row) => {
         acc[row.action] = row.count
         return acc

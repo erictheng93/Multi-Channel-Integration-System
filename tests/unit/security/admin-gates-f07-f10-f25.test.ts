@@ -58,6 +58,7 @@ describe('F10/F25: admin gates use the D1 role, not the JWT claim', () => {
       method: 'POST',
       body: JSON.stringify({ appId: '1', appSecret: 's', pageToken: 't', pageId: 'me/feed?method=post' }),
     }, env)
+    expect(res.status).toBe(422)
     expect((await res.json() as any).data.status).toBe('error')
     expect(f).not.toHaveBeenCalled()
     vi.unstubAllGlobals()

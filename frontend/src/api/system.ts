@@ -22,6 +22,8 @@ interface SystemInfo {
   };
 }
 
+import type { IntegrationLastTest } from '@/types/system-settings'
+
 interface SystemSettings {
   general?: {
     systemName: string;
@@ -35,6 +37,7 @@ interface SystemSettings {
       channelSecret?: string;
       accessToken?: string;
       status: 'connected' | 'disconnected' | 'error';
+      lastTest?: IntegrationLastTest | null;
     };
     facebook?: {
       appId?: string;
@@ -42,6 +45,7 @@ interface SystemSettings {
       pageId?: string;
       pageToken?: string;
       status: 'connected' | 'disconnected' | 'error';
+      lastTest?: IntegrationLastTest | null;
     };
   };
   advanced?: {
@@ -116,7 +120,7 @@ export const systemApi = {
   testIntegration: async (
     platform: 'line' | 'facebook', 
     config: IntegrationTestRequest
-  ): Promise<ApiResponse<{ status: string; message?: string }>> => {
+  ): Promise<ApiResponse<{ status: string; message?: string; latencyMs?: number; testedAt?: string }>> => {
     return callApiContract(systemContracts.testIntegration, { platform }, config)
   },
 
@@ -180,7 +184,19 @@ export const systemApi = {
         checkInterval: number;
       }>;
       infrastructure: Record<string, { status: string; message: string; timestamp: string; responseTime?: number }>;
-      performance: { apiResponseTime: number; databaseQueryTime: number; cacheHitRate: number };
+      performance: { apiResponseTime?: number; databaseQueryTime?: number; cacheHitRate?: number };
+      /** Present only for ?deep=1 (admin): on-demand LINE webhook test */
+      deep?: {
+        lineWebhook: {
+          status: 'success' | 'failure' | 'skipped';
+          statusCode?: number;
+          reason?: string;
+          detail?: string;
+          latencyMs?: number;
+          testedAt: string;
+          message: string;
+        };
+      };
     };
     message?: string;
   }> => {

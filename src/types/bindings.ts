@@ -297,6 +297,15 @@ export interface LineWebhookEventPayload {
 }
 
 /**
+ * Health probe enqueued by GET /api/health/system to time a queue send.
+ * The consumer acks and ignores it (no side effects).
+ */
+export interface HealthProbePayload {
+  type: 'health_probe';
+  enqueuedAt: number;
+}
+
+/**
  * Union type for all queue message payloads.
  * The queue consumer uses the `type` field to route to the correct handler.
  * Messages without a `type` field are treated as outbound messages (backward compat).
@@ -304,7 +313,8 @@ export interface LineWebhookEventPayload {
 export type LineQueuePayload =
   | (LineMessageQueuePayload & { type?: 'outbound_message' })
   | MediaProcessingPayload
-  | LineWebhookEventPayload;
+  | LineWebhookEventPayload
+  | HealthProbePayload;
 
 /**
  * LINE Message Queue Result
