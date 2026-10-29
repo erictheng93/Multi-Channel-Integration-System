@@ -37,6 +37,59 @@
         {{ item.label }}
       </router-link>
     </div>
+
+    <!-- Phone: iOS-style pull-down. One full-width button naming the current section; the rest in a menu -->
+    <div
+      ref="pull"
+      class="ui-section-pull"
+    >
+      <button
+        type="button"
+        class="ui-section-pull-btn"
+        aria-haspopup="true"
+        :aria-expanded="menuOpen"
+        :aria-controls="menuId"
+        @click="menuOpen = !menuOpen"
+        @keydown.esc="closeMenu(true)"
+      >
+        <span class="ui-section-pull-label">{{ activeLabel }}</span>
+        <svg
+          class="ui-section-pull-chev"
+          :class="{ 'is-open': menuOpen }"
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2.4"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <path d="m6 9 6 6 6-6" />
+        </svg>
+      </button>
+      <ul
+        v-if="menuOpen"
+        :id="menuId"
+        class="ui-section-pull-menu"
+        @keydown.esc="closeMenu(true)"
+      >
+        <li
+          v-for="item in items"
+          :key="item.path"
+        >
+          <router-link
+            :to="item.path"
+            :aria-current="isActive(item.path) ? 'page' : undefined"
+            :class="{ 'is-on': isActive(item.path) }"
+            @click="closeMenu(false)"
+          >
+            {{ item.label }}
+          </router-link>
+        </li>
+      </ul>
+    </div>
   </nav>
 </template>
 
@@ -59,6 +112,22 @@ const authStore = getActivePinia() ? useAuthStore() : null
 const items = computed(() => sectionNavItems(props.section, authStore?.currentAgent?.role === 'admin'))
 
 const isActive = (path: string): boolean => route.path === path
+const activeLabel = computed(() => items.value.find(i => isActive(i.path))?.label ?? items.value[0]?.label ?? '')
+
+// Phone pull-down
+const menuOpen = ref(false)
+const menuId = `ui-section-menu-${props.section}`
+const pull = ref<HTMLElement | null>(null)
+const closeMenu = (refocus: boolean) => {
+  menuOpen.value = false
+  if (refocus) { pull.value?.querySelector<HTMLElement>('button')?.focus() }
+}
+const onDocPointer = (e: Event) => {
+  if (menuOpen.value && pull.value && !pull.value.contains(e.target as globalThis.Node)) { menuOpen.value = false }
+}
+onMounted(() => document.addEventListener('pointerdown', onDocPointer))
+onBeforeUnmount(() => document.removeEventListener('pointerdown', onDocPointer))
+watch(() => route.path, () => { menuOpen.value = false })
 
 // Keep the active segment inside the scrolled row (only matters when the row overflows)
 const track = ref<HTMLElement | null>(null)
@@ -157,24 +226,83 @@ onBeforeUnmount(() => observer?.disconnect())
   }
 }
 
-/* Phone: no scroll strip. Segments wrap and each row fills the track, so every label is in view */
-@media (max-width: 768px) {
-  .ui-section-nav-track {
-    flex-wrap: wrap;
-    gap: 2px;
-    overflow: visible;
-    scroll-snap-type: none;
-  }
+/* Phone: the segmented track is replaced by a pull-down (full-width button + menu) */
+.ui-section-pull {
+  display: none;
+}
 
+@media (max-width: 768px) {
+  .ui-section-nav-track,
   .ui-section-nav.is-overflowing::after {
     display: none;
   }
 
-  /* Every row fills the track: a short last row stretches its segments instead of leaving a hole */
-  .ui-section-nav-track > a {
-    flex: 1 1 96px;
-    height: 36px;
-    padding: 0 8px;
+  .ui-section-pull {
+    display: block;
+    position: relative;
+  }
+
+  .ui-section-pull-btn {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    min-height: 44px;
+    padding: 0 14px;
+    border: 0;
+    border-radius: 12px;
+    background: var(--ui-surface);
+    box-shadow: var(--ui-shadow-pill), inset 0 0 0 1px var(--ui-field-edge);
+    color: var(--ui-ink);
+    font: inherit;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .ui-section-pull-btn:focus-visible,
+  .ui-section-pull-menu a:focus-visible {
+    outline: 2px solid var(--ui-accent);
+    outline-offset: 2px;
+  }
+
+  .ui-section-pull-chev {
+    color: var(--ui-ink-2);
+    transition: transform 200ms ease-out;
+  }
+
+  .ui-section-pull-chev.is-open {
+    transform: rotate(180deg);
+  }
+
+  .ui-section-pull-menu {
+    position: absolute;
+    z-index: 30;
+    top: calc(100% + 6px);
+    left: 0;
+    right: 0;
+    margin: 0;
+    padding: 6px;
+    list-style: none;
+    border-radius: 14px;
+    background: var(--ui-surface);
+    box-shadow: 0 12px 32px rgb(0 0 0 / 0.16), inset 0 0 0 1px var(--ui-sep);
+  }
+
+  .ui-section-pull-menu a {
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 0 12px;
+    border-radius: 9px;
+    color: var(--ui-ink);
+    font-size: 15px;
+    text-decoration: none;
+  }
+
+  .ui-section-pull-menu a.is-on {
+    background: var(--ui-sel-bg);
+    font-weight: 600;
   }
 }
 </style>
