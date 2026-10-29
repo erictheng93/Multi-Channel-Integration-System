@@ -1,27 +1,44 @@
 <!--
   FacebookIntegrationPage.vue
-  Thin wrapper: injects controller and passes props to FacebookIntegrationForm
+  Connection summary and credential form for the Facebook Messenger page.
 -->
 
 <template>
-  <FacebookIntegrationForm
-    :settings="controller.settings.integrations.facebook"
-    :saving="controller.saving.value"
-    :testing="controller.testing.value"
-    @save="controller.saveFacebookSettings"
-    @test="controller.testFacebookIntegration"
-    @clear="controller.clearFacebookCredentials"
-    @update:settings="(data) => Object.assign(controller.settings.integrations.facebook, data)"
-  />
+  <div class="settings-stack">
+    <IntegrationStatusCard
+      platform="facebook"
+      title="Facebook Messenger"
+      :status="controller.settings.integrations.facebook.status"
+      :last-test="controller.settings.integrations.facebook.lastTest"
+    />
+    <FacebookIntegrationForm
+      :settings="controller.settings.integrations.facebook"
+      :credentials="controller.credentialStatus.value?.facebook"
+      :saving="controller.saving.value"
+      :testing="controller.testing.value"
+      @save="controller.saveFacebookSettings"
+      @clear="controller.clearFacebookCredentials"
+      @update:settings="(data) => Object.assign(controller.settings.integrations.facebook, data)"
+    />
+  </div>
 </template>
 
 <script setup lang="ts">
 import { inject } from 'vue'
 import { SETTINGS_CONTROLLER_KEY } from '@/types/system-settings'
 import { FacebookIntegrationForm } from '@/components/system-settings'
+import IntegrationStatusCard from '@/components/system-settings/IntegrationStatusCard.vue'
 
 const controller = inject(SETTINGS_CONTROLLER_KEY)
 if (!controller) {
   throw new Error('SystemSettingsController not provided')
 }
 </script>
+
+<style scoped>
+.settings-stack {
+  display: grid;
+  gap: 22px;
+  min-width: 0;
+}
+</style>

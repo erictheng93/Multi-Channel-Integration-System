@@ -1,13 +1,15 @@
 <template>
   <AppLayout>
-    <div class="w-full max-w-[1400px] mx-auto px-5 pb-8">
-      <!-- Header -->
+    <div class="api-monitor">
       <ApiHeader
         :loading="controller.loading.value"
         :is-refreshing="controller.isRefreshing.value"
         :auto-refresh-enabled="controller.autoRefresh.value.enabled"
         :system-status="controller.systemStatus.value"
         :last-updated="controller.lastUpdated.value"
+        :stats="controller.stats.value"
+        :metrics-configured="controller.metricsConfigured.value"
+        :causes="controller.statusCauses.value.map(c => c.text)"
         @refresh="controller.refreshAll"
         @toggle-auto-refresh="controller.toggleAutoRefresh"
       />
@@ -15,47 +17,73 @@
       <!-- Error Banner -->
       <div
         v-if="controller.error.value"
-        class="mb-4 bg-[#FFF3F0] rounded-2xl p-4 text-[#FF3B30] text-sm"
+        class="error-banner"
+        role="alert"
       >
         {{ controller.error.value }}
       </div>
 
-      <!-- Bento Grid -->
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <!-- Row 1: Stat Cards (4 individual cards) -->
-        <ApiStatsGrid
-          :stats="controller.stats.value"
-          @stat-click="handleStatClick"
+      <template v-if="hasMetrics">
+        <!-- KPI tiles: click opens the endpoint list for that status -->
+        <section class="grid-4">
+          <ApiStatsGrid
+            :stats="controller.stats.value"
+            @stat-click="handleStatClick"
+          />
+        </section>
+      </template>
+
+      <section class="bento">
+        <ApiMetricsSetup
+          v-if="!hasMetrics && !controller.loading.value"
+          class="s8"
+          :error="controller.metricsError.value"
         />
 
-        <!-- Row 2: Endpoints (span 3) + Infrastructure (span 1) -->
-        <div class="col-span-1 md:col-span-2 lg:col-span-3 bg-white rounded-2xl shadow-[0_4px_16px_rgba(0,0,0,0.04)] p-5">
+        <article
+          v-else-if="hasMetrics"
+          class="ui-card s8"
+        >
+          <div class="ui-card-head">
+            <div>
+              <h2 class="ui-card-title">
+                端點狀態
+              </h2>
+              <div class="ui-card-sub">
+                點選一列查看延遲分布與狀態碼
+              </div>
+            </div>
+          </div>
           <ApiFilter
             :filters="controller.filters.value"
+            :counts="statusCounts"
             @update:filters="handleFilterUpdate"
           />
           <ApiCardList
             :endpoints="controller.filteredApis.value"
             :expanded-card="controller.expandedCard.value"
+            :total="controller.endpoints.value.length"
             @toggle-card="controller.toggleCard"
           />
+        </article>
+
+        <div
+          v-else
+          class="ui-card s8 loading"
+        >
+          載入中...
         </div>
 
-        <InfrastructureCard
-          class="col-span-1"
-          :infrastructure="controller.infrastructure.value"
-        />
+        <div class="s4 stack">
+          <InfrastructureCard :infrastructure="controller.infrastructure.value" />
+          <ChannelIntegrationsCard :channels="controller.channels.value" />
+        </div>
 
-        <!-- Row 3: Channels (span 2) + Events (span 2) -->
-        <ChannelIntegrationsCard
-          class="col-span-1 md:col-span-1 lg:col-span-2"
-          :channels="controller.channels.value"
-        />
         <RecentEventsCard
-          class="col-span-1 md:col-span-1 lg:col-span-2"
+          class="s12"
           :events="controller.events.value"
         />
-      </div>
+      </section>
 
       <!-- Statistics Detail Modal -->
       <ApiModal
@@ -69,7 +97,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, onUnmounted } from 'vue'
+import { computed, onMounted, onUnmounted } from 'vue'
 import { useApiMonitorController } from '@/composables/useApiMonitorController'
 import AppLayout from '@/components/ui/AppLayout.vue'
 import {
@@ -82,10 +110,26 @@ import {
   ChannelIntegrationsCard,
   RecentEventsCard,
 } from '@/components/api-monitor'
+import ApiMetricsSetup from '@/components/api-monitor/ApiMetricsSetup.vue'
 import type { ApiStatus, FilterState } from '@/types/api-monitor'
 
 // Initialize controller
 const controller = useApiMonitorController()
+
+/** Endpoint metrics exist only once Analytics Engine is configured and the last query succeeded. */
+const hasMetrics = computed(
+  () => controller.metricsConfigured.value && !controller.metricsError.value,
+)
+
+const statusCounts = computed(() => {
+  const endpoints = controller.endpoints.value
+  return {
+    all: endpoints.length,
+    healthy: endpoints.filter(e => e.status === 'healthy').length,
+    warning: endpoints.filter(e => e.status === 'warning').length,
+    error: endpoints.filter(e => e.status === 'error').length,
+  }
+})
 
 // Lifecycle
 onMounted(async () => {
@@ -106,3 +150,77 @@ function handleFilterUpdate(filters: FilterState) {
   controller.filters.value = filters
 }
 </script>
+
+<style scoped>
+.api-monitor {
+  display: grid;
+  gap: 20px;
+  width: 100%;
+  max-width: 1280px;
+  margin: 0 auto;
+}
+
+.error-banner {
+  padding: 12px 16px;
+  border-radius: var(--ui-r-inner);
+  background: var(--ui-red-soft);
+  font-size: 13.5px;
+  color: var(--ui-red-ink);
+}
+
+.grid-4 {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.bento {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 16px;
+  align-items: start;
+}
+
+.s8 {
+  grid-column: span 8;
+}
+
+.s4 {
+  grid-column: span 4;
+}
+
+.s12 {
+  grid-column: span 12;
+}
+
+.stack {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+
+.loading {
+  padding: 40px;
+  text-align: center;
+  color: var(--ui-muted);
+}
+
+@media (max-width: 1280px) {
+  .s8,
+  .s4 {
+    grid-column: span 12;
+  }
+}
+
+@media (max-width: 1024px) {
+  .grid-4 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 480px) {
+  .grid-4 {
+    grid-template-columns: 1fr;
+  }
+}
+</style>

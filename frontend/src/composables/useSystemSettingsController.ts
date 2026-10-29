@@ -13,6 +13,7 @@ import { SettingsIcon, IntegrationIcon, AdvancedIcon, SystemIcon } from '@/compo
 import { useI18n } from '@/composables/useI18n'
 import { useConfirmDialog } from '@/composables/useConfirmDialog'
 import { createLogger } from '@/utils/logger'
+import type { systemApi as SystemApiType } from '@/api/system'
 import type { CredentialsStatus, MaskedCredential } from '@shared/api-contracts/system'
 import type {
   IntegrationLastTest,
@@ -23,6 +24,8 @@ import type {
   TabConfig,
   StatusClasses
 } from '@/types/system-settings'
+
+type HealthData = NonNullable<Awaited<ReturnType<typeof SystemApiType.healthCheck>>['data']>
 
 const frontendLogger = createLogger('useSystemSettingsController')
 
@@ -102,6 +105,8 @@ export function useSystemSettingsController() {
 
   /** Health check results for each component */
   const healthCheckResults = ref<Array<{
+    /** Backend component id (database, cache, r2, durable_object, queue) */
+    key: string
     name: string
     status: 'healthy' | 'warning' | 'critical' | 'unknown'
     message: string
@@ -110,6 +115,12 @@ export function useSystemSettingsController() {
 
   /** Overall health status */
   const healthOverall = ref<{ status: string; message: string } | null>(null)
+
+  /** Result of the on-demand LINE webhook test; only present after a deep check */
+  const healthLineWebhook = ref<NonNullable<HealthData['deep']>['lineWebhook'] | null>(null)
+
+  /** ISO time of the last completed health check */
+  const healthCheckedAt = ref<string | null>(null)
 
   /** Active settings tab */
   const activeTab = ref<SettingsTab>('general')
@@ -658,14 +669,15 @@ export function useSystemSettingsController() {
 
   /**
    * Perform health check using the full /health/system endpoint
+   *
+   * @param deep also run the on-demand LINE webhook test (admin only)
+   * @param announce show the result banner; the page runs a silent check when it opens
    */
-  async function healthCheck(): Promise<void> {
+  async function healthCheck(deep = false, announce = true): Promise<void> {
     try {
       processing.value = true
-      healthCheckResults.value = []
-      healthOverall.value = null
 
-      const response = await systemApi.healthCheck()
+      const response = await systemApi.healthCheck(deep)
       const data = response.data
 
       if (data?.overall) {
@@ -684,19 +696,28 @@ export function useSystemSettingsController() {
           'queue': '佇列 (Queue)'
         }
 
+        healthCheckedAt.value = data.overall.timestamp ?? new Date().toISOString()
+        // The webhook test only runs on demand; a plain refresh keeps the last deep result.
+        if (deep) {
+          healthLineWebhook.value = data.deep?.lineWebhook ?? null
+        }
+
         healthCheckResults.value = (data.components ?? []).map(c => ({
+          key: c.component,
           name: componentNameMap[c.component] ?? c.component,
           status: c.status.status as 'healthy' | 'warning' | 'critical' | 'unknown',
           message: c.status.message,
           responseTime: c.status.responseTime
         }))
 
-        const overallStatus = data.overall.status
-        const statusText = overallStatus === 'healthy' ? '正常'
-          : overallStatus === 'warning' ? '降級' : '異常'
-        const msgType = overallStatus === 'healthy' ? 'success' : 'error'
+        if (announce) {
+          const overallStatus = data.overall.status
+          const statusText = overallStatus === 'healthy' ? '正常'
+            : overallStatus === 'warning' ? '降級' : '異常'
+          const msgType = overallStatus === 'healthy' ? 'success' : 'error'
 
-        showMessage(`系統狀態: ${statusText}`, msgType as MessageType)
+          showMessage(`系統狀態: ${statusText}`, msgType as MessageType)
+        }
       } else {
         showMessage(response.message || '健康檢查失敗', 'error')
       }
@@ -820,6 +841,8 @@ export function useSystemSettingsController() {
     healthCheck,
     healthCheckResults,
     healthOverall,
+    healthLineWebhook,
+    healthCheckedAt,
 
     // Utilities
     showMessage,

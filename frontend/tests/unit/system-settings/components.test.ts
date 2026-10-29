@@ -9,8 +9,6 @@
 
 import { describe, it, expect, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
-import SettingsHeader from '@/components/system-settings/SettingsHeader.vue'
-import SettingsNav from '@/components/system-settings/SettingsNav.vue'
 import GeneralSettingsForm from '@/components/system-settings/GeneralSettingsForm.vue'
 import LineIntegrationForm from '@/components/system-settings/LineIntegrationForm.vue'
 import FacebookIntegrationForm from '@/components/system-settings/FacebookIntegrationForm.vue'
@@ -24,85 +22,6 @@ vi.mock('vue-i18n', () => ({
 }))
 
 describe('System Settings Components', () => {
-  describe('SettingsHeader', () => {
-    it('should render title and subtitle', () => {
-      const wrapper = mount(SettingsHeader, {
-        props: {
-          loading: false,
-          message: '',
-          messageType: 'success'
-        }
-      })
-
-      expect(wrapper.find('.header-title').exists()).toBe(true)
-      expect(wrapper.find('.header-subtitle').exists()).toBe(true)
-    })
-
-    it('should emit refresh event when button clicked', async () => {
-      const wrapper = mount(SettingsHeader, {
-        props: {
-          loading: false,
-          message: '',
-          messageType: 'success'
-        }
-      })
-
-      await wrapper.find('.refresh-button').trigger('click')
-
-      expect(wrapper.emitted('refresh')).toBeTruthy()
-    })
-
-    it('should display message banner when message provided', () => {
-      const wrapper = mount(SettingsHeader, {
-        props: {
-          loading: false,
-          message: 'Test message',
-          messageType: 'success'
-        }
-      })
-
-      expect(wrapper.find('.message-banner').exists()).toBe(true)
-      expect(wrapper.find('.message-text').text()).toBe('Test message')
-    })
-  })
-
-  describe('SettingsNav', () => {
-    it('should render all tabs', () => {
-      const tabs = [
-        { key: 'general' as const, label: 'General', icon: {} as any },
-        { key: 'integrations' as const, label: 'Integrations', icon: {} as any }
-      ]
-
-      const wrapper = mount(SettingsNav, {
-        props: {
-          modelValue: 'general',
-          tabs
-        }
-      })
-
-      expect(wrapper.findAll('.nav-tab')).toHaveLength(2)
-    })
-
-    it('should emit update:modelValue when tab clicked', async () => {
-      const tabs = [
-        { key: 'general' as const, label: 'General', icon: {} as any },
-        { key: 'integrations' as const, label: 'Integrations', icon: {} as any }
-      ]
-
-      const wrapper = mount(SettingsNav, {
-        props: {
-          modelValue: 'general',
-          tabs
-        }
-      })
-
-      await wrapper.findAll('.nav-tab')[1].trigger('click')
-
-      expect(wrapper.emitted('update:modelValue')).toBeTruthy()
-      expect(wrapper.emitted('update:modelValue')![0]).toEqual(['integrations'])
-    })
-  })
-
   describe('GeneralSettingsForm', () => {
     const mockSettings = {
       systemName: 'Test System',
@@ -137,6 +56,34 @@ describe('System Settings Components', () => {
       expect(systemNameInput.element.value).toBe('Test System')
     })
 
+    it('should hand typed values to the parent so they are actually saved', async () => {
+      const wrapper = mount(GeneralSettingsForm, {
+        props: {
+          settings: mockSettings,
+          saving: false
+        }
+      })
+
+      await wrapper.find<HTMLInputElement>('#systemName').setValue('Renamed')
+
+      const updates = wrapper.emitted('update:settings')
+      expect(updates).toBeTruthy()
+      expect(updates?.at(-1)?.[0]).toMatchObject({ systemName: 'Renamed' })
+    })
+
+    it('should offer only Traditional Chinese as a disabled language', () => {
+      const wrapper = mount(GeneralSettingsForm, {
+        props: {
+          settings: mockSettings,
+          saving: false
+        }
+      })
+
+      const language = wrapper.find<HTMLSelectElement>('#language')
+      expect(language.element.disabled).toBe(true)
+      expect(language.findAll('option')).toHaveLength(1)
+    })
+
     it('should emit save event on form submit', async () => {
       const wrapper = mount(GeneralSettingsForm, {
         props: {
@@ -153,16 +100,19 @@ describe('System Settings Components', () => {
 
   describe('LineIntegrationForm', () => {
     const mockSettings = {
-      channelId: 'test-channel',
-      channelSecret: 'test-secret',
-      accessToken: 'test-token',
-      status: 'connected' as const
+      channelId: '',
+      channelSecret: '',
+      accessToken: '',
+      status: 'disconnected' as const
     }
+    const unset = { configured: false, last4: null }
+    const stored = { configured: true, last4: '1234' }
 
-    it('should render LINE integration fields', () => {
+    it('should render empty inputs when nothing is stored', () => {
       const wrapper = mount(LineIntegrationForm, {
         props: {
           settings: mockSettings,
+          credentials: { channelId: unset, channelSecret: unset, accessToken: unset },
           saving: false,
           testing: false
         }
@@ -171,12 +121,29 @@ describe('System Settings Components', () => {
       expect(wrapper.find('#lineChannelId').exists()).toBe(true)
       expect(wrapper.find('#lineChannelSecret').exists()).toBe(true)
       expect(wrapper.find('#lineAccessToken').exists()).toBe(true)
+      expect(wrapper.find('.btn-danger').exists()).toBe(false)
     })
 
-    it('should emit test event when test button clicked', async () => {
+    it('should show only the masked last four characters of stored credentials', () => {
       const wrapper = mount(LineIntegrationForm, {
         props: {
           settings: mockSettings,
+          credentials: { channelId: stored, channelSecret: stored, accessToken: stored },
+          saving: false,
+          testing: false
+        }
+      })
+
+      const secret = wrapper.find<HTMLInputElement>('#lineChannelSecret')
+      expect(secret.element.value).toBe('已設定 ••••1234')
+      expect(secret.element.readOnly).toBe(true)
+    })
+
+    it('should reveal an empty input when 更換 is clicked', async () => {
+      const wrapper = mount(LineIntegrationForm, {
+        props: {
+          settings: mockSettings,
+          credentials: { channelId: stored, channelSecret: stored, accessToken: stored },
           saving: false,
           testing: false
         }
@@ -184,13 +151,16 @@ describe('System Settings Components', () => {
 
       await wrapper.find('.btn-secondary').trigger('click')
 
-      expect(wrapper.emitted('test')).toBeTruthy()
+      const input = wrapper.find<HTMLInputElement>('#lineChannelId')
+      expect(input.element.readOnly).toBe(false)
+      expect(input.element.value).toBe('')
     })
 
     it('should emit clear event when clear button clicked', async () => {
       const wrapper = mount(LineIntegrationForm, {
         props: {
           settings: mockSettings,
+          credentials: { channelId: stored, channelSecret: stored, accessToken: stored },
           saving: false,
           testing: false
         }
@@ -204,17 +174,20 @@ describe('System Settings Components', () => {
 
   describe('FacebookIntegrationForm', () => {
     const mockSettings = {
-      appId: 'test-app-id',
-      appSecret: 'test-app-secret',
-      pageId: 'test-page-id',
-      pageToken: 'test-page-token',
+      appId: '',
+      appSecret: '',
+      pageId: '',
+      pageToken: '',
       status: 'disconnected' as const
     }
+    const unset = { configured: false, last4: null }
+    const stored = { configured: true, last4: '9876' }
 
     it('should render Facebook integration fields', () => {
       const wrapper = mount(FacebookIntegrationForm, {
         props: {
           settings: mockSettings,
+          credentials: { appId: unset, appSecret: unset, pageId: unset, pageToken: unset },
           saving: false,
           testing: false
         }
@@ -226,24 +199,11 @@ describe('System Settings Components', () => {
       expect(wrapper.find('#facebookPageToken').exists()).toBe(true)
     })
 
-    it('should emit test event when test button clicked', async () => {
-      const wrapper = mount(FacebookIntegrationForm, {
-        props: {
-          settings: mockSettings,
-          saving: false,
-          testing: false
-        }
-      })
-
-      await wrapper.find('.btn-secondary').trigger('click')
-
-      expect(wrapper.emitted('test')).toBeTruthy()
-    })
-
     it('should emit clear event when clear button clicked', async () => {
       const wrapper = mount(FacebookIntegrationForm, {
         props: {
           settings: mockSettings,
+          credentials: { appId: stored, appSecret: stored, pageId: stored, pageToken: stored },
           saving: false,
           testing: false
         }

@@ -1,81 +1,62 @@
 <template>
-  <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+  <header class="ui-page-head">
     <div>
-      <h1 class="text-3xl font-bold text-[#1C1C1E] m-0">
-        System Status
+      <div class="ui-eyebrow">
+        系統監控
+      </div>
+      <h1 class="ui-page-title">
+        API 監控
       </h1>
-      <p class="text-[15px] text-[#8E8E93] mt-1 m-0">
-        {{ lastUpdatedText }}
+      <p class="ui-page-sub">
+        {{ subtitle }}
       </p>
     </div>
 
-    <div class="flex items-center gap-3">
-      <!-- Auto-refresh toggle -->
-      <button
-        class="flex items-center gap-2 rounded-full px-4 py-2 text-[13px] font-medium transition-colors duration-200"
-        :class="autoRefreshEnabled
-          ? 'bg-[#007AFF]/10 text-[#007AFF]'
-          : 'bg-[#F2F2F7] text-[#8E8E93]'"
-        @click="handleAutoRefreshToggle"
-      >
-        <svg
-          width="14"
-          height="14"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        >
-          <path d="M21 12a9 9 0 1 1-3-6.74" />
-          <polyline points="21 3 21 9 15 9" />
-        </svg>
-        Auto
-      </button>
-
-      <!-- System status badge -->
+    <div class="ui-page-actions">
       <span
-        class="flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-medium"
-        :class="statusBadgeClass"
-      >
-        <span
-          class="w-2 h-2 rounded-full"
-          :class="statusDotClass"
+        class="ui-pill ui-pill-dot"
+        :class="statusPillClass"
+      >{{ statusLabel }}</span>
+
+      <span class="live">
+        自動更新
+        <button
+          type="button"
+          class="ui-switch"
+          role="switch"
+          :aria-checked="autoRefreshEnabled"
+          aria-label="自動更新"
+          @click="handleAutoRefreshToggle"
         />
-        {{ statusLabel }}
       </span>
 
-      <!-- Refresh button -->
       <button
-        class="flex items-center justify-center w-9 h-9 rounded-full bg-[#F2F2F7] text-[#1C1C1E] transition-colors duration-200 hover:bg-[#E5E5EA] border-none cursor-pointer"
-        :disabled="loading"
+        type="button"
+        class="btn btn-secondary btn-sm"
+        aria-label="重新整理"
+        :disabled="loading || isRefreshing"
         @click="$emit('refresh')"
       >
         <svg
-          width="16"
-          height="16"
+          class="ico"
+          :class="{ spinning: loading || isRefreshing }"
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"
           stroke-width="2"
           stroke-linecap="round"
           stroke-linejoin="round"
-          class="transition-transform duration-300"
-          :class="{ 'animate-spin': loading }"
-        >
-          <path d="M21 12a9 9 0 1 1-3-6.74" />
-          <polyline points="21 3 21 9 15 9" />
-        </svg>
+          aria-hidden="true"
+        ><path d="M21 12a9 9 0 0 1-15.5 6.2L3 16M3 12a9 9 0 0 1 15.5-6.2L21 8M21 3v5h-5M3 21v-5h5" /></svg>
+        重新整理
       </button>
     </div>
-  </div>
+  </header>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import type { SystemStatus } from '@/types/api-monitor'
-import { formatRelativeTime } from '@/utils/monitor-helpers'
+import type { ApiStatistics, SystemStatus } from '@/types/api-monitor'
 
 interface Props {
   loading?: boolean
@@ -83,6 +64,11 @@ interface Props {
   autoRefreshEnabled?: boolean
   systemStatus?: SystemStatus
   lastUpdated?: Date | null
+  stats?: ApiStatistics | null
+  /** false = endpoint metrics are not set up, so the endpoint counts are meaningless */
+  metricsConfigured?: boolean
+  /** Failing components, named in the subtitle (e.g. 「Facebook Messenger 連線錯誤」) */
+  causes?: string[]
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -91,6 +77,9 @@ const props = withDefaults(defineProps<Props>(), {
   autoRefreshEnabled: true,
   systemStatus: 'operational',
   lastUpdated: null,
+  stats: null,
+  metricsConfigured: true,
+  causes: () => [],
 })
 
 const emit = defineEmits<{
@@ -102,39 +91,71 @@ function handleAutoRefreshToggle() {
   emit('toggle-auto-refresh')
 }
 
-const lastUpdatedText = computed(() => {
-  if (!props.lastUpdated) { return 'Waiting for first check...' }
-  const now = Date.now()
-  const then = props.lastUpdated.getTime()
-  const diffSec = Math.round((now - then) / 1000)
-  if (diffSec < 5) { return 'Updated just now' }
-  return `Updated ${formatRelativeTime(props.lastUpdated)}`
+const subtitle = computed(() => {
+  if (!props.lastUpdated) { return '等待第一次檢查...' }
+  const time = new Intl.DateTimeFormat('zh-TW', {
+    timeZone: 'Asia/Taipei',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  }).format(props.lastUpdated)
+  const checked = `最後檢查 ${time}。`
+  const causeText = props.causes.length > 0 ? `${props.causes.join('、')}。` : ''
+  if (!props.metricsConfigured) {
+    return `${causeText}尚未設定端點指標，基礎設施與頻道狀態仍會顯示。${checked}`
+  }
+  const stats = props.stats
+  if (!stats || stats.totalEndpoints === 0) {
+    return `${causeText}目前沒有端點資料。${checked}`
+  }
+  if (stats.errorCount === 0 && stats.warningCount === 0) {
+    return `${causeText}全部 ${stats.totalEndpoints} 個端點正常。${checked}`
+  }
+  return `${causeText}${stats.errorCount} 個端點異常、${stats.warningCount} 個需留意，其餘 ${stats.healthyCount} 個正常。${checked}`
 })
 
 const statusLabel = computed(() => {
   const map: Record<SystemStatus, string> = {
-    operational: 'Operational',
-    degraded: 'Degraded',
-    outage: 'Outage',
+    operational: '運作正常',
+    degraded: '部分降級',
+    outage: '服務中斷',
   }
   return map[props.systemStatus]
 })
 
-const statusBadgeClass = computed(() => {
+const statusPillClass = computed(() => {
   const map: Record<SystemStatus, string> = {
-    operational: 'bg-[#34C759]/10 text-[#34C759]',
-    degraded: 'bg-[#FF9500]/10 text-[#FF9500]',
-    outage: 'bg-[#FF3B30]/10 text-[#FF3B30]',
-  }
-  return map[props.systemStatus]
-})
-
-const statusDotClass = computed(() => {
-  const map: Record<SystemStatus, string> = {
-    operational: 'bg-[#34C759]',
-    degraded: 'bg-[#FF9500]',
-    outage: 'bg-[#FF3B30]',
+    operational: 'ui-pill-green',
+    degraded: 'ui-pill-orange',
+    outage: 'ui-pill-red',
   }
   return map[props.systemStatus]
 })
 </script>
+
+<style scoped>
+.live {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--ui-muted);
+}
+
+.ico {
+  width: 14px;
+  height: 14px;
+}
+
+.ico.spinning {
+  animation: api-spin 0.8s linear infinite;
+}
+
+@keyframes api-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+</style>

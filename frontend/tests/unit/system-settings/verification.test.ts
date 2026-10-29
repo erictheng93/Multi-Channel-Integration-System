@@ -29,20 +29,6 @@ describe('System Settings - Verification Tests', () => {
   })
 
   describe('Component Exports', () => {
-    it('should export SettingsHeader component', async () => {
-      const components = await import('@/components/system-settings')
-
-      expect(components.SettingsHeader).toBeDefined()
-      expect(components.SettingsHeader).toHaveProperty('__name')
-    })
-
-    it('should export SettingsNav component', async () => {
-      const components = await import('@/components/system-settings')
-
-      expect(components.SettingsNav).toBeDefined()
-      expect(components.SettingsNav).toHaveProperty('__name')
-    })
-
     it('should export GeneralSettingsForm component', async () => {
       const components = await import('@/components/system-settings')
 
