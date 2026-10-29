@@ -59,7 +59,7 @@
               class="ui-kpi-foot"
               :title="`待回覆＝近 ${WAITING_WINDOW_DAYS} 天內，客戶來訊後尚無客服回覆`"
             >
-              近 {{ WAITING_WINDOW_DAYS }} 天內，客戶來訊後尚無客服回覆
+              客戶來訊後尚無客服回覆
             </div>
           </template>
           <template v-else>
@@ -230,6 +230,28 @@
           <div class="focus-lead">
             <div class="lbl">
               等待最久
+              <span class="info">
+                <button
+                  type="button"
+                  class="info-btn"
+                  aria-label="說明：待回覆與未讀"
+                  aria-describedby="wait-def"
+                >
+                  <svg
+                    class="ico"
+                    viewBox="0 0 24 24"
+                  ><circle
+                    cx="12"
+                    cy="12"
+                    r="9"
+                  /><path d="M12 11v5M12 8h.01" /></svg>
+                </button>
+                <span
+                  id="wait-def"
+                  role="tooltip"
+                  class="info-tip"
+                >待回覆＝近 {{ WAITING_WINDOW_DAYS }} 天內，客戶來訊後尚無客服回覆，依等待時間排序，超過 30 分鐘標為紅色。未讀＝你尚未開啟的對話。</span>
+              </span>
             </div>
             <template v-if="summary.data.value && topWaiting.length > 0">
               <div class="big">
@@ -268,9 +290,6 @@
             <template v-else>
               <span class="sk sk-big" />
             </template>
-            <p class="note">
-              待回覆＝近 {{ WAITING_WINDOW_DAYS }} 天內，客戶來訊後尚無客服回覆。依等待時間排序，超過 30 分鐘標為紅色。
-            </p>
             <router-link
               v-if="staleWaiting && staleWaiting.count > 0"
               to="/conversations?view=stale"
@@ -464,8 +483,11 @@
       </section>
 
       <!-- Chart + today -->
-      <section class="bento">
-        <article class="ui-card">
+      <section
+        class="bento"
+        :class="{ 'no-feed': feed.length === 0 }"
+      >
+        <article class="ui-card chart-card">
           <div class="ui-card-head">
             <div>
               <h2 class="ui-card-title">
@@ -522,65 +544,12 @@
           </div>
         </article>
 
-        <article class="ui-card today-card">
-          <div class="ui-card-head">
-            <h2 class="ui-card-title">
-              今日表現
-            </h2>
-          </div>
-          <div
-            v-if="summary.data.value"
-            class="stat-list"
-          >
-            <div class="stat">
-              <span class="k">平均首次回覆</span>
-              <span class="v">
-                <template v-if="firstResponseAvg">{{ firstResponseAvg.value }}<small>{{ firstResponseAvg.unit }}</small></template>
-                <template v-else>—</template>
-              </span>
-              <span
-                v-if="firstResponsePrev"
-                class="cap"
-              >昨天同時段 {{ firstResponsePrev }}</span>
-            </div>
-            <div class="stat">
-              <span class="k">今日已結案</span>
-              <span class="v">{{ summary.data.value.resolved.today }}</span>
-              <span
-                v-if="resolvedDelta"
-                class="cap"
-              >
-                <span
-                  class="ui-delta"
-                  :class="deltaClass(resolvedDelta.direction)"
-                >{{ resolvedDelta.text }}</span>
-                較昨日同時段
-              </span>
-            </div>
-            <div class="stat">
-              <span class="k">今日已首次回覆</span>
-              <span class="v">{{ summary.data.value.firstResponse.today.count }}<small>個新對話</small></span>
-            </div>
-          </div>
-          <UiEmptyState
-            v-else-if="summary.error.value"
-            class="compact"
-            description="無法載入今日表現"
-          />
-          <div
-            v-else
-            class="skel-rows pad"
-          >
-            <span
-              v-for="n in 3"
-              :key="n"
-              class="sk sk-row"
-            />
-          </div>
-
-          <template v-if="feed.length > 0">
+        <article
+          v-if="feed.length > 0"
+          class="ui-card feed-card"
+        >
             <div class="ui-card-head feed-head">
-              <h2 class="ui-card-title small">
+              <h2 class="ui-card-title">
                 最近動態
               </h2>
               <router-link
@@ -640,7 +609,66 @@
                 </div>
               </li>
             </ul>
-          </template>
+        </article>
+      </section>
+
+      <!-- Today -->
+      <section class="today-row">
+        <article class="ui-card today-card">
+          <div class="ui-card-head">
+            <h2 class="ui-card-title">
+              今日表現
+            </h2>
+          </div>
+          <div
+            v-if="summary.data.value"
+            class="stat-list"
+          >
+            <div class="stat">
+              <span class="k">平均首次回覆</span>
+              <span class="v">
+                <template v-if="firstResponseAvg">{{ firstResponseAvg.value }}<small>{{ firstResponseAvg.unit }}</small></template>
+                <template v-else>—</template>
+              </span>
+              <span
+                v-if="firstResponsePrev"
+                class="cap"
+              >昨天同時段 {{ firstResponsePrev }}</span>
+            </div>
+            <div class="stat">
+              <span class="k">今日已結案</span>
+              <span class="v">{{ summary.data.value.resolved.today }}</span>
+              <span
+                v-if="resolvedDelta"
+                class="cap"
+              >
+                <span
+                  class="ui-delta"
+                  :class="deltaClass(resolvedDelta.direction)"
+                >{{ resolvedDelta.text }}</span>
+                較昨日同時段
+              </span>
+            </div>
+            <div class="stat">
+              <span class="k">今日已首次回覆</span>
+              <span class="v">{{ summary.data.value.firstResponse.today.count }}<small>個新對話</small></span>
+            </div>
+          </div>
+          <UiEmptyState
+            v-else-if="summary.error.value"
+            class="compact"
+            description="無法載入今日表現"
+          />
+          <div
+            v-else
+            class="skel-rows pad"
+          >
+            <span
+              v-for="n in 3"
+              :key="n"
+              class="sk sk-row"
+            />
+          </div>
         </article>
       </section>
     </div>
@@ -695,16 +723,16 @@ const greeting = computed(() => {
 // No spaces around full-width punctuation: sentences are joined here, not in the template
 const subtitle = computed(() => {
   const waitPart = waitingCount.value > 0
-    ? `近 ${WAITING_WINDOW_DAYS} 天內 ${waitingCount.value} 件待回覆，最久已等 ${oldestWaitText.value}。`
-    : `近 ${WAITING_WINDOW_DAYS} 天內沒有待回覆的客戶。`
-  const unreadPart = unreadStore.total > 0 ? `我的未讀 ${unreadStore.total} 件。` : ''
+    ? `${waitingCount.value} 件待回覆，最久等 ${oldestWaitText.value}`
+    : '目前沒有待回覆的客戶'
+  const unreadPart = unreadStore.total > 0 ? `　我的未讀 ${unreadStore.total}` : ''
   return `${waitPart}${unreadPart}`
 })
 
 // Subtitle in the page head: a summary once loaded, an error line on failure, nothing while loading
 const headSubtitle = computed(() => {
   if (summary.data.value) { return subtitle.value }
-  return summary.error.value ? '無法取得待回覆狀態。' : ''
+  return summary.error.value ? '無法取得待回覆狀態' : ''
 })
 
 const oldestWaitText = computed(() =>
@@ -867,7 +895,7 @@ onBeforeUnmount(() => {
   grid-column: span 8;
 }
 
-.bento > :last-child {
+.bento > :last-child:not(:first-child) {
   grid-column: span 4;
 }
 
@@ -898,13 +926,67 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
   gap: 6px;
+  justify-content: center;
   padding: 22px;
   background: linear-gradient(180deg, var(--ui-orange-soft), transparent 85%);
 }
 
 .focus-lead .lbl {
+  display: flex;
+  gap: 4px;
+  align-items: center;
   font-weight: 600;
   color: var(--ui-ink-2);
+}
+
+/* Definition lives in an info tooltip instead of a paragraph that opens a dead zone */
+.info {
+  position: relative;
+  display: inline-flex;
+}
+
+.info-btn {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--ui-muted);
+  cursor: help;
+}
+
+.info-btn:hover,
+.info-btn:focus-visible {
+  color: var(--ui-ink-2);
+}
+
+.info-tip {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: -8px;
+  z-index: 5;
+  width: 248px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--ui-surface);
+  box-shadow: var(--ui-shadow-raised);
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.5;
+  color: var(--ui-ink-2);
+  visibility: hidden;
+  opacity: 0;
+  transition: opacity var(--ui-dur) var(--ui-ease);
+  pointer-events: none;
+}
+
+.info:hover .info-tip,
+.info:focus-within .info-tip {
+  visibility: visible;
+  opacity: 1;
 }
 
 .focus-lead .big {
@@ -939,13 +1021,6 @@ onBeforeUnmount(() => {
 }
 
 .lead-sub {
-  font-size: 13px;
-  color: var(--ui-muted);
-}
-
-.focus-lead .note {
-  margin: auto 0 0;
-  padding-top: 12px;
   font-size: 13px;
   color: var(--ui-muted);
 }
@@ -1090,67 +1165,86 @@ onBeforeUnmount(() => {
   white-space: nowrap;
 }
 
-/* ---- today card ---- */
+/* ---- today card: three metrics on one baseline ---- */
+.today-row {
+  display: grid;
+}
+
 .stat-list {
   display: grid;
-  padding: 4px 0 10px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  padding: 4px 0 22px;
 }
 
 .stat {
   position: relative;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 2px 10px;
-  align-items: baseline;
-  padding: 12px 22px;
+  display: grid;
+  grid-template-rows: auto auto minmax(18px, auto);
+  gap: 4px;
+  align-content: start;
+  padding: 4px 22px;
 }
 
 .stat + .stat::before {
   position: absolute;
-  top: 0;
-  right: 22px;
-  left: 22px;
-  height: 0.5px;
+  top: 6px;
+  bottom: 6px;
+  left: 0;
+  width: 0.5px;
   background: var(--ui-sep);
   content: '';
 }
 
 .stat .k {
-  font-size: 13.5px;
+  font-size: 13px;
   color: var(--ui-ink-2);
 }
 
 .stat .v {
-  margin-left: auto;
-  font: 600 22px var(--ui-font-display);
+  font: 600 30px / 1.1 var(--ui-font-display);
   letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
 }
 
 .stat .v small {
-  margin-left: 2px;
+  margin-left: 4px;
   font-size: 13px;
   font-weight: 500;
+  letter-spacing: 0;
   color: var(--ui-muted);
 }
 
 .stat .cap {
-  flex-basis: 100%;
   font-size: 13px;
   color: var(--ui-muted);
 }
 
-.feed-head {
-  padding-top: 6px;
+/* ---- chart + feed row ---- */
+.chart-card {
+  display: flex;
+  flex-direction: column;
 }
 
-.ui-card-title.small {
-  font-size: 15px;
+.bento.no-feed > .chart-card {
+  grid-column: span 12;
+}
+
+.feed-card {
+  display: flex;
+  flex-direction: column;
+}
+
+.ui-kpi-foot {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .feed {
   display: grid;
-  gap: 14px;
+  flex: 1;
+  gap: 18px;
+  align-content: start;
   margin: 0;
   padding: 0 22px 18px;
   list-style: none;
@@ -1270,7 +1364,7 @@ onBeforeUnmount(() => {
 
 @media (max-width: 1280px) {
   .bento > :first-child,
-  .bento > :last-child {
+  .bento > :last-child:not(:first-child) {
     grid-column: span 12;
   }
 }
@@ -1280,8 +1374,39 @@ onBeforeUnmount(() => {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .focus-lead .note {
-    display: none;
+  .stat-list {
+    grid-template-columns: minmax(0, 1fr);
+    padding-bottom: 12px;
+  }
+
+  .stat {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: auto auto;
+    padding: 10px 16px;
+  }
+
+  .stat + .stat::before {
+    top: 0;
+    right: 16px;
+    bottom: auto;
+    left: 16px;
+    width: auto;
+    height: 0.5px;
+  }
+
+  .stat .k {
+    grid-column: 1;
+  }
+
+  .stat .v {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    align-self: center;
+    font-size: 24px;
+  }
+
+  .stat .cap {
+    grid-column: 1;
   }
 }
 </style>
