@@ -1,7 +1,7 @@
 <!--
   LineSetupGuide.vue
   Beside the LINE form: the webhook address LINE must call (this deployment's real URL, copyable)
-  and where each credential lives in LINE Developers. Static help, no invented status.
+  Where each credential lives is stated in the credential rows themselves. Static help, no invented status.
 -->
 <template>
   <article class="ui-card guide-card">
@@ -24,21 +24,6 @@
         {{ copied ? '已複製' : '複製' }}
       </button>
     </div>
-  </article>
-  <article class="ui-card guide-card">
-    <h2 class="guide-title">
-      憑證在哪裡
-    </h2>
-    <ol class="steps">
-      <li>
-        <span class="step-k">Channel ID、Channel Secret</span>
-        <span class="step-v">Basic settings 分頁</span>
-      </li>
-      <li>
-        <span class="step-k">Access Token</span>
-        <span class="step-v">Messaging API 分頁，Channel access token (long-lived)</span>
-      </li>
-    </ol>
   </article>
 </template>
 
@@ -94,26 +79,5 @@ async function copy(): Promise<void> {
   font: 12.5px / 1.5 var(--ui-font-mono);
   color: var(--ui-ink-2);
   overflow-wrap: anywhere;
-}
-
-.steps {
-  display: grid;
-  gap: 12px;
-  margin: 12px 0 0;
-  padding: 0;
-  list-style: none;
-}
-
-.step-k {
-  display: block;
-  font-size: 14px;
-  font-weight: 500;
-}
-
-.step-v {
-  display: block;
-  font-size: var(--ui-t-meta);
-  line-height: 1.5;
-  color: var(--ui-muted);
 }
 </style>

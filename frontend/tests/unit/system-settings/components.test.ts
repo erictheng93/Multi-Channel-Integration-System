@@ -11,6 +11,7 @@ import { describe, it, expect, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import GeneralSettingsForm from '@/components/system-settings/GeneralSettingsForm.vue'
 import LineIntegrationForm from '@/components/system-settings/LineIntegrationForm.vue'
+import LineDangerZone from '@/components/system-settings/LineDangerZone.vue'
 import FacebookIntegrationForm from '@/components/system-settings/FacebookIntegrationForm.vue'
 import AdvancedSettingsForm from '@/components/system-settings/AdvancedSettingsForm.vue'
 
@@ -133,9 +134,12 @@ describe('System Settings Components', () => {
         }
       })
 
-      const secret = wrapper.find<HTMLInputElement>('#lineChannelSecret')
-      expect(secret.element.value).toBe('已設定 ••••1234')
-      expect(secret.element.readOnly).toBe(true)
+      // A stored value is a state pill plus the last four characters, never an input
+      expect(wrapper.find('#lineChannelSecret').exists()).toBe(false)
+      const states = wrapper.findAll('.cred-state')
+      expect(states).toHaveLength(3)
+      expect(states[1]?.text()).toContain('已設定')
+      expect(states[1]?.text()).toContain('••••1234')
     })
 
     it('should reveal an empty input when 更換 is clicked', async () => {
@@ -155,15 +159,8 @@ describe('System Settings Components', () => {
       expect(input.element.value).toBe('')
     })
 
-    it('should emit clear event when clear button clicked', async () => {
-      const wrapper = mount(LineIntegrationForm, {
-        props: {
-          settings: mockSettings,
-          credentials: { channelId: stored, channelSecret: stored, accessToken: stored },
-          saving: false,
-          testing: false
-        }
-      })
+    it('should emit clear event when the danger zone clear button is clicked', async () => {
+      const wrapper = mount(LineDangerZone)
 
       await wrapper.find('.btn-danger').trigger('click')
 
