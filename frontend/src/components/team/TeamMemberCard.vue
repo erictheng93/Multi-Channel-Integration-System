@@ -78,7 +78,10 @@
       </div>
     </div>
 
-    <div class="sysrole">
+    <div
+      class="sysrole"
+      :class="{ 'is-default': member.role !== 'admin' }"
+    >
       <span
         class="ui-pill"
         :class="{ 'ui-pill-blue': member.role === 'admin' }"
@@ -531,7 +534,8 @@ const getRoleText = (role: string) => {
   }
   /* Phone rows keep to two chips: the plain "active" state is the default, only a deactivated
      account needs a pill of its own. */
-  .stcell.is-active {
+  .stcell.is-active,
+  .sysrole.is-default {
     display: none;
   }
 }

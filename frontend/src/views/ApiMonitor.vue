@@ -209,9 +209,10 @@ function handleFilterUpdate(filters: FilterState) {
   }
 }
 
-@media (max-width: 480px) {
+/* Phone: a compact 2 x 2 grid */
+@media (max-width: 768px) {
   .grid-4 {
-    grid-template-columns: 1fr;
+    gap: 12px;
   }
 }
 </style>

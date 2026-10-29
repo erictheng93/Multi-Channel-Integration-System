@@ -178,4 +178,14 @@ const tiles = computed(() => [
   letter-spacing: 0;
   color: var(--ui-muted);
 }
+
+@media (max-width: 768px) {
+  .tile {
+    padding: 12px 14px;
+  }
+  .tile-value {
+    margin-top: 8px;
+    font-size: 26px;
+  }
+}
 </style>
