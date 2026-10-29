@@ -2,7 +2,10 @@
   <div class="parameter-form">
     <section class="ui-card step-card">
       <div class="ui-card-head">
-        <span class="step-n">2</span>
+        <span
+          class="step-n"
+          :class="{ done: stepTwoDone }"
+        >2</span>
         <div>
           <h3 class="ui-card-title">
             內容與時間範圍
@@ -131,7 +134,10 @@
 
     <section class="ui-card step-card">
       <div class="ui-card-head">
-        <span class="step-n">3</span>
+        <span
+          class="step-n"
+          :class="{ done: stepTwoDone }"
+        >3</span>
         <div>
           <h3 class="ui-card-title">
             輸出格式
@@ -167,9 +173,10 @@
       >
         <span class="step-n">4</span>
         <span class="adv-text">
-          <span class="ui-card-title">進階選項</span>
+          <span class="ui-card-title">進階選項<span class="adv-tag">選填</span></span>
           <span class="ui-card-sub">{{ advancedSummary }}</span>
         </span>
+        <span class="adv-more">{{ advancedOpen ? '收合' : '展開' }}</span>
         <svg
           class="adv-chev"
           :class="{ open: advancedOpen }"
@@ -366,6 +373,8 @@ const commonRanges = computed(() => timeRangeOptions.value.filter(o => COMMON_RA
 const otherRanges = computed(() => timeRangeOptions.value.filter(o => !COMMON_RANGES.includes(o.value)));
 const moreOpen = ref(false);
 const advancedOpen = ref(false);
+// Steps 2 and 3 read as done once the report has a title (the format always has a value)
+const stepTwoDone = computed(() => props.title.trim().length > 0);
 const advancedSummary = computed(() => {
   const o = props.options;
   const parts = [o.includeCharts && '圖表', o.includeSummary && '摘要', o.includeDetails && '明細'].filter(Boolean);
@@ -439,6 +448,17 @@ const updateOption = (key: string, value: unknown) => {
   font-size: 13px;
   font-weight: 700;
   color: var(--ui-muted);
+}
+
+.step-n.done {
+  background: var(--ui-accent);
+  font-size: 0;
+  color: #fff;
+}
+
+.step-n.done::after {
+  font-size: 13px;
+  content: '\2713';
 }
 
 .step-body {
@@ -530,6 +550,23 @@ const updateOption = (key: string, value: unknown) => {
   color: var(--ui-muted);
 }
 
+.adv-tag {
+  margin-left: 8px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--ui-fill);
+  font: 500 12px var(--ui-font-ui);
+  color: var(--ui-muted);
+  vertical-align: 2px;
+}
+
+.adv-more {
+  flex: none;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ui-accent);
+}
+
 .adv-chev {
   flex: none;
   width: 18px;
@@ -599,5 +636,11 @@ const updateOption = (key: string, value: unknown) => {
     padding-right: 16px;
     padding-left: 16px;
   }
+}
+
+/* placeholder text must read at AA on the grey field fill */
+.ui-input::placeholder,
+.ui-textarea::placeholder {
+  color: var(--ui-muted);
 }
 </style>

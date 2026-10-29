@@ -68,26 +68,43 @@ export const formatEstimatedTime = (seconds: number): string => {
  * What a generated report actually contains, per type. Mirrors the fields the report generator
  * (src/modules/reports/services/report-generator-service.ts) fills in; metrics it does not compute are not listed.
  */
-export const REPORT_CONTENTS: Partial<Record<ReportType, Array<{ label: string; hint: string }>>> = {
-   
+export const REPORT_CONTENTS: Partial<Record<ReportType, Array<{ label: string; hint: string; field: string }>>> = {
   conversation_summary: [
-    { label: '對話總數', hint: '統計期間內建立的對話' },
-    { label: '進行中', hint: '仍在處理的對話數' },
-    { label: '已結案', hint: '已完成處理的對話數' },
-    { label: '統計期間', hint: '起訖日期隨報表一併記錄' }
+    { label: '對話總數', hint: '統計期間內建立的對話', field: 'totalConversations' },
+    { label: '進行中', hint: '仍在處理的對話數', field: 'activeConversations' },
+    { label: '已結案', hint: '已完成處理的對話數', field: 'completedConversations' },
+    { label: '統計期間', hint: '起訖日期隨報表一併記錄', field: 'period' }
   ],
   agent_performance: [
-    { label: '客服人數', hint: '期間內有回覆訊息的客服' },
-    { label: '各客服訊息數', hint: '每位客服發送的訊息量' },
-    { label: '客服名單', hint: '依客服姓名逐列呈現' },
-    { label: '統計期間', hint: '起訖日期隨報表一併記錄' }
+    { label: '客服人數', hint: '期間內有回覆訊息的客服', field: 'totalAgents' },
+    { label: '各客服訊息數', hint: '每位客服發送的訊息量', field: 'messagesHandled' },
+    { label: '客服名單', hint: '依客服姓名逐列呈現', field: 'agentName' },
+    { label: '統計期間', hint: '起訖日期隨報表一併記錄', field: 'period' }
   ],
   message_statistics: [
-    { label: '訊息總數', hint: '統計期間內的全部訊息' },
-    { label: '客戶 / 客服訊息', hint: '依寄件者類型拆分' },
-    { label: '訊息類型分布', hint: '文字、圖片等類型的數量' }
+    { label: '訊息總數', hint: '統計期間內的全部訊息', field: 'totalMessages' },
+    { label: '客戶 / 客服訊息', hint: '依寄件者類型拆分', field: 'customerMessages' },
+    { label: '訊息類型分布', hint: '文字、圖片等類型的數量', field: 'messagesByType' }
   ]
-   
+};
+
+/**
+ * The shape of the rows a report produces: the column names the generator writes, and what one row stands for.
+ * Mirrors report-generator-service.ts (summary: one row; agentMetrics: one row per agent; messagesByType: one row per sender x type).
+ */
+export const REPORT_OUTPUT_SHAPES: Partial<Record<ReportType, { columns: string[]; row: string }>> = {
+  conversation_summary: {
+    columns: ['totalConversations', 'activeConversations', 'completedConversations'],
+    row: '整段期間一列'
+  },
+  agent_performance: {
+    columns: ['agentName', 'conversationsHandled', 'messagesHandled'],
+    row: '每位客服一列'
+  },
+  message_statistics: {
+    columns: ['senderType', 'messageType', 'total'],
+    row: '每種寄件者與訊息類型一列'
+  }
 };
 
 /**
