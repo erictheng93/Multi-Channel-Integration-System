@@ -169,7 +169,7 @@ describe('migration 0072', () => {
   });
 
   it('embeds exactly the shared SQL fragments (no drift from awaiting-rules.ts)', () => {
-    const sql = readMigration(MIGRATION_HYGIENE);
+    const sql = readMigration(MIGRATION_HYGIENE).replace(/\r\n/g, '\n');
     expect(sql).toContain(startsWaitSql('NEW'));
     expect(sql).toContain(startsWaitSql('cm'));
     expect(sql).toContain(awaitingExpression('NEW.conversation_id'));
