@@ -210,6 +210,7 @@ const props = withDefaults(defineProps<Props>(), {
 });
 const frontendLogger = createLogger('MetricsComparisonDashboard')
 import { ref, onMounted, onBeforeUnmount, computed } from 'vue';
+import { createVisibleInterval, type VisibleInterval } from '@/utils/visibleInterval';
 import Modal from '@/components/ui/Modal.vue';
 import MetricComparison from './MetricComparison.vue';
 import type { MultiMetricComparison } from '../../types/analytics';
@@ -485,7 +486,7 @@ function getValueFormatter(metricKey: string): (_value: number) => string {
 
 // LCP 優化：延遲加載數據
 let analyticsSubscriptionId: SubscriptionId | null = null;
-let refreshIntervalId: ReturnType<typeof setInterval> | null = null;
+let refreshPoller: VisibleInterval | null = null;
 
 function subscribeToAnalyticsUpdates() {
   if (!props.autoRefresh || analyticsSubscriptionId) {
@@ -499,13 +500,13 @@ function subscribeToAnalyticsUpdates() {
 }
 
 function startAutoRefreshFallback() {
-  if (!props.autoRefresh || refreshIntervalId || props.refreshInterval <= 0) {
+  if (!props.autoRefresh || refreshPoller || props.refreshInterval <= 0) {
     return;
   }
 
-  refreshIntervalId = setInterval(() => {
-    loadData();
-  }, props.refreshInterval);
+  // Paused while the tab is hidden; refreshes once when it becomes visible again
+  refreshPoller = createVisibleInterval(() => { loadData(); }, props.refreshInterval);
+  refreshPoller.start();
 }
 
 onMounted(() => {
@@ -533,9 +534,9 @@ onBeforeUnmount(() => {
     analyticsSubscriptionId = null;
   }
 
-  if (refreshIntervalId) {
-    clearInterval(refreshIntervalId);
-    refreshIntervalId = null;
+  if (refreshPoller) {
+    refreshPoller.stop();
+    refreshPoller = null;
   }
 });
 </script>
