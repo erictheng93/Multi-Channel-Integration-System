@@ -28,7 +28,9 @@
         <section class="ui-card filter-card">
           <div class="filter-top">
             <div
+              ref="scopeTabsEl"
               class="ui-seg"
+              :class="{ 'is-overflowing': scopeTabsOverflow }"
               role="tablist"
               aria-label="對話分類"
             >
@@ -584,8 +586,26 @@ onMounted(async () => {
   conversationsStore.initializeRealtime()
 })
 
+// Phone: the scope tabs share the row; the edge fade only shows when they really overflow (320px)
+const scopeTabsEl = ref<HTMLElement | null>(null)
+const scopeTabsOverflow = ref(false)
+const measureScopeTabs = () => {
+  const el = scopeTabsEl.value
+  scopeTabsOverflow.value = !!el && el.scrollWidth > el.clientWidth + 1
+}
+let scopeTabsObserver: globalThis.ResizeObserver | null = null
+onMounted(() => {
+  measureScopeTabs()
+  if (scopeTabsEl.value && typeof window.ResizeObserver !== 'undefined') {
+    scopeTabsObserver = new window.ResizeObserver(measureScopeTabs)
+    scopeTabsObserver.observe(scopeTabsEl.value)
+  }
+})
+watch(() => visibleTabs.value.length, () => { void nextTick(measureScopeTabs) })
+
 // 清理实时同步资源
 onUnmounted(() => {
+  scopeTabsObserver?.disconnect()
   frontendLogger.debug('[ConversationsTable] Component unmounting, cleaning up...')
   if (refillTimer) { clearTimeout(refillTimer) }
   if (clockTimer) { clearInterval(clockTimer) }
@@ -763,8 +783,23 @@ onUnmounted(() => {
     padding: 14px;
   }
 
-  /* Edge fade: the row scrolls sideways instead of wrapping onto a second line */
+  /* Tabs share the row evenly; when they don't fit (320px) the row scrolls with an edge fade */
   .filter-top > .ui-seg {
+    width: 100%;
+  }
+
+  .filter-top > .ui-seg .scope-tab {
+    flex: 1 0 auto;
+    justify-content: center;
+    padding-right: 8px;
+    padding-left: 8px;
+  }
+
+  .scope-tab.is-stale {
+    margin-left: 0;
+  }
+
+  .filter-top > .ui-seg.is-overflowing {
     -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 28px), transparent);
     mask-image: linear-gradient(90deg, #000 calc(100% - 28px), transparent);
   }
