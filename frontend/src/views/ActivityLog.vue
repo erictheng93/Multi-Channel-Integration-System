@@ -1,23 +1,12 @@
 <template>
   <AppLayout>
-    <div class="activity-log ui-rise">
+    <div class="ui-page activity-log ui-rise">
       <!-- Header -->
-      <header class="ui-page-head">
-        <div>
-          <div class="ui-eyebrow">
-            團隊與頻道
-          </div>
-          <h1 class="ui-page-title">
-            活動記錄
-          </h1>
-          <p
-            v-if="headSummary"
-            class="ui-page-sub"
-          >
-            {{ headSummary }}
-          </p>
-        </div>
-        <div class="ui-page-actions">
+      <UiPageHead
+        title="活動記錄"
+        :subtitle="headSummary ? headSummary : ''"
+      >
+        <template #actions>
           <button
             class="btn btn-secondary"
             :disabled="loading"
@@ -37,8 +26,8 @@
             />
             <span>刷新</span>
           </button>
-        </div>
-      </header>
+        </template>
+      </UiPageHead>
 
       <!-- Stats Cards (admin only) -->
       <ActivityStatsCards
@@ -103,6 +92,7 @@
 </template>
 
 <script setup lang="ts">
+import UiPageHead from '@/components/ui/UiPageHead.vue'
 import { ref, reactive, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
@@ -422,16 +412,6 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-.activity-log {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-  width: 100%;
-  max-width: 1280px;
-  margin: 0 auto;
-  /* AppLayout's page area already pads 24px / 20px */
-  padding: 4px 8px 32px;
-}
 
 .activity-log__error {
   padding: 14px 16px;
@@ -442,9 +422,6 @@ onUnmounted(() => {
 }
 
 @media (max-width: 768px) {
-  .activity-log {
-    padding: 0 0 24px;
-  }
   .ui-page-actions > .btn {
     flex: 1;
   }

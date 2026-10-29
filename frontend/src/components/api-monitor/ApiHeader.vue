@@ -1,18 +1,9 @@
 <template>
-  <header class="ui-page-head">
-    <div>
-      <div class="ui-eyebrow">
-        系統監控
-      </div>
-      <h1 class="ui-page-title">
-        API 監控
-      </h1>
-      <p class="ui-page-sub">
-        {{ subtitle }}
-      </p>
-    </div>
-
-    <div class="ui-page-actions">
+  <UiPageHead
+    title="API 監控"
+    :subtitle="subtitle"
+  >
+    <template #actions>
       <span
         class="ui-pill ui-pill-dot"
         :class="statusPillClass"
@@ -50,11 +41,12 @@
         ><path d="M21 12a9 9 0 0 1-15.5 6.2L3 16M3 12a9 9 0 0 1 15.5-6.2L21 8M21 3v5h-5M3 21v-5h5" /></svg>
         重新整理
       </button>
-    </div>
-  </header>
+    </template>
+  </UiPageHead>
 </template>
 
 <script setup lang="ts">
+import UiPageHead from '@/components/ui/UiPageHead.vue'
 import { computed } from 'vue'
 import type { ApiStatistics, SystemStatus } from '@/types/api-monitor'
 

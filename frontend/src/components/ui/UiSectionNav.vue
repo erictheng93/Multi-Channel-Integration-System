@@ -42,6 +42,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
+import { getActivePinia } from 'pinia'
 import { useAuthStore } from '@/stores/auth'
 import { SECTION_NAV, sectionNavItems, type SectionNavKey } from '@/config/section-nav'
 
@@ -50,9 +51,11 @@ const props = defineProps<{
 }>()
 
 const route = useRoute()
-const authStore = useAuthStore()
+// Admin-only items (資料備份) are hidden from agents. Outside an app with pinia (isolated
+// component tests) nobody is an admin.
+const authStore = getActivePinia() ? useAuthStore() : null
 
-const items = computed(() => sectionNavItems(props.section, authStore.currentAgent?.role === 'admin'))
+const items = computed(() => sectionNavItems(props.section, authStore?.currentAgent?.role === 'admin'))
 
 const isActive = (path: string): boolean => route.path === path
 

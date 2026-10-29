@@ -1,25 +1,12 @@
 <template>
   <AppLayout>
     <ErrorBoundary>
-      <div class="conversations ui-rise">
-        <section class="ui-page-head">
-          <div>
-            <div class="ui-eyebrow">
-              客服收件匣
-            </div>
-            <h1 class="ui-page-title">
-              對話
-            </h1>
-            <p class="ui-page-sub">
-              <template v-if="counts">
-                {{ subtitle }}
-              </template>
-              <template v-else>
-                &nbsp;
-              </template>
-            </p>
-          </div>
-          <div class="ui-page-actions">
+      <div class="ui-page conversations ui-rise">
+        <UiPageHead
+          title="對話"
+          :subtitle="subtitle"
+        >
+          <template #actions>
             <button
               type="button"
               class="btn btn-secondary btn-sm selection-toggle"
@@ -34,8 +21,8 @@
               :loading="loading || isUpdating"
               @refresh="refreshConversations"
             />
-          </div>
-        </section>
+          </template>
+        </UiPageHead>
 
         <!-- 分頁籤：預設「處理中」，已結案的對話不佔據最顯眼的位置 -->
         <section class="ui-card filter-card">
@@ -220,6 +207,7 @@
 </template>
 
 <script setup lang="ts">
+import UiPageHead from '@/components/ui/UiPageHead.vue'
 import { createLogger } from '@/utils/logger'
 
 const frontendLogger = createLogger('ConversationsTable')
@@ -604,11 +592,7 @@ onUnmounted(() => {
 
 <style scoped>
 .conversations {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
   position: relative;
-  width: 100%;
 }
 
 .filter-card {

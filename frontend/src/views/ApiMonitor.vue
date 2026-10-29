@@ -1,6 +1,6 @@
 <template>
   <AppLayout>
-    <div class="api-monitor">
+    <div class="ui-page api-monitor">
       <ApiHeader
         :loading="controller.loading.value"
         :is-refreshing="controller.isRefreshing.value"
@@ -152,13 +152,6 @@ function handleFilterUpdate(filters: FilterState) {
 </script>
 
 <style scoped>
-.api-monitor {
-  display: grid;
-  gap: 20px;
-  width: 100%;
-  max-width: 1280px;
-  margin: 0 auto;
-}
 
 .error-banner {
   padding: 12px 16px;

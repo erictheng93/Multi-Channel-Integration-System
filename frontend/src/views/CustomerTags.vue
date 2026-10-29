@@ -10,7 +10,7 @@
 <template>
   <AppLayout>
     <div
-      class="customer-tags"
+      class="ui-page customer-tags"
       role="main"
       aria-label="客戶標籤管理頁面"
     >
@@ -257,16 +257,6 @@ onUnmounted(() => {
 
 <style scoped>
 /* ==================== Page Layout ==================== */
-.customer-tags {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  width: 100%;
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 20px;
-  min-height: 100%;
-}
 
 /* ==================== Content Section ==================== */
 .tags-layout {
@@ -302,8 +292,5 @@ onUnmounted(() => {
 
 /* ==================== Responsive Design ==================== */
 @media (max-width: 768px) {
-  .customer-tags {
-    padding: 16px;
-  }
 }
 </style>

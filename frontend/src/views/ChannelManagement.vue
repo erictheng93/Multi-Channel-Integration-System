@@ -1,23 +1,12 @@
 <template>
   <AppLayout>
-    <div class="channel-management ui-rise">
+    <div class="ui-page channel-management ui-rise">
       <!-- Page Header -->
-      <header class="ui-page-head">
-        <div>
-          <div class="ui-eyebrow">
-            團隊與頻道
-          </div>
-          <h1 class="ui-page-title">
-            頻道
-          </h1>
-          <p
-            v-if="!isLoading && channels.length > 0"
-            class="ui-page-sub"
-          >
-            {{ channelSummary }}
-          </p>
-        </div>
-        <div class="ui-page-actions">
+      <UiPageHead
+        title="頻道"
+        :subtitle="!isLoading && channels.length > 0 ? channelSummary : ''"
+      >
+        <template #actions>
           <button
             type="button"
             class="btn btn-secondary btn-sm"
@@ -51,8 +40,8 @@
               aria-hidden="true"
             ><path d="M12 5v14M5 12h14" /></svg>新增頻道
           </button>
-        </div>
-      </header>
+        </template>
+      </UiPageHead>
 
       <!-- Platform Filter -->
       <div class="toolbar">
@@ -394,6 +383,7 @@
 </template>
 
 <script setup lang="ts">
+import UiPageHead from '@/components/ui/UiPageHead.vue'
 import { computed } from 'vue'
 import AppLayout from '@/components/ui/AppLayout.vue'
 import ChannelConfigDialog from '@/components/channels/ChannelConfigDialog.vue'
@@ -522,16 +512,6 @@ const selectedPlatformLabel = computed(() =>
 </script>
 
 <style scoped>
-.channel-management {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-  width: 100%;
-  max-width: 1280px;
-  margin: 0 auto;
-  /* AppLayout's page area already pads 24px / 20px */
-  padding: 4px 8px 32px;
-}
 .head-ico {
   width: 16px;
   height: 16px;
@@ -784,9 +764,6 @@ const selectedPlatformLabel = computed(() =>
   }
 }
 @media (max-width: 768px) {
-  .channel-management {
-    padding: 0 0 24px;
-  }
   .chgrid {
     grid-template-columns: minmax(0, 1fr);
   }

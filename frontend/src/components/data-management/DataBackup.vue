@@ -1,19 +1,9 @@
 <template>
-  <div class="data-backup">
-    <header class="ui-page-head">
-      <div>
-        <div class="ui-eyebrow">
-          資料 · 僅限管理員
-        </div>
-        <h1 class="ui-page-title">
-          資料備份
-        </h1>
-        <p class="ui-page-sub">
-          整個資料庫備份在雲端儲存（Cloudflare R2），可隨時下載備份檔。
-        </p>
-        <DataSubnav />
-      </div>
-    </header>
+  <div class="ui-page data-backup">
+    <UiPageHead
+      title="資料備份"
+      subtitle="整個資料庫備份在雲端儲存（Cloudflare R2），可隨時下載備份檔。"
+    />
 
     <!-- Automatic backup status -->
     <article class="ui-card status-card">
@@ -270,9 +260,9 @@
 </template>
 
 <script setup lang="ts">
+import UiPageHead from '@/components/ui/UiPageHead.vue'
 import { computed, onMounted, ref } from 'vue'
 import { listBackups, runBackup, downloadBackup, type BackupItem, type BackupList } from '@/api/backup'
-import DataSubnav from '@/components/data-management/DataSubnav.vue'
 
 const PAGE_SIZE = 20
 /** The daily job should land within a day; allow slack before calling it overdue. */
@@ -473,15 +463,6 @@ onMounted(load)
 </script>
 
 <style scoped>
-.data-backup {
-  /* width: 100% — .page-content is a flex column, so with margin: 0 auto this would size to
-     its content and overflow (clipped) on narrow screens */
-  display: grid;
-  gap: 20px;
-  width: 100%;
-  max-width: 1280px;
-  margin: 0 auto;
-}
 
 .status-card {
   display: grid;
@@ -598,7 +579,6 @@ onMounted(load)
   color: inherit;
   opacity: 0.8;
 }
-
 
 .warn {
   margin: 0 22px 12px;
