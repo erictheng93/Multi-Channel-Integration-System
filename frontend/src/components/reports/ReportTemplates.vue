@@ -3,98 +3,114 @@
 
 <template>
   <div class="report-templates">
-    <!-- 標題區 -->
-    <div class="templates-header">
-      <h1 class="page-title">
-        <i class="icon" />
-        報表模板
-      </h1>
-      <p class="page-description">
-        選擇預設模板快速生成報表，或自定義配置
-      </p>
-    </div>
+    <header class="header-wrap">
+      <div class="ui-page-head">
+        <div>
+          <div class="ui-eyebrow">
+            報表
+          </div>
+          <h1 class="ui-page-title">
+            報表模板
+          </h1>
+          <p class="ui-page-sub">
+            {{ templates.length }} 組預設模板，已預先設定圖表與欄位；選一個直接產生，或帶到產生頁再微調。
+            <template v-if="unsupportedCount > 0">
+              其中 {{ unsupportedCount }} 組的報表類型尚未支援產生。
+            </template>
+          </p>
+        </div>
+      </div>
+      <ReportsNav />
+    </header>
 
-    <!-- 搜尋和篩選 -->
     <TemplateFilters
       v-model:search-query="searchQuery"
       v-model:selected-category="selectedCategory"
-      v-model:selected-time-range="selectedTimeRange"
     />
 
-    <!-- 載入狀態 -->
     <div
-      v-if="loading"
-      class="loading-state"
+      v-if="error"
+      class="ui-card error-state"
+      role="alert"
     >
-      <div class="loading-spinner" />
-      <p>載入模板中...</p>
-    </div>
-
-    <!-- 錯誤狀態 -->
-    <div
-      v-else-if="error"
-      class="error-state"
-    >
-      <div class="error-icon" />
       <h3>載入失敗</h3>
       <p>{{ error }}</p>
       <button
-        class="retry-btn"
+        class="btn btn-secondary retry-btn"
         @click="loadTemplates"
       >
         重試
       </button>
     </div>
 
-    <!-- 模板網格 -->
     <div
       v-else
-      class="templates-grid"
+      class="templates-layout"
     >
-      <TemplateCard
-        v-for="template in filteredTemplates"
-        :key="template.name"
-        :template="template"
-        :is-selected="selectedTemplate?.name === template.name"
-        @select="selectTemplate"
-      />
+      <div class="templates-main">
+        <div
+          v-if="filteredTemplates.length > 0"
+          class="templates-grid"
+        >
+          <TemplateCard
+            v-for="template in filteredTemplates"
+            :key="template.name"
+            :template="template"
+            :supported="isSupported(template)"
+            :is-selected="selectedTemplate?.name === template.name"
+            @select="selectTemplate"
+          />
+        </div>
+
+        <div
+          v-else
+          class="ui-card ui-empty"
+        >
+          <div class="ui-empty-art">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.8"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            ><circle
+              cx="11"
+              cy="11"
+              r="7"
+            /><path d="m21 21-4.3-4.3" /></svg>
+          </div>
+          <h3>找不到符合的模板</h3>
+          <p>請嘗試調整篩選條件或搜尋關鍵字</p>
+        </div>
+      </div>
+
+      <aside class="templates-side">
+        <TemplateDetailsPanel
+          v-if="selectedTemplate"
+          :template="selectedTemplate"
+          :generating="generating"
+          @close="selectedTemplate = null"
+          @use="useTemplate"
+          @customize="customizeTemplate"
+        />
+        <TemplateQuickActions
+          :popular-templates="popularTemplates"
+          :generating="generating"
+          @use="useTemplate"
+        />
+      </aside>
     </div>
-
-    <!-- 空狀態 -->
-    <div
-      v-if="!loading && !error && filteredTemplates.length === 0"
-      class="empty-state"
-    >
-      <div class="empty-icon" />
-      <h3>找不到符合條件的模板</h3>
-      <p>請嘗試調整篩選條件或搜尋關鍵字</p>
-    </div>
-
-    <!-- 選中模板詳情 -->
-    <TemplateDetailsPanel
-      v-if="selectedTemplate"
-      :template="selectedTemplate"
-      :generating="generating"
-      @close="selectedTemplate = null"
-      @use="useTemplate"
-      @customize="customizeTemplate"
-    />
-
-    <!-- 快速動作工具列 -->
-    <TemplateQuickActions
-      v-if="!selectedTemplate"
-      :popular-templates="popularTemplates"
-      :generating="generating"
-      @use="useTemplate"
-    />
   </div>
 </template>
+
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import type { ReportTemplate } from '@/types/reports';
 import ReportsAPI from '@/api/reports';
+import ReportsNav from './ReportsNav.vue';
 import TemplateFilters from './templates/TemplateFilters.vue';
 import TemplateCard from './templates/TemplateCard.vue';
 import TemplateDetailsPanel from './templates/TemplateDetailsPanel.vue';
@@ -114,7 +130,6 @@ const selectedTemplate = ref<ReportTemplate | null>(null);
 // 篩選狀態
 const searchQuery = ref('');
 const selectedCategory = ref('');
-const selectedTimeRange = ref('');
 
 // 載入模板資料
 const loadTemplates = async () => {
@@ -122,9 +137,6 @@ const loadTemplates = async () => {
   error.value = null;
 
   try {
-    // 模擬 API 調用，實際應該從後端獲取
-    await new Promise(resolve => setTimeout(resolve, 800));
-
     templates.value = DEFAULT_TEMPLATES;
   } catch (err) {
     error.value = err instanceof Error ? err.message : '載入模板失敗';
@@ -152,29 +164,17 @@ const filteredTemplates = computed(() => {
   }
 
   // 時間篩選
-  if (selectedTimeRange.value) {
-    filtered = filtered.filter(template => {
-      switch (selectedTimeRange.value) {
-        case 'fast':
-          return template.estimatedTime < 30;
-        case 'medium':
-          return template.estimatedTime >= 30 && template.estimatedTime <= 120;
-        case 'slow':
-          return template.estimatedTime > 120;
-        default:
-          return true;
-      }
-    });
-  }
-
   return filtered;
 });
 
 // 熱門模板（用於快速動作）
+// Only report types the backend can generate may be used; the rest are shown disabled
+const generatableTypes = ReportsAPI.getGeneratableOptions().types.map(option => option.value);
+const isSupported = (template: ReportTemplate) => generatableTypes.includes(template.type);
+const unsupportedCount = computed(() => templates.value.filter(t => !isSupported(t)).length);
+
 const popularTemplates = computed(() =>
-  templates.value
-    .filter(t => ReportsAPI.getGeneratableOptions().types.some(option => option.value === t.type))
-    .slice(0, 3)
+  templates.value.filter(isSupported).slice(0, 3)
 );
 
 // 選擇模板
@@ -230,129 +230,71 @@ onMounted(() => {
 
 <style scoped>
 .report-templates {
-  width: 100%;
-  max-width: 1400px;
-  margin: 0 auto;
-  padding: 2rem;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-}
-
-/* 標題區 */
-.templates-header {
-  text-align: center;
-  margin-bottom: 3rem;
-}
-
-.page-title {
-  font-size: 2.5rem;
-  color: #1a1a1a;
-  margin-bottom: 1rem;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-}
-
-.page-title .icon {
-  font-size: 2.2rem;
-}
-
-.page-description {
-  font-size: 1.1rem;
-  color: #666;
-  max-width: 600px;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  max-width: 1280px;
   margin: 0 auto;
+  padding: 20px;
 }
 
-/* 載入和錯誤狀態 */
-.loading-state,
-.error-state {
-  text-align: center;
-  padding: 4rem 2rem;
+.header-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
 }
 
-.loading-spinner {
-  width: 2rem;
-  height: 2rem;
-  border: 3px solid #f3f3f3;
-  border-top: 3px solid #007bff;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-  margin: 0 auto 1rem;
+.templates-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
 }
 
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+.templates-main {
+  min-width: 0;
 }
 
-.error-icon {
-  font-size: 3rem;
-  margin-bottom: 1rem;
-}
-
-.retry-btn {
-  padding: 0.75rem 1.5rem;
-  background: #007bff;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 1rem;
-  transition: background-color 0.2s;
-}
-
-.retry-btn:hover {
-  background: #0056b3;
-}
-
-/* 模板網格 */
 .templates-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
-  gap: 1.5rem;
-  margin-bottom: 3rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
 }
 
-/* 空狀態 */
-.empty-state {
+.templates-side {
+  position: sticky;
+  top: 16px;
+  display: grid;
+  gap: 16px;
+}
+
+.error-state {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  padding: 40px 24px;
   text-align: center;
-  padding: 4rem 2rem;
-  color: #666;
 }
 
-.empty-icon {
-  font-size: 4rem;
-  margin-bottom: 1rem;
-}
-
-.empty-state h3 {
-  color: #333;
-  margin-bottom: 1rem;
-}
-
-/* 響應式設計 */
-@media (max-width: 768px) {
-  .report-templates {
-    padding: 1rem;
+@media (max-width: 1280px) {
+  .templates-layout {
+    grid-template-columns: minmax(0, 1fr);
   }
 
-  .page-title {
-    font-size: 2rem;
+  .templates-side {
+    position: static;
+    order: -1;
+  }
+}
+
+@media (max-width: 768px) {
+  .report-templates {
+    padding: 16px;
   }
 
   .templates-grid {
     grid-template-columns: 1fr;
-  }
-}
-
-@media (max-width: 480px) {
-  .page-title {
-    font-size: 1.8rem;
-  }
-
-  .templates-grid {
-    gap: 1rem;
   }
 }
 </style>

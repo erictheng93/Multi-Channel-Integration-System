@@ -1,25 +1,38 @@
-<!-- 模板搜尋和篩選控制 -->
-<!-- Template search and filter controls -->
-
 <template>
-  <div class="filters-section">
+  <section class="ui-card filters-section">
+    <div class="ui-card-head">
+      <h3 class="ui-card-title">
+        篩選
+      </h3>
+      <div class="ui-card-end">
+        <button
+          v-if="searchQuery || selectedCategory"
+          type="button"
+          class="ui-link"
+          @click="reset"
+        >
+          重設
+        </button>
+      </div>
+    </div>
     <div class="filter-controls">
-      <div class="search-box">
-        <i class="search-icon" />
+      <div class="ui-field">
+        <label for="tpl-q">搜尋</label>
         <input
+          id="tpl-q"
           :value="searchQuery"
           type="text"
-          placeholder="搜尋模板..."
-          class="search-input"
+          placeholder="模板名稱或說明"
+          class="ui-input search-input"
           @input="$emit('update:searchQuery', ($event.target as HTMLInputElement).value)"
         >
       </div>
-
-      <div class="category-filter">
-        <label>類別：</label>
+      <div class="ui-field">
+        <label for="tpl-cat">類別</label>
         <select
+          id="tpl-cat"
           :value="selectedCategory"
-          class="category-select"
+          class="ui-select category-select"
           @change="$emit('update:selectedCategory', ($event.target as HTMLSelectElement).value)"
         >
           <option value="">
@@ -39,122 +52,39 @@
           </option>
         </select>
       </div>
-
-      <div class="time-filter">
-        <label>預估時間：</label>
-        <select
-          :value="selectedTimeRange"
-          class="time-select"
-          @change="$emit('update:selectedTimeRange', ($event.target as HTMLSelectElement).value)"
-        >
-          <option value="">
-            不限
-          </option>
-          <option value="fast">
-            快速 (&lt; 30秒)
-          </option>
-          <option value="medium">
-            中等 (30秒-2分鐘)
-          </option>
-          <option value="slow">
-            較慢 (> 2分鐘)
-          </option>
-        </select>
-      </div>
     </div>
-  </div>
+  </section>
 </template>
 
 <script setup lang="ts">
 defineProps<{
   searchQuery: string;
   selectedCategory: string;
-  selectedTimeRange: string;
 }>();
 
-defineEmits<{
+const emit = defineEmits<{
   'update:searchQuery': [value: string];
   'update:selectedCategory': [value: string];
-  'update:selectedTimeRange': [value: string];
 }>();
+
+function reset() {
+  emit('update:searchQuery', '');
+  emit('update:selectedCategory', '');
+}
 </script>
 
 <style scoped>
-.filters-section {
-  background: white;
-  border-radius: 12px;
-  padding: 1.5rem;
-  margin-bottom: 2rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
 .filter-controls {
-  display: flex;
-  gap: 1.5rem;
-  align-items: center;
-  flex-wrap: wrap;
-}
-
-.search-box {
-  flex: 1;
-  min-width: 300px;
-  position: relative;
-}
-
-.search-icon {
-  position: absolute;
-  left: 1rem;
-  top: 50%;
-  transform: translateY(-50%);
-  color: #666;
-}
-
-.search-input {
-  width: 100%;
-  padding: 0.75rem 1rem 0.75rem 2.5rem;
-  border: 2px solid #e1e5e9;
-  border-radius: 8px;
-  font-size: 1rem;
-  transition: border-color 0.2s;
-}
-
-.search-input:focus {
-  outline: none;
-  border-color: #007bff;
-}
-
-.category-filter,
-.time-filter {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.category-filter label,
-.time-filter label {
-  font-weight: 500;
-  color: #333;
-  white-space: nowrap;
-}
-
-.category-select,
-.time-select {
-  padding: 0.5rem;
-  border: 2px solid #e1e5e9;
-  border-radius: 6px;
-  background: white;
-  font-size: 0.9rem;
-  min-width: 120px;
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  gap: 14px;
+  padding: 4px 22px 20px;
 }
 
 @media (max-width: 768px) {
   .filter-controls {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .search-box {
-    min-width: auto;
+    grid-template-columns: 1fr;
+    padding: 4px 16px 16px;
   }
 }
 </style>

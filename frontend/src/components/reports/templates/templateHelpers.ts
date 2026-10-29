@@ -13,7 +13,8 @@ export const getCategoryLabel = (category: string): string => {
     basic: '基礎',
     enterprise: '企業級',
     business_intelligence: '商業智能',
-    advanced_analytics: '高級分析'
+    advanced_analytics: '高級分析',
+    advanced: '高級分析'
   };
   /* eslint-enable camelcase */
   return labels[category] || category;
