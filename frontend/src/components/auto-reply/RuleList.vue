@@ -223,4 +223,10 @@ const emit = defineEmits<{
     width: 100%;
   }
 }
+
+/* placeholder text must read at AA on the grey field fill */
+.ui-input::placeholder,
+.ui-textarea::placeholder {
+  color: var(--ui-muted);
+}
 </style>

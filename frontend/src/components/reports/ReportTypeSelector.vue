@@ -80,7 +80,13 @@ const selectedLabel = computed(
 
 .step-n.done {
   background: var(--ui-accent);
+  font-size: 0;
   color: #fff;
+}
+
+.step-n.done::after {
+  font-size: 13px;
+  content: '\2713';
 }
 
 .type-options {

@@ -424,7 +424,19 @@ function formatDate(dateStr: string): string {
 .modal-body {
   flex: 1;
   overflow-y: auto;
-  padding: 0 0 8px;
+  padding: 0;
+}
+
+/* Bottom fade: a cue that the list scrolls on; the padding above lets the last row clear it */
+.modal-body::after {
+  position: sticky;
+  bottom: 0;
+  display: block;
+  height: 40px;
+  margin-top: -40px;
+  background: linear-gradient(rgb(255 255 255 / 0), var(--ui-surface));
+  content: '';
+  pointer-events: none;
 }
 
 .state-container {
@@ -446,7 +458,7 @@ function formatDate(dateStr: string): string {
 
 .conversation-list {
   margin: 0;
-  padding: 0 0 6px;
+  padding: 0 0 40px;
   list-style: none;
 }
 

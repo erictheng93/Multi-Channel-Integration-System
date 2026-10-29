@@ -37,10 +37,28 @@
           v-for="item in contents"
           :key="item.label"
         >
-          <b>{{ item.label }}</b>
-          <span>{{ item.hint }}</span>
+          <span class="tc-text">
+            <b>{{ item.label }}</b>
+            <span>{{ item.hint }}</span>
+          </span>
+          <code>{{ item.field }}</code>
         </li>
       </ul>
+      <div
+        v-if="shape"
+        class="tc-shape"
+        role="group"
+        :aria-label="`${template.name}的輸出欄位`"
+      >
+        <span class="tc-shape-h">輸出欄位</span>
+        <div class="tc-cols">
+          <code
+            v-for="column in shape.columns"
+            :key="column"
+          >{{ column }}</code>
+        </div>
+        <span class="tc-shape-row">{{ shape.row }}</span>
+      </div>
     </section>
 
     <dl class="tc-meta">
@@ -65,7 +83,7 @@
     <footer class="tc-foot">
       <button
         type="button"
-        class="btn btn-secondary"
+        class="btn btn-ghost"
         :disabled="generating"
         @click="$emit('customize', template)"
       >
@@ -86,7 +104,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import type { ReportTemplate } from '@/types/reports';
-import { REPORT_CONTENTS, formatEstimatedTime, getCategoryLabel } from './templateHelpers';
+import { REPORT_CONTENTS, REPORT_OUTPUT_SHAPES, formatEstimatedTime, getCategoryLabel } from './templateHelpers';
 
 const props = withDefaults(defineProps<{
   template: ReportTemplate;
@@ -101,6 +119,7 @@ defineEmits<{
 }>();
 
 const contents = computed(() => REPORT_CONTENTS[props.template.type] ?? []);
+const shape = computed(() => REPORT_OUTPUT_SHAPES[props.template.type] ?? null);
 </script>
 
 <style scoped>
@@ -165,29 +184,81 @@ const contents = computed(() => REPORT_CONTENTS[props.template.type] ?? []);
 
 .tc-list {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
 .tc-list li {
-  display: grid;
-  gap: 3px;
-  padding: 16px 16px;
-  border-radius: var(--ui-r-inner);
-  background: var(--ui-surface-2);
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 0;
+  box-shadow: 0 -0.5px 0 var(--ui-sep);
 }
 
-.tc-list b {
+.tc-list li:first-child {
+  box-shadow: none;
+}
+
+.tc-text {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.tc-text b {
   font-size: 14px;
   font-weight: 600;
 }
 
-.tc-list span {
+.tc-text span {
   font-size: 12.5px;
   line-height: 1.4;
+  color: var(--ui-muted);
+}
+
+.tc-list code,
+.tc-cols code {
+  flex: none;
+  padding: 2px 8px;
+  border-radius: 8px;
+  background: var(--ui-fill);
+  font: 12px / 1.5 var(--ui-font-mono);
+  color: var(--ui-ink-2);
+  overflow-wrap: anywhere;
+}
+
+/* A mini table header: the columns the report writes, and what one row stands for */
+.tc-shape {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+  padding: 12px 14px;
+  border-radius: var(--ui-r-inner);
+  background: var(--ui-surface-2);
+}
+
+.tc-shape-h {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ui-ink-2);
+}
+
+.tc-cols {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.tc-cols code {
+  background: var(--ui-surface);
+  box-shadow: 0 0 0 0.5px var(--ui-sep);
+}
+
+.tc-shape-row {
+  font-size: 12.5px;
   color: var(--ui-muted);
 }
 
@@ -234,12 +305,9 @@ const contents = computed(() => REPORT_CONTENTS[props.template.type] ?? []);
     justify-self: start;
   }
 
-  .tc-list {
-    gap: 8px;
-  }
-
   .tc-list li {
-    padding: 12px;
+    flex-wrap: wrap;
+    gap: 4px 12px;
   }
 
   .tc-foot .btn {
