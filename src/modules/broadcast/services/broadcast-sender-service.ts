@@ -13,7 +13,6 @@ import {
 import { nowISO } from '@/utils/timestamp';
 import {
   BROADCAST_DAILY_RECIPIENT_LIMIT_PER_AGENT,
-  BROADCAST_QUOTA_RESERVE_RATIO,
 } from '@/constants/limits';
 import {
   getLineMessageQuota,
@@ -22,6 +21,7 @@ import {
 } from '@/utils/line';
 import { getSignedFileUrl, PERSISTENT_ATTACHMENT_URL_TTL_SECONDS } from '@/utils/file-url';
 import { createContextLogger } from '@/utils/logger';
+import { resolveQuotaReserveRatio, hashToken } from '@modules/broadcast/services/line-quota-monitor-service';
 import { ChannelCredentialService } from '@modules/integrations/services/channel-credential-service';
 import {
   BroadcastServiceError,
@@ -61,10 +61,19 @@ function parseEnvNumber(raw: string | undefined, fallback: number, valid: (n: nu
 
 type PendingRecipient = typeof broadcastRecipients.$inferSelect;
 
-type TokenGroup = {
+type TokenGroup<T extends { resolvedTeamId: number | null } = PendingRecipient> = {
   token: string;
-  recipients: PendingRecipient[];
+  recipients: T[];
 };
+
+export interface BroadcastDeliveryPreview {
+  /** Sendable LINE recipients per LINE channel; channelKey matches the line-quota snapshot items. */
+  tokenGroups: Array<{ channelKey: string; recipientCount: number }>;
+  /** LINE recipients whose team has no LINE credentials (and no system default exists). */
+  noCredentialsCount: number;
+  /** Per-agent daily recipient cap; null for admins (exempt). */
+  dailyCap: { limit: number; used: number; remaining: number } | null;
+}
 
 export class BroadcastSenderService {
   private readonly credentialService: ChannelCredentialService;
@@ -309,18 +318,42 @@ export class BroadcastSenderService {
     }));
   }
 
-  private async resolveTokenGroups(recipients: PendingRecipient[]): Promise<{
-    sendable: TokenGroup[];
-    skippedNoCredentials: PendingRecipient[];
+  /** Read-only view of how `send` would split these LINE recipients, plus the actor's daily cap usage. */
+  async previewDelivery(
+    lineRecipients: Array<{ resolvedTeamId: number | null }>,
+    actor: DbUser
+  ): Promise<BroadcastDeliveryPreview> {
+    const groups = await this.resolveTokenGroups(lineRecipients);
+    const tokenGroups = await Promise.all(
+      groups.sendable.map(async (group) => ({
+        channelKey: await hashToken(group.token),
+        recipientCount: group.recipients.length,
+      }))
+    );
+
+    const allowance = this.dailyAllowance('', actor);
+    let dailyCap: BroadcastDeliveryPreview['dailyCap'] = null;
+    if (allowance) {
+      const [usedRow] = await allowance.used;
+      const used = Number(usedRow?.count ?? 0);
+      dailyCap = { limit: allowance.limit, used, remaining: Math.max(0, allowance.limit - used) };
+    }
+
+    return { tokenGroups, noCredentialsCount: groups.skippedNoCredentials.length, dailyCap };
+  }
+
+  private async resolveTokenGroups<T extends { resolvedTeamId: number | null }>(recipients: T[]): Promise<{
+    sendable: Array<TokenGroup<T>>;
+    skippedNoCredentials: T[];
   }> {
-    const byTeam = new Map<number | null, PendingRecipient[]>();
+    const byTeam = new Map<number | null, T[]>();
     for (const recipient of recipients) {
       const key = recipient.resolvedTeamId ?? null;
       byTeam.set(key, [...(byTeam.get(key) ?? []), recipient]);
     }
 
-    const byToken = new Map<string, PendingRecipient[]>();
-    const skippedNoCredentials: PendingRecipient[] = [];
+    const byToken = new Map<string, T[]>();
+    const skippedNoCredentials: T[] = [];
 
     for (const [teamId, teamRecipients] of byTeam.entries()) {
       const token = teamId ? await this.getTeamLineAccessToken(teamId) : null;
@@ -381,11 +414,7 @@ export class BroadcastSenderService {
     }
 
     const total = quota.value ?? 0;
-    const reserve = Math.ceil(total * parseEnvNumber(
-      this.env.BROADCAST_QUOTA_RESERVE_RATIO,
-      BROADCAST_QUOTA_RESERVE_RATIO,
-      (n) => n >= 0 && n < 1
-    ));
+    const reserve = Math.ceil(total * resolveQuotaReserveRatio(this.env));
     const remaining = total - (usage.totalUsage ?? 0);
     return remaining - recipientCount >= reserve;
   }
