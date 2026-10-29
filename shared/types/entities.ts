@@ -34,6 +34,14 @@ export interface User {
 // 向後兼容別名
 export type Customer = User
 
+// A team the signed-in agent belongs to (GET /auth/me)
+export interface AgentTeamMembership {
+  id: number
+  name: string
+  roleInTeam: 'member' | 'lead' | 'supervisor'
+  isPrimary: boolean
+}
+
 export interface Agent {
   id: EntityId
   email: string
@@ -43,6 +51,8 @@ export interface Agent {
   primaryTeamId?: number
   allowedTeamIds?: number[]
   teamRoles?: Record<number, 'member' | 'lead' | 'supervisor'>
+  /** Teams the agent belongs to, with names (GET /auth/me only) */
+  teams?: AgentTeamMembership[]
   isActive: boolean
   isOnline?: boolean // 向後兼容字段
   platforms?: Platform[] // 向後兼容字段
@@ -72,6 +82,10 @@ export interface Conversation {
   lastMessageAt: Timestamp
   lastMessage?: Message // 向後兼容字段
   unreadCount: number
+  /** Earliest unread customer message for the current agent (ISO); null when nothing is unread */
+  oldestUnreadAt?: string | null
+  /** Epoch ms until which the next LINE reply is free (Reply API); null = none */
+  replyWindowExpiresAt?: number | null
   firstResponseAt?: Timestamp | null // 首次回應時間（用於判斷處理狀態）
   createdAt: Timestamp | Date // 支援兩種格式
   updatedAt: Timestamp | Date // 支援兩種格式
