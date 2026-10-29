@@ -5,6 +5,9 @@
 // (migration 0066) can serve the message counts. No column is wrapped in a function
 // inside a WHERE clause. Platform / day bucketing happens in SELECT / GROUP BY only.
 //
+// Customer message counts come from the message_daily_stats rollup plus a live delta
+// after its watermark (message-rollup-service.ts), so they do not grow with history.
+//
 // "Yesterday same time" = [yesterday 00:00 Taipei, now - 24h): the same elapsed
 // part of the day, so a morning reading is not compared with a full day.
 
@@ -21,6 +24,8 @@ import {
   taipeiDateString,
   taipeiDayStartMs
 } from '@/utils/taipei-time';
+import { RowsReadMeter } from '@/utils/d1-rows-read';
+import { countRawMessages, readDayCounts } from './message-rollup-service';
 import { getWaitingConversations } from './waiting-service';
 
 interface ComparisonRow {
@@ -35,10 +40,10 @@ interface FirstResponseRow {
   yesterdayAvg: number | string | null;
 }
 
-interface VolumeRow {
-  d: string | null;
-  platform: string | null;
-  n: number | string | null;
+/** Run a prepared statement through .all() (which carries rows_read meta) and return its first row. */
+async function firstRow<T>(meter: RowsReadMeter, statement: D1PreparedStatement): Promise<T | null> {
+  const result = meter.track(await statement.all<T>());
+  return result.results?.[0] ?? null;
 }
 
 const num = (value: unknown): number => {
@@ -74,20 +79,35 @@ export async function buildDashboardSummary(
   const yStartIso = isoOf(yesterdayStart);
   const yEndIso = isoOf(yesterdayEnd);
 
-  // Customer messages: one range scan over [yesterday 00:00, now], split in SQL.
-  const messageRow = await db.prepare(`
-    SELECT
-      COALESCE(SUM(CASE WHEN m.created_at >= ? THEN 1 ELSE 0 END), 0) AS today,
-      COALESCE(SUM(CASE WHEN m.created_at < ? THEN 1 ELSE 0 END), 0) AS yesterday
-    FROM messages m
-    INNER JOIN conversations c ON c.id = m.conversation_id
-    WHERE m.sender_type = 'customer'
-      AND m.created_at >= ? AND m.created_at <= ?
-      AND m.deleted_at IS NULL
-      AND ${visibility.clause}
-  `).bind(todayIso, yEndIso, yStartIso, nowIso, ...visibility.params).first<ComparisonRow>();
+  // Customer messages: today = rollup day + live delta. Yesterday-same-time is a partial
+  // day, so it is the cheaper of "raw head [00:00, same time)" and "rollup day minus raw
+  // tail [same time, midnight)" (never more than half a day of messages either way).
+  const meter = new RowsReadMeter('dashboard.summary');
+  const todayDay = taipeiDateString(todayStart);
+  const yesterdayDay = taipeiDateString(yesterdayStart);
+  const dayCounts = await readDayCounts(db, user, {
+    fromDay: yesterdayDay,
+    toDay: todayDay,
+    senderTypes: ['customer'],
+    nowMs,
+    meter
+  });
+  const dayTotal = (day: string): number => dayCounts.filter(row => row.day === day).reduce((sum, row) => sum + row.n, 0);
+  const todayMessages = dayTotal(todayDay);
+  const headMs = yesterdayEnd - yesterdayStart;
+  const tailMs = todayStart - yesterdayEnd;
+  let yesterdayMessages: number;
+  if (headMs <= 0) {
+    yesterdayMessages = 0;
+  } else if (headMs <= tailMs) {
+    yesterdayMessages = await countRawMessages(db, user, 'customer', yStartIso, yEndIso, meter);
+  } else {
+    const tail = await countRawMessages(db, user, 'customer', yEndIso, todayIso, meter);
+    yesterdayMessages = Math.max(0, dayTotal(yesterdayDay) - tail);
+  }
+  const messageRow = { today: todayMessages, yesterday: yesterdayMessages };
 
-  const resolvedRow = await db.prepare(`
+  const resolvedRow = await firstRow<ComparisonRow>(meter, db.prepare(`
     SELECT
       COALESCE(SUM(CASE WHEN c.closed_at >= ? THEN 1 ELSE 0 END), 0) AS today,
       COALESCE(SUM(CASE WHEN c.closed_at < ? THEN 1 ELSE 0 END), 0) AS yesterday
@@ -95,19 +115,19 @@ export async function buildDashboardSummary(
     WHERE c.status = 'closed'
       AND c.closed_at >= ? AND c.closed_at <= ?
       AND ${visibility.clause}
-  `).bind(todayIso, yEndIso, yStartIso, nowIso, ...visibility.params).first<ComparisonRow>();
+  `).bind(todayIso, yEndIso, yStartIso, nowIso, ...visibility.params));
 
-  const openRow = await db.prepare(`
+  const openRow = await firstRow<{ n: number | string | null }>(meter, db.prepare(`
     SELECT COUNT(*) AS n
     FROM conversations c
     WHERE c.status <> 'closed' AND c.deleted_at IS NULL AND ${visibility.clause}
-  `).bind(...visibility.params).first<{ n: number | string | null }>();
+  `).bind(...visibility.params));
 
   // First response: conversations CREATED in the window whose first human reply
   // is recorded (conversations.first_response_at). For yesterday only replies
   // that had already happened by the same time count, so the two sides compare
   // like with like.
-  const frRow = await db.prepare(`
+  const frRow = await firstRow<FirstResponseRow>(meter, db.prepare(`
     SELECT
       COALESCE(SUM(CASE WHEN c.created_at >= ? THEN 1 ELSE 0 END), 0) AS todayCount,
       AVG(CASE WHEN c.created_at >= ?
@@ -123,10 +143,12 @@ export async function buildDashboardSummary(
   `).bind(
     todayIso, todayIso, yEndIso, yEndIso, yEndIso, yEndIso,
     yStartIso, nowIso, ...visibility.params
-  ).first<FirstResponseRow>();
+  ));
 
-  const waiting = await getWaitingConversations(db, user, 5, nowMs);
+  const waiting = await getWaitingConversations(db, user, 5, nowMs, meter);
   const oldest = waiting.items[0] ?? null;
+
+  meter.flush({ scope: visibilityScopeKey(user) });
 
   const todayFrCount = num(frRow?.todayCount);
   const yesterdayFrCount = num(frRow?.yesterdayCount);
@@ -135,7 +157,7 @@ export async function buildDashboardSummary(
     timezone: TAIPEI_TIMEZONE,
     dayStart: todayIso,
     generatedAt: nowIso,
-    customerMessages: { today: num(messageRow?.today), yesterdaySameTime: num(messageRow?.yesterday) },
+    customerMessages: { today: messageRow.today, yesterdaySameTime: messageRow.yesterday },
     resolved: { today: num(resolvedRow?.today), yesterdaySameTime: num(resolvedRow?.yesterday) },
     openConversations: num(openRow?.n),
     waiting: {
@@ -167,29 +189,27 @@ export async function buildMessageVolume(
 ): Promise<MessageVolumeData> {
   const todayStart = taipeiDayStartMs(nowMs);
   const rangeStart = todayStart - (2 * days - 1) * DAY_MS;
-  const visibility = getConversationVisibilitySql(user, 'c.assigned_team_id');
+  const meter = new RowsReadMeter(`dashboard.message-volume.${days}`);
 
-  const { results } = await db.prepare(`
-    SELECT date(m.created_at, '+8 hours') AS d, cu.platform AS platform, COUNT(*) AS n
-    FROM messages m
-    INNER JOIN conversations c ON c.id = m.conversation_id
-    LEFT JOIN customers cu ON cu.id = c.customer_id
-    WHERE m.sender_type = 'customer'
-      AND m.created_at >= ? AND m.created_at <= ?
-      AND m.deleted_at IS NULL
-      AND ${visibility.clause}
-    GROUP BY d, cu.platform
-  `).bind(isoOf(rangeStart), isoOf(nowMs), ...visibility.params).all<VolumeRow>();
+  // Rollup days + live delta after the watermark; no scan of message history.
+  const counts = await readDayCounts(db, user, {
+    fromDay: taipeiDateString(rangeStart),
+    toDay: taipeiDateString(todayStart),
+    senderTypes: ['customer'],
+    nowMs,
+    meter
+  });
+  meter.flush({ scope: visibilityScopeKey(user), days });
 
   const byDate = new Map<string, MessageVolumeDay>();
   for (let i = 0; i < 2 * days; i++) {
     const date = taipeiDateString(rangeStart + i * DAY_MS);
     byDate.set(date, emptyDay(date));
   }
-  for (const row of results ?? []) {
-    const bucket = row.d ? byDate.get(row.d) : undefined;
+  for (const row of counts) {
+    const bucket = byDate.get(row.day);
     if (!bucket) { continue; }
-    const n = num(row.n);
+    const n = row.n;
     if (row.platform === 'line') { bucket.line += n; }
     else if (row.platform === 'facebook') { bucket.facebook += n; }
     else { bucket.other += n; }
