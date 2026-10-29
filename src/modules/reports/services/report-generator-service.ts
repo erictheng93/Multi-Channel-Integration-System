@@ -162,13 +162,14 @@ export class ReportGeneratorService {
     try {
       const { drizzle } = await import('drizzle-orm/d1');
       const { reports } = await import('../../../db/schema');
-      const { eq } = await import('drizzle-orm');
+      const { and, eq, isNull } = await import('drizzle-orm');
 
       const db = drizzle(this.db);
+      // Soft-deleted reports are gone for every caller (details, download, delete, batch)
       const report = await db
         .select()
         .from(reports)
-        .where(eq(reports.id, reportId))
+        .where(and(eq(reports.id, reportId), isNull(reports.deletedAt)))
         .get();
 
       if (!report) {
