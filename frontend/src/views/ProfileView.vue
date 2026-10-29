@@ -13,288 +13,326 @@
         subtitle="修改顯示名稱與密碼，其餘由管理員管理"
       />
 
-      <div class="ui-grid ui-cols-2 profile-grid">
-        <!-- Card 1: 基本資料 -->
-        <section
-          id="basic"
-          class="ui-card profile-card"
-          aria-labelledby="basic-title"
-        >
-          <header class="ui-card-head">
-            <div>
-              <h2
-                id="basic-title"
-                class="ui-card-title"
-              >
-                基本資料
-              </h2>
-              <div class="ui-card-sub">
-                顯示名稱會出現在你送出的訊息署名
-              </div>
-            </div>
-          </header>
-
-          <form
-            class="form"
-            @submit.prevent="onSaveProfile"
+      <div class="profile-cols">
+        <div class="profile-col">
+          <!-- Card 1: 基本資料 -->
+          <section
+            id="basic"
+            class="ui-card profile-card"
+            aria-labelledby="basic-title"
           >
-            <div class="identity">
-              <div class="avatar">
-                {{ initial }}
-                <span
-                  class="presence"
-                  :class="`presence--${connection.tone}`"
-                  :title="connection.label"
-                />
-              </div>
+            <header class="ui-card-head">
               <div>
-                <div class="identity-name">
-                  {{ profile.displayName || '—' }}
-                </div>
-                <div class="identity-sub">
-                  {{ identitySub }}
+                <h2
+                  id="basic-title"
+                  class="ui-card-title"
+                >
+                  基本資料
+                </h2>
+                <div class="ui-card-sub">
+                  顯示名稱會出現在你送出的訊息署名
                 </div>
               </div>
-            </div>
+            </header>
 
-            <div class="ui-field">
-              <label for="display-name">
-                顯示名稱 <span class="required">*</span>
-                <span class="count">{{ profile.displayName.length }} / 50</span>
-              </label>
-              <input
-                id="display-name"
-                v-model.trim="profile.displayName"
-                type="text"
-                maxlength="50"
-                class="ui-input"
-                :class="{ 'is-invalid': profileErrors.displayName }"
-                autocomplete="name"
-                :disabled="profileSaving"
-              >
-              <span
-                v-if="profileErrors.displayName"
-                class="form-error"
-              >
-                {{ profileErrors.displayName }}
-              </span>
-            </div>
-
-            <p
-              class="admin-line"
-              data-testid="admin-managed"
+            <form
+              class="form"
+              @submit.prevent="onSaveProfile"
             >
-              <svg
-                class="ico"
-                viewBox="0 0 24 24"
-              ><rect
-                x="4"
-                y="11"
-                width="16"
-                height="9"
-                rx="2"
-              /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></svg>
-              <span class="admin-text">{{ adminSummary }}</span>
-              <span class="admin-tag">由管理員管理</span>
-            </p>
-
-            <div class="form-actions">
-              <button
-                type="button"
-                class="btn btn-ghost"
-                :disabled="!profileChanged || profileSaving"
-                @click="resetProfile"
-              >
-                重設
-              </button>
-              <button
-                type="submit"
-                class="btn btn-primary"
-                :disabled="!profileChanged || profileSaving"
-              >
-                {{ profileSaving ? '儲存中…' : '儲存變更' }}
-              </button>
-            </div>
-          </form>
-        </section>
-
-        <!-- Card 2: 安全性 -->
-        <section
-          id="security"
-          class="ui-card profile-card"
-          aria-labelledby="security-title"
-        >
-          <header class="ui-card-head">
-            <div>
-              <h2
-                id="security-title"
-                class="ui-card-title"
-              >
-                安全性
-              </h2>
-              <div class="ui-card-sub">
-                定期更換密碼，保護客戶資料
-              </div>
-            </div>
-          </header>
-
-          <form
-            class="form"
-            @submit.prevent="onChangePassword"
-          >
-            <div class="ui-field">
-              <label for="current-password">
-                目前密碼 <span class="required">*</span>
-              </label>
-              <div class="pw">
-                <input
-                  id="current-password"
-                  v-model="passwordForm.currentPassword"
-                  :type="show.current ? 'text' : 'password'"
-                  class="ui-input"
-                  :class="{ 'is-invalid': passwordErrors.currentPassword }"
-                  autocomplete="current-password"
-                  :disabled="passwordSaving"
-                >
-                <button
-                  type="button"
-                  class="pw-toggle"
-                  :aria-label="show.current ? '隱藏密碼' : '顯示密碼'"
-                  @click="show.current = !show.current"
-                >
-                  <svg
-                    class="ico"
-                    viewBox="0 0 24 24"
-                  ><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z" /><circle
-                    cx="12"
-                    cy="12"
-                    r="3"
-                  /></svg>
-                </button>
-              </div>
-              <span
-                v-if="passwordErrors.currentPassword"
-                class="form-error"
-              >
-                {{ passwordErrors.currentPassword }}
-              </span>
-              <span
-                v-else
-                class="ui-hint"
-              >用來確認是你本人操作</span>
-            </div>
-
-            <div class="ui-field">
-              <label for="new-password">
-                新密碼 <span class="required">*</span>
-              </label>
-              <div class="pw">
-                <input
-                  id="new-password"
-                  v-model="passwordForm.newPassword"
-                  :type="show.next ? 'text' : 'password'"
-                  class="ui-input"
-                  :class="{ 'is-invalid': passwordErrors.newPassword }"
-                  autocomplete="new-password"
-                  :disabled="passwordSaving"
-                >
-                <button
-                  type="button"
-                  class="pw-toggle"
-                  :aria-label="show.next ? '隱藏密碼' : '顯示密碼'"
-                  @click="show.next = !show.next"
-                >
-                  <svg
-                    class="ico"
-                    viewBox="0 0 24 24"
-                  ><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z" /><circle
-                    cx="12"
-                    cy="12"
-                    r="3"
-                  /></svg>
-                </button>
-              </div>
-              <div
-                v-if="passwordForm.newPassword"
-                class="strength-bar"
-              >
-                <div class="strength-track">
-                  <div
-                    class="strength-fill"
-                    :class="`strength-${passwordStrength.level}`"
-                    :style="{ width: `${passwordStrength.percent}%` }"
+              <div class="identity">
+                <div class="avatar">
+                  {{ initial }}
+                  <span
+                    class="presence"
+                    :class="`presence--${connection.tone}`"
+                    :title="connection.label"
                   />
                 </div>
-                <span class="strength-label">{{ passwordStrength.label }}</span>
+                <div>
+                  <div class="identity-name">
+                    {{ profile.displayName || '—' }}
+                  </div>
+                  <div class="identity-sub">
+                    {{ identitySub }}
+                  </div>
+                </div>
               </div>
-              <span
-                v-if="passwordErrors.newPassword"
-                class="form-error"
-              >
-                {{ passwordErrors.newPassword }}
-              </span>
-              <span
-                v-else
-                class="ui-hint"
-              >至少 8 個字元，混合大小寫、數字與符號會更安全</span>
-            </div>
 
-            <div class="ui-field">
-              <label for="confirm-password">
-                確認新密碼 <span class="required">*</span>
-              </label>
-              <div class="pw">
+              <div class="ui-field">
+                <label for="display-name">
+                  顯示名稱 <span class="required">*</span>
+                  <span class="count">{{ profile.displayName.length }} / 50</span>
+                </label>
                 <input
-                  id="confirm-password"
-                  v-model="passwordForm.confirmPassword"
-                  :type="show.confirm ? 'text' : 'password'"
+                  id="display-name"
+                  v-model.trim="profile.displayName"
+                  type="text"
+                  maxlength="50"
                   class="ui-input"
-                  :class="{ 'is-invalid': passwordErrors.confirmPassword }"
-                  autocomplete="new-password"
-                  :disabled="passwordSaving"
+                  :class="{ 'is-invalid': profileErrors.displayName }"
+                  autocomplete="name"
+                  :disabled="profileSaving"
                 >
+                <span
+                  v-if="profileErrors.displayName"
+                  class="form-error"
+                >
+                  {{ profileErrors.displayName }}
+                </span>
+              </div>
+
+              <p
+                class="admin-line"
+                data-testid="admin-managed"
+              >
+                <svg
+                  class="ico"
+                  viewBox="0 0 24 24"
+                ><rect
+                  x="4"
+                  y="11"
+                  width="16"
+                  height="9"
+                  rx="2"
+                /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></svg>
+                <span class="admin-text">{{ adminSummary }}</span>
+                <span class="admin-tag">由管理員管理</span>
+              </p>
+
+              <div class="form-actions">
                 <button
                   type="button"
-                  class="pw-toggle"
-                  :aria-label="show.confirm ? '隱藏密碼' : '顯示密碼'"
-                  @click="show.confirm = !show.confirm"
+                  class="btn btn-ghost"
+                  :disabled="!profileChanged || profileSaving"
+                  @click="resetProfile"
                 >
-                  <svg
-                    class="ico"
-                    viewBox="0 0 24 24"
-                  ><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z" /><circle
-                    cx="12"
-                    cy="12"
-                    r="3"
-                  /></svg>
+                  重設
+                </button>
+                <button
+                  type="submit"
+                  class="btn btn-primary"
+                  :disabled="!profileChanged || profileSaving"
+                >
+                  {{ profileSaving ? '儲存中…' : '儲存變更' }}
                 </button>
               </div>
-              <span
-                v-if="passwordErrors.confirmPassword"
-                class="form-error"
-              >
-                {{ passwordErrors.confirmPassword }}
-              </span>
-              <span
-                v-else
-                class="ui-hint"
-              >再輸入一次新密碼</span>
-            </div>
+            </form>
+          </section>
 
-            <div class="form-actions">
-              <p class="action-note">
-                修改後會自動登出，需用新密碼重新登入。
+          <!-- Card 2: 通知偏好 — the settings already live on the notifications page -->
+          <section
+            id="notification-prefs"
+            class="ui-card profile-card"
+            aria-labelledby="prefs-title"
+          >
+            <header class="ui-card-head">
+              <div>
+                <h2
+                  id="prefs-title"
+                  class="ui-card-title"
+                >
+                  通知偏好
+                </h2>
+                <div class="ui-card-sub">
+                  桌面通知、提示偏好與通知類型
+                </div>
+              </div>
+            </header>
+            <div class="form prefs">
+              <p class="prefs-text">
+                桌面通知僅套用於這台裝置；提示偏好與通知類型跟著你的帳號。
               </p>
-              <button
-                type="submit"
-                class="btn btn-primary"
-                :disabled="!passwordReady || passwordSaving"
-              >
-                {{ passwordSaving ? '修改中…' : '修改密碼' }}
-              </button>
+              <div class="form-actions">
+                <RouterLink
+                  class="btn btn-secondary"
+                  :to="{ path: '/notifications', query: { settings: '1' } }"
+                >
+                  開啟通知設定
+                </RouterLink>
+              </div>
             </div>
-          </form>
-        </section>
+          </section>
+        </div>
+
+        <div class="profile-col">
+          <!-- Card 3: 安全性 -->
+          <section
+            id="security"
+            class="ui-card profile-card"
+            aria-labelledby="security-title"
+          >
+            <header class="ui-card-head">
+              <div>
+                <h2
+                  id="security-title"
+                  class="ui-card-title"
+                >
+                  安全性
+                </h2>
+                <div class="ui-card-sub">
+                  定期更換密碼，保護客戶資料
+                </div>
+              </div>
+            </header>
+
+            <form
+              class="form"
+              @submit.prevent="onChangePassword"
+            >
+              <div class="ui-field">
+                <label for="current-password">
+                  目前密碼 <span class="required">*</span>
+                </label>
+                <div class="pw">
+                  <input
+                    id="current-password"
+                    v-model="passwordForm.currentPassword"
+                    :type="show.current ? 'text' : 'password'"
+                    class="ui-input"
+                    :class="{ 'is-invalid': passwordErrors.currentPassword }"
+                    autocomplete="current-password"
+                    :disabled="passwordSaving"
+                  >
+                  <button
+                    type="button"
+                    class="pw-toggle"
+                    :aria-label="show.current ? '隱藏密碼' : '顯示密碼'"
+                    @click="show.current = !show.current"
+                  >
+                    <svg
+                      class="ico"
+                      viewBox="0 0 24 24"
+                    ><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z" /><circle
+                      cx="12"
+                      cy="12"
+                      r="3"
+                    /></svg>
+                  </button>
+                </div>
+                <span
+                  v-if="passwordErrors.currentPassword"
+                  class="form-error"
+                >
+                  {{ passwordErrors.currentPassword }}
+                </span>
+                <span
+                  v-else
+                  class="ui-hint"
+                >用來確認是你本人操作</span>
+              </div>
+
+              <div class="ui-field">
+                <label for="new-password">
+                  新密碼 <span class="required">*</span>
+                </label>
+                <div class="pw">
+                  <input
+                    id="new-password"
+                    v-model="passwordForm.newPassword"
+                    :type="show.next ? 'text' : 'password'"
+                    class="ui-input"
+                    :class="{ 'is-invalid': passwordErrors.newPassword }"
+                    autocomplete="new-password"
+                    :disabled="passwordSaving"
+                  >
+                  <button
+                    type="button"
+                    class="pw-toggle"
+                    :aria-label="show.next ? '隱藏密碼' : '顯示密碼'"
+                    @click="show.next = !show.next"
+                  >
+                    <svg
+                      class="ico"
+                      viewBox="0 0 24 24"
+                    ><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z" /><circle
+                      cx="12"
+                      cy="12"
+                      r="3"
+                    /></svg>
+                  </button>
+                </div>
+                <div
+                  v-if="passwordForm.newPassword"
+                  class="strength-bar"
+                >
+                  <div class="strength-track">
+                    <div
+                      class="strength-fill"
+                      :class="`strength-${passwordStrength.level}`"
+                      :style="{ width: `${passwordStrength.percent}%` }"
+                    />
+                  </div>
+                  <span class="strength-label">{{ passwordStrength.label }}</span>
+                </div>
+                <span
+                  v-if="passwordErrors.newPassword"
+                  class="form-error"
+                >
+                  {{ passwordErrors.newPassword }}
+                </span>
+                <span
+                  v-else
+                  class="ui-hint"
+                >至少 8 個字元，混合大小寫、數字與符號會更安全</span>
+              </div>
+
+              <div class="ui-field">
+                <label for="confirm-password">
+                  確認新密碼 <span class="required">*</span>
+                </label>
+                <div class="pw">
+                  <input
+                    id="confirm-password"
+                    v-model="passwordForm.confirmPassword"
+                    :type="show.confirm ? 'text' : 'password'"
+                    class="ui-input"
+                    :class="{ 'is-invalid': passwordErrors.confirmPassword }"
+                    autocomplete="new-password"
+                    :disabled="passwordSaving"
+                  >
+                  <button
+                    type="button"
+                    class="pw-toggle"
+                    :aria-label="show.confirm ? '隱藏密碼' : '顯示密碼'"
+                    @click="show.confirm = !show.confirm"
+                  >
+                    <svg
+                      class="ico"
+                      viewBox="0 0 24 24"
+                    ><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z" /><circle
+                      cx="12"
+                      cy="12"
+                      r="3"
+                    /></svg>
+                  </button>
+                </div>
+                <span
+                  v-if="passwordErrors.confirmPassword"
+                  class="form-error"
+                >
+                  {{ passwordErrors.confirmPassword }}
+                </span>
+                <span
+                  v-else
+                  class="ui-hint"
+                >再輸入一次新密碼</span>
+              </div>
+
+              <div class="form-actions">
+                <p class="action-note">
+                  修改後會自動登出，需用新密碼重新登入。
+                </p>
+                <button
+                  type="submit"
+                  class="btn btn-primary"
+                  :disabled="!passwordReady || passwordSaving"
+                >
+                  {{ passwordSaving ? '修改中…' : '修改密碼' }}
+                </button>
+              </div>
+            </form>
+          </section>
+        </div>
       </div>
     </div>
   </AppLayout>
@@ -578,24 +616,33 @@ watch(
 
 <style scoped>
 
-/* Equal-height cards: the action row sits at each card's foot */
-.profile-grid {
-  align-items: stretch;
+/* Cards size to their content; each column stacks its own cards (no stretched, half-empty cards) */
+.profile-cols {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  align-items: start;
 }
 
-.profile-card {
-  display: flex;
-  flex-direction: column;
+.profile-col {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
 }
 
-.profile-card .form {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
+.prefs {
+  gap: 14px;
 }
 
-.profile-card .form-actions {
-  margin-top: auto;
+.prefs-text {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--ui-ink-2);
+}
+
+.prefs .btn {
+  text-decoration: none;
 }
 
 .ico {
@@ -800,8 +847,14 @@ watch(
   display: flex;
   gap: 8px;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: flex-start;
   padding-top: 4px;
+}
+
+@media (max-width: 1024px) {
+  .profile-cols {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 @media (max-width: 768px) {
