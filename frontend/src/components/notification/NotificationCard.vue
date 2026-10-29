@@ -30,10 +30,6 @@
         <h3 class="notification-title">
           {{ notification.title }}
         </h3>
-        <time
-          class="notification-time"
-          :datetime="notification.createdAt"
-        >{{ formattedTime }}</time>
         <span
           v-if="!notification.isRead"
           class="sr-only"
@@ -68,32 +64,45 @@
       </div>
     </div>
 
-    <!-- Actions -->
-    <div
-      class="notification-actions"
-      role="group"
-      aria-label="通知操作"
-      @click.stop
-    >
-      <button
-        v-if="!notification.isRead"
-        class="action-btn"
-        type="button"
-        :aria-label="`標記 ${notification.title} 為已讀`"
-        title="標記已讀 (Ctrl+M)"
-        @click="$emit('mark-read', notification.id)"
+    <!-- Trailing column at the card edge: unread dot + time, then the row actions -->
+    <div class="notification-trail">
+      <span class="notification-when">
+        <span
+          v-if="!notification.isRead"
+          class="notification-dot"
+          aria-hidden="true"
+        />
+        <time
+          class="notification-time"
+          :datetime="notification.createdAt"
+        >{{ formattedTime }}</time>
+      </span>
+      <div
+        class="notification-actions"
+        role="group"
+        aria-label="通知操作"
+        @click.stop
       >
-        <CheckIcon aria-hidden="true" />
-      </button>
-      <button
-        class="action-btn action-btn-danger"
-        type="button"
-        :aria-label="`刪除 ${notification.title}`"
-        title="刪除 (Delete)"
-        @click="$emit('delete', notification.id)"
-      >
-        <TrashIcon aria-hidden="true" />
-      </button>
+        <button
+          v-if="!notification.isRead"
+          class="action-btn"
+          type="button"
+          :aria-label="`標記 ${notification.title} 為已讀`"
+          title="標記已讀 (Ctrl+M)"
+          @click="$emit('mark-read', notification.id)"
+        >
+          <CheckIcon aria-hidden="true" />
+        </button>
+        <button
+          class="action-btn action-btn-danger"
+          type="button"
+          :aria-label="`刪除 ${notification.title}`"
+          title="刪除 (Delete)"
+          @click="$emit('delete', notification.id)"
+        >
+          <TrashIcon aria-hidden="true" />
+        </button>
+      </div>
     </div>
   </article>
 </template>
@@ -227,7 +236,7 @@ const formattedTime = computed(() => {
   background: color-mix(in srgb, var(--ui-fill) 45%, transparent);
 }
 
-/* Unread rows are tinted and carry a 3px accent lead bar; urgent ones carry a red one */
+/* Unread rows are tinted and carry a dot by the time; urgent ones also carry a red lead bar */
 .notification-unread {
   background: color-mix(in srgb, var(--ui-accent-soft) 45%, transparent);
 }
@@ -236,7 +245,6 @@ const formattedTime = computed(() => {
   background: color-mix(in srgb, var(--ui-accent-soft) 70%, transparent);
 }
 
-.notification-unread::after,
 .notification-urgent::after {
   position: absolute;
   top: 10px;
@@ -244,12 +252,8 @@ const formattedTime = computed(() => {
   left: 0;
   width: 3px;
   border-radius: 0 3px 3px 0;
-  background: var(--ui-accent);
-  content: '';
-}
-
-.notification-urgent::after {
   background: var(--ui-red);
+  content: '';
 }
 
 /* Urgent: a solid red icon tile whatever the type */
@@ -324,10 +328,9 @@ const formattedTime = computed(() => {
   color: var(--ui-red-ink);
 }
 
-/* Row copy stays readable on wide screens; the lead bar and separators still run full width */
+/* Copy takes the whole row; the trailing column sits on the card's right edge */
 .notification-content {
   min-width: 0;
-  max-width: 760px;
   flex: 1;
 }
 
@@ -348,10 +351,34 @@ const formattedTime = computed(() => {
   white-space: nowrap;
 }
 
-.notification-time {
+.notification-trail {
+  display: flex;
   flex: none;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-end;
+  min-width: 92px;
+}
+
+.notification-when {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  height: 22px;
+}
+
+.notification-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ui-accent);
+}
+
+.notification-time {
   font-size: 13px;
+  font-variant-numeric: tabular-nums;
   color: var(--ui-muted);
+  white-space: nowrap;
 }
 
 .notification-text {
@@ -382,16 +409,13 @@ const formattedTime = computed(() => {
   margin-top: 8px;
 }
 
-/* Hover toolbar sits right after the copy column (not at the far edge of a wide card) */
+/* Row actions live under the time in the trailing column and appear on hover or focus */
 .notification-actions {
+  position: absolute;
+  right: 22px;
+  bottom: 10px;
   display: flex;
-  flex: none;
   gap: 4px;
-  align-self: center;
-  padding: 3px;
-  border-radius: 999px;
-  background: var(--ui-surface);
-  box-shadow: var(--ui-shadow-pill);
   opacity: 0;
   transition: opacity var(--ui-dur) var(--ui-ease);
 }
@@ -401,28 +425,26 @@ const formattedTime = computed(() => {
   opacity: 1;
 }
 
-/* Narrow: the toolbar overlays the row's right edge instead of squeezing the copy */
-@media (max-width: 768px) {
-  .notification-actions {
-    position: absolute;
-    top: 8px;
-    right: 12px;
-  }
-}
-
-/* Touch: no hover, so actions sit in the flow under the copy */
-@media (hover: none) {
+/* Phone and touch: time hugs the right edge, the actions drop to their own row under the copy */
+@media (max-width: 768px), (hover: none) {
   .notification-card {
     flex-wrap: wrap;
   }
 
+  .notification-trail {
+    display: contents;
+  }
+
+  .notification-when {
+    order: 2;
+  }
+
   .notification-actions {
     position: static;
+    order: 3;
     flex-basis: 100%;
     justify-content: flex-end;
-    padding: 0;
-    background: none;
-    box-shadow: none;
+    margin: -6px -8px -8px 0;
     opacity: 1;
   }
 }
@@ -430,8 +452,8 @@ const formattedTime = computed(() => {
 .action-btn {
   display: grid;
   place-items: center;
-  width: 32px;
-  height: 32px;
+  width: 30px;
+  height: 30px;
   border: 0;
   border-radius: 50%;
   background: var(--ui-fill);
@@ -469,9 +491,13 @@ const formattedTime = computed(() => {
   }
 
   .notification-card + .notification-card::before {
+    right: 16px;
     left: 70px;
   }
 
+}
+
+@media (max-width: 768px), (hover: none) {
   .action-btn {
     width: 44px;
     height: 44px;
