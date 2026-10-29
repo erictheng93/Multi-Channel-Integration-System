@@ -58,7 +58,9 @@
             'has-unread': unreadOf(conversation) > 0,
             'is-selected': selectionMode && selectedIds.has(conversation.id)
           }"
+          tabindex="0"
           @click="handleRowClick(conversation.id)"
+          @keydown.enter.self="handleRowClick(conversation.id)"
         >
           <td
             v-if="selectionMode"
@@ -117,6 +119,7 @@
             </div>
           </td>
           <td class="status-cell">
+            <!-- A pill only for the exceptions that need an agent (waiting / stale); every other state is quiet text -->
             <template v-if="replyStateOf(conversation, now).state === 'stale'">
               <span
                 class="ui-pill"
@@ -129,32 +132,36 @@
               >從未回覆</span>
             </template>
             <span
-              v-else
-              class="ui-pill"
-              :class="replyPillClass(replyStateOf(conversation, now).state)"
-              :title="replyStateOf(conversation, now).state === 'waiting' ? WAITING_HINT : undefined"
+              v-else-if="replyStateOf(conversation, now).state === 'waiting'"
+              class="ui-pill ui-pill-orange"
+              :title="WAITING_HINT"
             >{{ replyStateOf(conversation, now).text }}</span>
             <span
-              v-if="freeReplySeconds(conversation, now) !== null"
-              class="ui-pill ui-pill-green ui-pill-dot free-pill"
-              title="Reply API 免費回覆時間"
-            >免費回覆 {{ freeReplySeconds(conversation, now) }} 秒</span>
+              v-else
+              class="state-text"
+              :class="`state-${replyStateOf(conversation, now).state}`"
+            >{{ replyStateOf(conversation, now).text }}</span>
           </td>
           <td class="agent-cell">
             <span
               v-if="conversation.assignedTeam?.name"
-              class="ui-pill"
+              class="team-text"
             >{{ conversation.assignedTeam.name }}</span>
             <span
               v-else
-              class="ui-pill ui-pill-orange unassigned"
+              class="team-text unassigned"
             >未指派</span>
           </td>
           <td
             class="time-cell"
             :title="formatFull(getUpdatedAt(conversation))"
           >
-            {{ relativeTime(getUpdatedAt(conversation), now) }}
+            <span
+              v-if="freeReplySeconds(conversation, now) !== null"
+              class="free-pill"
+              title="Reply API 免費回覆時間"
+            >免費回覆 {{ freeReplySeconds(conversation, now) }} 秒</span>
+            <span class="time-text">{{ relativeTime(getUpdatedAt(conversation), now) }}</span>
           </td>
         </tr>
       </TransitionGroup>
@@ -174,7 +181,6 @@ import {
   initialOf,
   STALE_HINT,
   replyStateOf,
-  type ReplyState,
   platformName,
   relativeTime,
   unreadOf,
@@ -255,9 +261,6 @@ const getUpdatedAt = (conversation: Conversation) => {
   return conversation.updatedAt || legacyConversation.updated_at
 }
 
-const replyPillClass = (state: ReplyState): string =>
-  state === 'waiting' ? 'ui-pill-orange' : state === 'replied' ? 'ui-pill-green' : ''
-
 const formatFull = (date?: Date | number | string) => {
   if (!date) { return '' }
   const dateObj = new Date(date)
@@ -302,6 +305,17 @@ const getLastMessageText = (conversation: Conversation) => {
   cursor: pointer;
 }
 
+/* Hover and keyboard focus read as a lifted row; selection keeps its own ring */
+.conversation-row:hover {
+  background: var(--ui-sel-tint);
+}
+
+.conversation-row:focus-visible {
+  outline: none;
+  background: var(--ui-sel-tint);
+  box-shadow: inset 3px 0 0 var(--ui-accent);
+}
+
 .conversation-row.is-selected {
   background: var(--ui-sel-tint);
   box-shadow: var(--ui-sel-ring);
@@ -333,11 +347,11 @@ const getLastMessageText = (conversation: Conversation) => {
 
 /* Column widths */
 .customer-col {
-  width: 26%;
+  width: 24%;
 }
 
 .message-col {
-  width: 31%;
+  width: 29%;
 }
 
 .status-col {
@@ -349,7 +363,7 @@ const getLastMessageText = (conversation: Conversation) => {
 }
 
 .time-col {
-  width: 12%;
+  width: 16%;
   text-align: right !important;
 }
 
@@ -477,10 +491,41 @@ const getLastMessageText = (conversation: Conversation) => {
   margin-left: 4px;
 }
 
+/* Quiet states: a dot and plain text instead of a pill on every row */
+.state-text,
+.team-text {
+  font-size: 13px;
+  color: var(--ui-muted);
+}
+
+.state-text {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.state-text::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ui-faint);
+}
+
+.state-text.state-replied::before {
+  background: var(--ui-green);
+}
+
+.team-text:not(.unassigned) {
+  color: var(--ui-ink-2);
+}
+
+/* Free-reply countdown rides inline with the time instead of breaking the row rhythm */
 .free-pill {
-  display: flex;
-  width: fit-content;
-  margin-top: 4px;
+  margin-right: 10px;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ui-green-ink);
 }
 
 .time-cell {

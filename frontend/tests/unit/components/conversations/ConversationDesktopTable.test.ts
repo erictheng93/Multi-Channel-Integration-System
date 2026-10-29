@@ -122,18 +122,18 @@ describe('ConversationDesktopTable.vue', () => {
     })
   })
 
-  describe('Status pill', () => {
+  describe('Status text (a pill only for 待回覆 / 逾期)', () => {
     it('closed -> 已結案', () => {
-      expect(mountTable([createConversation({ status: 'closed' })]).find('.status-cell .ui-pill').text()).toBe('已結案')
+      expect(mountTable([createConversation({ status: 'closed' })]).find('.status-cell .state-text').text()).toBe('已結案')
     })
 
     it('assigned to a team -> 進行中', () => {
       const wrapper = mountTable([createConversation({ assignedTeamId: 1, assignedTeam: { id: 1, name: 'A' } })])
-      expect(wrapper.find('.status-cell .ui-pill').text()).toBe('進行中')
+      expect(wrapper.find('.status-cell .state-text').text()).toBe('進行中')
     })
 
     it('not assigned -> 待處理', () => {
-      expect(mountTable([createConversation()]).find('.status-cell .ui-pill').text()).toBe('待處理')
+      expect(mountTable([createConversation()]).find('.status-cell .state-text').text()).toBe('待處理')
     })
   })
 
