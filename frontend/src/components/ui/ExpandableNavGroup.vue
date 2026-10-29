@@ -140,7 +140,7 @@
   }
 
   .nav-item.active .nav-icon {
-    color: var(--ui-accent);
+    color: var(--section-hue);
   }
 
   .nav-text {
@@ -187,8 +187,8 @@
   }
 
   .submenu-item.active {
-    background: var(--ui-accent-soft);
-    color: var(--ui-accent);
+    background: var(--section-hue-soft);
+    color: var(--section-ink);
     font-weight: 500;
   }
 

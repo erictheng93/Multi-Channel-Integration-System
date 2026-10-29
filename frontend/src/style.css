@@ -109,6 +109,8 @@
     --ui-teal-soft: rgba(48, 176, 199, 0.14);
     --ui-indigo: #5856d6;
     --ui-indigo-soft: rgba(88, 86, 214, 0.12);
+    --ui-indigo-ink: #4a48c6; /* 6:1 on --ui-indigo-soft */
+    --ui-blue: #007aff; /* iOS system blue: fills and graphics only; text uses --ui-accent */
 
     --ui-line: #06c755;
     --ui-messenger: #0866ff;
@@ -129,6 +131,8 @@
     --ui-shadow-pill: 0 1px 2px rgba(0, 0, 0, 0.06), 0 2px 8px rgba(0, 0, 0, 0.04);
 
     --ui-r-card: 22px;
+    --ui-r-group: 18px; /* inset-grouped surfaces */
+    --ui-r-lead: 28px; /* the one elevated lead object */
     --ui-r-inner: 14px;
     --ui-r-control: 12px;
 
@@ -143,8 +147,8 @@
     --ui-t-lead-sm: 56px;
     --ui-w-lead: 300;
     --ui-track-lead: -0.045em;
-    --ui-t-large: 30px;
-    --ui-track-large: -0.03em;
+    --ui-t-large: 34px;
+    --ui-track-large: -0.035em;
     --ui-t-title: 19px;
     --ui-track-title: -0.015em;
     --ui-t-head: 15px;
@@ -204,6 +208,8 @@
     --ui-teal-soft: rgba(64, 200, 224, 0.18);
     --ui-indigo: #5e5ce6;
     --ui-indigo-soft: rgba(94, 92, 230, 0.22);
+    --ui-indigo-ink: #a5a4ff;
+    --ui-blue: #0a84ff;
     --ui-p-lavender: #2b2638;
     --ui-p-lavender-ink: #c9b8f0;
     --ui-p-peach: #33281c;
@@ -220,6 +226,40 @@
     --ui-glass: rgba(28, 28, 30, 0.72);
     --ui-sidebar-bg: rgba(22, 22, 24, 0.82);
     --ui-sel-bg: #2c2c2e;
+  }
+
+  /* ------------------------------------------------------------
+     Section colour identity ("Service Rings" direction).
+     Each sidebar section owns one iOS system hue. AppLayout puts
+     data-section on its root (from config/nav-sections.ts) and the
+     sidebar puts it on each nav group, so everything inside reads the
+     same three tokens:
+       --section-hue       fills and graphics (icon tile, ring, active icon)
+       --section-hue-soft  quiet wash (active nav row, tinted chips)
+       --section-ink       text and links; AA on --section-hue-soft and on white
+     Semantic colours (good / warn / bad) stay separate: never use a
+     section hue to say "ok" or "wrong".
+     ------------------------------------------------------------ */
+  :root,
+  [data-section='workspace'] {
+    --section-hue: var(--ui-blue);
+    --section-hue-soft: var(--ui-accent-soft);
+    --section-ink: var(--ui-accent);
+  }
+  [data-section='growth'] {
+    --section-hue: var(--ui-orange);
+    --section-hue-soft: var(--ui-orange-soft);
+    --section-ink: var(--ui-orange-ink);
+  }
+  [data-section='team'] {
+    --section-hue: var(--ui-green);
+    --section-hue-soft: var(--ui-green-soft);
+    --section-ink: var(--ui-green-ink);
+  }
+  [data-section='system'] {
+    --section-hue: var(--ui-indigo);
+    --section-hue-soft: var(--ui-indigo-soft);
+    --section-ink: var(--ui-indigo-ink);
   }
 
   /* Force Light Mode Override (System Preference) */
@@ -681,12 +721,30 @@
     grid-area: title;
     display: flex;
     align-items: center;
+    gap: 14px;
     min-width: 0;
-    min-height: var(--ui-head-h);
+    min-height: 44px;
     margin: 0;
-    font: 700 var(--ui-t-large) / 36px var(--ui-font-display);
+    font: 700 var(--ui-t-large) / 40px var(--ui-font-display);
     letter-spacing: var(--ui-track-large);
     color: var(--ui-ink);
+  }
+  /* Section icon tile: the page's nav glyph on a solid section-hue squircle (iOS Settings) */
+  .ui-page-ico {
+    flex: none;
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 11px;
+    background: linear-gradient(180deg, color-mix(in srgb, var(--section-hue) 82%, #fff), var(--section-hue));
+    color: #fff;
+    box-shadow: inset 0 0 0 0.5px rgba(0, 0, 0, 0.08);
+  }
+  .ui-page-ico svg {
+    width: 22px;
+    height: 22px;
+    stroke-width: 1.9;
   }
   .ui-page-title-text {
     overflow: hidden;
@@ -696,6 +754,7 @@
   .ui-page-sub {
     grid-area: sub;
     min-height: 20px;
+    margin-top: 2px;
     margin: 0;
     overflow: hidden;
     font-size: 14px;
@@ -710,7 +769,7 @@
     align-items: center;
     justify-content: flex-end;
     gap: 8px;
-    min-height: var(--ui-head-h);
+    min-height: 44px;
   }
   .ui-page-actions .btn {
     min-height: var(--ui-head-h);
@@ -735,12 +794,57 @@
   }
 
   /* Card */
+  /* Surface levels (Service Rings direction):
+       a. canvas        the page background
+       b. .ui-card / .ui-group   white inset-grouped surface, NO shadow (iOS Settings)
+       c. .ui-lead      the ONE elevated object per page: larger radius, the only soft shadow
+     Nothing but .ui-lead (and floating layers: menus, modals) casts a shadow. */
   .ui-card {
     min-width: 0;
     background: var(--ui-surface);
-    border-radius: var(--ui-r-card);
-    box-shadow: var(--ui-shadow-card);
+    border-radius: var(--ui-r-group);
     color: var(--ui-ink);
+  }
+  .ui-lead {
+    min-width: 0;
+    background: var(--ui-surface);
+    border-radius: var(--ui-r-lead);
+    box-shadow: var(--ui-shadow-raised);
+    color: var(--ui-ink);
+  }
+  .ui-lead-pad {
+    padding: 28px 32px;
+  }
+  /* Inset-grouped list: a labelled white group of rows with hairline separators */
+  .ui-group {
+    --row-pad-x: 18px;
+    min-width: 0;
+    overflow: hidden;
+    background: var(--ui-surface);
+    border-radius: var(--ui-r-group);
+    color: var(--ui-ink);
+  }
+  .ui-group-label {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    margin: 0 0 8px;
+    padding: 0 6px 0 16px;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    color: var(--ui-muted);
+  }
+  .ui-group-label .ui-link {
+    margin-left: auto;
+    font-weight: 500;
+  }
+  .ui-group-foot {
+    margin: 8px 0 0;
+    padding: 0 16px;
+    font-size: 13px;
+    line-height: 18px;
+    color: var(--ui-muted);
   }
   .ui-card-pad {
     padding: 20px 22px;
@@ -774,7 +878,7 @@
     gap: 2px;
     font-size: 13px;
     font-weight: 500;
-    color: var(--ui-accent);
+    color: var(--section-ink, var(--ui-accent));
     text-decoration: none;
     cursor: pointer;
   }
@@ -794,7 +898,7 @@
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 12px 22px;
+    padding: 12px var(--row-pad-x, 22px);
     transition: background var(--ui-dur) var(--ui-ease);
   }
   /* Dividers are inset symmetrically: the leading inset clears the avatar/icon, the trailing
@@ -803,13 +907,13 @@
     content: '';
     position: absolute;
     top: 0;
-    right: 22px;
-    left: 66px;
+    right: var(--row-pad-x, 22px);
+    left: var(--row-inset, 66px);
     height: 0.5px;
     background: var(--ui-sep);
   }
   .ui-row.is-flush + .ui-row.is-flush::before {
-    left: 22px;
+    left: var(--row-pad-x, 22px);
   }
   .ui-row:hover {
     background: color-mix(in srgb, var(--ui-fill) 45%, transparent);
@@ -836,6 +940,41 @@
     color: var(--ui-muted);
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+  /* Settings-style row: label left, current value right (muted), optional chevron */
+  .ui-row-value {
+    flex: none;
+    max-width: 55%;
+    overflow: hidden;
+    font-size: 15px;
+    color: var(--ui-muted);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .ui-row.is-nav::after {
+    content: '';
+    flex: none;
+    width: 8px;
+    height: 14px;
+    margin-left: 2px;
+    background: var(--ui-faint);
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 14'%3E%3Cpath d='M1 1l6 6-6 6' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / contain no-repeat;
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 14'%3E%3Cpath d='M1 1l6 6-6 6' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / contain no-repeat;
+  }
+  /* Leading icon tile of a settings row, in a section or semantic hue */
+  .ui-row-ico {
+    flex: none;
+    display: grid;
+    place-items: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    background: var(--section-hue);
+    color: #fff;
+  }
+  .ui-row-ico svg {
+    width: 17px;
+    height: 17px;
   }
   .ui-row-meta {
     font-size: 13px;
@@ -1358,7 +1497,22 @@
       grid-template-columns: 1fr;
     }
     .ui-page-title {
-      font-size: 26px;
+      gap: 11px;
+      min-height: 38px;
+      font-size: 28px;
+      line-height: 34px;
+    }
+    .ui-page-ico {
+      width: 34px;
+      height: 34px;
+      border-radius: 10px;
+    }
+    .ui-page-ico svg {
+      width: 19px;
+      height: 19px;
+    }
+    .ui-lead-pad {
+      padding: 22px 20px;
     }
     /* Compact KPI tiles: icon + label, number and one footer line */
     .ui-kpi-grid {
