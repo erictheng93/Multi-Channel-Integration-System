@@ -21,11 +21,11 @@
 -- 3. AUTO-CLOSE INDEX. The nightly auto-close (autoCloseIdleConversations) looks for open,
 --    not-waiting conversations idle for N days. The partial index holds only those rows, ordered by
 --    the last customer message, so the query reads the qualifying prefix and nothing else.
--- 4. The 'system' agent row (from 0039/0040) is the actor of the auto-close activity log
+-- 4. The 'system' agent row (role agent, inactive, no teams, unusable password) is the actor of the auto-close activity log
 --    (activities.user_id references agents.id). INSERT OR IGNORE: a no-op where it exists.
 
 INSERT OR IGNORE INTO agents (id, email, password_hash, display_name, role, is_active, created_at, updated_at)
-VALUES ('system', 'system@internal', 'SYSTEM_NO_LOGIN', 'System', 'admin', 0, datetime('now'), datetime('now'));
+VALUES ('system', 'system@internal', 'SYSTEM_NO_LOGIN', 'System', 'agent', 0, datetime('now'), datetime('now'));
 
 DROP TRIGGER IF EXISTS trg_messages_awaiting_customer;
 DROP TRIGGER IF EXISTS trg_messages_awaiting_reply_insert;
