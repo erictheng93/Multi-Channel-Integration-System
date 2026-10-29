@@ -3,6 +3,7 @@
     <div
       class="timeline-item__icon"
       :class="[iconStyle.bgClass, iconStyle.colorClass]"
+      :data-system-actor="systemActor || undefined"
     >
       <component
         :is="iconStyle.icon"
@@ -11,8 +12,9 @@
     </div>
     <div class="timeline-item__content">
       <div class="timeline-item__header">
-        <span class="timeline-item__user">{{ activity.userName }}</span>
+        <span class="timeline-item__user">{{ getActorName(activity) }}</span>
         <span
+          v-if="!systemActor"
           class="timeline-item__role ui-pill"
           :class="activity.userRole === 'admin' ? 'ui-pill-blue' : 'ui-pill-green'"
           :aria-label="getRoleLabel(activity.userRole)"
@@ -90,7 +92,7 @@ import { ROLES } from '@/constants/roles'
 import { isActivityRestoreEnabled } from '@/config/runtime'
 import { useRestoreActivity } from '@/composables/useRestoreActivity'
 import type { MidChange, RestoreState } from './types'
-import { getActionIconStyle, formatActivityDetails, getActivityDescription, getRoleLabel } from './utils'
+import { getActionIconStyle, formatActivityDetails, getActivityDescription, getRoleLabel, getActorName, isSystemActor } from './utils'
 import ActivityDetailPanel from './ActivityDetailPanel.vue'
 import RestoreConfirmModal from './RestoreConfirmModal.vue'
 
@@ -115,7 +117,14 @@ const {
   attemptRestore,
 } = useRestoreActivity()
 
-const iconStyle = computed(() => getActionIconStyle(props.activity.action))
+const systemActor = computed(() => isSystemActor(props.activity))
+// Not a person: neutral tile instead of the action colour, never an avatar
+const iconStyle = computed(() => {
+  const style = getActionIconStyle(props.activity.action)
+  return systemActor.value
+    ? { ...style, bgClass: 'bg-[var(--ui-fill)]', colorClass: 'text-[var(--ui-muted)]' }
+    : style
+})
 
 const formattedDetails = computed(() =>
   formatActivityDetails(props.activity.details ?? null, props.activity.action)

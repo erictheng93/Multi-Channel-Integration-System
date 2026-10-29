@@ -228,6 +228,19 @@ describe('Dashboard.vue', () => {
     expect(wrapper.find('[data-testid="stale-waiting-link"]').exists()).toBe(false)
   })
 
+  it('shows system-initiated activity as 系統, not as a member name', async () => {
+    api.listActivities.mockImplementation(() => ok({
+      items: [{ id: 1, userId: 'system', userName: 'System', userRole: 'system', action: 'conversation_auto_close', resourceType: 'conversation', createdAt: minutesAgo(5) }],
+      total: 1, page: 1, pageSize: 5, totalPages: 1
+    }))
+    const wrapper = mountDashboard()
+    await flushPromises()
+    const row = wrapper.find('.feed li')
+    expect(row.text()).toContain('系統')
+    expect(row.text()).not.toContain('System')
+    expect(row.find('.ico-tile').classes()).toContain('tone-system')
+  })
+
   it('shows an error state with retry when the summary fails', async () => {
     api.getSummary.mockImplementation(() => Promise.resolve({ success: false, error: 'boom' }))
     const wrapper = mountDashboard()
