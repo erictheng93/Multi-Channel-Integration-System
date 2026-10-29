@@ -26,6 +26,7 @@ import type {
 } from '../types';
 import { validateReplyToMessageId } from './validate-reply-to';
 import { nowISO } from '@/utils/timestamp'
+import { getConversationVisibilityCondition, type ConversationVisibilityUser } from '@/services/conversation-visibility';
 
 /**
  * 尋找或建立客戶 (增強版 - 收集更多客戶資訊)
@@ -280,18 +281,19 @@ export async function getConversationMessages(
 }
 
 /**
- * 獲取客戶的所有對話
+ * 獲取客戶的對話 (only those the viewer may see: their teams plus the unassigned pool)
  */
 export async function getCustomerConversations(
   db: D1Database,
-  customerId: number
+  customerId: number,
+  viewer: ConversationVisibilityUser
 ): Promise<DbConversation[]> {
   const drizzleDb = createDbClient(db);
   
   const conversationList = await drizzleDb
     .select()
     .from(conversations)
-    .where(eq(conversations.customerId, customerId))
+    .where(and(eq(conversations.customerId, customerId), getConversationVisibilityCondition(viewer)))
     .orderBy(desc(conversations.lastMessageAt));
 
   return conversationList.map(convertConversation);
