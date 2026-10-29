@@ -154,14 +154,14 @@ defineEmits<{
 .template-meta {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px 12px;
+  gap: 4px 0;
   font-size: 13px;
   color: var(--ui-muted);
   font-variant-numeric: tabular-nums;
 }
 
 .template-meta span + span::before {
-  margin-right: 12px;
+  margin: 0 8px;
   content: '·';
 }
 

@@ -17,7 +17,7 @@
         {{ stats.totalReports }}
       </div>
       <div class="ui-kpi-foot">
-        <span>{{ stats.thisMonthGenerated > 0 ? '本月新增' : '全部狀態合計' }}</span>
+        <span>{{ stats.thisMonthGenerated > 0 ? '本月新增' : '累計產生' }}</span>
         <b
           v-if="stats.thisMonthGenerated > 0"
           class="foot-val"
