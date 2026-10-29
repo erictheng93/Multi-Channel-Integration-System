@@ -306,9 +306,15 @@
     box-shadow: 0 0 0 3px color-mix(in srgb, var(--ui-accent) 35%, transparent);
   }
 
+  /* iOS disabled pattern: neutral fill + muted ink, never a faded brand colour
+     (a 40% blue reads as broken). Keeps cursor; aria/disabled attrs unchanged. */
   .btn:disabled {
-    opacity: 0.4;
+    background-color: var(--ui-fill);
+    color: var(--ui-muted);
     cursor: not-allowed;
+  }
+  .btn-ghost:disabled {
+    background-color: transparent;
   }
 
   /* Primary - iOS System Blue */
