@@ -548,67 +548,67 @@
           v-if="feed.length > 0"
           class="ui-card feed-card"
         >
-            <div class="ui-card-head feed-head">
-              <h2 class="ui-card-title">
-                最近動態
-              </h2>
-              <router-link
-                v-if="isAdmin"
-                to="/activities"
-                class="ui-link ui-card-end"
+          <div class="ui-card-head feed-head">
+            <h2 class="ui-card-title">
+              最近動態
+            </h2>
+            <router-link
+              v-if="isAdmin"
+              to="/activities"
+              class="ui-link ui-card-end"
+            >
+              全部
+            </router-link>
+          </div>
+          <ul class="feed">
+            <li
+              v-for="a in feed"
+              :key="a.id"
+            >
+              <span
+                class="ico-tile"
+                :class="isSystemActor(a) ? 'tone-system' : `tone-${feedKind(a.action)}`"
               >
-                全部
-              </router-link>
-            </div>
-            <ul class="feed">
-              <li
-                v-for="a in feed"
-                :key="a.id"
-              >
-                <span
-                  class="ico-tile"
-                  :class="isSystemActor(a) ? 'tone-system' : `tone-${feedKind(a.action)}`"
+                <svg
+                  class="ico"
+                  viewBox="0 0 24 24"
                 >
-                  <svg
-                    class="ico"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      v-if="feedKind(a.action) === 'close'"
-                      d="m5 12 5 5L20 7"
+                  <path
+                    v-if="feedKind(a.action) === 'close'"
+                    d="m5 12 5 5L20 7"
+                  />
+                  <template v-else-if="feedKind(a.action) === 'assign'">
+                    <circle
+                      cx="9"
+                      cy="8"
+                      r="4"
                     />
-                    <template v-else-if="feedKind(a.action) === 'assign'">
-                      <circle
-                        cx="9"
-                        cy="8"
-                        r="4"
-                      />
-                      <path d="M2 21v-1a6 6 0 0 1 12 0v1" />
-                    </template>
-                    <path
-                      v-else-if="feedKind(a.action) === 'broadcast'"
-                      d="m22 2-7 20-4-9-9-4Z"
+                    <path d="M2 21v-1a6 6 0 0 1 12 0v1" />
+                  </template>
+                  <path
+                    v-else-if="feedKind(a.action) === 'broadcast'"
+                    d="m22 2-7 20-4-9-9-4Z"
+                  />
+                  <path
+                    v-else-if="feedKind(a.action) === 'login'"
+                    d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3"
+                  />
+                  <template v-else>
+                    <circle
+                      cx="12"
+                      cy="12"
+                      r="9"
                     />
-                    <path
-                      v-else-if="feedKind(a.action) === 'login'"
-                      d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3"
-                    />
-                    <template v-else>
-                      <circle
-                        cx="12"
-                        cy="12"
-                        r="9"
-                      />
-                      <path d="M12 8v4l2.5 2.5" />
-                    </template>
-                  </svg>
-                </span>
-                <div>
-                  {{ getActorName(a) }} {{ describeActivity(a) }}
-                  <time :datetime="a.createdAt">{{ relativeTime(a.createdAt) }}</time>
-                </div>
-              </li>
-            </ul>
+                    <path d="M12 8v4l2.5 2.5" />
+                  </template>
+                </svg>
+              </span>
+              <div>
+                {{ getActorName(a) }} {{ describeActivity(a) }}
+                <time :datetime="a.createdAt">{{ relativeTime(a.createdAt) }}</time>
+              </div>
+            </li>
+          </ul>
         </article>
       </section>
 
