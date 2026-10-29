@@ -149,7 +149,8 @@
   const revealActive = () => {
     const el = navEl.value
     if (!el) { return }
-    const active = el.querySelector<HTMLElement>('.submenu-item.active, .nav-item.active')
+    // the open submenu's own item wins over its group header
+    const active = el.querySelector<HTMLElement>('.submenu-item.active') ?? el.querySelector<HTMLElement>('.nav-item.active')
     if (active) {
       const box = el.getBoundingClientRect()
       const rect = active.getBoundingClientRect()

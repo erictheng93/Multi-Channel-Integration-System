@@ -330,11 +330,11 @@ function reasonLabel(reason: BroadcastRecipientErrorReason): string {
   color: var(--ui-muted);
 }
 
-/* On the selected (dark) chip the count follows the chip's light text */
+/* On the selected (accent wash) chip the count follows the chip ink */
 .ui-chip.is-on .chip-n,
 .ui-chip[aria-pressed="true"] .chip-n {
   color: inherit;
-  opacity: 0.8;
+  opacity: 1;
 }
 
 
