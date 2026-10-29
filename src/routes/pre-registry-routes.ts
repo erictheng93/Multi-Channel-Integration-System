@@ -8,6 +8,7 @@ import { createContextLogger } from '@/utils/logger';
 import websocketHealthApp from '@modules/websocket/handlers/websocket-health';
 import websocketDashboardApp from '@modules/websocket/handlers/websocket-dashboard';
 import websocketMainHandler from '@modules/websocket/handlers/websocket-main';
+import teamPresenceHandler from '@modules/websocket/handlers/team-presence';
 import { getConfigCheck } from '@modules/system/handlers/health-main';
 import { comparisonAPI } from '@modules/analytics/handlers/comparison-api';
 import kvOptimizationMonitoringHandler from '@modules/system/handlers/kv-optimization-monitoring';
@@ -31,6 +32,7 @@ const log = createContextLogger('PreRegistryRoutes');
 export function registerPreRegistryRoutes(app: Hono<{ Bindings: Bindings }>): void {
   // Protect sensitive WebSocket endpoints (/health, /readiness, /liveness are cheap and public; /metrics and /health-detail are admin only)
   app.use('/api/websocket/metrics', jwtAuth, requireAdmin());
+  app.use('/api/websocket/metrics/history', jwtAuth, requireAdmin());
   app.use('/api/websocket/health-detail', jwtAuth, requireAdmin());
   app.use('/api/websocket/migration-status', jwtAuth);
 
@@ -43,6 +45,9 @@ export function registerPreRegistryRoutes(app: Hono<{ Bindings: Bindings }>): vo
       'GET /api/websocket/liveness'
     ]
   });
+
+  // GET /api/team/presence (jwtAuth inside the handler; /api/team is not part of the unified registry)
+  app.route('/api/team', teamPresenceHandler);
 
   app.route('/api/websocket', websocketMainHandler);
   log.info('WebSocket connection endpoints registered', {

@@ -25,6 +25,28 @@ export interface DistributionStats {
   activeConnections: number;
 }
 
+export interface MetricsSample {
+  ts: number;
+  eventsIn: number;
+  eventsOut: number;
+  success: number;
+  failed: number;
+}
+
+export interface MetricsWindow {
+  /** Seconds covered by the delta; 0 when there was no reference sample. */
+  windowSeconds: number;
+  eventsInPerSecond: number | null;
+  eventsOutPerSecond: number | null;
+  /** failed / (success + failed) deliveries inside the window; null when there is no window. */
+  errorRate: number | null;
+}
+
+const METRICS_MIN_WINDOW_MS = 30_000;
+const METRICS_SAMPLE_SPACING_MS = 30_000;
+const METRICS_SAMPLE_RETENTION_MS = 15 * 60_000;
+const METRICS_MAX_SAMPLES = 12;
+
 export interface BroadcasterConfig {
   MAX_QUEUE_SIZE: number;
   BATCH_SIZE: number;
@@ -73,6 +95,9 @@ export interface BroadcasterContext {
  * - Metrics updates
  */
 export class BroadcasterHelpers {
+  private samples: MetricsSample[] = [];
+  private samplesLoaded = false;
+
   constructor(private ctx: BroadcasterContext) {}
 
   validateEvent(event: DurableObjectEvent | undefined): boolean {
@@ -244,17 +269,75 @@ export class BroadcasterHelpers {
     }
   }
 
-  updateMetrics(): void {
+  /**
+   * Refresh derived metrics. Rates are a real delta between the current counters and the
+   * newest stored sample that is at least METRICS_MIN_WINDOW_MS old. There is no timer or alarm:
+   * a sample is taken only when somebody reads the metrics (the star-slash-5 cron plus ad-hoc
+   * admin reads). With no usable reference sample the window is 0 and every rate is null
+   * (unknown, not zero).
+   */
+  async updateMetrics(): Promise<MetricsWindow> {
     const now = nowMs();
-    const timeSinceLastUpdate = now - this.ctx.stats.lastProcessed;
+    const stats = this.ctx.stats;
+    const current: MetricsSample = {
+      ts: now,
+      eventsIn: stats.totalEvents,
+      eventsOut: stats.successfulDeliveries + stats.failedDeliveries,
+      success: stats.successfulDeliveries,
+      failed: stats.failedDeliveries
+    };
 
-    if (timeSinceLastUpdate > 0) {
-      this.ctx.stats.eventsPerSecond =
-        this.ctx.stats.totalEvents / (timeSinceLastUpdate / 1000);
+    if (!this.samplesLoaded) {
+      this.samplesLoaded = true;
+      try {
+        const saved = await this.ctx.state.storage.get('metricsSamples') as MetricsSample[] | undefined;
+        if (Array.isArray(saved)) this.samples = saved;
+      } catch (error) {
+        log.warn('Failed to load metrics samples', { error: error instanceof Error ? error.message : String(error) });
+      }
     }
 
-    this.ctx.stats.queueDepth =
-      this.ctx.eventQueue.length + this.ctx.highPriorityQueue.length;
+    let reference: MetricsSample | undefined;
+    for (let i = this.samples.length - 1; i >= 0; i--) {
+      if (now - this.samples[i].ts >= METRICS_MIN_WINDOW_MS) {
+        reference = this.samples[i];
+        break;
+      }
+    }
+
+    let window: MetricsWindow = {
+      windowSeconds: 0,
+      eventsInPerSecond: null,
+      eventsOutPerSecond: null,
+      errorRate: null
+    };
+    // A counter below the reference means the DO state was reset in between: the delta is meaningless.
+    if (reference && current.eventsIn >= reference.eventsIn && current.eventsOut >= reference.eventsOut) {
+      const seconds = (now - reference.ts) / 1000;
+      const deliveries = (current.success - reference.success) + (current.failed - reference.failed);
+      window = {
+        windowSeconds: Math.round(seconds),
+        eventsInPerSecond: (current.eventsIn - reference.eventsIn) / seconds,
+        eventsOutPerSecond: (current.eventsOut - reference.eventsOut) / seconds,
+        errorRate: deliveries > 0 ? (current.failed - reference.failed) / deliveries : 0
+      };
+    }
+
+    const last = this.samples[this.samples.length - 1];
+    if (!last || now - last.ts >= METRICS_SAMPLE_SPACING_MS) {
+      this.samples = [...this.samples, current]
+        .filter(sample => now - sample.ts <= METRICS_SAMPLE_RETENTION_MS)
+        .slice(-METRICS_MAX_SAMPLES);
+      try {
+        await this.ctx.state.storage.put('metricsSamples', this.samples);
+      } catch (error) {
+        log.warn('Failed to persist metrics samples', { error: error instanceof Error ? error.message : String(error) });
+      }
+    }
+
+    stats.eventsPerSecond = window.eventsInPerSecond ?? 0;
+    stats.queueDepth = this.ctx.eventQueue.length + this.ctx.highPriorityQueue.length;
+    return window;
   }
 
   generateEventId(): string {

@@ -860,3 +860,20 @@ export type AutoReplyLog = typeof autoReplyLogs.$inferSelect;
 export type NewAutoReplyLog = typeof autoReplyLogs.$inferInsert;
 export type AutoReplyDelivery = typeof autoReplyDeliveries.$inferSelect;
 export type NewAutoReplyDelivery = typeof autoReplyDeliveries.$inferInsert;
+
+// WebSocket metrics history (Migration 0068). One row per */5 cron run, pruned after 7 days.
+// Rate/latency/error columns are NULL when the broadcaster had no reference sample for a window.
+export const wsMetricsSnapshots = sqliteTable('ws_metrics_snapshots', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  ts: integer('ts').notNull(), // epoch ms
+  activeConnections: integer('active_connections').notNull(),
+  onlineAgents: integer('online_agents').notNull(),
+  eventsInPerS: real('events_in_per_s'),
+  eventsOutPerS: real('events_out_per_s'),
+  avgProcessingMs: real('avg_processing_ms'),
+  errorRate: real('error_rate')
+}, (table) => ({
+  tsIdx: index('idx_ws_metrics_snapshots_ts').on(table.ts)
+}));
+export type WsMetricsSnapshot = typeof wsMetricsSnapshots.$inferSelect;
+export type NewWsMetricsSnapshot = typeof wsMetricsSnapshots.$inferInsert;
