@@ -68,31 +68,31 @@ describe('ActivityFilterPills', () => {
     expect(wrapper.emitted('apply')).toBeTruthy()
   })
 
-  it('shows clear link when a filter is active (non-default)', () => {
+  it('enables reset when a filter is active (non-default)', () => {
     const wrapper = mountPills({
       filters: { userId: 'u1', action: '', resourceType: '' },
     })
-    expect(wrapper.find('.filter-clear').exists()).toBe(true)
+    expect(wrapper.find('.filter-reset').attributes('disabled')).toBeUndefined()
   })
 
-  it('shows clear link when date range is non-default', () => {
+  it('enables reset when date range is non-default', () => {
     const wrapper = mountPills({ dateRange: 'today' })
-    expect(wrapper.find('.filter-clear').exists()).toBe(true)
+    expect(wrapper.find('.filter-reset').attributes('disabled')).toBeUndefined()
   })
 
-  it('hides clear link when all filters are default', () => {
+  it('disables reset when all filters are default', () => {
     const wrapper = mountPills({
       filters: defaultFilters(),
       dateRange: 'week',
     })
-    expect(wrapper.find('.filter-clear').exists()).toBe(false)
+    expect(wrapper.find('.filter-reset').attributes('disabled')).toBeDefined()
   })
 
-  it('emits clear when clear link is clicked', async () => {
+  it('emits clear when reset is clicked', async () => {
     const wrapper = mountPills({
       filters: { userId: 'u1', action: '', resourceType: '' },
     })
-    await wrapper.find('.filter-clear').trigger('click')
+    await wrapper.find('.filter-reset').trigger('click')
     expect(wrapper.emitted('clear')).toBeTruthy()
   })
 
