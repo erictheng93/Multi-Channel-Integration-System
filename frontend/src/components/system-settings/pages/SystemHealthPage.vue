@@ -6,35 +6,82 @@
 
 <template>
   <div class="health-stack">
-    <article class="ui-card hero">
-      <UiLeadMetric
-        label="整體狀態"
-        :value="heroValue"
-        :loading="controller.processing.value && !controller.healthOverall.value"
-        :meaning="heroSubtitle"
-        :tone="leadTone"
-      >
-        <ul
-          v-if="rows.length > 0"
-          class="hero-counts"
-          aria-label="服務狀態統計"
+    <div class="health-top">
+      <article class="ui-card hero">
+        <UiLeadMetric
+          label="整體狀態"
+          :value="heroValue"
+          :loading="controller.processing.value && !controller.healthOverall.value"
+          :meaning="heroSubtitle"
+          :tone="leadTone"
         >
-          <li :class="{ zero: counts.healthy === 0 }">
-            <span class="dot g" />{{ counts.healthy }} 正常
-          </li>
-          <li :class="{ zero: counts.warning === 0 }">
-            <span class="dot o" />{{ counts.warning }} 警告
-          </li>
-          <li :class="{ zero: counts.critical === 0 }">
-            <span class="dot r" />{{ counts.critical }} 異常
+          <ul
+            v-if="rows.length > 0"
+            class="hero-counts"
+            aria-label="服務狀態統計"
+          >
+            <li :class="{ zero: counts.healthy === 0 }">
+              <span class="dot g" />{{ counts.healthy }} 正常
+            </li>
+            <li :class="{ zero: counts.warning === 0 }">
+              <span class="dot o" />{{ counts.warning }} 警告
+            </li>
+            <li :class="{ zero: counts.critical === 0 }">
+              <span class="dot r" />{{ counts.critical }} 異常
+            </li>
+            <li v-if="counts.unchecked > 0">
+              <span class="dot u" />{{ counts.unchecked }} 未檢查
+            </li>
+          </ul>
+        </UiLeadMetric>
+      </article>
+
+      <article class="ui-card lat-card">
+        <div class="ui-card-head">
+          <div>
+            <h2 class="ui-card-title">
+              回應時間
+            </h2>
+            <div class="ui-card-sub">
+              各服務本次實測，條長為相對比例
+            </div>
+          </div>
+        </div>
+        <ul
+          v-if="latencyRows.length > 0"
+          class="lat-list"
+        >
+          <li
+            v-for="row in latencyRows"
+            :key="row.key"
+            class="lat-item"
+          >
+            <span class="lat-name">{{ row.name }}</span>
+            <span
+              class="lat-track"
+              aria-hidden="true"
+            >
+              <span
+                class="lat-bar"
+                :class="row.tone"
+                :style="{ width: `${row.pct}%` }"
+              />
+            </span>
+            <span class="lat-val">{{ row.latencyMs }}<small> ms</small></span>
           </li>
         </ul>
-      </UiLeadMetric>
-    </article>
+        <p
+          v-else
+          class="lat-none"
+        >
+          {{ controller.processing.value ? '檢查中...' : '尚無實測資料' }}
+        </p>
+      </article>
+    </div>
 
     <SettingsGroup title="服務檢查">
       <UiEmptyState
-        v-if="rows.length === 0"
+        v-if="serviceRows.length === 0"
         :title="controller.processing.value ? '檢查中...' : '尚無檢查結果'"
         :description="controller.processing.value ? '正在逐項檢查服務。' : '按右上角「立即檢查」開始。'"
       >
@@ -55,7 +102,7 @@
         class="ui-list"
       >
         <li
-          v-for="row in rows"
+          v-for="row in serviceRows"
           :key="row.key"
           class="ui-row is-flush hrow"
         >
@@ -109,6 +156,70 @@
           >{{ row.label }}</span>
         </li>
       </ul>
+    </SettingsGroup>
+
+    <SettingsGroup
+      v-if="webhookRow"
+      title="LINE webhook"
+    >
+      <div
+        class="hrow wh"
+        :class="`is-${webhookRow.tone}`"
+      >
+        <span
+          class="hstat"
+          :class="webhookRow.tone"
+          aria-hidden="true"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2.2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path
+              v-if="webhookRow.tone === 'ok'"
+              d="M5 12.5 10 17.5 19 7"
+            />
+            <path
+              v-else-if="webhookRow.tone === 'unknown'"
+              d="M12 6.5V12l3.5 2"
+            />
+            <path
+              v-else
+              d="M12 8v5M12 17h.01"
+            />
+          </svg>
+        </span>
+        <div class="ui-row-main">
+          <div class="ui-row-title">
+            {{ webhookRow.name }}
+          </div>
+          <div class="ui-row-sub">
+            {{ webhookRow.sub }}
+          </div>
+        </div>
+        <span
+          v-if="webhookRow.latencyMs !== null"
+          class="lat-n"
+          :class="webhookRow.tone"
+        >{{ webhookRow.latencyMs.toLocaleString() }}<small>ms</small></span>
+        <span
+          class="ui-pill ui-pill-dot"
+          :class="pillClass(webhookRow.tone)"
+        >{{ webhookRow.label }}</span>
+        <button
+          v-if="webhookRow.tone === 'unknown'"
+          type="button"
+          class="btn btn-secondary btn-sm"
+          :disabled="controller.processing.value"
+          @click="controller.healthCheck(true)"
+        >
+          立即測試
+        </button>
+      </div>
       <template #note>
         LINE webhook 只在按「立即檢查」時測試；若持續失敗，請到 LINE Developers 主控台對 Webhook URL 按「Verify」。
       </template>
@@ -226,8 +337,22 @@ const rows = computed<Row[]>(() => (webhookRow.value ? [...serviceRows.value, we
 const counts = computed(() => ({
   healthy: rows.value.filter(row => row.tone === 'ok').length,
   warning: rows.value.filter(row => row.tone === 'warn').length,
-  critical: rows.value.filter(row => row.tone === 'bad').length
+  critical: rows.value.filter(row => row.tone === 'bad').length,
+  unchecked: rows.value.filter(row => row.tone === 'unknown').length
 }))
+
+/** Measured latencies as relative bars (scaled to at least 100 ms so 12 ms vs 64 ms is not exaggerated) */
+const latencyRows = computed(() => {
+  const measured = rows.value.filter(row => row.latencyMs !== null)
+  const max = Math.max(100, ...measured.map(row => row.latencyMs ?? 0))
+  return measured.map(row => ({
+    key: row.key,
+    name: row.name,
+    tone: row.tone,
+    latencyMs: (row.latencyMs ?? 0).toLocaleString(),
+    pct: Math.max(3, Math.round(((row.latencyMs ?? 0) / max) * 100))
+  }))
+})
 
 
 const overallTone = computed<'ok' | 'warn' | 'bad' | 'unknown'>(() => {
@@ -311,8 +436,100 @@ onMounted(() => {
   min-width: 0;
 }
 
+/* Verdict and measured latencies side by side */
+.health-top {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  gap: 16px;
+  align-items: stretch;
+}
+
 .hero {
   overflow: hidden;
+}
+
+.lat-card {
+  padding-bottom: 20px;
+}
+
+.lat-list {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 4px 22px 0;
+  list-style: none;
+}
+
+.lat-item {
+  display: grid;
+  grid-template-columns: 120px minmax(0, 1fr) 64px;
+  gap: 14px;
+  align-items: center;
+  font-size: 13.5px;
+}
+
+.lat-name {
+  overflow: hidden;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lat-track {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--ui-fill);
+}
+
+.lat-bar {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--ui-green);
+}
+
+.lat-bar.warn {
+  background: var(--ui-orange);
+}
+
+.lat-bar.bad {
+  background: var(--ui-red);
+}
+
+.lat-val {
+  font: 600 14px var(--ui-font-display);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.lat-val small {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ui-muted);
+}
+
+.lat-none {
+  margin: 0;
+  padding: 4px 22px;
+  font-size: 13px;
+  color: var(--ui-muted);
+}
+
+/* LINE webhook is its own on-demand state, not one more row of the always-on checks */
+.wh {
+  display: flex;
+  align-items: center;
+}
+
+.wh .ui-pill {
+  width: auto;
+  min-width: 62px;
+}
+
+.wh.is-unknown .hstat {
+  background: var(--ui-accent-soft);
+  color: var(--ui-accent);
 }
 
 .hero-counts {
@@ -356,6 +573,10 @@ onMounted(() => {
 
 .hero-counts .dot.r {
   background: var(--ui-red);
+}
+
+.hero-counts .dot.u {
+  background: var(--ui-accent);
 }
 
 .hero-counts li.zero .dot {
@@ -436,9 +657,24 @@ onMounted(() => {
   white-space: normal;
 }
 
+@media (max-width: 1024px) {
+  .health-top {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 @media (max-width: 768px) {
   .lat-n {
     width: auto;
+  }
+
+  .lat-item {
+    grid-template-columns: 96px minmax(0, 1fr) 58px;
+    gap: 10px;
+  }
+
+  .wh {
+    flex-wrap: wrap;
   }
 
   .hrow {
