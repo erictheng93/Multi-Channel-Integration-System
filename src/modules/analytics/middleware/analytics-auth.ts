@@ -164,6 +164,9 @@ export async function analyticsAuth(c: Context<{ Bindings: Bindings; Variables: 
   }
 }
 
+// /api/analytics/health, /api/analytics/dashboard/health, /api/analytics/realtime-dashboard/health
+const ANALYTICS_HEALTH_PATH = /^\/api\/analytics(?:\/(?:dashboard|realtime-dashboard))?\/health\/?$/;
+
 /**
  * 使用 PermissionService 檢查用戶是否有分析數據訪問權限
  */
@@ -175,8 +178,9 @@ async function checkAnalyticsPermission(
   teamId: number | undefined,
   db: D1Database
 ): Promise<boolean> {
-  // 健康檢查端點對所有認證用戶開放
-  if (path.includes('/health')) {
+  // 健康檢查端點對所有認證用戶開放 (the exact health routes only: a substring match let any path
+  // containing "/health" skip the permission check)
+  if (method === 'GET' && ANALYTICS_HEALTH_PATH.test(path)) {
     return true;
   }
 
