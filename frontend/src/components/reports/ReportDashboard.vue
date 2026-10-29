@@ -10,15 +10,27 @@
 
     <!-- 統計區域：本月報表為唯一的主指標，其餘為狀態分佈 -->
     <section class="overview-top">
-      <div class="ui-card lead-card">
-        <UiLeadMetric
-          label="本月報表"
-          :value="loaded ? stats.thisMonthGenerated : null"
-          unit="份"
-          meaning="本月已產生的報表數"
-          :loading="!loaded"
-          :dim="loaded && stats.thisMonthGenerated === 0"
-        />
+      <div
+        class="ui-card lead-card"
+        role="group"
+        aria-label="本月報表"
+        :aria-busy="!loaded || undefined"
+      >
+        <div class="lead-label">
+          本月報表
+        </div>
+        <div
+          class="lead-value"
+          :class="{ 'is-dim': loaded && stats.thisMonthGenerated === 0 }"
+        >
+          <span class="lead-num">{{ loaded ? stats.thisMonthGenerated.toLocaleString('en-US') : '—' }}</span><span
+            v-if="loaded"
+            class="lead-unit"
+          >份</span>
+        </div>
+        <p class="lead-meaning">
+          本月已產生的報表數
+        </p>
       </div>
       <StatsGrid
         :stats="stats"
@@ -136,7 +148,6 @@ import PaginationControls from '@/components/ui/PaginationControls.vue'
 import SidebarWidgets from './dashboard/SidebarWidgets.vue'
 import PopularTypesWidget from './dashboard/PopularTypesWidget.vue'
 import RecentActivityWidget, { type RecentActivity } from './dashboard/RecentActivityWidget.vue'
-import UiLeadMetric from '@/components/ui/UiLeadMetric.vue'
 import ConfirmDialog from '@/components/ui/ConfirmDialog.vue'
 
 // Emits
@@ -314,13 +325,48 @@ function handleFilterByType(type: string) {
   align-items: stretch;
 }
 
+/* The lead number stands on type alone: no art, a compact block that centres in its cell */
 .lead-card {
   display: flex;
-  overflow: hidden;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+  padding: 22px;
 }
 
-.lead-card :deep(.ui-lead) {
-  flex: 1;
+.lead-label {
+  font-size: var(--ui-t-meta);
+  font-weight: 600;
+  color: var(--ui-ink-2);
+}
+
+.lead-value {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-family: var(--ui-font-display);
+  font-size: var(--ui-t-lead);
+  font-weight: var(--ui-w-lead);
+  line-height: 1;
+  letter-spacing: var(--ui-track-lead);
+  font-variant-numeric: tabular-nums;
+  color: var(--ui-ink);
+}
+
+.lead-value.is-dim {
+  color: var(--ui-muted);
+}
+
+.lead-unit {
+  font: 500 17px var(--ui-font-ui);
+  letter-spacing: 0;
+  color: var(--ui-muted);
+}
+
+.lead-meaning {
+  margin: 0;
+  font-size: var(--ui-t-meta);
+  color: var(--ui-muted);
 }
 
 .overview-top :deep(.ui-kpi-grid) {
@@ -331,7 +377,7 @@ function handleFilterByType(type: string) {
   display: grid;
   grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
   gap: 16px;
-  align-items: start;
+  align-items: stretch;
 }
 
 .content-left {
@@ -341,14 +387,22 @@ function handleFilterByType(type: string) {
   min-width: 0;
 }
 
+/* Both columns end on the same line; the last widget absorbs the difference (capped for long lists) */
 .content-right {
   display: flex;
   flex-direction: column;
 }
 
-.content-right {
-  position: sticky;
-  top: 16px;
+.content-right :deep(.sidebar-widgets),
+.content-right :deep(.widgets-container) {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
+
+.content-right :deep(.widget-wrapper:last-child) {
+  flex: 1;
+  max-height: 720px;
 }
 
 @media (max-width: 1280px) {
@@ -356,8 +410,8 @@ function handleFilterByType(type: string) {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .content-right {
-    position: static;
+  .content-right :deep(.widget-wrapper:last-child) {
+    max-height: none;
   }
 }
 
