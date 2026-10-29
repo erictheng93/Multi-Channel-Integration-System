@@ -1,141 +1,448 @@
 <template>
-  <div class="not-found-page">
-    <div class="not-found-content">
-      <div class="error-illustration">
-        <div class="error-code">
-          404
+  <!-- Signed-in users get the app shell; the 404 route is public, so signed-out visitors get a bare page -->
+  <component
+    :is="isAuthenticated ? AppLayout : 'div'"
+    :class="{ 'bare-shell': !isAuthenticated }"
+  >
+    <div class="not-found-page">
+      <header class="ui-page-head">
+        <div>
+          <div class="ui-eyebrow">
+            錯誤 404
+          </div>
+          <h1 class="ui-page-title">
+            找不到這個頁面
+          </h1>
+          <p class="ui-page-sub">
+            抱歉，您要找的頁面不存在或已被移除。{{ links.length > 0 ? '可以從下方常用頁面繼續。' : '' }}
+          </p>
         </div>
-        <div class="error-icon" />
-      </div>
-      
-      <div class="error-message">
-        <h1>頁面不存在</h1>
-        <p>抱歉，您要找的頁面不存在或已被移除。</p>
-      </div>
-      
-      <div class="error-actions">
-        <router-link
-          to="/dashboard"
-          class="btn btn-primary"
+        <div class="ui-page-actions">
+          <button
+            type="button"
+            class="btn btn-secondary"
+            @click="goBack"
+          >
+            <svg
+              class="ico"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            ><path d="M19 12H5M11 6l-6 6 6 6" /></svg>
+            返回上頁
+          </button>
+          <router-link
+            :to="homePath"
+            class="btn btn-primary"
+          >
+            <svg
+              class="ico"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            ><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1Z" /></svg>
+            {{ isAuthenticated ? '回到儀表板' : '前往登入' }}
+          </router-link>
+        </div>
+      </header>
+
+      <section
+        class="nf"
+        :class="{ single: links.length === 0 }"
+      >
+        <article class="ui-card hero">
+          <svg
+            class="rings"
+            viewBox="0 0 300 300"
+            aria-hidden="true"
+          >
+            <circle
+              cx="150"
+              cy="150"
+              r="140"
+              stroke-width="1"
+              opacity=".10"
+            />
+            <circle
+              cx="150"
+              cy="150"
+              r="100"
+              stroke-width="1"
+              opacity=".16"
+            />
+            <circle
+              cx="150"
+              cy="150"
+              r="60"
+              stroke-width="1"
+              opacity=".26"
+            />
+            <circle
+              cx="150"
+              cy="150"
+              r="20"
+              stroke-width="1.5"
+              opacity=".5"
+            />
+          </svg>
+          <div class="code">
+            4<span>0</span>4
+          </div>
+          <p>可能原因：網址輸入有誤、頁面已被移除，或你沒有權限查看。</p>
+          <div class="asked ui-well">
+            <span class="k">你開啟的網址</span>
+            <span
+              class="mono"
+              :title="route.fullPath"
+            >{{ route.fullPath }}</span>
+          </div>
+        </article>
+
+        <article
+          v-if="links.length > 0"
+          class="ui-card"
         >
-          <HomeIcon />
-          回到首頁
-        </router-link>
-        <button
-          class="btn btn-secondary"
-          @click="goBack"
-        >
-          <ArrowLeftIcon />
-          返回上頁
-        </button>
-      </div>
+          <div class="ui-card-head">
+            <div>
+              <h2 class="ui-card-title">
+                常用頁面
+              </h2>
+              <div class="ui-card-sub">
+                直接前往工作台的主要區域
+              </div>
+            </div>
+          </div>
+          <div class="list">
+            <router-link
+              v-for="link in links"
+              :key="link.to"
+              :to="link.to"
+              class="go"
+            >
+              <span
+                class="go-ico"
+                :class="link.tone"
+                aria-hidden="true"
+              >
+                <!-- eslint-disable vue/no-v-html -->
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  v-html="link.icon"
+                />
+                <!-- eslint-enable vue/no-v-html -->
+              </span>
+              <div>
+                <b>{{ link.title }}</b>
+                <small>{{ link.text }}</small>
+              </div>
+              <svg
+                class="chev"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              ><path d="m9 18 6-6-6-6" /></svg>
+            </router-link>
+          </div>
+        </article>
+      </section>
     </div>
-  </div>
+  </component>
 </template>
 
 <script setup lang="ts">
-import { useRouter } from 'vue-router'
+import { computed } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { storeToRefs } from 'pinia'
+import AppLayout from '@/components/ui/AppLayout.vue'
+import { useAuthStore } from '@/stores/auth'
 
-const HomeIcon = {
-  template: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>`
+interface QuickLink {
+  to: string
+  title: string
+  text: string
+  tone: 'blue' | 'green' | 'orange' | 'indigo'
+  /** Inner SVG markup, static */
+  icon: string
+  adminOnly?: boolean
 }
 
-const ArrowLeftIcon = {
-  template: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 19-7-7 7-7"/><path d="m19 12-7 7-7-7"/></svg>`
-}
-
+const route = useRoute()
 const router = useRouter()
+const authStore = useAuthStore()
+const { isAuthenticated, isAdmin } = storeToRefs(authStore)
+
+const QUICK_LINKS: QuickLink[] = [
+  {
+    to: '/dashboard',
+    title: '儀表板',
+    text: '待回覆與今日概況',
+    tone: 'blue',
+    icon: '<rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/>'
+  },
+  {
+    to: '/conversations',
+    title: '對話',
+    text: 'LINE 與 Messenger 客戶訊息',
+    tone: 'green',
+    icon: '<path d="M21 12a8 8 0 0 1-11.6 7.1L4 20.5l1.4-4.6A8 8 0 1 1 21 12Z"/>'
+  },
+  {
+    to: '/notifications',
+    title: '通知',
+    text: '指派、提及與系統提醒',
+    tone: 'orange',
+    icon: '<path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/>'
+  },
+  {
+    to: '/tags',
+    title: '客戶標籤',
+    text: '分類與客戶經營',
+    tone: 'indigo',
+    icon: '<path d="M12.6 2.6A2 2 0 0 0 11.2 2H4a2 2 0 0 0-2 2v7.2a2 2 0 0 0 .6 1.4l8.7 8.7a2.4 2.4 0 0 0 3.4 0l6.6-6.6a2.4 2.4 0 0 0 0-3.4Z"/><circle cx="7.5" cy="7.5" r="1.2"/>'
+  },
+  {
+    to: '/settings',
+    title: '系統設定',
+    text: '整合、備份與健康檢查',
+    tone: 'blue',
+    icon: '<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M2 12h3M19 12h3M4.9 19.1 7 17M17 7l2.1-2.1"/>',
+    adminOnly: true
+  }
+]
+
+/** Only pages this user can open (admin-only pages would bounce a non-admin to the dashboard); none when signed out. */
+const links = computed(() =>
+  isAuthenticated.value ? QUICK_LINKS.filter(link => !link.adminOnly || isAdmin.value) : []
+)
+
+const homePath = computed(() => (isAuthenticated.value ? '/dashboard' : '/login'))
 
 const goBack = () => {
   if (window.history.length > 1) {
     router.go(-1)
   } else {
-    router.push('/dashboard')
+    void router.push(homePath.value)
   }
 }
 </script>
 
 <style scoped>
-.not-found-page {
+.bare-shell {
   min-height: 100vh;
   min-height: 100dvh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: linear-gradient(135deg, var(--gray-50), var(--gray-100));
-  padding: var(--space-8);
+  padding: 32px 20px;
+  background: var(--ui-canvas);
 }
 
-.not-found-content {
-  text-align: center;
-  max-width: 500px;
+.not-found-page {
+  display: grid;
+  gap: 20px;
+  width: 100%;
+  max-width: 1280px;
+  margin: 0 auto;
 }
 
-.error-illustration {
+.ico {
+  width: 16px;
+  height: 16px;
+}
+
+.nf {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  gap: 16px;
+}
+
+.nf.single {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.hero {
   position: relative;
-  margin-bottom: var(--space-8);
-}
-
-.error-code {
-  font-size: 8rem;
-  font-weight: 900;
-  color: var(--primary-200);
-  line-height: 1;
-  margin-bottom: var(--space-4);
-}
-
-.error-icon {
-  font-size: 4rem;
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  animation: float 3s ease-in-out infinite;
-}
-
-@keyframes float {
-  0%, 100% { transform: translate(-50%, -50%) translateY(0px); }
-  50% { transform: translate(-50%, -50%) translateY(-10px); }
-}
-
-.error-message h1 {
-  font-size: 2rem;
-  font-weight: 700;
-  color: var(--gray-900);
-  margin-bottom: var(--space-4);
-}
-
-.error-message p {
-  font-size: 1.125rem;
-  color: var(--gray-600);
-  margin-bottom: var(--space-8);
-  line-height: 1.6;
-}
-
-.error-actions {
   display: flex;
-  gap: var(--space-4);
-  justify-content: center;
-  flex-wrap: wrap;
+  flex-direction: column;
+  gap: 14px;
+  padding: 36px 32px 32px;
+  overflow: hidden;
 }
 
-@media (max-width: 640px) {
-  .error-code {
-    font-size: 6rem;
+.code {
+  font: 700 120px / 0.9 var(--ui-font-display);
+  letter-spacing: -0.06em;
+  font-variant-numeric: tabular-nums;
+  color: var(--ui-ink);
+}
+
+.code span {
+  color: var(--ui-accent);
+}
+
+.hero p {
+  max-width: 40ch;
+  margin: 0;
+  font-size: 14.5px;
+  color: var(--ui-muted);
+  text-wrap: balance;
+}
+
+.asked {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-top: 10px;
+  padding: 12px 14px;
+  font-size: 13px;
+}
+
+.asked .k {
+  flex: none;
+  color: var(--ui-muted);
+}
+
+.asked .mono {
+  min-width: 0;
+  overflow: hidden;
+  font-family: var(--ui-font-mono);
+  color: var(--ui-ink-2);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rings {
+  position: absolute;
+  top: -90px;
+  right: -90px;
+  width: 300px;
+  height: 300px;
+  color: var(--ui-accent);
+  pointer-events: none;
+}
+
+.rings circle {
+  fill: none;
+  stroke: currentColor;
+}
+
+.list {
+  padding-bottom: 8px;
+}
+
+.go {
+  position: relative;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 22px;
+  color: inherit;
+  text-decoration: none;
+  transition: background var(--ui-dur) var(--ui-ease);
+}
+
+.go + .go::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 66px;
+  height: 0.5px;
+  background: var(--ui-sep);
+}
+
+.go:hover {
+  background: color-mix(in srgb, var(--ui-fill) 45%, transparent);
+}
+
+.go:focus-visible {
+  outline: 2px solid var(--ui-accent);
+  outline-offset: -2px;
+}
+
+.go-ico {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+}
+
+.go-ico svg {
+  width: 16px;
+  height: 16px;
+}
+
+.go-ico.blue {
+  background: var(--ui-accent-soft);
+  color: var(--ui-accent);
+}
+
+.go-ico.green {
+  background: var(--ui-green-soft);
+  color: var(--ui-green-ink);
+}
+
+.go-ico.orange {
+  background: var(--ui-orange-soft);
+  color: var(--ui-orange-ink);
+}
+
+.go-ico.indigo {
+  background: var(--ui-indigo-soft);
+  color: var(--ui-indigo);
+}
+
+.go b {
+  display: block;
+  font-size: var(--ui-t-head);
+  font-weight: 600;
+}
+
+.go small {
+  font-size: 12.5px;
+  color: var(--ui-muted);
+}
+
+.go .chev {
+  width: 15px;
+  height: 15px;
+  margin-left: auto;
+  color: var(--ui-faint);
+}
+
+@media (max-width: 1024px) {
+  .nf {
+    grid-template-columns: minmax(0, 1fr);
   }
-  
-  .error-message h1 {
-    font-size: 1.5rem;
+}
+
+@media (max-width: 480px) {
+  .code {
+    font-size: 92px;
   }
-  
-  .error-actions {
-    flex-direction: column;
-    align-items: center;
+
+  .hero {
+    padding: 28px 22px 22px;
   }
-  
-  .error-actions .btn {
-    width: 100%;
-    max-width: 200px;
+
+  .asked {
+    flex-wrap: wrap;
   }
 }
 </style>
