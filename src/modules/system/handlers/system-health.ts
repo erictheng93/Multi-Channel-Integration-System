@@ -20,88 +20,46 @@ import { sql } from 'drizzle-orm'
 import { getCredentialsFromKV } from './system-crypto-utils'
 import { nowISO, nowMs } from '@/utils/timestamp'
 
-// Health check
+// Public liveness check (unauthenticated: load balancers, CI deploy gate, `health:check`).
+// Cheap and side-effect free by design: one D1 SELECT 1 and one KV read. It makes NO outbound
+// calls (LINE/FB detail lives behind admin auth in getApiStatus, cached 60 s), does no KV writes,
+// and exposes only up/down plus response times, never messages, ids or secrets.
 export const healthCheck = async (c: Context<{ Bindings: Bindings }>) => {
   try {
     const drizzleDb = createDbClient(c.env.DB)
     const startTime = nowMs()
 
-    // Check database connection
     let dbCheck = true
-    let dbResponseTime = 0
+    let dbResponseTime: number
     try {
       const dbStart = nowMs()
       await drizzleDb.get(sql`SELECT 1 as test`)
-      dbResponseTime = Date.now() - dbStart
+      dbResponseTime = nowMs() - dbStart
     } catch {
       dbCheck = false
-      dbResponseTime = Date.now() - startTime
+      dbResponseTime = nowMs() - startTime
     }
 
-    // Check KV storage - use CACHE instead of SESSIONS for health check
     let kvCheck = false
-    let kvResponseTime = 0
     const kvStart = nowMs()
-
     if (c.env.CACHE) {
       try {
-        // Simplified KV test - only test basic read/write
-        const testKey = 'health_check_' + Date.now()
-        const testValue = 'healthy'
-
-        // Test write
-        await c.env.CACHE.put(testKey, testValue, { expirationTtl: 60 })
-
-        // Test read
-        const result = await c.env.CACHE.get(testKey)
-
-        // Test result
-        if (result === testValue) {
-          kvCheck = true
-        }
-
-        // Clean up test data
-        await c.env.CACHE.delete(testKey)
-
+        await c.env.CACHE.get('health-check-probe')
+        kvCheck = true
       } catch (error) {
         log.error('Cache health check error', {}, error as Error)
-        kvCheck = false
       }
     }
-
-    kvResponseTime = Date.now() - kvStart
-
-    // Check platform integration status
-    const lineCheck = await checkLineIntegration(c.env)
-    const facebookCheck = await checkFacebookIntegration(c.env)
-
-    // Calculate total response time
-    const totalResponseTime = Date.now() - startTime
+    const kvResponseTime = nowMs() - kvStart
 
     const health = {
-      status: (dbCheck && kvCheck && lineCheck.status && facebookCheck.status) ? 'healthy' as const : 'unhealthy' as const,
+      status: (dbCheck && kvCheck) ? 'healthy' as const : 'unhealthy' as const,
       checks: {
-        database: {
-          status: dbCheck,
-          responseTime: dbResponseTime
-        },
-        cache: {
-          status: kvCheck,
-          responseTime: kvResponseTime
-        },
-        integrations: {
-          line: {
-            status: lineCheck.status,
-            message: lineCheck.message
-          },
-          facebook: {
-            status: facebookCheck.status,
-            message: facebookCheck.message
-          }
-        }
+        database: { status: dbCheck, responseTime: dbResponseTime },
+        cache: { status: kvCheck, responseTime: kvResponseTime }
       },
       metrics: {
-        responseTime: totalResponseTime,
+        responseTime: nowMs() - startTime,
         uptime: Math.floor(Date.now() / 1000),
         version: '2.0.0'
       },
