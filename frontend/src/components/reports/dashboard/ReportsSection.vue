@@ -370,7 +370,7 @@ defineEmits<{
 }
 
 .header-cell.size-cell {
-  text-align: right;
+  text-align: left;
 }
 
 @media (max-width: 768px) {

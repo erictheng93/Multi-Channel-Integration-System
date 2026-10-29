@@ -2,9 +2,12 @@
   <div class="ui-page report-generator">
     <UiPageHead
       title="產生報表"
-      subtitle="依序選擇類型、內容、時間與格式；右側即時顯示將產生的內容。"
+      subtitle="依序選擇類型、內容、時間與格式，確認後產生。"
     >
-      <template #actions>
+      <template
+        v-if="isDirty"
+        #actions
+      >
         <button
           class="btn btn-secondary"
           :disabled="isGenerating"
@@ -65,7 +68,7 @@
               <button
                 class="btn btn-primary"
                 type="button"
-                :disabled="!isFormValid || isGenerating"
+                :disabled="isGenerating"
                 @click="generateReport"
               >
                 {{ isGenerating ? '產生中...' : '產生報表' }}
@@ -83,13 +86,14 @@
       <p
         v-if="!isFormValid"
         class="generate-hint"
+        role="status"
       >
         {{ missingHint }}
       </p>
       <button
         class="btn btn-primary"
         type="button"
-        :disabled="!isFormValid || isGenerating"
+        :disabled="isGenerating"
         @click="generateReport"
       >
         {{ isGenerating ? '產生中...' : '產生報表' }}
@@ -108,7 +112,7 @@
 import UiPageHead from '@/components/ui/UiPageHead.vue'
 import UiSectionNav from '@/components/ui/UiSectionNav.vue'
 import UiActionBar from '@/components/ui/UiActionBar.vue'
-import { ref, reactive, computed, onMounted } from 'vue';
+import { ref, reactive, computed, nextTick, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import ReportsAPI from '@/api/reports';
 import ReportTypeSelector from './ReportTypeSelector.vue';
@@ -139,6 +143,15 @@ const emit = defineEmits<{
 
 const router = useRouter();
 
+const defaultOptions = () => ({
+  includeCharts: true,
+  includeSummary: true,
+  includeDetails: false,
+  chartType: 'line' as const,
+  maxRecords: 10000,
+  language: 'zh-TW' as const
+});
+
 // Reactive state
 const formData = reactive<ReportFormState>({
   type: props.initialType || null,
@@ -167,6 +180,13 @@ const showSuccess = ref(false);
 const errors = reactive<Record<string, string>>({});
 const recentReports = ref<ReportBase[]>([]);
 
+// 重置 only appears once there is something to reset
+const isDirty = computed(() =>
+  !!formData.type || !!formData.title.trim() || !!formData.description.trim() ||
+  formData.format !== 'json' || formData.timeRange !== 'last_30_days' ||
+  JSON.stringify(formData.options) !== JSON.stringify(defaultOptions())
+);
+
 // Computed
 const isFormValid = computed(() => {
   return formData.type &&
@@ -179,10 +199,12 @@ const isFormValid = computed(() => {
 
 // What still blocks the primary action (shown beside the phone action bar)
 const missingHint = computed(() => {
-  if (!formData.type) { return '請先選擇報表類型'; }
-  if (!formData.title.trim()) { return '請輸入報表標題'; }
-  if (formData.timeRange === 'custom' && !(formData.startDate && formData.endDate)) { return '請選擇自訂日期範圍'; }
-  return '';
+  const missing = [
+    !formData.type && '報表類型',
+    !formData.title.trim() && '標題',
+    formData.timeRange === 'custom' && !(formData.startDate && formData.endDate) && '日期範圍'
+  ].filter(Boolean);
+  return missing.length > 0 ? `還需要：${missing.join('、')}` : '';
 });
 
 // Methods
@@ -250,8 +272,22 @@ const validateForm = (): boolean => {
   return Object.keys(newErrors).length === 0;
 };
 
+// Bring the first unmet step into view and put the keyboard on it
+const focusFirstInvalid = async () => {
+  await nextTick();
+  const target = errors.type
+    ? document.querySelector<HTMLElement>('.report-type-selector [role="radio"][tabindex="0"]')
+    : errors.title
+      ? document.getElementById('title')
+      : document.getElementById('startDate');
+  if (!target) { return; }
+  target.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  target.focus({ preventScroll: true });
+};
+
 const generateReport = async () => {
   if (!validateForm()) {
+    await focusFirstInvalid();
     return;
   }
 
