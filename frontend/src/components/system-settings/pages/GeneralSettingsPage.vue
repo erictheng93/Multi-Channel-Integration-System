@@ -1,8 +1,7 @@
 <!--
   GeneralSettingsPage.vue
   The settings home: a live overview strip (each tile links to its section), then the identity form
-  beside a context column (measured service latency; name and clock hints live in the form's own fields).
-  Below the form, a read-only glance at the advanced parameters currently in force.
+  beside a context column (measured service latency, then the read-only parameters in force).
 -->
 
 <template>
@@ -17,27 +16,6 @@
           @save="controller.saveGeneralSettings"
           @update:settings="(data) => Object.assign(controller.settings.general, data)"
         />
-
-        <SettingsGroup title="目前生效的進階參數（唯讀）">
-          <dl class="adv-grid">
-            <div
-              v-for="item in advancedRows"
-              :key="item.label"
-              class="adv-item"
-            >
-              <dt>{{ item.label }}</dt>
-              <dd>{{ item.value }}</dd>
-            </div>
-          </dl>
-          <template #note>
-            <router-link
-              class="ui-link"
-              to="/settings/advanced"
-            >
-              前往進階設定調整
-            </router-link>
-          </template>
-        </SettingsGroup>
       </div>
 
       <aside
@@ -82,6 +60,30 @@
             {{ controller.processing.value ? '正在檢查服務...' : '尚無檢查結果' }}
           </p>
         </article>
+
+        <SettingsGroup
+          class="adv-group"
+          title="目前生效的進階參數（唯讀）"
+        >
+          <dl class="adv-grid">
+            <div
+              v-for="item in advancedRows"
+              :key="item.label"
+              class="adv-item"
+            >
+              <dt>{{ item.label }}</dt>
+              <dd>{{ item.value }}</dd>
+            </div>
+          </dl>
+          <template #note>
+            <router-link
+              class="ui-link"
+              to="/settings/advanced"
+            >
+              前往進階設定調整
+            </router-link>
+          </template>
+        </SettingsGroup>
       </aside>
     </div>
   </div>
@@ -144,10 +146,10 @@ const advancedRows = computed(() => {
 /* read-only values: label over value, no row chrome, so nothing here looks like a field */
 .adv-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 16px;
   margin: 0;
-  padding: 18px 22px;
+  padding: 14px 22px;
 }
 
 .adv-item dt {
@@ -161,19 +163,15 @@ const advancedRows = computed(() => {
   font-variant-numeric: tabular-nums;
 }
 
-@media (max-width: 1280px) {
-  .adv-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
+
 
 .lat-card {
   padding-bottom: 8px;
 }
 
 .lat-row {
-  padding-top: 10px;
-  padding-bottom: 10px;
+  padding-top: 7px;
+  padding-bottom: 7px;
 }
 
 .lat-dot {
@@ -221,6 +219,11 @@ const advancedRows = computed(() => {
 
   .general-aside {
     padding-top: 0;
+  }
+
+  /* phone order: tiles, forms, params, latency */
+  .adv-group {
+    order: -1;
   }
 }
 </style>
