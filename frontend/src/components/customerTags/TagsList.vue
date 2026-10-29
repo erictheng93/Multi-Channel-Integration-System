@@ -3,17 +3,19 @@
     <!-- Empty State -->
     <div
       v-if="tags.length === 0 && !loading"
-      class="empty-state"
+      class="ui-card ui-empty"
     >
-      <div class="empty-icon">
+      <div class="ui-empty-art">
         <TagIcon />
       </div>
-      <h3 class="empty-title">
-        暫無標籤
-      </h3>
-      <p class="empty-description">
-        點擊「新增標籤」開始創建您的第一個標籤
-      </p>
+      <template v-if="isSearching">
+        <h3>找不到符合的標籤</h3>
+        <p>換個關鍵字，或直接新增這個標籤。</p>
+      </template>
+      <template v-else>
+        <h3>暫無標籤</h3>
+        <p>點擊「新增標籤」開始創建您的第一個標籤</p>
+      </template>
     </div>
 
     <!-- Tags Grid (paginated) -->
@@ -24,6 +26,8 @@
           :key="tag.id"
           :tag="tag"
           :is-selected="isSelected(tag.id)"
+          :is-active="activeTagId === tag.id"
+          :max-count="maxCount"
           @select="$emit('select-tag', tag.id)"
           @edit="$emit('edit-tag', tag)"
           @delete="$emit('delete-tag', tag)"
@@ -34,6 +38,7 @@
 
       <!-- Pagination Controls -->
       <PaginationControls
+        v-if="paginationInfo.totalPages > 1"
         :pagination="paginationInfo"
         :visible-pages="pagination.pageRange.value"
         @change-page="pagination.setPage"
@@ -41,6 +46,7 @@
     </template>
   </div>
 </template>
+
 
 <script setup lang="ts">
 import { computed, watch } from 'vue'
@@ -54,6 +60,8 @@ const props = defineProps<{
   tags: Tag[]
   loading: boolean
   isSelected: (_id: number) => boolean
+  activeTagId?: number | null
+  isSearching?: boolean
 }>()
 
 defineEmits<{
@@ -65,6 +73,8 @@ defineEmits<{
 }>()
 
 const PAGE_SIZE = 24
+
+const maxCount = computed(() => props.tags.reduce((m, t) => Math.max(m, t.conversationCount || 0), 0))
 
 // Pagination
 const pagination = usePagination({ limit: PAGE_SIZE, total: props.tags.length })
@@ -94,57 +104,13 @@ watch(
 
 <style scoped>
 .tags-section {
-  min-height: 400px;
-}
-
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: var(--space-16);
-  text-align: center;
-}
-
-.empty-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 96px;
-  height: 96px;
-  background: var(--gray-100);
-  border-radius: var(--radius-full);
-  color: var(--gray-400);
-  margin-bottom: var(--space-6);
-}
-
-.empty-icon svg {
-  width: 48px;
-  height: 48px;
-}
-
-.empty-title {
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: var(--gray-900);
-  margin: 0 0 var(--space-2);
-}
-
-.empty-description {
-  color: var(--gray-500);
-  margin: 0;
+  min-height: 120px;
 }
 
 .tags-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(clamp(280px, 25vw, 320px), 1fr));
-  gap: clamp(1rem, 2vw, 1.5rem);
-}
-
-@media (max-width: 768px) {
-  .tags-grid {
-    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  }
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
 }
 
 @media (max-width: 480px) {
