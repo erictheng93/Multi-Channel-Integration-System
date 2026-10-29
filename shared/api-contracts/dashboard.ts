@@ -1,6 +1,12 @@
 import { defineApiContract } from './core'
 import type { WaitingConversation } from './conversations'
 
+/**
+ * 待回覆 counts only conversations whose awaiting_since is within this many days (rolling window).
+ * Older waits are reported separately as `staleWaiting`. Single source for backend and frontend.
+ */
+export const WAITING_WINDOW_DAYS = 7
+
 /** "now" vs the same elapsed time yesterday, both in Asia/Taipei days */
 export interface DashboardComparison {
   today: number
@@ -20,13 +26,19 @@ export interface DashboardSummary {
   /** Not-closed conversations visible to the caller */
   openConversations: number
   waiting: {
-    /** Open conversations with an unanswered customer message */
+    /** Open conversations whose oldest unanswered customer message is within the last WAITING_WINDOW_DAYS days */
     count: number
     /** The oldest unanswered customer message across them (ISO), null when nothing waits */
     oldestWaitingSince: string | null
     oldestWaitingSeconds: number | null
     /** The longest-waiting conversations, oldest first (max 5) */
     top: WaitingConversation[]
+  }
+  /** Open conversations unanswered for longer than WAITING_WINDOW_DAYS (outside `waiting`) */
+  staleWaiting: {
+    count: number
+    /** Of those, conversations in which no human agent ever replied */
+    neverRepliedCount: number
   }
   /** Conversations created in the day whose first human reply is recorded */
   firstResponse: {

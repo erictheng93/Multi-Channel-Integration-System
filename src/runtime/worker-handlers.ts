@@ -100,7 +100,7 @@ async function runNightlyHeal(env: Bindings): Promise<void> {
   try {
     const missing = await checkSchemaTriggers(env.DB, env.CACHE);
     if (missing.length > 0) {
-      log.error('Required database triggers are missing; re-run the CREATE TRIGGER statements from migrations 0070/0071', { missing });
+      log.error('Required database triggers are missing; re-run the CREATE TRIGGER statements from migrations 0072 (awaiting) and 0071 (markers)', { missing });
     }
   } catch (error) {
     log.error('Schema trigger check failed', {}, error instanceof Error ? error : new Error(String(error)));
