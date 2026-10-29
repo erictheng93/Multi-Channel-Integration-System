@@ -90,7 +90,10 @@
               </div>
               <div class="customer-text">
                 <div class="customer-name">
-                  {{ getCustomerName(conversation) }}
+                  <span
+                    class="customer-name-text"
+                    :title="getCustomerName(conversation)"
+                  >{{ getCustomerName(conversation) }}</span>
                   <span
                     v-if="unreadOf(conversation) > 0"
                     class="unread-badge"
@@ -405,10 +408,17 @@ const getLastMessageText = (conversation: Conversation) => {
   display: flex;
   align-items: center;
   gap: 6px;
-  overflow: hidden;
+  min-width: 0;
   font-size: 14.5px;
   font-weight: 600;
   white-space: nowrap;
+}
+
+/* Long names truncate with an ellipsis (full name in the title); the unread badge always stays visible */
+.customer-name-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .unread-badge {
