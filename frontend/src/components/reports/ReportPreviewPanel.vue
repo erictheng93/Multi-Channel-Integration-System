@@ -221,7 +221,7 @@ const formatDate = (dateString: string): string => {
 
 .kv-row dd.is-empty {
   font-weight: 400;
-  color: var(--ui-faint);
+  color: var(--ui-muted);
 }
 
 .progress-content {
