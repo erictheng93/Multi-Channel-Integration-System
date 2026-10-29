@@ -1,21 +1,9 @@
 <template>
-  <header
-    class="ui-page-head"
-    role="banner"
+  <UiPageHead
+    title="通知"
+    :subtitle="subtitle"
   >
-    <div>
-      <div class="ui-eyebrow">
-        工作台
-      </div>
-      <h1 class="ui-page-title">
-        通知
-      </h1>
-      <p class="ui-page-sub">
-        {{ subtitle }}
-      </p>
-    </div>
-
-    <div class="ui-page-actions">
+    <template #actions>
       <button
         type="button"
         class="btn btn-secondary btn-sm"
@@ -39,11 +27,12 @@
         />
         <span>全部標記已讀</span>
       </button>
-    </div>
-  </header>
+    </template>
+  </UiPageHead>
 </template>
 
 <script setup lang="ts">
+import UiPageHead from '@/components/ui/UiPageHead.vue'
 import { computed } from 'vue'
 import { CheckAllIcon, SettingsIcon } from '@/components/icons'
 import { LoadingSpinner } from '@/components/ui'

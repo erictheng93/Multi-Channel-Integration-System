@@ -2,21 +2,12 @@
 <!-- Pick a format here; the existing ExportDialog collects date, customer and agent filters -->
 
 <template>
-  <div class="data-export">
-    <header class="ui-page-head">
-      <div>
-        <div class="ui-eyebrow">
-          資料
-        </div>
-        <h1 class="ui-page-title page-title">
-          匯出對話
-        </h1>
-        <p class="ui-page-sub page-subtitle">
-          選擇檔案格式，按「開始匯出」後在視窗設定日期、客戶與客服；單次最多匯出 {{ EXPORT_LIMIT.toLocaleString() }} 筆，用於備份、分析或歸檔。
-        </p>
-        <DataSubnav />
-      </div>
-      <div class="ui-page-actions header-actions">
+  <div class="ui-page data-export">
+    <UiPageHead
+      title="匯出對話"
+      :subtitle="`選擇檔案格式後開始匯出，單次最多 ${EXPORT_LIMIT.toLocaleString()} 筆。`"
+    >
+      <template #actions>
         <button
           type="button"
           class="btn btn-primary"
@@ -25,8 +16,8 @@
           <DownloadIcon :size="16" />
           開始匯出
         </button>
-      </div>
-    </header>
+      </template>
+    </UiPageHead>
 
     <section class="bento">
       <div
@@ -134,10 +125,10 @@
 </template>
 
 <script setup lang="ts">
+import UiPageHead from '@/components/ui/UiPageHead.vue'
 import { ref } from 'vue'
 import { DownloadIcon } from '@/components/icons'
 import ExportDialog from '@/components/conversation/ExportDialog.vue'
-import DataSubnav from '@/components/data-management/DataSubnav.vue'
 
 type FormatId = 'json' | 'csv' | 'txt' | 'pdf'
 
@@ -218,13 +209,6 @@ function selectFormat(format: FormatId) {
 </script>
 
 <style scoped>
-.data-export {
-  display: grid;
-  gap: 20px;
-  width: 100%;
-  max-width: 1280px;
-  margin: 0 auto;
-}
 
 .bento {
   display: grid;

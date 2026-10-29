@@ -8,9 +8,9 @@
 <template>
   <AppLayout>
     <div
-      class="notification-page ui-rise"
+      class="ui-page notification-page ui-rise"
       role="main"
-      aria-label="通知中心頁面"
+      aria-label="通知頁面"
     >
       <!-- Page Header: subtitle from /notifications/stats -->
       <NotificationHeader
@@ -202,12 +202,6 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-.notification-page {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  width: 100%;
-}
 
 .notifications-section {
   min-height: 240px;

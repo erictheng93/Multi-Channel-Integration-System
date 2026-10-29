@@ -1,28 +1,12 @@
 <template>
   <AppLayout>
-    <div class="dashboard ui-rise">
+    <div class="ui-page dashboard ui-rise">
       <!-- Page head -->
-      <section class="ui-page-head">
-        <div>
-          <div class="ui-eyebrow">
-            {{ dateLabel }}
-          </div>
-          <h1 class="ui-page-title">
-            {{ greeting }}，{{ displayName }}
-          </h1>
-          <p class="ui-page-sub">
-            <template v-if="summary.data.value">
-              {{ subtitle }}
-            </template>
-            <template v-else-if="summary.error.value">
-              無法取得待回覆狀態。
-            </template>
-            <template v-else>
-              &nbsp;
-            </template>
-          </p>
-        </div>
-        <div class="ui-page-actions">
+      <UiPageHead :subtitle="headSubtitle">
+        <template #title>
+          {{ greeting }}，{{ displayName }}
+        </template>
+        <template #actions>
           <button
             type="button"
             class="btn btn-secondary btn-sm"
@@ -47,8 +31,8 @@
               viewBox="0 0 24 24"
             ><path d="M5 12h14M13 6l6 6-6 6" /></svg>
           </router-link>
-        </div>
-      </section>
+        </template>
+      </UiPageHead>
 
       <!-- KPI row -->
       <section class="ui-grid ui-cols-4">
@@ -645,6 +629,7 @@
 </template>
 
 <script setup lang="ts">
+import UiPageHead from '@/components/ui/UiPageHead.vue'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuth } from '@/composables/useAuth'
@@ -685,9 +670,6 @@ const greeting = computed(() => {
   if (hour >= 12 && hour < 18) { return '午安' }
   return '晚安'
 })
-const dateLabel = computed(() => new Intl.DateTimeFormat('zh-TW', {
-  month: 'long', day: 'numeric', weekday: 'long', timeZone: 'Asia/Taipei'
-}).format(new Date(now.value)))
 
 // No spaces around full-width punctuation: sentences are joined here, not in the template
 const subtitle = computed(() => {
@@ -696,6 +678,12 @@ const subtitle = computed(() => {
     : `近 ${WAITING_WINDOW_DAYS} 天內沒有待回覆的客戶。`
   const unreadPart = unreadStore.total > 0 ? `我的未讀 ${unreadStore.total} 件。` : ''
   return `${waitPart}${unreadPart}`
+})
+
+// Subtitle in the page head: a summary once loaded, an error line on failure, nothing while loading
+const headSubtitle = computed(() => {
+  if (summary.data.value) { return subtitle.value }
+  return summary.error.value ? '無法取得待回覆狀態。' : ''
 })
 
 const oldestWaitText = computed(() =>
@@ -822,12 +810,6 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-.dashboard {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  width: 100%;
-}
 
 .ico {
   width: 15px;

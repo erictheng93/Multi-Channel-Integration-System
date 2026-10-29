@@ -47,7 +47,7 @@ describe('DataExport.vue', () => {
 
   function createWrapper() {
     return mount(DataExport, {
-      global: { stubs: { DataSubnav: true } }
+      global: { stubs: { UiSectionNav: true } }
     })
   }
 
@@ -61,21 +61,21 @@ describe('DataExport.vue', () => {
 
     it('應該顯示頁面標題', () => {
       wrapper = createWrapper()
-      const title = wrapper.find('.page-title')
+      const title = wrapper.find('.ui-page-title')
       expect(title.exists()).toBe(true)
       expect(title.text()).toContain('匯出對話')
     })
 
     it('應該顯示頁面描述', () => {
       wrapper = createWrapper()
-      const subtitle = wrapper.find('.page-subtitle')
+      const subtitle = wrapper.find('.ui-page-sub')
       expect(subtitle.exists()).toBe(true)
       expect(subtitle.text()).toContain('5,000')
     })
 
     it('應該顯示「開始匯出」按鈕', () => {
       wrapper = createWrapper()
-      const btn = wrapper.find('.header-actions .btn-primary')
+      const btn = wrapper.find('.ui-page-actions .btn-primary')
       expect(btn.exists()).toBe(true)
       expect(btn.text()).toContain('開始匯出')
     })
@@ -172,7 +172,7 @@ describe('DataExport.vue', () => {
 
     it('點擊「開始匯出」應該打開 ExportDialog', async () => {
       wrapper = createWrapper()
-      const btn = wrapper.find('.header-actions .btn-primary')
+      const btn = wrapper.find('.ui-page-actions .btn-primary')
       await btn.trigger('click')
       await nextTick()
 
@@ -190,7 +190,7 @@ describe('DataExport.vue', () => {
       expect(dialog.props('show')).toBe(false)
       expect(cards[1]!.attributes('aria-checked')).toBe('true')
 
-      await wrapper.find('.header-actions .btn-primary').trigger('click')
+      await wrapper.find('.ui-page-actions .btn-primary').trigger('click')
       await nextTick()
       expect(dialog.props('show')).toBe(true)
       expect(dialog.props('initialFormat')).toBe('csv')
@@ -200,7 +200,7 @@ describe('DataExport.vue', () => {
       wrapper = createWrapper()
 
       // Open dialog first
-      const btn = wrapper.find('.header-actions .btn-primary')
+      const btn = wrapper.find('.ui-page-actions .btn-primary')
       await btn.trigger('click')
       await nextTick()
 

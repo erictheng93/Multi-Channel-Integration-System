@@ -7,25 +7,16 @@
 
 <template>
   <AppLayout>
-    <div class="system-settings">
-      <header class="ui-page-head">
-        <div>
-          <div class="ui-eyebrow">
-            系統設定
-          </div>
-          <h1 class="ui-page-title">
-            {{ section?.title ?? '系統設定' }}
-          </h1>
-          <p
-            v-if="section"
-            class="ui-page-sub"
-          >
-            {{ section.subtitle }}
-          </p>
-        </div>
-        <div
+    <div class="ui-page system-settings">
+      <UiPageHead
+        :subtitle="section ? section.subtitle : ''"
+      >
+        <template #title>
+          {{ section?.title ?? '系統設定' }}
+        </template>
+        <template
           v-if="section"
-          class="ui-page-actions"
+          #actions
         >
           <template v-if="section.key === 'health'">
             <button
@@ -96,8 +87,10 @@
               {{ controller.saving.value ? '儲存中...' : '儲存變更' }}
             </button>
           </template>
-        </div>
-      </header>
+        </template>
+      </UiPageHead>
+
+      <UiSectionNav section="settings" />
 
       <div
         v-if="controller.message.value"
@@ -109,7 +102,6 @@
       </div>
 
       <div class="settings">
-        <SettingsRail />
         <div class="scontent">
           <router-view v-slot="{ Component }">
             <transition
@@ -126,11 +118,12 @@
 </template>
 
 <script setup lang="ts">
+import UiPageHead from '@/components/ui/UiPageHead.vue'
+import UiSectionNav from '@/components/ui/UiSectionNav.vue'
 import { computed, onMounted, onUnmounted, provide } from 'vue'
 import { useRoute } from 'vue-router'
 import AppLayout from '@/components/ui/AppLayout.vue'
 import { useSystemSettingsController } from '@/composables/useSystemSettingsController'
-import SettingsRail from '@/components/system-settings/SettingsRail.vue'
 import { SETTINGS_FORM_ID, findSettingsSection } from '@/components/system-settings/settings-pages'
 import { SETTINGS_CONTROLLER_KEY } from '@/types/system-settings'
 
@@ -155,21 +148,9 @@ onUnmounted(() => controller.cleanup())
 </script>
 
 <style scoped>
-.system-settings {
-  /* .page-content is a flex column: max-width + auto margins alone size to the content, so a long
-     header pushed the page wider than the phone viewport */
-  display: grid;
-  gap: 20px;
-  width: 100%;
-  max-width: 1280px;
-  margin: 0 auto;
-}
 
 .settings {
-  display: grid;
-  grid-template-columns: 232px minmax(0, 1fr);
-  gap: 20px;
-  align-items: start;
+  min-width: 0;
 }
 
 .scontent {
@@ -235,9 +216,4 @@ onUnmounted(() => controller.cleanup())
   transform: translateY(-6px);
 }
 
-@media (max-width: 1024px) {
-  .settings {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
 </style>

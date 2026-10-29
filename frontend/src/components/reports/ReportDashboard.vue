@@ -1,5 +1,5 @@
 <template>
-  <div class="report-dashboard">
+  <div class="ui-page report-dashboard">
     <!-- 頁面標題和快速動作 -->
     <DashboardHeader
       :loading="loading"
@@ -286,15 +286,6 @@ function handleFilterByType(type: string) {
 </script>
 
 <style scoped>
-.report-dashboard {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  width: 100%;
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 20px;
-}
 
 .main-content {
   display: grid;
@@ -322,8 +313,5 @@ function handleFilterByType(type: string) {
 }
 
 @media (max-width: 768px) {
-  .report-dashboard {
-    padding: 16px;
-  }
 }
 </style>

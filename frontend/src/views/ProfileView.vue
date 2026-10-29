@@ -6,21 +6,12 @@
 
 <template>
   <AppLayout>
-    <div class="profile-page ui-rise">
+    <div class="ui-page profile-page ui-rise">
       <!-- Page Header -->
-      <header class="ui-page-head">
-        <div>
-          <div class="ui-eyebrow">
-            帳號
-          </div>
-          <h1 class="ui-page-title">
-            個人設定
-          </h1>
-          <p class="ui-page-sub">
-            你可以自行修改顯示名稱與密碼；Email、角色與團隊由管理員管理。
-          </p>
-        </div>
-      </header>
+      <UiPageHead
+        title="個人設定"
+        subtitle="你可以自行修改顯示名稱與密碼；Email、角色與團隊由管理員管理。"
+      />
 
       <div class="ui-grid ui-cols-2 profile-grid">
         <!-- Card 1: 基本資料 -->
@@ -350,6 +341,7 @@
 </template>
 
 <script setup lang="ts">
+import UiPageHead from '@/components/ui/UiPageHead.vue'
 import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppLayout from '@/components/ui/AppLayout.vue'
@@ -620,12 +612,6 @@ watch(
 
 
 <style scoped>
-.profile-page {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  width: 100%;
-}
 
 .profile-grid {
   align-items: start;

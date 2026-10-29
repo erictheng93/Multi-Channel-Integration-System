@@ -219,7 +219,7 @@
     flex: 1;
     display: flex;
     flex-direction: column;
-    padding: var(--space-6) var(--space-5);
+    padding: var(--ui-gutter);
     background-color: transparent;
     min-height: 0;
     overflow-y: auto;

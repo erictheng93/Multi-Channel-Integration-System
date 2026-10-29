@@ -274,7 +274,7 @@ describe('報表系統端到端測試', () => {
       expect(navItems.length).toBeGreaterThan(0);
 
       // 檢查導航項目內容
-      const expectedNavItems = ['儀表板', '模板', '生成報表'];
+      const expectedNavItems = ['報表總覽', '報表模板', '產生報表'];
       const navTexts = navItems.map(item => item.text().trim());
 
       expectedNavItems.forEach(expectedText => {

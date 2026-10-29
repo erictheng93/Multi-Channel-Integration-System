@@ -1,23 +1,12 @@
 <template>
   <AppLayout>
-    <div class="team-management ui-rise">
+    <div class="ui-page team-management ui-rise">
       <!-- Header Section -->
-      <header class="ui-page-head">
-        <div>
-          <div class="ui-eyebrow">
-            團隊與頻道
-          </div>
-          <h1 class="ui-page-title">
-            團隊成員
-          </h1>
-          <p
-            v-if="members.length > 0"
-            class="ui-page-sub"
-          >
-            {{ headSummary }}
-          </p>
-        </div>
-        <div class="ui-page-actions">
+      <UiPageHead
+        title="團隊成員"
+        :subtitle="members.length > 0 ? headSummary : ''"
+      >
+        <template #actions>
           <RefreshButton
             :loading="loading"
             @refresh="controller.refresh"
@@ -60,8 +49,8 @@
               r="4"
             /><path d="M19 8v6M22 11h-6" /></svg>新增成員
           </button>
-        </div>
-      </header>
+        </template>
+      </UiPageHead>
 
       <!-- Stats Overview -->
       <TeamStatsOverview
@@ -204,6 +193,7 @@
 </template>
 
 <script setup lang="ts">
+import UiPageHead from '@/components/ui/UiPageHead.vue'
 import { onMounted, onUnmounted, computed } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useTeamManagementController } from '@/composables/team-management'
@@ -364,24 +354,11 @@ onUnmounted(() => {
 
 <style scoped>
 /* ==================== Page Layout ==================== */
-.team-management {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-  width: 100%;
-  max-width: 1280px;
-  margin: 0 auto;
-  /* AppLayout's page area already pads 24px / 20px */
-  padding: 4px 8px 32px;
-}
 .head-ico {
   width: 16px;
   height: 16px;
 }
 
 @media (max-width: 768px) {
-  .team-management {
-    padding: 0 0 24px;
-  }
 }
 </style>

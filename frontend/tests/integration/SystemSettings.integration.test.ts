@@ -170,7 +170,7 @@ describe('SystemSettings Integration Tests', () => {
     await flushPromises()
 
     expect(wrapper.find('.system-settings').exists()).toBe(true)
-    expect(wrapper.findComponent({ name: 'SettingsRail' }).exists()).toBe(true)
+    expect(wrapper.findComponent({ name: 'UiSectionNav' }).exists()).toBe(true)
   })
 
   it('should switch between tabs correctly via router navigation', async () => {

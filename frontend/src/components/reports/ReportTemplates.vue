@@ -2,26 +2,12 @@
 <!-- Report Templates Selector Component with comprehensive preset configurations -->
 
 <template>
-  <div class="report-templates">
-    <header class="header-wrap">
-      <div class="ui-page-head">
-        <div>
-          <div class="ui-eyebrow">
-            報表
-          </div>
-          <h1 class="ui-page-title">
-            報表模板
-          </h1>
-          <p class="ui-page-sub">
-            {{ templates.length }} 組預設模板，已預先設定圖表與欄位；選一個直接產生，或帶到產生頁再微調。
-            <template v-if="unsupportedCount > 0">
-              其中 {{ unsupportedCount }} 組的報表類型尚未支援產生。
-            </template>
-          </p>
-        </div>
-      </div>
-      <ReportsNav />
-    </header>
+  <div class="ui-page report-templates">
+    <UiPageHead
+      title="報表模板"
+      :subtitle="templatesSubtitle"
+    />
+    <UiSectionNav section="reports" />
 
     <TemplateFilters
       v-model:search-query="searchQuery"
@@ -106,11 +92,12 @@
 
 
 <script setup lang="ts">
+import UiPageHead from '@/components/ui/UiPageHead.vue'
+import UiSectionNav from '@/components/ui/UiSectionNav.vue'
 import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import type { ReportTemplate } from '@/types/reports';
 import ReportsAPI from '@/api/reports';
-import ReportsNav from './ReportsNav.vue';
 import TemplateFilters from './templates/TemplateFilters.vue';
 import TemplateCard from './templates/TemplateCard.vue';
 import TemplateDetailsPanel from './templates/TemplateDetailsPanel.vue';
@@ -172,6 +159,11 @@ const filteredTemplates = computed(() => {
 const generatableTypes = ReportsAPI.getGeneratableOptions().types.map(option => option.value);
 const isSupported = (template: ReportTemplate) => generatableTypes.includes(template.type);
 const unsupportedCount = computed(() => templates.value.filter(t => !isSupported(t)).length);
+const templatesSubtitle = computed(() => {
+  if (templates.value.length === 0) { return '' }
+  const unsupported = unsupportedCount.value > 0 ? `，其中 ${unsupportedCount.value} 組尚未支援產生` : ''
+  return `${templates.value.length} 組預設模板${unsupported}`
+});
 
 const popularTemplates = computed(() =>
   templates.value.filter(isSupported).slice(0, 3)
@@ -229,21 +221,6 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.report-templates {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  width: 100%;
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 20px;
-}
-
-.header-wrap {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
 
 .templates-layout {
   display: grid;
@@ -289,9 +266,6 @@ onMounted(() => {
 }
 
 @media (max-width: 768px) {
-  .report-templates {
-    padding: 16px;
-  }
 
   .templates-grid {
     grid-template-columns: 1fr;

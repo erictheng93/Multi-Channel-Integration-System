@@ -1,22 +1,13 @@
 <template>
   <AppLayout>
     <main
-      class="broadcast-page"
+      class="ui-page broadcast-page"
       aria-label="群發訊息"
     >
-      <header class="ui-page-head">
-        <div>
-          <div class="ui-eyebrow">
-            客戶經營
-          </div>
-          <h1 class="ui-page-title">
-            群發訊息
-          </h1>
-          <p class="ui-page-sub">
-            針對標籤受眾發送 LINE 圖文訊息，並逐位追蹤結果。發送前會先凍結收件人名單。
-          </p>
-        </div>
-      </header>
+      <UiPageHead
+        title="群發訊息"
+        subtitle="針對標籤受眾發送 LINE 圖文訊息，並逐位追蹤結果。發送前會先凍結收件人名單。"
+      />
 
       <LineQuotaCard :pending="pendingByChannel" />
 
@@ -75,6 +66,7 @@
 </template>
 
 <script setup lang="ts">
+import UiPageHead from '@/components/ui/UiPageHead.vue'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import AppLayout from '@/components/ui/AppLayout.vue'
 import BroadcastComposeCard from '@/components/broadcast/BroadcastComposeCard.vue'
@@ -184,16 +176,6 @@ async function fetchCurrentRecipients() {
 
 
 <style scoped>
-.broadcast-page {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  width: 100%;
-  max-width: 1280px;
-  min-height: 100%;
-  margin: 0 auto;
-  padding: 20px;
-}
 
 .page-grid {
   display: grid;
@@ -218,8 +200,5 @@ async function fetchCurrentRecipients() {
 }
 
 @media (max-width: 768px) {
-  .broadcast-page {
-    padding: 16px;
-  }
 }
 </style>

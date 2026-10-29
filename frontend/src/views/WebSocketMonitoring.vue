@@ -1,19 +1,11 @@
 <template>
   <AppLayout>
-    <div class="websocket-monitoring">
-      <header class="ui-page-head">
-        <div>
-          <div class="ui-eyebrow">
-            系統監控
-          </div>
-          <h1 class="ui-page-title">
-            即時連線監控
-          </h1>
-          <p class="ui-page-sub">
-            {{ subtitle }}
-          </p>
-        </div>
-        <div class="ui-page-actions">
+    <div class="ui-page websocket-monitoring">
+      <UiPageHead
+        title="即時連線監控"
+        :subtitle="subtitle"
+      >
+        <template #actions>
           <span class="live">
             每 {{ POLL_SECONDS }} 秒自動刷新
             <button
@@ -44,8 +36,8 @@
             ><path d="M21 12a9 9 0 0 1-15.5 6.2L3 16M3 12a9 9 0 0 1 15.5-6.2L21 8M21 3v5h-5M3 21v-5h5" /></svg>
             {{ isRefreshing ? '刷新中...' : '刷新資料' }}
           </button>
-        </div>
-      </header>
+        </template>
+      </UiPageHead>
 
       <!-- 錯誤訊息 -->
       <div
@@ -447,6 +439,7 @@
 </template>
 
 <script setup lang="ts">
+import UiPageHead from '@/components/ui/UiPageHead.vue'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { apiClient } from '@/api'
 import { presenceApi, type WsMetricsPointDto, type WsMetricsRange } from '@/api/presence'
@@ -762,15 +755,6 @@ function formatTime(timestamp: number) {
 </script>
 
 <style scoped>
-.websocket-monitoring {
-  /* AppLayout's .page-content is a flex column and already pads: max-width + auto margins alone
-     would size to content */
-  display: grid;
-  gap: 20px;
-  width: 100%;
-  max-width: 1280px;
-  margin: 0 auto;
-}
 
 .live {
   display: inline-flex;

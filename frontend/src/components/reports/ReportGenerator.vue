@@ -1,30 +1,20 @@
 <template>
-  <div class="report-generator">
-    <header class="header-wrap">
-      <div class="ui-page-head">
-        <div>
-          <div class="ui-eyebrow">
-            報表
-          </div>
-          <h1 class="ui-page-title">
-            產生報表
-          </h1>
-          <p class="ui-page-sub">
-            依序選擇類型、內容、時間與格式；右側即時顯示將產生的內容。
-          </p>
-        </div>
-        <div class="ui-page-actions">
-          <button
-            class="btn btn-secondary"
-            :disabled="isGenerating"
-            @click="resetForm"
-          >
-            重置
-          </button>
-        </div>
-      </div>
-      <ReportsNav />
-    </header>
+  <div class="ui-page report-generator">
+    <UiPageHead
+      title="產生報表"
+      subtitle="依序選擇類型、內容、時間與格式；右側即時顯示將產生的內容。"
+    >
+      <template #actions>
+        <button
+          class="btn btn-secondary"
+          :disabled="isGenerating"
+          @click="resetForm"
+        >
+          重置
+        </button>
+      </template>
+    </UiPageHead>
+    <UiSectionNav section="reports" />
 
     <div class="generator-container">
       <div class="form-section">
@@ -94,10 +84,11 @@
 
 
 <script setup lang="ts">
+import UiPageHead from '@/components/ui/UiPageHead.vue'
+import UiSectionNav from '@/components/ui/UiSectionNav.vue'
 import { ref, reactive, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import ReportsAPI from '@/api/reports';
-import ReportsNav from './ReportsNav.vue';
 import ReportTypeSelector from './ReportTypeSelector.vue';
 import ReportParameterForm from './ReportParameterForm.vue';
 import ReportPreviewPanel from './ReportPreviewPanel.vue';
@@ -339,21 +330,6 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.report-generator {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  width: 100%;
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 20px;
-}
-
-.header-wrap {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
 
 .generator-container {
   display: grid;
@@ -395,8 +371,5 @@ onMounted(() => {
 }
 
 @media (max-width: 768px) {
-  .report-generator {
-    padding: 16px;
-  }
 }
 </style>

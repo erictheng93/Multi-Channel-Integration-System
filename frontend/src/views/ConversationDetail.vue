@@ -663,13 +663,13 @@ defineExpose({
 
 <style scoped>
 /* ====== Minimal, Spacious Design System ====== */
-/* Chat card + read-only customer panel. Height = viewport - top bar - .page-content vertical padding (2 x 24px) */
+/* Chat card + read-only customer panel. Height = viewport - top bar - .page-content vertical padding (2 x --ui-gutter) */
 .detail-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: 16px;
-  height: calc(100vh - var(--ui-topbar-h) - 48px);
-  height: calc(100dvh - var(--ui-topbar-h) - 48px);
+  height: calc(100vh - var(--ui-topbar-h) - 2 * var(--ui-gutter));
+  height: calc(100dvh - var(--ui-topbar-h) - 2 * var(--ui-gutter));
   min-height: 420px;
 }
 

@@ -4,20 +4,12 @@
     :is="isAuthenticated ? AppLayout : 'div'"
     :class="{ 'bare-shell': !isAuthenticated }"
   >
-    <div class="not-found-page">
-      <header class="ui-page-head">
-        <div>
-          <div class="ui-eyebrow">
-            錯誤 404
-          </div>
-          <h1 class="ui-page-title">
-            找不到這個頁面
-          </h1>
-          <p class="ui-page-sub">
-            抱歉，您要找的頁面不存在或已被移除。{{ links.length > 0 ? '可以從下方常用頁面繼續。' : '' }}
-          </p>
-        </div>
-        <div class="ui-page-actions">
+    <div class="ui-page not-found-page">
+      <UiPageHead
+        title="找不到這個頁面"
+        :subtitle="headSubtitle"
+      >
+        <template #actions>
           <button
             type="button"
             class="btn btn-secondary"
@@ -51,8 +43,8 @@
             ><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1Z" /></svg>
             {{ isAuthenticated ? '回到儀表板' : '前往登入' }}
           </router-link>
-        </div>
-      </header>
+        </template>
+      </UiPageHead>
 
       <section
         class="nf"
@@ -167,6 +159,7 @@
 </template>
 
 <script setup lang="ts">
+import UiPageHead from '@/components/ui/UiPageHead.vue'
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
@@ -232,6 +225,9 @@ const links = computed(() =>
   isAuthenticated.value ? QUICK_LINKS.filter(link => !link.adminOnly || isAdmin.value) : []
 )
 
+const headSubtitle = computed(() =>
+  `抱歉，您要找的頁面不存在或已被移除。${links.value.length > 0 ? '可以從下方常用頁面繼續。' : ''}`)
+
 const homePath = computed(() => (isAuthenticated.value ? '/dashboard' : '/login'))
 
 const goBack = () => {
@@ -249,14 +245,6 @@ const goBack = () => {
   min-height: 100dvh;
   padding: 32px 20px;
   background: var(--ui-canvas);
-}
-
-.not-found-page {
-  display: grid;
-  gap: 20px;
-  width: 100%;
-  max-width: 1280px;
-  margin: 0 auto;
 }
 
 .ico {
