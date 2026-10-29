@@ -318,20 +318,34 @@ function handleFilterByType(type: string) {
 
 <style scoped>
 
+/* One row: the lead number first, the four status KPIs after it. Every card is as tall as a KPI card,
+   so the lead card has no empty half; its content is top-aligned */
 .overview-top {
   display: grid;
-  grid-template-columns: minmax(280px, 1fr) minmax(0, 2fr);
+  grid-template-columns: minmax(200px, 1fr) minmax(0, 4fr);
   gap: 16px;
   align-items: stretch;
 }
 
-/* The lead number stands on type alone: no art, a compact block that centres in its cell */
 .lead-card {
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  gap: 6px;
-  padding: 22px;
+  justify-content: flex-start;
+  gap: 8px;
+  padding: 18px 20px 16px;
+}
+
+.lead-label {
+  grid-area: label;
+  padding-top: 6px;
+}
+
+.lead-card > .lead-value {
+  grid-area: value;
+}
+
+.lead-card > .lead-meaning {
+  grid-area: meaning;
 }
 
 .lead-label {
@@ -370,7 +384,7 @@ function handleFilterByType(type: string) {
 }
 
 .overview-top :deep(.ui-kpi-grid) {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
 .main-content {
@@ -415,9 +429,54 @@ function handleFilterByType(type: string) {
   }
 }
 
-@media (max-width: 1024px) {
+@media (max-width: 1280px) {
+  /* Narrower: the lead number becomes a band on top of the KPI row */
   .overview-top {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .lead-card {
+    display: grid;
+    grid-template-areas:
+      'value label'
+      'value meaning';
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-rows: auto 1fr;
+    gap: 4px 20px;
+    align-items: start;
+    padding: 20px 22px;
+  }
+
+  .lead-card > .lead-label {
+    grid-area: label;
+    padding-top: 6px;
+  }
+
+  .lead-card > .lead-value {
+    grid-area: value;
+  }
+
+  .lead-card > .lead-meaning {
+    grid-area: meaning;
+  }
+}
+
+@media (max-width: 1024px) {
+  .overview-top :deep(.ui-kpi-grid) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  /* Phone: label, numeral and meaning stack, top-aligned */
+  .lead-card {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .lead-card > .lead-label {
+    padding-top: 0;
   }
 }
 </style>
