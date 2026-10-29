@@ -1204,16 +1204,18 @@ onBeforeUnmount(() => {
 }
 
 .ui-kpi-foot {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  /* wraps to a second line instead of clipping (team split captions are long on phone) */
+  overflow-wrap: anywhere;
+  line-height: 1.45;
 }
 
 .feed {
-  display: grid;
+  /* rows share the card's height evenly, so a feed shorter than the chart has no empty tail */
+  display: flex;
   flex: 1;
+  flex-direction: column;
+  justify-content: space-between;
   gap: 18px;
-  align-content: start;
   margin: 0;
   padding: 0 22px 18px;
   list-style: none;
