@@ -50,3 +50,31 @@ describe('pre-registry route auth', () => {
     });
   });
 });
+
+describe('websocket probes', () => {
+  beforeEach(() => { auth.user = { id: 'a1', role: 'agent' }; });
+
+  // Any touch of these bindings would be a per-hit cost on an anonymous endpoint
+  const throwingEnv = new Proxy({}, { get: (_t, prop) => { throw new Error(`unexpected env access: ${String(prop)}`); } });
+  const anonymous = (path: string) => {
+    const app = new Hono<{ Bindings: Bindings }>();
+    registerPreRegistryRoutes(app);
+    return app.request(path, undefined, throwingEnv as unknown as Bindings);
+  };
+
+  it.each(['/api/websocket/health', '/api/websocket/readiness', '/api/websocket/liveness'])('%s is cheap and anonymous', async (path) => {
+    auth.user = null;
+    const res = await anonymous(path);
+    expect(res.status).toBe(200);
+    expect(await res.text()).not.toMatch(/error|environment|Durable/i);
+  });
+
+  it('migration-status needs a login', async () => {
+    auth.user = null;
+    expect((await request('/api/websocket/migration-status')).status).toBe(401);
+  });
+
+  it.each(['/api/websocket/metrics', '/api/websocket/health-detail'])('%s is admin only', async (path) => {
+    expect((await request(path)).status).toBe(403);
+  });
+});
