@@ -10,6 +10,7 @@ import type { Notification } from '@/stores/notifications'
 // Mock router
 const mockPush = vi.fn()
 vi.mock('vue-router', () => ({
+  useRoute: () => ({ query: {} }),
   useRouter: () => ({
     push: mockPush
   })
