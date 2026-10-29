@@ -1,21 +1,34 @@
 <template>
   <header class="top-bar">
-    <div class="breadcrumb">
-      <span class="breadcrumb-item">{{ pageTitle }}</span>
-    </div>
+    <nav
+      class="breadcrumb"
+      aria-label="目前位置"
+    >
+      <template v-if="sectionLabel">
+        <span class="breadcrumb-section">{{ sectionLabel }}</span>
+        <span
+          class="breadcrumb-sep"
+          aria-hidden="true"
+        >/</span>
+      </template>
+      <b
+        class="breadcrumb-item"
+        aria-current="page"
+      >{{ pageTitle }}</b>
+    </nav>
 
     <div class="top-bar-actions">
       <!-- Stats slot (used by ConversationDetail page) -->
       <slot name="stats" />
 
-      <!-- Notification Center -->
-      <NotificationCenter @notification-click="(n: Notification) => $emit('notification-click', n)" />
-
       <!-- Status Indicator -->
       <div class="status-indicator">
-        <div class="status-dot online" />
+        <span class="status-dot online" />
         <span class="status-text">線上</span>
       </div>
+
+      <!-- Notification Center -->
+      <NotificationCenter @notification-click="(n: Notification) => $emit('notification-click', n)" />
     </div>
   </header>
 </template>
@@ -26,6 +39,8 @@
 
   defineProps<{
     pageTitle: string
+    /** Nav section the page lives in (breadcrumb prefix); omit for pages outside the sidebar groups */
+    sectionLabel?: string
   }>()
 
   defineEmits<{
@@ -35,56 +50,80 @@
 
 <style scoped>
   .top-bar {
+    position: relative;
+    z-index: 5;
+    flex: none;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: var(--space-4) var(--space-5);
-    background-color: white;
-    border-bottom: 1px solid var(--gray-200);
+    gap: 16px;
+    min-height: var(--ui-topbar-h);
+    padding: 0 var(--space-5);
+    background-color: var(--ui-glass);
+    backdrop-filter: saturate(180%) blur(20px);
+    -webkit-backdrop-filter: saturate(180%) blur(20px);
+    box-shadow: inset 0 -0.5px 0 var(--ui-sep);
   }
 
+  /* Context, not a second page title: section / page */
   .breadcrumb {
     flex: 1;
     min-width: 0;
-    margin-right: var(--space-2);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: var(--ui-muted);
+    white-space: nowrap;
+  }
+
+  .breadcrumb-sep {
+    color: var(--ui-faint);
   }
 
   .breadcrumb-item {
-    display: block;
+    min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
-    white-space: nowrap;
     font-weight: 600;
-    font-size: 1.125rem;
-    color: var(--gray-900);
+    color: var(--ui-ink);
   }
 
   .top-bar-actions {
     display: flex;
     flex-shrink: 0;
     align-items: center;
-    gap: var(--space-4);
+    gap: var(--space-3);
   }
 
+  /* Connection status: green pill */
   .status-indicator {
-    display: flex;
+    display: inline-flex;
     align-items: center;
-    gap: var(--space-2);
+    gap: 6px;
+    height: 28px;
+    padding: 0 10px;
+    border-radius: 999px;
+    background: var(--ui-green-soft);
+    color: var(--ui-green-ink);
+    font-size: 12px;
+    font-weight: 600;
   }
 
   .status-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: var(--radius-full);
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    animation: none;
   }
 
   .status-dot.online {
-    background-color: var(--success-500);
+    background-color: var(--ui-green);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--ui-green) 25%, transparent);
   }
 
   .status-text {
-    font-size: 0.875rem;
-    color: var(--gray-600);
+    color: inherit;
   }
 
   /* The fixed hamburger (44px at left 12px) sits inside the bar, so reserve its width
