@@ -163,7 +163,9 @@ export const webhookHandler = {
       const token = c.req.query('hub.verify_token');
       const challenge = c.req.query('hub.challenge');
 
-      if (mode === 'subscribe' && token === c.env.FB_VERIFY_TOKEN) {
+      // An unset FB_VERIFY_TOKEN must not match an absent or empty query token (undefined === undefined)
+      const expectedToken = c.env.FB_VERIFY_TOKEN;
+      if (mode === 'subscribe' && expectedToken && token && token === expectedToken) {
         return c.text(challenge || '');
       }
 
