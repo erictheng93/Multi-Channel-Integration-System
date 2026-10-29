@@ -25,6 +25,26 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
+// The only keys system_settings may hold. Credentials (channelSecret, accessToken, appSecret, pageToken,
+// channelId, appId, pageId) live in the encrypted credential store and never here: an allowlist on both
+// read and write keeps a stray row or request from exposing them (or copying them into the activity log).
+export const ALLOWED_SETTING_KEYS: ReadonlySet<string> = new Set([
+  'general.systemName',
+  'general.contactEmail',
+  'general.timezone',
+  'general.language',
+  'integrations.line.status',
+  'integrations.facebook.status',
+  'advanced.messageQueueSize',
+  'advanced.messageTimeout',
+  'advanced.cacheExpiry',
+  'advanced.sessionExpiry',
+  'advanced.enableRateLimit',
+  'advanced.enableLogging',
+  'advanced.enableMetrics',
+  'advanced.recallWindowSeconds'
+])
+
 // Interface for partial settings update - all properties optional
 interface SystemSettingsUpdate extends Record<string, unknown> {
   general?: Partial<{
@@ -146,7 +166,7 @@ export const getSettings = async (c: Context<{ Bindings: Bindings }>) => {
     }
 
     // Override with database settings
-    settingsResult.forEach(row => {
+    settingsResult.filter(row => ALLOWED_SETTING_KEYS.has(row.key)).forEach(row => {
       const keys = row.key.split('.')
       let current: Record<string, unknown> = settings
 
@@ -217,6 +237,12 @@ export const updateSettings = async (c: Context<{ Bindings: Bindings }>) => {
 
     if (flatSettings.length === 0) {
       return successResponse(c, null, 'No settings to update')
+    }
+
+    // Names only in the error: never echo a submitted value, it may be a secret
+    const rejectedKeys = flatSettings.map(({ key }) => key).filter(key => !ALLOWED_SETTING_KEYS.has(key))
+    if (rejectedKeys.length > 0) {
+      return badRequestResponse(c, `Settings not allowed here (credentials are stored separately): ${rejectedKeys.join(', ')}`)
     }
 
     // Update settings using upsert
