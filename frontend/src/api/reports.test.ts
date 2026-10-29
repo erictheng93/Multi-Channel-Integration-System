@@ -70,7 +70,7 @@ describe('ReportsAPI transport', () => {
     const list: ReportListResponse = {
       reports: [],
       pagination: { page: 2, pageSize: 10, total: 0, totalPages: 0, hasNext: false, hasPrev: true },
-      summary: { totalReports: 0, pendingReports: 0, completedReports: 0, failedReports: 0 }
+      summary: { totalReports: 0, pendingReports: 0, generatingReports: 0, completedReports: 0, failedReports: 0, expiredReports: 0 }
     }
     vi.mocked(apiClient.get).mockResolvedValueOnce({ success: true, data: list })
 

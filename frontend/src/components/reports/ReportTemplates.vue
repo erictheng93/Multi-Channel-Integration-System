@@ -173,7 +173,7 @@ const filteredTemplates = computed(() => {
 // 熱門模板（用於快速動作）
 const popularTemplates = computed(() =>
   templates.value
-    .filter(t => ['conversation_summary', 'agent_performance', 'customer_satisfaction'].includes(t.type))
+    .filter(t => ReportsAPI.getGeneratableOptions().types.some(option => option.value === t.type))
     .slice(0, 3)
 );
 
@@ -192,7 +192,7 @@ const useTemplate = async (template: ReportTemplate) => {
       type: template.type,
       title: `${template.name} - ${new Date().toLocaleDateString('zh-TW')}`,
       description: template.description,
-      format: 'pdf' as const,
+      format: 'json' as const,
       timeRange: 'last_30_days' as const,
       options: template.presetOptions,
       filters: {}

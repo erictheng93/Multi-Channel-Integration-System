@@ -50,8 +50,10 @@ export interface ReportListResponse {
   summary: {
     totalReports: number;
     pendingReports: number;
+    generatingReports: number;
     completedReports: number;
     failedReports: number;
+    expiredReports: number;
   };
 }
 
@@ -69,14 +71,15 @@ export interface ReportDetails extends ReportBase {
   generationLog?: string[];
   errorMessage?: string;
   executionTime?: number; // seconds
+  /** Only what is actually stored for the report; recordCount is omitted until generation persists it. */
   dataSource?: {
-    tables: string[];
     filters: ReportFilters;
-    recordCount: number;
+    recordCount?: number;
   };
   downloadHistory?: Array<{
     downloadedAt: string;
     downloadedBy: string;
+    downloadedByName?: string;
     ipAddress?: string;
   }>;
 }
