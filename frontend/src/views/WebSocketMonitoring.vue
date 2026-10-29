@@ -129,7 +129,7 @@
                 <span
                   class="ui-pill ui-pill-dot"
                   :class="latency.pill"
-                >{{ latency.label }}</span>{{ latency.hint }}
+                >{{ latency.label }}</span><span class="foot-hint">{{ latency.hint }}</span>
               </template>
             </div>
           </article>
@@ -162,7 +162,7 @@
                 <span
                   class="ui-pill ui-pill-dot"
                   :class="errorStatus.pill"
-                >{{ errorStatus.label }}</span>{{ errorStatus.hint }}
+                >{{ errorStatus.label }}</span><span class="foot-hint">{{ errorStatus.hint }}</span>
               </template>
             </div>
           </article>
@@ -203,10 +203,7 @@
             <span><i class="swatch-area" />已註冊連線<b
               v-if="chart.lastConnections !== null"
               class="is-conn"
-            >{{ chart.lastConnections }}</b></span><span><i
-              class="swatch-dash"
-              :class="{ 'is-phone-hidden': phone }"
-            />事件 / 秒<b
+            >{{ chart.lastConnections }}</b></span><span v-if="!phone"><i class="swatch-dash" />事件 / 秒<b
               v-if="chart.lastEvents !== null"
               class="is-evt"
             >{{ fmt(chart.lastEvents, 2) }}</b></span>
@@ -285,6 +282,22 @@
                 stroke-linecap="round"
               />
               <circle
+                v-for="(dot, i) in chart.connections.dots"
+                :key="`cd${i}`"
+                :cx="dot.x"
+                :cy="dot.y"
+                r="2.6"
+                fill="var(--ui-accent)"
+              />
+              <circle
+                v-for="(dot, i) in phoneEventDots"
+                :key="`ed${i}`"
+                :cx="dot.x"
+                :cy="dot.y"
+                r="2.4"
+                fill="var(--ui-teal)"
+              />
+              <circle
                 v-if="chart.connections.last"
                 :cx="chart.connections.last.x"
                 :cy="chart.connections.last.y"
@@ -310,7 +323,7 @@
               v-if="chart.connections.count > 0"
               class="axis-note"
             >
-              {{ phone ? '縱軸：已註冊連線數。事件量見上方圖例。' : '左軸：連線數；右軸：事件 / 秒。事件資料缺漏的時段不連線。' }}
+              {{ phone ? '縱軸：已註冊連線數。事件量見上方「事件 / 秒」。' : '左軸：連線數；右軸：事件 / 秒。事件資料缺漏的時段（例如服務重啟後的第一次取樣）不連線。' }}
             </p>
           </div>
         </article>
@@ -486,6 +499,7 @@ function onPhoneChange(event: { matches: boolean }) {
 }
 /** Events line: wide screens only */
 const phoneEvents = computed(() => (phone.value ? [] : chart.value.events.lines))
+const phoneEventDots = computed(() => (phone.value ? [] : chart.value.events.dots))
 const geom = computed(() => (phone.value ? CHART_COMPACT : CHART))
 
 let refreshInterval: ReturnType<typeof setInterval> | null = null
@@ -802,10 +816,6 @@ function formatTime(timestamp: number) {
   gap: 16px;
 }
 
-.is-phone-hidden {
-  display: none;
-}
-
 .error-message {
   padding: 12px 16px;
   border-radius: var(--ui-r-inner);
@@ -852,6 +862,8 @@ function formatTime(timestamp: number) {
 }
 
 .s4 {
+  display: flex;
+  flex-direction: column;
   grid-column: span 4;
 }
 
@@ -932,11 +944,20 @@ svg.chart .g line {
 }
 
 .facts {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
   padding: 0 22px 20px;
+}
+
+.foot-hint {
+  white-space: nowrap;
 }
 
 .fact {
   display: flex;
+  flex: 1;
+  align-items: center;
   justify-content: space-between;
   gap: 12px;
   padding: 11px 0;
@@ -953,7 +974,8 @@ svg.chart .g line {
 }
 
 .fact-note {
-  margin: 12px 0 0;
+  margin: auto 0 0;
+  padding-top: 12px;
   font-size: 13px;
   line-height: 1.55;
   color: var(--ui-muted);
@@ -1056,8 +1078,14 @@ svg.chart .g line {
     gap: 12px;
   }
 
-  .kpis > :last-child {
+  /* three tiles: the first spans the row, the other two pair up (no orphan) */
+  .kpis > :first-child {
     grid-column: span 2;
+  }
+
+  .ui-kpi-foot {
+    flex-wrap: wrap;
+    row-gap: 4px;
   }
 
   .legend,
