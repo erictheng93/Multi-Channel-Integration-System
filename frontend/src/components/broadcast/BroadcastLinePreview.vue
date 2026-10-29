@@ -98,8 +98,7 @@ const order = computed(() => {
   font-size: 13.5px;
   line-height: 1.5;
   text-align: center;
-  color: #fff;
-  text-shadow: 0 1px 2px rgb(0 0 0 / 0.25);
+  color: #1c1c1e;
 }
 
 .thread {
