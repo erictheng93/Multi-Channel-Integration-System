@@ -137,13 +137,14 @@ const {
 } = useRestoreActivity()
 
 const systemActor = computed(() => isSystemActor(props.activity))
-// One neutral tile for every action: the glyph says what happened, colour is kept for state
-// (the chips on the right). Only the glyph comes from the action map.
-const iconStyle = computed(() => ({
-  ...getActionIconStyle(props.activity.action),
-  bgClass: 'bg-[var(--ui-fill)]',
-  colorClass: systemActor.value ? 'text-[var(--ui-muted)]' : 'text-[var(--ui-ink-2)]',
-}))
+// The tile is tinted by the kind of action (message, assignment, close, settings, team, account);
+// system-initiated rows stay neutral so automation never reads as a person's action.
+const iconStyle = computed(() => {
+  const style = getActionIconStyle(props.activity.action)
+  return systemActor.value
+    ? { ...style, bgClass: 'bg-[var(--ui-fill)]', colorClass: 'text-[var(--ui-muted)]' }
+    : style
+})
 
 const formattedDetails = computed(() =>
   formatActivityDetails(props.activity.details ?? null, props.activity.action)
