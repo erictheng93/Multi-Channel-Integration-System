@@ -71,6 +71,132 @@
     --ring: 37 99 235;
   }
 
+  /* ------------------------------------------------------------
+     --ui-* redesign tokens (Apple-Native Soft Minimalism, refined).
+     Separate prefix on purpose: the shadcn-style --accent/--muted
+     above are RGB triplets used elsewhere and must not be repurposed.
+     Dark values apply under [data-theme='dark'] only; the app does
+     not activate dark mode yet.
+     ------------------------------------------------------------ */
+  :root {
+    --ui-canvas: #f2f2f7;
+    --ui-surface: #ffffff;
+    --ui-surface-2: #f7f7fa;
+    --ui-fill: rgba(118, 118, 128, 0.12);
+    --ui-fill-strong: rgba(118, 118, 128, 0.2);
+    --ui-sep: rgba(60, 60, 67, 0.1);
+    --ui-ink: #1c1c1e;
+    --ui-ink-2: #3a3a3c;
+    --ui-muted: #8e8e93;
+    --ui-faint: #aeaeb2;
+
+    --ui-accent: #007aff;
+    --ui-accent-soft: rgba(0, 122, 255, 0.1);
+    --ui-green: #34c759;
+    --ui-green-soft: rgba(52, 199, 89, 0.14);
+    --ui-green-ink: #1f8a3b;
+    --ui-orange: #ff9500;
+    --ui-orange-soft: rgba(255, 149, 0, 0.14);
+    --ui-orange-ink: #b25f00;
+    --ui-red: #ff3b30;
+    --ui-red-soft: rgba(255, 59, 48, 0.12);
+    --ui-red-ink: #c4261d;
+    --ui-teal: #30b0c7;
+    --ui-teal-soft: rgba(48, 176, 199, 0.14);
+    --ui-indigo: #5856d6;
+    --ui-indigo-soft: rgba(88, 86, 214, 0.12);
+
+    --ui-line: #06c755;
+    --ui-messenger: #0866ff;
+
+    --ui-p-lavender: #eee8fb;
+    --ui-p-lavender-ink: #5c4f7c;
+    --ui-p-peach: #fff1e0;
+    --ui-p-peach-ink: #8d6e4c;
+    --ui-p-mint: #e6f5ea;
+    --ui-p-mint-ink: #3f7452;
+    --ui-p-sky: #e4f0fd;
+    --ui-p-sky-ink: #3e6488;
+    --ui-p-rose: #fde9ec;
+    --ui-p-rose-ink: #8a4a57;
+
+    --ui-shadow-card: 0 0 0 0.5px rgba(0, 0, 0, 0.03), 0 1px 2px rgba(0, 0, 0, 0.03), 0 4px 16px rgba(0, 0, 0, 0.05);
+    --ui-shadow-raised: 0 0 0 0.5px rgba(0, 0, 0, 0.04), 0 2px 6px rgba(0, 0, 0, 0.05), 0 12px 32px rgba(0, 0, 0, 0.07);
+    --ui-shadow-pill: 0 1px 2px rgba(0, 0, 0, 0.06), 0 2px 8px rgba(0, 0, 0, 0.04);
+
+    --ui-r-card: 22px;
+    --ui-r-inner: 14px;
+    --ui-r-control: 12px;
+
+    --ui-font-ui: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Geist', 'Noto Sans TC', 'PingFang TC', 'Microsoft JhengHei', sans-serif;
+    --ui-font-display: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Geist', 'Noto Sans TC', 'PingFang TC', 'Microsoft JhengHei', sans-serif;
+    --ui-font-mono: 'SF Mono', 'Geist Mono', ui-monospace, Menlo, Consolas, monospace;
+
+    --ui-t-large: 30px;
+    --ui-t-title: 19px;
+    --ui-t-head: 15px;
+    --ui-t-body: 14px;
+    --ui-t-foot: 12.5px;
+    --ui-t-cap: 11.5px;
+
+    --ui-ease: cubic-bezier(0.22, 1, 0.36, 1);
+    --ui-dur: 240ms;
+
+    /* One selection treatment for every selectable card: soft ring + faint tint, never a solid border */
+    --ui-sel-ring: 0 0 0 2px color-mix(in srgb, var(--ui-accent) 35%, transparent);
+    --ui-sel-tint: color-mix(in srgb, var(--ui-accent) 5%, var(--ui-surface));
+
+    --ui-sidebar-w: 248px;
+    --ui-topbar-h: 56px;
+    --ui-glass: rgba(255, 255, 255, 0.72);
+    --ui-sidebar-bg: rgba(246, 246, 249, 0.82);
+    --ui-sel-bg: #ffffff;
+  }
+
+  [data-theme='dark'] {
+    --ui-canvas: #000000;
+    --ui-surface: #1c1c1e;
+    --ui-surface-2: #232326;
+    --ui-fill: rgba(118, 118, 128, 0.24);
+    --ui-fill-strong: rgba(118, 118, 128, 0.34);
+    --ui-sep: rgba(84, 84, 88, 0.45);
+    --ui-ink: #f2f2f7;
+    --ui-ink-2: #d1d1d6;
+    --ui-muted: #98989f;
+    --ui-faint: #636366;
+    --ui-accent: #0a84ff;
+    --ui-accent-soft: rgba(10, 132, 255, 0.18);
+    --ui-green: #30d158;
+    --ui-green-soft: rgba(48, 209, 88, 0.18);
+    --ui-green-ink: #30d158;
+    --ui-orange: #ff9f0a;
+    --ui-orange-soft: rgba(255, 159, 10, 0.18);
+    --ui-orange-ink: #ff9f0a;
+    --ui-red: #ff453a;
+    --ui-red-soft: rgba(255, 69, 58, 0.18);
+    --ui-red-ink: #ff6961;
+    --ui-teal: #40c8e0;
+    --ui-teal-soft: rgba(64, 200, 224, 0.18);
+    --ui-indigo: #5e5ce6;
+    --ui-indigo-soft: rgba(94, 92, 230, 0.22);
+    --ui-p-lavender: #2b2638;
+    --ui-p-lavender-ink: #c9b8f0;
+    --ui-p-peach: #33281c;
+    --ui-p-peach-ink: #f0c99a;
+    --ui-p-mint: #1c2e22;
+    --ui-p-mint-ink: #9ed8b0;
+    --ui-p-sky: #1b2836;
+    --ui-p-sky-ink: #9cc4ec;
+    --ui-p-rose: #35202a;
+    --ui-p-rose-ink: #f0afc0;
+    --ui-shadow-card: 0 0 0 0.5px rgba(255, 255, 255, 0.06), 0 4px 16px rgba(0, 0, 0, 0.4);
+    --ui-shadow-raised: 0 0 0 0.5px rgba(255, 255, 255, 0.08), 0 12px 32px rgba(0, 0, 0, 0.5);
+    --ui-shadow-pill: 0 0 0 0.5px rgba(255, 255, 255, 0.08), 0 2px 8px rgba(0, 0, 0, 0.4);
+    --ui-glass: rgba(28, 28, 30, 0.72);
+    --ui-sidebar-bg: rgba(22, 22, 24, 0.82);
+    --ui-sel-bg: #2c2c2e;
+  }
+
   /* Force Light Mode Override (System Preference) */
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme]) {
@@ -120,35 +246,43 @@
      Apple-Native Button System
      ============================================
      Design principles (per docs/UIUX-Design-System.md):
-     - Flat solid colors — no gradients, no glow shadows
-     - No visible borders — depth comes from color alone
-     - iOS system colors (#007AFF, #FF3B30, #34C759, #FF9500)
+     - Flat solid colors - no gradients, no glow shadows
+     - No visible borders - depth comes from color alone
+     - iOS system colors via the --ui-* tokens
      - No layout-shifting hover effects (never change font-weight)
-     - Background darken on hover, subtle opacity dim on press
-     - 250ms ease-out for smooth native feel
-     - rounded-xl (12px) — Apple standard button radius
+     - 36px control height, 12px radius, press scales to .97
+     - Secondary uses the iOS tertiary fill; danger is a soft red tint
      ============================================ */
   .btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 0.5rem;
-    padding: 0.5rem 1rem;
-    font-size: 0.875rem;
-    font-weight: 500;
+    gap: 6px;
+    min-height: 36px;
+    padding: 0 14px;
+    font-size: 13.5px;
+    font-weight: 600;
     line-height: 1.25rem;
     text-decoration: none;
     white-space: nowrap;
     user-select: none;
     cursor: pointer;
     border: none;
-    border-radius: 0.75rem;
-    transition: background-color 250ms ease-out, color 250ms ease-out, opacity 150ms ease-out;
+    border-radius: var(--ui-r-control);
+    transition:
+      background-color var(--ui-dur) var(--ui-ease),
+      color var(--ui-dur) var(--ui-ease),
+      transform 120ms var(--ui-ease),
+      opacity var(--ui-dur) var(--ui-ease);
+  }
+
+  .btn:active:not(:disabled) {
+    transform: scale(0.97);
   }
 
   .btn:focus-visible {
     outline: none;
-    box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.3);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--ui-accent) 35%, transparent);
   }
 
   .btn:disabled {
@@ -156,95 +290,90 @@
     cursor: not-allowed;
   }
 
-  /* Primary — iOS System Blue */
+  /* Primary - iOS System Blue */
   .btn-primary {
-    background-color: #007AFF;
-    color: white;
+    background-color: var(--ui-accent);
+    color: #fff;
   }
   .btn-primary:hover:not(:disabled) {
-    background-color: #0066D6;
+    background-color: color-mix(in srgb, var(--ui-accent) 88%, #000);
   }
   .btn-primary:active:not(:disabled) {
-    background-color: #0052AD;
-    opacity: 0.9;
+    background-color: color-mix(in srgb, var(--ui-accent) 78%, #000);
   }
 
-  /* Secondary — iOS System Gray (tinted) */
+  /* Secondary - iOS tertiary fill */
   .btn-secondary {
-    background-color: #F2F2F7;
-    color: #1C1C1E;
+    background-color: var(--ui-fill);
+    color: var(--ui-ink);
   }
   .btn-secondary:hover:not(:disabled) {
-    background-color: #E5E5EA;
+    background-color: var(--ui-fill-strong);
   }
   .btn-secondary:active:not(:disabled) {
-    background-color: #D1D1D6;
-    opacity: 0.9;
+    background-color: var(--ui-fill-strong);
   }
 
-  /* Success — iOS System Green */
+  /* Success - iOS System Green */
   .btn-success {
-    background-color: #34C759;
-    color: white;
+    background-color: var(--ui-green);
+    color: #fff;
   }
   .btn-success:hover:not(:disabled) {
-    background-color: #2CAB4B;
+    background-color: color-mix(in srgb, var(--ui-green) 88%, #000);
   }
   .btn-success:active:not(:disabled) {
-    background-color: #248F3F;
-    opacity: 0.9;
+    background-color: color-mix(in srgb, var(--ui-green) 78%, #000);
   }
 
-  /* Warning — iOS System Orange */
+  /* Warning - iOS System Orange */
   .btn-warning {
-    background-color: #FF9500;
-    color: white;
+    background-color: var(--ui-orange);
+    color: #fff;
   }
   .btn-warning:hover:not(:disabled) {
-    background-color: #E08300;
+    background-color: color-mix(in srgb, var(--ui-orange) 88%, #000);
   }
   .btn-warning:active:not(:disabled) {
-    background-color: #C27100;
-    opacity: 0.9;
+    background-color: color-mix(in srgb, var(--ui-orange) 78%, #000);
   }
 
-  /* Danger — iOS System Red */
+  /* Danger - soft red tint with red ink */
   .btn-danger {
-    background-color: #FF3B30;
-    color: white;
+    background-color: var(--ui-red-soft);
+    color: var(--ui-red-ink);
   }
   .btn-danger:hover:not(:disabled) {
-    background-color: #E0342B;
+    background-color: color-mix(in srgb, var(--ui-red) 20%, transparent);
   }
   .btn-danger:active:not(:disabled) {
-    background-color: #CC2D25;
-    opacity: 0.9;
+    background-color: color-mix(in srgb, var(--ui-red) 26%, transparent);
   }
 
-  /* Ghost — Transparent, tinted blue text */
+  /* Ghost - transparent, accent text */
   .btn-ghost {
     background-color: transparent;
-    color: #007AFF;
+    color: var(--ui-accent);
   }
   .btn-ghost:hover:not(:disabled) {
-    background-color: rgba(0, 122, 255, 0.1);
+    background-color: var(--ui-accent-soft);
   }
   .btn-ghost:active:not(:disabled) {
-    background-color: rgba(0, 122, 255, 0.15);
-    opacity: 0.9;
+    background-color: color-mix(in srgb, var(--ui-accent) 16%, transparent);
   }
 
   /* Size variants */
   .btn-sm {
-    padding: 0.375rem 0.75rem;
-    font-size: 0.75rem;
-    border-radius: 0.625rem;
+    min-height: 30px;
+    padding: 0 11px;
+    font-size: 12.5px;
+    border-radius: 10px;
   }
 
   .btn-lg {
-    padding: 0.75rem 1.5rem;
-    font-size: 1rem;
-    border-radius: 0.875rem;
+    min-height: 44px;
+    padding: 0 20px;
+    font-size: 15px;
   }
 
   /* Touch: a finger needs a 44px target (Apple HIG). Gated on coarse pointers so the dense
@@ -479,6 +608,628 @@
 
   .status-dot.offline {
     @apply bg-gray-400 animate-none;
+  }
+
+  /* ============================================
+     ui- primitives (redesign foundation)
+     Shared building blocks for every page. Page-specific CSS stays
+     scoped in the page. Tokens: --ui-* (see :root above).
+     ============================================ */
+
+  /* Page header */
+  .ui-page-head {
+    display: flex;
+    align-items: flex-end;
+    flex-wrap: wrap;
+    gap: 16px;
+    padding-bottom: 4px;
+  }
+  .ui-page-head > :first-child {
+    min-width: 0;
+    flex: 1;
+  }
+  .ui-eyebrow {
+    margin-bottom: 4px;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--ui-muted);
+  }
+  .ui-page-title {
+    margin: 0;
+    font: 700 var(--ui-t-large) / 1.15 var(--ui-font-display);
+    letter-spacing: -0.025em;
+    color: var(--ui-ink);
+    text-wrap: balance;
+  }
+  .ui-page-sub {
+    max-width: 62ch;
+    margin: 6px 0 0;
+    font-size: 14px;
+    color: var(--ui-muted);
+  }
+  .ui-page-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+  }
+
+  /* Grid helpers */
+  .ui-grid {
+    display: grid;
+    gap: 16px;
+  }
+  .ui-cols-2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .ui-cols-3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .ui-cols-4 {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  /* Card */
+  .ui-card {
+    min-width: 0;
+    background: var(--ui-surface);
+    border-radius: var(--ui-r-card);
+    box-shadow: var(--ui-shadow-card);
+    color: var(--ui-ink);
+  }
+  .ui-card-pad {
+    padding: 20px 22px;
+  }
+  .ui-card-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+    padding: 18px 22px 12px;
+  }
+  .ui-card-title {
+    margin: 0;
+    font: 600 var(--ui-t-title) / 1.25 var(--ui-font-display);
+    letter-spacing: -0.015em;
+  }
+  .ui-card-head .ui-card-sub {
+    margin-top: 2px;
+    font-size: var(--ui-t-foot);
+    color: var(--ui-muted);
+  }
+  .ui-card-head .ui-card-end {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: auto;
+  }
+  .ui-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ui-accent);
+    text-decoration: none;
+    cursor: pointer;
+  }
+  .ui-well {
+    background: var(--ui-surface-2);
+    border-radius: var(--ui-r-inner);
+  }
+
+  /* Inset grouped list (iOS Settings style) */
+  .ui-list {
+    margin: 0;
+    padding: 0 0 6px;
+    list-style: none;
+  }
+  .ui-row {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 22px;
+    transition: background var(--ui-dur) var(--ui-ease);
+  }
+  .ui-row + .ui-row::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    left: 66px;
+    height: 0.5px;
+    background: var(--ui-sep);
+  }
+  .ui-row.is-flush + .ui-row.is-flush::before {
+    left: 22px;
+  }
+  .ui-row:hover {
+    background: color-mix(in srgb, var(--ui-fill) 45%, transparent);
+  }
+  .ui-row.is-selected {
+    background: var(--ui-sel-tint);
+    box-shadow: var(--ui-sel-ring);
+  }
+  .ui-row-main {
+    min-width: 0;
+    flex: 1;
+  }
+  .ui-row-title {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: var(--ui-t-head);
+    font-weight: 600;
+    line-height: 1.3;
+  }
+  .ui-row-sub {
+    overflow: hidden;
+    font-size: 13px;
+    color: var(--ui-muted);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .ui-row-meta {
+    font-size: 12px;
+    color: var(--ui-muted);
+    text-align: right;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Pills and tags */
+  .ui-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    height: 22px;
+    padding: 0 9px;
+    border-radius: 999px;
+    background: var(--ui-fill);
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--ui-ink-2);
+    white-space: nowrap;
+  }
+  .ui-pill-blue {
+    background: var(--ui-accent-soft);
+    color: var(--ui-accent);
+  }
+  .ui-pill-green {
+    background: var(--ui-green-soft);
+    color: var(--ui-green-ink);
+  }
+  .ui-pill-orange {
+    background: var(--ui-orange-soft);
+    color: var(--ui-orange-ink);
+  }
+  .ui-pill-red {
+    background: var(--ui-red-soft);
+    color: var(--ui-red-ink);
+  }
+  .ui-pill-dot::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+  }
+  .ui-tag {
+    display: inline-flex;
+    align-items: center;
+    height: 22px;
+    padding: 0 9px;
+    border-radius: 999px;
+    background: var(--ui-fill);
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--ui-ink-2);
+  }
+  .ui-tag-lavender {
+    background: var(--ui-p-lavender);
+    color: var(--ui-p-lavender-ink);
+  }
+  .ui-tag-peach {
+    background: var(--ui-p-peach);
+    color: var(--ui-p-peach-ink);
+  }
+  .ui-tag-mint {
+    background: var(--ui-p-mint);
+    color: var(--ui-p-mint-ink);
+  }
+  .ui-tag-sky {
+    background: var(--ui-p-sky);
+    color: var(--ui-p-sky-ink);
+  }
+  .ui-tag-rose {
+    background: var(--ui-p-rose);
+    color: var(--ui-p-rose-ink);
+  }
+
+  /* Segmented control: buttons inside; active one carries .is-on or aria-pressed/selected */
+  .ui-seg {
+    display: inline-flex;
+    gap: 2px;
+    padding: 2px;
+    border-radius: 10px;
+    background: var(--ui-fill);
+  }
+  .ui-seg > button {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 30px;
+    padding: 0 14px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--ui-ink-2);
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background var(--ui-dur) var(--ui-ease);
+  }
+  .ui-seg > button.is-on,
+  .ui-seg > button[aria-pressed='true'],
+  .ui-seg > button[aria-selected='true'] {
+    background: var(--ui-sel-bg);
+    color: var(--ui-ink);
+    font-weight: 600;
+    box-shadow: var(--ui-shadow-pill);
+  }
+  .ui-seg .ui-seg-n {
+    font-size: 11.5px;
+    color: var(--ui-muted);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Filter chip */
+  .ui-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 30px;
+    padding: 0 12px;
+    border: 0;
+    border-radius: 999px;
+    background: var(--ui-surface);
+    box-shadow: var(--ui-shadow-pill);
+    font-size: 12.5px;
+    font-weight: 500;
+    color: var(--ui-ink-2);
+    cursor: pointer;
+  }
+  .ui-chip.is-on,
+  .ui-chip[aria-pressed='true'] {
+    background: var(--ui-ink);
+    color: var(--ui-surface);
+  }
+
+  /* Channel glyph tile (brand-coloured). Put an svg (fill #fff) inside. */
+  .ui-ch {
+    display: inline-grid;
+    flex: none;
+    place-items: center;
+    width: 18px;
+    height: 18px;
+    border-radius: 6px;
+  }
+  .ui-ch svg {
+    width: 11px;
+    height: 11px;
+    fill: #fff;
+  }
+  .ui-ch-line {
+    background: var(--ui-line);
+  }
+  .ui-ch-fb {
+    background: var(--ui-messenger);
+  }
+
+  /* Form controls */
+  .ui-field {
+    display: grid;
+    gap: 6px;
+  }
+  .ui-field > label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ui-ink-2);
+  }
+  .ui-field .ui-hint {
+    font-size: 12px;
+    color: var(--ui-muted);
+  }
+  .ui-input,
+  .ui-select,
+  .ui-textarea {
+    width: 100%;
+    height: 40px;
+    padding: 0 14px;
+    border: 0;
+    border-radius: var(--ui-r-control);
+    background: var(--ui-surface-2);
+    box-shadow: inset 0 0 0 0.5px var(--ui-sep);
+    font-size: 14px;
+    color: var(--ui-ink);
+    transition:
+      box-shadow var(--ui-dur) var(--ui-ease),
+      background var(--ui-dur) var(--ui-ease);
+  }
+  .ui-textarea {
+    height: auto;
+    min-height: 120px;
+    padding: 12px 14px;
+    line-height: 1.55;
+    resize: vertical;
+  }
+  .ui-input::placeholder,
+  .ui-textarea::placeholder {
+    color: var(--ui-faint);
+  }
+  .ui-input:focus,
+  .ui-select:focus,
+  .ui-textarea:focus {
+    outline: none;
+    background: var(--ui-surface);
+    box-shadow:
+      inset 0 0 0 1px var(--ui-accent),
+      0 0 0 4px var(--ui-accent-soft);
+  }
+  .ui-input:disabled,
+  .ui-select:disabled,
+  .ui-textarea:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  .ui-select {
+    padding-right: 34px;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238E8E93' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+  }
+
+  /* Switch: a button/div; on state via .is-on or aria-checked */
+  .ui-switch {
+    position: relative;
+    flex: none;
+    width: 44px;
+    height: 26px;
+    border: 0;
+    border-radius: 999px;
+    background: var(--ui-fill-strong);
+    cursor: pointer;
+    transition: background var(--ui-dur) var(--ui-ease);
+  }
+  .ui-switch::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow:
+      0 2px 4px rgba(0, 0, 0, 0.15),
+      0 0 0 0.5px rgba(0, 0, 0, 0.04);
+    transition: transform var(--ui-dur) var(--ui-ease);
+  }
+  .ui-switch.is-on,
+  .ui-switch[aria-checked='true'] {
+    background: var(--ui-green);
+  }
+  .ui-switch.is-on::after,
+  .ui-switch[aria-checked='true']::after {
+    transform: translateX(18px);
+  }
+
+  /* Data table */
+  .ui-table-wrap {
+    overflow-x: auto;
+  }
+  .ui-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 13.5px;
+  }
+  .ui-table th {
+    position: sticky;
+    top: 0;
+    padding: 10px 14px;
+    background: var(--ui-surface);
+    box-shadow: inset 0 -0.5px 0 var(--ui-sep);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--ui-muted);
+    text-align: left;
+    white-space: nowrap;
+  }
+  .ui-table td {
+    padding: 12px 14px;
+    box-shadow: inset 0 -0.5px 0 var(--ui-sep);
+    vertical-align: middle;
+  }
+  .ui-table tr:last-child td {
+    box-shadow: none;
+  }
+  .ui-table tbody tr {
+    transition: background var(--ui-dur) var(--ui-ease);
+  }
+  .ui-table tbody tr:hover {
+    background: color-mix(in srgb, var(--ui-fill) 40%, transparent);
+  }
+  .ui-table th:first-child,
+  .ui-table td:first-child {
+    padding-left: 22px;
+  }
+  .ui-table th:last-child,
+  .ui-table td:last-child {
+    padding-right: 22px;
+  }
+
+  /* KPI tile (use together with .ui-card) */
+  .ui-kpi {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 18px 20px 16px;
+  }
+  .ui-kpi-top {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ui-ink-2);
+  }
+  .ui-kpi-ico {
+    display: grid;
+    place-items: center;
+    width: 26px;
+    height: 26px;
+    border-radius: 8px;
+  }
+  .ui-kpi-ico svg {
+    width: 15px;
+    height: 15px;
+  }
+  .ui-kpi-value {
+    font: 600 34px / 1 var(--ui-font-display);
+    letter-spacing: -0.03em;
+    font-variant-numeric: tabular-nums;
+  }
+  .ui-kpi-value small {
+    margin-left: 3px;
+    font-size: 15px;
+    font-weight: 500;
+    letter-spacing: 0;
+    color: var(--ui-muted);
+  }
+  .ui-kpi-foot {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--ui-muted);
+  }
+  .ui-delta {
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+  .ui-delta-up {
+    color: var(--ui-green-ink);
+  }
+  .ui-delta-down {
+    color: var(--ui-red-ink);
+  }
+
+  /* Empty state */
+  .ui-empty {
+    display: grid;
+    justify-items: center;
+    gap: 8px;
+    padding: 44px 24px;
+    text-align: center;
+  }
+  .ui-empty-art {
+    display: grid;
+    place-items: center;
+    width: 56px;
+    height: 56px;
+    margin-bottom: 4px;
+    border-radius: 18px;
+    background: var(--ui-surface-2);
+    color: var(--ui-muted);
+  }
+  .ui-empty-art svg {
+    width: 26px;
+    height: 26px;
+  }
+  .ui-empty h3 {
+    margin: 0;
+    font: 600 16px var(--ui-font-display);
+  }
+  .ui-empty p {
+    max-width: 40ch;
+    margin: 0;
+    font-size: 13.5px;
+    color: var(--ui-muted);
+  }
+
+  /* Entrance: children rise in, staggered. Reduced-motion guard below. */
+  @keyframes ui-rise {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  .ui-rise > * {
+    animation: ui-rise 420ms var(--ui-ease) both;
+  }
+  .ui-rise > *:nth-child(2) {
+    animation-delay: 40ms;
+  }
+  .ui-rise > *:nth-child(3) {
+    animation-delay: 80ms;
+  }
+  .ui-rise > *:nth-child(4) {
+    animation-delay: 120ms;
+  }
+  .ui-rise > *:nth-child(5) {
+    animation-delay: 160ms;
+  }
+  .ui-rise > *:nth-child(n + 6) {
+    animation-delay: 200ms;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .ui-rise > * {
+      animation: none;
+    }
+  }
+
+  /* Responsive (scale: 480 / 640 / 768 / 1024 / 1280) */
+  @media (max-width: 1280px) {
+    .ui-cols-4 {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+  @media (max-width: 1024px) {
+    .ui-cols-3 {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+  @media (max-width: 768px) {
+    .ui-cols-3,
+    .ui-cols-2 {
+      grid-template-columns: 1fr;
+    }
+    .ui-page-title {
+      font-size: 26px;
+    }
+    .ui-page-head {
+      flex-direction: column;
+      align-items: stretch;
+    }
+    .ui-page-actions > .btn-primary {
+      flex: 1;
+    }
+  }
+  @media (max-width: 480px) {
+    .ui-cols-4 {
+      grid-template-columns: 1fr 1fr;
+    }
+    .ui-kpi-value {
+      font-size: 28px;
+    }
   }
 }
 

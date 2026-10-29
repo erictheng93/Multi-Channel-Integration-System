@@ -10,6 +10,7 @@
     >
       <div class="user-avatar">
         {{ userInitials }}
+        <span class="user-presence" />
       </div>
       <div
         v-if="!sidebarCollapsed || isMobile"
@@ -26,6 +27,7 @@
         v-if="!sidebarCollapsed || isMobile"
         class="user-menu-btn"
         title="用戶菜單"
+        aria-label="用戶菜單"
         @click.stop="toggleUserMenu()"
       >
         <ChevronUpIcon :class="{ rotated: showUserMenu }" />
@@ -168,33 +170,32 @@ const props = defineProps<{
 
 <style scoped>
   .sidebar-footer {
-    padding: var(--space-4);
-    border-top: 1px solid var(--gray-200);
+    padding: 8px 10px 12px;
   }
 
   .user-profile {
+    position: relative;
     display: flex;
     align-items: center;
-    gap: var(--space-3);
-    padding: var(--space-3);
-    border-radius: var(--radius-lg);
-    background-color: var(--gray-50);
+    gap: 10px;
+    padding: 8px 10px;
+    border-radius: 14px;
     cursor: pointer;
-    transition: all var(--transition-fast);
-    position: relative;
+    transition: background-color var(--ui-dur) var(--ui-ease);
   }
 
   .user-profile:hover {
-    background-color: var(--gray-100);
+    background-color: var(--ui-fill);
   }
 
   .user-profile.collapsed {
     justify-content: center;
+    padding: 8px 0;
     cursor: default;
   }
 
   .user-profile.collapsed:hover {
-    background-color: var(--gray-50);
+    background-color: transparent;
   }
 
   /* Prop-driven mobile style (replaces .sidebar-mobile .user-profile) */
@@ -203,203 +204,149 @@ const props = defineProps<{
   }
 
   .user-profile--mobile:hover {
-    background-color: var(--gray-50);
+    background-color: transparent;
   }
 
   .user-avatar {
-    width: 40px;
-    height: 40px;
-    border-radius: var(--radius-full);
-    background: linear-gradient(135deg, var(--primary-500), var(--primary-600));
-    color: white;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 600;
-    font-size: 0.875rem;
+    position: relative;
+    flex: none;
+    width: 32px;
+    height: 32px;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    background: linear-gradient(160deg, #5aa8ff, #1d6fe0);
+    color: #fff;
+    font: 600 13px var(--ui-font-display);
+  }
+
+  .user-presence {
+    position: absolute;
+    right: -1px;
+    bottom: -1px;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--ui-green);
+    box-shadow: 0 0 0 2px var(--ui-canvas);
   }
 
   .user-info {
     flex: 1;
+    min-width: 0;
   }
 
   .user-name {
-    font-weight: 500;
-    font-size: 0.875rem;
-    color: var(--gray-900);
+    overflow: hidden;
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.2;
+    color: var(--ui-ink);
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .user-role {
-    font-size: 0.75rem;
-    color: var(--gray-500);
+    font-size: var(--ui-t-cap);
+    color: var(--ui-muted);
     text-transform: capitalize;
   }
 
   .user-menu-btn {
-    padding: var(--space-2);
-    border: none;
-    background: none;
-    color: var(--gray-500);
-    cursor: pointer;
-    border-radius: var(--radius-md);
-    transition: all var(--transition-fast);
+    flex: none;
     display: flex;
     align-items: center;
     justify-content: center;
+    padding: 6px;
+    border: none;
+    border-radius: 8px;
+    background: none;
+    color: var(--ui-faint);
+    cursor: pointer;
+    transition:
+      background-color var(--ui-dur) var(--ui-ease),
+      color var(--ui-dur) var(--ui-ease);
   }
 
   .user-menu-btn:hover {
-    background-color: var(--gray-200);
-    color: var(--gray-700);
+    background-color: var(--ui-fill);
+    color: var(--ui-ink-2);
   }
 
   .user-menu-btn .rotated {
     transform: rotate(180deg);
   }
 
+  /* Dropdown: a floating card above the profile row */
   .user-menu {
     position: absolute;
     bottom: 100%;
     left: 0;
     right: 0;
-    background: white;
-    border: 1px solid var(--gray-200);
-    border-radius: var(--radius-lg);
-    box-shadow:
-      0 10px 25px -5px rgba(0, 0, 0, 0.1),
-      0 4px 6px -4px rgba(0, 0, 0, 0.1);
-    margin-bottom: var(--space-2);
+    margin-bottom: 8px;
+    padding: 6px;
+    border-radius: 16px;
+    background: var(--ui-surface);
+    box-shadow: var(--ui-shadow-raised);
     overflow: hidden;
     z-index: 50;
-    animation: slideUp 0.2s ease-out;
+    animation: menuRise var(--ui-dur) var(--ui-ease);
   }
 
-  /* Modern Menu Design */
   .modern-menu {
-    position: fixed !important;
-    bottom: 90px !important;
-    left: 20px !important;
-    right: auto !important;
-    width: 220px !important;
-    z-index: 9999 !important;
-    background: rgba(255, 255, 255, 0.95) !important;
-    backdrop-filter: blur(20px) !important;
-    border: 1px solid rgba(255, 255, 255, 0.2) !important;
-    border-radius: 16px !important;
-    box-shadow:
-      0 20px 25px -5px rgba(0, 0, 0, 0.1),
-      0 10px 10px -5px rgba(0, 0, 0, 0.04),
-      0 0 0 1px rgba(255, 255, 255, 0.05) !important;
-    padding: 8px !important;
-    animation: modernSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+    position: fixed;
+    bottom: 76px;
+    left: 14px;
+    right: auto;
+    width: 220px;
+    z-index: 9999;
   }
 
   .user-menu-item {
     display: flex;
     align-items: center;
-    gap: var(--space-3);
-    padding: 12px 16px;
-    cursor: pointer;
-    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-    font-size: 0.875rem;
+    gap: 10px;
+    padding: 9px 12px;
+    border-radius: 10px;
+    color: var(--ui-ink-2);
+    font-size: 13.5px;
     font-weight: 500;
-    color: var(--gray-700);
-    border-radius: 12px;
-    margin: 2px 0;
-    position: relative;
-    overflow: hidden;
+    cursor: pointer;
+    transition:
+      background-color var(--ui-dur) var(--ui-ease),
+      color var(--ui-dur) var(--ui-ease);
   }
 
-  .modern-menu .user-menu-item {
-    border-radius: 10px !important;
-    font-weight: 500 !important;
-    letter-spacing: -0.01em !important;
+  .user-menu-item svg {
+    width: 17px;
+    height: 17px;
+    color: var(--ui-muted);
   }
 
   .user-menu-item:hover {
-    background-color: var(--gray-50);
-    transform: translateX(2px);
+    background-color: var(--ui-fill);
+    color: var(--ui-ink);
   }
 
-  .modern-menu .user-menu-item:hover {
-    background: linear-gradient(
-      135deg,
-      rgba(59, 130, 246, 0.08),
-      rgba(59, 130, 246, 0.04)
-    ) !important;
-    color: var(--primary-700) !important;
-    transform: translateX(4px) !important;
-  }
-
-  .user-menu-item.logout {
-    color: var(--danger-600);
+  .user-menu-item.logout,
+  .user-menu-item.logout svg {
+    color: var(--ui-red-ink);
   }
 
   .user-menu-item.logout:hover {
-    background-color: var(--danger-50);
-    color: var(--danger-700);
-  }
-
-  .modern-menu .user-menu-item.logout:hover {
-    background: linear-gradient(
-      135deg,
-      rgba(239, 68, 68, 0.08),
-      rgba(239, 68, 68, 0.04)
-    ) !important;
-    color: var(--danger-700) !important;
+    background-color: var(--ui-red-soft);
   }
 
   .user-menu-divider {
-    height: 1px;
-    background-color: var(--gray-200);
-    margin: 8px 12px;
-    border-radius: 1px;
+    height: 0.5px;
+    margin: 4px 8px;
+    background-color: var(--ui-sep);
   }
 
-  .modern-menu .user-menu-divider {
-    background: linear-gradient(90deg, transparent, rgba(0, 0, 0, 0.1), transparent) !important;
-    margin: 8px 0 !important;
-  }
-
-  /* Modern Menu Icons */
-  .modern-menu .user-menu-item svg {
-    width: 18px !important;
-    height: 18px !important;
-    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
-    opacity: 0.7 !important;
-  }
-
-  .modern-menu .user-menu-item:hover svg {
-    opacity: 1 !important;
-    transform: scale(1.1) !important;
-  }
-
-  .modern-menu .user-menu-item.logout svg {
-    color: var(--danger-500) !important;
-  }
-
-  /* Subtle glow effect on hover */
-  .modern-menu .user-menu-item::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), transparent);
-    opacity: 0;
-    transition: opacity 0.2s ease;
-    border-radius: inherit;
-  }
-
-  .modern-menu .user-menu-item:hover::before {
-    opacity: 1;
-  }
-
-  @keyframes slideUp {
+  @keyframes menuRise {
     from {
       opacity: 0;
-      transform: translateY(10px);
+      transform: translateY(6px);
     }
     to {
       opacity: 1;
@@ -407,27 +354,16 @@ const props = defineProps<{
     }
   }
 
-  @keyframes modernSlideUp {
-    from {
-      opacity: 0;
-      transform: translateY(20px) scale(0.95);
-      filter: blur(4px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0) scale(1);
-      filter: blur(0px);
-    }
-  }
-
   /* Medium screens - hide user info */
   @media (min-width: 769px) and (max-width: 1024px) {
-    .user-info {
+    .user-info,
+    .user-menu-btn {
       display: none;
     }
 
-    .user-menu-btn {
-      display: none;
+    .user-profile {
+      justify-content: center;
+      padding: 8px 0;
     }
   }
 </style>

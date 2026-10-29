@@ -1,42 +1,56 @@
 <template>
-  <nav class="sidebar-nav">
-    <template
-      v-for="item in navigationItems"
-      :key="item.path"
+  <nav
+    class="sidebar-nav"
+    aria-label="主要導覽"
+  >
+    <section
+      v-for="group in navigationGroups"
+      :key="group.id"
+      class="nav-group"
     >
-      <!-- Expandable nav groups (Reports, Data, Settings) -->
-      <ExpandableNavGroup
-        v-if="item.submenu"
-        :icon="item.icon"
-        :label="item.label"
-        :route-prefix="item.path"
-        :expanded="expandedMenus[item.path] ?? false"
-        :sidebar-collapsed="sidebarCollapsed"
-        :is-mobile="isMobile"
-        :items="item.submenu"
-        @toggle="toggleSubmenu(item.path)"
-      />
+      <span
+        v-if="!sidebarCollapsed || isMobile"
+        class="nav-label"
+      >{{ group.label }}</span>
 
-      <!-- Regular navigation items -->
-      <router-link
-        v-else
-        :to="item.path"
-        class="nav-item"
-        :class="{
-          active: currentPath === item.path,
-          'nav-item--collapsed': sidebarCollapsed && !isMobile,
-        }"
+      <template
+        v-for="item in group.items"
+        :key="item.path"
       >
-        <component
-          :is="item.icon"
-          class="nav-icon"
+        <!-- Expandable nav groups (Reports, Data, Settings) -->
+        <ExpandableNavGroup
+          v-if="item.submenu"
+          :icon="item.icon"
+          :label="item.label"
+          :route-prefix="item.path"
+          :expanded="expandedMenus[item.path] ?? false"
+          :sidebar-collapsed="sidebarCollapsed"
+          :is-mobile="isMobile"
+          :items="item.submenu"
+          @toggle="toggleSubmenu(item.path)"
         />
-        <span
-          v-if="!sidebarCollapsed || isMobile"
-          class="nav-text"
-        >{{ item.label }}</span>
-      </router-link>
-    </template>
+
+        <!-- Regular navigation items -->
+        <router-link
+          v-else
+          :to="item.path"
+          class="nav-item"
+          :class="{
+            active: currentPath === item.path,
+            'nav-item--collapsed': sidebarCollapsed && !isMobile,
+          }"
+        >
+          <component
+            :is="item.icon"
+            class="nav-icon"
+          />
+          <span
+            v-if="!sidebarCollapsed || isMobile"
+            class="nav-text"
+          >{{ item.label }}</span>
+        </router-link>
+      </template>
+    </section>
   </nav>
 </template>
 
@@ -44,6 +58,7 @@
   import { computed, watch, reactive, type Component } from 'vue'
   import { useRoute } from 'vue-router'
   import { useAuthStore } from '@/stores/auth'
+  import { NAV_SECTIONS, sectionForPath } from '@/config/nav-sections'
   import ExpandableNavGroup from './ExpandableNavGroup.vue'
 
   // Icon imports
@@ -154,6 +169,15 @@
     ))
   })
 
+  // Sidebar groups: same items, in the same order, bucketed under section labels
+  const navigationGroups = computed(() =>
+    NAV_SECTIONS.map((section) => ({
+      id: section.id,
+      label: section.label,
+      items: navigationItems.value.filter((item) => sectionForPath(item.path)?.id === section.id),
+    })).filter((group) => group.items.length > 0)
+  )
+
   // Auto-expand submenus when route matches their prefix
   watch(
     () => route.path,
@@ -175,13 +199,14 @@
 <style scoped>
   .sidebar-nav {
     flex: 1;
-    padding: var(--space-4);
+    padding: 4px 10px 12px;
     overflow-y: auto;
     overflow-x: hidden;
     min-height: 0;
+    scrollbar-width: thin;
+    scrollbar-color: var(--ui-fill-strong) transparent;
   }
 
-  /* Thin scrollbar */
   .sidebar-nav::-webkit-scrollbar {
     width: 4px;
   }
@@ -191,65 +216,92 @@
   }
 
   .sidebar-nav::-webkit-scrollbar-thumb {
-    background: rgba(0, 0, 0, 0.15);
+    background: var(--ui-fill-strong);
     border-radius: 2px;
   }
 
-  .sidebar-nav::-webkit-scrollbar-thumb:hover {
-    background: rgba(0, 0, 0, 0.25);
+  .nav-group + .nav-group {
+    margin-top: 14px;
   }
 
-  .sidebar-nav {
-    scrollbar-width: thin;
-    scrollbar-color: rgba(0, 0, 0, 0.15) transparent;
+  .nav-label {
+    display: block;
+    padding: 6px 10px 4px;
+    font-size: var(--ui-t-cap);
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: var(--ui-muted);
   }
 
   .nav-item {
+    position: relative;
     display: flex;
     align-items: center;
-    gap: var(--space-3);
-    padding: var(--space-3) var(--space-4);
-    margin-bottom: var(--space-1);
-    color: var(--gray-600);
-    text-decoration: none;
-    border-radius: var(--radius-lg);
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    gap: 10px;
+    height: 34px;
+    padding: 0 10px;
+    margin-bottom: 1px;
+    border-radius: 9px;
+    color: var(--ui-ink-2);
+    font-size: 13.5px;
     font-weight: 500;
-    position: relative;
+    text-decoration: none;
     overflow: hidden;
+    transition:
+      background-color var(--ui-dur) var(--ui-ease),
+      color var(--ui-dur) var(--ui-ease);
   }
 
   /* Prop-driven collapsed style (replaces .sidebar-collapsed .nav-item) */
   .nav-item--collapsed {
     justify-content: center;
-    padding: var(--space-3);
+    padding: 0;
   }
 
   .nav-item:hover {
-    background-color: var(--gray-100);
-    color: var(--gray-900);
+    background-color: var(--ui-fill);
   }
 
+  /* Active: raised white pill, accent icon */
   .nav-item.active {
-    background-color: var(--primary-50);
-    color: var(--primary-700);
+    background-color: var(--ui-sel-bg);
+    color: var(--ui-ink);
+    font-weight: 600;
+    box-shadow: var(--ui-shadow-pill);
   }
 
   .nav-icon {
     flex-shrink: 0;
+    width: 17px;
+    height: 17px;
+    stroke-width: 1.7;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    color: var(--ui-muted);
+    transition: color var(--ui-dur) var(--ui-ease);
+  }
+
+  .nav-item.active .nav-icon {
+    color: var(--ui-accent);
   }
 
   .nav-text {
-    white-space: nowrap;
-    opacity: 1;
-    transition: opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
-  /* Medium screens - hide text */
+  /* Medium screens: the rail shows icons only */
   @media (min-width: 769px) and (max-width: 1024px) {
+    .nav-label,
     .nav-text {
-      opacity: 0;
+      display: none;
+    }
+
+    .nav-item {
+      justify-content: center;
+      padding: 0;
     }
   }
 </style>
