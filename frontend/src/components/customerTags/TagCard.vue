@@ -131,6 +131,7 @@ const meterWidth = computed(() => {
 .tag-card {
   position: relative;
   display: grid;
+  grid-template-rows: auto 1fr auto;
   gap: 10px;
   padding: 16px 16px 14px;
   cursor: pointer;
@@ -393,8 +394,26 @@ const meterWidth = computed(() => {
     gap: 6px;
   }
 
+  /* the whole name stays readable: the chip grows to two lines instead of cutting it */
   .tag-chip {
-    padding: 0 10px;
+    height: auto;
+    min-height: 26px;
+    padding: 4px 10px;
+    border-radius: 14px;
+  }
+
+  .tag-name {
+    overflow: visible;
+    line-height: 1.3;
+    white-space: normal;
+  }
+
+  /* the count doubles as the entry to the tag's conversations */
+  .stat-item-clickable::after {
+    margin-left: 2px;
+    color: var(--ui-faint);
+    font-size: 18px;
+    content: '›';
   }
 
   .t-foot {

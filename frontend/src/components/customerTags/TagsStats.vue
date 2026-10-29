@@ -8,6 +8,9 @@
       <div class="ui-kpi-value">
         {{ stats.totalTags }}
       </div>
+      <div class="ui-kpi-foot hide-phone">
+        目前建立的全部標籤
+      </div>
     </article>
     <article class="ui-card ui-kpi">
       <div class="ui-kpi-top">
@@ -29,11 +32,8 @@
       <div class="ui-kpi-value">
         {{ stats.activeTags }}<small>/ {{ stats.totalTags }}</small>
       </div>
-      <div
-        v-if="stats.totalTags - stats.activeTags > 0"
-        class="ui-kpi-foot hide-phone"
-      >
-        {{ stats.totalTags - stats.activeTags }} 個標籤尚未被使用
+      <div class="ui-kpi-foot hide-phone">
+        {{ stats.totalTags - stats.activeTags > 0 ? `${stats.totalTags - stats.activeTags} 個標籤尚未被使用` : '每個標籤都已被使用' }}
       </div>
     </article>
   </section>
