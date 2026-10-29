@@ -208,10 +208,21 @@ const formatDate = (dateString: string): string => {
   margin: 0 22px 4px;
   padding: 10px 14px;
   border-radius: var(--ui-r-inner);
-  background: var(--ui-orange-soft);
+  background: var(--ui-surface-2);
+  box-shadow: inset 0 0 0 1px var(--ui-sep);
   font-size: 13.5px;
   font-weight: 600;
-  color: var(--ui-orange-ink);
+  color: var(--ui-ink);
+}
+
+.need::before {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 8px;
+  border-radius: 50%;
+  background: var(--ui-orange);
+  content: '';
 }
 
 .kv {
