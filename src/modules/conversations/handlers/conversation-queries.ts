@@ -4,7 +4,7 @@
 import { Hono } from 'hono';
 import { HTTP_STATUS } from '@/constants/http-status';
 import { globalErrorHandler } from '@/core/error-handler';
-import { eq, desc, and, or, like, sql, count, type SQL } from 'drizzle-orm';
+import { eq, desc, asc, and, or, like, sql, count, type SQL } from 'drizzle-orm';
 import { createDbClient } from '@/db/drizzle-factory';
 import { conversations, customers, teams } from '@/db/schema';
 import type { Bindings } from '@/types';
@@ -21,7 +21,9 @@ import { nowISO, nowMs } from '@/utils/timestamp'
 import { readThrough, DASHBOARD_SUMMARY_TTL_SECONDS } from '@/modules/dashboard/services/kv-cache';
 import { RowsReadMeter } from '@/utils/d1-rows-read';
 import { getUnreadAggregate } from '@/modules/conversations/services/unread-stats-service';
-import { clampWaitingLimit, getWaitingConversations } from '@/modules/dashboard/services/waiting-service';
+import { clampWaitingLimit, getWaitingConversations, waitingWindowStartIso } from '@/modules/dashboard/services/waiting-service';
+import { getNeverRepliedIds } from '@/modules/dashboard/services/stale-waiting-service';
+import { neverRepliedSql } from '@/modules/dashboard/services/awaiting-rules';
 import { visibilityScopeKey } from '@/modules/dashboard/services/dashboard-service';
 import { conversationContracts, type ConversationStats } from '@shared/api-contracts/conversations';
 import { getRecallWindowSeconds } from '@/services/recall-window-config';
@@ -169,6 +171,20 @@ export function conversationScopeOrderBy(scope: string): SQL[] {
     return [sql`${conversations.status} = 'closed'`, desc(conversations.updatedAt), desc(conversations.id)];
   }
   return [desc(conversations.updatedAt), desc(conversations.id)];
+}
+
+// awaiting=stale: waits older than the 待回覆 window. The literal IS NOT NULL keeps the partial
+// index idx_conversations_awaiting_since usable.
+export function staleViewConditions(now: number): SQL[] {
+  return [sql`${conversations.awaitingSince} IS NOT NULL AND ${conversations.awaitingSince} < ${waitingWindowStartIso(now)}
+    AND ${conversations.status} <> 'closed' AND ${conversations.deletedAt} IS NULL`];
+}
+
+// Stale review order: conversations no human ever answered first, then the oldest wait.
+export function staleReviewOrderBy(): SQL[] {
+  // eslint-disable-next-line no-unsafe-sql-raw -- the argument is a compile-time constant column reference, never request input
+  const neverReplied = sql.raw(neverRepliedSql('conversations.id'));
+  return [sql`CASE WHEN ${neverReplied} THEN 0 ELSE 1 END`, asc(conversations.awaitingSince), asc(conversations.id)];
 }
 
 function parsePositiveInt(value: string | undefined, fallback: number): number {
@@ -504,6 +520,8 @@ conversationQueriesHandler.get('/', jwtAuth, async (c) => {
     // 分頁籤：open = 處理中、closed = 已結案、all / 未指定 = 全部（未指定維持舊行為，相容舊前端）
     const scopeQuery = c.req.query('scope')?.trim() || '';
     const platformQuery = c.req.query('platform')?.trim() || '';
+    // awaiting=stale: open conversations unanswered for longer than the 待回覆 window ("逾期待回覆")
+    const staleView = c.req.query('awaiting')?.trim() === 'stale';
     const teamIdParam = c.req.query('teamId');
     const teamIdQuery = teamIdParam ? Number.parseInt(teamIdParam, 10) : undefined;
 
@@ -544,6 +562,7 @@ conversationQueriesHandler.get('/', jwtAuth, async (c) => {
       ...(updatedBefore ? [sql`${conversations.updatedAt} <= ${updatedBefore}`] : []),
       ...(statusQuery ? [sql`${conversations.status} = ${statusQuery}`] : []),
       ...conversationScopeConditions(scopeQuery),
+      ...(staleView ? staleViewConditions(nowMs()) : []),
       ...(platformQuery ? [sql`${customers.platform} = ${platformQuery}`] : []),
       ...(teamIdQuery !== undefined && Number.isFinite(teamIdQuery)
         ? [sql`${conversations.assignedTeamId} = ${teamIdQuery}`]
@@ -563,7 +582,8 @@ conversationQueriesHandler.get('/', jwtAuth, async (c) => {
         conversations: publicConversationColumns,
         customers,
         teams,
-        replyTokenReceivedAt: replyTokenReceivedAtSql
+        replyTokenReceivedAt: replyTokenReceivedAtSql,
+        awaitingSince: conversations.awaitingSince
       })
       .from(conversations)
       .leftJoin(customers, eq(conversations.customerId, customers.id))
@@ -574,7 +594,7 @@ conversationQueriesHandler.get('/', jwtAuth, async (c) => {
       // 已結案分頁依結案時間排序；全部分頁未結案在前，避免「按結案反而跳到最上面」
       // (結案會更新 updated_at)。處理中分頁仍走 idx_conversations_updated_at。
       // ponytail: closed / all 會用 temp B-tree 排序（目前數百筆無感），量大再加 (status, closed_at) 索引
-      .orderBy(...conversationScopeOrderBy(scopeQuery));
+      .orderBy(...(staleView ? staleReviewOrderBy() : conversationScopeOrderBy(scopeQuery)));
 
     let total: number;
     let pagedConversationResults: Awaited<typeof listQuery>;
@@ -610,6 +630,8 @@ conversationQueriesHandler.get('/', jwtAuth, async (c) => {
       // Epoch ms until the next LINE reply is free (Reply API); resolved below
       // once the recall window is known. Never the token itself.
       replyTokenReceivedAt: result.replyTokenReceivedAt ?? null,
+      // Only the stale view exposes the wait start (additive; the list contract is otherwise unchanged)
+      awaitingSince: staleView ? result.awaitingSince ?? null : undefined,
       // 完整的 customer 對象 (匹配前端類型定義)
       customer: result.customers ? {
         id: result.customers.id,
@@ -639,6 +661,7 @@ conversationQueriesHandler.get('/', jwtAuth, async (c) => {
     // Phase B: 直接 DB 查詢獲取最新訊息（移除 KV 快取層以保證數據一致性）
     // 使用單一批量查詢獲取所有對話的最新訊息
     const conversationIds = conversationData.map(c => c.id);
+    const neverRepliedIds = staleView ? await getNeverRepliedIds(c.env.DB, conversationIds) : null;
 
     let lastMessagesMap = new Map<string, {
       messageId: string;
@@ -823,7 +846,9 @@ conversationQueriesHandler.get('/', jwtAuth, async (c) => {
         ),
         // Age of the oldest unread customer message; null when nothing is unread
         oldestUnreadAt: (unreadState?.unreadCount ?? 0) > 0 ? unreadState?.oldestUnreadAt ?? null : null,
-        replyWindowExpiresAt: computeReplyWindowExpiresAt(replyTokenReceivedAt, recallWindowSeconds)
+        replyWindowExpiresAt: computeReplyWindowExpiresAt(replyTokenReceivedAt, recallWindowSeconds),
+        // Stale view only: no human agent ever replied in this conversation
+        ...(neverRepliedIds ? { neverReplied: neverRepliedIds.has(conv.id) } : {})
       };
     });
 
