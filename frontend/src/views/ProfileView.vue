@@ -151,7 +151,7 @@
             </header>
             <div class="form prefs">
               <p class="prefs-text">
-                桌面通知僅套用於這台裝置；提示偏好與通知類型跟著你的帳號。
+                桌面通知只套用於這台裝置，其餘跟著你的帳號。
               </p>
               <div class="form-actions">
                 <RouterLink
@@ -630,66 +630,44 @@ watch(
 
 <style scoped>
 
-/* Cards size to their content; each column stacks its own cards (no stretched, half-empty cards) */
+/* Two content-sized columns: 基本資料 + 通知偏好 on the left, 安全性 on the right. Cards never stretch,
+   so each action row sits right under its fields and the column bottoms land close together. */
 .profile-cols {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
-  align-items: stretch;
+  align-items: start;
 }
 
-/* `.profile-col` only groups the markup. Desktop: basic (left) and security (right) share row 1
-   and stretch to the same height, with each action row pinned to its card's bottom edge;
-   the notification card is a full-width row 2. Below 1024px everything stacks in DOM order. */
 .profile-col {
-  display: contents;
-}
-
-.profile-card {
   display: flex;
   flex-direction: column;
-}
-
-.profile-card > .form {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
 }
 
 .profile-card > .form > .form-actions {
-  margin-top: auto;
+  padding-top: 2px;
 }
 
-#basic {
-  grid-column: 1;
-  grid-row: 1;
-}
-
-#security {
-  grid-column: 2;
-  grid-row: 1;
-}
-
-#notification-prefs {
-  grid-column: 1 / -1;
-  grid-row: 2;
-}
-
-#notification-prefs > .prefs {
-  flex-direction: row;
+/* Compact: the sentence and its one button share a row */
+.prefs {
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 16px;
   align-items: center;
-  justify-content: space-between;
-  gap: 24px;
 }
 
-#notification-prefs > .prefs > .form-actions {
-  flex: none;
-  margin-top: 0;
+.prefs .form-actions {
   padding-top: 0;
 }
 
-.prefs {
+#basic > .form {
   gap: 14px;
+}
+
+/* The security form is the one long column: give its fields room so the two columns end together */
+#security > .form {
+  gap: 32px;
 }
 
 .prefs-text {
@@ -931,21 +909,35 @@ watch(
 }
 
 @media (max-width: 1024px) {
+  #security > .form,
+  #basic > .form {
+    gap: 16px;
+  }
+
+  .prefs {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: stretch;
+  }
+
   .profile-cols {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  #basic,
-  #security,
-  #notification-prefs {
-    grid-column: 1;
-    grid-row: auto;
+  /* Single column: columns dissolve so 安全性 follows 基本資料 and 通知偏好 comes last */
+  .profile-col {
+    display: contents;
   }
 
-  #notification-prefs > .prefs {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 14px;
+  #basic {
+    order: 1;
+  }
+
+  #security {
+    order: 2;
+  }
+
+  #notification-prefs {
+    order: 3;
   }
 }
 
