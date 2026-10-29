@@ -172,7 +172,7 @@ export const systemApi = {
   // 完整健康檢查 (使用統一健康檢查系統)
   // Uses raw fetch: backend returns 503 when components are critical, but the response body
   // still contains valid health data. apiClient would retry on 5xx and discard the data.
-  healthCheck: async (): Promise<{
+  healthCheck: async (deep = false): Promise<{
     success: boolean;
     data?: {
       overall: { status: string; message: string; timestamp: string };
@@ -203,7 +203,7 @@ export const systemApi = {
     try {
       const { getBackendUrl } = await import('@/config/runtime')
       const baseUrl = import.meta.env.DEV ? '/api' : `${getBackendUrl()}/api`
-      const response = await authenticatedFetch(`${baseUrl}/health/system`, {
+      const response = await authenticatedFetch(`${baseUrl}/health/system${deep ? '?deep=1' : ''}`, {
         headers: {
           'Content-Type': 'application/json'
         }
