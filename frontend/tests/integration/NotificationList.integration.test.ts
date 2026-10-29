@@ -87,14 +87,6 @@ vi.mock('@/components/notification/NotificationHeader.vue', () => ({
   }
 }))
 
-vi.mock('@/components/notification/NotificationStats.vue', () => ({
-  default: {
-    name: 'NotificationStats',
-    template: '<div class="notification-stats"><slot /></div>',
-    props: ['stats']
-  }
-}))
-
 vi.mock('@/components/notification/NotificationFilters.vue', () => ({
   default: {
     name: 'NotificationFilters',
@@ -311,8 +303,6 @@ describe('NotificationList Integration', () => {
       await wrapper.vm.$nextTick()
 
       expect(wrapper.findComponent({ name: 'NotificationHeader' }).exists()).toBe(true)
-      // The stat cards were replaced by the header subtitle and filter tab counts (both fed by stats)
-      expect(wrapper.findComponent({ name: 'NotificationStats' }).exists()).toBe(false)
       expect(wrapper.findComponent({ name: 'NotificationFilters' }).exists()).toBe(true)
     })
 
