@@ -73,6 +73,35 @@ describe('LineQuotaMonitorService', () => {
     expect(snapshot.source).toBe('cron');
   });
 
+  it('exposes the support-reply reserve and the usable remainder', async () => {
+    const service = new LineQuotaMonitorService(makeDb([{ credentials: 'tok-a', teamName: 'Sales' }]), makeEnv());
+
+    const [item] = (await service.refresh('cron')).items;
+
+    // default ratio 0.2 of 10000 = 2000 reserved; 1880 remaining is already inside the reserve
+    expect(item).toMatchObject({ reserve: 2000, remaining: 1880, usableRemaining: 0 });
+  });
+
+  it('subtracts the reserve from remaining and honours the env ratio, also for stored snapshots', async () => {
+    mocks.getUsage.mockResolvedValue({ success: true, totalUsage: 5000 });
+    const env = makeEnv({ BROADCAST_QUOTA_RESERVE_RATIO: '0.1' });
+    const service = new LineQuotaMonitorService(makeDb([{ credentials: 'tok-a', teamName: 'Sales' }]), env);
+    await service.refresh('cron');
+
+    const [item] = (await service.getSnapshot()).items;
+
+    expect(item).toMatchObject({ reserve: 1000, remaining: 5000, usableRemaining: 4000 });
+  });
+
+  it('has no reserve for an unlimited channel', async () => {
+    mocks.getQuota.mockResolvedValue({ success: true, type: 'none' });
+    const service = new LineQuotaMonitorService(makeDb([{ credentials: 'tok-a', teamName: 'Sales' }]), makeEnv());
+
+    const [item] = (await service.refresh('cron')).items;
+
+    expect(item).toMatchObject({ reserve: null, usableRemaining: null });
+  });
+
   it('reports only usage for a channel without a target limit', async () => {
     mocks.getQuota.mockResolvedValue({ success: true, type: 'none' });
     const service = new LineQuotaMonitorService(makeDb([{ credentials: 'tok-a', teamName: 'Sales' }]), makeEnv());

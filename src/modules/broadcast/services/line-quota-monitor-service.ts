@@ -5,6 +5,7 @@ import { channelIntegrations, teams } from '@/db/schema';
 import { getLineMessageQuota, getLineMessageUsage } from '@/utils/line';
 import { createContextLogger } from '@/utils/logger';
 import { nowISO } from '@/utils/timestamp';
+import { BROADCAST_QUOTA_RESERVE_RATIO } from '@/constants/limits';
 import { ChannelCredentialService } from '@modules/integrations/services/channel-credential-service';
 
 const log = createContextLogger('LineQuotaMonitor');
@@ -30,6 +31,10 @@ export interface LineQuotaChannelSnapshot {
   limit: number | null;
   used: number | null;
   remaining: number | null;
+  /** Messages kept back for support replies: ceil(limit * reserve ratio). null when unlimited. */
+  reserve: number | null;
+  /** What a broadcast may still use: max(remaining - reserve, 0). null when unlimited. */
+  usableRemaining: number | null;
   /** Last SUCCESSFUL fetch. Kept across failures so the UI can still show the last known numbers. */
   fetchedAt: string | null;
   /** Set when the latest attempt failed; null when it succeeded. */
@@ -53,6 +58,24 @@ interface LineChannel {
 
 const EMPTY_SET: LineQuotaSnapshotSet = { items: [], updatedAt: null, source: null, throttled: false };
 
+/** Reserve ratio in effect (env override, falling back to the constant). Shared with the sender's quota check. */
+export function resolveQuotaReserveRatio(env: Pick<Bindings, 'BROADCAST_QUOTA_RESERVE_RATIO'>): number {
+  const raw = env.BROADCAST_QUOTA_RESERVE_RATIO;
+  const parsed = raw === undefined || raw.trim() === '' ? Number.NaN : Number(raw);
+  return parsed >= 0 && parsed < 1 ? parsed : BROADCAST_QUOTA_RESERVE_RATIO;
+}
+
+/** Derive reserve/usableRemaining at read time so snapshots stored before these fields existed still carry them. */
+export function withReserve(
+  item: Omit<LineQuotaChannelSnapshot, 'reserve' | 'usableRemaining'> & Partial<LineQuotaChannelSnapshot>,
+  ratio: number
+): LineQuotaChannelSnapshot {
+  const reserve = item.limited && item.limit !== null ? Math.ceil(item.limit * ratio) : null;
+  const usableRemaining =
+    reserve !== null && item.remaining !== null ? Math.max(item.remaining - reserve, 0) : null;
+  return { ...item, reserve, usableRemaining };
+}
+
 export class LineQuotaMonitorService {
   private readonly credentialService: ChannelCredentialService;
 
@@ -65,7 +88,7 @@ export class LineQuotaMonitorService {
 
   async getSnapshot(): Promise<LineQuotaSnapshotSet> {
     const stored = await this.readStored();
-    return stored ?? EMPTY_SET;
+    return this.decorate(stored ?? EMPTY_SET);
   }
 
   async refresh(source: LineQuotaSource): Promise<LineQuotaSnapshotSet> {
@@ -91,7 +114,12 @@ export class LineQuotaMonitorService {
 
     // TODO(quota-alert): low-quota notification seam. Evaluate `snapshot` here (threshold, who to
     // notify, de-dupe state) once that feature is scheduled. Intentionally not implemented yet.
-    return snapshot;
+    return this.decorate(snapshot);
+  }
+
+  private decorate(set: LineQuotaSnapshotSet): LineQuotaSnapshotSet {
+    const ratio = resolveQuotaReserveRatio(this.env);
+    return { ...set, items: set.items.map((item) => withReserve(item, ratio)) };
   }
 
   private async readStored(): Promise<LineQuotaSnapshotSet | null> {
@@ -167,6 +195,8 @@ export class LineQuotaMonitorService {
         limit: previous?.limit ?? null,
         used: previous?.used ?? null,
         remaining: previous?.remaining ?? null,
+        reserve: null,
+        usableRemaining: null,
         fetchedAt: previous?.fetchedAt ?? null,
         error,
       };
@@ -182,13 +212,15 @@ export class LineQuotaMonitorService {
       limit,
       used,
       remaining: limit === null ? null : Math.max(limit - used, 0),
+      reserve: null,
+      usableRemaining: null,
       fetchedAt: nowISO(),
       error: null,
     };
   }
 }
 
-async function hashToken(token: string): Promise<string> {
+export async function hashToken(token: string): Promise<string> {
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(token));
   return [...new Uint8Array(digest)]
     .slice(0, 8)
