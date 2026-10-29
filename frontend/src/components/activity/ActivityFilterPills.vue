@@ -1,10 +1,14 @@
 <template>
-  <div class="filter-pills">
+  <section
+    class="ui-card filter-pills"
+    aria-label="篩選"
+  >
     <div class="filter-pills__selects">
       <select
         class="filter-select"
         :class="{ 'filter-select--active': filters.userId !== '' }"
         :value="filters.userId"
+        aria-label="用戶"
         @change="onUserChange"
       >
         <option value="">
@@ -23,6 +27,7 @@
         class="filter-select"
         :class="{ 'filter-select--active': filters.action !== '' }"
         :value="filters.action"
+        aria-label="操作"
         @change="onActionChange"
       >
         <option value="">
@@ -152,6 +157,7 @@
         class="filter-select"
         :class="{ 'filter-select--active': filters.resourceType !== '' }"
         :value="filters.resourceType"
+        aria-label="資源"
         @change="onResourceTypeChange"
       >
         <option value="">
@@ -199,6 +205,7 @@
         class="filter-select"
         :class="{ 'filter-select--active': dateRange !== 'week' }"
         :value="dateRange"
+        aria-label="期間"
         @change="onDateRangeChange"
       >
         <option value="today">
@@ -221,29 +228,36 @@
         href="#"
         @click.prevent="$emit('clear')"
       >&#28165;&#38500;&#31721;&#36984;</a>
-    </div>
 
-    <div
-      v-if="dateRange === 'custom'"
-      class="custom-date-card"
-    >
-      <div class="custom-date-inputs">
-        <input
-          type="date"
-          class="date-input"
-          :value="customDateRange.start"
-          @change="onCustomStartChange"
-        >
-        <span class="date-separator">-</span>
-        <input
-          type="date"
-          class="date-input"
-          :value="customDateRange.end"
-          @change="onCustomEndChange"
-        >
+      <div
+        v-if="dateRange === 'custom'"
+        class="custom-date-card"
+      >
+        <div class="custom-date-inputs">
+          <input
+            type="date"
+            class="date-input"
+            aria-label="開始日期"
+            :value="customDateRange.start"
+            @change="onCustomStartChange"
+          >
+          <span class="date-separator">-</span>
+          <input
+            type="date"
+            class="date-input"
+            aria-label="結束日期"
+            :value="customDateRange.end"
+            @change="onCustomEndChange"
+          >
+        </div>
       </div>
+
+      <span
+        v-if="summary"
+        class="filter-total"
+      >{{ summary }}</span>
     </div>
-  </div>
+  </section>
 </template>
 
 <script setup lang="ts">
@@ -271,6 +285,8 @@ const props = defineProps<{
   dateRange: string
   customDateRange: DateRange
   users: User[]
+  /** e.g. 顯示 1-50 / 1,284 筆 */
+  summary?: string
 }>()
 
 const emit = defineEmits<{
@@ -327,53 +343,54 @@ function onCustomEndChange(event: Event) {
 
 <style scoped>
 .filter-pills {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+  padding: 12px 14px;
 }
 
 .filter-pills__selects {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
 }
 
 .filter-select {
-  appearance: none;
-  -webkit-appearance: none;
-  background-color: #F2F2F7;
-  color: #1C1C1E;
-  border: none;
-  border-radius: 9999px;
-  padding: 10px 36px 10px 16px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  outline: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%238E8E93' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  min-width: 128px;
+  height: 36px;
+  padding: 0 34px 0 14px;
+  border: 0;
+  border-radius: 999px;
+  background-color: var(--ui-fill);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%238E8E93' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 12px center;
-  transition: background-color 150ms ease-out, color 150ms ease-out, box-shadow 150ms ease-out;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--ui-ink);
+  cursor: pointer;
+  outline: none;
+  appearance: none;
+  transition:
+    background-color var(--ui-dur) var(--ui-ease),
+    box-shadow var(--ui-dur) var(--ui-ease);
 }
 
-.filter-select:focus {
-  box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.15);
+.filter-select:focus-visible {
+  box-shadow: 0 0 0 4px var(--ui-accent-soft);
 }
 
 .filter-select--active {
-  background-color: #007AFF;
-  color: #FFFFFF;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23FFFFFF' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-color: var(--ui-accent-soft);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ui-accent) 40%, transparent);
+  color: var(--ui-accent);
+  font-weight: 600;
 }
 
 .filter-clear {
-  font-size: 14px;
-  font-weight: 500;
-  color: #007AFF;
-  text-decoration: none;
   margin-left: 4px;
-  transition: opacity 150ms ease-out;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ui-accent);
+  text-decoration: none;
 }
 
 .filter-clear:hover {
@@ -381,35 +398,65 @@ function onCustomEndChange(event: Event) {
 }
 
 .custom-date-card {
-  background: #FFFFFF;
-  border-radius: 16px;
-  box-shadow: 0 4px 16px rgb(0 0 0 / 0.06);
-  padding: 16px;
-  margin-top: 0;
+  margin-left: auto;
 }
 
 .custom-date-inputs {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
 }
 
 .date-input {
-  border: none;
-  background: #F2F2F7;
-  border-radius: 12px;
-  padding: 8px 12px;
-  font-size: 14px;
-  color: #1C1C1E;
+  width: 150px;
+  height: 36px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--ui-fill);
+  font-size: 13.5px;
+  color: var(--ui-ink);
+  font-variant-numeric: tabular-nums;
   outline: none;
 }
 
-.date-input:focus {
-  box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.15);
+.date-input:focus-visible {
+  box-shadow: 0 0 0 4px var(--ui-accent-soft);
 }
 
 .date-separator {
-  color: #8E8E93;
+  color: var(--ui-muted);
   font-size: 14px;
+}
+
+.filter-total {
+  margin-left: auto;
+  font-size: 12.5px;
+  color: var(--ui-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.custom-date-card ~ .filter-total {
+  margin-left: 0;
+}
+
+@media (max-width: 768px) {
+  .filter-select {
+    flex: 1 1 calc(50% - 5px);
+    min-width: 0;
+  }
+  .filter-total,
+  .custom-date-card {
+    flex-basis: 100%;
+    margin-left: 0;
+  }
+  .date-input {
+    flex: 1;
+    width: auto;
+    min-width: 0;
+  }
+  .custom-date-inputs {
+    width: 100%;
+  }
 }
 </style>

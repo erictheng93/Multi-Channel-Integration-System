@@ -88,48 +88,48 @@ function onLeave(el: Element): void {
 
 <style scoped>
 .detail-panel__content {
-  background: #F2F2F7;
-  border-radius: 20px;
-  padding: 16px;
   display: flex;
   flex-direction: column;
   gap: 8px;
-  margin-top: 8px;
+  margin-top: 10px;
+  padding: 12px 14px;
+  border-radius: var(--ui-r-inner);
+  background: var(--ui-surface-2);
 }
 
 .detail-entry {
   display: flex;
-  align-items: flex-start;
-  gap: 8px;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+  font-size: 13px;
 }
 
 .detail-key {
-  font-size: 12px;
-  color: #8E8E93;
-  width: 96px;
-  flex-shrink: 0;
+  flex: none;
+  width: 76px;
+  font-size: 12.5px;
+  color: var(--ui-muted);
 }
 
 .detail-value {
-  font-size: 12px;
-  color: #1C1C1E;
-  font-family: monospace;
+  min-width: 0;
+  color: var(--ui-ink);
   word-break: break-all;
 }
 
 .detail-value--old {
-  color: #8E8E93;
+  color: var(--ui-muted);
+  text-decoration: line-through;
+  text-decoration-color: color-mix(in srgb, var(--ui-muted) 60%, transparent);
 }
 
 .detail-value--new {
-  color: #34C759;
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .detail-arrow {
-  font-size: 12px;
-  color: #8E8E93;
   flex-shrink: 0;
-  padding: 0 2px;
+  color: var(--ui-faint);
 }
 </style>
