@@ -498,6 +498,19 @@ export async function validateReportListQuery(c: Context<{ Bindings: Bindings }>
       query.format = format;
     }
 
+    // 搜尋（標題）
+    const search = c.req.query('search')?.trim();
+    if (search) {
+      if (search.length > 100) {
+        return c.json({
+          success: false,
+          error: 'search must be at most 100 characters',
+          timestamp: nowISO()
+        }, HTTP_STATUS.BAD_REQUEST);
+      }
+      query.search = search;
+    }
+
     // 創建者
     const createdBy = c.req.query('createdBy');
     if (createdBy) {
