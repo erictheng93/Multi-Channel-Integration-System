@@ -444,7 +444,7 @@ const formattedTime = computed(() => {
     order: 3;
     flex-basis: 100%;
     justify-content: flex-end;
-    margin: -6px -8px -8px 0;
+    margin: -12px -12px -14px 0;
     opacity: 1;
   }
 }
@@ -498,9 +498,12 @@ const formattedTime = computed(() => {
 }
 
 @media (max-width: 768px), (hover: none) {
+  /* 44px touch target, but drawn as quiet glyphs so the row reads as part of the item, not a toolbar */
   .action-btn {
     width: 44px;
     height: 44px;
+    background: transparent;
+    color: var(--ui-muted);
   }
 }
 </style>
