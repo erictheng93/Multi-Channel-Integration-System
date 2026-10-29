@@ -7,13 +7,14 @@
       >
         <template #actions>
           <span class="live">
-            每 {{ POLL_SECONDS }} 秒自動刷新
+            自動更新
             <button
               type="button"
               class="ui-switch"
               role="switch"
               :aria-checked="autoRefresh"
-              aria-label="自動刷新"
+              :title="`每 ${POLL_SECONDS} 秒更新一次`"
+              aria-label="自動更新"
               @click="autoRefresh = !autoRefresh"
             />
           </span>
@@ -34,7 +35,7 @@
               stroke-linejoin="round"
               aria-hidden="true"
             ><path d="M21 12a9 9 0 0 1-15.5 6.2L3 16M3 12a9 9 0 0 1 15.5-6.2L21 8M21 3v5h-5M3 21v-5h5" /></svg>
-            {{ isRefreshing ? '刷新中...' : '刷新資料' }}
+            重新整理
           </button>
         </template>
       </UiPageHead>
@@ -82,21 +83,6 @@
                 :class="connectionDelta >= 0 ? 'ui-delta-up' : 'ui-delta-down'"
               >{{ connectionDelta > 0 ? '+' : '' }}{{ connectionDelta }}</span>
               {{ connectionDelta === null ? `${metrics.onlineAgents} 位在線客服` : '比上次刷新' }}
-              <svg
-                v-if="sparkPath"
-                class="spark"
-                viewBox="0 0 84 26"
-                aria-hidden="true"
-              >
-                <path
-                  :d="sparkPath"
-                  fill="none"
-                  stroke="var(--ui-accent)"
-                  stroke-width="1.8"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                />
-              </svg>
             </template>
           </div>
         </article>
@@ -233,7 +219,13 @@
             </div>
           </div>
           <div class="legend">
-            <span><i />已註冊連線</span><span><i class="b" />事件 / 秒</span>
+            <span><i class="swatch-area" />已註冊連線<b
+              v-if="chart.lastConnections !== null"
+              class="is-conn"
+            >{{ chart.lastConnections }}</b></span><span><i class="swatch-dash" />事件 / 秒<b
+              v-if="chart.lastEvents !== null"
+              class="is-evt"
+            >{{ fmt(chart.lastEvents, 2) }}</b></span>
           </div>
           <div class="chart-wrap">
             <svg
@@ -300,7 +292,8 @@
                 :d="d"
                 fill="none"
                 stroke="var(--ui-teal)"
-                stroke-width="2.2"
+                stroke-width="1.6"
+                stroke-dasharray="5 4"
                 stroke-linejoin="round"
                 stroke-linecap="round"
               />
@@ -315,7 +308,7 @@
                 v-if="chart.events.last"
                 :cx="chart.events.last.x"
                 :cy="chart.events.last.y"
-                r="4"
+                r="3.5"
                 fill="var(--ui-teal)"
               />
             </svg>
@@ -548,27 +541,12 @@ const lastUpdatedText = computed(() => {
 
 const rangeLabel = computed(() => RANGE_OPTIONS.find(o => o.value === period.value)?.label ?? '')
 
-/** Last connection counts as a tiny trend line in the first tile (real snapshots only). */
-const sparkPath = computed(() => {
-  const values = history.value.slice(-12).map(p => p.activeConnections)
-  if (values.length < 3) {
-    return ''
-  }
-  const min = Math.min(...values)
-  const span = Math.max(1, Math.max(...values) - min)
-  return values
-    .map((v, i) => {
-      const x = (i / (values.length - 1)) * 84
-      const y = 24 - ((v - min) / span) * 22
-      return `${i === 0 ? 'M' : 'L'}${x.toFixed(1)} ${y.toFixed(1)}`
-    })
-    .join(' ')
-})
-
 const chart = computed(() => {
-  const to = historyNow.value
-  const from = to - RANGE_MS[period.value]
   const points = history.value
+  // The x-range ends at the newest real sample, so the lines run to the edge of the plot
+  const newest = points.length > 0 ? (points[points.length - 1]?.ts ?? historyNow.value) : historyNow.value
+  const to = newest
+  const from = to - RANGE_MS[period.value]
   const connections = buildSeries(points, p => p.activeConnections, from, to)
   const events = buildSeries(
     points,
@@ -576,9 +554,21 @@ const chart = computed(() => {
     from,
     to
   )
+  const lastValue = (pick: (_p: WsMetricsPointDto) => number | null): number | null => {
+    for (let i = points.length - 1; i >= 0; i--) {
+      const point = points[i]
+      const value = point ? pick(point) : null
+      if (value !== null && Number.isFinite(value)) {
+        return value
+      }
+    }
+    return null
+  }
   return {
     connections,
     events,
+    lastConnections: lastValue(p => p.activeConnections),
+    lastEvents: lastValue(p => (p.eventsInPerS === null || p.eventsOutPerS === null ? null : p.eventsInPerS + p.eventsOutPerS)),
     yLeft: yTicks(connections.max),
     yRight: yTicks(events.max),
     x: xTicks(from, to, period.value)
@@ -818,17 +808,11 @@ function formatTime(timestamp: number) {
   font-variant-numeric: tabular-nums;
 }
 
-.spark {
-  width: 84px;
-  height: 26px;
-  margin-left: auto;
-}
-
 .bento {
   display: grid;
   grid-template-columns: repeat(12, minmax(0, 1fr));
   gap: 16px;
-  align-items: start;
+  align-items: stretch;
 }
 
 .s8 {
@@ -859,14 +843,33 @@ function formatTime(timestamp: number) {
 }
 
 .legend i {
-  width: 10px;
-  height: 3px;
-  border-radius: 2px;
-  background: var(--ui-accent);
+  flex: none;
 }
 
-.legend i.b {
-  background: var(--ui-teal);
+.legend b {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.legend b.is-conn {
+  color: var(--ui-accent);
+}
+
+.legend b.is-evt {
+  color: var(--ui-ink-2);
+}
+
+.legend i.swatch-area {
+  width: 16px;
+  height: 10px;
+  border-top: 2.4px solid var(--ui-accent);
+  background: color-mix(in srgb, var(--ui-accent) 14%, transparent);
+}
+
+.legend i.swatch-dash {
+  width: 16px;
+  height: 0;
+  border-top: 1.6px dashed var(--ui-teal);
 }
 
 .chart-wrap {
@@ -1041,10 +1044,6 @@ svg.chart .g line {
 @media (max-width: 480px) {
   svg.chart text {
     font-size: 18px;
-  }
-
-  .spark {
-    display: none;
   }
 }
 </style>
