@@ -116,7 +116,7 @@ customerHandler.get('/platform/:platform/:platformUserId', async (c) => {
       }, HTTP_STATUS.NOT_FOUND);
     }
 
-    const conversations = await getCustomerConversations(c.env.DB, customer.id);
+    const conversations = await getCustomerConversations(c.env.DB, customer.id, user);
 
     return c.json({
       success: true,
@@ -164,7 +164,7 @@ customerHandler.get('/:customerId', requireIntId('customerId'), async (c) => {
       }, HTTP_STATUS.NOT_FOUND);
     }
 
-    const conversations = await getCustomerConversations(c.env.DB, customerId);
+    const conversations = await getCustomerConversations(c.env.DB, customerId, user);
 
     return c.json({
       success: true,
