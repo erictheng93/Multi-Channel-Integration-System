@@ -28,11 +28,21 @@ export function reopenedStatus(assignedTeamId: number | null): 'assigned' | 'act
  * Returns the new status of every conversation this call actually changed
  * (targets that lost a race with a concurrent update are omitted).
  */
+export interface SetClosedOptions {
+  /** Activity action to record instead of conversation_close / conversation_reopen (e.g. the nightly auto-close) */
+  action?: string;
+  /** Extra fields merged into the activity details */
+  details?: Record<string, unknown>;
+  /** Close only conversations that are NOT waiting for a reply (awaiting_since IS NULL); a message that arrived since selection wins */
+  onlyIfNotAwaiting?: boolean;
+}
+
 export async function setConversationsClosed(
   env: Bindings,
   actor: ActivityActor,
   targets: CloseTarget[],
-  closed: boolean
+  closed: boolean,
+  options: SetClosedOptions = {}
 ): Promise<Record<string, string>> {
   const changing = targets.filter(t => (t.status === 'closed') !== closed);
   if (changing.length === 0) {
@@ -51,17 +61,17 @@ export async function setConversationsClosed(
       // 結案時記下未讀下限（unread_floor_at），重新開啟時保留，結案前累積的訊息不會再算未讀
       closed
         ? env.DB
-          .prepare("UPDATE conversations SET status = ?, closed_at = ?, unread_floor_at = ?, updated_at = ? WHERE id = ? AND status <> 'closed'")
+          .prepare(`UPDATE conversations SET status = ?, closed_at = ?, unread_floor_at = ?, updated_at = ? WHERE id = ? AND status <> 'closed'${options.onlyIfNotAwaiting ? ' AND awaiting_since IS NULL' : ''}`)
           .bind(status, timestamp, timestamp, timestamp, target.id)
         : env.DB
           .prepare("UPDATE conversations SET status = ?, closed_at = NULL, updated_at = ? WHERE id = ? AND status = 'closed'")
           .bind(status, timestamp, target.id),
       capture.buildIrreversibleLog({
         ...actor,
-        action: closed ? ACTIVITY_ACTIONS.CONVERSATION_CLOSE : ACTIVITY_ACTIONS.CONVERSATION_REOPEN,
+        action: options.action ?? (closed ? ACTIVITY_ACTIONS.CONVERSATION_CLOSE : ACTIVITY_ACTIONS.CONVERSATION_REOPEN),
         resourceType: RESOURCE_TYPES.CONVERSATION,
         resourceId: target.id,
-        details: { previousStatus: target.status, status },
+        details: { previousStatus: target.status, status, ...options.details },
         reason: closed ? 'Undo by reopening the conversation' : 'Undo by closing the conversation'
       }, { onlyIfPreviousChanged: true })
     ];
