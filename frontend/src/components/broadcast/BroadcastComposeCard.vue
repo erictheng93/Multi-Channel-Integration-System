@@ -185,21 +185,25 @@
 
       <div class="compose-foot">
         <p class="foot-note">
-          <template v-if="currentPreview">
+          <template v-if="currentPreview && !missing.length">
             將發送給 <b>{{ currentPreview.sendable }}</b> 位 LINE 客戶，送出時會凍結名單。
           </template>
-          <template v-else-if="selectedTagId">
-            尚未取得受眾預覽，請按「更新預覽」。
+          <template v-else-if="missing.length">
+            還需要：<b class="missing">{{ missing.join('、') }}</b>
+          </template>
+          <template v-else-if="imagesBusy">
+            圖片上傳完成後即可發送。
           </template>
           <template v-else>
-            選擇目標標籤後會顯示受眾預覽。
+            尚未取得受眾預覽，請按「更新預覽」。
           </template>
         </p>
         <div class="actions">
           <button
+            v-if="selectedTagId"
             type="button"
             class="btn btn-secondary"
-            :disabled="previewLoading || !selectedTagId"
+            :disabled="previewLoading"
             @click="emitPreview"
           >
             {{ previewLoading ? '預覽中...' : '更新預覽' }}
@@ -407,6 +411,16 @@
   const currentPreview = computed(() =>
     props.previewTagId === selectedTagId.value ? props.preview : null
   )
+
+  // What still blocks sending, in form order (shown beside the primary action)
+  const missing = computed(() => {
+    const items: string[] = []
+    if (!title.value) {items.push('活動名稱')}
+    if (!selectedTagId.value) {items.push('目標標籤')}
+    if (!content.value && !images.value.length) {items.push('文字或圖片')}
+    return items
+  })
+  const imagesBusy = computed(() => !imagesReady.value)
 
   const canSubmit = computed(
     () =>
@@ -677,6 +691,11 @@
     margin: 0;
     font-size: 13px;
     color: var(--ui-muted);
+  }
+
+  .foot-note b.missing {
+    font-weight: 600;
+    color: var(--ui-orange-ink);
   }
 
   .foot-note b {
