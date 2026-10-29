@@ -43,7 +43,7 @@
   >
     <div
       class="sr-graphic"
-      :style="{ width: `${size}px`, height: `${size}px` }"
+      :style="{ '--sr-size': `${size}px` }"
     >
       <svg
         class="sr-svg"
@@ -79,7 +79,7 @@
       <div
         v-if="$slots.center || centerValue !== undefined"
         class="sr-center"
-        :style="{ width: `${inner * 2}px`, height: `${inner * 2}px` }"
+        :style="{ width: `${(inner * 200) / size}%`, height: `${(inner * 200) / size}%` }"
       >
         <slot name="center">
           <strong class="sr-center-value">{{ centerValue }}</strong>
@@ -207,6 +207,9 @@ onBeforeUnmount(() => { window.cancelAnimationFrame(frame) })
 .sr-graphic {
   position: relative;
   flex: none;
+  /* a page may shrink the graphic (phone) by setting --sr-fit on an ancestor */
+  width: var(--sr-fit, var(--sr-size));
+  height: var(--sr-fit, var(--sr-size));
 }
 .sr-svg {
   display: block;
