@@ -10,7 +10,11 @@
     >
       <div class="user-avatar">
         {{ userInitials }}
-        <span class="user-presence" />
+        <span
+          class="user-presence"
+          :class="`user-presence--${connection.tone}`"
+          :title="connection.label"
+        />
       </div>
       <div
         v-if="!sidebarCollapsed || isMobile"
@@ -20,7 +24,7 @@
           {{ authStore.currentAgent?.name }}
         </div>
         <div class="user-role">
-          {{ authStore.currentAgent?.role }}
+          {{ roleSubtitle }}
         </div>
       </div>
       <button
@@ -72,6 +76,8 @@ const props = defineProps<{
   import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
   import { useRoute, useRouter } from 'vue-router'
   import { useAuthStore } from '@/stores/auth'
+  import { useWebSocketStore } from '@/stores/websocket'
+  import { useConnectionStatus } from '@/composables/useConnectionStatus'
   import { useToast } from '@/composables/useToast'
   import { useConfirmDialog } from '@/composables/useConfirmDialog'
   import ChevronUpIcon from '@/components/icons/ChevronUpIcon.vue'
@@ -85,6 +91,18 @@ const props = defineProps<{
   const { showInfo } = useConfirmDialog()
 
   const showUserMenu = ref(false)
+
+  // Own presence dot = own websocket state (see docs/architecture/REALTIME_PRESENCE.md)
+  const connection = useConnectionStatus(useWebSocketStore())
+
+  // 「角色 · 主要團隊」 from /auth/me teams[] (isPrimary); team omitted when none
+  const roleSubtitle = computed(() => {
+    const agent = authStore.currentAgent
+    if (!agent) { return '' }
+    const roleLabel = agent.role === 'admin' ? '管理員' : '客服'
+    const primary = agent.teams?.find((t) => t.isPrimary) ?? agent.teams?.[0]
+    return primary?.name ? `${roleLabel} · ${primary.name}` : roleLabel
+  })
 
   const userInitials = computed(() => {
     const agent = authStore?.currentAgent
@@ -231,6 +249,14 @@ const props = defineProps<{
     box-shadow: 0 0 0 2px var(--ui-canvas);
   }
 
+  .user-presence--connecting {
+    background: var(--ui-orange);
+  }
+
+  .user-presence--offline {
+    background: var(--ui-faint);
+  }
+
   .user-info {
     flex: 1;
     min-width: 0;
@@ -249,7 +275,6 @@ const props = defineProps<{
   .user-role {
     font-size: var(--ui-t-cap);
     color: var(--ui-muted);
-    text-transform: capitalize;
   }
 
   .user-menu-btn {

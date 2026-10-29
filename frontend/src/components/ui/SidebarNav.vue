@@ -48,6 +48,13 @@
             v-if="!sidebarCollapsed || isMobile"
             class="nav-text"
           >{{ item.label }}</span>
+          <span
+            v-if="badgeFor(item.path)"
+            class="nav-count"
+            :class="{ 'nav-count--collapsed': sidebarCollapsed && !isMobile }"
+            :title="badgeFor(item.path)?.hint"
+            :aria-label="`${badgeFor(item.path)?.hint}：${badgeFor(item.path)?.text}`"
+          >{{ badgeFor(item.path)?.text }}</span>
         </router-link>
       </template>
     </section>
@@ -58,6 +65,8 @@
   import { computed, watch, reactive, type Component } from 'vue'
   import { useRoute } from 'vue-router'
   import { useAuthStore } from '@/stores/auth'
+  import { useUnreadStore } from '@/stores/unread'
+  import { useNotificationsStore } from '@/stores/notifications'
   import { NAV_SECTIONS, sectionForPath } from '@/config/nav-sections'
   import ExpandableNavGroup from './ExpandableNavGroup.vue'
 
@@ -96,6 +105,22 @@
   const route = useRoute()
   const authStore = useAuthStore()
   const currentPath = computed(() => route.path)
+  const unreadStore = useUnreadStore()
+  const notificationsStore = useNotificationsStore()
+
+  const MAX_BADGE = 99
+  const formatCount = (n: number): string => (n > MAX_BADGE ? `${MAX_BADGE}+` : String(n))
+
+  // 對話 badge = 未讀 (personal); 通知 badge = unread notifications. Hidden at 0.
+  const badgeFor = (path: string): { text: string; hint: string } | null => {
+    if (path === '/conversations' && unreadStore.total > 0) {
+      return { text: formatCount(unreadStore.total), hint: '未讀對話：你尚未開啟' }
+    }
+    if (path === '/notifications' && notificationsStore.unreadCount > 0) {
+      return { text: formatCount(notificationsStore.unreadCount), hint: '未讀通知' }
+    }
+    return null
+  }
 
   // Submenu expansion state keyed by route prefix
   const expandedMenus = reactive<Record<string, boolean>>({})
@@ -270,6 +295,31 @@
     box-shadow: var(--ui-shadow-pill);
   }
 
+  .nav-count {
+    flex: none;
+    min-width: 20px;
+    height: 18px;
+    padding: 0 6px;
+    border-radius: 999px;
+    background: var(--ui-red);
+    color: #fff;
+    font: 600 11px/18px var(--ui-font-display);
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Icon-only rail: the count becomes a corner dot-badge on the icon */
+  .nav-count--collapsed {
+    position: absolute;
+    top: 2px;
+    right: 4px;
+    min-width: 16px;
+    height: 16px;
+    padding: 0 4px;
+    font-size: 10px;
+    line-height: 16px;
+  }
+
   .nav-icon {
     flex-shrink: 0;
     width: 17px;
@@ -302,6 +352,17 @@
     .nav-item {
       justify-content: center;
       padding: 0;
+    }
+
+    .nav-count {
+      position: absolute;
+      top: 2px;
+      right: 4px;
+      min-width: 16px;
+      height: 16px;
+      padding: 0 4px;
+      font-size: 10px;
+      line-height: 16px;
     }
   }
 </style>
