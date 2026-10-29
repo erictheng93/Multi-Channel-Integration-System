@@ -13,6 +13,7 @@ import {
   GENERATABLE_REPORT_FORMATS,
   GENERATABLE_REPORT_TYPES,
   ReportGenerationParams,
+  ReportViewer,
   BatchReportOperation,
   ReportType,
   ReportTimeRange,
@@ -47,6 +48,15 @@ import {
 import { nowISO } from '@/utils/timestamp'
 import { reportContracts } from '@shared/api-contracts';
 import { contractJson } from '@/utils/api-contract-response';
+
+/** Visibility context for list/details: admins see everything, others own + own-team reports. */
+function viewerFromPayload(payload: { userId: number | string; role: 'admin' | 'agent'; allowedTeamIds?: number[] }): ReportViewer {
+  return {
+    userId: String(payload.userId),
+    role: payload.role,
+    teamIds: payload.allowedTeamIds ?? []
+  };
+}
 
 // 創建報告路由實例
 const reportsHandler = new Hono<{ Bindings: Bindings }>();
@@ -167,7 +177,7 @@ reportsHandler.get(
       const query = c.get('reportQuery');
       const reportsService = new ReportsService(c.env);
 
-      const result = await reportsService.listReports(query);
+      const result = await reportsService.listReports(query, viewerFromPayload(c.get('jwtPayload')));
 
       return contractJson(c, reportContracts.list, {
         success: true,
@@ -485,7 +495,10 @@ reportsHandler.get(
       const reportId = c.get('reportId');
       const reportsService = new ReportsService(c.env);
 
-      const report = await reportsService.getReportDetails(String(reportId));
+      const report = await reportsService.getReportDetails(
+        String(reportId),
+        viewerFromPayload(c.get('jwtPayload'))
+      );
 
       if (!report) {
         return contractJson(c, reportContracts.details, {
