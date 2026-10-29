@@ -10,17 +10,32 @@
   <SettingsRow
     :label="label"
     :hint="hint"
-    :for-id="inputId"
+    :for-id="showMasked ? undefined : inputId"
   >
-    <template v-if="showMasked">
-      <input
-        :id="inputId"
-        class="ui-input secret"
-        type="text"
-        readonly
-        :value="maskedText"
-        :aria-label="`${label}（已設定）`"
+    <template #lead>
+      <span
+        class="cred-ico"
+        :class="{ 'is-set': configured }"
+        aria-hidden="true"
       >
+        <!-- eslint-disable vue/no-v-html -->
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          v-html="icon || KEY_ICON"
+        />
+        <!-- eslint-enable vue/no-v-html -->
+      </span>
+    </template>
+    <template v-if="showMasked">
+      <div class="cred-state">
+        <span class="ui-pill ui-pill-green ui-pill-dot">已設定</span>
+        <code class="cred-last4">{{ maskedText }}</code>
+      </div>
       <button
         type="button"
         class="btn btn-secondary"
@@ -73,6 +88,8 @@ interface Props {
   placeholder?: string
   disabled?: boolean
   multiline?: boolean
+  /** Inner markup of a 24x24 outline icon shown in the leading tile (static, never user input) */
+  icon?: string
 }
 
 const props = defineProps<Props>()
@@ -81,12 +98,13 @@ const emit = defineEmits<{
   'update:modelValue': [value: string]
 }>()
 
+const KEY_ICON = '<circle cx="8" cy="15" r="4"/><path d="m11 12 9-9M16 7l3 3"/>'
 const replacing = ref(false)
 
 const showMasked = computed(() => props.configured && !replacing.value)
 
 const maskedText = computed(() =>
-  props.last4 ? `已設定 ••••${props.last4}` : '已設定 ••••••••'
+  props.last4 ? `••••${props.last4}` : '••••••••'
 )
 
 function onInput(event: Event) {
@@ -104,10 +122,43 @@ function cancelReplace() {
 </script>
 
 <style scoped>
-.secret {
-  font-family: var(--ui-font-mono);
-  letter-spacing: 0.04em;
+.cred-ico {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 11px;
+  background: var(--ui-fill);
+  color: var(--ui-muted);
 }
+
+.cred-ico.is-set {
+  background: var(--ui-green-soft);
+  color: var(--ui-green-ink);
+}
+
+.cred-ico svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* the stored value: a state pill and the last four characters, pushed against the replace button */
+.cred-state {
+  display: flex;
+  flex: 1;
+  gap: 10px;
+  align-items: center;
+  justify-content: flex-end;
+  min-width: 0;
+}
+
+.cred-last4 {
+  font: 13px var(--ui-font-mono);
+  letter-spacing: 0.06em;
+  color: var(--ui-ink-2);
+}
+
 
 .mono {
   font-family: var(--ui-font-mono);

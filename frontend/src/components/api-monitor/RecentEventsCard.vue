@@ -10,6 +10,7 @@
     <ul
       v-if="events.length > 0"
       class="ev"
+      :style="{ '--ev-cols': evCols, '--ev-rows': Math.ceil(events.length / evCols) }"
     >
       <li
         v-for="event in events"
@@ -42,8 +43,10 @@
             />
           </svg>
         </span>
-        <span class="msg">{{ event.message }}</span>
-        <time :datetime="event.timestamp">{{ relativeTime(event.timestamp) }}</time>
+        <span class="body">
+          <span class="msg">{{ event.message }}</span>
+          <time :datetime="event.timestamp">{{ relativeTime(event.timestamp) }}</time>
+        </span>
       </li>
     </ul>
     <div
@@ -56,12 +59,16 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
 import type { MonitorEvent } from '@/types/api-monitor'
 import { formatRelativeTime } from '@/utils/monitor-helpers'
 
-defineProps<{
+const props = defineProps<{
   events: MonitorEvent[]
 }>()
+
+/** Up to three events sit side by side (one each); longer lists split into two balanced columns */
+const evCols = computed(() => (props.events.length <= 3 ? Math.max(1, props.events.length) : 2))
 
 function relativeTime(timestamp: string): string {
   return formatRelativeTime(timestamp)
@@ -128,8 +135,16 @@ function relativeTime(timestamp: string): string {
   color: var(--ui-accent);
 }
 
-.msg {
+.body {
+  display: flex;
   flex: 1;
+  gap: 12px;
+  align-items: baseline;
+  justify-content: space-between;
+  min-width: 0;
+}
+
+.msg {
   min-width: 0;
   overflow-wrap: anywhere;
 }
@@ -147,15 +162,28 @@ time {
   color: var(--ui-muted);
 }
 
-/* Full-width card: two columns of events so a short message is not stranded far from its time */
+/* Full-width card: events flow down balanced columns (one each for up to three), each with its time beside it */
 @media (min-width: 1025px) {
   .ev {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-auto-flow: column;
+    grid-template-columns: repeat(var(--ev-cols), minmax(0, 1fr));
+    grid-template-rows: repeat(var(--ev-rows), auto);
+    column-gap: 8px;
   }
 
-  .ev li:nth-child(2)::before {
+  .ev li::before {
     display: none;
+  }
+
+  /* with one event per column the card reads as a row of cards: stack message over time */
+  .ev li {
+    align-items: flex-start;
+  }
+
+  .body {
+    flex-direction: column;
+    gap: 2px;
   }
 }
 

@@ -8,11 +8,11 @@ import type { WsMetricsPointDto, WsMetricsRange } from '@shared/api-contracts'
 
 export const CHART = {
   width: 720,
-  height: 260,
+  height: 300,
   left: 44,
   right: 672,
   top: 20,
-  bottom: 220
+  bottom: 258
 } as const
 
 export interface ChartGeometry {
@@ -167,4 +167,62 @@ export function xTicks(from: number, to: number, range: WsMetricsRange, count = 
     const ts = from + ((to - from) / (count - 1)) * i
     return { pos: round(xFor(ts, from, to, geom)), label: formatter.format(new Date(ts)) }
   })
+}
+
+/** Geometry of a KPI sparkline (no axes: the card prints the current value, the line shows the shape of the period) */
+export const SPARK: ChartGeometry = { width: 200, height: 40, left: 2, right: 198, top: 4, bottom: 36 }
+
+export interface Sparkline {
+  /** One sub-path per uninterrupted run of two or more samples (gaps are never drawn as zero) */
+  line: string
+  area: string
+  /** Number of non-null samples; two or more are needed to draw a shape */
+  count: number
+}
+
+/**
+ * A sparkline from real samples. The y-scale runs from zero to the series maximum (plus headroom, so a steady value sits mid-card), so a flat
+ * zero line is honestly flat and a rising line is honestly rising; null samples break the line.
+ */
+export function buildSpark(
+  points: WsMetricsPointDto[],
+  pick: (_point: WsMetricsPointDto) => number | null,
+  from: number,
+  to: number,
+  geom: ChartGeometry = SPARK
+): Sparkline {
+  const values = points.map(pick)
+  const finite = values.filter((v): v is number => v !== null && Number.isFinite(v))
+  const peak = finite.length > 0 ? Math.max(...finite) : 0
+  const max = peak > 0 ? peak * 1.35 : 1
+  const coords: Array<{ x: number; y: number } | null> = points.map((point, i) => {
+    const value = values[i]
+    return value === null || value === undefined || !Number.isFinite(value)
+      ? null
+      : { x: round(xFor(point.ts, from, to, geom)), y: round(yFor(value, max, geom)) }
+  })
+  const runs: Array<Array<{ x: number; y: number }>> = []
+  let run: Array<{ x: number; y: number }> = []
+  for (const c of [...coords, null]) {
+    if (c) {
+      run.push(c)
+    } else {
+      if (run.length >= 2) {
+        runs.push(run)
+      }
+      run = []
+    }
+  }
+  // A genuinely flat series is a thin line, never a filled slab
+  const flat = finite.length > 0 && Math.min(...finite) === peak
+  const path = (r: Array<{ x: number; y: number }>) => r.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x} ${p.y}`).join(' ')
+  return {
+    line: runs.map(path).join(' '),
+    area: flat ? '' : runs.map((r) => {
+      const first = r[0]
+      const last = r[r.length - 1]
+      return `${path(r)} L${last?.x} ${geom.bottom} L${first?.x} ${geom.bottom}Z`
+    }).join(' '),
+    count: finite.length
+  }
 }
