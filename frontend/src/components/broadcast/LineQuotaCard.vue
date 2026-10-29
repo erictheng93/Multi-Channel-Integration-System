@@ -57,76 +57,92 @@
         <div class="channel-head">
           <strong>{{ channel.label }}</strong>
         </div>
-        <div class="big-row">
-          <span
-            v-if="channel.used === null || !channel.limited || channel.limit === null"
-            class="figures"
-          >{{ figuresText(channel) }}</span>
-          <template v-else>
-            <span class="big">{{ channel.used.toLocaleString() }}</span>
-            <span class="of figures">{{ ` / ${channel.limit.toLocaleString()}` }}</span>
-            <span class="unit">則本月</span>
-          </template>
-          <span class="rule">LINE 額度每月重置，以收件人計，每位每則算 1</span>
+        <div
+          class="channel-body"
+          :class="{ 'has-lead': hasLead(channel) }"
+        >
+          <UiLeadMetric
+            v-if="hasLead(channel)"
+            class="quota-lead"
+            label="可用於群發"
+            :value="leadValue(channel)"
+            unit="則"
+            :meaning="leadMeaning(channel)"
+            :tone="isShort(channel) ? 'orange' : 'accent'"
+          />
+          <div class="channel-main">
+            <div class="big-row">
+              <span
+                v-if="channel.used === null || !channel.limited || channel.limit === null"
+                class="figures"
+              >{{ figuresText(channel) }}</span>
+              <template v-else>
+                <span class="big">{{ channel.used.toLocaleString() }}</span>
+                <span class="of figures">{{ ` / ${channel.limit.toLocaleString()}` }}</span>
+                <span class="unit">則本月</span>
+              </template>
+              <span class="rule">LINE 額度每月重置，以收件人計，每位每則算 1</span>
+            </div>
+
+            <template v-if="channel.limited && channel.limit !== null && channel.used !== null">
+              <div
+                class="bar"
+                role="progressbar"
+                aria-valuemin="0"
+                :aria-valuemax="channel.limit"
+                :aria-valuenow="Math.min(channel.used, channel.limit)"
+                :aria-label="`${channel.label} 已使用 ${percent(channel)}%`"
+              >
+                <span
+                  class="bar-fill"
+                  :class="tone(channel)"
+                  :style="{ width: `${percent(channel)}%` }"
+                />
+                <span
+                  v-if="pendingPercent(channel) > 0"
+                  class="bar-pending"
+                  :style="{ width: `${pendingPercent(channel)}%` }"
+                />
+                <span
+                  v-if="reservePercent(channel) > 0"
+                  class="bar-reserve"
+                  :style="{ width: `${reservePercent(channel)}%` }"
+                />
+              </div>
+
+              <div class="stats">
+                <div class="stat ui-well">
+                  <span class="stat-label"><i
+                    class="dot used"
+                    :class="tone(channel)"
+                  />已使用</span>
+                  <b>{{ channel.used.toLocaleString() }}<small>{{ percent(channel) }}%</small></b>
+                </div>
+                <div class="stat ui-well">
+                  <span class="stat-label"><i class="dot pend" />本次預計消耗</span>
+                  <b>{{ pendingFor(channel) > 0 ? pendingFor(channel).toLocaleString() : '—' }}</b>
+                </div>
+                <div class="stat ui-well">
+                  <span class="stat-label"><i class="dot keep" />保留給客服回覆</span>
+                  <b>{{ fmt(channel.reserve) }}</b>
+                </div>
+                <div
+                  class="stat ui-well"
+                  :class="{ 'is-short': isShort(channel) }"
+                >
+                  <span class="stat-label"><i class="dot free" />發送後可用</span>
+                  <b>{{ afterSend(channel) === null ? '不限' : Math.max(afterSend(channel) ?? 0, 0).toLocaleString() }}</b>
+                </div>
+              </div>
+              <p
+                class="remain"
+                :class="{ 'is-short': isShort(channel) }"
+              >
+                {{ remainText(channel) }}
+              </p>
+            </template>
+          </div>
         </div>
-
-        <template v-if="channel.limited && channel.limit !== null && channel.used !== null">
-          <div
-            class="bar"
-            role="progressbar"
-            aria-valuemin="0"
-            :aria-valuemax="channel.limit"
-            :aria-valuenow="Math.min(channel.used, channel.limit)"
-            :aria-label="`${channel.label} 已使用 ${percent(channel)}%`"
-          >
-            <span
-              class="bar-fill"
-              :class="tone(channel)"
-              :style="{ width: `${percent(channel)}%` }"
-            />
-            <span
-              v-if="pendingPercent(channel) > 0"
-              class="bar-pending"
-              :style="{ width: `${pendingPercent(channel)}%` }"
-            />
-            <span
-              v-if="reservePercent(channel) > 0"
-              class="bar-reserve"
-              :style="{ width: `${reservePercent(channel)}%` }"
-            />
-          </div>
-
-          <div class="stats">
-            <div class="stat ui-well">
-              <span class="stat-label"><i
-                class="dot used"
-                :class="tone(channel)"
-              />已使用</span>
-              <b>{{ channel.used.toLocaleString() }}<small>{{ percent(channel) }}%</small></b>
-            </div>
-            <div class="stat ui-well">
-              <span class="stat-label"><i class="dot pend" />本次預計消耗</span>
-              <b>{{ pendingFor(channel) > 0 ? pendingFor(channel).toLocaleString() : '—' }}</b>
-            </div>
-            <div class="stat ui-well">
-              <span class="stat-label"><i class="dot keep" />保留給客服回覆</span>
-              <b>{{ fmt(channel.reserve) }}</b>
-            </div>
-            <div
-              class="stat ui-well"
-              :class="{ 'is-short': isShort(channel) }"
-            >
-              <span class="stat-label"><i class="dot free" />發送後可用</span>
-              <b>{{ afterSend(channel) === null ? '不限' : Math.max(afterSend(channel) ?? 0, 0).toLocaleString() }}</b>
-            </div>
-          </div>
-          <p
-            class="remain"
-            :class="{ 'is-short': isShort(channel) }"
-          >
-            {{ remainText(channel) }}
-          </p>
-        </template>
 
         <p
           v-if="channel.error"
@@ -141,6 +157,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import UiLeadMetric from '@/components/ui/UiLeadMetric.vue'
 import { useToast } from '@/composables/useToast'
 import {
   getLineQuota,
@@ -201,6 +218,24 @@ async function refresh() {
   } finally {
     refreshing.value = false
   }
+}
+
+/** Only the first channel carries the page's lead metric */
+function hasLead(channel: LineQuotaChannel): boolean {
+  return channel.channelKey === items.value[0]?.channelKey
+    && channel.limited && channel.limit !== null && channel.used !== null
+}
+
+/** Quota still usable for broadcasts after the reserve (null = unlimited) */
+function leadValue(channel: LineQuotaChannel): number | string | null {
+  if (channel.usableRemaining === null) {
+    return '不限'
+  }
+  return Math.max(channel.usableRemaining, 0)
+}
+
+function leadMeaning(channel: LineQuotaChannel): string {
+  return channel.reserve ? '本月還能群發，已預留客服回覆額度' : '本月還能群發的則數'
 }
 
 function pendingFor(channel: LineQuotaChannel): number {
@@ -319,6 +354,36 @@ function formatTime(iso: string): string {
   margin-top: 18px;
   padding-top: 16px;
   box-shadow: 0 -0.5px 0 var(--ui-sep);
+}
+
+.channel-body.has-lead {
+  display: grid;
+  grid-template-columns: 340px minmax(0, 1fr);
+  gap: 22px;
+  align-items: stretch;
+  margin-top: 8px;
+}
+
+.quota-lead {
+  border-radius: var(--ui-r-inner);
+}
+
+/* push most of the disc out of the box so the figure and its caption stay clear of the rim */
+.quota-lead :deep(.ui-lead-disc) {
+  top: -200px;
+  right: -200px;
+}
+
+.channel-main {
+  min-width: 0;
+}
+
+.has-lead .big {
+  font-size: 24px;
+}
+
+.has-lead .big-row {
+  margin-top: 0;
 }
 
 .channel-head strong {
@@ -483,6 +548,17 @@ function formatTime(iso: string): string {
   margin: 10px 0 0;
   font-size: 13px;
   color: var(--ui-orange-ink);
+}
+
+@media (max-width: 1024px) {
+  .channel-body.has-lead {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+  }
+
+  .quota-lead {
+    min-height: 168px;
+  }
 }
 
 @media (max-width: 768px) {

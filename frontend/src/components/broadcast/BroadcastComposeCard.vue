@@ -150,6 +150,14 @@
               >
             </label>
           </li>
+          <li
+            v-for="slot in emptySlots"
+            :key="`slot-${slot}`"
+            class="image-slot"
+            aria-hidden="true"
+          >
+            {{ slot }}
+          </li>
         </ul>
         <div
           role="status"
@@ -420,6 +428,10 @@
     if (!content.value && !images.value.length) {items.push('文字或圖片')}
     return items
   })
+  // The unused slots after the add tile, numbered, so the 4-image limit reads as a row
+  const emptySlots = computed(() =>
+    Array.from({ length: Math.max(MAX_IMAGES - images.value.length - 1, 0) }, (_, i) => images.value.length + i + 2)
+  )
   const imagesBusy = computed(() => !imagesReady.value)
 
   const canSubmit = computed(
@@ -525,6 +537,17 @@
     margin: 0;
     padding: 0;
     list-style: none;
+  }
+
+  .image-slot {
+    display: grid;
+    aspect-ratio: 1;
+    place-items: center;
+    border-radius: var(--ui-r-inner);
+    background: var(--ui-fill);
+    font-size: var(--ui-t-meta);
+    font-variant-numeric: tabular-nums;
+    color: var(--ui-faint);
   }
 
   .image-tile,
@@ -714,7 +737,7 @@
       grid-template-columns: 1fr;
     }
     .image-grid {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
     }
     .actions {
       width: 100%;
