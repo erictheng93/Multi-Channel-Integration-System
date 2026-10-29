@@ -76,7 +76,7 @@
 
         <article
           v-if="links.length > 0"
-          class="ui-card"
+          class="ui-card links-card"
         >
           <div class="ui-card-head">
             <div>
@@ -395,6 +395,94 @@ const goBack = () => {
   height: 15px;
   margin-left: auto;
   color: var(--ui-faint);
+}
+
+/* Desktop: a composed full-height screen. The head sits on top, the two cards fill the rest and
+   end together; the numerals scale up and the shortcut rows share the height evenly. */
+@media (min-width: 1025px) {
+  .not-found-page {
+    display: flex;
+    flex-direction: column;
+    min-height: calc(100vh - var(--ui-topbar-h) - 2 * var(--ui-gutter));
+    min-height: calc(100dvh - var(--ui-topbar-h) - 2 * var(--ui-gutter));
+  }
+
+  .bare-shell .not-found-page {
+    min-height: 0;
+  }
+
+  .nf {
+    flex: 1;
+    align-items: stretch;
+  }
+
+  .code {
+    font-size: 200px;
+  }
+
+  .hero-disc {
+    width: 340px !important;
+    height: 340px !important;
+  }
+
+  .code-wrap {
+    padding: 8px 80px;
+  }
+
+  .hero p {
+    font-size: 16px;
+  }
+
+  .links-card {
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* The shortcuts become a 2 x 2 grid of tiles that fills the card's height */
+  .links-card .list {
+    display: grid;
+    flex: 1;
+    grid-auto-rows: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    padding: 4px 22px 22px;
+  }
+
+  .links-card .go {
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: flex-end;
+    gap: 14px;
+    padding: 20px;
+    border-radius: 20px;
+    background: var(--ui-surface-2);
+  }
+
+  .links-card .go + .go::before {
+    display: none;
+  }
+
+  .links-card .go:hover {
+    background: var(--ui-fill);
+  }
+
+  .links-card .go-ico {
+    width: 44px;
+    height: 44px;
+    border-radius: 14px;
+  }
+
+  .links-card .go-ico svg {
+    width: 22px;
+    height: 22px;
+  }
+
+  .links-card .go .chev {
+    position: absolute;
+    top: 20px;
+    right: 18px;
+    margin: 0;
+  }
 }
 
 @media (max-width: 1024px) {
