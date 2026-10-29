@@ -15,7 +15,7 @@
           {{ section?.title ?? '系統設定' }}
         </template>
         <template
-          v-if="section"
+          v-if="section && (section.key === 'health' || section.key === 'line' || section.key === 'facebook')"
           #actions
         >
           <template v-if="section.key === 'health'">
@@ -38,9 +38,8 @@
               {{ controller.processing.value ? '檢查中...' : '立即檢查' }}
             </button>
           </template>
-          <template v-else>
+          <template v-else-if="section.key === 'line' || section.key === 'facebook'">
             <button
-              v-if="section.key === 'line' || section.key === 'facebook'"
               type="button"
               class="btn btn-secondary"
               :disabled="controller.testing.value || controller.saving.value"
@@ -58,34 +57,6 @@
               ><path d="M5 12.5 10 17.5 19 7" /></svg>
               {{ controller.testing.value ? '測試中...' : '測試連線' }}
             </button>
-            <button
-              v-else
-              type="button"
-              class="btn btn-secondary"
-              :disabled="controller.loading.value"
-              @click="controller.loadSettings"
-            >
-              <svg
-                class="act-ico"
-                :class="{ spinning: controller.loading.value }"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                aria-hidden="true"
-              ><path d="M21 12a9 9 0 0 1-15.5 6.2L3 16M3 12a9 9 0 0 1 15.5-6.2L21 8M21 3v5h-5M3 21v-5h5" /></svg>
-              重新載入
-            </button>
-            <button
-              type="submit"
-              class="btn btn-primary"
-              :form="SETTINGS_FORM_ID"
-              :disabled="controller.saving.value || controller.testing.value"
-            >
-              {{ controller.saving.value ? '儲存中...' : '儲存變更' }}
-            </button>
           </template>
         </template>
       </UiPageHead>
@@ -102,7 +73,10 @@
       </div>
 
       <div class="settings">
-        <div class="scontent">
+        <div
+          class="scontent"
+          :class="{ 'is-narrow': isForm }"
+        >
           <router-view v-slot="{ Component }">
             <transition
               name="settings-fade"
@@ -113,6 +87,29 @@
           </router-view>
         </div>
       </div>
+
+      <UiActionBar
+        v-if="isForm"
+        class="settings-actions"
+        label="儲存設定"
+      >
+        <button
+          type="button"
+          class="btn btn-secondary"
+          :disabled="!dirty || controller.saving.value || controller.loading.value"
+          @click="controller.loadSettings"
+        >
+          還原
+        </button>
+        <button
+          type="submit"
+          class="btn btn-primary"
+          :form="SETTINGS_FORM_ID"
+          :disabled="!dirty || controller.saving.value || controller.testing.value"
+        >
+          {{ controller.saving.value ? '儲存中...' : '儲存變更' }}
+        </button>
+      </UiActionBar>
     </div>
   </AppLayout>
 </template>
@@ -120,7 +117,8 @@
 <script setup lang="ts">
 import UiPageHead from '@/components/ui/UiPageHead.vue'
 import UiSectionNav from '@/components/ui/UiSectionNav.vue'
-import { computed, onMounted, onUnmounted, provide } from 'vue'
+import UiActionBar from '@/components/ui/UiActionBar.vue'
+import { computed, onMounted, onUnmounted, provide, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import AppLayout from '@/components/ui/AppLayout.vue'
 import { useSystemSettingsController } from '@/composables/useSystemSettingsController'
@@ -133,6 +131,41 @@ provide(SETTINGS_CONTROLLER_KEY, controller)
 
 const route = useRoute()
 const section = computed(() => findSettingsSection(route.name))
+
+// Pages with a form and a save button (everything but the health check)
+const isForm = computed(() => !!section.value && section.value.key !== 'health')
+
+// Dirty tracking: general/advanced compare against the last loaded or saved values;
+// the credential pages are dirty once something has been typed into a credential field.
+function valuesSnapshot(): string {
+  return JSON.stringify({ g: controller.settings.general, a: controller.settings.advanced })
+}
+const baseline = ref(valuesSnapshot())
+const credentialsTyped = computed(() => {
+  const key = section.value?.key
+  if (key === 'line') {
+    const l = controller.settings.integrations.line
+    return [l.channelId, l.channelSecret, l.accessToken].some(v => !!v)
+  }
+  if (key === 'facebook') {
+    const f = controller.settings.integrations.facebook
+    return [f.appId, f.appSecret, f.pageId, f.pageToken].some(v => !!v)
+  }
+  return false
+})
+const dirty = computed(() => {
+  const key = section.value?.key
+  if (key === 'general' || key === 'advanced') {
+    return valuesSnapshot() !== baseline.value
+  }
+  return credentialsTyped.value
+})
+watch(controller.loading, (now) => {
+  if (!now) { baseline.value = valuesSnapshot() }
+})
+watch(controller.saving, (now) => {
+  if (!now && controller.messageType.value === 'success') { baseline.value = valuesSnapshot() }
+})
 
 function testConnection(): void {
   if (section.value?.key === 'facebook') {
@@ -157,6 +190,17 @@ onUnmounted(() => controller.cleanup())
   display: grid;
   gap: 22px;
   min-width: 0;
+}
+
+@media (min-width: 769px) {
+  .settings-actions {
+    max-width: 720px;
+  }
+}
+
+/* Form pages: one readable column instead of a 500px gap between label and control */
+.scontent.is-narrow {
+  max-width: 720px;
 }
 
 .act-ico {

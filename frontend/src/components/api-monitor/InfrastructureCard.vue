@@ -37,7 +37,7 @@
           </svg>
         </span>
         <div class="inf-name">
-          <b>{{ item.name }}</b>
+          <b>{{ translateInfraName(item.id, item.name) }}</b>
         </div>
         <span
           class="ms"
@@ -58,6 +58,7 @@
 </template>
 
 <script setup lang="ts">
+import { translateInfraName } from '@/utils/monitor-helpers'
 import type { InfrastructureItem } from '@/types/api-monitor'
 
 defineProps<{

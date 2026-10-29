@@ -1,10 +1,10 @@
 <template>
-  <section
+  <article
     ref="sectionRef"
-    class="team-section"
+    class="ui-card team-section"
   >
     <!-- Header -->
-    <div class="section-head">
+    <div class="ui-card-head section-head">
       <div>
         <h2 class="ui-card-title">
           團隊設置
@@ -133,7 +133,7 @@
         />
       </template>
     </div>
-  </section>
+  </article>
 </template>
 
 <script setup lang="ts">
@@ -181,7 +181,7 @@ const props = withDefaults(defineProps<Props>(), { members: () => [] })
 
 const emit = defineEmits<Emits>()
 
-const PREVIEW_COUNT = 4
+const PREVIEW_COUNT = 3
 
 function previewMembersFor(teamId: number): TeamMember[] {
   return props.members
@@ -311,26 +311,15 @@ function handlePageChange(page: number) {
 
 <style scoped>
 .team-section {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
   min-width: 0;
+  padding-bottom: 22px;
 }
 .section-head {
-  display: flex;
   flex-wrap: wrap;
-  align-items: center;
-  gap: 12px;
-  padding: 4px 4px 0;
 }
 .section-head > :first-child {
   min-width: 0;
   flex: 1;
-}
-.section-head .ui-card-sub {
-  margin-top: 2px;
-  font-size: var(--ui-t-foot);
-  color: var(--ui-muted);
 }
 .section-end {
   display: flex;
@@ -402,6 +391,12 @@ function handlePageChange(page: number) {
 
 .content-body {
   min-width: 0;
+  padding: 0 22px;
+}
+/* Team tiles sit inside the card: flat on the canvas tone, no second shadow. */
+.team-section :deep(.team-card) {
+  background: var(--ui-canvas);
+  box-shadow: none;
 }
 .drag-hint {
   padding: 4px 4px 8px;
@@ -419,6 +414,9 @@ function handlePageChange(page: number) {
 }
 
 @media (max-width: 768px) {
+  .content-body {
+    padding: 0 16px;
+  }
   .section-end {
     width: 100%;
   }

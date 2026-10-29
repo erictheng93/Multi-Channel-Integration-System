@@ -33,13 +33,13 @@
         </span>
         <div class="main">
           <b>
-            {{ channel.name }}
+            {{ translateChannelName(channel.id, channel.name) }}
             <span
               class="ui-pill ui-pill-dot"
-              :class="pillClass(channel.status)"
-            >{{ statusLabel(channel.status) }}</span>
+              :class="pillClass(shownStatus(channel))"
+            >{{ statusLabel(shownStatus(channel)) }}</span>
           </b>
-          <small>{{ channel.details }}</small>
+          <small :title="channel.details">{{ detailText(channel) }}</small>
         </div>
         <div
           v-if="channel.latencyMs > 0"
@@ -60,10 +60,23 @@
 
 <script setup lang="ts">
 import type { ChannelItem, ChannelStatus } from '@/types/api-monitor'
+import { translateChannelDetail, translateChannelName } from '@/utils/monitor-helpers'
 
-defineProps<{
+const props = defineProps<{
   channels: ChannelItem[]
 }>()
+
+type ShownStatus = ChannelStatus | 'degraded'
+
+/**
+ * Webhook delivery is derived from the channels above it: it can only be "connected" when
+ * every channel is. If some are not, the chip says so instead of contradicting its description.
+ */
+function shownStatus(channel: ChannelItem): ShownStatus {
+  if (channel.id !== 'webhook-delivery' || channel.status !== 'connected') { return channel.status }
+  const others = props.channels.filter(c => c.id !== channel.id)
+  return others.some(c => c.status !== 'connected') ? 'degraded' : 'connected'
+}
 
 function brand(name: string): 'line' | 'facebook' | 'other' {
   const lower = name.toLowerCase()
@@ -72,17 +85,25 @@ function brand(name: string): 'line' | 'facebook' | 'other' {
   return 'other'
 }
 
-function statusLabel(status: ChannelStatus): string {
-  const map: Record<ChannelStatus, string> = {
+function detailText(channel: ChannelItem): string {
+  return shownStatus(channel) === 'degraded'
+    ? translateChannelDetail('Some webhook channels unavailable', channel.status)
+    : translateChannelDetail(channel.details, channel.status)
+}
+
+function statusLabel(status: ShownStatus): string {
+  const map: Record<ShownStatus, string> = {
     connected: '已連線',
     disconnected: '未連線',
     error: '錯誤',
+    degraded: '部分可用',
   }
   return map[status]
 }
 
-function pillClass(status: ChannelStatus): string {
+function pillClass(status: ShownStatus): string {
   if (status === 'connected') { return 'ui-pill-green' }
+  if (status === 'degraded') { return 'ui-pill-orange' }
   return status === 'error' ? 'ui-pill-red' : ''
 }
 </script>

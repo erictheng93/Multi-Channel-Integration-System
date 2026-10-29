@@ -98,7 +98,6 @@ import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { ROLES } from '@/constants/roles'
 import { apiClient } from '@/api'
-import { isActivityRestoreEnabled } from '@/config/runtime'
 import { activitiesApi } from '@/api/activities'
 import type { ActivityLog, ActivityOverview } from '@/api/activities'
 import { useWebSocketStore } from '@/stores/websocket'
@@ -162,11 +161,7 @@ const currentPage = computed(() => pagination.value?.page || 1)
 const headSummary = computed(() => {
   if (isAdmin.value && overview.value) {
     const parts = [`近 ${overview.value.period.days} 天共 ${overview.value.totalActivities.toLocaleString('zh-TW')} 筆操作、${overview.value.activeUserCount} 位成員`]
-    let text = `${parts[0]}。`
-    if (isActivityRestoreEnabled()) {
-      text += '可還原的操作在期限內可按「還原」，超過期限或群發、登入類操作則不可還原。'
-    }
-    return text
+    return `${parts[0]}。`
   }
   if (!loading.value && pagination.value.total > 0) {
     return `目前篩選條件下共 ${pagination.value.total.toLocaleString('zh-TW')} 筆記錄。`

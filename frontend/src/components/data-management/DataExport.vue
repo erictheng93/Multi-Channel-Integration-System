@@ -6,114 +6,110 @@
     <UiPageHead
       title="匯出對話"
       :subtitle="`選擇檔案格式後開始匯出，單次最多 ${EXPORT_LIMIT.toLocaleString()} 筆。`"
-    >
-      <template #actions>
-        <button
-          type="button"
-          class="btn btn-primary"
-          @click="openExportDialog"
-        >
-          <DownloadIcon :size="16" />
-          開始匯出
-        </button>
-      </template>
-    </UiPageHead>
+    />
 
-    <section class="bento">
-      <div
-        class="fmt-grid"
-        role="radiogroup"
-        aria-label="匯出格式"
-      >
-        <button
-          v-for="format in formats"
-          :key="format.id"
-          type="button"
-          class="ui-card format-card"
-          :class="{ 'is-selected': selectedFormat === format.id }"
-          role="radio"
-          :aria-checked="selectedFormat === format.id"
-          @click="selectFormat(format.id)"
+    <section class="export-grid">
+      <article class="ui-card choose">
+        <div class="ui-card-head">
+          <div>
+            <h2 class="ui-card-title">
+              檔案格式
+            </h2>
+            <div class="ui-card-sub">
+              日期、客戶與客服人員的篩選在下一步設定
+            </div>
+          </div>
+        </div>
+
+        <div
+          class="fmt-list"
+          role="radiogroup"
+          aria-label="匯出格式"
         >
-          <div class="fmt-top">
+          <button
+            v-for="format in formats"
+            :key="format.id"
+            type="button"
+            class="fmt-row"
+            :class="{ 'is-selected': selectedFormat === format.id }"
+            role="radio"
+            :aria-checked="selectedFormat === format.id"
+            @click="selectFormat(format.id)"
+          >
             <span
               class="fmt-ico"
               :class="format.tone"
               aria-hidden="true"
             >{{ format.icon }}</span>
-            <h3 class="format-name">
-              {{ format.name }}<small>{{ format.tagline }}</small>
-            </h3>
+            <span class="fmt-text">
+              <b>{{ format.name }}<small>{{ format.tagline }}</small></b>
+              <span class="fmt-use">{{ format.usecases.join('、') }}</span>
+            </span>
             <i
               class="radio"
               aria-hidden="true"
             />
-          </div>
-          <p class="format-description">
-            {{ format.description }}
-          </p>
-          <div class="use">
-            <span>適用</span>{{ format.usecases.join('、') }}
-          </div>
-        </button>
-      </div>
+          </button>
+        </div>
 
-      <aside class="ui-card features">
+        <div class="choose-foot">
+          <span class="choose-note">
+            未設定篩選時匯出全部記錄，最多 {{ EXPORT_LIMIT.toLocaleString() }} 筆，超出部分會被截斷。
+          </span>
+          <button
+            type="button"
+            class="btn btn-primary"
+            @click="openExportDialog"
+          >
+            <DownloadIcon :size="16" />
+            開始匯出 {{ selectedName }}
+          </button>
+        </div>
+      </article>
+
+      <aside class="ui-card next">
         <div class="ui-card-head">
           <div>
-            <h2 class="ui-card-title section-title">
-              匯出視窗可設定
+            <h2 class="ui-card-title">
+              接下來
             </h2>
             <div class="ui-card-sub">
-              按「開始匯出」後開啟
+              三個步驟完成匯出
             </div>
           </div>
         </div>
-        <div
-          v-for="feature in features"
-          :key="feature.title"
-          class="feat feature-item"
-        >
-          <span
-            class="ic"
-            :class="feature.tone"
-            aria-hidden="true"
+        <ol class="steps">
+          <li
+            v-for="(step, i) in steps"
+            :key="step.title"
+            class="step"
           >
-            <!-- eslint-disable vue/no-v-html -->
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              v-html="feature.icon"
-            />
-            <!-- eslint-enable vue/no-v-html -->
-          </span>
-          <div>
-            <b>{{ feature.title }}</b>
-            <span>{{ feature.text }}</span>
-          </div>
-        </div>
-        <div class="note">
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            aria-hidden="true"
-          ><circle
-            cx="12"
-            cy="12"
-            r="9"
-          /><path d="M12 8v5M12 16.5v.5" /></svg>
-          <span>未設定任何篩選時會匯出全部記錄，系統最多匯出 {{ EXPORT_LIMIT.toLocaleString() }} 筆，超出部分將被截斷。</span>
-        </div>
+            <span
+              class="step-n"
+              aria-hidden="true"
+            >{{ i + 1 }}</span>
+            <span class="step-t">
+              <b>{{ step.title }}</b>
+              <span>{{ step.text }}</span>
+            </span>
+          </li>
+        </ol>
       </aside>
     </section>
+
+    <UiActionBar
+      class="export-actions"
+      label="匯出"
+    >
+      <button
+        type="button"
+        class="btn btn-primary"
+        @click="openExportDialog"
+      >
+        <DownloadIcon :size="16" />
+        開始匯出 {{ selectedName }}
+      </button>
+    </UiActionBar>
 
     <!-- ExportDialog Modal (reuse existing component) -->
     <ExportDialog
@@ -126,7 +122,8 @@
 
 <script setup lang="ts">
 import UiPageHead from '@/components/ui/UiPageHead.vue'
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
+import UiActionBar from '@/components/ui/UiActionBar.vue'
 import { DownloadIcon } from '@/components/icons'
 import ExportDialog from '@/components/conversation/ExportDialog.vue'
 
@@ -177,27 +174,13 @@ const formats = [
   }
 ]
 
-// Inner SVG markup is static (never user input)
-const features = [
-  {
-    title: '日期範圍',
-    text: '指定起訖時間，只匯出特定時間段的對話',
-    tone: 'blue',
-    icon: '<rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/>'
-  },
-  {
-    title: '客戶',
-    text: '篩選特定客戶的對話，快速找到需要的記錄',
-    tone: 'green',
-    icon: '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>'
-  },
-  {
-    title: '客服人員',
-    text: '依客服篩選，只匯出該客服送出的訊息，用於績效評估或品質審查',
-    tone: 'indigo',
-    icon: '<circle cx="9" cy="8" r="4"/><path d="M2 21v-1a6 6 0 0 1 12 0v1M17 11a3 3 0 1 0 0-6M22 21v-1a5 5 0 0 0-4-4.9"/>'
-  }
+const steps = [
+  { title: '選擇格式', text: '挑選要下載的檔案格式' },
+  { title: '設定範圍', text: '在匯出視窗指定日期、客戶，或只匯出某位客服送出的訊息' },
+  { title: '下載檔案', text: '確認後產生檔案並下載到本機' }
 ]
+
+const selectedName = computed(() => formats.find(f => f.id === selectedFormat.value)?.name ?? '')
 
 function openExportDialog() {
   showExportDialog.value = true
@@ -209,68 +192,63 @@ function selectFormat(format: FormatId) {
 </script>
 
 <style scoped>
-
-.bento {
+.export-grid {
   display: grid;
-  grid-template-columns: repeat(12, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
   gap: 16px;
-  align-items: start;
+  align-items: stretch;
 }
 
-.fmt-grid {
+.choose {
+  display: flex;
+  flex-direction: column;
+}
+
+.fmt-list {
   display: grid;
-  grid-column: span 8;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
+  padding: 0 12px;
 }
 
-.features {
-  grid-column: span 4;
-}
-
-.format-card {
-  display: grid;
-  gap: 12px;
+.fmt-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 14px;
   width: 100%;
-  padding: 20px 22px;
+  min-height: 64px;
+  padding: 10px 10px;
   border: 0;
+  border-radius: var(--ui-r-inner);
+  background: transparent;
   font: inherit;
   color: inherit;
   text-align: left;
   cursor: pointer;
-  transition:
-    box-shadow var(--ui-dur) var(--ui-ease),
-    background var(--ui-dur) var(--ui-ease);
+  transition: background var(--ui-dur) var(--ui-ease);
 }
 
-.format-card:hover {
-  box-shadow: var(--ui-shadow-raised);
+.fmt-row:hover {
+  background: color-mix(in srgb, var(--ui-fill) 55%, transparent);
 }
 
-.format-card:focus-visible {
+.fmt-row:focus-visible {
   outline: 2px solid var(--ui-accent);
-  outline-offset: 2px;
+  outline-offset: -2px;
 }
 
-.format-card.is-selected {
+.fmt-row.is-selected {
   background: var(--ui-sel-tint);
-  box-shadow: var(--ui-sel-ring), var(--ui-shadow-raised);
-}
-
-.fmt-top {
-  display: flex;
-  align-items: center;
-  gap: 12px;
+  box-shadow: var(--ui-sel-ring);
 }
 
 .fmt-ico {
   display: grid;
   flex: none;
   place-items: center;
-  width: 44px;
-  height: 44px;
-  border-radius: 14px;
-  font: 600 13px var(--ui-font-mono);
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  font: 600 12px var(--ui-font-mono);
 }
 
 .fmt-ico.blue {
@@ -293,25 +271,37 @@ function selectFormat(format: FormatId) {
   color: var(--ui-red-ink);
 }
 
-.format-name {
-  margin: 0;
-  font: 600 16px / 1.3 var(--ui-font-display);
+.fmt-text {
+  display: grid;
+  min-width: 0;
+  flex: 1;
+  gap: 1px;
+}
+
+.fmt-text b {
+  font: 600 15px / 1.3 var(--ui-font-display);
   letter-spacing: -0.01em;
 }
 
-.format-name small {
-  display: block;
-  margin-top: 1px;
+.fmt-text b small {
+  margin-left: 8px;
   font: 500 13px var(--ui-font-ui);
   letter-spacing: 0;
   color: var(--ui-muted);
+}
+
+.fmt-use {
+  overflow: hidden;
+  font-size: 13px;
+  color: var(--ui-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .radio {
   flex: none;
   width: 20px;
   height: 20px;
-  margin-left: auto;
   border-radius: 50%;
   box-shadow: inset 0 0 0 1.5px var(--ui-faint);
   transition: box-shadow var(--ui-dur) var(--ui-ease);
@@ -321,122 +311,90 @@ function selectFormat(format: FormatId) {
   box-shadow: inset 0 0 0 6px var(--ui-accent);
 }
 
-.format-description {
+.choose-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 20px;
+  margin-top: auto;
+  padding: 16px 22px 20px;
+}
+
+.choose-note {
+  flex: 1 1 240px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ui-muted);
+}
+
+.steps {
+  display: grid;
+  gap: 4px;
   margin: 0;
-  font-size: 13px;
-  line-height: 1.55;
-  color: var(--ui-muted);
+  padding: 0 22px 20px;
+  list-style: none;
 }
 
-.use {
+.step {
   display: flex;
-  gap: 8px;
-  font-size: 13px;
-  color: var(--ui-ink-2);
+  gap: 14px;
+  padding: 10px 0;
 }
 
-.use span {
-  flex: none;
-  color: var(--ui-muted);
-}
-
-.feat {
-  position: relative;
-  display: flex;
-  gap: 12px;
-  padding: 12px 22px;
-}
-
-.feat + .feat::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  right: 0;
-  left: 62px;
-  height: 0.5px;
-  background: var(--ui-sep);
-}
-
-.feat .ic {
+.step-n {
   display: grid;
   flex: none;
   place-items: center;
   width: 28px;
   height: 28px;
-  margin-top: 1px;
-  border-radius: 9px;
-}
-
-.feat .ic svg {
-  width: 15px;
-  height: 15px;
-}
-
-.feat .ic.blue {
+  border-radius: 50%;
   background: var(--ui-accent-soft);
+  font: 600 13px var(--ui-font-display);
   color: var(--ui-accent);
 }
 
-.feat .ic.green {
-  background: var(--ui-green-soft);
-  color: var(--ui-green-ink);
+.step-t {
+  display: grid;
+  gap: 2px;
 }
 
-.feat .ic.indigo {
-  background: var(--ui-indigo-soft);
-  color: var(--ui-indigo);
-}
-
-.feat b {
-  display: block;
+.step-t b {
   font-size: 14px;
 }
 
-.feat span {
+.step-t span {
   font-size: 13px;
+  line-height: 1.5;
   color: var(--ui-muted);
 }
 
-.note {
-  display: flex;
-  gap: 10px;
-  margin: 8px 22px 20px;
-  padding: 12px 14px;
-  border-radius: var(--ui-r-inner);
-  background: var(--ui-orange-soft);
-  font-size: 13px;
-  color: var(--ui-orange-ink);
-}
-
-.note svg {
-  flex: none;
-  width: 16px;
-  height: 16px;
-  margin-top: 2px;
+/* The card footer carries the CTA on larger screens; phones get the sticky action bar */
+.export-actions {
+  display: none;
 }
 
 @media (max-width: 1280px) {
-  .fmt-grid,
-  .features {
-    grid-column: span 12;
+  .export-grid {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
 @media (max-width: 768px) {
-  .fmt-grid {
-    grid-template-columns: 1fr;
+  .choose-foot {
+    display: none;
   }
 
-  .feat {
-    padding: 12px 16px;
+  .export-actions {
+    display: flex;
   }
 
-  .feat + .feat::before {
-    left: 56px;
+  .fmt-list {
+    padding: 0 8px 12px;
   }
 
-  .note {
-    margin: 8px 16px 18px;
+  .steps {
+    padding: 0 16px 16px;
   }
 }
 </style>
