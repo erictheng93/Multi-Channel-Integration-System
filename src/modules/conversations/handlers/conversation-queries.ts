@@ -19,6 +19,8 @@ import { getDisplayContent } from '../utils/message-helpers';
 import { publicConversationColumns } from '../utils/public-columns';
 import { nowISO, nowMs } from '@/utils/timestamp'
 import { readThrough, DASHBOARD_SUMMARY_TTL_SECONDS } from '@/modules/dashboard/services/kv-cache';
+import { RowsReadMeter } from '@/utils/d1-rows-read';
+import { getUnreadAggregate } from '@/modules/conversations/services/unread-stats-service';
 import { clampWaitingLimit, getWaitingConversations } from '@/modules/dashboard/services/waiting-service';
 import { visibilityScopeKey } from '@/modules/dashboard/services/dashboard-service';
 import { conversationContracts, type ConversationStats } from '@shared/api-contracts/conversations';
@@ -91,12 +93,6 @@ interface ConversationStatsGroupRow {
   teamId: number | null;
   status: string | null;
   n: number | string | null;
-}
-
-interface ConversationUnreadAggregateRow {
-  unreadCount: number | string | null;
-  unreadConversations: number | string | null;
-  oldestUnreadAt: string | null;
 }
 
 const D1_SAFE_ID_CHUNK_SIZE = 90;
@@ -243,62 +239,9 @@ conversationQueriesHandler.get('/stats', jwtAuth, async (c) => {
     // Read state is per-agent (Migration 0060): join this agent's row so the
     // badge total reflects what THIS agent has yet to read. The
     // last-agent-reply term below stays global by design (decision A-1).
-    const unreadRow = await c.env.DB.prepare(`
-      WITH visible AS (
-        SELECT
-          conversation.id AS id,
-          conversation.status AS status,
-          conversation.unread_floor_at AS unread_floor_at,
-          read_state.last_read_at AS last_read_at,
-          read_state.marked_unread_at AS marked_unread_at
-        FROM conversations AS conversation
-        LEFT JOIN conversation_read_states AS read_state
-          ON read_state.conversation_id = conversation.id
-          AND read_state.agent_id = ?
-        WHERE ${visibility.clause}
-      )
-      SELECT COALESCE(SUM(
-        CASE WHEN per.manuallyUnread = 1 AND per.unreadCount = 0
-          THEN 1 ELSE per.unreadCount END
-      ), 0) as unreadCount,
-      COALESCE(SUM(
-        CASE WHEN per.manuallyUnread = 1 OR per.unreadCount > 0 THEN 1 ELSE 0 END
-      ), 0) as unreadConversations,
-      MIN(CASE WHEN per.unreadCount > 0 THEN per.oldestUnreadAt END) as oldestUnreadAt
-      FROM (
-        SELECT
-          threshold.id,
-          threshold.manuallyUnread,
-          COUNT(customer_message.id) as unreadCount,
-          MIN(customer_message.created_at) as oldestUnreadAt
-        FROM (
-          SELECT
-            visible.id,
-            -- 已結案的對話不計入未讀總數（與列表一致）
-            CASE WHEN visible.status <> 'closed' AND visible.marked_unread_at IS NOT NULL THEN 1 ELSE 0 END as manuallyUnread,
-            CASE WHEN visible.status = 'closed' THEN '9999-12-31' ELSE MAX(
-              COALESCE(last_agent.last_agent_at, '1970-01-01'),
-              COALESCE(visible.last_read_at, '1970-01-01'),
-              COALESCE(visible.unread_floor_at, '1970-01-01')
-            ) END as unread_threshold
-          FROM visible
-          LEFT JOIN (
-            SELECT message.conversation_id, MAX(message.created_at) as last_agent_at
-            FROM messages AS message
-            INNER JOIN visible ON visible.id = message.conversation_id
-            WHERE message.sender_type IN ('agent', 'system')
-              AND message.deleted_at IS NULL
-            GROUP BY message.conversation_id
-          ) AS last_agent ON last_agent.conversation_id = visible.id
-        ) AS threshold
-        LEFT JOIN messages AS customer_message
-          ON customer_message.conversation_id = threshold.id
-          AND customer_message.sender_type = 'customer'
-          AND customer_message.deleted_at IS NULL
-          AND customer_message.created_at > threshold.unread_threshold
-        GROUP BY threshold.id, threshold.manuallyUnread
-      ) AS per
-    `).bind(user.id, ...visibility.params).first<ConversationUnreadAggregateRow>();
+    const unreadMeter = new RowsReadMeter('conversations.stats');
+    const unreadRow = await getUnreadAggregate(c.env.DB, user, unreadMeter);
+    unreadMeter.flush({ scope: visibilityScopeKey(user) });
 
     stats.unreadCount = toCount(unreadRow?.unreadCount);
     stats.unreadConversations = toCount(unreadRow?.unreadConversations);
@@ -328,7 +271,9 @@ conversationQueriesHandler.get('/waiting', jwtAuth, async (c) => {
       DASHBOARD_SUMMARY_TTL_SECONDS,
       async () => {
         const generatedAt = nowMs();
-        const waiting = await getWaitingConversations(c.env.DB, user, limit, generatedAt);
+        const meter = new RowsReadMeter('conversations.waiting');
+        const waiting = await getWaitingConversations(c.env.DB, user, limit, generatedAt, meter);
+        meter.flush({ scope: visibilityScopeKey(user), limit });
         return { ...waiting, generatedAt: new Date(generatedAt).toISOString() };
       }
     );

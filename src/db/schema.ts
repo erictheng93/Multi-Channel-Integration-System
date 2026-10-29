@@ -114,6 +114,13 @@ export const conversations = sqliteTable('conversations', {
   lineReplyToken: text('line_reply_token'),
   lineReplyTokenReceivedAt: integer('line_reply_token_received_at'),
   lastMessageAt: text('last_message_at'),
+  // Earliest unanswered customer message after the last human reply; NULL = not waiting.
+  // Maintained by triggers on messages and healed nightly (Migration 0070).
+  awaitingSince: text('awaiting_since'),
+  // Newest non-deleted customer message / agent-or-system message; trigger-maintained and healed
+  // nightly. They decide which conversations can be unread without scanning messages (Migration 0071).
+  lastCustomerMessageAt: text('last_customer_message_at'),
+  lastAgentMessageAt: text('last_agent_message_at'),
   // DEPRECATED (Migration 0060): read state is now per-agent in
   // conversation_read_states. These two columns are no longer read by the
   // unread queries and are kept only as a revert path.
@@ -135,6 +142,16 @@ export const conversations = sqliteTable('conversations', {
   // LIMIT; without it the planner sorts every visible row in a temp b-tree and
   // the pagination pushdown reads just as much as the old Array.slice() did.
   updatedAtIdx: index('idx_conversations_updated_at').on(table.updatedAt, table.id),
+  // Partial index holding only waiting conversations (Migration 0070)
+  awaitingSinceIdx: index('idx_conversations_awaiting_since')
+    .on(table.awaitingSince, table.id, table.status, table.assignedTeamId, table.deletedAt)
+    .where(sql`${table.awaitingSince} IS NOT NULL`),
+  // Covering index for the stats (team, status) counts (Migration 0071)
+  teamStatusIdx: index('idx_conversations_team_status').on(table.assignedTeamId, table.status),
+  // Conversations where the customer spoke after the last agent/system reply (Migration 0071)
+  customerAfterAgentIdx: index('idx_conversations_customer_after_agent')
+    .on(table.lastCustomerMessageAt, table.id, table.status, table.assignedTeamId, table.unreadFloorAt, table.lastAgentMessageAt)
+    .where(sql`${table.lastCustomerMessageAt} > COALESCE(${table.lastAgentMessageAt}, '')`),
 }));
 
 // Conversation read states - 每位客服各自的已讀/未讀狀態 (Migration 0060)
@@ -152,6 +169,10 @@ export const conversationReadStates = sqliteTable('conversation_read_states', {
 }, (table) => ({
   pk: primaryKey({ columns: [table.agentId, table.conversationId] }),
   conversationIdx: index('idx_conversation_read_states_conversation').on(table.conversationId),
+  // Manual "mark unread" flags (Migration 0071)
+  markedUnreadIdx: index('idx_conversation_read_states_marked_unread')
+    .on(table.agentId, table.conversationId)
+    .where(sql`${table.markedUnreadAt} IS NOT NULL`),
 }));
 
 // Messages table - 訊息
@@ -880,3 +901,24 @@ export const wsMetricsSnapshots = sqliteTable('ws_metrics_snapshots', {
 }));
 export type WsMetricsSnapshot = typeof wsMetricsSnapshots.$inferSelect;
 export type NewWsMetricsSnapshot = typeof wsMetricsSnapshots.$inferInsert;
+
+// Message count rollup by Asia/Taipei day (Migration 0069). The migration creates the table
+// WITHOUT ROWID (not expressible here); this mirror keeps the column and key shape.
+// team_id: >0 team at aggregation time, 0 = unassigned pool, -1 = all teams (what admins read).
+// day '0000-00-00' = all-time totals (team -1). See migrations/0069 for the full semantics.
+export const messageDailyStats = sqliteTable('message_daily_stats', {
+  teamId: integer('team_id').notNull(),
+  senderType: text('sender_type').notNull(),
+  day: text('day').notNull(),
+  platform: text('platform').notNull(),
+  count: integer('count').notNull().default(0),
+}, (table) => ({
+  pk: primaryKey({ columns: [table.teamId, table.senderType, table.day, table.platform] }),
+}));
+
+// Key/value watermarks for incremental aggregation jobs (Migration 0069)
+export const statsWatermarks = sqliteTable('stats_watermarks', {
+  key: text('key').primaryKey(),
+  value: text('value').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});

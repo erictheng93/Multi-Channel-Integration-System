@@ -5,8 +5,9 @@
 //     - it is not closed (status <> 'closed') and not soft-deleted, AND
 //     - the customer sent at least one message AFTER the last human agent
 //       message (or no human agent ever replied).
-//   "Human agent message" = messages.sender_type = 'agent' that is not recalled,
-//   not soft-deleted and not a broadcast (broadcast rows carry "broadcastId" in
+//   "Human agent message" = messages.sender_type = 'agent' that the platform
+//   accepted (is_sent = 1; a failed or still-held recall-window message does not
+//   answer yet), is not recalled, not soft-deleted and not a broadcast (broadcast rows carry "broadcastId" in
 //   metadata; a broadcast is not an answer). Auto-reply and other system
 //   messages (sender_type 'system') never end a wait.
 //   Wait time = now - the EARLIEST customer message after that last agent
@@ -15,11 +16,16 @@
 // Scoped with the shared conversation visibility rule (admin: all; agent: own
 // teams + unassigned pool).
 //
-// Cost: one scan over the messages of the caller's open conversations, served by
-// idx_messages_conv_sender_deleted_created. Callers cache the result in KV.
+// Cost: conversations.awaiting_since (migration 0070) is the stored answer, kept up to
+// date by triggers on messages and healed nightly (awaiting-service.ts). The list reads
+// ONLY waiting conversations through the partial index
+// idx_conversations_awaiting_since; per page row it adds one small index range read for
+// the unanswered count and the latest customer message. No history is scanned.
+// Callers still cache the result in KV.
 
 import { getConversationVisibilitySql, type ConversationVisibilityUser } from '@/services/conversation-visibility';
 import type { WaitingConversation } from '@shared/api-contracts/conversations';
+import type { RowsReadMeter } from '@/utils/d1-rows-read';
 import { getDisplayContent } from '@/modules/conversations/utils/message-helpers';
 
 interface WaitingRow {
@@ -58,63 +64,55 @@ export async function getWaitingConversations(
   db: D1Database,
   user: ConversationVisibilityUser,
   limit: number,
-  nowMs: number
+  nowMs: number,
+  meter?: RowsReadMeter
 ): Promise<WaitingResult> {
   const visibility = getConversationVisibilitySql(user, 'c.assigned_team_id');
+  const totalVisibility = getConversationVisibilitySql(user, 'c2.assigned_team_id');
 
-  const { results } = await db.prepare(`
-    WITH vis AS (
-      SELECT c.id AS id
+  // The page is cut inside the CTE so the per-row subqueries below run for at most
+  // `limit` conversations, never for every waiting one. The total is a covering-index
+  // count (idx_conversations_awaiting_since carries status, team and deleted_at).
+  const result = await db.prepare(`
+    WITH page AS (
+      SELECT c.id AS id,
+             c.customer_id AS customer_id,
+             c.assigned_team_id AS assigned_team_id,
+             c.awaiting_since AS waiting_since
       FROM conversations c
-      WHERE ${visibility.clause}
+      WHERE c.awaiting_since IS NOT NULL
         AND c.status <> 'closed'
         AND c.deleted_at IS NULL
-    ),
-    last_agent AS (
-      SELECT m.conversation_id AS conversation_id, MAX(m.created_at) AS at
-      FROM messages m
-      INNER JOIN vis ON vis.id = m.conversation_id
-      WHERE m.sender_type = 'agent'
-        AND m.deleted_at IS NULL
-        AND COALESCE(m.is_recalled, 0) = 0
-        AND (m.metadata IS NULL OR m.metadata NOT LIKE '%"broadcastId"%')
-      GROUP BY m.conversation_id
-    ),
-    waiting AS (
-      SELECT vis.id AS conversation_id,
-             MIN(cm.created_at) AS waiting_since,
-             COUNT(cm.id) AS unanswered
-      FROM vis
-      LEFT JOIN last_agent la ON la.conversation_id = vis.id
-      INNER JOIN messages cm
-        ON cm.conversation_id = vis.id
-       AND cm.sender_type = 'customer'
-       AND cm.deleted_at IS NULL
-       AND cm.created_at > COALESCE(la.at, '')
-      GROUP BY vis.id
+        AND ${visibility.clause}
+      ORDER BY c.awaiting_since ASC, c.id ASC
+      LIMIT ?
     )
     SELECT
-      w.conversation_id AS conversationId,
-      c.customer_id AS customerId,
+      p.id AS conversationId,
+      p.customer_id AS customerId,
       COALESCE(cu.custom_name, cu.display_name) AS customerName,
       cu.avatar_url AS avatarUrl,
       cu.platform AS platform,
-      c.assigned_team_id AS assignedTeamId,
-      w.waiting_since AS waitingSince,
-      w.unanswered AS unansweredCount,
+      p.assigned_team_id AS assignedTeamId,
+      p.waiting_since AS waitingSince,
+      (SELECT COUNT(*) FROM messages cm
+        WHERE cm.conversation_id = p.id AND cm.sender_type = 'customer'
+          AND cm.deleted_at IS NULL AND cm.created_at >= p.waiting_since) AS unansweredCount,
       (SELECT lm.content FROM messages lm
-        WHERE lm.conversation_id = w.conversation_id AND lm.sender_type = 'customer' AND lm.deleted_at IS NULL
+        WHERE lm.conversation_id = p.id AND lm.sender_type = 'customer' AND lm.deleted_at IS NULL
         ORDER BY lm.created_at DESC LIMIT 1) AS lastCustomerContent,
       (SELECT lm.message_type FROM messages lm
-        WHERE lm.conversation_id = w.conversation_id AND lm.sender_type = 'customer' AND lm.deleted_at IS NULL
+        WHERE lm.conversation_id = p.id AND lm.sender_type = 'customer' AND lm.deleted_at IS NULL
         ORDER BY lm.created_at DESC LIMIT 1) AS lastCustomerType,
-      COUNT(*) OVER () AS total
-    FROM waiting w
-    INNER JOIN conversations c ON c.id = w.conversation_id
-    LEFT JOIN customers cu ON cu.id = c.customer_id
-    ORDER BY w.waiting_since ASC, w.conversation_id ASC
-    LIMIT ?
-  `).bind(...visibility.params, limit).all<WaitingRow>();
+      (SELECT COUNT(*) FROM conversations c2
+        WHERE c2.awaiting_since IS NOT NULL AND c2.status <> 'closed' AND c2.deleted_at IS NULL
+          AND ${totalVisibility.clause}) AS total
+    FROM page p
+    LEFT JOIN customers cu ON cu.id = p.customer_id
+    ORDER BY p.waiting_since ASC, p.id ASC
+  `).bind(...visibility.params, limit, ...totalVisibility.params).all<WaitingRow>();
+  meter?.track(result);
+  const results = result.results;
 
   const rows = results ?? [];
   const items: WaitingConversation[] = rows.map(row => {

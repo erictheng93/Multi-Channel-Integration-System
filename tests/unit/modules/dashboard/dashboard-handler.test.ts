@@ -1,7 +1,7 @@
-import Database from 'better-sqlite3';
 import { Hono, type Context, type Next } from 'hono';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Bindings } from '@/types';
+import { createDashboardDb, d1Of } from '../../../helpers/sqlite-d1';
 
 const mocks = vi.hoisted(() => ({
   user: { id: 'agent-1', role: 'agent', allowedTeamIds: [7] as number[] },
@@ -19,31 +19,8 @@ vi.mock('@/db/drizzle-factory', () => ({ createDbClient: vi.fn() }));
 import { dashboardHandler } from '@/modules/dashboard/handlers/dashboard-main';
 import conversationQueriesHandler from '@/modules/conversations/handlers/conversation-queries';
 
-function d1Of(db: Database.Database): D1Database {
-  return {
-    prepare: (query: string) => ({
-      bind: (...params: unknown[]) => ({
-        first: async () => db.prepare(query).get(...params) ?? null,
-        all: async () => ({ results: db.prepare(query).all(...params) }),
-      }),
-    }),
-  } as unknown as D1Database;
-}
-
 function createDb() {
-  const db = new Database(':memory:');
-  db.exec(`
-    CREATE TABLE customers (id INTEGER PRIMARY KEY, platform TEXT NOT NULL, display_name TEXT, custom_name TEXT, avatar_url TEXT);
-    CREATE TABLE conversations (
-      id TEXT PRIMARY KEY, customer_id INTEGER NOT NULL, status TEXT NOT NULL DEFAULT 'active',
-      assigned_team_id INTEGER, first_response_at TEXT, closed_at TEXT, created_at TEXT, deleted_at TEXT
-    );
-    CREATE TABLE messages (
-      id TEXT PRIMARY KEY, conversation_id TEXT NOT NULL, sender_type TEXT NOT NULL,
-      content TEXT NOT NULL DEFAULT '', message_type TEXT NOT NULL DEFAULT 'text',
-      metadata TEXT, is_recalled INTEGER DEFAULT 0, deleted_at TEXT, created_at TEXT NOT NULL
-    );
-  `);
+  const db = createDashboardDb({ awaiting: true });
   db.prepare("INSERT INTO customers (id, platform, display_name) VALUES (1, 'line', 'Alice')").run();
   return db;
 }

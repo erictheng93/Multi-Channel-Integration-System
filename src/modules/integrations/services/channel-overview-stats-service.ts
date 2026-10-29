@@ -1,10 +1,10 @@
 // Per-platform channel overview: message counts, last activity and webhook failure health.
 // Computed on read and cached in KV so the channels page never re-scans messages on every load.
 
-import { sql, isNull, eq } from 'drizzle-orm';
-import { createDbClient } from '@/db/drizzle-factory';
-import { messages, conversations, customers } from '@/db/schema';
 import type { Bindings } from '@/types';
+import { RowsReadMeter } from '@/utils/d1-rows-read';
+import { taipeiDateString, taipeiDayStartMs } from '@/utils/taipei-time';
+import { readDayCounts, readLastActivity, readWatermark, type DayCount } from '@/modules/dashboard/services/message-rollup-service';
 import { nowISO, nowMs } from '@/utils/timestamp';
 import { createContextLogger } from '@/utils/logger';
 import { WEBHOOK_PROCESSING_PREFIX, WEBHOOK_SIGNATURE_PREFIX } from '@/utils/webhook-alert';
@@ -45,40 +45,92 @@ export interface PlatformWebhookHealth {
   lastSignatureFailureAt: string | null;
 }
 
-function toNumber(value: unknown): number {
-  return typeof value === 'number' ? value : Number(value) || 0;
-}
-
+/**
+ * Per-platform counts from the message_daily_stats rollup plus a live delta after its
+ * watermark (message-rollup-service.ts): cost grows with days, never with messages.
+ * "24h" is rolling: whole Taipei days from the cutoff day on, minus the raw messages
+ * of the cutoff day that are older than the cutoff (at most one day of rows).
+ */
 export async function computeMessageStats(env: Bindings, now: number = nowMs()): Promise<MessageStatsSnapshot> {
-  const db = createDbClient(env.DB);
-  const cutoff = new Date(now - DAY_MS).toISOString();
+  const db = env.DB;
+  const meter = new RowsReadMeter('channels.message-stats');
+  const cutoffMs = now - DAY_MS;
+  const cutoffDayStartMs = taipeiDayStartMs(cutoffMs);
+  const senders = ['customer', 'agent'] as const;
+  const allTeams = { role: 'admin' as const, allowedTeamIds: [] as number[] };
 
-  const rows = await db
-    .select({
-      platform: customers.platform,
-      customerTotal: sql<number>`SUM(CASE WHEN ${messages.senderType} = 'customer' THEN 1 ELSE 0 END)`,
-      agentTotal: sql<number>`SUM(CASE WHEN ${messages.senderType} = 'agent' THEN 1 ELSE 0 END)`,
-      customer24h: sql<number>`SUM(CASE WHEN ${messages.senderType} = 'customer' AND ${messages.createdAt} >= ${cutoff} THEN 1 ELSE 0 END)`,
-      agent24h: sql<number>`SUM(CASE WHEN ${messages.senderType} = 'agent' AND ${messages.createdAt} >= ${cutoff} THEN 1 ELSE 0 END)`,
-      lastActivityAt: sql<string | null>`MAX(CASE WHEN ${messages.senderType} IN ('customer', 'agent') THEN ${messages.createdAt} END)`
-    })
-    .from(messages)
-    .innerJoin(conversations, eq(messages.conversationId, conversations.id))
-    .innerJoin(customers, eq(conversations.customerId, customers.id))
-    .where(isNull(messages.deletedAt))
-    .groupBy(customers.platform);
+  const watermark = await readWatermark(db, meter);
+  const [totals, recent, lastActivity, olderToday] = await Promise.all([
+    readDayCounts(db, allTeams, {
+      fromDay: '0000-00-00', toDay: '9999-12-31', senderTypes: senders, nowMs: now, allTime: true, watermark, meter
+    }),
+    readDayCounts(db, allTeams, {
+      fromDay: taipeiDateString(cutoffMs), toDay: taipeiDateString(now), senderTypes: senders, nowMs: now, watermark, meter
+    }),
+    readLastActivity(db, watermark, now, meter),
+    countOlderThanCutoff(db, new Date(cutoffDayStartMs).toISOString(), new Date(cutoffMs).toISOString(), meter)
+  ]);
 
   const platforms: Record<string, PlatformMessageStats> = {};
-  for (const row of rows) {
-    platforms[row.platform] = {
-      customerMessages24h: toNumber(row.customer24h),
-      agentMessages24h: toNumber(row.agent24h),
-      customerMessagesTotal: toNumber(row.customerTotal),
-      agentMessagesTotal: toNumber(row.agentTotal),
-      lastActivityAt: row.lastActivityAt ?? null
-    };
+  const entry = (platform: string): PlatformMessageStats => (platforms[platform] ??= {
+    customerMessages24h: 0,
+    agentMessages24h: 0,
+    customerMessagesTotal: 0,
+    agentMessagesTotal: 0,
+    lastActivityAt: null
+  });
+
+  for (const row of totals) {
+    if (row.platform === 'unknown') { continue; }
+    const target = entry(row.platform);
+    if (row.senderType === 'customer') { target.customerMessagesTotal += row.n; }
+    if (row.senderType === 'agent') { target.agentMessagesTotal += row.n; }
   }
+  for (const row of recent) {
+    if (row.platform === 'unknown') { continue; }
+    const target = entry(row.platform);
+    if (row.senderType === 'customer') { target.customerMessages24h += row.n; }
+    if (row.senderType === 'agent') { target.agentMessages24h += row.n; }
+  }
+  for (const row of olderToday) {
+    if (row.platform === 'unknown') { continue; }
+    const target = entry(row.platform);
+    if (row.senderType === 'customer') { target.customerMessages24h = Math.max(0, target.customerMessages24h - row.n); }
+    if (row.senderType === 'agent') { target.agentMessages24h = Math.max(0, target.agentMessages24h - row.n); }
+  }
+  for (const [platform, at] of lastActivity) {
+    if (platform === 'unknown') { continue; }
+    entry(platform).lastActivityAt = at;
+  }
+
+  meter.flush();
   return { computedAt: nowISO(), platforms };
+}
+
+/** Customer/agent messages inside the cutoff day but older than the cutoff, per platform and sender. */
+async function countOlderThanCutoff(
+  db: D1Database,
+  dayStartIso: string,
+  cutoffIso: string,
+  meter: RowsReadMeter
+): Promise<DayCount[]> {
+  const result = await db.prepare(`
+    SELECT COALESCE(cu.platform, 'unknown') AS platform, m.sender_type AS senderType, COUNT(*) AS n
+    FROM messages m
+    INNER JOIN conversations c ON c.id = m.conversation_id
+    LEFT JOIN customers cu ON cu.id = c.customer_id
+    WHERE m.sender_type IN ('customer', 'agent')
+      AND m.created_at >= ? AND m.created_at < ?
+      AND m.deleted_at IS NULL
+    GROUP BY 1, 2
+  `).bind(dayStartIso, cutoffIso).all<{ platform: string; senderType: string; n: number | string }>();
+  meter.track(result);
+  return (result.results ?? []).map(row => ({
+    day: '',
+    platform: row.platform,
+    senderType: row.senderType,
+    n: Number(row.n) || 0
+  }));
 }
 
 export async function getMessageStats(env: Bindings): Promise<MessageStatsSnapshot | null> {

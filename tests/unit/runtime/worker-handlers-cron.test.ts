@@ -5,8 +5,18 @@ const mocks = vi.hoisted(() => ({
   refresh: vi.fn(),
   handleScheduledEvent: vi.fn(),
   processScheduledReports: vi.fn(),
+  aggregate: vi.fn(),
+  healRollup: vi.fn(),
+  healAwaiting: vi.fn(),
+  healMarkers: vi.fn(),
 }));
 
+vi.mock('@modules/dashboard/services/message-rollup-service', () => ({
+  aggregateMessageRollup: mocks.aggregate,
+  healRecentMessageRollup: mocks.healRollup,
+}));
+vi.mock('@modules/conversations/services/message-markers-service', () => ({ healMessageMarkers: mocks.healMarkers }));
+vi.mock('@modules/dashboard/services/awaiting-service', () => ({ healAwaitingSince: mocks.healAwaiting }));
 vi.mock('@modules/queue/handlers/line-message-queue', () => ({ handleLineMessageQueue: vi.fn() }));
 vi.mock('@/db/drizzle-factory', () => ({ createDbClient: vi.fn(() => ({})) }));
 vi.mock('@modules/system/handlers/task-reminder-main', () => ({
@@ -36,6 +46,10 @@ describe('scheduled() cron dispatch', () => {
     mocks.refresh.mockResolvedValue({ items: [] });
     mocks.handleScheduledEvent.mockResolvedValue(undefined);
     mocks.processScheduledReports.mockResolvedValue({ processed: 0, succeeded: 0, failed: 0 });
+    mocks.aggregate.mockResolvedValue({ status: 'aggregated', watermark: 'x' });
+    mocks.healRollup.mockResolvedValue({ fromDay: '2026-10-28', healed: true });
+    mocks.healAwaiting.mockResolvedValue({ corrected: 0 });
+    mocks.healMarkers.mockResolvedValue({ corrected: 0 });
   });
 
   it('runs only the quota poll on the daily cron', async () => {
@@ -90,5 +104,28 @@ describe('scheduled() cron dispatch', () => {
     } as unknown as Bindings;
     await scheduled(event('0 18 * * *'), withBroadcaster, ctx);
     expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('folds new messages into the rollup on the 5-minute cron only', async () => {
+    await scheduled(event('*/5 * * * *'), env, ctx);
+    expect(mocks.aggregate).toHaveBeenCalledTimes(1);
+    expect(mocks.healRollup).not.toHaveBeenCalled();
+    expect(mocks.healAwaiting).not.toHaveBeenCalled();
+  });
+
+  it('a failing rollup aggregation never breaks the other 5-minute work', async () => {
+    mocks.aggregate.mockRejectedValue(new Error('d1 down'));
+    await expect(scheduled(event('*/5 * * * *'), env, ctx)).resolves.toBeUndefined();
+    expect(mocks.handleScheduledEvent).toHaveBeenCalledTimes(1);
+    expect(mocks.processScheduledReports).toHaveBeenCalledTimes(1);
+  });
+
+  it('self-heals rollup days and awaiting_since once on the daily cron, and each step fails independently', async () => {
+    mocks.healRollup.mockRejectedValue(new Error('boom'));
+    await expect(scheduled(event('0 18 * * *'), env, ctx)).resolves.toBeUndefined();
+    expect(mocks.healRollup).toHaveBeenCalledTimes(1);
+    expect(mocks.healAwaiting).toHaveBeenCalledTimes(1);
+    expect(mocks.healMarkers).toHaveBeenCalledTimes(1);
+    expect(mocks.aggregate).not.toHaveBeenCalled();
   });
 });
