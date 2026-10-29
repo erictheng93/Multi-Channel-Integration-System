@@ -176,4 +176,10 @@ function handleClear() {
     margin-left: 0;
   }
 }
+
+/* placeholder text must read at AA on the grey field fill */
+.ui-input::placeholder,
+.ui-textarea::placeholder {
+  color: var(--ui-muted);
+}
 </style>
