@@ -46,7 +46,7 @@
     <SettingsGroup title="地區與語言">
       <SettingsRow
         label="時區"
-        hint="右側顯示所選時區的目前時間"
+        hint="預覽卡會顯示所選時區的目前時間"
         for-id="timezone"
       >
         <select
