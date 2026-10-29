@@ -37,6 +37,7 @@ import { broadcastRouter } from '@modules/broadcast';
 //   src/handlers/credentials-router.ts
 // Import middleware and utilities
 import { getSecurityConfig, getSecurityHeaders } from './config/security';
+import { apiMetricsMiddleware } from './middleware/api-metrics';
 import { globalErrorHandler } from './middleware/error-handler';
 import { registerPreRegistryRoutes } from './routes/pre-registry-routes';
 import { registerProtectedAdminRoutes } from './routes/protected-admin-routes';
@@ -84,6 +85,9 @@ app.use('*', async (c, next) => {
 });
 
 log.info('Global CORS middleware registered successfully');
+
+// API metrics (Analytics Engine) - must precede every route registration to observe them; no-op without binding
+app.use('*', apiMetricsMiddleware);
 
 // ==================== 統一路由管理系統初始化 ====================
 log.info('Initializing Unified Route Management System');
