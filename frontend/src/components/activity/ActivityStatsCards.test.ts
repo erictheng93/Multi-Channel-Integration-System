@@ -7,6 +7,8 @@ import ActivityStatsCards from './ActivityStatsCards.vue'
 function makeOverview(overrides: Partial<ActivityOverview> = {}): ActivityOverview {
   return {
     totalActivities: 100,
+    activeUserCount: 2,
+    restorableCount: 0,
     actionStats: {
       user_login: 30,
       message_send: 50,

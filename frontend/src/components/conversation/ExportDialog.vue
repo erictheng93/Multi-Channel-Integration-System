@@ -136,6 +136,46 @@
           {{ customerLoadError }}
         </p>
       </div>
+
+      <!-- 客服篩選（從對話列表進入時才顯示；只匯出該客服送出的訊息） -->
+      <div
+        v-if="!conversationId && agentOptions.length > 0"
+        class="form-section"
+      >
+        <label class="section-label">客服人員</label>
+        <div class="select-wrap">
+          <select
+            v-model="filters.agentId"
+            class="apple-select"
+            :disabled="loadingOptions"
+          >
+            <option value="">
+              全部客服
+            </option>
+            <option
+              v-for="agent in agentOptions"
+              :key="agent.id"
+              :value="agent.id"
+            >
+              {{ agent.displayName || '未知客服' }}
+            </option>
+          </select>
+          <div class="select-chevron">
+            <svg
+              width="12"
+              height="12"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="3"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M6 9l6 6 6-6" />
+            </svg>
+          </div>
+        </div>
+      </div>
     </div>
 
     <template #footer>
@@ -176,9 +216,11 @@ import {
   exportMessages,
   fetchExportData,
   getExportCustomers,
+  getExportAgents,
   getExportCount,
   type ExportFormat,
-  type ExportCustomerOption
+  type ExportCustomerOption,
+  type ExportAgentOption
 } from '@/api/export'
 import { generatePdfExport } from '@/services/pdfExportService'
 
@@ -256,12 +298,14 @@ const exporting = ref(false)
 const loadingOptions = ref(false)
 const customerLoadError = ref('')
 const customerOptions = ref<ExportCustomerOption[]>([])
+const agentOptions = ref<ExportAgentOption[]>([])
 
 const filters = reactive({
   format: 'json' as ExportFormat,
   dateFrom: '',
   dateTo: '',
-  customerId: ''
+  customerId: '',
+  agentId: ''
 })
 
 const formatOptions = [
@@ -293,6 +337,15 @@ async function loadFilterOptions() {
   } catch (error) {
     customerLoadError.value = '載入用戶列表失敗，請稍後再試'
     console.error('Failed to load export filter options:', error)
+  }
+
+  // The agent filter is optional: a failed agents list simply hides the select
+  try {
+    const agentsResult = await getExportAgents()
+    agentOptions.value = agentsResult.success && agentsResult.data ? agentsResult.data : []
+  } catch (error) {
+    agentOptions.value = []
+    console.warn('Failed to load export agents:', error)
   } finally {
     loadingOptions.value = false
   }
@@ -307,8 +360,10 @@ const hasDateFilter = computed(() =>
   filters.dateFrom !== '' || filters.dateTo !== ''
 )
 
+const hasAgentFilter = computed(() => filters.agentId !== '')
+
 const hasAnyFilter = computed(() =>
-  hasCustomerFilter.value || hasDateFilter.value
+  hasCustomerFilter.value || hasDateFilter.value || hasAgentFilter.value
 )
 
 // 構建 API 篩選參數
@@ -319,7 +374,9 @@ function buildExportFilters() {
     dateFrom: filters.dateFrom ? new Date(filters.dateFrom).toISOString() : undefined,
     dateTo: filters.dateTo ? new Date(filters.dateTo).toISOString() : undefined,
     // __all__ 表示使用者明確選擇全部，傳 undefined 給 API（不篩選）
-    customerId: hasCustomerFilter.value ? filters.customerId : undefined
+    customerId: hasCustomerFilter.value ? filters.customerId : undefined,
+    // 空字串 = 全部客服；只有從列表進入時才會有客服篩選
+    agentId: !props.conversationId && hasAgentFilter.value ? filters.agentId : undefined
   }
 }
 
@@ -447,6 +504,7 @@ function resetFilters() {
   filters.dateFrom = ''
   filters.dateTo = ''
   filters.customerId = ''
+  filters.agentId = ''
   customerLoadError.value = ''
 }
 
