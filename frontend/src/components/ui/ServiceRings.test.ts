@@ -20,14 +20,14 @@ describe('ServiceRings', () => {
     expect(label).toContain('線上客服 0，共 4')
   })
 
-  it('draws at most three rings, each with a track and an arc', () => {
+  it('draws at most three arcs, each with a track and an arc', () => {
     const wrapper = mount(ServiceRings, { props: { rings } })
     expect(wrapper.findAll('.sr-track')).toHaveLength(3)
     expect(wrapper.findAll('.sr-arc')).toHaveLength(3)
     expect(wrapper.text()).not.toContain('第四圈')
   })
 
-  it('hides the arc of an empty ring so no round-cap dot is left behind', () => {
+  it('hides the arc of an empty arc so no round-cap dot is left behind', () => {
     const wrapper = mount(ServiceRings, { props: { rings } })
     const arcs = wrapper.findAll('.sr-arc')
     expect(arcs[0]?.classes()).not.toContain('is-empty')

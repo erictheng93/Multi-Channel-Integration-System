@@ -2,7 +2,7 @@
   ServiceRings.vue
 
   The product's signature graphic: Fitness-style concentric, round-capped arcs on faint
-  tracks, one ring per real ratio, with a legend of the numbers beside it. It replaces the
+  tracks, one arc per real ratio, with a legend of the numbers beside it. It replaces the
   decorative DiscRing as the lead visual of a page.
 
     <ServiceRings
@@ -17,7 +17,7 @@
 
   Rules
   - 1 to 3 rings (extra entries are ignored). The first is the outermost and the most important.
-  - Values come from data the page already loaded; a ring is value / total, clamped to 0..1.
+  - Values come from data the page already loaded; an arc is value / total, clamped to 0..1.
   - Always drawn complete inside its own box (never cropped by a parent edge).
   - The whole figure is one image for assistive tech: role="img" with an aria-label that states
     every value, so the visible legend is not read twice.
@@ -30,7 +30,7 @@
                    display  replaces `value` in the legend when the number needs formatting
     size         px of the square graphic (default 168)
     summary      aria-label prefix naming what the rings describe
-    centerValue / centerLabel   optional text inside the innermost ring (or use the #center slot)
+    centerValue / centerLabel   optional text inside the innermost arc (or use the #center slot)
     stacked      legend under the graphic instead of beside it (narrow boxes)
 -->
 
@@ -52,27 +52,27 @@
         focusable="false"
       >
         <g
-          v-for="ring in drawn"
-          :key="ring.index"
+          v-for="item in drawn"
+          :key="item.index"
         >
           <circle
             class="sr-track"
             :cx="size / 2"
             :cy="size / 2"
-            :r="ring.radius"
+            :r="item.radius"
             :stroke-width="layout.stroke"
-            :style="{ stroke: ring.hue }"
+            :style="{ stroke: item.hue }"
           />
           <circle
             class="sr-arc"
-            :class="{ 'is-empty': ring.arc === 0 }"
+            :class="{ 'is-empty': item.arc === 0 }"
             :cx="size / 2"
             :cy="size / 2"
-            :r="ring.radius"
+            :r="item.radius"
             :stroke-width="layout.stroke"
-            :stroke-dasharray="`${shown ? ring.arc : 0} ${ring.circumference}`"
+            :stroke-dasharray="`${shown ? item.arc : 0} ${item.circumference}`"
             :transform="`rotate(-90 ${size / 2} ${size / 2})`"
-            :style="{ stroke: ring.hue }"
+            :style="{ stroke: item.hue }"
           />
         </g>
       </svg>
@@ -93,18 +93,18 @@
 
     <ul class="sr-legend">
       <li
-        v-for="ring in drawn"
-        :key="ring.index"
+        v-for="item in drawn"
+        :key="item.index"
         class="sr-item"
       >
         <span
           class="sr-dot"
-          :style="{ background: ring.hue }"
+          :style="{ background: item.hue }"
         />
-        <span class="sr-label">{{ ring.label }}</span>
+        <span class="sr-label">{{ item.label }}</span>
         <span class="sr-num">
-          <strong>{{ ring.display }}</strong>
-          <small v-if="ring.total > 0">/ {{ ring.total.toLocaleString('en-US') }}{{ ring.of ? ` ${ring.of}` : '' }}</small>
+          <strong>{{ item.display }}</strong>
+          <small v-if="item.total > 0">/ {{ item.total.toLocaleString('en-US') }}{{ item.of ? ` ${item.of}` : '' }}</small>
         </span>
       </li>
     </ul>
@@ -159,16 +159,16 @@ const layout = computed<RingLayout>(() => {
 
 const inner = computed(() => innerRadius(used.value.length, layout.value))
 
-const drawn = computed(() => used.value.map((ring, index) => {
+const drawn = computed(() => used.value.map((item, index) => {
   const radius = ringRadius(index, layout.value)
-  const fraction = ringFraction(ring.value, ring.total)
+  const fraction = ringFraction(item.value, item.total)
   return {
     index,
-    label: ring.label,
-    total: ring.total,
-    of: ring.of,
-    display: ring.display ?? ring.value.toLocaleString('en-US'),
-    hue: ring.hue ?? DEFAULT_HUES[index] ?? DEFAULT_HUES[0],
+    label: item.label,
+    total: item.total,
+    of: item.of,
+    display: item.display ?? item.value.toLocaleString('en-US'),
+    hue: item.hue ?? DEFAULT_HUES[index] ?? DEFAULT_HUES[0],
     radius,
     circumference: ringCircumference(radius),
     arc: arcLength(fraction, radius),
@@ -176,9 +176,9 @@ const drawn = computed(() => used.value.map((ring, index) => {
 }))
 
 const ariaLabel = computed(() => {
-  const parts = used.value.map((ring) => {
-    const total = ring.total > 0 ? `，共 ${ring.total.toLocaleString('en-US')}${ring.of ? ` ${ring.of}` : ''}` : ''
-    return `${ring.label} ${ring.display ?? ring.value.toLocaleString('en-US')}${total}`
+  const parts = used.value.map((item) => {
+    const total = item.total > 0 ? `，共 ${item.total.toLocaleString('en-US')}${item.of ? ` ${item.of}` : ''}` : ''
+    return `${item.label} ${item.display ?? item.value.toLocaleString('en-US')}${total}`
   })
   return `${props.summary ? `${props.summary}：` : ''}${parts.join('；')}`
 })

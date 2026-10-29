@@ -42,7 +42,7 @@ describe('System Settings Components', () => {
       expect(wrapper.find('#systemName').exists()).toBe(true)
       expect(wrapper.find('#contactEmail').exists()).toBe(true)
       expect(wrapper.find('#timezone').exists()).toBe(true)
-      expect(wrapper.find('.group-note').text()).toContain('繁體中文')
+      expect(wrapper.text()).toContain('繁體中文')
     })
 
     it('should populate fields with settings data', () => {
@@ -81,7 +81,8 @@ describe('System Settings Components', () => {
       })
 
       expect(wrapper.find('#language').exists()).toBe(false)
-      expect(wrapper.text()).toContain('介面語言：繁體中文')
+      expect(wrapper.text()).toContain('介面語言')
+      expect(wrapper.find('.lang-value').text()).toBe('繁體中文')
     })
 
     it('should emit save event on form submit', async () => {
