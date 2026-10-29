@@ -154,12 +154,18 @@
             </header>
             <div class="form prefs">
               <div class="prefs-text">
-                <span
-                  class="ui-pill"
-                  :class="devicePerm.pill"
+                <p
+                  class="device-status"
+                  :class="`device-${devicePerm.tone}`"
                   data-testid="device-notify"
-                >這台裝置：{{ devicePerm.label }}</span>
-                <p>桌面通知只套用於這台裝置，其餘跟著你的帳號。</p>
+                >
+                  <span
+                    class="device-dot"
+                    aria-hidden="true"
+                  />
+                  <span><strong>這台裝置：{{ devicePerm.label }}</strong></span>
+                </p>
+                <p>{{ devicePerm.hint }}</p>
               </div>
               <div class="form-actions">
                 <RouterLink
@@ -399,10 +405,13 @@ const adminItems = computed(() => {
 // 這台裝置的桌面通知權限（瀏覽器 Notification.permission，只讀）
 const devicePerm = computed(() => {
   const perm = typeof Notification === 'undefined' ? 'unsupported' : Notification.permission
-  if (perm === 'granted') { return { label: '桌面通知已開啟', pill: 'ui-pill-green ui-pill-dot' } }
-  if (perm === 'denied') { return { label: '桌面通知已被瀏覽器封鎖', pill: 'ui-pill-red' } }
-  if (perm === 'unsupported') { return { label: '瀏覽器不支援桌面通知', pill: '' } }
-  return { label: '桌面通知尚未開啟', pill: 'ui-pill-orange' }
+  const shared = '桌面通知只套用於這台裝置，其餘跟著你的帳號。'
+  if (perm === 'granted') { return { label: '桌面通知已開啟', tone: 'on', hint: shared } }
+  if (perm === 'denied') {
+    return { label: '桌面通知已被瀏覽器封鎖', tone: 'off', hint: '要接收桌面通知，請點網址列左側的圖示，把「通知」改為允許後重新整理頁面。' }
+  }
+  if (perm === 'unsupported') { return { label: '瀏覽器不支援桌面通知', tone: 'off', hint: shared } }
+  return { label: '桌面通知尚未開啟', tone: 'off', hint: shared }
 })
 
 // 密碼顯示/隱藏（僅本地 UI 狀態）
@@ -703,6 +712,27 @@ watch(
   display: grid;
   gap: 8px;
   justify-items: start;
+}
+
+/* A calm status line, not an alarm: a dot and plain text. Only "on" earns colour. */
+.device-status {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 14px;
+  color: var(--ui-ink);
+}
+
+.device-dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ui-faint);
+}
+
+.device-on .device-dot {
+  background: var(--ui-green);
 }
 
 .prefs-text p {
