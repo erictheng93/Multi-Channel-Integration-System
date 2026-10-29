@@ -38,7 +38,6 @@
 
       <!-- Pagination Controls -->
       <PaginationControls
-        v-if="paginationInfo.totalPages > 1"
         :pagination="paginationInfo"
         :visible-pages="pagination.pageRange.value"
         @change-page="pagination.setPage"

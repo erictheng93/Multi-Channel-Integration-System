@@ -61,7 +61,7 @@ describe('FiltersSection.vue', () => {
         }
       })
 
-      expect(wrapper.text()).toContain('篩選器')
+      expect(wrapper.text()).toContain('篩選')
     })
 
     it('应该渲染所有筛选器组', () => {
@@ -94,7 +94,7 @@ describe('FiltersSection.vue', () => {
       })
 
       expect(wrapper.find('.filter-reset').exists()).toBe(true)
-      expect(wrapper.text()).toContain('清除篩選')
+      expect(wrapper.text()).toContain('重設')
     })
 
     it('无活动筛选器时不应该显示重置按钮', () => {
@@ -129,7 +129,7 @@ describe('FiltersSection.vue', () => {
     })
 
     it('应该为每个报表类型调用 getReportTypeIcon', () => {
-      mount(FiltersSection, {
+      const wrapper = mount(FiltersSection, {
         props: {
           filters: defaultFilters,
           searchQuery: '',
@@ -139,9 +139,8 @@ describe('FiltersSection.vue', () => {
         }
       })
 
-      expect(mockGetReportTypeIcon).toHaveBeenCalledWith('basic')
-      expect(mockGetReportTypeIcon).toHaveBeenCalledWith('customer-analytics')
-      expect(mockGetReportTypeIcon).toHaveBeenCalledWith('performance')
+      // Type icons were removed from the redesigned select; the labels are what render
+      expect(wrapper.text()).toContain('客戶分析')
     })
   })
 
@@ -183,9 +182,10 @@ describe('FiltersSection.vue', () => {
       expect(formatSelect.text()).toContain('全部格式')
       expect(formatSelect.text()).toContain(' JSON')
       expect(formatSelect.text()).toContain(' CSV')
-      expect(formatSelect.text()).toContain(' Excel')
-      expect(formatSelect.text()).toContain(' PDF')
-      expect(formatSelect.text()).toContain(' HTML')
+      // Only the formats the backend can generate are offered
+      expect(formatSelect.text()).not.toContain('Excel')
+      expect(formatSelect.text()).not.toContain('PDF')
+      expect(formatSelect.text()).not.toContain('HTML')
     })
   })
 

@@ -98,6 +98,16 @@ vi.mock('@/api/reports', () => {
         { value: 'pdf', label: 'PDF 文件', icon: '' },
         { value: 'excel', label: 'Excel 檔案', icon: '' }
       ]),
+      getGeneratableOptions: vi.fn().mockReturnValue({
+        types: [
+          { value: 'conversation_summary', label: '對話摘要報告', description: '對話統計和摘要分析' },
+          { value: 'agent_performance', label: '客服績效報告', description: '客服人員績效評估' }
+        ],
+        formats: [
+          { value: 'pdf', label: 'PDF 文件', icon: '' },
+          { value: 'excel', label: 'Excel 檔案', icon: '' }
+        ]
+      }),
       getTimeRangeOptions: vi.fn().mockReturnValue([
         { value: 'last_7_days', label: '過去7天' },
         { value: 'last_30_days', label: '過去30天' }

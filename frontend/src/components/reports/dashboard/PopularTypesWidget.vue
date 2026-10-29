@@ -6,16 +6,19 @@
           熱門報表類型
         </h3>
         <p class="ui-card-sub">
-          近 30 天產生次數
+          近 30 天產生次數<span
+            v-if="popularTypes.length > 0"
+            class="header-subtitle"
+          > · Top {{ popularTypes.length }}</span>
         </p>
       </div>
     </div>
 
     <div
       v-if="popularTypes.length === 0"
-      class="empty-text"
+      class="empty-text empty-state"
     >
-      近 30 天沒有產生過報表
+      暫無報表數據
     </div>
 
     <ul
@@ -33,14 +36,14 @@
         >
           <span class="type-header">
             <span class="type-name">{{ type.label }}</span>
-            <span class="type-count">{{ type.count }}</span>
+            <span class="type-count">{{ type.count }}<small class="percentage-text">{{ type.percentage }}%</small></span>
           </span>
           <span
             class="progress-bar"
             aria-hidden="true"
           ><i
             class="progress-fill"
-            :style="{ width: Math.max(type.percentage, 3) + '%' }"
+            :style="{ width: type.percentage + '%' }"
           /></span>
         </button>
       </li>
@@ -147,6 +150,13 @@ defineEmits<{
 .type-count {
   font-weight: 600;
   font-variant-numeric: tabular-nums;
+}
+
+.percentage-text {
+  margin-left: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ui-muted);
 }
 
 .progress-bar {

@@ -170,10 +170,10 @@ describe('useReportDashboard', () => {
 
       await loadStatistics()
 
-      expect(stats.totalReports).toBe(100)
-      expect(stats.completedReports).toBe(80)
-      expect(stats.pendingReports).toBe(10)
-      expect(stats.failedReports).toBe(10)
+      // Header counts now come from the list summary; the 30-day statistics feed the popular types
+      expect(stats.popularTypes).toHaveLength(2)
+      expect(stats.popularTypes[0].count).toBe(50)
+      expect(stats.popularTypes[0].percentage).toBe(50)
     })
   })
 
