@@ -36,12 +36,13 @@ if (!controller) {
 </script>
 
 <style scoped>
-/* Own layout (not SettingsSplit): the aside card stretches so both columns end together */
+/* Left-aligned with the page title: the form column, then a preview card that is only as tall
+   as its content (no stretch, so no dead gap inside it) */
 .general-split {
   display: grid;
-  grid-template-columns: minmax(0, 720px) minmax(0, 1fr);
-  gap: 22px;
-  align-items: stretch;
+  grid-template-columns: minmax(0, 720px) minmax(0, 360px);
+  gap: 24px;
+  align-items: start;
   min-width: 0;
 }
 

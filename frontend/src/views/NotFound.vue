@@ -220,20 +220,6 @@ const goBack = () => {
   background: var(--ui-canvas);
 }
 
-/* The whole block (header + cards) sits in the vertical middle of the space under the top bar,
-   so a short page never leaves the lower half of the viewport blank */
-@media (min-width: 769px) {
-  .not-found-page {
-    justify-content: center;
-    min-height: calc(100vh - var(--ui-topbar-h) - 56px);
-    min-height: calc(100dvh - var(--ui-topbar-h) - 56px);
-  }
-
-  .bare-shell .not-found-page {
-    min-height: 0;
-  }
-}
-
 .ico {
   width: 16px;
   height: 16px;
