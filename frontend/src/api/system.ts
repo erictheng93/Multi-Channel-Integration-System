@@ -184,7 +184,19 @@ export const systemApi = {
         checkInterval: number;
       }>;
       infrastructure: Record<string, { status: string; message: string; timestamp: string; responseTime?: number }>;
-      performance: { apiResponseTime: number; databaseQueryTime: number; cacheHitRate: number };
+      performance: { apiResponseTime?: number; databaseQueryTime?: number; cacheHitRate?: number };
+      /** Present only for ?deep=1 (admin): on-demand LINE webhook test */
+      deep?: {
+        lineWebhook: {
+          status: 'success' | 'failure' | 'skipped';
+          statusCode?: number;
+          reason?: string;
+          detail?: string;
+          latencyMs?: number;
+          testedAt: string;
+          message: string;
+        };
+      };
     };
     message?: string;
   }> => {

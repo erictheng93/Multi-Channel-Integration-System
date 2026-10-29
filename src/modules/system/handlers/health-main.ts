@@ -5,9 +5,11 @@ import type { Bindings } from '@/types';
 import { healthCheckService } from '@/services/health-check-service';
 import { DatabaseHealthChecker } from '@/health-checkers/database-checker';
 import { CacheHealthChecker } from '@/health-checkers/cache-checker';
+import { R2HealthChecker, DurableObjectHealthChecker, QueueHealthChecker } from '@/health-checkers/infrastructure-checkers';
+import { runLineWebhookProbe } from '@/services/line-webhook-probe';
 import { HealthLevel, type SystemHealth } from '@/types/health-check';
 
-import { successResponse, internalErrorResponse } from '@/utils/api-response';
+import { successResponse, internalErrorResponse, forbiddenResponse } from '@/utils/api-response';
 import { getConfigurationStatus } from '@/middleware/configuration-guard';
 import { nowISO } from '@/utils/timestamp'
 import { createContextLogger } from '@/utils/logger';
@@ -19,12 +21,17 @@ let initialized = false;
 /**
  * 初始化健康檢查器
  */
-function initializeHealthCheckers(db: D1Database, cache: KVNamespace) {
+type HealthEnv = Pick<Bindings, 'DB' | 'CACHE' | 'R2_BUCKET' | 'MESSAGE_BROADCASTER' | 'LINE_MESSAGE_QUEUE'>;
+
+function initializeHealthCheckers(env: HealthEnv) {
   if (initialized) return;
 
   // 註冊基礎設施檢查器
-  healthCheckService.registerChecker(new DatabaseHealthChecker(db));
-  healthCheckService.registerChecker(new CacheHealthChecker(cache));
+  healthCheckService.registerChecker(new DatabaseHealthChecker(env.DB));
+  healthCheckService.registerChecker(new CacheHealthChecker(env.CACHE));
+  healthCheckService.registerChecker(new R2HealthChecker(env.R2_BUCKET));
+  healthCheckService.registerChecker(new DurableObjectHealthChecker(env.MESSAGE_BROADCASTER));
+  healthCheckService.registerChecker(new QueueHealthChecker(env.LINE_MESSAGE_QUEUE));
 
   initialized = true;
 }
@@ -34,9 +41,17 @@ function initializeHealthCheckers(db: D1Database, cache: KVNamespace) {
  */
 export async function getSystemHealth(c: Context<{ Bindings: Bindings }>) {
   try {
-    initializeHealthCheckers(c.env.DB, c.env.CACHE);
+    initializeHealthCheckers(c.env);
 
     const health = await healthCheckService.getSystemHealth();
+
+    // On-demand only: LINE's webhook test hits an external API with its own rate limit
+    if (c.req.query('deep') === '1') {
+      if (c.get('user')?.role !== 'admin') {
+        return forbiddenResponse(c, 'Admin role required for deep health checks');
+      }
+      health.deep = { lineWebhook: await runLineWebhookProbe(c.env) };
+    }
 
     // 根據健康狀態設置HTTP狀態碼
     const httpStatus = health.overall.status === 'healthy' ? 200 :
@@ -65,7 +80,7 @@ export async function getSystemHealth(c: Context<{ Bindings: Bindings }>) {
  */
 export async function getInfrastructureHealth(c: Context<{ Bindings: Bindings }>) {
   try {
-    initializeHealthCheckers(c.env.DB, c.env.CACHE);
+    initializeHealthCheckers(c.env);
 
     const health = await healthCheckService.getHealthByLevel(HealthLevel.INFRASTRUCTURE);
 
@@ -88,7 +103,7 @@ export async function getInfrastructureHealth(c: Context<{ Bindings: Bindings }>
  */
 export async function getServicesHealth(c: Context<{ Bindings: Bindings }>) {
   try {
-    initializeHealthCheckers(c.env.DB, c.env.CACHE);
+    initializeHealthCheckers(c.env);
 
     const health = await healthCheckService.getHealthByLevel(HealthLevel.SERVICE);
 
@@ -142,7 +157,7 @@ export async function runComponentCheck(c: Context<{ Bindings: Bindings }>) {
       }, HTTP_STATUS.BAD_REQUEST);
     }
 
-    initializeHealthCheckers(c.env.DB, c.env.CACHE);
+    initializeHealthCheckers(c.env);
 
     const result = await healthCheckService.runCheck(component);
 
@@ -186,7 +201,7 @@ export async function runComponentCheck(c: Context<{ Bindings: Bindings }>) {
  */
 export async function getHealthStats(c: Context<{ Bindings: Bindings }>) {
   try {
-    initializeHealthCheckers(c.env.DB, c.env.CACHE);
+    initializeHealthCheckers(c.env);
 
     const health = await healthCheckService.getSystemHealth();
 
@@ -287,9 +302,8 @@ export async function getConfigCheck(c: Context<{ Bindings: Bindings }>) {
 /**
  * 創建健康檢查方法集合
  */
-export function createHealthCheckHandlerMethods(db: D1Database, cache: KVNamespace) {
-  // 初始化檢查器
-  initializeHealthCheckers(db, cache);
+export function createHealthCheckHandlerMethods() {
+  // Checkers are registered lazily by each handler from c.env (they need R2/DO/Queue bindings too)
 
   return {
     getSystemHealth,
