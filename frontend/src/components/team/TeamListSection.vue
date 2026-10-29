@@ -393,10 +393,15 @@ function handlePageChange(page: number) {
   min-width: 0;
   padding: 0 22px;
 }
-/* Team tiles sit inside the card: flat on the canvas tone, no second shadow. */
+/* Team tiles sit inside the card as plain rows: no tile, no second surface, a hairline between them. */
 .team-section :deep(.team-card) {
-  background: var(--ui-canvas);
+  background: transparent;
+  border-radius: var(--ui-r-inner);
   box-shadow: none;
+  transition: background var(--ui-dur) var(--ui-ease);
+}
+.team-section :deep(.team-card:hover) {
+  background: var(--ui-fill);
 }
 .drag-hint {
   padding: 4px 4px 8px;
