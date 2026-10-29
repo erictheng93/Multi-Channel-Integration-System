@@ -3,6 +3,12 @@
     class="ui-card template-card"
     :class="{ selected: isSelected }"
   >
+    <DiscRing
+      class="card-disc"
+      variant="hero"
+      :size="240"
+      fade="soft"
+    />
     <button
       type="button"
       class="card-body"
@@ -52,6 +58,7 @@
 </template>
 
 <script setup lang="ts">
+import DiscRing from '@/components/ui/DiscRing.vue';
 import type { ReportTemplate } from '@/types/reports';
 import { formatEstimatedTime, getCategoryLabel, getChartTypeLabel } from './templateHelpers';
 
@@ -71,9 +78,11 @@ defineEmits<{
 
 <style scoped>
 .template-card {
+  position: relative;
   display: grid;
-  gap: 12px;
-  padding: 16px;
+  gap: 16px;
+  overflow: hidden;
+  padding: 22px;
   transition:
     box-shadow var(--ui-dur) var(--ui-ease),
     background-color var(--ui-dur) var(--ui-ease);
@@ -88,9 +97,19 @@ defineEmits<{
   box-shadow: var(--ui-shadow-raised);
 }
 
+/* A deliberate quarter-disc cropped by the card corner; text stays clear of it */
+.card-disc {
+  position: absolute;
+  top: -120px;
+  right: -120px;
+  opacity: 0.55;
+  pointer-events: none;
+}
+
 .card-body {
+  position: relative;
   display: grid;
-  gap: 10px;
+  gap: 12px;
   padding: 0;
   border: 0;
   background: none;
@@ -102,7 +121,8 @@ defineEmits<{
 
 .card-top {
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  align-items: flex-start;
   gap: 12px;
   min-width: 0;
 }
@@ -110,17 +130,17 @@ defineEmits<{
 .tpl-ico {
   display: grid;
   flex: none;
-  width: 34px;
-  height: 34px;
+  width: 44px;
+  height: 44px;
   place-items: center;
-  border-radius: 11px;
+  border-radius: 14px;
   background: var(--ui-accent-soft);
   color: var(--ui-accent);
 }
 
 .tpl-ico svg {
-  width: 18px;
-  height: 18px;
+  width: 22px;
+  height: 22px;
 }
 
 .tpl-ico.enterprise {
@@ -140,9 +160,7 @@ defineEmits<{
 
 .template-name {
   overflow: hidden;
-  font: 600 15px var(--ui-font-display);
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  font: 600 19px / 1.25 var(--ui-font-display);
 }
 
 .template-description {
@@ -166,6 +184,7 @@ defineEmits<{
 }
 
 .card-foot {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -190,5 +209,22 @@ defineEmits<{
 .category-badge.advanced_analytics {
   background: var(--ui-p-peach);
   color: var(--ui-p-peach-ink);
+}
+
+@media (max-width: 768px) {
+  .template-card {
+    gap: 12px;
+    padding: 18px;
+  }
+
+  .card-top {
+    flex-direction: row;
+    align-items: center;
+  }
+
+  .card-disc {
+    top: -130px;
+    right: -130px;
+  }
 }
 </style>

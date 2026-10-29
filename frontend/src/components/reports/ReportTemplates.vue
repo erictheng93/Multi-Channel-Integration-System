@@ -62,22 +62,69 @@
     >
       <div class="templates-main">
         <div
-          v-if="usableTemplates.length > 0"
-          class="templates-grid"
+          v-if="usableTemplates.length > 0 || comingSoonTemplates.length > 0 || showCustom"
+          class="catalogue"
         >
           <TemplateCard
             v-for="template in usableTemplates"
             :key="template.name"
+            class="cat-primary"
             :template="template"
             :generating="generating"
             :is-selected="selectedTemplate?.name === template.name"
             @select="selectTemplate"
             @use="useTemplate"
           />
+
+          <router-link
+            v-if="showCustom"
+            to="/reports/generate"
+            class="ui-card cat-primary custom-card"
+          >
+            <span class="custom-ico">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              ><path d="M12 5v14M5 12h14" /></svg>
+            </span>
+            <span class="custom-name">自訂報表</span>
+            <span class="custom-desc">自選類型、時間範圍與輸出格式，不套用模板</span>
+            <span class="custom-go">前往產生報表</span>
+          </router-link>
+
+          <h2
+            v-if="comingSoonTemplates.length > 0"
+            class="cat-heading"
+          >
+            即將推出
+            <span class="ui-pill">{{ comingSoonTemplates.length }}</span>
+            <span class="cat-heading-hint">後端尚未支援這些報表類型，暫時無法產生</span>
+          </h2>
+
+          <article
+            v-for="template in comingSoonTemplates"
+            :key="template.name"
+            class="soon-tile"
+            aria-disabled="true"
+          >
+            <span class="soon-top">
+              <span class="soon-name">{{ template.name }}</span>
+              <span
+                class="ui-tag soon-tag"
+                :class="template.category"
+              >{{ getCategoryLabel(template.category) }}</span>
+            </span>
+            <span class="soon-desc">{{ template.description }}</span>
+          </article>
         </div>
 
         <UiEmptyState
-          v-else-if="comingSoonTemplates.length === 0"
+          v-else
           class="ui-card"
           title="找不到符合的模板"
           description="請嘗試調整篩選條件或搜尋關鍵字"
@@ -98,41 +145,6 @@
             /><path d="m21 21-4.3-4.3" /></svg>
           </template>
         </UiEmptyState>
-
-        <details
-          v-if="comingSoonTemplates.length > 0"
-          class="ui-card soon"
-        >
-          <summary class="soon-summary">
-            <span class="soon-title">即將推出</span>
-            <span class="ui-pill">{{ comingSoonTemplates.length }}</span>
-            <span class="soon-hint">後端尚未支援這些報表類型，暫時無法產生</span>
-            <svg
-              class="soon-chevron"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              aria-hidden="true"
-            ><path d="m6 9 6 6 6-6" /></svg>
-          </summary>
-          <ul class="soon-list">
-            <li
-              v-for="template in comingSoonTemplates"
-              :key="template.name"
-              class="soon-row"
-            >
-              <span class="soon-name">{{ template.name }}</span>
-              <span class="soon-desc">{{ template.description }}</span>
-              <span
-                class="ui-tag soon-tag"
-                :class="template.category"
-              >{{ getCategoryLabel(template.category) }}</span>
-            </li>
-          </ul>
-        </details>
       </div>
 
       <aside
@@ -228,6 +240,8 @@ const templatesSubtitle = computed(() => {
 
 const usableTemplates = computed(() => filteredTemplates.value.filter(isSupported));
 const comingSoonTemplates = computed(() => filteredTemplates.value.filter(t => !isSupported(t)));
+// The custom-report card belongs to the catalogue unless the user is searching for something else
+const showCustom = computed(() => !searchQuery.value && (!selectedCategory.value || selectedCategory.value === 'basic'));
 
 const popularTemplates = computed(() =>
   templates.value.filter(isSupported).slice(0, 3)
@@ -319,88 +333,114 @@ onMounted(() => {
   min-width: 0;
 }
 
-.templates-grid {
+.catalogue {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 16px;
 }
 
-.templates-side {
-  position: sticky;
-  top: 16px;
+.cat-primary {
+  grid-column: span 4;
 }
 
-.error-state {
-  display: grid;
-  justify-items: center;
-  gap: 8px;
-  padding: 40px 24px;
-  text-align: center;
-}
-
-.soon-summary {
+.custom-card {
+  position: relative;
   display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 16px 20px;
-  list-style: none;
-  cursor: pointer;
+  flex-direction: column;
+  gap: 8px;
+  justify-content: flex-end;
+  padding: 22px;
+  color: inherit;
+  text-decoration: none;
+  background: linear-gradient(160deg, var(--ui-accent-soft), var(--ui-surface) 75%);
+  transition: box-shadow var(--ui-dur) var(--ui-ease);
 }
 
-.soon-summary::-webkit-details-marker {
-  display: none;
+.custom-card:hover {
+  box-shadow: var(--ui-shadow-raised);
 }
 
-.soon-title {
-  font: 600 15px var(--ui-font-display);
-}
-
-.soon-hint {
-  min-width: 0;
-  flex: 1;
-  overflow: hidden;
-  font-size: 13px;
-  color: var(--ui-muted);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.soon-chevron {
-  flex: none;
-  width: 18px;
-  height: 18px;
-  color: var(--ui-muted);
-  transition: transform var(--ui-dur) var(--ui-ease);
-}
-
-.soon[open] .soon-chevron {
-  transform: rotate(180deg);
-}
-
-.soon-list {
-  margin: 0;
-  padding: 0 20px 8px;
-  list-style: none;
-}
-
-.soon-row {
+.custom-ico {
   display: grid;
-  grid-template-columns: minmax(120px, 200px) minmax(0, 1fr) auto;
+  width: 44px;
+  height: 44px;
+  margin-bottom: auto;
+  place-items: center;
+  border-radius: 14px;
+  background: var(--ui-surface);
+  color: var(--ui-accent);
+  box-shadow: var(--ui-shadow-pill);
+}
+
+.custom-ico svg {
+  width: 20px;
+  height: 20px;
+}
+
+.custom-name {
+  font: 600 17px var(--ui-font-display);
+}
+
+.custom-desc {
+  font-size: var(--ui-t-meta);
+  line-height: 1.5;
+  color: var(--ui-muted);
+}
+
+.custom-go {
+  font-size: var(--ui-t-meta);
+  font-weight: 600;
+  color: var(--ui-accent);
+}
+
+.cat-heading {
+  display: flex;
+  grid-column: 1 / -1;
+  gap: 10px;
   align-items: center;
-  gap: 14px;
-  padding: 12px 0;
-  box-shadow: 0 -0.5px 0 var(--ui-sep);
-  font-size: 13px;
+  margin: 12px 0 0;
+  font: 600 var(--ui-t-title) / 1.25 var(--ui-font-display);
+}
+
+.cat-heading-hint {
+  font: 400 var(--ui-t-meta) var(--ui-font-ui);
+  color: var(--ui-muted);
+}
+
+.soon-tile {
+  display: grid;
+  grid-column: span 3;
+  gap: 6px;
+  align-content: start;
+  padding: 16px 18px;
+  border-radius: var(--ui-r-inner);
+  background: var(--ui-fill);
+  cursor: not-allowed;
+}
+
+.soon-top {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
 }
 
 .soon-name {
+  min-width: 0;
+  font-size: var(--ui-t-body);
   font-weight: 600;
   color: var(--ui-ink-2);
 }
 
 .soon-desc {
-  min-width: 0;
+  font-size: var(--ui-t-meta);
+  line-height: 1.45;
   color: var(--ui-muted);
+}
+
+.soon-tag {
+  flex: none;
+  opacity: 0.75;
 }
 
 .soon-tag.enterprise {
@@ -423,7 +463,28 @@ onMounted(() => {
   color: var(--ui-p-peach-ink);
 }
 
+.templates-side {
+  position: sticky;
+  top: 16px;
+}
+
+.error-state {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  padding: 40px 24px;
+  text-align: center;
+}
+
 @media (max-width: 1280px) {
+  .cat-primary {
+    grid-column: span 6;
+  }
+
+  .soon-tile {
+    grid-column: span 4;
+  }
+
   .templates-layout.has-side {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -439,21 +500,49 @@ onMounted(() => {
     display: none;
   }
 
-  .templates-grid {
-    grid-template-columns: 1fr;
+  .catalogue {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
   }
 
-  .soon-hint {
-    display: none;
-  }
-
-  .soon-row {
-    grid-template-columns: minmax(0, 1fr) auto;
-  }
-
-  .soon-desc {
+  .cat-primary,
+  .cat-heading {
     grid-column: 1 / -1;
-    grid-row: 2;
+  }
+
+  .soon-tile {
+    grid-column: span 1;
+    padding: 14px;
+  }
+
+  .soon-top {
+    flex-direction: column-reverse;
+    gap: 6px;
+    align-items: flex-start;
+  }
+
+  .custom-card {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    padding: 18px;
+  }
+
+  .custom-ico {
+    margin: 0 4px 0 0;
+  }
+
+  .custom-name {
+    flex: 1;
+  }
+
+  .custom-desc,
+  .custom-go {
+    flex: 1 1 100%;
+  }
+
+  .cat-heading-hint {
+    display: none;
   }
 }
 </style>
