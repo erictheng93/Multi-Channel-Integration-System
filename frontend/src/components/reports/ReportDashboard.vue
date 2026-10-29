@@ -8,11 +8,23 @@
       @create-report="handleCreateReport"
     />
 
-    <!-- 統計卡片區域 -->
-    <StatsGrid
-      :stats="stats"
-      @show-failed-reports="showFailedReports"
-    />
+    <!-- 統計區域：本月報表為唯一的主指標，其餘為狀態分佈 -->
+    <section class="overview-top">
+      <div class="ui-card lead-card">
+        <UiLeadMetric
+          label="本月報表"
+          :value="loaded ? stats.thisMonthGenerated : null"
+          unit="份"
+          meaning="本月已產生的報表數"
+          :loading="!loaded"
+          :dim="loaded && stats.thisMonthGenerated === 0"
+        />
+      </div>
+      <StatsGrid
+        :stats="stats"
+        @show-failed-reports="showFailedReports"
+      />
+    </section>
 
     <!-- 主要內容區域 -->
     <div class="main-content">
@@ -80,6 +92,18 @@
               @filter-by-type="handleFilterByType"
             />
           </template>
+          <!-- 最近活動：由報表列表的真實狀態推導 -->
+          <template
+            v-if="recentActivities.length > 0"
+            #recent-activity
+          >
+            <RecentActivityWidget
+              :activities="recentActivities"
+              :get-status-icon="getStatusIcon"
+              :format-relative-time="formatRelativeTime"
+              @view-report="handleViewReport"
+            />
+          </template>
         </SidebarWidgets>
       </div>
     </div>
@@ -111,6 +135,8 @@ import ReportsSection from './dashboard/ReportsSection.vue'
 import PaginationControls from '@/components/ui/PaginationControls.vue'
 import SidebarWidgets from './dashboard/SidebarWidgets.vue'
 import PopularTypesWidget from './dashboard/PopularTypesWidget.vue'
+import RecentActivityWidget, { type RecentActivity } from './dashboard/RecentActivityWidget.vue'
+import UiLeadMetric from '@/components/ui/UiLeadMetric.vue'
 import ConfirmDialog from '@/components/ui/ConfirmDialog.vue'
 
 // Emits
@@ -201,6 +227,26 @@ const reportToDelete = ref<ReportBase | null>(null)
 /**
  * 熱門報表類型（近 30 天統計，來自 /reports/stats）
  */
+// The lead metric stays a skeleton until the first list response has arrived
+const loaded = computed(() => !loading.value || reports.value.length > 0 || stats.totalReports > 0)
+
+// Feed derived from the loaded report rows (newest first); the status is the row's own
+const recentActivities = computed<RecentActivity[]>(() =>
+  [...reports.value]
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    .slice(0, 5)
+    .map(report => ({
+      id: report.id,
+      reportId: report.id,
+      title: report.title,
+      typeLabel: getReportTypeLabel(report.type),
+      status: report.status === 'completed' || report.status === 'generating' || report.status === 'failed'
+        ? report.status
+        : 'pending',
+      time: report.createdAt
+    }))
+)
+
 const popularTypes = computed<PopularType[]>(() =>
   stats.popularTypes.map(item => ({
     type: item.type,
@@ -261,6 +307,26 @@ function handleFilterByType(type: string) {
 
 <style scoped>
 
+.overview-top {
+  display: grid;
+  grid-template-columns: minmax(280px, 1fr) minmax(0, 2fr);
+  gap: 16px;
+  align-items: stretch;
+}
+
+.lead-card {
+  display: flex;
+  overflow: hidden;
+}
+
+.lead-card :deep(.ui-lead) {
+  flex: 1;
+}
+
+.overview-top :deep(.ui-kpi-grid) {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .main-content {
   display: grid;
   grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
@@ -280,12 +346,24 @@ function handleFilterByType(type: string) {
   flex-direction: column;
 }
 
+.content-right {
+  position: sticky;
+  top: 16px;
+}
+
 @media (max-width: 1280px) {
   .main-content {
     grid-template-columns: minmax(0, 1fr);
   }
+
+  .content-right {
+    position: static;
+  }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
+  .overview-top {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 </style>
