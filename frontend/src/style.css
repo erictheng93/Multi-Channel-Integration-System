@@ -71,6 +71,132 @@
     --ring: 37 99 235;
   }
 
+  /* ------------------------------------------------------------
+     --ui-* redesign tokens (Apple-Native Soft Minimalism, refined).
+     Separate prefix on purpose: the shadcn-style --accent/--muted
+     above are RGB triplets used elsewhere and must not be repurposed.
+     Dark values apply under [data-theme='dark'] only; the app does
+     not activate dark mode yet.
+     ------------------------------------------------------------ */
+  :root {
+    --ui-canvas: #f2f2f7;
+    --ui-surface: #ffffff;
+    --ui-surface-2: #f7f7fa;
+    --ui-fill: rgba(118, 118, 128, 0.12);
+    --ui-fill-strong: rgba(118, 118, 128, 0.2);
+    --ui-sep: rgba(60, 60, 67, 0.1);
+    --ui-ink: #1c1c1e;
+    --ui-ink-2: #3a3a3c;
+    --ui-muted: #8e8e93;
+    --ui-faint: #aeaeb2;
+
+    --ui-accent: #007aff;
+    --ui-accent-soft: rgba(0, 122, 255, 0.1);
+    --ui-green: #34c759;
+    --ui-green-soft: rgba(52, 199, 89, 0.14);
+    --ui-green-ink: #1f8a3b;
+    --ui-orange: #ff9500;
+    --ui-orange-soft: rgba(255, 149, 0, 0.14);
+    --ui-orange-ink: #b25f00;
+    --ui-red: #ff3b30;
+    --ui-red-soft: rgba(255, 59, 48, 0.12);
+    --ui-red-ink: #c4261d;
+    --ui-teal: #30b0c7;
+    --ui-teal-soft: rgba(48, 176, 199, 0.14);
+    --ui-indigo: #5856d6;
+    --ui-indigo-soft: rgba(88, 86, 214, 0.12);
+
+    --ui-line: #06c755;
+    --ui-messenger: #0866ff;
+
+    --ui-p-lavender: #eee8fb;
+    --ui-p-lavender-ink: #5c4f7c;
+    --ui-p-peach: #fff1e0;
+    --ui-p-peach-ink: #8d6e4c;
+    --ui-p-mint: #e6f5ea;
+    --ui-p-mint-ink: #3f7452;
+    --ui-p-sky: #e4f0fd;
+    --ui-p-sky-ink: #3e6488;
+    --ui-p-rose: #fde9ec;
+    --ui-p-rose-ink: #8a4a57;
+
+    --ui-shadow-card: 0 0 0 0.5px rgba(0, 0, 0, 0.03), 0 1px 2px rgba(0, 0, 0, 0.03), 0 4px 16px rgba(0, 0, 0, 0.05);
+    --ui-shadow-raised: 0 0 0 0.5px rgba(0, 0, 0, 0.04), 0 2px 6px rgba(0, 0, 0, 0.05), 0 12px 32px rgba(0, 0, 0, 0.07);
+    --ui-shadow-pill: 0 1px 2px rgba(0, 0, 0, 0.06), 0 2px 8px rgba(0, 0, 0, 0.04);
+
+    --ui-r-card: 22px;
+    --ui-r-inner: 14px;
+    --ui-r-control: 12px;
+
+    --ui-font-ui: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Geist', 'Noto Sans TC', 'PingFang TC', 'Microsoft JhengHei', sans-serif;
+    --ui-font-display: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Geist', 'Noto Sans TC', 'PingFang TC', 'Microsoft JhengHei', sans-serif;
+    --ui-font-mono: 'SF Mono', 'Geist Mono', ui-monospace, Menlo, Consolas, monospace;
+
+    --ui-t-large: 30px;
+    --ui-t-title: 19px;
+    --ui-t-head: 15px;
+    --ui-t-body: 14px;
+    --ui-t-foot: 12.5px;
+    --ui-t-cap: 11.5px;
+
+    --ui-ease: cubic-bezier(0.22, 1, 0.36, 1);
+    --ui-dur: 240ms;
+
+    /* One selection treatment for every selectable card: soft ring + faint tint, never a solid border */
+    --ui-sel-ring: 0 0 0 2px color-mix(in srgb, var(--ui-accent) 35%, transparent);
+    --ui-sel-tint: color-mix(in srgb, var(--ui-accent) 5%, var(--ui-surface));
+
+    --ui-sidebar-w: 248px;
+    --ui-topbar-h: 56px;
+    --ui-glass: rgba(255, 255, 255, 0.72);
+    --ui-sidebar-bg: rgba(246, 246, 249, 0.82);
+    --ui-sel-bg: #ffffff;
+  }
+
+  [data-theme='dark'] {
+    --ui-canvas: #000000;
+    --ui-surface: #1c1c1e;
+    --ui-surface-2: #232326;
+    --ui-fill: rgba(118, 118, 128, 0.24);
+    --ui-fill-strong: rgba(118, 118, 128, 0.34);
+    --ui-sep: rgba(84, 84, 88, 0.45);
+    --ui-ink: #f2f2f7;
+    --ui-ink-2: #d1d1d6;
+    --ui-muted: #98989f;
+    --ui-faint: #636366;
+    --ui-accent: #0a84ff;
+    --ui-accent-soft: rgba(10, 132, 255, 0.18);
+    --ui-green: #30d158;
+    --ui-green-soft: rgba(48, 209, 88, 0.18);
+    --ui-green-ink: #30d158;
+    --ui-orange: #ff9f0a;
+    --ui-orange-soft: rgba(255, 159, 10, 0.18);
+    --ui-orange-ink: #ff9f0a;
+    --ui-red: #ff453a;
+    --ui-red-soft: rgba(255, 69, 58, 0.18);
+    --ui-red-ink: #ff6961;
+    --ui-teal: #40c8e0;
+    --ui-teal-soft: rgba(64, 200, 224, 0.18);
+    --ui-indigo: #5e5ce6;
+    --ui-indigo-soft: rgba(94, 92, 230, 0.22);
+    --ui-p-lavender: #2b2638;
+    --ui-p-lavender-ink: #c9b8f0;
+    --ui-p-peach: #33281c;
+    --ui-p-peach-ink: #f0c99a;
+    --ui-p-mint: #1c2e22;
+    --ui-p-mint-ink: #9ed8b0;
+    --ui-p-sky: #1b2836;
+    --ui-p-sky-ink: #9cc4ec;
+    --ui-p-rose: #35202a;
+    --ui-p-rose-ink: #f0afc0;
+    --ui-shadow-card: 0 0 0 0.5px rgba(255, 255, 255, 0.06), 0 4px 16px rgba(0, 0, 0, 0.4);
+    --ui-shadow-raised: 0 0 0 0.5px rgba(255, 255, 255, 0.08), 0 12px 32px rgba(0, 0, 0, 0.5);
+    --ui-shadow-pill: 0 0 0 0.5px rgba(255, 255, 255, 0.08), 0 2px 8px rgba(0, 0, 0, 0.4);
+    --ui-glass: rgba(28, 28, 30, 0.72);
+    --ui-sidebar-bg: rgba(22, 22, 24, 0.82);
+    --ui-sel-bg: #2c2c2e;
+  }
+
   /* Force Light Mode Override (System Preference) */
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme]) {
