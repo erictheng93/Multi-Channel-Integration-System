@@ -68,6 +68,7 @@
   import { useUnreadStore } from '@/stores/unread'
   import { useNotificationsStore } from '@/stores/notifications'
   import { NAV_SECTIONS, sectionForPath } from '@/config/nav-sections'
+  import { SECTION_NAV, sectionNavItems, type SectionNavItem, type SectionNavKey } from '@/config/section-nav'
   import ExpandableNavGroup from './ExpandableNavGroup.vue'
 
   // Icon imports
@@ -85,16 +86,11 @@
   import SendIcon from '@/components/icons/SendIcon.vue'
   import BellIcon from '@/components/icons/BellIcon.vue'
 
-  interface SubmenuItem {
-    path: string
-    label: string
-  }
-
   interface NavItem {
     path: string
     label: string
     icon: Component
-    submenu?: SubmenuItem[]
+    submenu?: readonly SectionNavItem[]
   }
 
   defineProps<{
@@ -130,69 +126,41 @@
   }
 
   // ── Navigation item definitions ──
-  const baseNavigationItems: NavItem[] = [
-    { path: '/dashboard', label: '\u5100\u8868\u677F', icon: DashboardIcon },
-    { path: '/conversations', label: '\u5C0D\u8A71\u7BA1\u7406', icon: ChatIcon },
-    // Personal inbox + per-device desktop notification settings: visible to everyone, not under admin-only settings
-    { path: '/notifications', label: '\u901A\u77E5\u4E2D\u5FC3', icon: BellIcon },
-    { path: '/tags', label: '\u6A19\u7C64\u7BA1\u7406', icon: TagIcon },
-    {
-      path: '/reports',
-      label: '\u5831\u8868\u7CFB\u7D71',
-      icon: ReportsIcon,
-      submenu: [
-        { path: '/reports/dashboard', label: '\u5100\u8868\u677F' },
-        { path: '/reports/templates', label: '\u6A21\u677F' },
-        { path: '/reports/generate', label: '\u751F\u6210\u5831\u8868' },
-      ],
-    },
-    {
-      path: '/data',
-      label: '\u8CC7\u6599\u7BA1\u7406',
-      icon: DataManagementIcon,
-      submenu: [
-        { path: '/data/export', label: '\u532F\u51FA\u5C0D\u8A71\u8A18\u9304' },
-      ],
-    },
-  ]
+  // Children of 報表 / 資料管理 / 系統設定 come from config/section-nav.ts so the in-page
+  // fallback (UiSectionNav, <= 1024px) always shows the same names and order.
+  const buildNavigationItems = (isAdmin: boolean): NavItem[] => {
+    const group = (key: SectionNavKey, icon: Component): NavItem => ({
+      path: SECTION_NAV[key].path,
+      label: SECTION_NAV[key].label,
+      icon,
+      submenu: sectionNavItems(key, isAdmin),
+    })
 
-  const adminNavigationItems: NavItem[] = [
-    ...baseNavigationItems,
-    { path: '/team', label: '\u5718\u968A\u7BA1\u7406', icon: UsersIcon },
-    { path: '/channels', label: '\u983B\u9053\u7BA1\u7406', icon: ChannelIcon },
-    { path: '/auto-reply', label: '\u81EA\u52D5\u56DE\u8986', icon: AutoReplyIcon },
-    { path: '/activities', label: '\u6D3B\u52D5\u8A18\u9304', icon: ActivityIcon },
-    { path: '/monitoring/api', label: 'API\u76E3\u63A7', icon: MonitorIcon },
-    { path: '/monitoring/websocket', label: 'WebSocket\u76E3\u63A7', icon: MonitorIcon },
-    {
-      path: '/settings',
-      label: '\u7CFB\u7D71\u8A2D\u5B9A',
-      icon: SettingsIcon,
-      submenu: [
-        { path: '/settings/general', label: '\u4E00\u822C\u8A2D\u5B9A' },
-        { path: '/settings/integrations/line', label: 'LINE OA' },
-        { path: '/settings/integrations/facebook', label: 'Facebook' },
-        { path: '/settings/advanced', label: '\u9032\u968E\u8A2D\u5B9A' },
-        { path: '/settings/maintenance/health', label: '\u5065\u5EB7\u6AA2\u67E5' },
-      ],
-    },
-  ]
+    const items: NavItem[] = [
+      { path: '/dashboard', label: '儀表板', icon: DashboardIcon },
+      { path: '/conversations', label: '對話', icon: ChatIcon },
+      // Personal inbox + per-device desktop notification settings: visible to everyone, not under admin-only settings
+      { path: '/notifications', label: '通知', icon: BellIcon },
+      { path: '/tags', label: '客戶標籤', icon: TagIcon },
+      // Broadcast goes right after the tags item
+      { path: '/broadcasts', label: '群發訊息', icon: SendIcon },
+      group('reports', ReportsIcon),
+      group('data', DataManagementIcon),
+    ]
+    if (!isAdmin) { return items }
+    return [
+      ...items,
+      { path: '/team', label: '團隊成員', icon: UsersIcon },
+      { path: '/channels', label: '頻道', icon: ChannelIcon },
+      { path: '/auto-reply', label: '自動回覆', icon: AutoReplyIcon },
+      { path: '/activities', label: '活動記錄', icon: ActivityIcon },
+      { path: '/monitoring/api', label: 'API 監控', icon: MonitorIcon },
+      { path: '/monitoring/websocket', label: '即時連線監控', icon: MonitorIcon },
+      group('settings', SettingsIcon),
+    ]
+  }
 
-  const navigationItems = computed(() => {
-    const isAdmin = authStore.currentAgent?.role === 'admin'
-    // Broadcast goes right after the tags item; insert by path, not index, so items added above it stay safe
-    const withBroadcast = (items: NavItem[]) => items.flatMap((item) => item.path === '/tags'
-      ? [item, { path: '/broadcasts', label: '\u7FA4\u767C\u8A0A\u606F', icon: SendIcon }]
-      : [item]
-    )
-    if (!isAdmin) { return withBroadcast(baseNavigationItems) }
-    // 資料備份 is admin-only — inject it under 資料管理 for admins only
-    return withBroadcast(adminNavigationItems.map((item) =>
-      item.path === '/data'
-        ? { ...item, submenu: [...(item.submenu ?? []), { path: '/data/backup', label: '資料備份' }] }
-        : item
-    ))
-  })
+  const navigationItems = computed(() => buildNavigationItems(authStore.currentAgent?.role === 'admin'))
 
   // Sidebar groups: same items, in the same order, bucketed under section labels
   const navigationGroups = computed(() =>

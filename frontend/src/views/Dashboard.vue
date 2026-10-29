@@ -385,7 +385,7 @@
                 to="/conversations"
                 class="ui-link"
               >
-                還有 {{ waitingCount - topWaiting.length }} 件待回覆，前往對話管理
+                還有 {{ waitingCount - topWaiting.length }} 件待回覆，前往對話
               </router-link>
             </div>
           </div>

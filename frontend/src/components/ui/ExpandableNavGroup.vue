@@ -68,7 +68,7 @@
     expanded: boolean
     sidebarCollapsed: boolean
     isMobile: boolean
-    items: SubmenuItem[]
+    items: readonly SubmenuItem[]
   }>()
 
   defineEmits<{
