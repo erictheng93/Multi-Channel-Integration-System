@@ -1,99 +1,103 @@
 <template>
-  <button
-    type="button"
+  <article
     class="ui-card template-card"
-    :class="{ selected: isSelected, unsupported: !supported }"
-    :aria-pressed="isSelected"
-    :aria-disabled="!supported"
-    :disabled="!supported"
-    @click="$emit('select', template)"
+    :class="{ selected: isSelected }"
   >
-    <span class="card-top">
-      <span
-        class="tpl-ico"
-        :class="template.category"
-      >
-        <svg
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          aria-hidden="true"
-        ><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z" /><path d="M14 3v5h5M9 13h6M9 17h6" /></svg>
+    <button
+      type="button"
+      class="card-body"
+      :aria-pressed="isSelected"
+      :aria-label="`${template.name}，查看詳情`"
+      @click="$emit('select', template)"
+    >
+      <span class="card-top">
+        <span
+          class="tpl-ico"
+          :class="template.category"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          ><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z" /><path d="M14 3v5h5M9 13h6M9 17h6" /></svg>
+        </span>
+        <span class="template-name">{{ template.name }}</span>
       </span>
-      <span class="template-name">{{ template.name }}</span>
-    </span>
-    <span class="template-description">{{ template.description }}</span>
+      <span class="template-description">{{ template.description }}</span>
+      <span class="template-meta">
+        <span v-if="template.presetOptions.chartType">{{ getChartTypeLabel(template.presetOptions.chartType) }}</span>
+        <span v-if="template.presetOptions.maxRecords">最多 {{ template.presetOptions.maxRecords.toLocaleString() }} 筆</span>
+        <span v-if="template.estimatedTime">約 {{ formatEstimatedTime(template.estimatedTime) }}</span>
+      </span>
+    </button>
     <span class="card-foot">
       <span
         class="ui-tag category-badge"
         :class="template.category"
       >{{ getCategoryLabel(template.category) }}</span>
-      <span
-        v-if="isSelected"
-        class="ui-pill ui-pill-blue"
-      >已選取</span>
-      <span
-        v-if="!supported"
-        class="ui-pill"
-      >尚未支援</span>
+      <button
+        type="button"
+        class="btn btn-primary btn-sm use-btn"
+        :disabled="generating"
+        @click="$emit('use', template)"
+      >
+        {{ generating ? '產生中...' : '使用' }}
+      </button>
     </span>
-  </button>
+  </article>
 </template>
 
 <script setup lang="ts">
 import type { ReportTemplate } from '@/types/reports';
-import { getCategoryLabel } from './templateHelpers';
+import { formatEstimatedTime, getCategoryLabel, getChartTypeLabel } from './templateHelpers';
 
 withDefaults(defineProps<{
   template: ReportTemplate;
   isSelected: boolean;
-  /** False when the backend cannot generate this template's report type */
-  supported?: boolean;
+  generating?: boolean;
 }>(), {
-  supported: true
+  generating: false
 });
 
 defineEmits<{
   select: [template: ReportTemplate];
+  use: [template: ReportTemplate];
 }>();
 </script>
 
 <style scoped>
 .template-card {
   display: grid;
-  gap: 10px;
-  width: 100%;
+  gap: 12px;
   padding: 16px;
-  border: 0;
-  color: inherit;
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
   transition:
     box-shadow var(--ui-dur) var(--ui-ease),
-    transform var(--ui-dur) var(--ui-ease);
+    background-color var(--ui-dur) var(--ui-ease);
 }
 
-.template-card:hover:not(:disabled) {
+.template-card:hover {
   box-shadow: var(--ui-shadow-raised);
-  transform: translateY(-1px);
 }
 
 .template-card.selected {
   background: color-mix(in srgb, var(--ui-accent-soft) 60%, var(--ui-surface));
-  box-shadow: var(--ui-sel-ring), var(--ui-shadow-raised);
+  box-shadow: var(--ui-shadow-raised);
 }
 
-.template-card.unsupported {
-  cursor: not-allowed;
-}
-
-.template-card.unsupported .card-top,
-.template-card.unsupported .template-description {
-  opacity: 0.55;
+.card-body {
+  display: grid;
+  gap: 10px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
 }
 
 .card-top {
@@ -142,16 +146,29 @@ defineEmits<{
 }
 
 .template-description {
-  min-height: 38px;
   font-size: 13px;
   line-height: 1.45;
   color: var(--ui-muted);
 }
 
-.card-foot {
+.template-meta {
   display: flex;
   flex-wrap: wrap;
+  gap: 4px 12px;
+  font-size: 13px;
+  color: var(--ui-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.template-meta span + span::before {
+  margin-right: 12px;
+  content: '·';
+}
+
+.card-foot {
+  display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 8px;
 }
 
