@@ -322,7 +322,7 @@ const canDelete = computed(() => {
 }
 
 .size-cell {
-  text-align: right;
+  text-align: left;
 }
 
 .row-actions {

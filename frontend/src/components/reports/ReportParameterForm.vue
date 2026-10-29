@@ -158,130 +158,148 @@
     </section>
 
     <section class="ui-card step-card">
-      <div class="ui-card-head">
+      <button
+        type="button"
+        class="adv-toggle"
+        :aria-expanded="advancedOpen"
+        aria-controls="advanced-body"
+        @click="advancedOpen = !advancedOpen"
+      >
         <span class="step-n">4</span>
-        <div>
-          <h3 class="ui-card-title">
-            進階選項
-          </h3>
-          <p class="ui-card-sub">
-            預設值已適合大多數報表
-          </p>
-        </div>
-      </div>
-      <div class="switch-list">
-        <div class="switch-row">
-          <div>
-            <div class="sw-title">
-              包含圖表
+        <span class="adv-text">
+          <span class="ui-card-title">進階選項</span>
+          <span class="ui-card-sub">{{ advancedSummary }}</span>
+        </span>
+        <svg
+          class="adv-chev"
+          :class="{ open: advancedOpen }"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        ><path d="m6 9 6 6 6-6" /></svg>
+      </button>
+      <div
+        v-show="advancedOpen"
+        id="advanced-body"
+      >
+        <div class="switch-list">
+          <div class="switch-row">
+            <div>
+              <div class="sw-title">
+                包含圖表
+              </div>
+              <div class="sw-sub">
+                在報表中加入趨勢與分布圖
+              </div>
             </div>
-            <div class="sw-sub">
-              在報表中加入趨勢與分布圖
-            </div>
+            <button
+              type="button"
+              role="switch"
+              class="ui-switch"
+              aria-label="包含圖表"
+              :aria-checked="!!options.includeCharts"
+              @click="updateOption('includeCharts', !options.includeCharts)"
+            />
           </div>
-          <button
-            type="button"
-            role="switch"
-            class="ui-switch"
-            aria-label="包含圖表"
-            :aria-checked="!!options.includeCharts"
-            @click="updateOption('includeCharts', !options.includeCharts)"
-          />
-        </div>
-        <div class="switch-row">
-          <div>
-            <div class="sw-title">
-              包含摘要
+          <div class="switch-row">
+            <div>
+              <div class="sw-title">
+                包含摘要
+              </div>
+              <div class="sw-sub">
+                報表開頭列出重點數字
+              </div>
             </div>
-            <div class="sw-sub">
-              報表開頭列出重點數字
-            </div>
+            <button
+              type="button"
+              role="switch"
+              class="ui-switch"
+              aria-label="包含摘要"
+              :aria-checked="!!options.includeSummary"
+              @click="updateOption('includeSummary', !options.includeSummary)"
+            />
           </div>
-          <button
-            type="button"
-            role="switch"
-            class="ui-switch"
-            aria-label="包含摘要"
-            :aria-checked="!!options.includeSummary"
-            @click="updateOption('includeSummary', !options.includeSummary)"
-          />
-        </div>
-        <div class="switch-row">
-          <div>
-            <div class="sw-title">
-              包含詳細資料
+          <div class="switch-row">
+            <div>
+              <div class="sw-title">
+                包含詳細資料
+              </div>
+              <div class="sw-sub">
+                附上逐筆明細，檔案會較大
+              </div>
             </div>
-            <div class="sw-sub">
-              附上逐筆明細，檔案會較大
-            </div>
+            <button
+              type="button"
+              role="switch"
+              class="ui-switch"
+              aria-label="包含詳細資料"
+              :aria-checked="!!options.includeDetails"
+              @click="updateOption('includeDetails', !options.includeDetails)"
+            />
           </div>
-          <button
-            type="button"
-            role="switch"
-            class="ui-switch"
-            aria-label="包含詳細資料"
-            :aria-checked="!!options.includeDetails"
-            @click="updateOption('includeDetails', !options.includeDetails)"
-          />
         </div>
-      </div>
 
-      <div class="adv-grid">
-        <div
-          v-if="options.includeCharts"
-          class="ui-field"
-        >
-          <label for="chartType">圖表類型</label>
-          <select
-            id="chartType"
-            :value="options.chartType"
-            class="ui-select"
-            @change="updateOption('chartType', ($event.target as HTMLSelectElement).value)"
+        <div class="adv-grid">
+          <div
+            v-if="options.includeCharts"
+            class="ui-field"
           >
-            <option value="line">
-              折線圖
-            </option>
-            <option value="bar">
-              長條圖
-            </option>
-            <option value="pie">
-              圓餅圖
-            </option>
-            <option value="donut">
-              甜甜圈圖
-            </option>
-            <option value="area">
-              面積圖
-            </option>
-          </select>
-        </div>
-        <div class="ui-field">
-          <label for="maxRecords">最大記錄數（上限 50,000）</label>
-          <input
-            id="maxRecords"
-            :value="options.maxRecords ? options.maxRecords.toLocaleString('en-US') : ''"
-            type="text"
-            inputmode="numeric"
-            class="ui-input"
-            placeholder="例如 1,000"
-            @input="onMaxRecords($event)"
-          >
-        </div>
-        <div class="ui-field">
-          <label for="language">語言</label>
-          <select
-            id="language"
-            :value="options.language"
-            class="ui-select"
-            @change="updateOption('language', ($event.target as HTMLSelectElement).value)"
-          >
-            <option value="zh-TW">
-              繁體中文
-            </option>
-            <option value="en-US">
-              English
-            </option>
-          </select>
+            <label for="chartType">圖表類型</label>
+            <select
+              id="chartType"
+              :value="options.chartType"
+              class="ui-select"
+              @change="updateOption('chartType', ($event.target as HTMLSelectElement).value)"
+            >
+              <option value="line">
+                折線圖
+              </option>
+              <option value="bar">
+                長條圖
+              </option>
+              <option value="pie">
+                圓餅圖
+              </option>
+              <option value="donut">
+                甜甜圈圖
+              </option>
+              <option value="area">
+                面積圖
+              </option>
+            </select>
+          </div>
+          <div class="ui-field">
+            <label for="maxRecords">最大記錄數（上限 50,000）</label>
+            <input
+              id="maxRecords"
+              :value="options.maxRecords ? options.maxRecords.toLocaleString('en-US') : ''"
+              type="text"
+              inputmode="numeric"
+              class="ui-input"
+              placeholder="例如 1,000"
+              @input="onMaxRecords($event)"
+            >
+          </div>
+          <div class="ui-field">
+            <label for="language">語言</label>
+            <select
+              id="language"
+              :value="options.language"
+              class="ui-select"
+              @change="updateOption('language', ($event.target as HTMLSelectElement).value)"
+            >
+              <option value="zh-TW">
+                繁體中文
+              </option>
+              <option value="en-US">
+                English
+              </option>
+            </select>
+          </div>
         </div>
       </div>
     </section>
@@ -347,6 +365,13 @@ const COMMON_RANGES = ['last_24_hours', 'last_7_days', 'last_30_days', 'last_90_
 const commonRanges = computed(() => timeRangeOptions.value.filter(o => COMMON_RANGES.includes(o.value)));
 const otherRanges = computed(() => timeRangeOptions.value.filter(o => !COMMON_RANGES.includes(o.value)));
 const moreOpen = ref(false);
+const advancedOpen = ref(false);
+const advancedSummary = computed(() => {
+  const o = props.options;
+  const parts = [o.includeCharts && '圖表', o.includeSummary && '摘要', o.includeDetails && '明細'].filter(Boolean);
+  const limit = o.maxRecords ? `上限 ${o.maxRecords.toLocaleString('en-US')}` : '';
+  return [parts.join('、') || '僅基本資料', limit].filter(Boolean).join(' · ');
+});
 const moreRangeActive = computed(() => !!props.timeRange && !COMMON_RANGES.includes(props.timeRange));
 const moreRangeLabel = computed(() => otherRanges.value.find(o => o.value === props.timeRange)?.label ?? '更多');
 const pickRange = (value: string) => {
@@ -468,6 +493,55 @@ const updateOption = (key: string, value: unknown) => {
   color: var(--ui-muted);
 }
 
+.adv-toggle {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 12px;
+  padding: 18px 22px;
+  border: 0;
+  border-radius: inherit;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.adv-toggle:focus-visible {
+  outline: 2px solid var(--ui-accent);
+  outline-offset: -2px;
+}
+
+.adv-text {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+  gap: 2px;
+}
+
+.adv-text .ui-card-title {
+  font: 600 17px / 1.25 var(--ui-font-display);
+  letter-spacing: -0.01em;
+}
+
+.adv-text .ui-card-sub {
+  font-size: 13px;
+  color: var(--ui-muted);
+}
+
+.adv-chev {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  color: var(--ui-muted);
+  transition: transform var(--ui-dur) var(--ui-ease);
+}
+
+.adv-chev.open {
+  transform: rotate(180deg);
+}
+
 .switch-list {
   padding: 0 22px;
 }
@@ -503,6 +577,10 @@ const updateOption = (key: string, value: unknown) => {
 }
 
 @media (max-width: 768px) {
+  .adv-toggle {
+    padding: 16px;
+  }
+
   .step-body,
   .adv-grid {
     padding-right: 16px;

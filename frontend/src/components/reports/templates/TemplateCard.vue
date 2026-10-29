@@ -1,229 +1,249 @@
 <template>
-  <article
-    class="ui-card template-card"
-    :class="{ selected: isSelected }"
-  >
-    <button
-      type="button"
-      class="card-body"
-      :aria-pressed="isSelected"
-      :aria-label="`${template.name}，查看詳情`"
-      @click="$emit('select', template)"
-    >
-      <span class="card-top">
-        <span
-          class="tpl-ico"
-          :class="template.category"
-        >
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            aria-hidden="true"
-          ><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z" /><path d="M14 3v5h5M9 13h6M9 17h6" /></svg>
-        </span>
-        <span class="template-name">{{ template.name }}</span>
-      </span>
-      <span class="template-description">{{ template.description }}</span>
-      <span class="template-meta">
-        <span v-if="template.presetOptions.chartType">{{ getChartTypeLabel(template.presetOptions.chartType) }}</span>
-        <span v-if="template.presetOptions.maxRecords">最多 {{ template.presetOptions.maxRecords.toLocaleString() }} 筆</span>
-        <span v-if="template.estimatedTime">約 {{ formatEstimatedTime(template.estimatedTime) }}</span>
-      </span>
-    </button>
-    <span class="card-foot">
+  <article class="ui-card template-card">
+    <header class="tc-head">
       <span
-        class="ui-tag category-badge"
-        :class="template.category"
-      >{{ getCategoryLabel(template.category) }}</span>
+        class="tpl-ico"
+        aria-hidden="true"
+      >
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        ><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z" /><path d="M14 3v5h5M9 13h6M9 17h6" /></svg>
+      </span>
+      <div class="tc-title">
+        <h2 class="template-name">
+          {{ template.name }}
+        </h2>
+        <p class="template-description">
+          {{ template.description }}
+        </p>
+      </div>
+      <span class="ui-tag category-badge">{{ getCategoryLabel(template.category) }}</span>
+    </header>
+
+    <section
+      class="tc-contents"
+      :aria-label="`${template.name}的報表內容`"
+    >
+      <h3 class="tc-h">
+        報表內容
+      </h3>
+      <ul class="tc-list">
+        <li
+          v-for="item in contents"
+          :key="item.label"
+        >
+          <b>{{ item.label }}</b>
+          <span>{{ item.hint }}</span>
+        </li>
+      </ul>
+    </section>
+
+    <dl class="tc-meta">
+      <div>
+        <dt>預設範圍</dt>
+        <dd>近 30 天</dd>
+      </div>
+      <div>
+        <dt>輸出格式</dt>
+        <dd>JSON</dd>
+      </div>
+      <div v-if="template.presetOptions.maxRecords">
+        <dt>筆數上限</dt>
+        <dd>{{ template.presetOptions.maxRecords.toLocaleString('en-US') }}</dd>
+      </div>
+      <div v-if="template.estimatedTime">
+        <dt>預估時間</dt>
+        <dd>約 {{ formatEstimatedTime(template.estimatedTime) }}</dd>
+      </div>
+    </dl>
+
+    <footer class="tc-foot">
       <button
         type="button"
-        class="btn btn-primary btn-sm use-btn"
+        class="btn btn-secondary"
+        :disabled="generating"
+        @click="$emit('customize', template)"
+      >
+        調整後產生
+      </button>
+      <button
+        type="button"
+        class="btn btn-primary"
         :disabled="generating"
         @click="$emit('use', template)"
       >
-        {{ generating ? '產生中...' : '使用' }}
+        {{ generating ? '產生中...' : '直接產生' }}
       </button>
-    </span>
+    </footer>
   </article>
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue';
 import type { ReportTemplate } from '@/types/reports';
-import { formatEstimatedTime, getCategoryLabel, getChartTypeLabel } from './templateHelpers';
+import { REPORT_CONTENTS, formatEstimatedTime, getCategoryLabel } from './templateHelpers';
 
-withDefaults(defineProps<{
+const props = withDefaults(defineProps<{
   template: ReportTemplate;
-  isSelected: boolean;
   generating?: boolean;
 }>(), {
   generating: false
 });
 
 defineEmits<{
-  select: [template: ReportTemplate];
   use: [template: ReportTemplate];
+  customize: [template: ReportTemplate];
 }>();
+
+const contents = computed(() => REPORT_CONTENTS[props.template.type] ?? []);
 </script>
 
 <style scoped>
 .template-card {
-  position: relative;
-  display: grid;
-  gap: 16px;
-  overflow: hidden;
-  padding: 22px;
-  transition:
-    box-shadow var(--ui-dur) var(--ui-ease),
-    background-color var(--ui-dur) var(--ui-ease);
-}
-
-.template-card:hover {
-  box-shadow: var(--ui-shadow-raised);
-}
-
-.template-card.selected {
-  background: color-mix(in srgb, var(--ui-accent-soft) 60%, var(--ui-surface));
-  box-shadow: var(--ui-shadow-raised);
-}
-
-.card-body {
-  position: relative;
-  display: grid;
-  gap: 12px;
-  padding: 0;
-  border: 0;
-  background: none;
-  color: inherit;
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-
-.card-top {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  gap: 12px;
-  min-width: 0;
+  gap: 26px;
+  padding: 28px;
+}
+
+.tc-head {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: start;
 }
 
 .tpl-ico {
   display: grid;
-  flex: none;
-  width: 44px;
-  height: 44px;
+  width: 48px;
+  height: 48px;
   place-items: center;
-  border-radius: 14px;
+  border-radius: 15px;
   background: var(--ui-accent-soft);
   color: var(--ui-accent);
 }
 
 .tpl-ico svg {
-  width: 22px;
-  height: 22px;
-}
-
-.tpl-ico.enterprise {
-  background: var(--ui-indigo-soft);
-  color: var(--ui-indigo);
-}
-
-.tpl-ico.business_intelligence {
-  background: var(--ui-green-soft);
-  color: var(--ui-green-ink);
-}
-
-.tpl-ico.advanced_analytics {
-  background: var(--ui-orange-soft);
-  color: var(--ui-orange-ink);
+  width: 24px;
+  height: 24px;
 }
 
 .template-name {
-  overflow: hidden;
-  font: 600 19px / 1.25 var(--ui-font-display);
+  margin: 0;
+  font: 600 20px / 1.25 var(--ui-font-display);
+  letter-spacing: -0.01em;
 }
 
 .template-description {
-  font-size: 13px;
+  margin: 4px 0 0;
+  font-size: 13.5px;
   line-height: 1.45;
   color: var(--ui-muted);
 }
 
-.template-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 0;
-  font-size: 13px;
-  color: var(--ui-muted);
-  font-variant-numeric: tabular-nums;
-}
-
-.template-meta span + span::before {
-  margin: 0 8px;
-  content: '·';
-}
-
-.card-foot {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-
 .category-badge {
+  background: var(--ui-p-sky);
+  color: var(--ui-p-sky-ink);
   font-weight: 600;
 }
 
-.category-badge.enterprise {
-  background: var(--ui-p-lavender);
-  color: var(--ui-p-lavender-ink);
+.tc-h {
+  margin: 0 0 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ui-ink-2);
 }
 
-.category-badge.basic {
-  background: var(--ui-p-sky);
-  color: var(--ui-p-sky-ink);
+.tc-contents {
+  flex: 1;
 }
 
-.category-badge.business_intelligence {
-  background: var(--ui-p-mint);
-  color: var(--ui-p-mint-ink);
+.tc-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
-.category-badge.advanced_analytics {
-  background: var(--ui-p-peach);
-  color: var(--ui-p-peach-ink);
+.tc-list li {
+  display: grid;
+  gap: 3px;
+  padding: 16px 16px;
+  border-radius: var(--ui-r-inner);
+  background: var(--ui-surface-2);
+}
+
+.tc-list b {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.tc-list span {
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: var(--ui-muted);
+}
+
+.tc-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 28px;
+  margin: 0;
+  padding-top: 16px;
+  border-top: 0.5px solid var(--ui-sep);
+}
+
+.tc-meta dt {
+  font-size: 12px;
+  color: var(--ui-muted);
+}
+
+.tc-meta dd {
+  margin: 2px 0 0;
+  font-size: 14px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.tc-foot {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
 }
 
 @media (max-width: 768px) {
   .template-card {
-    gap: 12px;
+    gap: 16px;
     padding: 18px;
   }
 
-  .card-top {
-    flex-direction: row;
-    align-items: center;
-  }
-}
-
-@media (max-width: 768px) {
-  /* Phone: the tier pill moves above the title and 使用 gets its own full-width row */
-  .card-foot {
-    display: contents;
+  .tc-head {
+    grid-template-columns: auto minmax(0, 1fr);
   }
 
   .category-badge {
-    order: -1;
+    grid-column: 1 / -1;
+    grid-row: 1;
     justify-self: start;
   }
 
-  .use-btn {
-    width: 100%;
+  .tc-list {
+    gap: 8px;
+  }
+
+  .tc-list li {
+    padding: 12px;
+  }
+
+  .tc-foot .btn {
+    flex: 1;
     justify-content: center;
   }
 }
