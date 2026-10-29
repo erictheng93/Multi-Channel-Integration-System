@@ -16,7 +16,7 @@
               檔案格式
             </h2>
             <div class="ui-card-sub">
-              日期、客戶與客服人員的篩選在下一步設定
+              選好格式後，在匯出視窗再設定日期、客戶與客服人員的篩選
             </div>
           </div>
         </div>
@@ -66,35 +66,6 @@
           </button>
         </div>
       </article>
-
-      <aside class="ui-card next">
-        <div class="ui-card-head">
-          <div>
-            <h2 class="ui-card-title">
-              接下來
-            </h2>
-            <div class="ui-card-sub">
-              三個步驟完成匯出
-            </div>
-          </div>
-        </div>
-        <ol class="steps">
-          <li
-            v-for="(step, i) in steps"
-            :key="step.title"
-            class="step"
-          >
-            <span
-              class="step-n"
-              aria-hidden="true"
-            >{{ i + 1 }}</span>
-            <span class="step-t">
-              <b>{{ step.title }}</b>
-              <span>{{ step.text }}</span>
-            </span>
-          </li>
-        </ol>
-      </aside>
     </section>
 
     <UiActionBar
@@ -174,12 +145,6 @@ const formats = [
   }
 ]
 
-const steps = [
-  { title: '選擇格式', text: '挑選要下載的檔案格式' },
-  { title: '設定範圍', text: '在匯出視窗指定日期、客戶，或只匯出某位客服送出的訊息' },
-  { title: '下載檔案', text: '確認後產生檔案並下載到本機' }
-]
-
 const selectedName = computed(() => formats.find(f => f.id === selectedFormat.value)?.name ?? '')
 
 function openExportDialog() {
@@ -192,13 +157,6 @@ function selectFormat(format: FormatId) {
 </script>
 
 <style scoped>
-.export-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
-  gap: 16px;
-  align-items: stretch;
-}
-
 .choose {
   display: flex;
   flex-direction: column;
@@ -328,55 +286,65 @@ function selectFormat(format: FormatId) {
   color: var(--ui-muted);
 }
 
-.steps {
-  display: grid;
-  gap: 4px;
-  margin: 0;
-  padding: 0 22px 20px;
-  list-style: none;
-}
-
-.step {
-  display: flex;
-  gap: 14px;
-  padding: 10px 0;
-}
-
-.step-n {
-  display: grid;
-  flex: none;
-  place-items: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: var(--ui-accent-soft);
-  font: 600 13px var(--ui-font-display);
-  color: var(--ui-accent);
-}
-
-.step-t {
-  display: grid;
-  gap: 2px;
-}
-
-.step-t b {
-  font-size: 14px;
-}
-
-.step-t span {
-  font-size: 13px;
-  line-height: 1.5;
-  color: var(--ui-muted);
-}
-
 /* The card footer carries the CTA on larger screens; phones get the sticky action bar */
 .export-actions {
   display: none;
 }
 
-@media (max-width: 1280px) {
-  .export-grid {
-    grid-template-columns: minmax(0, 1fr);
+/* Wide screens: the four formats are tiles across the card, not a list beside an empty panel */
+@media (min-width: 769px) {
+  .fmt-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    padding: 4px 22px 6px;
+  }
+
+  .fmt-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 14px;
+    min-height: 168px;
+    padding: 18px;
+    background: var(--ui-surface-2);
+  }
+
+  .fmt-row:hover {
+    background: var(--ui-fill);
+  }
+
+  .fmt-row.is-selected {
+    background: var(--ui-sel-tint);
+  }
+
+  .fmt-ico {
+    width: 44px;
+    height: 44px;
+  }
+
+  .fmt-text {
+    flex: none;
+    width: 100%;
+  }
+
+  .fmt-text b small {
+    display: block;
+    margin: 2px 0 6px;
+  }
+
+  .fmt-use {
+    white-space: normal;
+  }
+
+  .radio {
+    position: absolute;
+    top: 18px;
+    right: 18px;
+  }
+}
+
+@media (min-width: 1025px) {
+  .fmt-list {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
 
@@ -393,8 +361,5 @@ function selectFormat(format: FormatId) {
     padding: 0 8px 12px;
   }
 
-  .steps {
-    padding: 0 16px 16px;
-  }
 }
 </style>
