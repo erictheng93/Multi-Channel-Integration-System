@@ -39,6 +39,25 @@
         {{ lastTest.message }}
       </div>
     </div>
+    <button
+      v-if="testable"
+      type="button"
+      class="btn btn-secondary conn-test"
+      :disabled="testing || disabled"
+      @click="emit('test')"
+    >
+      <svg
+        class="conn-test-ico"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        aria-hidden="true"
+      ><path d="M5 12.5 10 17.5 19 7" /></svg>
+      {{ testing ? '測試中...' : '測試連線' }}
+    </button>
   </article>
 </template>
 
@@ -51,9 +70,14 @@ interface Props {
   title: string
   status: IntegrationStatus
   lastTest?: IntegrationLastTest | null
+  /** Show the 測試連線 button inside the card */
+  testable?: boolean
+  testing?: boolean
+  disabled?: boolean
 }
 
 const props = defineProps<Props>()
+const emit = defineEmits<{ test: [] }>()
 
 const pill = computed(() => {
   if (props.status === 'connected') {
@@ -154,6 +178,17 @@ const metaText = computed(() => {
   font-size: 13px;
   color: var(--ui-muted);
   font-variant-numeric: tabular-nums;
+}
+
+.conn-test-ico {
+  width: 16px;
+  height: 16px;
+}
+
+@media (max-width: 768px) {
+  .conn-test {
+    width: 100%;
+  }
 }
 
 .conn-error {
