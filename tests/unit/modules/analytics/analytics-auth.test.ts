@@ -122,3 +122,34 @@ describe('analyticsAuth JWT verification', () => {
     )
   })
 })
+
+describe('analyticsAuth health exemption', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockCheckPermission.mockResolvedValue(false)
+    mockGetUserById.mockResolvedValue({
+      id: 'agent-1', role: 'agent', isActive: true, primaryTeamId: 1, allowedTeamIds: [1], teamRoles: { 1: 'member' }
+    })
+  })
+
+  const get = async (path: string) => {
+    const token = await signJWT(
+      { userId: 'agent-1', role: 'agent', email: 'a@example.com', displayName: 'Agent', primaryTeamId: 1, type: 'access', jti: 'j' },
+      'test-secret'
+    )
+    const app = createTestApp()
+    app.get('/api/analytics/*', c => c.json({ ok: true }))
+    return app.request(path, { headers: { Authorization: `Bearer ${token}` } })
+  }
+
+  test('the exact health route skips the permission check', async () => {
+    expect((await get('/api/analytics/health')).status).toBe(200)
+    expect((await get('/api/analytics/dashboard/health')).status).toBe(200)
+  })
+
+  test('other paths that merely contain "/health" are still permission checked', async () => {
+    for (const path of ['/api/analytics/export/health', '/api/analytics/custom/healthcare', '/api/analytics/health/extra', '/api/analytics/metrics?x=/health']) {
+      expect((await get(path)).status, path).toBe(403)
+    }
+  })
+})
