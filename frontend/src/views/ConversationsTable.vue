@@ -783,13 +783,16 @@ onUnmounted(() => {
     padding: 14px;
   }
 
-  /* Tabs share the row evenly; when they don't fit (320px) the row scrolls with an edge fade */
+  /* No scroll strip on phone: tabs sit on an equal-width grid that wraps to a second row */
   .filter-top > .ui-seg {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(112px, 1fr));
     width: 100%;
+    overflow: visible;
   }
 
   .filter-top > .ui-seg .scope-tab {
-    flex: 1 0 auto;
+    flex: none;
     justify-content: center;
     padding-right: 8px;
     padding-left: 8px;
@@ -797,11 +800,6 @@ onUnmounted(() => {
 
   .scope-tab.is-stale {
     margin-left: 0;
-  }
-
-  .filter-top > .ui-seg.is-overflowing {
-    -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 28px), transparent);
-    mask-image: linear-gradient(90deg, #000 calc(100% - 28px), transparent);
   }
 
   .scope-tab {

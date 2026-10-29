@@ -157,9 +157,23 @@ onBeforeUnmount(() => observer?.disconnect())
   }
 }
 
+/* Phone: no scroll strip. Segments sit on an equal-width grid that wraps, so every label is in view */
 @media (max-width: 768px) {
+  .ui-section-nav-track {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(104px, 1fr));
+    gap: 2px;
+    overflow: visible;
+    scroll-snap-type: none;
+  }
+
+  .ui-section-nav.is-overflowing::after {
+    display: none;
+  }
+
   .ui-section-nav-track > a {
     height: 36px;
+    padding: 0 8px;
   }
 }
 </style>
