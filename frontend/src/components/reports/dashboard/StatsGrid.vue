@@ -17,11 +17,7 @@
         {{ stats.totalReports }}
       </div>
       <div class="ui-kpi-foot">
-        <span>{{ stats.thisMonthGenerated > 0 ? '本月新增' : '累計產生' }}</span>
-        <b
-          v-if="stats.thisMonthGenerated > 0"
-          class="foot-val"
-        >{{ stats.thisMonthGenerated.toLocaleString() }}</b>
+        <span>累計產生</span>
       </div>
     </article>
 

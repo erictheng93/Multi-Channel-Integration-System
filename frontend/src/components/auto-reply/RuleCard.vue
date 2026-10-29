@@ -42,10 +42,22 @@
             >已停用</span>
           </div>
           <div
-            v-if="summary"
+            v-if="conditionSummary || replyOutcome"
             class="rule-card__summary"
           >
-            {{ summary }}
+            <span
+              v-if="conditionSummary"
+              class="rule-card__when"
+            >{{ conditionSummary }}</span>
+            <span
+              v-if="conditionSummary && replyOutcome"
+              class="rule-card__then"
+              aria-hidden="true"
+            >→</span>
+            <span
+              v-if="replyOutcome"
+              class="rule-card__reply"
+            >回覆 {{ replyOutcome }}</span>
           </div>
         </div>
       </div>
@@ -54,9 +66,10 @@
         <!-- Priority badge -->
         <span
           class="rule-card__priority-badge"
-          title="數字越小越先比對"
+          title="優先序：數字越小越先比對"
+          :aria-label="`優先序 ${rule.priority}`"
         >
-          優先 {{ rule.priority }}
+          {{ rule.priority }}
         </span>
 
         <!-- Meta text -->
@@ -139,19 +152,27 @@ const CONDITION_LABELS: Record<string, string> = {
   'message_type': '訊息類型'
 }
 
-// One line of what the rule does, built only from the rule's own conditions / first reply text
-const summary = computed(() => {
+// One line: when it fires (keyword rules) and what the customer gets back, from the rule's own data
+const conditionSummary = computed(() => {
   const rule = props.rule
-  if (rule.triggerType === 'keyword' && rule.conditions.length > 0) {
-    const first = rule.conditions[0]
-    const sameType = rule.conditions.every(c => c.conditionType === first?.conditionType)
-    const values = rule.conditions.map(c => `「${c.value}」`).join('')
-    return sameType && first
-      ? `${CONDITION_LABELS[first.conditionType] ?? first.conditionType}${values}`
-      : rule.conditions.map(c => `${CONDITION_LABELS[c.conditionType] ?? c.conditionType}「${c.value}」`).join(' ')
+  if (rule.triggerType !== 'keyword' || rule.conditions.length === 0) { return '' }
+  const first = rule.conditions[0]
+  const sameType = rule.conditions.every(c => c.conditionType === first?.conditionType)
+  const values = rule.conditions.map(c => `「${c.value}」`).join('')
+  return sameType && first
+    ? `${CONDITION_LABELS[first.conditionType] ?? first.conditionType}${values}`
+    : rule.conditions.map(c => `${CONDITION_LABELS[c.conditionType] ?? c.conditionType}「${c.value}」`).join(' ')
+})
+
+const ACTION_LABELS: Record<string, string> = { 'reply_image': '圖片回覆', 'reply_flex': '卡片訊息' }
+const replyOutcome = computed(() => {
+  const first = props.rule.actions[0]
+  if (!first) { return '' }
+  if (first.actionType === 'reply_text') {
+    const text = (first.content ?? '').replace(/\s+/g, ' ').trim()
+    return text ? `「${text}」` : ''
   }
-  const text = rule.actions.find(a => a.actionType === 'reply_text')?.content
-  return text ? `「${text.replace(/s+/g, ' ')}」` : ''
+  return ACTION_LABELS[first.actionType] ?? ''
 })
 
 const triggerTypeLabel = computed(() => {
@@ -222,12 +243,27 @@ const triggerTypeLabel = computed(() => {
 }
 
 .rule-card__summary {
+  display: flex;
+  gap: 6px;
   margin-top: 2px;
+  min-width: 0;
   overflow: hidden;
   font-size: 13px;
   color: var(--ui-muted);
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.rule-card__when,
+.rule-card__then {
+  flex: none;
+}
+
+.rule-card__reply {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ui-ink-2);
+  text-overflow: ellipsis;
 }
 
 /* Toggle switch (same spec as .ui-switch) */
@@ -325,7 +361,11 @@ const triggerTypeLabel = computed(() => {
 
 /* Priority badge */
 .rule-card__priority-badge {
-  padding: 3px 10px;
+  display: inline-grid;
+  min-width: 26px;
+  height: 26px;
+  padding: 0 8px;
+  place-items: center;
   border-radius: 999px;
   background: var(--ui-fill);
   font-size: 13px;
@@ -375,6 +415,20 @@ const triggerTypeLabel = computed(() => {
   .rule-card__meta,
   .rule-card__priority-badge {
     display: none;
+  }
+
+  /* condition on the first line, the reply outcome under it */
+  .rule-card__summary {
+    flex-wrap: wrap;
+    gap: 0 6px;
+  }
+
+  .rule-card__then {
+    display: none;
+  }
+
+  .rule-card__reply {
+    flex: 1 1 100%;
   }
 
   .rule-card__body {

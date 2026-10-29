@@ -49,12 +49,39 @@
             id="timeRangeLabel"
             class="field-label"
           >時間範圍 <span class="req">*</span></span>
+          <div
+            class="range-seg ui-seg"
+            role="group"
+            aria-label="常用時間範圍"
+          >
+            <button
+              v-for="option in commonRanges"
+              :key="option.value"
+              type="button"
+              :aria-pressed="timeRange === option.value"
+              @click="pickRange(option.value)"
+            >
+              {{ option.label }}
+            </button>
+            <button
+              type="button"
+              :aria-pressed="moreRangeActive"
+              :aria-expanded="moreOpen || moreRangeActive"
+              aria-controls="more-ranges"
+              @click="moreOpen = !moreOpen"
+            >
+              {{ moreRangeActive ? moreRangeLabel : '更多' }}
+            </button>
+          </div>
           <ReportChoiceGroup
+            v-if="moreOpen || moreRangeActive"
+            id="more-ranges"
+            class="more-ranges"
             :model-value="timeRange"
-            :options="timeRangeOptions"
-            label="時間範圍"
+            :options="otherRanges"
+            label="更多時間範圍"
             compact
-            :columns="4"
+            :columns="3"
             @update:model-value="emit('update:timeRange', $event as ReportTimeRange)"
           />
           <p
@@ -262,7 +289,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import ReportsAPI from '@/api/reports';
 import ReportChoiceGroup from './ReportChoiceGroup.vue';
 import type {
@@ -315,6 +342,18 @@ const timeRangeOptions = computed(() => {
   return ReportsAPI.getTimeRangeOptions() || [];
 });
 
+// The five ranges people use most sit in the segmented control; the rest hide behind 更多
+const COMMON_RANGES = ['last_24_hours', 'last_7_days', 'last_30_days', 'last_90_days', 'current_month'];
+const commonRanges = computed(() => timeRangeOptions.value.filter(o => COMMON_RANGES.includes(o.value)));
+const otherRanges = computed(() => timeRangeOptions.value.filter(o => !COMMON_RANGES.includes(o.value)));
+const moreOpen = ref(false);
+const moreRangeActive = computed(() => !!props.timeRange && !COMMON_RANGES.includes(props.timeRange));
+const moreRangeLabel = computed(() => otherRanges.value.find(o => o.value === props.timeRange)?.label ?? '更多');
+const pickRange = (value: string) => {
+  moreOpen.value = false;
+  emit('update:timeRange', value as ReportTimeRange);
+};
+
 const MAX_RECORDS = 50000;
 
 // Digits only, shown with thousands separators (10,000); clamped to the backend cap
@@ -335,6 +374,30 @@ const updateOption = (key: string, value: unknown) => {
 </script>
 
 <style scoped>
+.range-seg {
+  display: flex;
+  flex-wrap: wrap;
+  width: fit-content;
+  max-width: 100%;
+}
+
+.more-ranges {
+  margin-top: 10px;
+}
+
+@media (max-width: 768px) {
+  .range-seg {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    width: 100%;
+  }
+
+  .range-seg > button {
+    justify-content: center;
+    padding: 0 6px;
+  }
+}
+
 .parameter-form {
   display: grid;
   gap: 16px;

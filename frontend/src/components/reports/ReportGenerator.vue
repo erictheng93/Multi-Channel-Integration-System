@@ -54,6 +54,7 @@
           :title="formData.title"
           :format="formData.format"
           :time-range="formData.timeRange"
+          :options="formData.options"
           :is-generating="isGenerating"
           :current-step="currentStep"
           :recent-reports="recentReports"
@@ -416,7 +417,8 @@ onMounted(() => {
     display: flex;
   }
 
-  .generate-action {
+  .generate-action,
+  .side-section :deep(.preview-card) {
     display: none;
   }
 
