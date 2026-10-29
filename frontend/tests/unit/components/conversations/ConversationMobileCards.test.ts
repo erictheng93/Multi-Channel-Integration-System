@@ -131,7 +131,7 @@ describe('ConversationMobileCards.vue', () => {
     })
 
     it('shows 已回覆 when an agent replied last', () => {
-      expect(mountCards([createConversation({ lastMessage: lastMessage('agent') })]).find('.replied').text()).toBe('已回覆')
+      expect(mountCards([createConversation({ lastMessage: lastMessage('agent') })]).findAll('.card-pills .ui-pill').map(p => p.text())).toContain('已回覆')
     })
 
     it('shows the free-reply countdown only while the window is open', () => {

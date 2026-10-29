@@ -723,9 +723,9 @@ const greeting = computed(() => {
 // No spaces around full-width punctuation: sentences are joined here, not in the template
 const subtitle = computed(() => {
   const waitPart = waitingCount.value > 0
-    ? `${waitingCount.value} 件待回覆，最久等 ${oldestWaitText.value}`
+    ? `${waitingCount.value} 件待回覆 · 最久等 ${oldestWaitText.value}`
     : '目前沒有待回覆的客戶'
-  const unreadPart = unreadStore.total > 0 ? `　我的未讀 ${unreadStore.total}` : ''
+  const unreadPart = unreadStore.total > 0 ? ` · 我的未讀 ${unreadStore.total}` : ''
   return `${waitPart}${unreadPart}`
 })
 

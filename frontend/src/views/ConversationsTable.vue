@@ -40,6 +40,7 @@
                 class="scope-tab"
                 :class="{ 'is-on': scope === tab.value, 'is-stale': tab.value === 'stale' }"
                 :aria-selected="scope === tab.value"
+                :title="tab.value === 'stale' ? `已含在處理中：客戶來訊後超過 ${WAITING_WINDOW_DAYS} 天仍未回覆，不計入待回覆` : undefined"
                 :data-testid="`scope-tab-${tab.value}`"
                 @click="selectView(tab.value)"
               >
@@ -265,12 +266,13 @@ async function loadCounts() {
 const oldestWaitText = computed(() =>
   waitingSince.value ? formatWaitText(Math.max(0, (clock.value - Date.parse(waitingSince.value)) / 1000)) : '')
 
+// One line (<= 60 chars); the 未讀 / 待回覆 definitions live in the table header tooltip
 const subtitle = computed(() => {
   if (!counts.value) { return '' }
-  const waitPart = oldestWaitText.value ? `，最久已等 ${oldestWaitText.value}` : ''
-  const unreadPart = unreadStore.total > 0 ? `我的未讀 ${unreadStore.total} 件。` : ''
-  const stalePart = staleCount.value > 0 ? `另有 ${staleCount.value} 件逾期未回覆（超過 ${WAITING_WINDOW_DAYS} 天）。` : ''
-  return `${counts.value.open} 件處理中，近 ${WAITING_WINDOW_DAYS} 天內 ${waitingTotal.value} 件待回覆${waitPart}。${stalePart}${unreadPart}`
+  const parts = [`${counts.value.open} 件處理中`, `${waitingTotal.value} 件待回覆`]
+  if (oldestWaitText.value) { parts.push(`最久等 ${oldestWaitText.value}`) }
+  if (unreadStore.total > 0) { parts.push(`我的未讀 ${unreadStore.total}`) }
+  return parts.join(' · ')
 })
 
 function tabCount(value: ListView): number | null {
@@ -299,9 +301,10 @@ type ConversationScope = NonNullable<ConversationFiltersType['scope']>
 type ListView = ConversationScope | 'stale'
 const SCOPE_TABS: ReadonlyArray<{ value: ListView; label: string; empty: string }> = [
   { value: 'open', label: '處理中', empty: '沒有處理中的對話' },
-  { value: 'stale', label: '逾期待回覆', empty: '沒有逾期未回覆的對話' },
   { value: 'closed', label: '已結案', empty: '沒有已結案的對話' },
-  { value: 'all', label: '全部', empty: '暫無對話記錄' }
+  { value: 'all', label: '全部', empty: '暫無對話記錄' },
+  // Its own scope, listed last: a review view over open conversations, not a status
+  { value: 'stale', label: '逾期待回覆', empty: '沒有逾期未回覆的對話' }
 ]
 // ?view=stale deep-links the review list (dashboard link)
 const scope = ref<ListView>(route.query.view === 'stale' ? 'stale' : 'open')
@@ -611,7 +614,23 @@ onUnmounted(() => {
 
 .filter-top > .ui-seg {
   max-width: 100%;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.filter-top > .ui-seg::-webkit-scrollbar {
+  display: none;
+}
+
+.scope-tab {
+  flex: none;
+  white-space: nowrap;
+}
+
+/* The review scope sits apart from the status tabs */
+.scope-tab.is-stale {
+  margin-left: 10px;
 }
 
 .scope-tab .ui-seg-n {
@@ -742,6 +761,12 @@ onUnmounted(() => {
 @media (max-width: 768px) {
   .filter-card {
     padding: 14px;
+  }
+
+  /* Edge fade: the row scrolls sideways instead of wrapping onto a second line */
+  .filter-top > .ui-seg {
+    -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 28px), transparent);
+    mask-image: linear-gradient(90deg, #000 calc(100% - 28px), transparent);
   }
 
   .scope-tab {
