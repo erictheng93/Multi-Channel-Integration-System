@@ -111,10 +111,10 @@ describe('ConversationDesktopTable.vue', () => {
       expect(mountTable([createConversation()]).find('.customer-name').text()).toBe('未知用戶')
     })
 
-    it('should display platform and userId in the customer-id line', () => {
-      const wrapper = mountTable([createConversation({ userId: 'uid-42', platform: 'facebook' })])
+    it('should display the platform and how long ago the conversation began in the customer-id line', () => {
+      const wrapper = mountTable([createConversation({ platform: 'facebook', createdAt: new Date(Date.now() - 3 * 864e5) })])
       expect(wrapper.find('.customer-id').text()).toContain('Messenger')
-      expect(wrapper.find('.customer-id').text()).toContain('uid-42')
+      expect(wrapper.find('.customer-id').text()).toContain('3 天前開始')
     })
 
     it('should default to LINE when no platform', () => {
