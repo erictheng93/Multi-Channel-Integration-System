@@ -61,6 +61,7 @@ export function readMigration(file: string): string {
 
 export const MIGRATION_ROLLUP = '0069_add_message_daily_stats.sql';
 export const MIGRATION_AWAITING = '0070_add_conversation_awaiting_since.sql';
+export const MIGRATION_MARKERS = '0071_add_conversation_message_markers.sql';
 
 /** Base tables as they exist before migrations 0069/0070 (only the columns the dashboard reads). */
 export function createBaseSchema(db: Database.Database): void {
@@ -70,7 +71,11 @@ export function createBaseSchema(db: Database.Database): void {
     );
     CREATE TABLE conversations (
       id TEXT PRIMARY KEY, customer_id INTEGER NOT NULL, status TEXT NOT NULL DEFAULT 'active',
-      assigned_team_id INTEGER, first_response_at TEXT, closed_at TEXT, created_at TEXT, deleted_at TEXT
+      assigned_team_id INTEGER, first_response_at TEXT, closed_at TEXT, created_at TEXT, deleted_at TEXT, unread_floor_at TEXT
+    );
+    CREATE TABLE conversation_read_states (
+      agent_id TEXT NOT NULL, conversation_id TEXT NOT NULL, last_read_at TEXT, marked_unread_at TEXT,
+      PRIMARY KEY (agent_id, conversation_id)
     );
     CREATE TABLE messages (
       id TEXT PRIMARY KEY, conversation_id TEXT NOT NULL, sender_type TEXT NOT NULL,
@@ -87,6 +92,7 @@ export function createBaseSchema(db: Database.Database): void {
 export interface SchemaOptions {
   rollup?: boolean;
   awaiting?: boolean;
+  markers?: boolean;
 }
 
 /** Fresh in-memory database; migrations are applied on top of the base schema when requested. */
@@ -95,6 +101,7 @@ export function createDashboardDb(options: SchemaOptions = {}): Database.Databas
   createBaseSchema(db);
   if (options.rollup) { db.exec(readMigration(MIGRATION_ROLLUP)); }
   if (options.awaiting) { db.exec(readMigration(MIGRATION_AWAITING)); }
+  if (options.markers) { db.exec(readMigration(MIGRATION_MARKERS)); }
   return db;
 }
 
