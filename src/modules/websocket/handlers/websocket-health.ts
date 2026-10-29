@@ -8,18 +8,14 @@ import type { Bindings } from '@/types';
 import type { MigrationConfig } from '@/types/websocket-types';
 import { nowISO, nowMs } from '@/utils/timestamp'
 import { createContextLogger } from '@/utils/logger';
+import { createDbClient } from '@/db/drizzle-factory';
+import {
+  fetchBroadcasterMetrics,
+  getWsMetricsHistory,
+  isWsMetricsRange
+} from '@modules/websocket/services/realtime-metrics-service';
 
 const log = createContextLogger('WebSocketHealth');
-
-interface BroadcasterMetricsResponse {
-  userConnections?: number;
-  conversationRooms?: number;
-  activeConnections?: number;
-  averageLatency?: number;
-  eventsPerSecond?: number;
-  failedDeliveries?: number;
-  totalEvents?: number;
-}
 
 const healthApp = new Hono<{ Bindings: Bindings }>();
 
@@ -97,12 +93,16 @@ healthApp.get('/metrics', async (c) => {
       },
       // Real-time connection metrics (from MessageBroadcaster)
       connections: realtimeMetrics.status === 'fulfilled' ? realtimeMetrics.value : {
+        available: false,
         totalConnections: 0,
         activeConnections: 0,
+        registeredConnections: 0,
+        onlineAgents: 0,
         connectionsByType: { websocket: 0 },
         connectionsByRole: {},
         averageLatency: 0,
         messagesThroughput: { inbound: 0, outbound: 0 },
+        windowSeconds: 0,
         errorRate: 0,
         lastUpdated: nowMs()
       },
@@ -119,30 +119,31 @@ healthApp.get('/metrics', async (c) => {
         activeLocks: 0,
         expiredLocks: 0
       },
-      performance: {
-        averageLatency: {
-          p50: '6ms',
-          p95: '20ms',
-          p99: '45ms'
-        },
-        throughput: {
-          messagesPerSecond: 4850,
-          peakMessagesPerSecond: 7200
-        },
-        reliability: {
-          deliverySuccessRate: 99.95,
-          connectionSuccessRate: 99.5,
-          errorRate: 0.08
-        }
-      },
-      configuration: config.featureFlags,
-      uptime: process?.uptime ? process.uptime() : 'N/A'
+      configuration: config.featureFlags
     };
 
     return c.json({
       status: 'ok',
       data: metrics
     });
+  } catch (error) {
+    return globalErrorHandler.handleError(c, error);
+  }
+});
+
+/**
+ * GET /api/websocket/metrics/history?range=1h|6h|24h|7d
+ * Admin-only (enforced in pre-registry-routes). Points come from ws_metrics_snapshots, which the
+ * the five-minute cron fills; 7d is downsampled to at most 300 points.
+ */
+healthApp.get('/metrics/history', async (c) => {
+  try {
+    const range = c.req.query('range') ?? '1h';
+    if (!isWsMetricsRange(range)) {
+      return c.json({ status: 'error', error: 'range must be one of 1h, 6h, 24h, 7d' }, HTTP_STATUS.BAD_REQUEST);
+    }
+    const points = await getWsMetricsHistory(createDbClient(c.env.DB), range);
+    return c.json({ success: true, status: 'ok', data: { range, points } });
   } catch (error) {
     return globalErrorHandler.handleError(c, error);
   }
@@ -534,49 +535,51 @@ async function checkR2Storage(env: Bindings): Promise<{
 }
 
 /**
- * Get real-time connection metrics (from MessageBroadcaster)
+ * Get real-time connection metrics (from MessageBroadcaster).
+ *
+ * Semantics: activeConnections / registeredConnections count REGISTERED connections (users in the
+ * broadcaster registry plus conversation rooms), not live sockets. onlineAgents is the number of
+ * distinct users in that registry. Throughput and errorRate are measured over windowSeconds;
+ * when the broadcaster had no reference sample the window is 0 and the values are reported as 0.
  */
 async function getRealtimeConnectionMetrics(env: Bindings): Promise<{
+  available: true;
   totalConnections: number;
   activeConnections: number;
+  registeredConnections: number;
+  onlineAgents: number;
   connectionsByType: { websocket: number };
   connectionsByRole: Record<string, number>;
   averageLatency: number;
   messagesThroughput: { inbound: number; outbound: number };
+  windowSeconds: number;
   errorRate: number;
+  errorRateLifetime: number;
   lastUpdated: number;
 }> {
   try {
-    // Get metrics from MessageBroadcaster
-    if (!env.MESSAGE_BROADCASTER) {
-      log.warn('MESSAGE_BROADCASTER binding not available for metrics');
-      throw new Error('MESSAGE_BROADCASTER not available');
+    const data = await fetchBroadcasterMetrics(env);
+    if (!data) {
+      throw new Error('Failed to fetch metrics from MessageBroadcaster');
     }
-
-    const broadcasterId = env.MESSAGE_BROADCASTER.idFromName('global');
-    const broadcasterStub = env.MESSAGE_BROADCASTER.get(broadcasterId);
-    const response = await broadcasterStub.fetch(new Request('https://message-broadcaster/metrics'));
-
-    if (response.ok) {
-      const data = await response.json() as BroadcasterMetricsResponse;
-      return {
-        totalConnections: (data.userConnections || 0) + (data.conversationRooms || 0),
-        activeConnections: data.activeConnections || 0,
-        connectionsByType: {
-          websocket: data.activeConnections || 0
-        },
-        connectionsByRole: {}, // Would be populated from UserConnection metrics
-        averageLatency: data.averageLatency || 0,
-        messagesThroughput: {
-          inbound: data.eventsPerSecond || 0,
-          outbound: data.eventsPerSecond || 0
-        },
-        errorRate: (data.failedDeliveries || 0) / Math.max(1, data.totalEvents || 1),
-        lastUpdated: nowMs()
-      };
-    }
-
-    throw new Error('Failed to fetch metrics from MessageBroadcaster');
+    return {
+      available: true,
+      totalConnections: data.registeredConnections ?? 0,
+      activeConnections: data.registeredConnections ?? 0,
+      registeredConnections: data.registeredConnections ?? 0,
+      onlineAgents: data.onlineAgents ?? 0,
+      connectionsByType: { websocket: data.registeredConnections ?? 0 },
+      connectionsByRole: {},
+      averageLatency: data.averageLatency || 0,
+      messagesThroughput: {
+        inbound: data.eventsInPerSecond ?? 0,
+        outbound: data.eventsOutPerSecond ?? 0
+      },
+      windowSeconds: data.windowSeconds ?? 0,
+      errorRate: data.errorRate ?? 0,
+      errorRateLifetime: data.errorRateLifetime ?? 0,
+      lastUpdated: nowMs()
+    };
   } catch (error) {
     log.error('Error getting realtime connection metrics', {}, error instanceof Error ? error : String(error));
     throw error;

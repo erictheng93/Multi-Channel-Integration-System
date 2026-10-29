@@ -5,6 +5,7 @@ import {
   LINE_QUOTA_CRON,
   LineQuotaMonitorService,
 } from '@modules/broadcast/services/line-quota-monitor-service';
+import { recordWsMetricsSnapshot } from '@modules/websocket/services/realtime-metrics-service';
 import { createDbClient } from '@/db/drizzle-factory';
 import type { Bindings } from '../types';
 import type { LineQueuePayload } from '../types/bindings';
@@ -38,8 +39,10 @@ export async function scheduled(
     return;
   }
 
-  const [, reportStats] = await Promise.allSettled([
+  const [, , reportStats] = await Promise.allSettled([
     handleScheduledEvent(env),
+    // One broadcaster request + one insert + 7-day prune; never throws, no DO alarm involved.
+    recordWsMetricsSnapshot(env),
     (async () => {
       const scheduler = new ReportSchedulerService(env);
       return scheduler.processScheduledReports();

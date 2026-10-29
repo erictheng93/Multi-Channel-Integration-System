@@ -59,4 +59,36 @@ describe('scheduled() cron dispatch', () => {
 
     await expect(scheduled(event('0 18 * * *'), env, ctx)).resolves.toBeUndefined();
   });
+
+  it('5-minute cron with the broadcaster unavailable records nothing and does not throw', async () => {
+    const insert = vi.fn();
+    const remove = vi.fn(async () => undefined);
+    const { createDbClient } = await import('@/db/drizzle-factory');
+    vi.mocked(createDbClient).mockReturnValueOnce({
+      insert: () => ({ values: insert }),
+      delete: () => ({ where: remove }),
+    } as never);
+    const broken = {
+      DB: {},
+      MESSAGE_BROADCASTER: {
+        idFromName: (n: string) => n,
+        get: () => ({ fetch: async () => { throw new Error('broadcaster down'); } }),
+      },
+    } as unknown as Bindings;
+
+    await expect(scheduled(event('*/5 * * * *'), broken, ctx)).resolves.toBeUndefined();
+
+    expect(insert).not.toHaveBeenCalled();
+    expect(mocks.processScheduledReports).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not snapshot realtime metrics on the daily cron', async () => {
+    const fetch = vi.fn();
+    const withBroadcaster = {
+      DB: {},
+      MESSAGE_BROADCASTER: { idFromName: (n: string) => n, get: () => ({ fetch }) },
+    } as unknown as Bindings;
+    await scheduled(event('0 18 * * *'), withBroadcaster, ctx);
+    expect(fetch).not.toHaveBeenCalled();
+  });
 });

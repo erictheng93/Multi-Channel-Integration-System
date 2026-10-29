@@ -26,9 +26,9 @@ interface BroadcasterMetricsResponse {
   conversationRooms?: number;
   activeConnections?: number;
   averageLatency?: number;
-  eventsPerSecond?: number;
-  failedDeliveries?: number;
-  totalEvents?: number;
+  eventsInPerSecond?: number | null;
+  eventsOutPerSecond?: number | null;
+  errorRate?: number | null;
 }
 
 interface UserConnectionStatusResponse {
@@ -325,7 +325,7 @@ websocketHandler.get('/health', async (c) => {
 // - Distributed lock metrics (from LockCoordinator)
 // - Performance metrics (latency, throughput, reliability)
 //
-// Access unified metrics at: GET /api/websocket/metrics (public, no auth)
+// Access unified metrics at: GET /api/websocket/metrics (admin only)
 // See: src/modules/websocket/handlers/websocket-health.ts
 
 async function getConnectionMetrics(env: Bindings): Promise<ConnectionMetrics> {
@@ -348,10 +348,10 @@ async function getConnectionMetrics(env: Bindings): Promise<ConnectionMetrics> {
           connectionsByRole: {}, // Would be populated from UserConnection metrics
           averageLatency: data.averageLatency || 0,
           messagesThroughput: {
-            inbound: data.eventsPerSecond || 0,
-            outbound: data.eventsPerSecond || 0
+            inbound: data.eventsInPerSecond ?? 0,
+            outbound: data.eventsOutPerSecond ?? 0
           },
-          errorRate: (data.failedDeliveries || 0) / Math.max(1, data.totalEvents || 1),
+          errorRate: data.errorRate ?? 0,
           lastUpdated: nowMs()
         };
       }
