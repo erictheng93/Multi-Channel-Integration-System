@@ -21,7 +21,7 @@ import type { DbUser } from '@/types';
 
 const log = createContextLogger('ConversationAssignmentHandler');
 
-type AssignedConversationResponse = Omit<typeof conversations.$inferSelect, 'lineReplyToken' | 'lineReplyTokenReceivedAt' | 'awaitingSince'> & {
+type AssignedConversationResponse = Omit<typeof conversations.$inferSelect, 'lineReplyToken' | 'lineReplyTokenReceivedAt' | 'awaitingSince' | 'lastCustomerMessageAt' | 'lastAgentMessageAt'> & {
   assignedTeam?: typeof teams.$inferSelect;
   customer?: (typeof customers.$inferSelect & { name: string }) | undefined;
 };

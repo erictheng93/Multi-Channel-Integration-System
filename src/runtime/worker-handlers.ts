@@ -8,6 +8,7 @@ import {
 import { recordWsMetricsSnapshot } from '@modules/websocket/services/realtime-metrics-service';
 import { createDbClient } from '@/db/drizzle-factory';
 import { aggregateMessageRollup, healRecentMessageRollup } from '@modules/dashboard/services/message-rollup-service';
+import { healMessageMarkers } from '@modules/conversations/services/message-markers-service';
 import { healAwaitingSince } from '@modules/dashboard/services/awaiting-service';
 import { RowsReadMeter } from '@/utils/d1-rows-read';
 import type { Bindings } from '../types';
@@ -86,6 +87,12 @@ async function runNightlyHeal(env: Bindings): Promise<void> {
     log.info('awaiting_since healed', { corrected: awaiting.corrected });
   } catch (error) {
     log.error('awaiting_since heal failed', {}, error instanceof Error ? error : new Error(String(error)));
+  }
+  try {
+    const markers = await healMessageMarkers(env.DB, Date.now(), meter);
+    log.info('Conversation message markers healed', { corrected: markers.corrected });
+  } catch (error) {
+    log.error('Message marker heal failed', {}, error instanceof Error ? error : new Error(String(error)));
   }
   meter.flush();
 }

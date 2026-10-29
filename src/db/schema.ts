@@ -117,6 +117,10 @@ export const conversations = sqliteTable('conversations', {
   // Earliest unanswered customer message after the last human reply; NULL = not waiting.
   // Maintained by triggers on messages and healed nightly (Migration 0070).
   awaitingSince: text('awaiting_since'),
+  // Newest non-deleted customer message / agent-or-system message; trigger-maintained and healed
+  // nightly. They decide which conversations can be unread without scanning messages (Migration 0071).
+  lastCustomerMessageAt: text('last_customer_message_at'),
+  lastAgentMessageAt: text('last_agent_message_at'),
   // DEPRECATED (Migration 0060): read state is now per-agent in
   // conversation_read_states. These two columns are no longer read by the
   // unread queries and are kept only as a revert path.
@@ -142,6 +146,12 @@ export const conversations = sqliteTable('conversations', {
   awaitingSinceIdx: index('idx_conversations_awaiting_since')
     .on(table.awaitingSince, table.id, table.status, table.assignedTeamId, table.deletedAt)
     .where(sql`${table.awaitingSince} IS NOT NULL`),
+  // Covering index for the stats (team, status) counts (Migration 0071)
+  teamStatusIdx: index('idx_conversations_team_status').on(table.assignedTeamId, table.status),
+  // Conversations where the customer spoke after the last agent/system reply (Migration 0071)
+  customerAfterAgentIdx: index('idx_conversations_customer_after_agent')
+    .on(table.lastCustomerMessageAt, table.id, table.status, table.assignedTeamId, table.unreadFloorAt, table.lastAgentMessageAt)
+    .where(sql`${table.lastCustomerMessageAt} > COALESCE(${table.lastAgentMessageAt}, '')`),
 }));
 
 // Conversation read states - 每位客服各自的已讀/未讀狀態 (Migration 0060)
@@ -159,6 +169,10 @@ export const conversationReadStates = sqliteTable('conversation_read_states', {
 }, (table) => ({
   pk: primaryKey({ columns: [table.agentId, table.conversationId] }),
   conversationIdx: index('idx_conversation_read_states_conversation').on(table.conversationId),
+  // Manual "mark unread" flags (Migration 0071)
+  markedUnreadIdx: index('idx_conversation_read_states_marked_unread')
+    .on(table.agentId, table.conversationId)
+    .where(sql`${table.markedUnreadAt} IS NOT NULL`),
 }));
 
 // Messages table - 訊息

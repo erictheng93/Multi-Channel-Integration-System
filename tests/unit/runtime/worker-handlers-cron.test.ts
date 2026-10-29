@@ -8,12 +8,14 @@ const mocks = vi.hoisted(() => ({
   aggregate: vi.fn(),
   healRollup: vi.fn(),
   healAwaiting: vi.fn(),
+  healMarkers: vi.fn(),
 }));
 
 vi.mock('@modules/dashboard/services/message-rollup-service', () => ({
   aggregateMessageRollup: mocks.aggregate,
   healRecentMessageRollup: mocks.healRollup,
 }));
+vi.mock('@modules/conversations/services/message-markers-service', () => ({ healMessageMarkers: mocks.healMarkers }));
 vi.mock('@modules/dashboard/services/awaiting-service', () => ({ healAwaitingSince: mocks.healAwaiting }));
 vi.mock('@modules/queue/handlers/line-message-queue', () => ({ handleLineMessageQueue: vi.fn() }));
 vi.mock('@/db/drizzle-factory', () => ({ createDbClient: vi.fn(() => ({})) }));
@@ -47,6 +49,7 @@ describe('scheduled() cron dispatch', () => {
     mocks.aggregate.mockResolvedValue({ status: 'aggregated', watermark: 'x' });
     mocks.healRollup.mockResolvedValue({ fromDay: '2026-10-28', healed: true });
     mocks.healAwaiting.mockResolvedValue({ corrected: 0 });
+    mocks.healMarkers.mockResolvedValue({ corrected: 0 });
   });
 
   it('runs only the quota poll on the daily cron', async () => {
@@ -122,6 +125,7 @@ describe('scheduled() cron dispatch', () => {
     await expect(scheduled(event('0 18 * * *'), env, ctx)).resolves.toBeUndefined();
     expect(mocks.healRollup).toHaveBeenCalledTimes(1);
     expect(mocks.healAwaiting).toHaveBeenCalledTimes(1);
+    expect(mocks.healMarkers).toHaveBeenCalledTimes(1);
     expect(mocks.aggregate).not.toHaveBeenCalled();
   });
 });
