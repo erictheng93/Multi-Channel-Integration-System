@@ -104,7 +104,7 @@ export function useDashboardOverview() {
   const loadPresence = () => load(presence, () => presenceApi.getTeamPresence())
   const loadMembers = () => load(members, () => teamApi.getMembers())
   const loadActivities = () => load(activities, async () => {
-    const response = await activitiesApi.list({ page: 1, pageSize: 5 })
+    const response = await activitiesApi.list({ page: 1, pageSize: 7 })
     return { success: response.success, data: response.data?.items }
   })
   const loadTeamNames = async (): Promise<void> => {

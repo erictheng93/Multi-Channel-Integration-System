@@ -526,13 +526,6 @@
             <h2 class="ui-card-title">
               最近動態
             </h2>
-            <router-link
-              v-if="isAdmin"
-              to="/activities"
-              class="ui-link ui-card-end"
-            >
-              全部
-            </router-link>
           </div>
           <ul class="feed">
             <li
@@ -583,6 +576,13 @@
               </div>
             </li>
           </ul>
+          <router-link
+            v-if="isAdmin"
+            to="/activities"
+            class="ui-link feed-all"
+          >
+            全部動態
+          </router-link>
         </article>
       </section>
 
@@ -1201,6 +1201,15 @@ onBeforeUnmount(() => {
 .feed-card {
   display: flex;
   flex-direction: column;
+  /* sizes to its rows: never stretched to the chart's height */
+  align-self: start;
+}
+
+.feed-all {
+  align-self: flex-start;
+  margin: 0 22px 18px;
+  font-size: 13px;
+  font-weight: 500;
 }
 
 .ui-kpi-foot {
@@ -1210,12 +1219,10 @@ onBeforeUnmount(() => {
 }
 
 .feed {
-  /* rows share the card's height evenly, so a feed shorter than the chart has no empty tail */
-  display: flex;
+  display: grid;
   flex: 1;
-  flex-direction: column;
-  justify-content: space-between;
   gap: 18px;
+  align-content: start;
   margin: 0;
   padding: 0 22px 18px;
   list-style: none;
