@@ -126,7 +126,7 @@ const createdAtText = computed(() => {
   display: flex;
   flex-direction: column;
   min-height: 0;
-  padding: 24px 20px;
+  padding: 32px 22px 24px;
   overflow-y: auto;
 }
 
@@ -143,13 +143,13 @@ const createdAtText = computed(() => {
   position: relative;
   display: grid;
   place-items: center;
-  width: 64px;
-  height: 64px;
-  margin-bottom: 8px;
+  width: 80px;
+  height: 80px;
+  margin-bottom: 10px;
   border-radius: 50%;
   background: linear-gradient(160deg, #5aa8ff, #1d6fe0);
   color: #fff;
-  font: 600 24px var(--ui-font-display);
+  font: 600 30px var(--ui-font-display);
 }
 
 .avatar .ch {
@@ -181,7 +181,7 @@ const createdAtText = computed(() => {
 }
 
 .block {
-  padding: 16px 0;
+  padding: 20px 0;
   box-shadow: inset 0 0.5px 0 var(--ui-sep);
 }
 
@@ -220,7 +220,7 @@ const createdAtText = computed(() => {
 
 .kv {
   display: grid;
-  gap: 10px;
+  gap: 14px;
   margin: 0;
   font-size: 13px;
 }

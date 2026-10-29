@@ -1008,13 +1008,31 @@ defineExpose({
 }
 
 @media (min-width: 1281px) {
+  /* One surface: chat and customer rail share a single card, the rail is a tinted column inside it,
+     so there is never a second card ending early */
   .detail-layout {
     grid-template-columns: minmax(0, 1fr) 296px;
+    gap: 0;
+    overflow: hidden;
+    border-radius: var(--ui-r-card);
+    background: var(--ui-surface);
+    box-shadow: var(--ui-shadow-card);
+  }
+
+  .detail-layout > .conversation-detail,
+  .detail-layout > .detail-side {
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .detail-layout > .detail-side {
+    background: var(--ui-surface-2);
+    box-shadow: inset 0.5px 0 0 var(--ui-sep);
   }
 
   .detail-side {
     display: flex;
-    align-self: start;
+    align-self: stretch;
     max-height: 100%;
   }
 }
