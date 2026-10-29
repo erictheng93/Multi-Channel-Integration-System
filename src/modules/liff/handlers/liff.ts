@@ -13,7 +13,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { createContextLogger } from '@/utils/logger';
 import { nowISO, nowMs } from '@/utils/timestamp'
 import { findCustomerConversation, getReopenStatus } from '@/services/customer-conversation-lookup';
-import { verifyLiffIdToken } from './line-id-token';
+import { verifyLiffIdTokenDetailed } from './line-id-token';
 
 const log = createContextLogger('LIFF');
 
@@ -69,26 +69,25 @@ async function welcomeLimiter(
   }
 }
 
-// Per-IP cap on the anonymous endpoints that call LINE to verify an ID token. Same RateLimiterDO pattern as
-// the welcome limiter (no alarms of its own). Fails open: the token check below still gates every request.
-const LIFF_IP_LIMIT = { maxRequests: 30, windowMs: 60_000 };
-const LIFF_IP_LIMITER_SHARD = 'ratelimit:liff-ip';
+// Abuse guard for the anonymous endpoints that ask LINE to verify an ID token.
+// Only LINE's definitive rejections are counted, never valid tokens: a crowd scanning one QR code behind a
+// shared IP (booth Wi-Fi, office, carrier NAT) is never limited. After LIFF_REJECTION_LIMIT rejections in a
+// minute an IP is blocked for LIFF_BLOCK_SECONDS; a blocked request costs one KV read and no LINE call.
+// Uses the existing RateLimiterDO request path (no alarms of its own). Fails open on limiter/KV errors.
+const LIFF_REJECTION_LIMIT = { maxRequests: 10, windowMs: 60_000 };
+const LIFF_LIMITER_SHARD = 'ratelimit:liff-ip';
+const LIFF_BLOCK_SECONDS = 60; // KV minimum TTL
+const liffBlockKey = (ip: string) => `liff-block:${ip}`;
 
-async function liffIpRateLimit(c: Context<{ Bindings: Bindings }>, next: Next) {
-  const ns = c.env.RATE_LIMITER;
+async function liffBlockedIpGuard(c: Context<{ Bindings: Bindings }>, next: Next) {
   const ip = c.req.header('CF-Connecting-IP');
-  if (ns && ip) {
+  if (ip) {
     try {
-      const res = await ns.get(ns.idFromName(LIFF_IP_LIMITER_SHARD)).fetch('https://rate-limiter.internal/', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'check', clientId: `liff-ip:${ip}`, config: LIFF_IP_LIMIT }),
-      });
-      if (res.status === HTTP_STATUS.TOO_MANY_REQUESTS) {
+      if (await c.env.CACHE?.get(liffBlockKey(ip))) {
         return c.json({ success: false, error: '請求過於頻繁，請稍後再試' }, HTTP_STATUS.TOO_MANY_REQUESTS);
       }
     } catch (error) {
-      log.warn('LIFF IP limiter unavailable; allowing request', {
+      log.warn('LIFF block check unavailable; allowing request', {
         error: error instanceof Error ? error.message : String(error)
       });
     }
@@ -96,9 +95,27 @@ async function liffIpRateLimit(c: Context<{ Bindings: Bindings }>, next: Next) {
   return next();
 }
 
+/** Count one LINE rejection for this IP; block the IP once it exceeds the limit. Never throws. */
+export async function recordLiffRejection(env: Bindings, ip: string | undefined): Promise<void> {
+  const ns = env.RATE_LIMITER;
+  if (!ns || !ip) return;
+  try {
+    const res = await ns.get(ns.idFromName(LIFF_LIMITER_SHARD)).fetch('https://rate-limiter.internal/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'check', clientId: `liff-reject:${ip}`, config: LIFF_REJECTION_LIMIT }),
+    });
+    if (res.status === HTTP_STATUS.TOO_MANY_REQUESTS) {
+      await env.CACHE?.put(liffBlockKey(ip), '1', { expirationTtl: LIFF_BLOCK_SECONDS });
+    }
+  } catch (error) {
+    log.warn('LIFF rejection limiter unavailable', { error: error instanceof Error ? error.message : String(error) });
+  }
+}
+
 const liffHandler = new Hono<{ Bindings: Bindings }>();
-liffHandler.use('/assign-team', liffIpRateLimit);
-liffHandler.use('/welcome', liffIpRateLimit);
+liffHandler.use('/assign-team', liffBlockedIpGuard);
+liffHandler.use('/welcome', liffBlockedIpGuard);
 
 // ========================================
 // LIFF Team QR Code System Endpoints
@@ -208,10 +225,14 @@ liffHandler.post('/assign-team', async (c) => {
     const teamId = parseTeamId(body.teamId);
 
     // Identity comes from the LINE-verified ID token, never from the body.
-    const lineUserId = await verifyLiffIdToken(body.idToken, c.env.LINE_LIFF_ID);
-    if (!lineUserId) {
+    const verification = await verifyLiffIdTokenDetailed(body.idToken, c.env.LINE_LIFF_ID);
+    if (verification.kind !== 'verified') {
+      if (verification.kind === 'rejected') {
+        await recordLiffRejection(c.env, c.req.header('CF-Connecting-IP'));
+      }
       return c.json({ success: false, error: 'LINE 身分驗證失敗' }, HTTP_STATUS.UNAUTHORIZED);
     }
+    const lineUserId = verification.lineUserId;
     if (!teamId) {
       return c.json({ success: false, error: '缺少必要參數: teamId' }, HTTP_STATUS.BAD_REQUEST);
     }
@@ -369,10 +390,14 @@ liffHandler.post('/welcome', async (c) => {
     const body = await c.req.json();
     const teamId = parseTeamId(body.teamId);
 
-    const lineUserId = await verifyLiffIdToken(body.idToken, c.env.LINE_LIFF_ID);
-    if (!lineUserId) {
+    const verification = await verifyLiffIdTokenDetailed(body.idToken, c.env.LINE_LIFF_ID);
+    if (verification.kind !== 'verified') {
+      if (verification.kind === 'rejected') {
+        await recordLiffRejection(c.env, c.req.header('CF-Connecting-IP'));
+      }
       return c.json({ success: false, error: 'LINE 身分驗證失敗' }, HTTP_STATUS.UNAUTHORIZED);
     }
+    const lineUserId = verification.lineUserId;
     if (!teamId) {
       return c.json({ success: false, error: '缺少必要參數: teamId' }, HTTP_STATUS.BAD_REQUEST);
     }

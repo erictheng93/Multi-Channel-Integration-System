@@ -35,11 +35,19 @@ vi.mock('@/services/websocket-broadcast-service', () => ({
 }));
 
 vi.mock('@/modules/liff/handlers/line-id-token', () => ({
-  verifyLiffIdToken: vi.fn(async (t: unknown) => (t === 'valid' ? 'U1234567890' : typeof t === 'string' && t.startsWith('tok:') ? t.slice(4) : null))
+  verifyLiffIdToken: vi.fn(async (t: unknown) => (t === 'valid' ? 'U1234567890' : typeof t === 'string' && t.startsWith('tok:') ? t.slice(4) : null)),
+  verifyLiffIdTokenDetailed: vi.fn(async (t: unknown) => {
+    const id = t === 'valid' ? 'U1234567890' : typeof t === 'string' && t.startsWith('tok:') ? t.slice(4) : null
+    return id ? { kind: 'verified', lineUserId: id } : { kind: 'rejected' }
+  })
 }));
 
 vi.mock('@/modules/liff/handlers/line-id-token', () => ({
-  verifyLiffIdToken: vi.fn(async (t: unknown) => (t === 'valid' ? 'U1234567890' : typeof t === 'string' && t.startsWith('tok:') ? t.slice(4) : null))
+  verifyLiffIdToken: vi.fn(async (t: unknown) => (t === 'valid' ? 'U1234567890' : typeof t === 'string' && t.startsWith('tok:') ? t.slice(4) : null)),
+  verifyLiffIdTokenDetailed: vi.fn(async (t: unknown) => {
+    const id = t === 'valid' ? 'U1234567890' : typeof t === 'string' && t.startsWith('tok:') ? t.slice(4) : null
+    return id ? { kind: 'verified', lineUserId: id } : { kind: 'rejected' }
+  })
 }));
 
 // Mock uuid
