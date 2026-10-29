@@ -65,8 +65,19 @@
         </span>
 
         <!-- Expand arrow -->
-        <span class="rule-card__arrow">
-          {{ isExpanded ? '\u25BC' : '\u25B6' }}
+        <span
+          class="rule-card__arrow"
+          :class="{ 'is-open': isExpanded }"
+          aria-hidden="true"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2.2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          ><path d="m9 6 6 6-6 6" /></svg>
         </span>
       </div>
     </div>
