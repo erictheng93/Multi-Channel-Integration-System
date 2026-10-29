@@ -495,6 +495,16 @@ const formattedTime = computed(() => {
     left: 70px;
   }
 
+  /* The title wraps (two lines at most) instead of cutting the customer name off */
+  .notification-title {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    white-space: normal;
+    text-overflow: clip;
+  }
 }
 
 @media (max-width: 768px), (hover: none) {
@@ -503,7 +513,12 @@ const formattedTime = computed(() => {
     width: 44px;
     height: 44px;
     background: transparent;
-    color: var(--ui-muted);
+    color: var(--ui-ink-2);
+  }
+
+  .action-btn svg {
+    width: 20px;
+    height: 20px;
   }
 }
 </style>
