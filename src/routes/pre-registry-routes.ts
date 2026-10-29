@@ -29,15 +29,16 @@ import { operationalDrillRoutes } from './operational-drill-routes';
 const log = createContextLogger('PreRegistryRoutes');
 
 export function registerPreRegistryRoutes(app: Hono<{ Bindings: Bindings }>): void {
-  // Protect sensitive WebSocket endpoints (leave /health, /readiness, /liveness, /migration-status public)
-  app.use('/api/websocket/metrics', jwtAuth);
-  app.use('/api/websocket/health-detail', jwtAuth);
+  // Protect sensitive WebSocket endpoints (/health, /readiness, /liveness are cheap and public; /metrics and /health-detail are admin only)
+  app.use('/api/websocket/metrics', jwtAuth, requireAdmin());
+  app.use('/api/websocket/health-detail', jwtAuth, requireAdmin());
+  app.use('/api/websocket/migration-status', jwtAuth);
 
   app.route('/api/websocket', websocketHealthApp);
   log.info('Public WebSocket health endpoints registered', {
     endpoints: [
       'GET /api/websocket/health',
-      'GET /api/websocket/migration-status',
+      'GET /api/websocket/migration-status (auth)',
       'GET /api/websocket/readiness',
       'GET /api/websocket/liveness'
     ]

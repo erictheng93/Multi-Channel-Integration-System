@@ -27,105 +27,25 @@ const healthApp = new Hono<{ Bindings: Bindings }>();
 // No handler-level CORS middleware needed
 
 /**
- * Complete health check response
+ * GET /api/websocket/health  (anonymous)
+ * Cheap liveness only: no Durable Object fetch and no D1/KV read per hit, so an anonymous caller
+ * cannot turn it into load or learn about internals. The deep component probe is the admin-only
+ * GET /api/websocket/health-detail.
  */
-interface HealthCheckResponse {
-  status: 'healthy' | 'degraded' | 'unhealthy';
-  timestamp: string;
-  environment: string;
-  components: {
-    durableObjects: ComponentHealth;
-    websocket: ComponentHealth;
-    kv: ComponentHealth;
-    database: ComponentHealth;
-  };
-  configuration: {
-    websocketEnabled: boolean;
-    rolloutPercentage: number;
-  };
-  metrics?: {
-    totalConnections?: number;
-    durableObjectInstances?: number;
-    uptime?: number;
-  };
-}
-
-interface ComponentHealth {
-  status: 'healthy' | 'degraded' | 'unhealthy';
-  message?: string;
-  lastCheck?: string;
-}
+healthApp.get('/health', (c) => c.json({ status: 'healthy', timestamp: nowISO() }, HTTP_STATUS.OK));
 
 /**
- * GET /api/websocket/health
- * Complete health check endpoint
- */
-healthApp.get('/health', async (c) => {
-  const startTime = nowMs();
-
-  try {
-    const components: HealthCheckResponse['components'] = {
-      durableObjects: await checkDurableObjects(c.env),
-      websocket: await checkWebSocketAvailability(c.env),
-      kv: await checkKVStorage(c.env),
-      database: await checkDatabase(c.env)
-    };
-
-    // Check migration configuration
-    const migrationConfig = await getMigrationConfig(c.env);
-
-    // Calculate overall health status
-    const componentStatuses = Object.values(components).map(c => c.status);
-    let overallStatus: 'healthy' | 'degraded' | 'unhealthy' = 'healthy';
-
-    if (componentStatuses.some(s => s === 'unhealthy')) {
-      overallStatus = 'unhealthy';
-    } else if (componentStatuses.some(s => s === 'degraded')) {
-      overallStatus = 'degraded';
-    }
-
-    const response: HealthCheckResponse = {
-      status: overallStatus,
-      timestamp: nowISO(),
-      environment: c.env.ENVIRONMENT || 'unknown',
-      components,
-      configuration: {
-        websocketEnabled: migrationConfig.enableWebSocket,
-        rolloutPercentage: migrationConfig.rolloutPercentage
-      },
-      metrics: {
-        uptime: Date.now() - startTime
-      }
-    };
-
-    const statusCode = overallStatus === 'healthy' ? 200 : overallStatus === 'degraded' ? 200 : 503;
-
-    return c.json(response, statusCode);
-  } catch (error) {
-    log.error('Health check failed', {}, error instanceof Error ? error : String(error));
-
-    return c.json({
-      status: 'unhealthy',
-      timestamp: nowISO(),
-      error: error instanceof Error ? error.message : 'Unknown error'
-    }, HTTP_STATUS.SERVICE_UNAVAILABLE);
-  }
-});
-
-/**
- * GET /api/websocket/migration-status
- * Quick migration status check
+ * GET /api/websocket/migration-status  (authenticated; jwtAuth is applied where the route is registered)
+ * Rollout configuration only. It does not probe Durable Objects.
  */
 healthApp.get('/migration-status', async (c) => {
   try {
     const config = await getMigrationConfig(c.env);
-    const durableObjectsHealth = await checkDurableObjects(c.env);
 
     return c.json({
       status: 'ok',
       websocketEnabled: config.enableWebSocket,
       rolloutPercentage: config.rolloutPercentage,
-      durableObjectsAvailable: durableObjectsHealth.status === 'healthy',
       featureFlags: config.featureFlags,
       timestamp: nowISO()
     });
@@ -135,32 +55,10 @@ healthApp.get('/migration-status', async (c) => {
 });
 
 /**
- * GET /api/websocket/readiness
- * Kubernetes-style readiness probe
+ * GET /api/websocket/readiness  (anonymous)
+ * The worker is serving requests. Dependency probes are admin-only (/health-detail).
  */
-healthApp.get('/readiness', async (c) => {
-  try {
-    const config = await getMigrationConfig(c.env);
-
-    // Check if WebSocket is enabled and Durable Objects are available
-    if (config.enableWebSocket) {
-      const doHealth = await checkDurableObjects(c.env);
-      if (doHealth.status === 'unhealthy') {
-        return c.json({ ready: false, reason: 'Durable Objects unavailable' }, HTTP_STATUS.SERVICE_UNAVAILABLE);
-      }
-    }
-
-    // Check KV availability (required for sessions)
-    const kvHealth = await checkKVStorage(c.env);
-    if (kvHealth.status === 'unhealthy') {
-      return c.json({ ready: false, reason: 'KV storage unavailable' }, HTTP_STATUS.SERVICE_UNAVAILABLE);
-    }
-
-    return c.json({ ready: true }, HTTP_STATUS.OK);
-  } catch (error) {
-    return c.json({ ready: false, error: error instanceof Error ? error.message : 'Unknown error' }, HTTP_STATUS.SERVICE_UNAVAILABLE);
-  }
-});
+healthApp.get('/readiness', (c) => c.json({ ready: true }, HTTP_STATUS.OK));
 
 /**
  * GET /api/websocket/liveness
@@ -416,168 +314,6 @@ healthApp.get('/comparison', async (c) => {
 });
 
 // =================== Helper Functions ===================
-
-/**
- * Check Durable Objects availability
- */
-async function checkDurableObjects(env: Bindings): Promise<ComponentHealth> {
-  try {
-    // Check all required Durable Objects bindings
-    const requiredBindings = [
-      'CONVERSATION_ROOM',
-      'USER_CONNECTION',
-      'MESSAGE_BROADCASTER',
-      'DELAYED_MESSAGE_SCHEDULER',
-      'DELAYED_MESSAGE_SCHEDULER'
-    ];
-
-    const missingBindings = requiredBindings.filter(binding => !(env as unknown as Record<string, unknown>)[binding]);
-
-    if (missingBindings.length > 0) {
-      return {
-        status: 'unhealthy',
-        message: `Missing Durable Objects bindings: ${missingBindings.join(', ')}`,
-        lastCheck: nowISO()
-      };
-    }
-
-    // Try to get a Durable Object instance (lightweight test)
-    if (!env.CONVERSATION_ROOM) {
-      return {
-        status: 'unhealthy',
-        message: 'CONVERSATION_ROOM binding not available',
-        lastCheck: nowISO()
-      };
-    }
-    const testRoomId = env.CONVERSATION_ROOM.idFromName('health-check-test');
-    const testRoom = env.CONVERSATION_ROOM.get(testRoomId);
-
-    // Send simple HTTP request to test connection
-    const response = await testRoom.fetch(new Request('http://internal/metrics'));
-
-    if (response.ok || response.status === 404) {
-      // 404 is acceptable (metrics endpoint might not exist in all implementations)
-      return {
-        status: 'healthy',
-        message: 'All Durable Objects bindings available',
-        lastCheck: nowISO()
-      };
-    }
-
-    return {
-      status: 'degraded',
-      message: 'Durable Objects responding but with errors',
-      lastCheck: nowISO()
-    };
-  } catch (error) {
-    return {
-      status: 'unhealthy',
-      message: error instanceof Error ? error.message : 'Unknown error',
-      lastCheck: nowISO()
-    };
-  }
-}
-
-/**
- * Check WebSocket availability
- */
-async function checkWebSocketAvailability(env: Bindings): Promise<ComponentHealth> {
-  try {
-    const config = await getMigrationConfig(env);
-
-    if (!config.enableWebSocket) {
-      return {
-        status: 'healthy',
-        message: 'WebSocket disabled by configuration',
-        lastCheck: nowISO()
-      };
-    }
-
-    // WebSocket depends on Durable Objects
-    const doHealth = await checkDurableObjects(env);
-
-    if (doHealth.status === 'healthy') {
-      return {
-        status: 'healthy',
-        message: 'WebSocket available',
-        lastCheck: nowISO()
-      };
-    }
-
-    return {
-      status: 'unhealthy',
-      message: 'WebSocket unavailable (Durable Objects issue)',
-      lastCheck: nowISO()
-    };
-  } catch (error) {
-    return {
-      status: 'unhealthy',
-      message: error instanceof Error ? error.message : 'Unknown error',
-      lastCheck: nowISO()
-    };
-  }
-}
-
-/**
- * Check KV storage availability
- */
-async function checkKVStorage(env: Bindings): Promise<ComponentHealth> {
-  try {
-    if (!env.SESSIONS) {
-      return {
-        status: 'unhealthy',
-        message: 'SESSIONS KV namespace not available',
-        lastCheck: nowISO()
-      };
-    }
-
-    // Try to read test key
-    const testKey = 'health_check_test';
-    await env.SESSIONS.get(testKey);
-
-    return {
-      status: 'healthy',
-      message: 'KV storage operational',
-      lastCheck: nowISO()
-    };
-  } catch (error) {
-    return {
-      status: 'unhealthy',
-      message: error instanceof Error ? error.message : 'Unknown error',
-      lastCheck: nowISO()
-    };
-  }
-}
-
-/**
- * Check database availability
- */
-async function checkDatabase(env: Bindings): Promise<ComponentHealth> {
-  try {
-    if (!env.DB) {
-      return {
-        status: 'unhealthy',
-        message: 'Database binding not available',
-        lastCheck: nowISO()
-      };
-    }
-
-    // Execute simple query test
-    await env.DB.prepare('SELECT 1').first();
-
-    return {
-      status: 'healthy',
-      message: 'Database operational',
-      lastCheck: nowISO()
-    };
-  } catch (error) {
-    return {
-      status: 'unhealthy',
-      message: error instanceof Error ? error.message : 'Unknown error',
-      lastCheck: nowISO()
-    };
-  }
-}
 
 /**
  * Get migration configuration
