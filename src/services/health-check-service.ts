@@ -11,6 +11,8 @@ import { nowISO, nowMs } from '@/utils/timestamp'
 export class HealthCheckService {
   private checkers: Map<string, HealthChecker> = new Map();
   private results: Map<string, HealthCheckResult> = new Map();
+  private static readonly FRESH_MS = 30_000;
+  private lastRunAt = 0;
   private intervals: Map<string, ReturnType<typeof setInterval>> = new Map();
 
   constructor() {
@@ -63,6 +65,7 @@ export class HealthCheckService {
    * 執行所有檢查
    */
   async runAllChecks(): Promise<SystemHealth> {
+    this.lastRunAt = nowMs();
     const checkPromises = Array.from(this.checkers.keys()).map(name =>
       this.runCheck(name)
     );
@@ -76,9 +79,10 @@ export class HealthCheckService {
    * 獲取系統健康狀態
    */
   async getSystemHealth(): Promise<SystemHealth> {
-    // 如果有快取結果且還新鮮，直接返回
+    // Serve cached results only while fresh; otherwise measure again (no timers run in a Worker
+    // between requests, so stale results would never refresh on their own).
     const cachedResults = this.getCachedResults();
-    if (cachedResults.length > 0) {
+    if (cachedResults.length > 0 && nowMs() - this.lastRunAt < HealthCheckService.FRESH_MS) {
       return this.buildSystemHealthFromCache();
     }
 
@@ -255,25 +259,32 @@ export class HealthCheckService {
   private buildInfrastructureHealth() {
     return {
       database: this.getResultByChecker('database') || this.getUnknownResult('Database not checked'),
-      cache: this.getResultByChecker('cache') || this.getUnknownResult('Cache not checked')
+      cache: this.getResultByChecker('cache') || this.getUnknownResult('Cache not checked'),
+      ...(this.checkers.has('r2') ? { r2: this.getResultByChecker('r2') || this.getUnknownResult('R2 not checked') } : {}),
+      ...(this.checkers.has('durable_object')
+        ? { durableObject: this.getResultByChecker('durable_object') || this.getUnknownResult('Durable Object not checked') }
+        : {}),
+      ...(this.checkers.has('queue') ? { queue: this.getResultByChecker('queue') || this.getUnknownResult('Queue not checked') } : {})
     };
   }
 
   /**
    * 建構效能指標
    */
-  private buildPerformanceMetrics() {
+  private buildPerformanceMetrics(): SystemHealth['performance'] {
     const results = Array.from(this.results.values());
     const responseTimes = results
       .filter(r => r.responseTime !== undefined)
       .map(r => r.responseTime!);
 
-    return {
-      apiResponseTime: responseTimes.length > 0 ?
-        Math.round(responseTimes.reduce((a, b) => a + b, 0) / responseTimes.length) : 0,
-      databaseQueryTime: 0, // 需要從資料庫檢查器獲取
-      cacheHitRate: 0 // 需要從快取檢查器獲取
-    };
+    // Report only what was measured; unknown metrics are omitted rather than faked as 0.
+    const performance: SystemHealth['performance'] = {};
+    if (responseTimes.length > 0) {
+      performance.apiResponseTime = Math.round(responseTimes.reduce((a, b) => a + b, 0) / responseTimes.length);
+    }
+    const dbTime = this.results.get('database')?.responseTime;
+    if (dbTime !== undefined) performance.databaseQueryTime = dbTime;
+    return performance;
   }
 
   /**

@@ -53,7 +53,10 @@ export class LineMessageQueueConsumer {
         const payload = message.body;
 
         // Route by type: line_webhook_event / media_processing / outbound_message (default)
-        if (payload.type === 'line_webhook_event') {
+        if (payload.type === 'health_probe') {
+          // Enqueue-timing probe from /api/health/system: nothing to process
+          message.ack();
+        } else if (payload.type === 'line_webhook_event') {
           await this.processWebhookEvent(payload);
           message.ack();
           log.info('LINE webhook event processed', { eventType: payload.event.type });
