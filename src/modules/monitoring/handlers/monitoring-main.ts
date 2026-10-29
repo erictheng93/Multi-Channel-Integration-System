@@ -5,7 +5,7 @@
 import { Hono } from 'hono';
 import { HTTP_STATUS } from '@/constants/http-status';
 import type { Bindings } from '@/types';
-import { jwtAuth } from '@/middleware/auth';
+import { jwtAuth, requireAdmin } from '@/middleware/auth';
 import { createDOMonitor } from '@/services/durable-objects-monitor';
 import { getCircuitBreaker } from '@/services/websocket-circuit-breaker';
 import { createLogger } from '@/services/logger-service';
@@ -112,9 +112,9 @@ monitoringHandler.get('/metrics', jwtAuth, async (c) => {
 /**
  * 獲取活躍告警
  * GET /api/monitoring/alerts
- * Requires: admin or agent auth
+ * Requires: admin auth
  */
-monitoringHandler.get('/alerts', jwtAuth, async (c) => {
+monitoringHandler.get('/alerts', jwtAuth, requireAdmin(), async (c) => {
   try {
     const user = c.get('user');
 
@@ -145,8 +145,7 @@ monitoringHandler.get('/alerts', jwtAuth, async (c) => {
     logger.error('Failed to retrieve alerts', error);
 
     return c.json({
-      error: 'Failed to retrieve alerts',
-      reason: error instanceof Error ? error.message : 'Unknown error'
+      error: 'Failed to retrieve alerts'
     }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
@@ -199,9 +198,9 @@ monitoringHandler.get('/alerts/history', jwtAuth, async (c) => {
 /**
  * 獲取 Circuit Breaker 狀態
  * GET /api/monitoring/circuit-breaker/status
- * Requires: admin or agent auth
+ * Requires: admin auth
  */
-monitoringHandler.get('/circuit-breaker/status', jwtAuth, async (c) => {
+monitoringHandler.get('/circuit-breaker/status', jwtAuth, requireAdmin(), async (c) => {
   try {
     const circuitBreaker = getCircuitBreaker();
     circuitBreaker.setEnv(c.env);
@@ -218,8 +217,7 @@ monitoringHandler.get('/circuit-breaker/status', jwtAuth, async (c) => {
     logger.error('Failed to get circuit breaker status', error);
 
     return c.json({
-      error: 'Failed to get circuit breaker status',
-      reason: error instanceof Error ? error.message : 'Unknown error'
+      error: 'Failed to get circuit breaker status'
     }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });

@@ -37,7 +37,7 @@ systemHandler.get('/health', async (c) => {
     return c.json({
       status: 'unhealthy',
       timestamp: nowISO(),
-      error: error instanceof Error ? error.message : 'Unknown error',
+      error: 'Health check failed',
       version: '1.0.0'
     }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }

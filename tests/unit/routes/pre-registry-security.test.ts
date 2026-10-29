@@ -78,3 +78,18 @@ describe('websocket probes', () => {
     expect((await request(path)).status).toBe(403);
   });
 });
+
+describe('monitoring probes', () => {
+  beforeEach(() => { auth.user = { id: 'a1', role: 'agent' }; });
+
+  it.each(['/api/monitoring/alerts', '/api/monitoring/circuit-breaker/status'])('%s is admin only', async (path) => {
+    const res = await request(path);
+    expect(res.status).toBe(403);
+  });
+
+  it('admins still get the alert list', async () => {
+    auth.user = { id: 'adm', role: 'admin' };
+    const res = await request('/api/monitoring/circuit-breaker/status');
+    expect(res.status).not.toBe(403);
+  });
+});
