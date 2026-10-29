@@ -15,6 +15,7 @@ import { jwtAuth, requireManagerOrAdmin, requireTeamAccess, requireTeamRole } fr
 import { requireIntId, getValidatedParam } from '@/middleware/param-validator';
 import { ActivityService, ACTIVITY_ACTIONS, RESOURCE_TYPES } from '@/modules/activities';
 import { triggerAgentRemovedFromTeamNotification, triggerTeamMemberChangeEvent } from '@/utils/notification-trigger';
+import { blockSystemAgentTarget } from '@/middleware/block-system-agent';
 import { teams, conversations, agents } from '@/db/schema';
 import { HTTP_STATUS } from '@/constants/http-status';
 import { globalErrorHandler } from '@/core/error-handler';
@@ -23,6 +24,7 @@ import { teamMembershipContracts, type ContractResponse } from '@shared/api-cont
 import { contractJson } from '@/utils/api-contract-response';
 
 const agentTeamsHandler = new Hono<{ Bindings: Bindings }>();
+agentTeamsHandler.use('*', blockSystemAgentTarget());
 
 // ============================================================
 // IMPORTANT: Route Registration Order

@@ -15,6 +15,7 @@ import {
 } from '@/middleware/auth';
 import { ActivityService, ACTIVITY_ACTIONS, RESOURCE_TYPES } from '@/modules/activities';
 import { createDbClient } from '@/db/drizzle-factory';
+import { blockSystemAgentTarget } from '@/middleware/block-system-agent';
 import { agents } from '@/db/schema';
 import { desc, sql, isNull } from 'drizzle-orm';
 import { HTTP_STATUS } from '@/constants/http-status';
@@ -38,6 +39,9 @@ import type { TeamRoleInTeam } from '@/types';
 import { nowISO, nowMs } from '@/utils/timestamp'
 
 const membersHandler = new Hono<{ Bindings: Bindings }>();
+
+// The system actor is not a member: no activate / edit / role / delete / bulk action may target it
+membersHandler.use('*', blockSystemAgentTarget());
 
 function normalizeTeamRoleInTeam(role: string | null | undefined): TeamRoleInTeam {
   switch (role) {
