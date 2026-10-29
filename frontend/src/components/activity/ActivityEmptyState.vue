@@ -51,26 +51,26 @@ const displayMessage = computed(() => {
 
 <style scoped>
 .empty-state {
-  background: #FFFFFF;
-  border-radius: 28px;
-  box-shadow: 0 4px 16px rgb(0 0 0 / 0.06);
-  padding: 48px 20px;
-  text-align: center;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
+  padding: 48px 24px;
+  border-radius: var(--ui-r-card);
+  background: var(--ui-surface);
+  box-shadow: var(--ui-shadow-card);
+  text-align: center;
 }
 
 .empty-state--error {
-  background: #FFF2F2;
+  background: var(--ui-red-soft);
 }
 
 .empty-state__spinner {
-  width: 32px;
-  height: 32px;
-  border: 3px solid #E5E5EA;
-  border-top-color: #007AFF;
+  width: 30px;
+  height: 30px;
+  border: 3px solid var(--ui-fill-strong);
+  border-top-color: var(--ui-accent);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }
@@ -80,27 +80,27 @@ const displayMessage = computed(() => {
 }
 
 .empty-state__icon {
-  color: #AEAEB2;
+  color: var(--ui-faint);
 }
 
 .empty-state__title {
-  font-size: 18px;
-  font-weight: 600;
-  color: #1C1C1E;
   margin: 0;
+  font: 600 16px var(--ui-font-display);
+  color: var(--ui-ink);
 }
 
 .empty-state__text {
-  font-size: 14px;
-  color: #8E8E93;
+  max-width: 40ch;
   margin: 0;
+  font-size: 13.5px;
+  color: var(--ui-muted);
 }
 
 .empty-state__text--muted {
-  color: #8E8E93;
+  color: var(--ui-muted);
 }
 
 .empty-state__text--error {
-  color: #FF3B30;
+  color: var(--ui-red-ink);
 }
 </style>

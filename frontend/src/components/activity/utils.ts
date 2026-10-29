@@ -81,100 +81,100 @@ export function groupActivitiesByDate(activities: ActivityLog[]): ActivityDateGr
 
 const ACTION_ICON_MAP: Record<string, ActionIconStyle> = {
   'user_login': {
-    bgClass: 'bg-blue-50',
-    colorClass: 'text-[#007AFF]',
+    bgClass: 'bg-[var(--ui-accent-soft)]',
+    colorClass: 'text-[var(--ui-accent)]',
     icon: LoginIcon,
   },
   'user_logout': {
-    bgClass: 'bg-blue-50',
-    colorClass: 'text-[#007AFF]',
+    bgClass: 'bg-[var(--ui-accent-soft)]',
+    colorClass: 'text-[var(--ui-accent)]',
     icon: LogoutIcon,
   },
   'message_send': {
-    bgClass: 'bg-green-50',
-    colorClass: 'text-[#34C759]',
+    bgClass: 'bg-[var(--ui-green-soft)]',
+    colorClass: 'text-[var(--ui-green-ink)]',
     icon: ChatIcon,
   },
   'message_recall': {
-    bgClass: 'bg-green-50',
-    colorClass: 'text-[#34C759]',
+    bgClass: 'bg-[var(--ui-green-soft)]',
+    colorClass: 'text-[var(--ui-green-ink)]',
     icon: ChatIcon,
   },
   'conversation_assign': {
-    bgClass: 'bg-orange-50',
-    colorClass: 'text-[#FF9500]',
+    bgClass: 'bg-[var(--ui-orange-soft)]',
+    colorClass: 'text-[var(--ui-orange-ink)]',
     icon: UsersIcon,
   },
   'conversation_transfer': {
-    bgClass: 'bg-orange-50',
-    colorClass: 'text-[#FF9500]',
+    bgClass: 'bg-[var(--ui-orange-soft)]',
+    colorClass: 'text-[var(--ui-orange-ink)]',
     icon: ForwardIcon,
   },
   'conversation_close': {
-    bgClass: 'bg-red-50',
-    colorClass: 'text-[#FF3B30]',
+    bgClass: 'bg-[var(--ui-red-soft)]',
+    colorClass: 'text-[var(--ui-red-ink)]',
     icon: XIcon,
   },
   'conversation_reopen': {
-    bgClass: 'bg-red-50',
-    colorClass: 'text-[#FF3B30]',
+    bgClass: 'bg-[var(--ui-red-soft)]',
+    colorClass: 'text-[var(--ui-red-ink)]',
     icon: RefreshIcon,
   },
   'settings_update': {
-    bgClass: 'bg-[#F2E8FB]',
-    colorClass: 'text-[#AF52DE]',
+    bgClass: 'bg-[var(--ui-indigo-soft)]',
+    colorClass: 'text-[var(--ui-indigo)]',
     icon: CogIcon,
   },
   'team_invite': {
-    bgClass: 'bg-[#E6F7FA]',
-    colorClass: 'text-[#30B0C7]',
+    bgClass: 'bg-[var(--ui-teal-soft)]',
+    colorClass: 'text-[var(--ui-teal)]',
     icon: UserPlusIcon,
   },
   'team_create': {
-    bgClass: 'bg-[#E6F7FA]',
-    colorClass: 'text-[#30B0C7]',
+    bgClass: 'bg-[var(--ui-teal-soft)]',
+    colorClass: 'text-[var(--ui-teal)]',
     icon: UserPlusIcon,
   },
   'team_update': {
-    bgClass: 'bg-[#E6F7FA]',
-    colorClass: 'text-[#30B0C7]',
+    bgClass: 'bg-[var(--ui-teal-soft)]',
+    colorClass: 'text-[var(--ui-teal)]',
     icon: UserPlusIcon,
   },
   'team_delete': {
-    bgClass: 'bg-[#E6F7FA]',
-    colorClass: 'text-[#30B0C7]',
+    bgClass: 'bg-[var(--ui-teal-soft)]',
+    colorClass: 'text-[var(--ui-teal)]',
     icon: UserPlusIcon,
   },
   'user_create': {
-    bgClass: 'bg-red-50',
-    colorClass: 'text-[#FF3B30]',
+    bgClass: 'bg-[var(--ui-red-soft)]',
+    colorClass: 'text-[var(--ui-red-ink)]',
     icon: UserIcon,
   },
   'user_update': {
-    bgClass: 'bg-red-50',
-    colorClass: 'text-[#FF3B30]',
+    bgClass: 'bg-[var(--ui-red-soft)]',
+    colorClass: 'text-[var(--ui-red-ink)]',
     icon: UserIcon,
   },
   'user_delete': {
-    bgClass: 'bg-red-50',
-    colorClass: 'text-[#FF3B30]',
+    bgClass: 'bg-[var(--ui-red-soft)]',
+    colorClass: 'text-[var(--ui-red-ink)]',
     icon: UserIcon,
   },
   'broadcast_create': {
-    bgClass: 'bg-green-50',
-    colorClass: 'text-[#34C759]',
+    bgClass: 'bg-[var(--ui-green-soft)]',
+    colorClass: 'text-[var(--ui-green-ink)]',
     icon: ChatIcon,
   },
   'broadcast_send': {
-    bgClass: 'bg-green-50',
-    colorClass: 'text-[#34C759]',
+    bgClass: 'bg-[var(--ui-green-soft)]',
+    colorClass: 'text-[var(--ui-green-ink)]',
     icon: ChatIcon,
   },
 }
 
 const DEFAULT_ICON_STYLE: ActionIconStyle = {
-  bgClass: 'bg-gray-50',
-  colorClass: 'text-gray-400',
+  bgClass: 'bg-[var(--ui-fill)]',
+  colorClass: 'text-[var(--ui-faint)]',
   icon: FileIcon,
 }
 
@@ -186,8 +186,8 @@ export function getActionIconStyle(action: string): ActionIconStyle {
   // Match team_* prefix not already in the map
   if (action.startsWith('team_')) {
     return {
-      bgClass: 'bg-[#E6F7FA]',
-      colorClass: 'text-[#30B0C7]',
+      bgClass: 'bg-[var(--ui-teal-soft)]',
+      colorClass: 'text-[var(--ui-teal)]',
       icon: UserPlusIcon,
     }
   }
@@ -521,9 +521,10 @@ export function getActivityDescription(activity: ActivityLog): string {
 
 // ─── getRoleLabel ─────────────────────────────────────────────────────────────
 
+// Only two system roles exist (管理員 / 客服); a legacy 'team' value reads as 客服
 const ROLE_LABEL_MAP: Record<string, string> = {
   admin: '\u7ba1\u7406\u54e1',
-  team: '\u5718\u968a\u7ba1\u7406\u54e1',
+  team: '\u5ba2\u670d',
   agent: '\u5ba2\u670d',
 }
 
@@ -531,17 +532,51 @@ export function getRoleLabel(role: string): string {
   return ROLE_LABEL_MAP[role] ?? role
 }
 
-// ─── getRoleBadgeClasses ──────────────────────────────────────────────────────
+// ─── getActionLabel ───────────────────────────────────────────────────────────
 
-export function getRoleBadgeClasses(role: string): string {
-  switch (role) {
-    case 'admin':
-      return 'bg-blue-50 text-[#007AFF]'
-    case 'team':
-      return 'bg-orange-50 text-[#FF9500]'
-    case 'agent':
-      return 'bg-green-50 text-[#34C759]'
-    default:
-      return 'bg-gray-100 text-gray-500'
-  }
+/* eslint-disable camelcase */
+const ACTION_LABEL_MAP: Record<string, string> = {
+  conversation_assign: '對話指派',
+  conversation_transfer: '對話轉移',
+  conversation_close: '對話關閉',
+  conversation_reopen: '重新開啟對話',
+  conversation_unassign: '取消對話指派',
+  conversation_bulk_assign: '批量對話指派',
+  message_send: '訊息發送',
+  message_recall: '撤回訊息',
+  message_forward: '轉發訊息',
+  message_received: '收到訊息',
+  user_login: '用戶登入',
+  user_logout: '用戶登出',
+  user_create: '建立用戶',
+  user_update: '更新用戶',
+  user_delete: '刪除用戶',
+  team_create: '建立團隊',
+  team_update: '更新團隊',
+  team_delete: '刪除團隊',
+  member_add: '新增成員',
+  member_remove: '移除成員',
+  team_invite: '團隊邀請',
+  team_member_update: '成員更新',
+  team_member_remove: '成員移除',
+  tag_create: '建立標籤',
+  tag_update: '更新標籤',
+  tag_delete: '刪除標籤',
+  tag_assign: '指派標籤',
+  tag_unassign: '移除標籤',
+  customer_create: '建立客戶',
+  customer_update: '更新客戶',
+  customer_followed: '客戶追蹤',
+  customer_unfollowed: '客戶取消追蹤',
+  broadcast_create: '建立群發',
+  broadcast_send: '發送群發',
+  settings_update: '設定更新',
+  delayed_message_schedule: '排程延遲訊息',
+  delayed_message_cancel: '取消延遲訊息',
+}
+/* eslint-enable camelcase */
+
+/** Readable name for an action key; unknown keys are shown as-is. */
+export function getActionLabel(action: string): string {
+  return ACTION_LABEL_MAP[action] ?? action
 }

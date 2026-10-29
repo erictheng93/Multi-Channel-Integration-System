@@ -1,151 +1,257 @@
 <template>
   <AppLayout>
-    <div class="channel-management">
+    <div class="channel-management ui-rise">
       <!-- Page Header -->
-      <div class="page-header">
-        <div class="header-content">
-          <h1 class="page-title">
-            頻道管理
+      <header class="ui-page-head">
+        <div>
+          <div class="ui-eyebrow">
+            團隊與頻道
+          </div>
+          <h1 class="ui-page-title">
+            頻道
           </h1>
-          <p class="page-description">
-            管理所有通訊平台的頻道配置
+          <p
+            v-if="!isLoading && channels.length > 0"
+            class="ui-page-sub"
+          >
+            {{ channelSummary }}
           </p>
         </div>
-        <button
-          class="btn btn-primary"
-          @click="openAddChannelDialog"
-        >
-          <span class="btn-icon">+</span>
-          新增頻道
-        </button>
-      </div>
-
-      <!-- Platform Filter -->
-      <div class="filter-section">
-        <div class="filter-buttons">
+        <div class="ui-page-actions">
           <button
-            class="filter-btn"
-            :class="{ active: selectedPlatform === null }"
-            @click="filterByPlatform(null)"
+            type="button"
+            class="btn btn-secondary btn-sm"
+            :disabled="isLoading"
+            @click="refreshChannels"
           >
-            全部
-            <span class="count-badge">{{ channels.length }}</span>
+            <svg
+              class="head-ico"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            ><path d="M21 12a9 9 0 0 1-15.5 6.2L3 16M3 12a9 9 0 0 1 15.5-6.2L21 8M21 3v5h-5M3 21v-5h5" /></svg>重新整理
           </button>
           <button
-            class="filter-btn"
-            :class="{ active: selectedPlatform === 'line' }"
-            @click="filterByPlatform('line')"
+            type="button"
+            class="btn btn-primary"
+            @click="openAddChannelDialog"
           >
-            LINE
-            <span class="count-badge">{{ getChannelCount('line') }}</span>
-          </button>
-          <button
-            class="filter-btn"
-            :class="{ active: selectedPlatform === 'facebook' }"
-            @click="filterByPlatform('facebook')"
-          >
-            Facebook
-            <span class="count-badge">{{ getChannelCount('facebook') }}</span>
-          </button>
-          <button
-            class="filter-btn"
-            :class="{ active: selectedPlatform === 'whatsapp' }"
-            @click="filterByPlatform('whatsapp')"
-          >
-            WhatsApp
-            <span class="count-badge">{{ getChannelCount('whatsapp') }}</span>
+            <svg
+              class="head-ico"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            ><path d="M12 5v14M5 12h14" /></svg>新增頻道
           </button>
         </div>
+      </header>
 
-        <button
-          class="btn btn-secondary btn-sm"
-          @click="refreshChannels"
+      <!-- Platform Filter -->
+      <div class="toolbar">
+        <div
+          class="ui-seg"
+          role="group"
+          aria-label="依平台篩選"
         >
-          <span />
-          重新整理
-        </button>
+          <button
+            type="button"
+            :aria-pressed="selectedPlatform === null"
+            @click="filterByPlatform(null)"
+          >
+            全部 <span class="ui-seg-n">{{ channels.length }}</span>
+          </button>
+          <button
+            v-for="p in PLATFORM_FILTERS"
+            :key="p.id"
+            type="button"
+            :aria-pressed="selectedPlatform === p.id"
+            @click="filterByPlatform(p.id)"
+          >
+            {{ p.label }} <span class="ui-seg-n">{{ getChannelCount(p.id) }}</span>
+          </button>
+        </div>
       </div>
 
       <!-- Loading State -->
       <div
         v-if="isLoading"
-        class="loading-state"
+        class="ui-card ui-empty"
+        role="status"
       >
-        <div class="spinner" />
         <p>載入頻道資料中...</p>
+      </div>
+
+      <!-- Error State -->
+      <div
+        v-else-if="loadFailed"
+        class="ui-card ui-empty"
+        role="alert"
+      >
+        <h3>無法載入頻道</h3>
+        <p>請檢查網路連線後再試一次。</p>
+        <button
+          type="button"
+          class="btn btn-secondary btn-sm"
+          @click="refreshChannels"
+        >
+          重新載入
+        </button>
       </div>
 
       <!-- Empty State -->
       <div
         v-else-if="filteredChannels.length === 0"
-        class="empty-state"
+        class="ui-card ui-empty"
       >
-        <div class="empty-icon" />
-        <h3>尚未設定任何頻道</h3>
-        <p>點擊「新增頻道」按鈕開始設定您的第一個通訊平台</p>
-        <button
-          class="btn btn-primary"
-          @click="openAddChannelDialog"
-        >
-          新增頻道
-        </button>
+        <div class="ui-empty-art">
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.8"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          ><path d="M4.9 19.1a10 10 0 0 1 0-14.2M19.1 4.9a10 10 0 0 1 0 14.2M8 16a5.5 5.5 0 0 1 0-8M16 8a5.5 5.5 0 0 1 0 8" /><circle
+            cx="12"
+            cy="12"
+            r="1.5"
+          /></svg>
+        </div>
+        <template v-if="selectedPlatform">
+          <h3>尚未設定 {{ selectedPlatformLabel }} 頻道</h3>
+          <p>此平台還沒有頻道，新增後客戶訊息才會進到系統。</p>
+          <button
+            type="button"
+            class="btn btn-secondary"
+            @click="openAddChannelDialog"
+          >
+            新增頻道
+          </button>
+        </template>
+        <template v-else>
+          <h3>尚未設定任何頻道</h3>
+          <p>點擊右上角「新增頻道」開始設定您的第一個通訊平台。</p>
+        </template>
       </div>
 
       <!-- Channel List -->
       <div
         v-else
-        class="channel-grid"
+        class="chgrid"
       >
-        <div
+        <article
           v-for="channel in filteredChannels"
           :key="channel.id"
-          class="channel-card"
-          :class="{ inactive: !channel.isActive }"
+          class="ui-card chcard"
+          :class="{ off: !channel.isActive }"
         >
           <!-- Card Header -->
-          <div class="card-header">
+          <div class="chhead">
             <div
-              class="platform-badge"
-              :class="`platform-${channel.platform}`"
+              class="tile"
+              :class="`tile-${channel.platform}`"
             >
-              <span class="platform-icon">{{ getPlatformIcon(channel.platform) }}</span>
-              <span class="platform-name">{{ getPlatformName(channel.platform) }}</span>
+              <svg
+                v-if="channel.platform === 'line'"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              ><path d="M12 3C6.5 3 2 6.6 2 11c0 2.5 1.4 4.7 3.7 6.2L5 21l4.1-2.3c.9.2 1.9.3 2.9.3 5.5 0 10-3.6 10-8s-4.5-8-10-8Z" /></svg>
+              <svg
+                v-else-if="channel.platform === 'facebook'"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              ><path d="M12 2C6.4 2 2 6.1 2 11.7c0 2.9 1.2 5.4 3.2 7.2V22l3-1.6c1.2.3 2.4.5 3.8.5 5.6 0 10-4.1 10-9.7S17.6 2 12 2Zm1 12.4-2.6-2.7-5 2.7 5.5-5.8 2.6 2.7 4.9-2.7Z" /></svg>
+              <svg
+                v-else
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              ><path d="M12 3C6.5 3 2 6.6 2 11c0 2.5 1.4 4.7 3.7 6.2L5 21l4.1-2.3c.9.2 1.9.3 2.9.3 5.5 0 10-3.6 10-8s-4.5-8-10-8Z" /></svg>
             </div>
-
-            <div class="card-actions">
+            <div class="chname">
+              <b>{{ channelTitle(channel) }}</b>
+              <span>{{ PLATFORM_KIND[channel.platform] }}</span>
+            </div>
+            <div class="chtools">
               <button
-                class="action-btn"
-                :title="channel.isActive ? '停用' : '啟用'"
-                @click="toggleChannelStatus(channel)"
-              >
-                {{ channel.isActive ? '●' : '○' }}
-              </button>
+                type="button"
+                class="ui-switch"
+                role="switch"
+                :aria-checked="channel.isActive"
+                :aria-label="channel.isActive ? '停用頻道' : '啟用頻道'"
+                @click.stop="toggleChannelStatus(channel)"
+              />
               <button
-                class="action-btn"
-                title="更多選項"
-                @click="toggleDropdown(channel.id)"
+                type="button"
+                class="more-btn"
+                aria-label="更多選項"
+                aria-haspopup="menu"
+                :aria-expanded="activeDropdown === channel.id"
+                @click.stop="toggleDropdown(channel.id)"
               >
-                ⋮
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2.4"
+                  stroke-linecap="round"
+                  aria-hidden="true"
+                ><circle
+                  cx="12"
+                  cy="5"
+                  r="1"
+                /><circle
+                  cx="12"
+                  cy="12"
+                  r="1"
+                /><circle
+                  cx="12"
+                  cy="19"
+                  r="1"
+                /></svg>
               </button>
 
               <!-- Dropdown Menu -->
               <div
                 v-if="activeDropdown === channel.id"
-                class="dropdown-menu"
+                class="menu"
+                role="menu"
+                @click.stop
               >
-                <button @click="viewChannelDetails(channel)">
+                <button
+                  role="menuitem"
+                  @click="viewChannelDetails(channel)"
+                >
                   查看詳情
                 </button>
-                <button @click="verifyChannel(channel)">
+                <button
+                  role="menuitem"
+                  @click="verifyChannel(channel)"
+                >
                   驗證配置
                 </button>
-                <button @click="viewStats(channel)">
+                <button
+                  role="menuitem"
+                  @click="viewStats(channel)"
+                >
                   查看統計
                 </button>
-                <button @click="editChannel(channel)">
+                <button
+                  role="menuitem"
+                  @click="editChannel(channel)"
+                >
                   編輯配置
                 </button>
                 <button
+                  role="menuitem"
                   class="danger"
                   @click="deleteChannel(channel)"
                 >
@@ -156,83 +262,115 @@
           </div>
 
           <!-- Card Body -->
-          <div class="card-body">
-            <div class="channel-info">
-              <div class="info-item">
-                <span class="label">Channel ID：</span>
-                <span class="value">{{ getChannelId(channel) }}</span>
-              </div>
-              <div
-                v-if="channel.configMetadata?.description"
-                class="info-item"
-              >
-                <span class="label">說明：</span>
-                <span class="value">{{ channel.configMetadata.description }}</span>
-              </div>
+          <div class="meta">
+            <div class="meta-row">
+              <span class="k">{{ idLabel(channel.platform) }}</span>
+              <span class="v mono">{{ getChannelId(channel) }}</span>
             </div>
-
-            <!-- Status Badges -->
-            <div class="status-badges">
-              <div
-                class="status-badge"
-                :class="channel.isActive ? 'success' : 'inactive'"
-              >
-                {{ channel.isActive ? '啟用中' : '已停用' }}
-              </div>
-              <div
-                class="status-badge"
-                :class="channel.isVerified ? 'success' : 'warning'"
-              >
-                {{ channel.isVerified ? '已驗證' : '未驗證' }}
-              </div>
-            </div>
-
-            <!-- Statistics -->
-            <div class="stats">
-              <div class="stat-item">
-                <div class="stat-label">
-                  發送訊息
-                </div>
-                <div class="stat-value">
-                  {{ getStats(channel).totalSent }}
-                </div>
-              </div>
-              <div class="stat-divider" />
-              <div class="stat-item">
-                <div class="stat-label">
-                  接收訊息
-                </div>
-                <div class="stat-value">
-                  {{ getStats(channel).totalReceived }}
-                </div>
-              </div>
-            </div>
-
-            <!-- Last Activity -->
             <div
-              v-if="getStats(channel).lastMessageAt"
-              class="last-activity"
+              v-if="channelDescription(channel)"
+              class="meta-row"
             >
-              最後活動：{{ formatDate(getStats(channel).lastMessageAt!) }}
+              <span class="k">說明</span>
+              <span class="v">{{ channelDescription(channel) }}</span>
             </div>
           </div>
 
+          <div class="pills">
+            <span
+              class="ui-pill"
+              :class="channel.isActive ? 'ui-pill-green ui-pill-dot' : ''"
+            >{{ channel.isActive ? '啟用中' : '已停用' }}</span>
+            <span
+              class="ui-pill"
+              :class="channel.isVerified ? 'ui-pill-green' : 'ui-pill-orange'"
+            >{{ channel.isVerified ? '已驗證' : '未驗證' }}</span>
+            <span
+              v-if="channel.webhookHealth && hasWebhookProblem(channel)"
+              class="ui-pill ui-pill-orange ui-pill-dot"
+            >Webhook 需注意</span>
+          </div>
+
+          <div
+            v-if="webhookNotice(channel)"
+            class="notice"
+            :class="{ quiet: webhookNotice(channel)?.tone === 'quiet' }"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            ><circle
+              cx="12"
+              cy="12"
+              r="9"
+            /><path d="M12 8v5M12 16.5h.01" /></svg>
+            <span>{{ webhookNotice(channel)?.text }}</span>
+          </div>
+
+          <!-- Activity (per platform, not per channel) -->
+          <template v-if="channel.activity">
+            <div class="scope">
+              此平台訊息量 · 近 24 小時
+            </div>
+            <div class="stats">
+              <div class="stat-i">
+                <div class="l">
+                  客戶來訊
+                </div>
+                <div class="n">
+                  {{ formatCount(channel.activity.customerMessages24h) }}
+                </div>
+                <div class="s">
+                  累計 {{ formatCount(channel.activity.customerMessagesTotal) }}
+                </div>
+              </div>
+              <div class="stat-i">
+                <div class="l">
+                  客服發送
+                </div>
+                <div class="n">
+                  {{ formatCount(channel.activity.agentMessages24h) }}
+                </div>
+                <div class="s">
+                  累計 {{ formatCount(channel.activity.agentMessagesTotal) }}
+                </div>
+              </div>
+            </div>
+            <div class="last">
+              此平台最後活動 {{ channel.activity.lastActivityAt ? formatLastLogin(channel.activity.lastActivityAt) : '尚無活動' }}
+            </div>
+          </template>
+          <div
+            v-else
+            class="last"
+          >
+            暫時無法取得訊息量
+          </div>
+
           <!-- Card Footer -->
-          <div class="card-footer">
+          <div class="chfoot">
             <button
-              class="btn btn-sm btn-secondary"
+              type="button"
+              class="btn btn-secondary btn-sm"
               @click="copyWebhookUrl(channel)"
             >
               複製 Webhook URL
             </button>
             <button
-              class="btn btn-sm btn-primary"
+              type="button"
+              class="btn btn-sm"
+              :class="hasWebhookProblem(channel) ? 'btn-primary' : 'btn-secondary'"
               @click="verifyChannel(channel)"
             >
-              驗證
+              {{ hasWebhookProblem(channel) ? '重新驗證' : '驗證配置' }}
             </button>
           </div>
-        </div>
+        </article>
       </div>
 
       <!-- Channel Config Dialog -->
@@ -256,10 +394,13 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
 import AppLayout from '@/components/ui/AppLayout.vue'
 import ChannelConfigDialog from '@/components/channels/ChannelConfigDialog.vue'
 import ChannelDetailsModal from '@/components/channels/ChannelDetailsModal.vue'
+import { formatLastLogin } from '@/utils/team-tone'
 import { useChannelManagement } from '@/composables/useChannelManagement'
+import type { ChannelIntegration, ChannelPlatform } from '@/api/channels'
 
 const {
   activeDropdown,
@@ -270,14 +411,12 @@ const {
   editChannel,
   filterByPlatform,
   filteredChannels,
-  formatDate,
   getChannelCount,
   getChannelId,
-  getPlatformIcon,
   getPlatformName,
-  getStats,
   handleChannelCreated,
   isLoading,
+  loadFailed,
   openAddChannelDialog,
   refreshChannels,
   selectedChannel,
@@ -290,399 +429,365 @@ const {
   viewChannelDetails,
   viewStats
 } = useChannelManagement()
+
+const PLATFORM_KIND: Record<ChannelPlatform, string> = {
+  line: 'LINE 官方帳號',
+  facebook: 'Facebook 粉絲專頁',
+  whatsapp: 'WhatsApp Business'
+}
+
+const PLATFORM_FILTERS: Array<{ id: ChannelPlatform; label: string }> = [
+  { id: 'line', label: 'LINE' },
+  { id: 'facebook', label: 'Facebook' },
+  { id: 'whatsapp', label: 'WhatsApp' }
+]
+
+/** Optional display name lives in configMetadata.name; fall back to the platform. */
+function channelTitle(channel: ChannelIntegration): string {
+  const name = channel.configMetadata?.name
+  return typeof name === 'string' && name.trim() ? name.trim() : getPlatformName(channel.platform)
+}
+
+function channelDescription(channel: ChannelIntegration): string {
+  const description = channel.configMetadata?.description
+  return typeof description === 'string' ? description : ''
+}
+
+function idLabel(platform: ChannelPlatform): string {
+  if (platform === 'facebook') { return 'Page ID' }
+  if (platform === 'whatsapp') { return '電話號碼' }
+  return 'Channel ID'
+}
+
+const number = new Intl.NumberFormat('zh-TW')
+function formatCount(value: number): string {
+  return number.format(value)
+}
+
+interface WebhookNotice {
+  tone: 'warn' | 'quiet'
+  text: string
+}
+
+/** Webhook failure records (KV alerts, 7-day retention). Failures only: no records means no failures were recorded, not proof of liveness. */
+function webhookProblems(channel: ChannelIntegration): string[] {
+  const health = channel.webhookHealth
+  if (!health) { return [] }
+  const problems: string[] = []
+  if (health.processingFailures24h > 0) {
+    const last = health.lastProcessingFailureAt ? `，最近一次 ${formatLastLogin(health.lastProcessingFailureAt)}` : ''
+    problems.push(`近 24 小時有 ${health.processingFailures24h} 次 webhook 處理失敗${last}。`)
+  }
+  if (health.signatureFailureMinutes24h > 0) {
+    problems.push(`近 24 小時有 ${health.signatureFailureMinutes24h} 個時段的簽章驗證被拒，請確認 Channel Secret 設定。`)
+  }
+  return problems
+}
+
+function hasWebhookProblem(channel: ChannelIntegration): boolean {
+  return webhookProblems(channel).length > 0
+}
+
+function webhookNotice(channel: ChannelIntegration): WebhookNotice | null {
+  const problems = webhookProblems(channel)
+  if (problems.length > 0) {
+    return { tone: 'warn', text: problems.join(' ') }
+  }
+  if (!channel.isActive) {
+    return { tone: 'quiet', text: channel.isVerified ? '已停用。' : '已停用，啟用前請先驗證配置。' }
+  }
+  if (channel.webhookHealth) {
+    return { tone: 'quiet', text: '近 24 小時沒有 webhook 處理或簽章失敗紀錄。' }
+  }
+  return null
+}
+
+const channelSummary = computed(() => {
+  const total = channels.value.length
+  const active = channels.value.filter(c => c.isActive).length
+  const problem = channels.value.filter(hasWebhookProblem)
+  let text = `${total} 個頻道，${active} 個啟用中`
+  const [first] = problem
+  if (problem.length === 1 && first) {
+    text += `；${channelTitle(first)} 近 24 小時有 webhook 失敗紀錄，建議重新驗證`
+  } else if (problem.length > 1) {
+    text += `；${problem.length} 個頻道近 24 小時有 webhook 失敗紀錄，建議重新驗證`
+  }
+  return `${text}。`
+})
+
+const selectedPlatformLabel = computed(() =>
+  selectedPlatform.value ? getPlatformName(selectedPlatform.value) : ''
+)
 </script>
 
 <style scoped>
 .channel-management {
-  padding: var(--space-6);
-  width: 100%;
-  max-width: 1400px;
-  margin: 0 auto;
-}
-
-/* Page Header */
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: var(--space-6);
-}
-
-.page-title {
-  font-size: 2rem;
-  font-weight: 700;
-  color: var(--gray-900);
-  margin: 0 0 var(--space-2);
-}
-
-.page-description {
-  color: var(--gray-600);
-  margin: 0;
-}
-
-/* Filter Section */
-.filter-section {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: var(--space-6);
-  padding: var(--space-4);
-  background: white;
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
-}
-
-.filter-buttons {
-  display: flex;
-  gap: var(--space-2);
-}
-
-.filter-btn {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-2) var(--space-4);
-  border: 1px solid var(--gray-300);
-  background: white;
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  transition: all 0.2s;
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: var(--gray-700);
-}
-
-.filter-btn:hover {
-  background: var(--gray-50);
-  border-color: var(--primary-300);
-}
-
-.filter-btn.active {
-  background: var(--primary-50);
-  border-color: var(--primary-500);
-  color: var(--primary-700);
-}
-
-.count-badge {
-  background: var(--gray-200);
-  color: var(--gray-700);
-  padding: 0.125rem 0.5rem;
-  border-radius: var(--radius-full);
-  font-size: 0.75rem;
-  font-weight: 600;
-}
-
-.filter-btn.active .count-badge {
-  background: var(--primary-200);
-  color: var(--primary-800);
-}
-
-/* Loading State */
-.loading-state {
   display: flex;
   flex-direction: column;
+  gap: 20px;
+  width: 100%;
+  max-width: 1280px;
+  margin: 0 auto;
+  /* AppLayout's page area already pads 24px / 20px */
+  padding: 4px 8px 32px;
+}
+.head-ico {
+  width: 16px;
+  height: 16px;
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  justify-content: center;
-  padding: var(--space-12);
-  color: var(--gray-600);
+  gap: 12px;
+}
+.toolbar .ui-seg {
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: none;
 }
 
-.spinner {
-  width: 40px;
-  height: 40px;
-  border: 3px solid var(--gray-200);
-  border-top-color: var(--primary-500);
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-  margin-bottom: var(--space-4);
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-/* Empty State */
-.empty-state {
-  text-align: center;
-  padding: var(--space-12);
-  background: white;
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
-}
-
-.empty-icon {
-  font-size: 4rem;
-  margin-bottom: var(--space-4);
-}
-
-.empty-state h3 {
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: var(--gray-900);
-  margin-bottom: var(--space-2);
-}
-
-.empty-state p {
-  color: var(--gray-600);
-  margin-bottom: var(--space-6);
-}
-
-/* Channel Grid */
-.channel-grid {
+.chgrid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-  gap: var(--space-4);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  align-items: stretch;
 }
-
-/* Channel Card */
-.channel-card {
-  background: white;
-  border: 1px solid var(--gray-200);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
-  transition: all 0.2s;
+.chcard {
+  display: flex;
+  flex-direction: column;
+}
+.chcard.off .chhead,
+.chcard.off .stats,
+.chcard.off .meta {
+  opacity: 0.62;
+}
+.chhead {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 18px 20px 12px;
+}
+.tile {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 13px;
+}
+.tile svg {
+  width: 24px;
+  height: 24px;
+  fill: #fff;
+}
+.tile-line {
+  background: var(--ui-line);
+}
+.tile-facebook {
+  background: var(--ui-messenger);
+}
+.tile-whatsapp {
+  background: var(--ui-faint);
+}
+.chname {
+  min-width: 0;
+  flex: 1;
+}
+.chname b {
+  display: block;
   overflow: hidden;
+  font: 600 16px / 1.25 var(--ui-font-display);
+  letter-spacing: -0.01em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-
-.channel-card:hover {
-  box-shadow: var(--shadow-md);
-  transform: translateY(-2px);
+.chname span {
+  font-size: 12.5px;
+  color: var(--ui-muted);
 }
-
-.channel-card.inactive {
-  opacity: 0.6;
-}
-
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: var(--space-4);
-  border-bottom: 1px solid var(--gray-100);
-}
-
-.platform-badge {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-2) var(--space-3);
-  border-radius: var(--radius-md);
-  font-weight: 600;
-  font-size: 0.875rem;
-}
-
-.platform-line {
-  background: var(--green-100);
-  color: var(--green-800);
-}
-
-.platform-facebook {
-  background: var(--blue-100);
-  color: var(--blue-800);
-}
-
-.platform-whatsapp {
-  background: var(--green-100);
-  color: var(--green-800);
-}
-
-.platform-icon {
-  font-size: 1.25rem;
-}
-
-.card-actions {
-  display: flex;
-  gap: var(--space-2);
+.chtools {
   position: relative;
-}
-
-.action-btn {
-  width: 32px;
-  height: 32px;
-  border: none;
-  background: var(--gray-100);
-  color: var(--gray-600);
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  transition: all 0.2s;
   display: flex;
   align-items: center;
-  justify-content: center;
-  font-size: 1.25rem;
+  gap: 4px;
 }
-
-.action-btn:hover {
-  background: var(--gray-200);
-  color: var(--gray-900);
+.more-btn {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--ui-ink-2);
+  cursor: pointer;
+  transition: background var(--ui-dur) var(--ui-ease);
 }
-
-.dropdown-menu {
+.more-btn:hover {
+  background: var(--ui-fill);
+}
+.more-btn svg {
+  width: 18px;
+  height: 18px;
+}
+.menu {
   position: absolute;
   top: 100%;
   right: 0;
-  margin-top: var(--space-2);
-  background: white;
-  border: 1px solid var(--gray-200);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-lg);
   z-index: 10;
-  min-width: 160px;
+  min-width: 168px;
+  margin-top: 6px;
+  padding: 6px;
+  border-radius: var(--ui-r-inner);
+  background: var(--ui-surface);
+  box-shadow: var(--ui-shadow-raised);
 }
-
-.dropdown-menu button {
+.menu button {
+  display: block;
   width: 100%;
-  padding: var(--space-2) var(--space-4);
-  border: none;
+  padding: 9px 12px;
+  border: 0;
+  border-radius: 9px;
   background: none;
+  font-size: 13.5px;
+  color: var(--ui-ink);
   text-align: left;
   cursor: pointer;
-  transition: background 0.2s;
-  font-size: 0.875rem;
+}
+.menu button:hover {
+  background: var(--ui-fill);
+}
+.menu button.danger {
+  color: var(--ui-red);
 }
 
-.dropdown-menu button:hover {
-  background: var(--gray-50);
+.meta {
+  display: grid;
+  gap: 8px;
+  padding: 0 20px;
 }
-
-.dropdown-menu button.danger {
-  color: var(--red-600);
-}
-
-.dropdown-menu button.danger:hover {
-  background: var(--red-50);
-}
-
-.card-body {
-  padding: var(--space-4);
-}
-
-.channel-info {
-  margin-bottom: var(--space-4);
-}
-
-.info-item {
+.meta-row {
   display: flex;
-  margin-bottom: var(--space-2);
-  font-size: 0.875rem;
+  align-items: baseline;
+  gap: 10px;
+  font-size: 13px;
 }
-
-.info-item .label {
-  color: var(--gray-600);
-  min-width: 100px;
+.meta-row .k {
+  width: 84px;
+  flex: none;
+  color: var(--ui-muted);
+  white-space: nowrap;
 }
-
-.info-item .value {
-  color: var(--gray-900);
-  font-weight: 500;
-  word-break: break-all;
+.meta-row .v {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-
-.status-badges {
+.mono {
+  font-family: var(--ui-font-mono);
+}
+.pills {
   display: flex;
-  gap: var(--space-2);
-  margin-bottom: var(--space-4);
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 12px 20px 0;
 }
-
-.status-badge {
-  padding: 0.25rem 0.75rem;
-  border-radius: var(--radius-full);
-  font-size: 0.75rem;
+.notice {
+  display: flex;
+  gap: 8px;
+  margin: 12px 20px 0;
+  padding: 10px 12px;
+  border-radius: var(--ui-r-inner);
+  background: var(--ui-orange-soft);
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--ui-orange-ink);
+}
+.notice svg {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  margin-top: 1px;
+}
+.notice.quiet {
+  background: var(--ui-surface-2);
+  color: var(--ui-muted);
+}
+.scope {
+  margin: 14px 20px 0;
+  font-size: 12px;
   font-weight: 600;
+  color: var(--ui-muted);
 }
-
-.status-badge.success {
-  background: var(--green-100);
-  color: var(--green-800);
-}
-
-.status-badge.inactive {
-  background: var(--gray-100);
-  color: var(--gray-800);
-}
-
-.status-badge.warning {
-  background: var(--yellow-100);
-  color: var(--yellow-800);
-}
-
 .stats {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  margin: 6px 20px 0;
+  padding: 10px 0 12px;
+}
+.stat-i + .stat-i {
+  position: relative;
+  padding-left: 16px;
+}
+.stat-i + .stat-i::before {
+  content: '';
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  left: 0;
+  width: 0.5px;
+  background: var(--ui-sep);
+}
+.stat-i .l {
+  font-size: 12px;
+  color: var(--ui-muted);
+}
+.stat-i .n {
+  font: 600 22px / 1.2 var(--ui-font-display);
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+.stat-i .s {
+  font-size: 11.5px;
+  color: var(--ui-muted);
+  font-variant-numeric: tabular-nums;
+}
+.last {
+  padding: 0 20px 14px;
+  font-size: 12px;
+  color: var(--ui-muted);
+  font-variant-numeric: tabular-nums;
+}
+.chcard > .last:first-of-type {
+  padding-top: 14px;
+}
+.chfoot {
   display: flex;
-  gap: var(--space-4);
-  padding: var(--space-3);
-  background: var(--gray-50);
-  border-radius: var(--radius-md);
-  margin-bottom: var(--space-3);
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: auto;
+  padding: 0 20px 18px;
 }
-
-.stat-item {
-  flex: 1;
-  text-align: center;
-}
-
-.stat-label {
-  font-size: 0.75rem;
-  color: var(--gray-600);
-  margin-bottom: 0.25rem;
-}
-
-.stat-value {
-  font-size: 1.25rem;
-  font-weight: 700;
-  color: var(--primary-600);
-}
-
-.stat-divider {
-  width: 1px;
-  background: var(--gray-200);
-}
-
-.last-activity {
-  font-size: 0.75rem;
-  color: var(--gray-500);
-  text-align: center;
-}
-
-.card-footer {
-  display: flex;
-  gap: var(--space-2);
-  padding: var(--space-3);
-  border-top: 1px solid var(--gray-100);
-}
-
-.card-footer .btn {
+.chfoot .btn {
   flex: 1;
 }
 
-/* Buttons */
-.btn-icon {
-  font-size: 1.25rem;
-  line-height: 1;
+@media (max-width: 1280px) {
+  .chgrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
-
-/* Responsive */
 @media (max-width: 768px) {
   .channel-management {
-    padding: var(--space-4);
+    padding: 0 0 24px;
   }
-
-  .page-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: var(--space-4);
+  .chgrid {
+    grid-template-columns: minmax(0, 1fr);
   }
-
-  .filter-section {
-    flex-direction: column;
-    gap: var(--space-4);
-  }
-
-  .filter-buttons {
-    flex-wrap: wrap;
-  }
-
-  .channel-grid {
-    grid-template-columns: 1fr;
-  }
-
 }
 </style>

@@ -1,62 +1,101 @@
 <template>
-  <div
+  <article
     v-bind="$attrs"
-    class="team-card"
+    class="ui-card team-card"
+    :class="{ 'is-off': !team.isActive }"
     @click="showTeamDetails"
   >
-    <!-- 主要卡片內容 -->
-    <div class="flex items-center gap-4 flex-1">
-      <div class="team-avatar">
-        <div
-          class="text-white font-bold text-[1.375rem] uppercase"
-          style="text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2)"
-        >
-          {{ getTeamInitial(team.name) }}
-        </div>
+    <div
+      class="team-mark"
+      :style="{ background: markBackground }"
+    >
+      {{ getTeamInitial(team.name) }}
+    </div>
+
+    <div class="team-main">
+      <div class="team-name">
+        {{ team.name }}
       </div>
-      <div class="flex-1 min-w-0">
-        <h3
-          class="m-0 mb-1.5 text-gray-800 text-[1.375rem] font-bold whitespace-nowrap overflow-hidden text-ellipsis"
+      <div class="team-desc">
+        {{ team.description || '尚未填寫描述' }}
+      </div>
+      <div class="team-meta">
+        <span
+          class="ui-pill"
+          :class="team.isActive ? 'ui-pill-green ui-pill-dot' : ''"
+        >{{ team.isActive ? '活躍' : '停用' }}</span>
+        <span class="ui-pill">{{ team.memberCount || 0 }} 成員</span>
+        <span
+          v-if="previewMembers.length > 0"
+          class="avs"
         >
-          {{ team.name }}
-        </h3>
-        <p
-          class="m-0 mb-3 text-gray-500 text-base leading-normal whitespace-nowrap overflow-hidden text-ellipsis"
-        >
-          {{ team.description || '無描述' }}
-        </p>
-        <div class="flex items-center gap-3 flex-wrap">
-          <span :class="['status', team.isActive ? 'active' : 'inactive']">
-            {{ team.isActive ? '活躍' : '停用' }}
-          </span>
-          <span class="text-gray-500 text-sm font-medium py-1.5 px-3 bg-gray-200 rounded-xl">
-            {{ team.memberCount || 0 }} 成員
-          </span>
-        </div>
+          <TeamAvatar
+            v-for="m in previewMembers"
+            :key="m.id"
+            size="sm"
+            :name="m.name || m.loginId"
+            :seed="m.id"
+            :src="m.avatar"
+          />
+        </span>
       </div>
     </div>
 
-    <!-- 操作按鈕區 -->
     <div
-      class="flex gap-2 items-center flex-shrink-0 flex-wrap"
+      class="team-acts"
       @click.stop
     >
       <button
-        :class="['btn', team.isActive ? 'btn-danger' : 'btn-success']"
-        :disabled="loading"
-        @click="$emit('toggle-status', team)"
+        type="button"
+        class="btn btn-secondary btn-sm"
+        @click="showTeamDetails"
       >
-        {{ team.isActive ? '停用' : '啟用' }}
+        編輯團隊
       </button>
-      <button
-        class="btn btn-danger"
-        :disabled="loading"
-        @click="$emit('remove-team', team)"
-      >
-        刪除團隊
-      </button>
+      <Dropdown placement="bottom-end">
+        <template #trigger>
+          <button
+            type="button"
+            class="more-btn"
+            :aria-label="`更多操作：${team.name}`"
+            :disabled="loading"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.4"
+              stroke-linecap="round"
+              aria-hidden="true"
+            ><circle
+              cx="12"
+              cy="5"
+              r="1"
+            /><circle
+              cx="12"
+              cy="12"
+              r="1"
+            /><circle
+              cx="12"
+              cy="19"
+              r="1"
+            /></svg>
+          </button>
+        </template>
+        <DropdownItem
+          :label="team.isActive ? '停用團隊' : '啟用團隊'"
+          :disabled="loading"
+          @click="$emit('toggle-status', team)"
+        />
+        <DropdownItem
+          label="刪除團隊"
+          variant="danger"
+          :disabled="loading"
+          @click="$emit('remove-team', team)"
+        />
+      </Dropdown>
     </div>
-  </div>
+  </article>
 
   <!-- 團隊詳情 Modal -->
   <TeamDetailModal
@@ -108,10 +147,15 @@ import { createLogger } from '@/utils/logger'
   defineOptions({
     inheritAttrs: false
   })
-  const props = defineProps<{
-    team: Team
-    loading?: boolean
-  }>()
+  const props = withDefaults(
+    defineProps<{
+      team: Team
+      loading?: boolean
+      /** Up to a few members of this team, for the avatar stack. */
+      previewMembers?: TeamMember[]
+    }>(),
+    { loading: false, previewMembers: () => [] }
+  )
   const emit = defineEmits<{
     'toggle-status': [team: Team]
     'remove-team': [team: Team]
@@ -131,6 +175,10 @@ import { createLogger } from '@/utils/logger'
   import { useAuthStore } from '@/stores/auth'
   import { useTeamStore } from '@/stores/team'
   import { useQRCodeStore } from '@/stores/qrcode'
+  import Dropdown from '@/components/ui/Dropdown.vue'
+  import DropdownItem from '@/components/ui/DropdownItem.vue'
+  import TeamAvatar from '@/components/team/TeamAvatar.vue'
+  import { teamMarkBackground } from '@/utils/team-tone'
   import type { Team, TeamMember, LiffQRCode } from '@/types'
 
   // Composables
@@ -159,6 +207,8 @@ import { createLogger } from '@/utils/logger'
   const loadingQRCode = ref(false)
   const generatingQR = ref(false)
   const qrStats = ref<{ scanCount: number; assignmentCount: number } | null>(null)
+
+  const markBackground = computed(() => teamMarkBackground(props.team.id))
 
   // 工具函數
   const getTeamInitial = (name: string): string => {
@@ -396,59 +446,105 @@ import { createLogger } from '@/utils/logger'
 </script>
 
 <style scoped>
-@reference "../../style.css";
-  /* ============================================
-   Complex CSS (Cannot use Tailwind)
-   ============================================ */
+.team-card {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: center;
+  padding: 18px 20px;
+  cursor: pointer;
+}
+.team-card.is-off .team-mark,
+.team-card.is-off .team-name {
+  opacity: 0.55;
+}
+.team-mark {
+  display: grid;
+  width: 52px;
+  height: 52px;
+  place-items: center;
+  border-radius: 16px;
+  font: 600 21px var(--ui-font-display);
+  color: #fff;
+}
+.team-main {
+  min-width: 0;
+}
+.team-name {
+  overflow: hidden;
+  font: 600 17px / 1.3 var(--ui-font-display);
+  letter-spacing: -0.01em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.team-desc {
+  overflow: hidden;
+  font-size: 13px;
+  color: var(--ui-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.team-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+}
+.avs {
+  display: flex;
+  margin-left: 4px;
+}
+.avs > :deep(*) {
+  margin-left: -6px;
+}
+.avs > :deep(*:first-child) {
+  margin-left: 0;
+}
+.team-acts {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.more-btn {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--ui-ink-2);
+  cursor: pointer;
+  transition: background var(--ui-dur) var(--ui-ease);
+}
+.more-btn:hover {
+  background: var(--ui-fill);
+}
+.more-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+.more-btn svg {
+  width: 18px;
+  height: 18px;
+}
 
-  /* Team Card - Main container with hover effect */
+@media (max-width: 768px) {
   .team-card {
-    @apply flex justify-between items-center p-6 bg-gray-50;
-    @apply border border-gray-200 rounded-2xl transition-all duration-300;
-    @apply min-h-[120px] cursor-pointer;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    grid-template-columns: 44px minmax(0, 1fr);
   }
-
-  .team-card:hover {
-    @apply -translate-y-0.5 bg-gray-100 border-gray-300;
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.12);
+  .team-mark {
+    width: 44px;
+    height: 44px;
+    border-radius: 14px;
+    font-size: 18px;
   }
-
-  /* Team Avatar - Gradient background */
-  .team-avatar {
-    @apply w-[60px] h-[60px] rounded-2xl flex items-center justify-center flex-shrink-0;
-    background: linear-gradient(135deg, #667eea, #764ba2);
-    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+  .team-acts {
+    grid-column: 1 / -1;
   }
-
-  /* Status Badge - Backdrop filter effect */
-  .status {
-    @apply py-1.5 px-3 rounded-full text-xs font-semibold uppercase tracking-wider;
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.2);
+  .team-acts .btn {
+    flex: 1;
   }
-
-  .status.active {
-    @apply bg-green-100 text-green-800 border-green-200;
-  }
-
-  .status.inactive {
-    @apply bg-red-50 text-red-800 border-red-200;
-  }
-
-  /* ============================================
-   Responsive - RWD
-   ============================================ */
-
-  @media (max-width: 768px) {
-    .team-card {
-      @apply flex-col gap-4 items-stretch p-4;
-    }
-  }
-
-  @media (max-width: 640px) {
-    .team-avatar {
-      @apply w-12 h-12;
-    }
-  }
+}
 </style>
