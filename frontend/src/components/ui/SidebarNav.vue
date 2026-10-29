@@ -138,6 +138,8 @@
   const moreAbove = ref(false)
   const moreBelow = ref(false)
   const EDGE_GAP = 28 // keep the revealed item clear of the fade
+  const GROUP_GAP = 24 // .nav-group + .nav-group margin; must stay >= --nav-fade-top
+  const NAV_PAD_BOTTOM = 12 // .sidebar-nav padding-bottom
 
   const updateFades = () => {
     const el = navEl.value
@@ -150,13 +152,27 @@
     const el = navEl.value
     if (!el) { return }
     // the open submenu's own item wins over its group header
+    el.style.paddingBottom = ''
     const active = el.querySelector<HTMLElement>('.submenu-item.active') ?? el.querySelector<HTMLElement>('.nav-item.active')
     if (active) {
       const box = el.getBoundingClientRect()
       const rect = active.getBoundingClientRect()
       if (rect.height > 0) {
         if (rect.bottom > box.bottom - EDGE_GAP) {
-          el.scrollTop += rect.bottom - (box.bottom - EDGE_GAP)
+          const needed = el.scrollTop + rect.bottom - (box.bottom - EDGE_GAP)
+          // Land on a group boundary so the top fade covers the gap between groups,
+          // never half an item (a cut-off row under the logo reads as a bug)
+          const activeTop = rect.top - box.top + el.scrollTop
+          const groupStop = [...el.querySelectorAll<HTMLElement>('.nav-group')]
+            .map(g => g.getBoundingClientRect().top - box.top + el.scrollTop - GROUP_GAP)
+            .find(top => top >= needed && top <= activeTop - EDGE_GAP)
+          // The stop can sit past the scroll range (the list overflows by less than a group):
+          // pad the end by exactly the difference so the scroll can reach it
+          if (groupStop !== undefined) {
+            const short = Math.ceil(groupStop - (el.scrollHeight - el.clientHeight))
+            if (short > 0) { el.style.paddingBottom = `${NAV_PAD_BOTTOM + short}px` }
+          }
+          el.scrollTop = groupStop ?? needed
         } else if (rect.top < box.top + EDGE_GAP) {
           el.scrollTop -= box.top + EDGE_GAP - rect.top
         }
