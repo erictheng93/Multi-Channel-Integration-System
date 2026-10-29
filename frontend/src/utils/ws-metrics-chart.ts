@@ -50,6 +50,8 @@ export interface ChartTick {
 export interface ChartSeries {
   /** One SVG path per uninterrupted run of non-null points */
   lines: string[]
+  /** Runs of exactly one point: a path would draw nothing, so each is marked with a dot instead */
+  dots: Array<{ x: number; y: number }>
   /** Closed path under the line, for runs with at least two points */
   areas: string[]
   /** Last non-null point, for the end marker */
@@ -124,10 +126,11 @@ export function buildSeries(
       const body = run.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x} ${p.y}`).join(' ')
       return `${body} L${last?.x} ${geom.bottom} L${first?.x} ${geom.bottom}Z`
     })
+  const dots = runs.filter(run => run.length === 1).map(run => run[0] as { x: number; y: number })
   const lastRun = runs[runs.length - 1]
   const last = lastRun ? (lastRun[lastRun.length - 1] ?? null) : null
 
-  return { lines, areas, last, max, count: finite.length }
+  return { lines, dots, areas, last, max, count: finite.length }
 }
 
 /**
