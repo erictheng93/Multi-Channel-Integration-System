@@ -85,7 +85,7 @@ echo "=========================================="
 # 檢查 Migration Config
 echo ""
 echo "檢查 Migration Config:"
-config_response=$(curl -s "$API_BASE/websocket/migration-status")
+config_response=$(curl -s ${TOKEN:+-H "Authorization: Bearer $TOKEN"} "$API_BASE/websocket/migration-status")
 echo "$config_response" | jq '.'
 
 websocket_enabled=$(echo "$config_response" | jq -r '.enableWebSocket')
