@@ -116,11 +116,7 @@
             class="remain"
             :class="{ 'is-short': isShort(channel) }"
           >
-            剩餘 {{ (channel.remaining ?? 0).toLocaleString() }} 則<template v-if="channel.reserve">
-              ，其中 {{ channel.reserve.toLocaleString() }} 則保留給客服回覆
-            </template><template v-if="isShort(channel)">
-              。本次發送將超出可用額度 {{ Math.abs(afterSend(channel) ?? 0).toLocaleString() }} 則，可能無法發送。
-            </template>
+            {{ remainText(channel) }}
           </p>
         </template>
 
@@ -223,6 +219,18 @@ function afterSend(channel: LineQuotaChannel): number | null {
 function isShort(channel: LineQuotaChannel): boolean {
   const after = afterSend(channel)
   return after !== null && after < 0
+}
+
+/** One sentence built in script so no template whitespace lands before full-width punctuation */
+function remainText(channel: LineQuotaChannel): string {
+  let text = `剩餘 ${(channel.remaining ?? 0).toLocaleString()} 則`
+  if (channel.reserve) {
+    text += `，其中 ${channel.reserve.toLocaleString()} 則保留給客服回覆`
+  }
+  if (isShort(channel)) {
+    text += `。本次發送將超出可用額度 ${Math.abs(afterSend(channel) ?? 0).toLocaleString()} 則，可能無法發送。`
+  }
+  return text
 }
 
 function fmt(value: number | null): string {
