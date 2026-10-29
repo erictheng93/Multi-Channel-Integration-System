@@ -17,4 +17,10 @@ describe('buildSpark', () => {
     expect(buildSpark([pt(0, 1)], p => p.avgProcessingMs, 0, 40).line).toBe('')
     expect(buildSpark([], p => p.avgProcessingMs, 0, 40).line).toBe('')
   })
+
+  it('gives a flat series a line but no filled area', () => {
+    const s = buildSpark([pt(0, 5), pt(10, 5), pt(20, 5)], p => p.avgProcessingMs, 0, 20)
+    expect(s.line).not.toBe('')
+    expect(s.area).toBe('')
+  })
 })
