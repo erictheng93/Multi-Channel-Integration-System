@@ -53,6 +53,7 @@
       <AppTopBar
         :page-title="currentPageTitle"
         :section-label="currentSectionLabel"
+        :title-collapsed="titleCollapsed"
         @notification-click="handleNotificationClick"
       >
         <template #stats>
@@ -61,7 +62,11 @@
       </AppTopBar>
 
       <!-- Page Content -->
-      <div class="page-content">
+      <div
+        ref="pageEl"
+        class="page-content"
+        @scroll.passive="evaluateTitle"
+      >
         <slot />
       </div>
     </main>
@@ -69,7 +74,7 @@
 </template>
 
 <script setup lang="ts">
-  import { computed, onMounted, onUnmounted, nextTick } from 'vue'
+  import { computed, onMounted, onUnmounted, nextTick, ref, watch } from 'vue'
   import { useRoute, useRouter } from 'vue-router'
   import { useSidebarState } from '@/composables/useSidebarState'
   import { sectionForPath } from '@/config/nav-sections'
@@ -108,6 +113,25 @@
     const label = sectionForPath(route.path)?.label ?? ''
     return label === currentPageTitle.value ? '' : label
   })
+
+  // iOS large-title collapse (phone): the page's own H1 is the title while it is on screen; the
+  // top bar names the page only once the H1 has scrolled away. A page without a `.ui-page-title`
+  // (e.g. the conversation thread) keeps the title in the bar. Desktop ignores this flag.
+  const pageEl = ref<HTMLElement | null>(null)
+  const titleCollapsed = ref(true)
+  const evaluateTitle = () => {
+    const scroller = pageEl.value
+    if (!scroller) { return }
+    const h1 = scroller.querySelector<HTMLElement>('.ui-page-title')
+    titleCollapsed.value = !h1 || h1.getBoundingClientRect().bottom < scroller.getBoundingClientRect().top + 4
+  }
+  let titleFrame = 0
+  const scheduleTitleCheck = () => {
+    window.cancelAnimationFrame(titleFrame)
+    titleFrame = window.requestAnimationFrame(evaluateTitle)
+  }
+  let pageObserver: InstanceType<typeof window.MutationObserver> | undefined
+  watch(() => route.fullPath, () => { void nextTick(scheduleTitleCheck) })
 
   // Notification click routing logic
   const handleNotificationClick = (notification: Notification) => {
@@ -157,10 +181,18 @@
     document.addEventListener('click', handleClickOutside)
     await nextTick()
     initialize()
+    if (pageEl.value && typeof window.MutationObserver !== 'undefined') {
+      // lazy routes and late data render the page head after mount
+      pageObserver = new window.MutationObserver(scheduleTitleCheck)
+      pageObserver.observe(pageEl.value, { childList: true, subtree: true })
+    }
+    scheduleTitleCheck()
   })
 
   onUnmounted(() => {
     document.removeEventListener('click', handleClickOutside)
+    pageObserver?.disconnect()
+    window.cancelAnimationFrame(titleFrame)
     cleanup()
   })
 </script>

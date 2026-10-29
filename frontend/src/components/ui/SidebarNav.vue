@@ -1,7 +1,12 @@
 <template>
+  <!-- The nav is its own scroll region between the pinned header and the pinned profile:
+       it fades at whichever edge has more items, and the active item is scrolled into view. -->
   <nav
+    ref="navEl"
     class="sidebar-nav"
+    :class="{ 'has-above': moreAbove, 'has-below': moreBelow }"
     aria-label="主要導覽"
+    @scroll.passive="updateFades"
   >
     <section
       v-for="group in navigationGroups"
@@ -62,7 +67,7 @@
 </template>
 
 <script setup lang="ts">
-  import { computed, watch, reactive, type Component } from 'vue'
+  import { computed, watch, reactive, ref, nextTick, onMounted, onBeforeUnmount, type Component } from 'vue'
   import { useRoute } from 'vue-router'
   import { useAuthStore } from '@/stores/auth'
   import { useUnreadStore } from '@/stores/unread'
@@ -78,7 +83,8 @@
   import UsersIcon from '@/components/icons/UsersIcon.vue'
   import ActivityIcon from '@/components/icons/ActivityIcon.vue'
   import SettingsIcon from '@/components/icons/SettingsIcon.vue'
-  import MonitorIcon from '@/components/icons/MonitorIcon.vue'
+  import ApiIcon from '@/components/icons/ApiIcon.vue'
+  import RealtimeIcon from '@/components/icons/RealtimeIcon.vue'
   import ReportsIcon from '@/components/icons/ReportsIcon.vue'
   import DataManagementIcon from '@/components/icons/DataManagementIcon.vue'
   import ChannelIcon from '@/components/icons/ChannelIcon.vue'
@@ -123,7 +129,59 @@
 
   const toggleSubmenu = (path: string) => {
     expandedMenus[path] = !expandedMenus[path]
+    // the submenu animates open: re-evaluate the fades once it settled
+    scheduleSettle()
   }
+
+  // ── Scroll region: edge fades + keep the active item visible ──
+  const navEl = ref<HTMLElement | null>(null)
+  const moreAbove = ref(false)
+  const moreBelow = ref(false)
+  const EDGE_GAP = 28 // keep the revealed item clear of the fade
+
+  const updateFades = () => {
+    const el = navEl.value
+    if (!el) { return }
+    moreAbove.value = el.scrollTop > 2
+    moreBelow.value = el.scrollTop + el.clientHeight < el.scrollHeight - 2
+  }
+
+  const revealActive = () => {
+    const el = navEl.value
+    if (!el) { return }
+    const active = el.querySelector<HTMLElement>('.submenu-item.active, .nav-item.active')
+    if (active) {
+      const box = el.getBoundingClientRect()
+      const rect = active.getBoundingClientRect()
+      if (rect.height > 0) {
+        if (rect.bottom > box.bottom - EDGE_GAP) {
+          el.scrollTop += rect.bottom - (box.bottom - EDGE_GAP)
+        } else if (rect.top < box.top + EDGE_GAP) {
+          el.scrollTop -= box.top + EDGE_GAP - rect.top
+        }
+      }
+    }
+    updateFades()
+  }
+
+  let settleTimer: ReturnType<typeof setTimeout> | undefined
+  const scheduleSettle = () => {
+    clearTimeout(settleTimer)
+    settleTimer = setTimeout(() => { revealActive() }, 280)
+  }
+
+  let resizeObserver: InstanceType<typeof window.ResizeObserver> | undefined
+  onMounted(() => {
+    void nextTick(() => { revealActive(); scheduleSettle() })
+    if (typeof window.ResizeObserver !== 'undefined' && navEl.value) {
+      resizeObserver = new window.ResizeObserver(updateFades)
+      resizeObserver.observe(navEl.value)
+    }
+  })
+  onBeforeUnmount(() => {
+    clearTimeout(settleTimer)
+    resizeObserver?.disconnect()
+  })
 
   // ── Navigation item definitions ──
   // Children of 報表 / 資料管理 / 系統設定 come from config/section-nav.ts so the in-page
@@ -154,8 +212,8 @@
       { path: '/channels', label: '頻道', icon: ChannelIcon },
       { path: '/auto-reply', label: '自動回覆', icon: AutoReplyIcon },
       { path: '/activities', label: '活動記錄', icon: ActivityIcon },
-      { path: '/monitoring/api', label: 'API 監控', icon: MonitorIcon },
-      { path: '/monitoring/websocket', label: '即時連線監控', icon: MonitorIcon },
+      { path: '/monitoring/api', label: 'API 監控', icon: ApiIcon },
+      { path: '/monitoring/websocket', label: '即時連線監控', icon: RealtimeIcon },
       group('settings', SettingsIcon),
     ]
   }
@@ -187,6 +245,8 @@
     },
     { flush: 'post', immediate: true },
   )
+
+  watch(() => route.path, () => { scheduleSettle() }, { flush: 'post' })
 </script>
 
 <style scoped>
@@ -198,6 +258,23 @@
     min-height: 0;
     scrollbar-width: thin;
     scrollbar-color: var(--ui-fill-strong) transparent;
+  }
+
+  /* Fades hint that more items sit above / below the visible part */
+  .sidebar-nav.has-above,
+  .sidebar-nav.has-below {
+    --nav-fade-top: 0px;
+    --nav-fade-bottom: 0px;
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 var(--nav-fade-top), #000 calc(100% - var(--nav-fade-bottom)), transparent 100%);
+    mask-image: linear-gradient(to bottom, transparent 0, #000 var(--nav-fade-top), #000 calc(100% - var(--nav-fade-bottom)), transparent 100%);
+  }
+
+  .sidebar-nav.has-above {
+    --nav-fade-top: 22px;
+  }
+
+  .sidebar-nav.has-below {
+    --nav-fade-bottom: 22px;
   }
 
   .sidebar-nav::-webkit-scrollbar {
