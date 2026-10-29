@@ -1,8 +1,8 @@
 <template>
-  <div class="log-table">
+  <div class="ui-card log-table">
     <div class="log-toolbar">
       <select
-        class="form-input filter-select"
+        class="ui-select filter-select"
         :value="filterRuleId"
         @change="emit('update:filterRuleId', ($event.target as HTMLSelectElement).value)"
       >
@@ -19,7 +19,7 @@
       </select>
 
       <select
-        class="form-input filter-select"
+        class="ui-select filter-select"
         :value="filterPlatform"
         @change="emit('update:filterPlatform', ($event.target as HTMLSelectElement).value)"
       >
@@ -28,9 +28,6 @@
         </option>
         <option value="line">
           LINE
-        </option>
-        <option value="facebook">
-          Facebook
         </option>
       </select>
     </div>
@@ -49,7 +46,7 @@
             class="trigger-badge"
             :class="triggerBadgeClass(log)"
           >
-            {{ triggerLabel(log) }}
+            {{ triggerText(log) }}
           </span>
           <span class="rule-name">{{ log.rule_name }}</span>
           <span class="log-card-meta">
@@ -87,10 +84,17 @@
 
     <div
       v-else
-      class="empty-state"
+      class="ui-empty empty-state"
     >
       <div class="empty-icon">
-        --
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.8"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        ><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" /></svg>
       </div>
       <p class="empty-title">
         尚無回覆記錄
@@ -138,7 +142,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import type { AutoReplyLog, AutoReplyRule } from '@/api/autoReply'
+import { TRIGGER_TYPE_LABELS, type AutoReplyLog, type AutoReplyRule } from '@/api/autoReply'
 
 const props = defineProps<{
   logs: AutoReplyLog[]
@@ -207,6 +211,11 @@ function triggerLabel(log: AutoReplyLog): string {
   return 'keyword'
 }
 
+function triggerText(log: AutoReplyLog): string {
+  const type = triggerLabel(log)
+  return TRIGGER_TYPE_LABELS[type] ?? type
+}
+
 function triggerBadgeClass(log: AutoReplyLog): string {
   const type = triggerLabel(log)
   return `trigger-badge--${type}`
@@ -233,283 +242,240 @@ function methodBadgeClass(method: string): string {
 
 <style scoped>
 .log-table {
-  background: white;
-  border-radius: var(--radius-xl, 16px);
-  box-shadow: 0 4px 16px rgb(0 0 0 / 0.06);
   overflow: hidden;
 }
 
 .log-toolbar {
   display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-4) var(--space-5);
-  border-bottom: 1px solid var(--gray-100);
   flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 22px;
 }
 
 .filter-select {
+  width: auto;
   min-width: 150px;
-  font-size: 0.875rem;
+  height: 38px;
+  border-radius: 999px;
 }
 
-/* Card list */
 .log-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding: 16px 20px;
 }
 
 .log-card {
-  background: var(--gray-50, #f9fafb);
-  border-radius: 14px;
-  padding: 14px 18px;
-  transition: box-shadow 0.2s ease-out;
-  cursor: default;
+  position: relative;
+  padding: 14px 22px;
 }
 
-.log-card:hover {
-  box-shadow: 0 2px 12px rgb(0 0 0 / 0.06);
+.log-card + .log-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 22px;
+  left: 22px;
+  height: 0.5px;
+  background: var(--ui-sep);
 }
 
-/* Card header: badge + rule name + inline meta */
 .log-card-header {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 10px;
   flex-wrap: wrap;
-}
-
-.log-card-meta {
-  display: inline-flex;
   align-items: center;
-  gap: 8px;
-  margin-left: 4px;
+  gap: 6px 10px;
 }
 
-.meta-divider {
-  display: inline-block;
-  width: 1px;
-  height: 12px;
-  background: var(--gray-200, #e5e7eb);
-  flex-shrink: 0;
-}
-
-/* Card body: trigger / response with labels */
-.log-card-body {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.log-card-line {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-}
-
-.log-card-label {
-  font-size: 0.6875rem;
+.trigger-badge,
+.method-badge {
+  padding: 0 9px;
+  border-radius: 999px;
+  background: var(--ui-fill);
+  font-size: 11.5px;
   font-weight: 600;
-  color: var(--gray-400, #9ca3af);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  width: 38px;
-  flex-shrink: 0;
-  padding-top: 2px;
-}
-
-.log-card-text {
-  font-size: 0.8125rem;
-  color: var(--gray-600, #4b5563);
-  line-height: 1.45;
-}
-
-.log-card-text--trigger {
-  font-weight: 500;
-  color: var(--gray-900, #1C1C1E);
-}
-
-/* Time */
-.time-text {
-  color: var(--gray-400, #9ca3af);
-  font-size: 0.75rem;
-  font-variant-numeric: tabular-nums;
+  line-height: 22px;
+  color: var(--ui-ink-2);
   white-space: nowrap;
-}
-
-/* Trigger badges — pastel style */
-.trigger-badge {
-  display: inline-block;
-  font-size: 0.625rem;
-  font-weight: 700;
-  padding: 2px 8px;
-  border-radius: 6px;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-  white-space: nowrap;
-}
-
-.trigger-badge--keyword {
-  background: #dbeafe;
-  color: #1d4ed8;
 }
 
 .trigger-badge--welcome {
-  background: #d1fae5;
-  color: #047857;
+  background: var(--ui-green-soft);
+  color: var(--ui-green-ink);
+}
+
+.trigger-badge--keyword {
+  background: var(--ui-accent-soft);
+  color: var(--ui-accent);
 }
 
 .trigger-badge--off_hours {
-  background: #fef3c7;
-  color: #b45309;
+  background: var(--ui-orange-soft);
+  color: var(--ui-orange-ink);
 }
 
-.trigger-badge--fallback {
-  background: #ede9fe;
-  color: #6d28d9;
+.method-badge--reply {
+  background: var(--ui-green-soft);
+  color: var(--ui-green-ink);
+}
+
+.method-badge--push {
+  background: var(--ui-orange-soft);
+  color: var(--ui-orange-ink);
 }
 
 .rule-name {
-  font-size: 0.8125rem;
-  font-weight: 500;
-  color: var(--gray-900, #1C1C1E);
+  font-size: 14px;
+  font-weight: 600;
 }
 
-/* Platform */
+.log-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  font-size: 12.5px;
+  color: var(--ui-muted);
+}
+
+.meta-divider {
+  flex: none;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--ui-faint);
+}
+
 .platform-indicator {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  font-size: 0.75rem;
-  color: var(--gray-500, #6b7280);
-  white-space: nowrap;
 }
 
 .platform-dot {
   display: inline-block;
+  flex: none;
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  flex-shrink: 0;
+  background: var(--ui-faint);
 }
 
 .platform-dot--line {
-  background: #00c300;
+  background: var(--ui-line);
 }
 
 .platform-dot--facebook {
-  background: #1877f2;
+  background: var(--ui-messenger);
 }
 
-/* Method badges */
-.method-badge {
-  display: inline-block;
-  font-size: 0.625rem;
-  font-weight: 600;
-  padding: 2px 8px;
-  border-radius: 6px;
-  white-space: nowrap;
+.time-text {
+  font-variant-numeric: tabular-nums;
 }
 
-.method-badge--reply {
-  background: #dcfce7;
-  color: #166534;
+.log-card-body {
+  display: grid;
+  gap: 4px;
+  margin-top: 8px;
 }
 
-.method-badge--push {
-  background: #fef3c7;
-  color: #92400e;
+.log-card-line {
+  display: flex;
+  gap: 10px;
+  font-size: 13.5px;
 }
 
-/* Empty state */
-.empty-state {
-  padding: var(--space-8) var(--space-4);
-  text-align: center;
+.log-card-label {
+  flex: none;
+  width: 28px;
+  color: var(--ui-muted);
+}
+
+.log-card-text {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--ui-ink-2);
+}
+
+.log-card-text--trigger {
+  color: var(--ui-ink);
 }
 
 .empty-icon {
-  font-size: 2.5rem;
-  margin-bottom: var(--space-3);
-  opacity: 0.5;
+  display: grid;
+  width: 56px;
+  height: 56px;
+  place-items: center;
+  border-radius: 18px;
+  background: var(--ui-surface-2);
+  color: var(--ui-muted);
+}
+
+.empty-icon svg {
+  width: 26px;
+  height: 26px;
 }
 
 .empty-title {
-  font-size: 1rem;
-  font-weight: 600;
-  color: var(--gray-900);
-  margin: 0 0 var(--space-1);
+  margin: 0;
+  font: 600 16px var(--ui-font-display);
 }
 
 .empty-desc {
-  font-size: 0.875rem;
-  color: var(--gray-600);
   margin: 0;
+  font-size: 13.5px;
+  color: var(--ui-muted);
 }
 
-/* Pagination */
 .pagination-footer {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  padding: var(--space-4) var(--space-5);
-  border-top: 1px solid var(--gray-100);
-  flex-wrap: wrap;
-  gap: var(--space-3);
+  gap: 10px;
+  padding: 12px 22px 16px;
+  box-shadow: 0 -0.5px 0 var(--ui-sep);
 }
 
 .pagination-info {
-  font-size: 0.8125rem;
-  color: var(--gray-600);
+  font-size: 12.5px;
+  color: var(--ui-muted);
   font-variant-numeric: tabular-nums;
 }
 
 .pagination-buttons {
   display: flex;
-  align-items: center;
-  gap: var(--space-1);
+  flex-wrap: wrap;
+  gap: 6px;
 }
 
 .page-btn {
   min-width: 36px;
-  height: 36px;
-  padding: 0 var(--space-2);
-  font-size: 0.8125rem;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
 }
 
 @media (max-width: 768px) {
-  .log-toolbar {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .filter-select {
-    width: 100%;
-  }
-
-  .log-list {
-    padding: 12px;
-    gap: 10px;
-  }
-
-  .log-card {
-    padding: 12px 14px;
+  .log-card,
+  .log-toolbar,
+  .pagination-footer {
+    padding-right: 16px;
+    padding-left: 16px;
   }
 
   .log-card-meta {
-    margin-left: 0;
-    margin-top: 4px;
     width: 100%;
+    margin-left: 0;
   }
 
-  .pagination-footer {
-    flex-direction: column;
-    align-items: center;
+  .log-card-meta > .meta-divider:first-child {
+    display: none;
+  }
+
+  .filter-select {
+    flex: 1 1 100%;
+  }
+
+  .page-btn {
+    min-height: 44px;
   }
 }
 </style>

@@ -1,21 +1,23 @@
 <template>
-  <div class="rule-editor">
+  <div class="rule-editor ui-card">
     <!-- Basic settings row -->
     <div class="rule-editor__basics">
-      <div class="form-group rule-editor__name">
-        <label class="form-label">規則名稱</label>
+      <div class="ui-field rule-editor__name">
+        <label for="rule-name">規則名稱</label>
         <input
-          class="form-input"
+          id="rule-name"
+          class="ui-input"
           type="text"
           :value="formData.name"
           placeholder="輸入規則名稱"
           @input="emit('update-field', 'name', ($event.target as HTMLInputElement).value)"
         >
       </div>
-      <div class="form-group rule-editor__trigger">
-        <label class="form-label">觸發類型</label>
+      <div class="ui-field rule-editor__trigger">
+        <label for="rule-trigger">觸發類型</label>
         <select
-          class="form-input"
+          id="rule-trigger"
+          class="ui-select"
           :value="formData.triggerType"
           @change="emit('update-field', 'triggerType', ($event.target as HTMLSelectElement).value)"
         >
@@ -28,10 +30,11 @@
           </option>
         </select>
       </div>
-      <div class="form-group rule-editor__priority">
-        <label class="form-label">優先序</label>
+      <div class="ui-field rule-editor__priority">
+        <label for="rule-priority">優先序</label>
         <input
-          class="form-input"
+          id="rule-priority"
+          class="ui-input"
           type="number"
           min="0"
           :value="formData.priority"
@@ -42,7 +45,7 @@
 
     <!-- Conditions section -->
     <div class="rule-editor__section">
-      <label class="form-label">觸發條件 (任一符合即觸發)</label>
+      <span class="rule-editor__label">觸發條件 <small>任一符合即觸發</small></span>
       <ConditionEditor
         :conditions="formData.conditions"
         @add="(conditionType: string, value: string) => emit('add-condition', conditionType, value)"
@@ -52,7 +55,7 @@
 
     <!-- Actions section -->
     <div class="rule-editor__section">
-      <label class="form-label">回覆動作 (依序執行)</label>
+      <span class="rule-editor__label">回覆動作 <small>依序執行</small></span>
       <ActionEditor
         :actions="formData.actions"
         @add="(actionType: string) => emit('add-action', actionType)"
@@ -65,10 +68,9 @@
     <div class="rule-editor__section rule-editor__advanced">
       <div class="rule-editor__advanced-row">
         <div class="rule-editor__advanced-text">
-          <span class="rule-editor__advanced-title">失敗時消耗 Push quota 確保送達</span>
+          <span class="rule-editor__advanced-title">失敗時消耗 Push 額度確保送達</span>
           <span class="rule-editor__advanced-desc">
-            啟用後若主要的 Reply API 回覆失敗，會自動改用 Push API 補救（會消耗 LINE 月度 quota）。
-            建議僅在業務關鍵規則啟用，例如客訴、訂單、付款通知。
+            Reply API 回覆失敗時改用 Push API 補送，會消耗 LINE 月度額度。建議只對客訴、訂單、付款等關鍵規則開啟。
           </span>
         </div>
         <button
@@ -159,94 +161,78 @@ const emit = defineEmits<{
 </script>
 
 <style scoped>
-/* Spacing comes from the flex gaps below; the global .form-group/.form-label margins would double it */
-.rule-editor .form-group,
-.rule-editor .form-label {
-  margin-bottom: 0;
-}
-
 .rule-editor {
-  padding: var(--space-4);
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
+  gap: 18px;
+  padding: 20px 22px;
 }
 
 .rule-editor__basics {
-  display: flex;
-  gap: var(--space-3);
-  align-items: flex-end;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 200px 110px;
+  gap: 14px;
 }
 
-.rule-editor__name {
-  flex: 2;
+.rule-editor__label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ui-ink-2);
 }
 
-.rule-editor__trigger {
-  flex: 1;
-}
-
-.rule-editor__priority {
-  flex: 0.5;
-}
-
-.rule-editor__section {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
+.rule-editor__label small {
+  margin-left: 6px;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--ui-muted);
 }
 
 .rule-editor__advanced {
-  background: #F2F2F7;
-  border-radius: 16px;
-  padding: var(--space-3) var(--space-4);
+  padding: 14px 16px;
+  border-radius: var(--ui-r-inner);
+  background: var(--ui-orange-soft);
 }
 
 .rule-editor__advanced-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--space-3);
+  gap: 16px;
 }
 
 .rule-editor__advanced-text {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  flex: 1;
-  min-width: 0;
+  display: grid;
+  gap: 2px;
 }
 
 .rule-editor__advanced-title {
-  font-size: 0.9375rem;
+  font-size: 13.5px;
   font-weight: 600;
-  color: #1C1C1E;
+  color: var(--ui-ink);
 }
 
 .rule-editor__advanced-desc {
-  font-size: 0.8125rem;
-  color: #8E8E93;
-  line-height: 1.45;
+  font-size: 12.5px;
+  color: var(--ui-ink-2);
 }
 
-/* iOS-native toggle (mirrors RuleCard pattern) */
 .rule-editor__toggle {
   position: relative;
+  flex: none;
   width: 44px;
   height: 26px;
-  border-radius: 9999px;
-  background: #E5E5EA;
-  cursor: pointer;
-  transition: background 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  flex-shrink: 0;
-  border: none;
   padding: 0;
-  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.06);
+  border: 0;
+  border-radius: 999px;
+  background: var(--ui-fill-strong);
+  cursor: pointer;
+  transition: background var(--ui-dur) var(--ui-ease);
 }
 
 .rule-editor__toggle--active {
-  background: #34C759;
-  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.08);
+  background: var(--ui-green);
 }
 
 .rule-editor__toggle-knob {
@@ -255,12 +241,12 @@ const emit = defineEmits<{
   left: 2px;
   width: 22px;
   height: 22px;
-  border-radius: 9999px;
-  background: #FFFFFF;
-  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  border-radius: 50%;
+  background: #fff;
   box-shadow:
-    0 2px 4px rgba(0, 0, 0, 0.1),
-    0 1px 2px rgba(0, 0, 0, 0.06);
+    0 2px 4px rgb(0 0 0 / 0.15),
+    0 0 0 0.5px rgb(0 0 0 / 0.04);
+  transition: transform var(--ui-dur) var(--ui-ease);
 }
 
 .rule-editor__toggle--active .rule-editor__toggle-knob {
@@ -269,43 +255,38 @@ const emit = defineEmits<{
 
 .rule-editor__footer {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  padding-top: var(--space-3);
-  border-top: 1px solid var(--gray-200);
+  justify-content: space-between;
+  gap: 12px;
 }
 
 .rule-editor__footer-right {
   display: flex;
-  gap: var(--space-2);
+  gap: 8px;
   margin-left: auto;
 }
 
 .rule-editor__delete-btn {
-  color: var(--error-600);
-  background: transparent;
-  border: none;
-  font-weight: 500;
-  cursor: pointer;
-  padding: var(--space-2) var(--space-3);
-  border-radius: var(--radius-md);
-  transition: background var(--transition-fast);
+  border: 0;
+  background: var(--ui-red-soft);
+  color: var(--ui-red-ink);
 }
 
-.rule-editor__delete-btn:hover {
-  background: var(--error-50);
-}
-
-@media (max-width: 640px) {
-  .rule-editor__basics {
-    flex-direction: column;
-    align-items: stretch;
+@media (max-width: 768px) {
+  .rule-editor {
+    padding: 16px;
   }
 
-  .rule-editor__name,
-  .rule-editor__trigger,
-  .rule-editor__priority {
-    flex: 1;
+  .rule-editor__basics {
+    grid-template-columns: 1fr 100px;
+  }
+
+  .rule-editor__name {
+    grid-column: 1 / -1;
+  }
+
+  .rule-editor__advanced-row {
+    align-items: flex-start;
   }
 }
 </style>
