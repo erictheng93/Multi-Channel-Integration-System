@@ -25,141 +25,143 @@
         </UiPageHead>
 
         <!-- 分頁籤：預設「處理中」，已結案的對話不佔據最顯眼的位置 -->
-        <section class="ui-card filter-card">
-          <div class="filter-top">
+        <div class="ui-group conv-group">
+          <section class="filter-card">
+            <div class="filter-top">
+              <div
+                ref="scopeTabsEl"
+                class="ui-seg"
+                :class="{ 'is-overflowing': scopeTabsOverflow }"
+                role="tablist"
+                aria-label="對話分類"
+              >
+                <button
+                  v-for="tab in visibleTabs"
+                  :key="tab.value"
+                  type="button"
+                  role="tab"
+                  class="scope-tab"
+                  :class="{ 'is-on': scope === tab.value, 'is-stale': tab.value === 'stale' }"
+                  :aria-selected="scope === tab.value"
+                  :title="tab.value === 'stale' ? `已含在處理中：客戶來訊後超過 ${WAITING_WINDOW_DAYS} 天仍未回覆，不計入待回覆` : undefined"
+                  :data-testid="`scope-tab-${tab.value}`"
+                  @click="selectView(tab.value)"
+                >
+                  {{ tab.label }}
+                  <span
+                    v-if="tabCount(tab.value) !== null"
+                    class="ui-seg-n"
+                  >{{ tabCount(tab.value) }}</span>
+                </button>
+              </div>
+              <p
+                v-if="isSearching && scope !== 'stale'"
+                class="scope-hint"
+                role="status"
+              >
+                搜尋時會一併顯示已結案的對話
+              </p>
+            </div>
+            <ConversationFilters
+              :filters="filterComposable.filters.value"
+              :available-tags="availableTags"
+              :total-conversations="conversations.length"
+              :unread-count="0"
+              @update:filter="handleFilterUpdate"
+              @toggle:tag="filterComposable.toggleTagFilter"
+              @clear:tags="filterComposable.clearTagFilter"
+              @clear:all="filterComposable.clearAllFilters"
+            />
+          </section>
+
+          <!-- 逾期待回覆：說明結案是可逆的 -->
+          <p
+            v-if="scope === 'stale'"
+            class="stale-note"
+            role="note"
+            data-testid="stale-note"
+          >
+            這些對話的客戶已超過 {{ WAITING_WINDOW_DAYS }} 天沒有收到回覆，不計入待回覆。從未獲得回覆的排在最前面，其餘依等待時間由久到近。
+            按「選取」勾選後可批量結案；結案不會刪除任何內容，客戶下次來訊時會自動重新開啟同一個對話。
+          </p>
+
+          <!-- SSE 更新指示器 -->
+          <ConversationSyncIndicator :visible="isUpdating" />
+
+          <div class="conversations-content">
             <div
-              ref="scopeTabsEl"
-              class="ui-seg"
-              :class="{ 'is-overflowing': scopeTabsOverflow }"
-              role="tablist"
-              aria-label="對話分類"
+              v-if="loading && displayedConversations.length === 0"
+              class="loading-overlay"
             >
-              <button
-                v-for="tab in visibleTabs"
-                :key="tab.value"
-                type="button"
-                role="tab"
-                class="scope-tab"
-                :class="{ 'is-on': scope === tab.value, 'is-stale': tab.value === 'stale' }"
-                :aria-selected="scope === tab.value"
-                :title="tab.value === 'stale' ? `已含在處理中：客戶來訊後超過 ${WAITING_WINDOW_DAYS} 天仍未回覆，不計入待回覆` : undefined"
-                :data-testid="`scope-tab-${tab.value}`"
-                @click="selectView(tab.value)"
-              >
-                {{ tab.label }}
-                <span
-                  v-if="tabCount(tab.value) !== null"
-                  class="ui-seg-n"
-                >{{ tabCount(tab.value) }}</span>
-              </button>
+              <HamsterLoader message="載入對話列表中..." />
             </div>
-            <p
-              v-if="isSearching && scope !== 'stale'"
-              class="scope-hint"
-              role="status"
+            <div
+              v-else-if="loadError && displayedConversations.length === 0"
+              class="conversations-error"
+              role="alert"
             >
-              搜尋時會一併顯示已結案的對話
-            </p>
-          </div>
-          <ConversationFilters
-            :filters="filterComposable.filters.value"
-            :available-tags="availableTags"
-            :total-conversations="conversations.length"
-            :unread-count="0"
-            @update:filter="handleFilterUpdate"
-            @toggle:tag="filterComposable.toggleTagFilter"
-            @clear:tags="filterComposable.clearTagFilter"
-            @clear:all="filterComposable.clearAllFilters"
-          />
-        </section>
-
-        <!-- 逾期待回覆：說明結案是可逆的 -->
-        <p
-          v-if="scope === 'stale'"
-          class="ui-card stale-note"
-          role="note"
-          data-testid="stale-note"
-        >
-          這些對話的客戶已超過 {{ WAITING_WINDOW_DAYS }} 天沒有收到回覆，不計入待回覆。從未獲得回覆的排在最前面，其餘依等待時間由久到近。
-          按「選取」勾選後可批量結案；結案不會刪除任何內容，客戶下次來訊時會自動重新開啟同一個對話。
-        </p>
-
-        <!-- SSE 更新指示器 -->
-        <ConversationSyncIndicator :visible="isUpdating" />
-
-        <div class="conversations-content">
-          <div
-            v-if="loading && displayedConversations.length === 0"
-            class="ui-card loading-overlay"
-          >
-            <HamsterLoader message="載入對話列表中..." />
-          </div>
-          <div
-            v-else-if="loadError && displayedConversations.length === 0"
-            class="ui-card conversations-error"
-            role="alert"
-          >
-            <div class="conversations-error-content">
-              <div class="conversations-error-title">
-                無法載入對話列表
+              <div class="conversations-error-content">
+                <div class="conversations-error-title">
+                  無法載入對話列表
+                </div>
+                <div class="conversations-error-text">
+                  {{ loadError }}
+                </div>
+                <button
+                  type="button"
+                  class="btn btn-primary"
+                  :disabled="isUpdating"
+                  @click="refreshConversations"
+                >
+                  重試
+                </button>
               </div>
-              <div class="conversations-error-text">
-                {{ loadError }}
-              </div>
-              <button
-                type="button"
-                class="btn btn-primary"
-                :disabled="isUpdating"
-                @click="refreshConversations"
-              >
-                重試
-              </button>
             </div>
-          </div>
-          <UiEmptyState
-            v-else-if="displayedConversations.length === 0"
-            class="ui-card no-data"
-            :title="emptyText"
-          >
-            <template #icon>
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.8"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                aria-hidden="true"
-              ><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20.5l1.4-4.6A8 8 0 1 1 21 12Z" /></svg>
-            </template>
-          </UiEmptyState>
-          <div
-            v-else
-            class="ui-card conversations-table-container"
-            :class="{ updating: isUpdating }"
-          >
-            <!-- Desktop Table View -->
-            <ConversationDesktopTable
-              :conversations="displayedConversations"
-              :selection-mode="selectionMode"
-              :selected-ids="selectedIds"
-              @select="goToConversation"
-              @toggle-select="toggleSelect"
-              @toggle-select-all="toggleSelectAll"
-            />
+            <UiEmptyState
+              v-else-if="displayedConversations.length === 0"
+              class="no-data"
+              :title="emptyText"
+            >
+              <template #icon>
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                ><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20.5l1.4-4.6A8 8 0 1 1 21 12Z" /></svg>
+              </template>
+            </UiEmptyState>
+            <div
+              v-else
+              class="conversations-table-container"
+              :class="{ updating: isUpdating }"
+            >
+              <!-- Desktop Table View -->
+              <ConversationDesktopTable
+                :conversations="displayedConversations"
+                :selection-mode="selectionMode"
+                :selected-ids="selectedIds"
+                @select="goToConversation"
+                @toggle-select="toggleSelect"
+                @toggle-select-all="toggleSelectAll"
+              />
 
-            <!-- Mobile Card View -->
-            <ConversationMobileCards
-              :conversations="displayedConversations"
-              :selection-mode="selectionMode"
-              :selected-ids="selectedIds"
-              @select="goToConversation"
-              @toggle-select="toggleSelect"
-            />
+              <!-- Mobile Card View -->
+              <ConversationMobileCards
+                :conversations="displayedConversations"
+                :selection-mode="selectionMode"
+                :selected-ids="selectedIds"
+                @select="goToConversation"
+                @toggle-select="toggleSelect"
+              />
 
-            <p class="list-foot">
-              {{ LEGEND_TEXT }}
-            </p>
+              <p class="list-foot">
+                {{ LEGEND_TEXT }}
+              </p>
+            </div>
           </div>
         </div>
 
@@ -618,11 +620,13 @@ onUnmounted(() => {
   position: relative;
 }
 
+/* One group holds the controls and the list: the filter block heads it, a hairline divides them */
 .filter-card {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  padding: 16px 18px 18px;
+  padding: 16px 18px 16px;
+  box-shadow: inset 0 -0.5px 0 var(--ui-sep);
 }
 
 .filter-top {
@@ -660,6 +664,7 @@ onUnmounted(() => {
 .stale-note {
   margin: 0;
   padding: 14px 20px;
+  box-shadow: inset 0 -0.5px 0 var(--ui-sep);
   font-size: 13px;
   line-height: 1.6;
   color: var(--ui-muted);
