@@ -23,6 +23,7 @@
           @search="searchPanel.toggle"
           @export="showExportDialog = true"
           @mark-unread="handleMarkUnread"
+          @info="showInfoSheet = true"
         />
 
         <!--  Transferred Conversation Banner Component (轉出本團隊) -->
@@ -226,6 +227,46 @@
       />
     </div>
 
+    <!-- Customer panel as a bottom sheet below 1281px, where the side column is hidden -->
+    <Teleport to="body">
+      <Transition name="info-sheet">
+        <div
+          v-if="showInfoSheet"
+          class="info-sheet-root"
+          @keydown.esc="showInfoSheet = false"
+        >
+          <div
+            class="info-sheet-backdrop"
+            @click="showInfoSheet = false"
+          />
+          <div
+            class="info-sheet"
+            role="dialog"
+            aria-modal="true"
+            aria-label="客戶資訊"
+          >
+            <div class="info-sheet-grip" />
+            <button
+              ref="infoSheetClose"
+              type="button"
+              class="info-sheet-close"
+              aria-label="關閉客戶資訊"
+              @click="showInfoSheet = false"
+            >
+              <XIcon :size="18" />
+            </button>
+            <ConversationSidePanel
+              class="info-sheet-panel"
+              :conversation="conversation"
+              :tags="customerTags"
+              :message-count="messages.length > 0 ? messages.length : null"
+              :has-more="httpMessages.hasMore.value"
+            />
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
+
     <!-- Lazy loaded keyboard shortcuts -->
     <Suspense>
       <KeyboardShortcuts ref="keyboardShortcutsRef" />
@@ -246,7 +287,7 @@
 import { createLogger } from '@/utils/logger'
 
 const frontendLogger = createLogger('ConversationDetail')
-import { ref, computed, watch, onMounted, onUnmounted, defineAsyncComponent } from 'vue'
+import { ref, computed, watch, nextTick, onMounted, onUnmounted, defineAsyncComponent } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useToast } from '@/composables/useToast'
@@ -288,7 +329,7 @@ import ConversationSidePanel from '@/components/conversation/ConversationSidePan
 import type { Tag } from '@/api/tags'
 import ExportDialog from '@/components/conversation/ExportDialog.vue'
 import HistoryRetentionNotice from '@/components/conversation/banners/HistoryRetentionNotice.vue'
-import { MessageCircleIcon } from '@/components/icons'
+import { MessageCircleIcon, XIcon } from '@/components/icons'
 
 // Extracted sub-components
 import {
@@ -313,6 +354,16 @@ const conversationId = computed(() => route.params.id as string)
 
 // Customer tags (owned by the header's tag editor, shown read-only in the side panel)
 const customerTags = ref<Tag[]>([])
+
+// Customer info bottom sheet (shown below 1281px where the side column is hidden)
+const showInfoSheet = ref(false)
+const infoSheetClose = ref<HTMLButtonElement | null>(null)
+watch(showInfoSheet, async open => {
+  if (open) {
+    await nextTick()
+    infoSheetClose.value?.focus()
+  }
+})
 
 // Export dialog state
 const showExportDialog = ref(false)
@@ -859,6 +910,103 @@ defineExpose({
 }
 
 /* Responsive */
+/* Customer info sheet */
+.info-sheet-root {
+  position: fixed;
+  inset: 0;
+  z-index: 10050;
+}
+
+.info-sheet-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgb(0 0 0 / 28%);
+  backdrop-filter: blur(2px);
+}
+
+.info-sheet {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  max-height: 82vh;
+  max-height: 82dvh;
+  margin: 0 auto;
+  padding-bottom: env(safe-area-inset-bottom);
+  overflow-y: auto;
+  border-radius: 24px 24px 0 0;
+  background: var(--ui-surface);
+  box-shadow: var(--ui-shadow-raised);
+}
+
+@media (min-width: 641px) {
+  .info-sheet {
+    max-width: 420px;
+    margin: 0 20px 20px auto;
+    border-radius: 24px;
+  }
+}
+
+.info-sheet-grip {
+  width: 36px;
+  height: 5px;
+  margin: 8px auto 0;
+  border-radius: 999px;
+  background: var(--ui-fill-strong);
+}
+
+.info-sheet-close {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--ui-ink-2);
+  cursor: pointer;
+}
+
+.info-sheet-close:hover {
+  background: var(--ui-fill);
+}
+
+.info-sheet-panel {
+  display: flex;
+  box-shadow: none;
+  background: transparent;
+  border-radius: 0;
+}
+
+.info-sheet-enter-active,
+.info-sheet-leave-active {
+  transition: opacity var(--ui-dur) var(--ui-ease);
+}
+
+.info-sheet-enter-active .info-sheet,
+.info-sheet-leave-active .info-sheet {
+  transition: transform 0.3s var(--ui-ease);
+}
+
+.info-sheet-enter-from,
+.info-sheet-leave-to {
+  opacity: 0;
+}
+
+.info-sheet-enter-from .info-sheet,
+.info-sheet-leave-to .info-sheet {
+  transform: translateY(24px);
+}
+
+@media (min-width: 1281px) {
+  .info-sheet-root {
+    display: none;
+  }
+}
+
 @media (min-width: 1281px) {
   .detail-layout {
     grid-template-columns: minmax(0, 1fr) 296px;

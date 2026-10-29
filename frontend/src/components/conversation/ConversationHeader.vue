@@ -69,6 +69,7 @@
           :disabled="!conversation || isClosed"
           :title="isClosed ? '已結案的對話不會顯示未讀' : '標示為未讀'"
           :aria-label="isClosed ? '已結案的對話不會顯示未讀' : '標示為未讀'"
+          :data-tip="isClosed ? '已結案不顯示未讀' : '標示為未讀'"
           @click="$emit('markUnread')"
         >
           <MailIcon :size="18" />
@@ -78,6 +79,7 @@
           class="header-action-btn"
           title="搜尋訊息"
           aria-label="搜尋訊息"
+          data-tip="搜尋訊息"
           @click="$emit('search')"
         >
           <SearchIcon :size="18" />
@@ -87,6 +89,7 @@
           class="header-action-btn"
           title="匯出此對話記錄"
           aria-label="匯出此對話記錄"
+          data-tip="匯出對話"
           @click="$emit('export')"
         >
           <DownloadIcon :size="18" />
@@ -161,30 +164,28 @@
         <TagSelector
           v-model="selectedTagIds"
           :customer-id="customerIdNumber"
-          button-label="客戶標籤"
+          button-label="標籤"
           @change="handleTagsChange"
         />
       </div>
-      <!-- 結案 / 重新開啟按鈕 -->
+      <span
+        class="actions-spacer"
+        aria-hidden="true"
+      />
+
+      <!-- Customer panel as a sheet where the side panel is not shown -->
       <button
         v-if="conversation"
-        class="btn btn-sm close-toggle-btn"
-        :class="isClosed ? 'btn-secondary' : 'btn-primary'"
-        :disabled="togglingClosed"
-        @click="handleToggleClosed"
+        type="button"
+        class="header-action-btn info-btn"
+        title="客戶資訊"
+        aria-label="客戶資訊"
+        @click="$emit('info')"
       >
-        <RefreshIcon
-          v-if="isClosed"
-          :size="16"
-        />
-        <CheckIcon
-          v-else
-          :size="16"
-        />
-        <span>{{ isClosed ? '重新開啟' : '結案' }}</span>
+        <InfoIcon :size="18" />
       </button>
 
-      <!-- Phone: the three tools live behind one more button -->
+      <!-- Overflow: 重新整理 always; on a phone the three tools fold in as well -->
       <div class="more-wrapper">
         <button
           type="button"
@@ -226,6 +227,7 @@
           <button
             type="button"
             role="menuitem"
+            class="more-tool"
             :disabled="!conversation || isClosed"
             @click="runMore('markUnread')"
           >
@@ -234,6 +236,7 @@
           <button
             type="button"
             role="menuitem"
+            class="more-tool"
             @click="runMore('search')"
           >
             <SearchIcon :size="16" />搜尋訊息
@@ -241,21 +244,42 @@
           <button
             type="button"
             role="menuitem"
+            class="more-tool"
             @click="runMore('export')"
           >
             <DownloadIcon :size="16" />匯出對話記錄
           </button>
+          <button
+            type="button"
+            role="menuitem"
+            :disabled="loading"
+            @click="runMore('refresh')"
+          >
+            <RefreshIcon
+              :size="16"
+              :spinning="loading"
+            />重新整理
+          </button>
         </div>
       </div>
 
+      <!-- 結案 / 重新開啟: isolated at the far right -->
       <button
-        class="header-action-btn"
-        title="重新整理"
-        aria-label="重新整理"
-        :disabled="loading"
-        @click="$emit('refresh')"
+        v-if="conversation"
+        class="btn btn-sm close-toggle-btn"
+        :class="isClosed ? 'btn-secondary' : 'btn-primary'"
+        :disabled="togglingClosed"
+        @click="handleToggleClosed"
       >
-        <RefreshIcon :spinning="loading" />
+        <RefreshIcon
+          v-if="isClosed"
+          :size="16"
+        />
+        <CheckIcon
+          v-else
+          :size="16"
+        />
+        <span>{{ isClosed ? '重新開啟' : '結案' }}</span>
       </button>
     </div>
   </div>
@@ -271,11 +295,12 @@ const emit = defineEmits<{
   search: []
   export: []
   markUnread: []
+  info: []
   'tags-change': [tags: Tag[]]
 }>()
 const frontendLogger = createLogger('ConversationHeader')
 import { computed, ref, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
-import { ArrowLeftIcon, RefreshIcon, UserPlusIcon, ChevronDownIcon, SearchIcon, DownloadIcon, MailIcon, CheckIcon } from '@/components/icons'
+import { ArrowLeftIcon, InfoIcon, RefreshIcon, UserPlusIcon, ChevronDownIcon, SearchIcon, DownloadIcon, MailIcon, CheckIcon } from '@/components/icons'
 import PlatformBadge from '../ui/PlatformBadge.vue'
 import StatusBadge from '../ui/StatusBadge.vue'
 import AssignmentBadge from '../ui/AssignmentBadge.vue'
@@ -299,9 +324,9 @@ const selectedTagIds = ref<number[]>([])
 const showAssignPanel = ref(false)
 const showMore = ref(false)
 
-const runMore = (name: 'markUnread' | 'search' | 'export'): void => {
+const runMore = (name: 'markUnread' | 'search' | 'export' | 'refresh'): void => {
   showMore.value = false
-  if (name === 'markUnread') { emit('markUnread') } else if (name === 'search') { emit('search') } else { emit('export') }
+  if (name === 'markUnread') { emit('markUnread') } else if (name === 'search') { emit('search') } else if (name === 'export') { emit('export') } else { emit('refresh') }
 }
 const assignPanelRef = ref<HTMLElement | null>(null)
 const assignPanelStyle = ref<Record<string, string>>({})
@@ -622,9 +647,20 @@ defineExpose({
 
 .header-actions {
   display: flex;
+  flex: 1 1 auto;
   flex-wrap: wrap;
   align-items: center;
   gap: 6px;
+}
+
+/* Pushes 更多 and 結案 to the far right edge */
+.actions-spacer {
+  flex: 1 1 8px;
+}
+
+/* The customer panel is a side column from 1281px up; below that it opens as a sheet */
+.header-actions .info-btn {
+  display: none;
 }
 
 /* Round icon buttons */
@@ -672,7 +708,41 @@ defineExpose({
 
 .more-wrapper {
   position: relative;
-  display: none;
+}
+
+/* Tool-group tooltips: the icons carry a name on hover and keyboard focus */
+.tool-seg .header-action-btn {
+  position: relative;
+}
+
+.tool-seg .header-action-btn::after {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 50%;
+  z-index: 30;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--ui-ink);
+  color: #fff;
+  content: attr(data-tip);
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, -2px);
+  transition: opacity var(--ui-dur) var(--ui-ease), transform var(--ui-dur) var(--ui-ease);
+}
+
+.tool-seg .header-action-btn:hover::after,
+.tool-seg .header-action-btn:focus-visible::after {
+  opacity: 1;
+  transform: translate(-50%, 0);
+  transition-delay: 300ms;
+}
+
+.more-tool {
+  display: none !important;
 }
 
 .more-menu {
@@ -762,6 +832,7 @@ defineExpose({
 
 .close-toggle-btn {
   display: inline-flex;
+  margin-left: 6px;
   align-items: center;
   gap: 6px;
   white-space: nowrap;
@@ -893,9 +964,8 @@ defineExpose({
     display: none;
   }
 
-  .more-wrapper {
-    display: block;
-    margin-left: auto;
+  .more-tool {
+    display: flex !important;
   }
 
   .assign-action-btn {
@@ -907,6 +977,12 @@ defineExpose({
     min-width: calc(100vw - 2rem);
     max-width: calc(100vw - 2rem);
     transform: translateX(-50%);
+  }
+}
+
+@media (max-width: 1280px) {
+  .header-actions .info-btn {
+    display: grid;
   }
 }
 
