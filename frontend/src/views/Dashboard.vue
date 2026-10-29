@@ -125,7 +125,10 @@
       <!-- Waiting list + team -->
       <section class="bento">
         <div class="col">
-          <h2 class="ui-group-label">
+          <h2
+            class="ui-group-label"
+            :title="`待回覆＝近 ${WAITING_WINDOW_DAYS} 天內，客戶來訊後尚無客服回覆`"
+          >
             待回覆
             <span
               v-if="summary.data.value"
@@ -268,7 +271,7 @@
               <li
                 v-for="p in teamRows"
                 :key="p.id"
-                class="ui-row"
+                class="ui-row person"
               >
                 <div class="avatar sm">
                   {{ initialOf(p.name) }}
