@@ -1354,9 +1354,10 @@
        Bleeds through the 16px page gutter (negative margin) so it reads as a bar, not a card. */
     .ui-action-bar {
       position: sticky;
+      /* sticky offsets are measured from the content edge, so cancel the page padding */
       bottom: calc(-1 * (var(--space-4) + env(safe-area-inset-bottom)));
       z-index: 4;
-      margin: 0 calc(-1 * var(--space-4));
+      margin: 0 calc(-1 * var(--space-4)) calc(-1 * (var(--space-4) + env(safe-area-inset-bottom)));
       padding: 10px var(--space-4) calc(10px + env(safe-area-inset-bottom));
       background: var(--ui-glass);
       backdrop-filter: saturate(180%) blur(20px);
