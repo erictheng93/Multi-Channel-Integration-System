@@ -44,6 +44,7 @@
             <span class="fmt-text">
               <b>{{ format.name }}<small>{{ format.tagline }}</small></b>
               <span class="fmt-use">{{ format.usecases.join('、') }}</span>
+              <code class="fmt-preview">{{ format.preview }}</code>
             </span>
             <i
               class="radio"
@@ -102,17 +103,30 @@
             <li>不含已收回的訊息</li>
             <li>依時間由新到舊，最多 {{ EXPORT_LIMIT.toLocaleString() }} 筆</li>
           </ul>
-
-          <h3 class="scope-h">
-            可篩選
-          </h3>
-          <ul class="scope-list">
-            <li>日期範圍</li>
-            <li>客戶</li>
-            <li>客服人員</li>
-          </ul>
+          <div class="cap">
+            <span class="cap-num">{{ EXPORT_LIMIT.toLocaleString() }}</span>
+            <span class="cap-text">筆 / 單次匯出上限<br>超出部分會被截斷</span>
+          </div>
         </div>
       </aside>
+    </section>
+
+    <section
+      class="ui-card filters"
+      aria-label="匯出前可篩選"
+    >
+      <h2 class="filters-title">
+        匯出前可篩選
+      </h2>
+      <ul class="filters-list">
+        <li
+          v-for="f in filterOptions"
+          :key="f.name"
+        >
+          <b>{{ f.name }}</b>
+          <span>{{ f.hint }}</span>
+        </li>
+      </ul>
     </section>
 
     <UiActionBar
@@ -161,7 +175,8 @@ const formats = [
     icon: '{ }',
     tone: 'blue',
     fields: ['訊息編號、對話編號', '寄件者類型與名稱', '訊息內容與類型', '傳送時間、傳送狀態、建立時間', '附加資料（metadata）', '匯出資訊：時間、匯出者、篩選條件'],
-    usecases: ['API 整合', '資料分析', '系統備份']
+    usecases: ['API 整合', '資料分析', '系統備份'],
+    preview: '{ id, conversationId, senderType, senderName, content, messageType, sentAt, … }'
   },
   {
     id: 'csv' as const,
@@ -170,7 +185,8 @@ const formats = [
     icon: 'CSV',
     tone: 'green',
     fields: ['訊息編號、對話編號', '寄件者類型與名稱', '訊息內容與類型', '傳送時間、傳送狀態、建立時間'],
-    usecases: ['Excel 報表', '統計分析', '團隊共享']
+    usecases: ['Excel 報表', '統計分析', '團隊共享'],
+    preview: 'Message ID, Conversation ID, Sender Type, Sender Name, Content, …'
   },
   {
     id: 'txt' as const,
@@ -179,7 +195,8 @@ const formats = [
     icon: 'TXT',
     tone: 'lavender',
     fields: ['檔頭：匯出時間、總筆數、使用的篩選條件', '依對話分組，組內依時間由舊到新', '每則一行：[時間] 寄件者: 內容'],
-    usecases: ['直接閱讀', '品質審查', '列印備份']
+    usecases: ['直接閱讀', '品質審查', '列印備份'],
+    preview: '[時間] 寄件者: 內容'
   },
   {
     id: 'pdf' as const,
@@ -188,8 +205,15 @@ const formats = [
     icon: 'PDF',
     tone: 'red',
     fields: ['在瀏覽器內依 JSON 資料排版產生', '標題與匯出資訊、使用的篩選條件', '依對話分組的訊息內容'],
-    usecases: ['列印報告', '正式存檔', '對外分享']
+    usecases: ['列印報告', '正式存檔', '對外分享'],
+    preview: '標題 · 匯出資訊 · 依對話分組的訊息'
   }
+]
+
+const filterOptions = [
+  { name: '日期範圍', hint: '只匯出起訖日期之間的訊息' },
+  { name: '客戶', hint: '只匯出指定客戶的對話' },
+  { name: '客服人員', hint: '只匯出指定客服發送的訊息' }
 ]
 
 const selectedFields = computed(() => formats.find(f => f.id === selectedFormat.value)?.fields ?? [])
@@ -217,8 +241,15 @@ function selectFormat(format: FormatId) {
   flex-direction: column;
 }
 
+.scope {
+  display: flex;
+  flex-direction: column;
+}
+
 .scope-body {
-  display: grid;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
   gap: 4px;
   padding: 0 22px 22px;
 }
@@ -268,6 +299,79 @@ function selectFormat(format: FormatId) {
   padding: 0 22px 6px;
 }
 
+.fmt-preview {
+  display: block;
+  margin-top: 8px;
+  padding: 8px 10px;
+  overflow: hidden;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--ui-ink) 5%, transparent);
+  font: 12px / 1.45 var(--ui-font-mono);
+  color: var(--ui-ink-2);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cap {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  margin-top: auto;
+  padding: 16px 18px;
+  border-radius: var(--ui-r-inner);
+  background: var(--ui-accent-soft);
+}
+
+.cap-num {
+  font: 600 32px / 1 var(--ui-font-display);
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  color: var(--ui-accent-ink, var(--ui-accent));
+}
+
+.cap-text {
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--ui-ink-2);
+}
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 32px;
+  padding: 20px 22px;
+}
+
+.filters-title {
+  margin: 0;
+  font: 600 var(--ui-t-title) / 1.25 var(--ui-font-display);
+}
+
+.filters-list {
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  gap: 12px 32px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.filters-list li {
+  display: grid;
+  gap: 2px;
+}
+
+.filters-list b {
+  font-size: 14px;
+}
+
+.filters-list span {
+  font-size: 13px;
+  color: var(--ui-muted);
+}
+
 .fmt-row {
   position: relative;
   display: flex;
@@ -278,8 +382,8 @@ function selectFormat(format: FormatId) {
   padding: 10px 10px;
   border: 0;
   border-radius: var(--ui-r-inner);
-  background: var(--ui-surface-2);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ui-ink) 14%, transparent);
+  background: var(--ui-surface);
+  box-shadow: var(--ui-shadow-card), inset 0 0 0 1px color-mix(in srgb, var(--ui-ink) 10%, transparent);
   font: inherit;
   color: inherit;
   text-align: left;
@@ -288,7 +392,7 @@ function selectFormat(format: FormatId) {
 }
 
 .fmt-row:hover {
-  background: var(--ui-fill);
+  box-shadow: var(--ui-shadow-raised), inset 0 0 0 1px color-mix(in srgb, var(--ui-ink) 14%, transparent);
 }
 
 .fmt-row:focus-visible {
@@ -409,8 +513,8 @@ function selectFormat(format: FormatId) {
     flex-direction: column;
     align-items: flex-start;
     gap: 14px;
-    min-height: 150px;
-    padding: 18px;
+    min-height: 210px;
+    padding: 20px;
   }
 
   .fmt-ico {
@@ -463,6 +567,15 @@ function selectFormat(format: FormatId) {
 
   .export-actions {
     margin-top: auto;
+  }
+
+  .filters {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .filters-list {
+    flex-direction: column;
   }
 }
 </style>
