@@ -138,8 +138,17 @@
     --ui-t-title: 19px;
     --ui-t-head: 15px;
     --ui-t-body: 14px;
-    --ui-t-foot: 12.5px;
-    --ui-t-cap: 11.5px;
+    /* Typography floor: 13px for meta, labels, table headers, chips. Chart axes may go to 11px. */
+    --ui-t-foot: 13px;
+    --ui-t-cap: 13px;
+    --ui-t-meta: 13px;
+    --ui-t-nav-label: 11.5px;
+
+    /* Page frame: every routed page uses the same gutter and the same content width */
+    --ui-gutter: 28px;
+    --ui-page-max: 1360px;
+    --ui-page-gap: 20px;
+    --ui-head-h: 36px;
 
     --ui-ease: cubic-bezier(0.22, 1, 0.36, 1);
     --ui-dur: 240ms;
@@ -620,42 +629,70 @@
      scoped in the page. Tokens: --ui-* (see :root above).
      ============================================ */
 
-  /* Page header */
-  .ui-page-head {
+  /* Page frame: root element of every routed page. AppLayout supplies the gutter; this
+     supplies width, centring and the vertical rhythm, so the head and the content start at
+     the same x/y on every page. Do not add padding, max-width or margin to a page root. */
+  .ui-page {
     display: flex;
-    align-items: flex-end;
-    flex-wrap: wrap;
-    gap: 16px;
-    padding-bottom: 4px;
+    flex-direction: column;
+    gap: var(--ui-page-gap);
+    width: 100%;
+    max-width: var(--ui-page-max);
+    margin: 0 auto;
   }
-  .ui-page-head > :first-child {
-    min-width: 0;
-    flex: 1;
-  }
-  .ui-eyebrow {
-    margin-bottom: 4px;
-    font-size: 12.5px;
-    font-weight: 600;
-    color: var(--ui-muted);
+
+  /* Page header (use <UiPageHead>): title row at 36px with the actions centred on it, then a
+     one-line subtitle. The subtitle line is always reserved so the content never shifts. */
+  .ui-page-head {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      'title actions'
+      'sub sub';
+    align-items: center;
+    column-gap: 16px;
+    row-gap: 4px;
   }
   .ui-page-title {
+    grid-area: title;
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    min-height: var(--ui-head-h);
     margin: 0;
-    font: 700 var(--ui-t-large) / 1.15 var(--ui-font-display);
+    font: 700 var(--ui-t-large) / 36px var(--ui-font-display);
     letter-spacing: -0.025em;
     color: var(--ui-ink);
-    text-wrap: balance;
+  }
+  .ui-page-title-text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   .ui-page-sub {
-    max-width: 62ch;
-    margin: 6px 0 0;
+    grid-area: sub;
+    min-height: 20px;
+    margin: 0;
+    overflow: hidden;
     font-size: 14px;
+    line-height: 20px;
     color: var(--ui-muted);
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   .ui-page-actions {
+    grid-area: actions;
     display: flex;
-    flex-wrap: wrap;
     align-items: center;
+    justify-content: flex-end;
     gap: 8px;
+    min-height: var(--ui-head-h);
+  }
+  .ui-page-actions .btn {
+    min-height: var(--ui-head-h);
+    height: var(--ui-head-h);
+    padding-top: 0;
+    padding-bottom: 0;
   }
 
   /* Grid helpers */
@@ -1132,37 +1169,103 @@
     color: var(--ui-red-ink);
   }
 
-  /* Empty state */
+  /* KPI row (use instead of ui-grid ui-cols-4): 4 across on desktop, 2 across on tablet,
+     and a compact 2 x 2 grid on phones where each tile stays about 88px tall (icon and long
+     footers give way to the number). */
+  .ui-kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 16px;
+  }
+
+  /* Sticky bottom action bar (use <UiActionBar>): inline footer row on desktop, pinned
+     above the safe area on phones. */
+  .ui-action-bar {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+
+  /* Empty state (use <UiEmptyState>): art tile on a faint disc ring, 15px title, 13px body */
   .ui-empty {
     display: grid;
     justify-items: center;
-    gap: 8px;
-    padding: 44px 24px;
+    gap: 6px;
+    padding: 40px 24px;
     text-align: center;
   }
-  .ui-empty-art {
+  .ui-empty-compact {
+    padding: 20px 16px;
+  }
+  .ui-empty-stage {
+    position: relative;
     display: grid;
     place-items: center;
-    width: 56px;
-    height: 56px;
+    width: 112px;
+    height: 96px;
     margin-bottom: 4px;
-    border-radius: 18px;
+  }
+  .ui-empty-compact .ui-empty-stage {
+    width: auto;
+    height: auto;
+  }
+  .ui-empty-stage .ui-empty-disc {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    translate: -50% -50%;
+    opacity: 0.55;
+  }
+  .ui-empty-art {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: 48px;
+    height: 48px;
+    border-radius: 16px;
     background: var(--ui-surface-2);
     color: var(--ui-muted);
+    box-shadow: inset 0 0 0 0.5px var(--ui-sep);
+  }
+  .ui-empty-art.is-accent {
+    background: var(--ui-accent-soft);
+    color: var(--ui-accent);
+  }
+  .ui-empty-art.is-orange {
+    background: var(--ui-orange-soft);
+    color: var(--ui-orange-ink);
+  }
+  .ui-empty-art.is-red {
+    background: var(--ui-red-soft);
+    color: var(--ui-red-ink);
+  }
+  .ui-empty-art.is-green {
+    background: var(--ui-green-soft);
+    color: var(--ui-green-ink);
   }
   .ui-empty-art svg {
-    width: 26px;
-    height: 26px;
+    width: 24px;
+    height: 24px;
   }
   .ui-empty h3 {
     margin: 0;
-    font: 600 16px var(--ui-font-display);
+    font: 600 15px / 1.35 var(--ui-font-display);
+    color: var(--ui-ink);
   }
   .ui-empty p {
     max-width: 40ch;
     margin: 0;
-    font-size: 13.5px;
+    font-size: 13px;
+    line-height: 1.5;
     color: var(--ui-muted);
+  }
+  .ui-empty-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 10px;
   }
 
   /* Entrance: children rise in, staggered. Reduced-motion guard below. */
@@ -1207,7 +1310,8 @@
     }
   }
   @media (max-width: 1024px) {
-    .ui-cols-3 {
+    .ui-cols-3,
+    .ui-kpi-grid {
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
   }
@@ -1219,12 +1323,74 @@
     .ui-page-title {
       font-size: 26px;
     }
+    /* Compact KPI tiles: label, number and one footer line; the icon tile is dropped */
+    .ui-kpi-grid {
+      gap: 10px;
+    }
+    .ui-kpi-grid .ui-kpi {
+      gap: 4px;
+      min-width: 0;
+      padding: 10px 14px;
+    }
+    .ui-kpi-grid .ui-kpi-ico {
+      display: none;
+    }
+    .ui-kpi-grid .ui-kpi-top {
+      font-size: 13px;
+      line-height: 17px;
+    }
+    .ui-kpi-grid .ui-kpi-value {
+      font-size: 26px;
+      line-height: 30px;
+    }
+    .ui-kpi-grid .ui-kpi-foot {
+      overflow: hidden;
+      font-size: 13px;
+      line-height: 17px;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    /* Action bar: pinned to the bottom of the scrolling page, full bleed, safe-area aware.
+       Bleeds through the 16px page gutter (negative margin) so it reads as a bar, not a card. */
+    .ui-action-bar {
+      position: sticky;
+      bottom: calc(-1 * (var(--space-4) + env(safe-area-inset-bottom)));
+      z-index: 4;
+      margin: 0 calc(-1 * var(--space-4));
+      padding: 10px var(--space-4) calc(10px + env(safe-area-inset-bottom));
+      background: var(--ui-glass);
+      backdrop-filter: saturate(180%) blur(20px);
+      -webkit-backdrop-filter: saturate(180%) blur(20px);
+      box-shadow: inset 0 0.5px 0 var(--ui-sep);
+    }
+    .ui-action-bar > .btn {
+      flex: 1;
+      min-height: 44px;
+    }
+    /* Phone: the actions drop under the subtitle as one full-width row */
     .ui-page-head {
-      flex-direction: column;
-      align-items: stretch;
+      grid-template-columns: minmax(0, 1fr);
+      grid-template-areas:
+        'title'
+        'sub'
+        'actions';
+      row-gap: 4px;
+    }
+    .ui-page-sub {
+      font-size: 13px;
+    }
+    .ui-page-actions {
+      justify-content: stretch;
+      flex-wrap: wrap;
+      padding-top: 8px;
     }
     .ui-page-actions > .btn-primary {
       flex: 1;
+    }
+  }
+  @media (max-width: 768px) {
+    .ui-kpi-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
     }
   }
   @media (max-width: 480px) {
