@@ -131,7 +131,7 @@ const statusPillClass = computed(() => {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  font-size: 12.5px;
+  font-size: 13px;
   font-weight: 500;
   color: var(--ui-muted);
 }

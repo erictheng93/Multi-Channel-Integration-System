@@ -219,7 +219,7 @@ const ariaLabel = computed(() =>
   flex-wrap: wrap;
   gap: 6px 16px;
   padding: 0 22px 6px;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--ui-muted);
 }
 

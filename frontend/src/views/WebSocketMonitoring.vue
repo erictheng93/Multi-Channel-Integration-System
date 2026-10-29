@@ -764,7 +764,7 @@ function formatTime(timestamp: number) {
   padding: 0 6px 0 12px;
   border-radius: 999px;
   background: var(--ui-fill);
-  font-size: 12.5px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--ui-ink-2);
 }
@@ -848,7 +848,7 @@ function formatTime(timestamp: number) {
   flex-wrap: wrap;
   gap: 16px;
   padding: 0 22px 4px;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--ui-muted);
 }
 
@@ -919,7 +919,7 @@ svg.chart .g line {
 
 .fact-note {
   margin: 12px 0 0;
-  font-size: 12.5px;
+  font-size: 13px;
   line-height: 1.55;
   color: var(--ui-muted);
 }
@@ -987,7 +987,7 @@ svg.chart .g line {
 .al time {
   display: block;
   margin-top: 4px;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--ui-muted);
   font-variant-numeric: tabular-nums;
 }

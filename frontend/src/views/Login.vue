@@ -664,7 +664,7 @@ const handleLogin = async (event?: Event) => {
 }
 
 .debug-info {
-  font-size: 11px;
+  font-size: 13px;
   color: var(--ui-muted);
 }
 

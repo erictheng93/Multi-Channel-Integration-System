@@ -123,7 +123,7 @@ watch(() => route.path, revealActive)
 .ui-section-nav-track > a.is-on {
   background: var(--ui-sel-bg);
   color: var(--ui-ink);
-  font-weight: 600;
+  font-weight: 500;
   box-shadow: var(--ui-shadow-pill);
 }
 

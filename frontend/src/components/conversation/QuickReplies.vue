@@ -99,7 +99,7 @@ const handleSelect = (reply: QuickReply) => {
   border-radius: 999px;
   background: var(--ui-fill);
   color: var(--ui-ink-2);
-  font-size: 12.5px;
+  font-size: 13px;
   font-weight: 500;
   white-space: nowrap;
   cursor: pointer;

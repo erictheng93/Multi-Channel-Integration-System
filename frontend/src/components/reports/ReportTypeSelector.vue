@@ -88,7 +88,7 @@ const selectedLabel = computed(
   place-items: center;
   border-radius: 50%;
   background: var(--ui-fill);
-  font-size: 12.5px;
+  font-size: 13px;
   font-weight: 700;
   color: var(--ui-muted);
 }
@@ -153,14 +153,14 @@ const selectedLabel = computed(
 }
 
 .type-desc {
-  font-size: 12.5px;
+  font-size: 13px;
   color: var(--ui-muted);
 }
 
 .error-message {
   margin: 0;
   padding: 0 22px 16px;
-  font-size: 12.5px;
+  font-size: 13px;
   color: var(--ui-red-ink);
 }
 

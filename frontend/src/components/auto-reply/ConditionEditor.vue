@@ -147,7 +147,7 @@ function handleAdd(): void {
 }
 
 .condition-type-label {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--ui-accent);
 }

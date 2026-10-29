@@ -325,7 +325,7 @@ function reasonLabel(reason: BroadcastRecipientErrorReason): string {
 }
 
 .chip-n {
-  font-size: 11.5px;
+  font-size: 13px;
   font-variant-numeric: tabular-nums;
   color: var(--ui-muted);
 }
@@ -365,7 +365,7 @@ function reasonLabel(reason: BroadcastRecipientErrorReason): string {
 }
 
 .reason {
-  font-size: 12.5px;
+  font-size: 13px;
   color: var(--ui-red-ink);
 }
 
@@ -374,7 +374,7 @@ function reasonLabel(reason: BroadcastRecipientErrorReason): string {
   align-items: center;
   gap: 8px;
   padding: 10px 22px 14px;
-  font-size: 12.5px;
+  font-size: 13px;
   color: var(--ui-muted);
   font-variant-numeric: tabular-nums;
 }

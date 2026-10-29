@@ -152,13 +152,13 @@ function pillClass(status: ChannelStatus): string {
 .main small {
   display: block;
   margin-top: 2px;
-  font-size: 12.5px;
+  font-size: 13px;
   color: var(--ui-muted);
 }
 
 .lat {
   flex: none;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--ui-muted);
   font-variant-numeric: tabular-nums;
 }

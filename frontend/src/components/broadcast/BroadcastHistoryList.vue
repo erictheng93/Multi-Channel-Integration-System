@@ -274,7 +274,7 @@ function formatDate(value: string | null): string {
   max-width: 100%;
   margin-top: 2px;
   overflow: hidden;
-  font-size: 12.5px;
+  font-size: 13px;
   color: var(--ui-muted);
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -287,7 +287,7 @@ function formatDate(value: string | null): string {
 .when {
   display: block;
   margin-top: 4px;
-  font-size: 12.5px;
+  font-size: 13px;
   color: var(--ui-muted);
   font-variant-numeric: tabular-nums;
 }
@@ -326,7 +326,7 @@ function formatDate(value: string | null): string {
   display: block;
   white-space: nowrap;
   margin-top: 6px;
-  font-size: 12.5px;
+  font-size: 13px;
   color: var(--ui-muted);
   font-variant-numeric: tabular-nums;
 }
@@ -348,7 +348,7 @@ function formatDate(value: string | null): string {
   align-items: center;
   gap: 8px;
   padding: 12px 22px 8px;
-  font-size: 12.5px;
+  font-size: 13px;
   color: var(--ui-muted);
   font-variant-numeric: tabular-nums;
 }

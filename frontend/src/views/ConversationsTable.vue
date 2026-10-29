@@ -683,7 +683,7 @@ onUnmounted(() => {
 .list-foot {
   margin: 0;
   padding: 12px 22px 14px;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--ui-muted);
   text-align: center;
   box-shadow: inset 0 0.5px 0 var(--ui-sep);
@@ -723,7 +723,7 @@ onUnmounted(() => {
 }
 
 .bulk-limit {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--ui-red-ink);
   white-space: nowrap;
 }

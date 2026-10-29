@@ -504,7 +504,7 @@ onMounted(load)
   display: flex;
   gap: 8px;
   align-items: center;
-  font-size: 12.5px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--ui-muted);
 }
@@ -600,7 +600,7 @@ onMounted(load)
   width: 100%;
   max-width: 0;
   font-family: var(--ui-font-mono);
-  font-size: 12.5px;
+  font-size: 13px;
 }
 
 .fn {
@@ -656,7 +656,7 @@ onMounted(load)
   padding: 12px 14px;
   border-radius: var(--ui-r-inner);
   background: var(--ui-surface-2);
-  font-size: 12.5px;
+  font-size: 13px;
   color: var(--ui-muted);
 }
 

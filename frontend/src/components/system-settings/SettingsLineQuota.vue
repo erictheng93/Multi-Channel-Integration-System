@@ -281,14 +281,14 @@ function formatTime(iso: string): string {
 .qscale {
   display: flex;
   justify-content: space-between;
-  font-size: 11.5px;
+  font-size: 13px;
   color: var(--ui-muted);
   font-variant-numeric: tabular-nums;
 }
 
 .quota-warn {
   margin: 10px 0 0;
-  font-size: 12.5px;
+  font-size: 13px;
   color: var(--ui-orange-ink);
 }
 </style>

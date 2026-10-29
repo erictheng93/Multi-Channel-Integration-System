@@ -260,7 +260,7 @@
   .nav-item.active {
     background-color: var(--ui-accent-soft);
     color: var(--ui-ink);
-    font-weight: 600;
+    font-weight: 500;
   }
 
   .nav-count {

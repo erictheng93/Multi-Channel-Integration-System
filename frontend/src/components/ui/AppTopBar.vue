@@ -116,7 +116,7 @@
     border-radius: 999px;
     background: var(--ui-green-soft);
     color: var(--ui-green-ink);
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 600;
   }
 

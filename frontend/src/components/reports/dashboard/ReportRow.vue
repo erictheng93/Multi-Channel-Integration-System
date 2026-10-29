@@ -282,7 +282,7 @@ const canDelete = computed(() => {
   max-width: 100%;
   margin: 0;
   overflow: hidden;
-  font-size: 12.5px;
+  font-size: 13px;
   color: var(--ui-muted);
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -306,7 +306,7 @@ const canDelete = computed(() => {
 }
 
 .expiry-text {
-  font-size: 11.5px;
+  font-size: 13px;
   color: var(--ui-muted);
 }
 

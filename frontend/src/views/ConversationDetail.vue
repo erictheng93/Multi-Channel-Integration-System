@@ -693,7 +693,7 @@ defineExpose({
 }
 
 .websocket-status-topbar {
-  font-size: 0.75rem;
+  font-size: 13px;
 }
 
 /* Enhanced Search Panel */

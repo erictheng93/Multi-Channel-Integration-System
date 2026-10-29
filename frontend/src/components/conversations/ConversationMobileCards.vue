@@ -298,7 +298,7 @@ const getLastMessageText = (conversation: Conversation) => {
 .card-time {
   flex: none;
   margin-left: auto;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--ui-muted);
 }
 
@@ -331,12 +331,12 @@ const getLastMessageText = (conversation: Conversation) => {
 }
 
 .replied {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--ui-muted);
 }
 
 .unassigned {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--ui-orange-ink);
 }

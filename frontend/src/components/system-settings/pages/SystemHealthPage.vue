@@ -457,7 +457,7 @@ onMounted(() => {
 }
 
 .hs span {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--ui-muted);
 }
 
@@ -525,7 +525,7 @@ onMounted(() => {
 
 .lat-n small {
   margin-left: 2px;
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 500;
   color: var(--ui-muted);
 }

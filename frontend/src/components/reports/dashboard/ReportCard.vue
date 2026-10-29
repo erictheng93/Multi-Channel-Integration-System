@@ -262,7 +262,7 @@ const canDelete = computed(() => {
 }
 
 .meta-text {
-  font-size: 12.5px;
+  font-size: 13px;
   color: var(--ui-muted);
   font-variant-numeric: tabular-nums;
 }

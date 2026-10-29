@@ -184,7 +184,7 @@ const emit = defineEmits<{
 
 .rule-editor__label small {
   margin-left: 6px;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 400;
   color: var(--ui-muted);
 }
@@ -214,7 +214,7 @@ const emit = defineEmits<{
 }
 
 .rule-editor__advanced-desc {
-  font-size: 12.5px;
+  font-size: 13px;
   color: var(--ui-ink-2);
 }
 

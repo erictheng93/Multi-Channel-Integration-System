@@ -675,7 +675,7 @@ onBeforeUnmount(() => {
 
 .tag-description {
   color: var(--gray-500, #6b7280);
-  font-size: 0.75rem;
+  font-size: 13px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

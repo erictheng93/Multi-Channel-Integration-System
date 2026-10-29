@@ -238,7 +238,7 @@ function handleFilterChange(key: keyof ReportListQuery, value: string) {
 }
 
 .date-separator {
-  font-size: 12.5px;
+  font-size: 13px;
   color: var(--ui-muted);
 }
 

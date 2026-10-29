@@ -34,7 +34,7 @@ defineProps<{
 .group-title {
   margin: 0;
   padding: 0 8px 8px;
-  font-size: 12.5px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--ui-muted);
 }
@@ -42,7 +42,7 @@ defineProps<{
 .group-note {
   margin: 0;
   padding: 8px 8px 0;
-  font-size: 12.5px;
+  font-size: 13px;
   color: var(--ui-muted);
 }
 </style>

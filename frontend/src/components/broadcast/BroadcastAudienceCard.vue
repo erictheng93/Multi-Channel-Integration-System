@@ -165,7 +165,7 @@ const notes = computed(() => {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 12.5px;
+  font-size: 13px;
   color: var(--ui-muted);
 }
 
@@ -176,7 +176,7 @@ const notes = computed(() => {
 }
 
 .tile small {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--ui-muted);
 }
 
@@ -186,7 +186,7 @@ const notes = computed(() => {
   margin: 14px 0 0;
   padding: 0;
   list-style: none;
-  font-size: 12.5px;
+  font-size: 13px;
   color: var(--ui-muted);
 }
 

@@ -514,7 +514,7 @@ function formatDate(dateStr: string): string {
   align-items: center;
   gap: 8px;
   padding: 10px 22px 8px;
-  font-size: 12.5px;
+  font-size: 13px;
   color: var(--ui-muted);
   font-variant-numeric: tabular-nums;
 }

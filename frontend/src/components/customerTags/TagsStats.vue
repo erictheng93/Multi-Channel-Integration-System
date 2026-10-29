@@ -76,7 +76,7 @@ defineProps<{
     gap: 8px;
   }
   .tag-kpis .ui-kpi-top {
-    font-size: 12px;
+    font-size: 13px;
   }
   .tag-kpis .ui-kpi-ico,
   .hide-phone {

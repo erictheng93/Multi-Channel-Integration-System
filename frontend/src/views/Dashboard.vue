@@ -946,14 +946,14 @@ onBeforeUnmount(() => {
 .focus-lead .note {
   margin: auto 0 0;
   padding-top: 12px;
-  font-size: 12.5px;
+  font-size: 13px;
   color: var(--ui-muted);
 }
 
 .stale-line {
   display: block;
   margin-top: 10px;
-  font-size: 12.5px;
+  font-size: 13px;
   line-height: 1.5;
   color: var(--ui-muted);
   text-decoration: none;
@@ -1084,7 +1084,7 @@ onBeforeUnmount(() => {
 
 .person-sub {
   overflow: hidden;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--ui-muted);
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1136,7 +1136,7 @@ onBeforeUnmount(() => {
 
 .stat .cap {
   flex-basis: 100%;
-  font-size: 11.5px;
+  font-size: 13px;
   color: var(--ui-muted);
 }
 
@@ -1196,7 +1196,7 @@ onBeforeUnmount(() => {
 
 .feed time {
   display: block;
-  font-size: 11.5px;
+  font-size: 13px;
   color: var(--ui-muted);
 }
 

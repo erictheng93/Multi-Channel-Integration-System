@@ -144,7 +144,7 @@ function tone(item: InfrastructureItem): 'ok' | 'mid' | 'bad' {
 
 .ms small {
   margin-left: 2px;
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 500;
 }
 
