@@ -14,6 +14,7 @@ import type {
   MessageSendResponse,
 } from '../types/conversation-types';
 import { MessageDeliveryService } from './message-delivery-service';
+import { stampFirstResponse } from './first-response';
 import { nowISO, nowMs } from '@/utils/timestamp'
 import { createContextLogger } from '@/utils/logger';
 
@@ -362,6 +363,11 @@ export class MessageService implements MessageServiceInterface {
         })
       };
       await this.db.insert(messages).values(messageData);
+
+      // First human reply (only when the platform accepted it)
+      if (isSent) {
+        await stampFirstResponse(this.db, request.conversationId, timestamp);
+      }
 
       // Step 3b: Link attachments if any
       if (request.attachmentIds && request.attachmentIds.length > 0) {
