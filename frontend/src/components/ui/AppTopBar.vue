@@ -22,9 +22,14 @@
       <slot name="stats" />
 
       <!-- Status Indicator -->
-      <div class="status-indicator">
-        <span class="status-dot online" />
-        <span class="status-text">線上</span>
+      <div
+        class="status-indicator"
+        :class="`status-indicator--${connection.tone}`"
+        role="status"
+        :title="connection.hint"
+      >
+        <span class="status-dot" />
+        <span class="status-text">{{ connection.label }}</span>
       </div>
 
       <!-- Notification Center -->
@@ -36,6 +41,8 @@
 <script setup lang="ts">
   import { NotificationCenter } from '@/components/ui'
   import type { Notification } from '@/stores/notifications'
+  import { useWebSocketStore } from '@/stores/websocket'
+  import { useConnectionStatus } from '@/composables/useConnectionStatus'
 
   defineProps<{
     pageTitle: string
@@ -46,6 +53,9 @@
   defineEmits<{
     'notification-click': [notification: Notification]
   }>()
+
+  // Realtime connection pill: bound to the websocket store, never static
+  const connection = useConnectionStatus(useWebSocketStore())
 </script>
 
 <style scoped>
@@ -117,9 +127,29 @@
     animation: none;
   }
 
-  .status-dot.online {
+  .status-dot {
     background-color: var(--ui-green);
     box-shadow: 0 0 0 3px color-mix(in srgb, var(--ui-green) 25%, transparent);
+  }
+
+  .status-indicator--connecting {
+    background: var(--ui-orange-soft);
+    color: var(--ui-orange-ink);
+  }
+
+  .status-indicator--connecting .status-dot {
+    background-color: var(--ui-orange);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--ui-orange) 25%, transparent);
+  }
+
+  .status-indicator--offline {
+    background: var(--ui-fill);
+    color: var(--ui-muted);
+  }
+
+  .status-indicator--offline .status-dot {
+    background-color: var(--ui-faint);
+    box-shadow: none;
   }
 
   .status-text {

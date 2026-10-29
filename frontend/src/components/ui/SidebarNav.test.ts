@@ -7,6 +7,8 @@ import SidebarNav from './SidebarNav.vue'
 
 const auth = { currentAgent: { role: 'agent' } as { role: string } | null, teamRoles: {} as Record<string, string> }
 vi.mock('@/stores/auth', () => ({ useAuthStore: () => auth }))
+vi.mock('@/stores/unread', () => ({ useUnreadStore: () => ({ total: 4 }) }))
+vi.mock('@/stores/notifications', () => ({ useNotificationsStore: () => ({ unreadCount: 2 }) }))
 vi.mock('vue-router', () => ({ useRoute: () => ({ path: '/dashboard' }) }))
 
 function labels(role: string, teamRoles: Record<string, string> = {}) {
@@ -21,7 +23,7 @@ function labels(role: string, teamRoles: Record<string, string> = {}) {
       }
     }
   })
-  return wrapper.findAll('a, div').map((el) => el.text()).filter(Boolean)
+  return wrapper.findAll('a, div').map((el) => el.find('.nav-text').exists() ? el.find('.nav-text').text() : el.text()).filter(Boolean)
 }
 
 describe('SidebarNav', () => {
@@ -42,5 +44,15 @@ describe('SidebarNav', () => {
     expect(items).toContain('通知中心')
     expect(items).toContain('系統設定')
     expect(items.indexOf('群發訊息')).toBe(items.indexOf('標籤管理') + 1)
+  })
+
+  it('shows 未讀 and notification counts as badges with a definition tooltip', () => {
+    const wrapper = mount(SidebarNav, {
+      props: { sidebarCollapsed: false, isMobile: false },
+      global: { stubs: { RouterLink: { template: '<a><slot /></a>' }, ExpandableNavGroup: true } }
+    })
+    const counts = wrapper.findAll('.nav-count')
+    expect(counts.map((c) => c.text())).toEqual(['4', '2'])
+    expect(counts[0]?.attributes('title')).toBe('未讀對話：你尚未開啟')
   })
 })
