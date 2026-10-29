@@ -22,6 +22,15 @@ import { contractJson } from '@/utils/api-contract-response';
 
 const EXPORT_LIMIT = BULK_OPERATION_LIMITS.EXPORT_MAX_RECORDS;
 
+/**
+ * Default to the cap the UI promises (EXPORT_MAX_RECORDS); an explicit limit can only lower it.
+ * A missing, non-numeric or non-positive limit must not silently truncate the export (it was 100).
+ */
+export function resolveExportLimit(raw: string | undefined): number {
+  const requested = parseInt(raw ?? '', 10);
+  return Number.isFinite(requested) && requested > 0 ? Math.min(EXPORT_LIMIT, requested) : EXPORT_LIMIT;
+}
+
 const exportRoutes = new Hono<{ Bindings: Bindings }>();
 
 /**
@@ -183,7 +192,7 @@ exportRoutes.get('/export', jwtAuth, async (c) => {
     const dateTo = c.req.query('dateTo');
     const customerId = c.req.query('customerId');
     const agentId = c.req.query('agentId');
-    const limit = Math.min(EXPORT_LIMIT, parseInt(c.req.query('limit') || '100'));
+    const limit = resolveExportLimit(c.req.query('limit'));
 
     // 驗證格式
     if (!['json', 'csv', 'txt'].includes(format)) {
