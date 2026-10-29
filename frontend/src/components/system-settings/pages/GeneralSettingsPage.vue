@@ -1,8 +1,7 @@
 <!--
   GeneralSettingsPage.vue
   The settings home: a live overview strip (each tile links to its section), then the identity form
-  beside a context column (name preview, clock in the chosen time zone, measured service latency).
-  Below the form, a read-only glance at the advanced parameters currently in force.
+  beside a context column (measured service latency, then the read-only parameters in force).
 -->
 
 <template>
@@ -17,42 +16,12 @@
           @save="controller.saveGeneralSettings"
           @update:settings="(data) => Object.assign(controller.settings.general, data)"
         />
-
-        <SettingsGroup title="目前生效的進階參數">
-          <ul class="ui-list">
-            <li
-              v-for="item in advancedRows"
-              :key="item.label"
-              class="ui-row is-flush"
-            >
-              <div class="ui-row-main">
-                <div class="ui-row-title">
-                  {{ item.label }}
-                </div>
-              </div>
-              <span class="adv-val">{{ item.value }}</span>
-            </li>
-          </ul>
-          <template #note>
-            <router-link
-              class="ui-link"
-              to="/settings/advanced"
-            >
-              前往進階設定調整
-            </router-link>
-          </template>
-        </SettingsGroup>
       </div>
 
       <aside
         class="general-aside"
         aria-label="說明與預覽"
       >
-        <GeneralSettingsAside
-          :system-name="controller.settings.general.systemName"
-          :timezone="controller.settings.general.timezone"
-        />
-
         <article class="ui-card lat-card">
           <div class="ui-card-head">
             <div>
@@ -91,6 +60,30 @@
             {{ controller.processing.value ? '正在檢查服務...' : '尚無檢查結果' }}
           </p>
         </article>
+
+        <SettingsGroup
+          class="adv-group"
+          title="目前生效的進階參數（唯讀）"
+        >
+          <dl class="adv-grid">
+            <div
+              v-for="item in advancedRows"
+              :key="item.label"
+              class="adv-item"
+            >
+              <dt>{{ item.label }}</dt>
+              <dd>{{ item.value }}</dd>
+            </div>
+          </dl>
+          <template #note>
+            <router-link
+              class="ui-link"
+              to="/settings/advanced"
+            >
+              前往進階設定調整
+            </router-link>
+          </template>
+        </SettingsGroup>
       </aside>
     </div>
   </div>
@@ -100,7 +93,6 @@
 import { computed, inject } from 'vue'
 import { SETTINGS_CONTROLLER_KEY } from '@/types/system-settings'
 import { GeneralSettingsForm } from '@/components/system-settings'
-import GeneralSettingsAside from '@/components/system-settings/GeneralSettingsAside.vue'
 import GeneralSettingsOverview from '@/components/system-settings/GeneralSettingsOverview.vue'
 import SettingsGroup from '@/components/system-settings/SettingsGroup.vue'
 
@@ -151,19 +143,35 @@ const advancedRows = computed(() => {
   padding-top: 28px;
 }
 
-.adv-val {
-  flex: none;
-  font: 600 15px var(--ui-font-display);
+/* read-only values: label over value, no row chrome, so nothing here looks like a field */
+.adv-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 16px;
+  margin: 0;
+  padding: 14px 22px;
+}
+
+.adv-item dt {
+  font-size: 13px;
+  color: var(--ui-muted);
+}
+
+.adv-item dd {
+  margin: 4px 0 0;
+  font: 600 17px var(--ui-font-display);
   font-variant-numeric: tabular-nums;
 }
+
+
 
 .lat-card {
   padding-bottom: 8px;
 }
 
 .lat-row {
-  padding-top: 10px;
-  padding-bottom: 10px;
+  padding-top: 7px;
+  padding-bottom: 7px;
 }
 
 .lat-dot {
@@ -211,6 +219,11 @@ const advancedRows = computed(() => {
 
   .general-aside {
     padding-top: 0;
+  }
+
+  /* phone order: tiles, forms, params, latency */
+  .adv-group {
+    order: -1;
   }
 }
 </style>

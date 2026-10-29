@@ -19,10 +19,25 @@ export function teamTagClass(teamId: number): string {
   return toneFor(teamId).tag
 }
 
-/** Gradient for the team mark tile. */
+/** Solid pastel for a person/team mark: a low-saturation tint of the tone, opaque so stacked marks stay clean. */
+export function pastelBackground(token: string): string {
+  return `color-mix(in srgb, var(--ui-${token}) 16%, var(--ui-surface))`
+}
+
+/** Text colour that reads on that pastel (the AA ink variant where the token has one). */
+export function pastelInk(token: string): string {
+  const inked: Record<string, string> = { orange: 'orange-ink', green: 'green-ink', red: 'red-ink' }
+  return `var(--ui-${inked[token] ?? token})`
+}
+
+/** Pastel background for the team mark tile. */
 export function teamMarkBackground(teamId: number): string {
-  const token = `var(--ui-${toneFor(teamId).token})`
-  return `linear-gradient(160deg, color-mix(in srgb, ${token} 60%, white), ${token})`
+  return pastelBackground(toneFor(teamId).token)
+}
+
+/** Ink for the team mark initial. */
+export function teamMarkInk(teamId: number): string {
+  return pastelInk(toneFor(teamId).token)
 }
 
 const TEAM_ROLE_TEXT: Record<string, string> = {
