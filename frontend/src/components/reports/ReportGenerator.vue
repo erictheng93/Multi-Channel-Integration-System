@@ -281,7 +281,7 @@ const focusFirstInvalid = async () => {
       ? document.getElementById('title')
       : document.getElementById('startDate');
   if (!target) { return; }
-  target.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  target.scrollIntoView?.({ block: 'center', behavior: 'smooth' });
   target.focus({ preventScroll: true });
 };
 
