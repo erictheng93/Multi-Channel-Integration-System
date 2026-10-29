@@ -1,6 +1,7 @@
 // Period Comparison Service - 期間比較功能
 // 提供當前期間與歷史期間的數據對比分析
 
+import { notSystemAgent } from '@/constants/system-agent';
 import type { Database } from '@/db/drizzle-factory';
 import { and, gte, lte, count, sql } from 'drizzle-orm';
 import { conversations, messages, activities, conversationSessions, agents } from '@/db/schema';
@@ -610,7 +611,8 @@ export class PeriodComparisonService {
       .from(agents)
       .where(and(
         sql`${agents.isActive} = 1`,
-        sql`${agents.deletedAt} IS NULL`
+        sql`${agents.deletedAt} IS NULL`,
+        notSystemAgent(agents.id)
       ))
       .get();
 
