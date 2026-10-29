@@ -181,7 +181,7 @@
     <template #footer>
       <div class="apple-footer">
         <button
-          class="btn-apple-primary"
+          class="btn btn-primary btn-apple-primary"
           :disabled="exporting"
           @click="handleExport"
         >
@@ -195,7 +195,7 @@
           </template>
         </button>
         <button
-          class="btn-apple-text"
+          class="btn btn-ghost btn-apple-text"
           :disabled="exporting"
           @click="handleClose"
         >
@@ -518,34 +518,32 @@ watch(() => props.show, (isShow) => {
 </script>
 
 <style scoped>
-/* ─── Apple Design System ─── */
 .export-form {
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
 }
 
-/* ─── Conversation Info Card ─── */
+/* Conversation info card */
 .export-info-card {
   display: flex;
   align-items: center;
   gap: 0.875rem;
   padding: 0.875rem 1rem;
-  background: linear-gradient(135deg, rgba(0, 122, 255, 0.06) 0%, rgba(88, 86, 214, 0.06) 100%);
-  border: 1px solid rgba(0, 122, 255, 0.12);
-  border-radius: 0.875rem;
+  background: var(--ui-accent-soft);
+  border-radius: var(--ui-r-inner);
 }
 
 .info-icon-wrap {
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
   width: 2.25rem;
   height: 2.25rem;
-  background: linear-gradient(135deg, #007AFF 0%, #5856D6 100%);
   border-radius: 0.625rem;
-  color: white;
-  flex-shrink: 0;
+  background: var(--ui-accent);
+  color: #fff;
 }
 
 .info-content {
@@ -556,23 +554,21 @@ watch(() => props.show, (isShow) => {
 }
 
 .info-eyebrow {
-  font-size: 0.6875rem;
-  font-weight: 500;
-  color: rgba(0, 122, 255, 0.7);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+  font-size: var(--ui-t-cap);
+  font-weight: 600;
+  color: var(--ui-accent);
 }
 
 .info-title {
-  font-size: 0.9375rem;
-  font-weight: 600;
-  color: var(--gray-900, #1d1d1f);
-  white-space: nowrap;
   overflow: hidden;
+  font-size: var(--ui-t-head);
+  font-weight: 600;
+  color: var(--ui-ink);
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-/* ─── Form Sections ─── */
+/* Form sections */
 .form-section {
   display: flex;
   flex-direction: column;
@@ -580,82 +576,81 @@ watch(() => props.show, (isShow) => {
 }
 
 .section-label {
-  font-size: 0.8125rem;
+  font-size: 13px;
   font-weight: 600;
-  color: var(--gray-500, #86868b);
-  text-transform: uppercase;
-  letter-spacing: 0.02em;
+  color: var(--ui-ink-2);
 }
 
 .section-hint {
-  font-size: 0.75rem;
-  color: var(--gray-400, #aeaeb2);
   margin: 0;
+  font-size: 12px;
   line-height: 1.4;
+  color: var(--ui-muted);
 }
 
 .section-error {
-  font-size: 0.75rem;
-  color: #ff3b30;
   margin: 0;
+  font-size: 12px;
   line-height: 1.4;
+  color: var(--ui-red-ink);
 }
 
-/* ─── Segmented Control ─── */
+/* Segmented control */
 .segmented-control {
   display: flex;
-  background: var(--gray-100, #f5f5f7);
-  border-radius: 0.625rem;
-  padding: 0.1875rem;
-  gap: 0.125rem;
+  gap: 2px;
+  padding: 3px;
+  border-radius: var(--ui-r-control);
+  background: var(--ui-fill);
 }
 
 .segment {
-  flex: 1;
+  position: relative;
   display: flex;
+  flex: 1;
   align-items: center;
   justify-content: center;
   gap: 0.375rem;
   padding: 0.5625rem 0.75rem;
-  border: none;
+  border: 0;
+  border-radius: 9px;
   background: transparent;
-  border-radius: 0.5rem;
-  font-size: 0.8125rem;
+  font-size: 13px;
   font-weight: 500;
-  color: var(--gray-500, #86868b);
+  color: var(--ui-muted);
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.25, 0.1, 0.25, 1);
-  position: relative;
+  transition:
+    background var(--ui-dur) var(--ui-ease),
+    color var(--ui-dur) var(--ui-ease),
+    box-shadow var(--ui-dur) var(--ui-ease);
 }
 
 .segment:hover:not(.active) {
-  color: var(--gray-700, #1d1d1f);
+  color: var(--ui-ink-2);
 }
 
 .segment.active {
-  background: white;
-  color: var(--gray-900, #1d1d1f);
-  box-shadow:
-    0 1px 3px rgba(0, 0, 0, 0.08),
-    0 1px 2px rgba(0, 0, 0, 0.06);
+  background: var(--ui-surface);
+  box-shadow: var(--ui-shadow-pill);
   font-weight: 600;
+  color: var(--ui-ink);
 }
 
 .segment-icon {
   opacity: 0.5;
-  transition: opacity 0.2s;
+  transition: opacity var(--ui-dur) var(--ui-ease);
 }
 
 .segment.active .segment-icon {
   opacity: 1;
-  color: #007AFF;
+  color: var(--ui-accent);
 }
 
 .segment-label {
   line-height: 1;
 }
 
-/* ─── Date Range ─── */
+/* Date range */
 .date-range {
   display: flex;
   align-items: center;
@@ -663,86 +658,76 @@ watch(() => props.show, (isShow) => {
 }
 
 .date-pill {
-  flex: 1;
   display: flex;
+  flex: 1;
   flex-direction: column;
   gap: 0.25rem;
 }
 
 .date-eyebrow {
-  font-size: 0.6875rem;
+  padding-left: 2px;
+  font-size: var(--ui-t-cap);
   font-weight: 500;
-  color: var(--gray-400, #aeaeb2);
-  padding-left: 0.125rem;
+  color: var(--ui-muted);
 }
 
-.date-input {
+.date-input,
+.apple-select {
   width: 100%;
-  padding: 0.5625rem 0.75rem;
-  border: 1px solid var(--gray-200, #e5e5ea);
-  border-radius: 0.625rem;
-  font-size: 0.8125rem;
-  color: var(--gray-900, #1d1d1f);
-  background-color: var(--gray-50, #fafafa);
-  transition: all 0.2s cubic-bezier(0.25, 0.1, 0.25, 1);
+  height: 40px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: var(--ui-r-control);
+  background-color: var(--ui-surface-2);
+  box-shadow: inset 0 0 0 0.5px var(--ui-sep);
   font-family: inherit;
+  font-size: 13px;
+  color: var(--ui-ink);
+  transition:
+    box-shadow var(--ui-dur) var(--ui-ease),
+    background-color var(--ui-dur) var(--ui-ease);
 }
 
-.date-input:focus {
+.apple-select {
+  padding-right: 2.25rem;
+  appearance: none;
+  cursor: pointer;
+}
+
+.date-input:focus,
+.apple-select:focus {
   outline: none;
-  border-color: #007AFF;
-  background-color: white;
-  box-shadow: 0 0 0 3.5px rgba(0, 122, 255, 0.15);
+  background-color: var(--ui-surface);
+  box-shadow:
+    inset 0 0 0 1px var(--ui-accent),
+    0 0 0 4px var(--ui-accent-soft);
+}
+
+.apple-select:disabled {
+  color: var(--ui-faint);
+  cursor: not-allowed;
 }
 
 .date-arrow {
-  color: var(--gray-300, #d1d1d6);
   flex-shrink: 0;
   padding-top: 1.125rem;
+  color: var(--ui-faint);
 }
 
-/* ─── Custom Select ─── */
 .select-wrap {
   position: relative;
 }
 
-.apple-select {
-  width: 100%;
-  padding: 0.5625rem 2.25rem 0.5625rem 0.75rem;
-  border: 1px solid var(--gray-200, #e5e5ea);
-  border-radius: 0.625rem;
-  font-size: 0.8125rem;
-  color: var(--gray-900, #1d1d1f);
-  background-color: var(--gray-50, #fafafa);
-  appearance: none;
-  cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.25, 0.1, 0.25, 1);
-  font-family: inherit;
-}
-
-.apple-select:focus {
-  outline: none;
-  border-color: #007AFF;
-  background-color: white;
-  box-shadow: 0 0 0 3.5px rgba(0, 122, 255, 0.15);
-}
-
-.apple-select:disabled {
-  background-color: var(--gray-100, #f5f5f7);
-  color: var(--gray-400, #aeaeb2);
-  cursor: not-allowed;
-}
-
 .select-chevron {
   position: absolute;
-  right: 0.75rem;
   top: 50%;
-  transform: translateY(-50%);
-  color: var(--gray-400, #aeaeb2);
+  right: 0.75rem;
+  color: var(--ui-muted);
   pointer-events: none;
+  transform: translateY(-50%);
 }
 
-/* ─── Footer ─── */
+/* Footer: the global .btn system styles the buttons, only the layout is local */
 .apple-footer {
   display: flex;
   flex-direction: column;
@@ -750,79 +735,27 @@ watch(() => props.show, (isShow) => {
   width: 100%;
 }
 
-.btn-apple-primary {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  width: 100%;
-  padding: 0.8125rem 1.5rem;
-  border: none;
-  border-radius: 0.75rem;
-  font-size: 0.9375rem;
-  font-weight: 600;
-  color: white;
-  background: linear-gradient(180deg, #3395FF 0%, #007AFF 100%);
-  cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.25, 0.1, 0.25, 1);
-  letter-spacing: -0.01em;
-}
-
-.btn-apple-primary:hover:not(:disabled) {
-  background: linear-gradient(180deg, #007AFF 0%, #0066D6 100%);
-  transform: scale(0.985);
-}
-
-.btn-apple-primary:active:not(:disabled) {
-  transform: scale(0.97);
-}
-
-.btn-apple-primary:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
+.btn-apple-primary,
 .btn-apple-text {
-  display: flex;
-  align-items: center;
-  justify-content: center;
   width: 100%;
-  padding: 0.5rem 1rem;
-  border: none;
-  background: none;
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: #007AFF;
-  cursor: pointer;
-  border-radius: 0.625rem;
-  transition: all 0.15s;
 }
 
-.btn-apple-text:hover:not(:disabled) {
-  background: rgba(0, 122, 255, 0.06);
-}
-
-.btn-apple-text:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-/* ─── Loading Spinner ─── */
 .apple-spinner {
   display: inline-block;
   width: 18px;
   height: 18px;
-  border: 2.5px solid rgba(255, 255, 255, 0.25);
-  border-top-color: white;
+  border: 2.5px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #fff;
   border-radius: 50%;
   animation: apple-spin 0.75s cubic-bezier(0.5, 0, 0.5, 1) infinite;
 }
 
 @keyframes apple-spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
-/* ─── Responsive ─── */
 @media (max-width: 640px) {
   .date-range {
     flex-direction: column;
@@ -833,13 +766,9 @@ watch(() => props.show, (isShow) => {
     display: none;
   }
 
-  .segmented-control {
-    border-radius: 0.5rem;
-  }
-
   .segment {
-    padding: 0.5rem 0.5rem;
-    font-size: 0.75rem;
+    padding: 0.5rem;
+    font-size: 12px;
   }
 }
 </style>
