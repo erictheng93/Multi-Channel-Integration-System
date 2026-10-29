@@ -247,6 +247,7 @@ function selectFormat(format: FormatId) {
   padding-left: 14px;
   font-size: 13.5px;
   line-height: 1.45;
+  text-wrap: pretty;
   color: var(--ui-ink);
 }
 
