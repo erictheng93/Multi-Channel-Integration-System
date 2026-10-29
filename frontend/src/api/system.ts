@@ -1,6 +1,7 @@
 // 系統管理 API 客戶端
 import { authenticatedFetch } from './authenticatedFetch'
 import { credentialContracts, feedbackContracts, systemContracts } from '@shared/api-contracts'
+import type { CredentialsStatus, MaskedCredential } from '@shared/api-contracts/system'
 import { callApiContract } from './contract-client'
 import type { ApiResponse } from '@/types'
 
@@ -361,41 +362,17 @@ export const credentialsApi = {
     return callApiContract(credentialContracts.store, {}, { platform, type, value })
   },
 
-  // 獲取單個憑證
+  // 獲取單個憑證狀態（不含明文）
   getCredential: async (
     platform: 'line' | 'facebook',
     type: string
-  ): Promise<ApiResponse<{ value: string }>> => {
+  ): Promise<ApiResponse<MaskedCredential>> => {
     return callApiContract(credentialContracts.get, { platform, type })
   },
 
-  // 獲取所有憑證
-  getAllCredentials: async (): Promise<ApiResponse<{
-    line: {
-      channelId: string;
-      channelSecret: string;
-      accessToken: string;
-    };
-    facebook: {
-      appId: string;
-      appSecret: string;
-      pageId: string;
-      pageToken: string;
-    };
-  }>> => {
-    return callApiContract(credentialContracts.all, {}) as Promise<ApiResponse<{
-      line: {
-        channelId: string;
-        channelSecret: string;
-        accessToken: string;
-      };
-      facebook: {
-        appId: string;
-        appSecret: string;
-        pageId: string;
-        pageToken: string;
-      };
-    }>>
+  // 獲取所有憑證狀態（configured / last4，不含明文）
+  getAllCredentials: async (): Promise<ApiResponse<CredentialsStatus>> => {
+    return callApiContract(credentialContracts.all, {}) as Promise<ApiResponse<CredentialsStatus>>
   },
 
   // 清除平台憑證

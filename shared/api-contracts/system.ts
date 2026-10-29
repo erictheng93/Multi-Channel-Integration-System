@@ -122,16 +122,27 @@ export const systemContracts = {
   })
 } as const
 
+/** A stored credential as seen by clients: the secret itself is never returned. */
+export interface MaskedCredential {
+  configured: boolean
+  last4: string | null
+}
+
+export interface CredentialsStatus {
+  line: { channelId: MaskedCredential; channelSecret: MaskedCredential; accessToken: MaskedCredential }
+  facebook: { appId: MaskedCredential; appSecret: MaskedCredential; pageId: MaskedCredential; pageToken: MaskedCredential }
+}
+
 export const credentialContracts = {
   store: defineApiContract<Record<string, never>, { platform: IntegrationPlatform; type: string; value: string }, void>({
     method: 'POST',
     path: () => '/credentials'
   }),
-  get: defineApiContract<{ platform: IntegrationPlatform; type: string }, void, { value: string }>({
+  get: defineApiContract<{ platform: IntegrationPlatform; type: string }, void, MaskedCredential>({
     method: 'GET',
     path: ({ platform, type }) => `/credentials/${platform}/${type}`
   }),
-  all: defineApiContract<Record<string, never>, void, unknown>({
+  all: defineApiContract<Record<string, never>, void, CredentialsStatus>({
     method: 'GET',
     path: () => '/credentials'
   }),

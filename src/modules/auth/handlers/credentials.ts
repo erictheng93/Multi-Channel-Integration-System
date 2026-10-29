@@ -81,6 +81,23 @@ const getEncryptionKey = (env: Bindings): string => {
   return key;
 }
 
+// Secrets never leave the server: clients only learn whether a field is set and its last 4 characters.
+// last4 is withheld for short values so a short secret is not mostly disclosed.
+export interface MaskedCredential {
+  configured: boolean
+  last4: string | null
+}
+
+const MIN_LENGTH_FOR_LAST4 = 8
+
+export const maskCredential = (value: string | null | undefined): MaskedCredential => {
+  if (!value) return { configured: false, last4: null }
+  return {
+    configured: true,
+    last4: value.length >= MIN_LENGTH_FOR_LAST4 ? value.slice(-4) : null
+  }
+}
+
 // 儲存憑證到 KV
 export const storeCredential = async (c: Context<{ Bindings: Bindings }>) => {
   try {
@@ -149,7 +166,7 @@ export const storeCredential = async (c: Context<{ Bindings: Bindings }>) => {
   }
 }
 
-// 獲取憑證（解密）
+// 獲取憑證狀態（永不回傳明文）
 export const getCredential = async (c: Context<{ Bindings: Bindings }>) => {
   try {
     // 驗證用戶權限 - 只有管理員可以查看憑證
@@ -177,13 +194,13 @@ export const getCredential = async (c: Context<{ Bindings: Bindings }>) => {
     const encryptedValue = await c.env.CACHE?.get(key)
 
     if (!encryptedValue) {
-      return successResponse(c, { value: '' }, '憑證不存在')
+      return successResponse(c, maskCredential(null), '憑證不存在')
     }
 
     const encryptionKey = getEncryptionKey(c.env)
     const decryptedValue = await decrypt(encryptedValue, encryptionKey)
 
-    return successResponse(c, { value: decryptedValue }, '憑證獲取成功')
+    return successResponse(c, maskCredential(decryptedValue), '憑證狀態獲取成功')
   } catch (error) {
     return handleApiError(error, c)
   }
@@ -199,17 +216,18 @@ export const getAllCredentials = async (c: Context<{ Bindings: Bindings }>) => {
     }
 
     const encryptionKey = getEncryptionKey(c.env)
+    const empty = (): MaskedCredential => ({ configured: false, last4: null })
     const credentials = {
       line: {
-        channelId: '',
-        channelSecret: '',
-        accessToken: ''
+        channelId: empty(),
+        channelSecret: empty(),
+        accessToken: empty()
       },
       facebook: {
-        appId: '',
-        appSecret: '',
-        pageId: '',
-        pageToken: ''
+        appId: empty(),
+        appSecret: empty(),
+        pageId: empty(),
+        pageToken: empty()
       }
     }
 
@@ -230,11 +248,12 @@ export const getAllCredentials = async (c: Context<{ Bindings: Bindings }>) => {
         try {
           const [, platform, type] = key.split(':')
           const decryptedValue = await decrypt(encryptedValue, encryptionKey)
+          const masked = maskCredential(decryptedValue)
 
           if (platform === 'line' && type) {
-            (credentials.line as Record<string, string>)[type] = decryptedValue
+            (credentials.line as Record<string, MaskedCredential>)[type] = masked
           } else if (platform === 'facebook' && type) {
-            (credentials.facebook as Record<string, string>)[type] = decryptedValue
+            (credentials.facebook as Record<string, MaskedCredential>)[type] = masked
           }
         } catch (error) {
           log.warn(`Failed to decrypt credential`, { key, error: error instanceof Error ? error.message : String(error) })
@@ -242,7 +261,7 @@ export const getAllCredentials = async (c: Context<{ Bindings: Bindings }>) => {
       }
     }
 
-    return successResponse(c, credentials, '憑證獲取成功')
+    return successResponse(c, credentials, '憑證狀態獲取成功')
   } catch (error) {
     return handleApiError(error, c)
   }
