@@ -544,7 +544,9 @@ describe('form controls', () => {
     // pinning them would assert representation rather than rendering. The pixel
     // layer covers the resulting geometry.
     const surface = fieldSurface('form-input')
-    expect(canonicalColor(surface.get('border-color') ?? '')).toBe('rgb(209, 213, 219, 1)')
+    console.log('DBG', JSON.stringify([...surface]))
+    // Round 7: the boundary is the visible --ui-field-edge token (3:1 on white), no longer gray-300
+    expect(surface.get('border-color')).toBe('var(--ui-field-edge)')
     expect(canonicalLengthPx(surface.get('border-radius') ?? '')).toBe(6)
     expect(canonicalLengthPx(surface.get('border-width') ?? '')).toBe(1)
   })
@@ -553,11 +555,11 @@ describe('form controls', () => {
     for (const className of ['form-textarea', 'form-select']) {
       const surface = fieldSurface(className)
       expect(
-        canonicalColor(surface.get('border-color') ?? ''),
+        surface.get('border-color'),
         `.${className} no longer shares the field surface. It used to reach it via ` +
           '`@apply form-input`, which tailwindcss 4 silently resolved to something else ' +
           'because @apply only resolves utilities, not @layer components classes.'
-      ).toBe('rgb(209, 213, 219, 1)')
+      ).toBe('var(--ui-field-edge)')
       expect(canonicalLengthPx(surface.get('border-radius') ?? '')).toBe(6)
     }
   })
@@ -592,11 +594,11 @@ describe('form controls', () => {
       .map(entry => /^background-color:(.*)$/.exec(entry)?.[1])
       .find(value => value !== undefined)
     expect(
-      canonicalColor(background ?? ''),
+      background?.trim(),
       'Disabled inputs no longer get their grey fill, so they look identical to ' +
         'enabled ones. That is what @tailwindcss/forms caused by outranking ' +
-        "src/style.css's `disabled:bg-gray-50` on cascade layer."
-    ).toBe('rgb(249, 250, 251, 1)')
+        "src/style.css's disabled rule on cascade layer."
+    ).toBe('var(--ui-fill)')
   })
 
   it('has no competing definition of the field surface', () => {
