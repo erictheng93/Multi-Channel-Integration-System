@@ -103,7 +103,7 @@ onBeforeUnmount(() => observer?.disconnect())
   top: 0;
   right: 0;
   bottom: 0;
-  width: 28px;
+  width: 44px;
   border-radius: 0 10px 10px 0;
   background: linear-gradient(90deg, transparent, var(--ui-canvas));
   pointer-events: none;
