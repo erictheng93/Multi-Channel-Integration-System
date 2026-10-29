@@ -34,17 +34,6 @@
       <div class="wrap">
         <!-- Brand side (desktop only) -->
         <section class="brand-side">
-          <div
-            class="wheel-box"
-            aria-hidden="true"
-          >
-            <DiscRing
-              class="wheel"
-              :spin-seconds="90"
-              spin
-            />
-          </div>
-
           <div class="brand-top">
             <div class="brand-mark">
               <svg viewBox="0 0 24 24"><path d="M12 3C6.5 3 2 6.6 2 11c0 2.5 1.4 4.7 3.7 6.2L5 21l4.1-2.3c.9.2 1.9.3 2.9.3 5.5 0 10-3.6 10-8s-4.5-8-10-8Z" /></svg>
@@ -68,16 +57,31 @@
           </div>
         </section>
 
+        <!-- Open zone between the brand column and the card: the abrasive disc lives here -->
+        <div
+          class="zone"
+          aria-hidden="true"
+        >
+          <DiscRing
+            class="wheel"
+            variant="hero"
+            :spin-seconds="180"
+            spin
+          />
+        </div>
+
         <!-- Form side -->
         <section class="form-side">
           <div class="m-brand">
-            <DiscRing
+            <div
               class="m-disc"
               aria-hidden="true"
-              :size="340"
-              :grain="false"
-              fade="strong"
-            />
+            >
+              <DiscRing
+                variant="hero"
+                :size="460"
+              />
+            </div>
             <div class="brand-mark">
               <svg viewBox="0 0 24 24"><path d="M12 3C6.5 3 2 6.6 2 11c0 2.5 1.4 4.7 3.7 6.2L5 21l4.1-2.3c.9.2 1.9.3 2.9.3 5.5 0 10-3.6 10-8s-4.5-8-10-8Z" /></svg>
             </div>
@@ -292,12 +296,9 @@ const showPassword = ref(false)
 const emailError = computed(() => (emailTouched.value || formSubmitted.value) ? errors.value.email : null)
 const passwordError = computed(() => (passwordTouched.value || formSubmitted.value) ? errors.value.password : null)
 
-// Validation-driven label: tells the user what is still missing instead of a dead "繼續"
+// The button always reads 「登入」; what is still missing is explained under the field itself
 const submitLabel = computed(() => {
-  if (loading.value) {return '登入中'}
-  if (validateLoginEmail(formData.value.email)) {return '輸入電子郵件'}
-  if (validateLoginPassword(formData.value.password)) {return '輸入密碼'}
-  return '繼續'
+  return loading.value ? '登入中' : '登入'
 })
 
 // ===== Form Validators =====
@@ -420,10 +421,10 @@ const handleLogin = async (event?: Event) => {
 }
 
 .wrap {
-  width: min(1080px, 100%);
+  width: min(1240px, 100%);
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 400px;
-  gap: 96px;
+  grid-template-columns: minmax(0, 400px) minmax(0, 1fr) 400px;
+  gap: 0;
   align-items: center;
 }
 
@@ -528,27 +529,31 @@ const handleLogin = async (event?: Event) => {
   color: var(--ui-muted);
 }
 
-/* Abrasive disc: bond rings plus fine grain at the rim, behind the brand column only */
-/* Offset to the right so the text column clears it; the form card sits over its right half */
-.wheel-box {
-  position: absolute;
-  left: calc(100% + 24px);
-  top: 50%;
-  z-index: 0;
-  width: 600px;
-  height: 600px;
-  margin: -300px 0 0 -300px;
-  color: var(--ui-accent);
-  opacity: 0.6;
+/* Open zone: the hero abrasive disc sits centred between the brand column and the card.
+   It is wider than the zone on purpose: its rim tucks under the card and the headline's right
+   edge (both sit above it), and the mask trims the outermost grain. */
+.zone {
+  position: relative;
+  align-self: stretch;
+  min-width: 0;
   pointer-events: none;
 }
 
-/* The disc itself is the shared <DiscRing> (it fades its own edge and honours reduced motion) */
+.wheel {
+  position: absolute;
+  top: 50%;
+  left: 60%;
+  width: 540px;
+  height: 540px;
+  margin: -270px 0 0 -270px;
+  opacity: 0.95;
+}
 
-/* Dark: the disc turns white for contrast on the black canvas */
-.login-page[data-theme='dark'] .wheel-box .ui-disc {
-  --ui-disc-weight: 1.8;
-  color: #fff;
+/* Dark: the rim turns white for contrast on the black canvas */
+.login-page[data-theme='dark'] .wheel,
+.login-page[data-theme='dark'] .m-disc {
+  --ui-disc-a: #fff;
+  --ui-disc-b: var(--ui-accent);
 }
 
 /* Form side */
@@ -672,17 +677,14 @@ const handleLogin = async (event?: Event) => {
 }
 
 .submit-btn:disabled {
-  opacity: 1;
-  background: color-mix(in srgb, var(--ui-accent) 42%, var(--ui-surface));
+  /* normal blue at half strength: still reads as THE primary action, just not yet available */
+  background: var(--ui-accent);
   color: #fff;
+  opacity: 0.5;
 }
 
 .submit-btn.is-loading:disabled {
-  background: var(--ui-accent);
-}
-
-.submit-btn.is-loading {
-  opacity: 0.7;
+  opacity: 0.75;
 }
 
 .debug-info {
@@ -700,16 +702,18 @@ const handleLogin = async (event?: Event) => {
   isolation: isolate;
 }
 
-/* Phone: a cropped ring behind the logo (decorative, never behind body text) */
+/* Phone: the disc is centred on the logo and fades out below it (decorative, never behind
+   the card or the form text) */
 .m-disc {
   position: absolute;
   left: 50%;
-  top: 8px;
+  top: 22px;
   z-index: -1;
-  margin: -170px 0 0 -170px;
-  color: var(--ui-accent);
-  opacity: 0.55;
+  margin: -230px 0 0 -230px;
+  opacity: 0.9;
   pointer-events: none;
+  -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 42%, transparent 62%);
+  mask-image: linear-gradient(to bottom, #000 0%, #000 42%, transparent 62%);
 }
 
 @media (max-width: 1024px) {
@@ -724,7 +728,8 @@ const handleLogin = async (event?: Event) => {
     gap: 0;
   }
 
-  .brand-side {
+  .brand-side,
+  .zone {
     display: none;
   }
 
