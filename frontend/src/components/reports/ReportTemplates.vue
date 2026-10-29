@@ -6,39 +6,37 @@
     <UiPageHead
       title="報表模板"
       :subtitle="templatesSubtitle"
-    >
-      <template
-        v-if="popularTemplates.length > 0"
-        #actions
-      >
-        <div
-          class="quick-row"
-          role="group"
-          aria-label="常用模板，一鍵以預設值產生"
-        >
-          <span
-            class="quick-label"
-            aria-hidden="true"
-          >常用</span>
-          <button
-            v-for="quick in popularTemplates"
-            :key="quick.name"
-            type="button"
-            class="ui-chip"
-            :disabled="generating"
-            @click="useTemplate(quick)"
-          >
-            {{ quick.name }}
-          </button>
-        </div>
-      </template>
-    </UiPageHead>
+    />
     <UiSectionNav section="reports" />
 
-    <TemplateFilters
-      v-model:search-query="searchQuery"
-      v-model:selected-category="selectedCategory"
-    />
+    <div class="tpl-bar">
+      <TemplateFilters
+        v-model:search-query="searchQuery"
+        v-model:selected-category="selectedCategory"
+        class="tpl-filters"
+      />
+      <div
+        v-if="popularTemplates.length > 0"
+        class="quick-row"
+        role="group"
+        aria-label="常用模板，一鍵以預設值產生"
+      >
+        <span
+          class="quick-label"
+          aria-hidden="true"
+        >常用</span>
+        <button
+          v-for="quick in popularTemplates"
+          :key="quick.name"
+          type="button"
+          class="ui-chip"
+          :disabled="generating"
+          @click="useTemplate(quick)"
+        >
+          {{ quick.name }}
+        </button>
+      </div>
+    </div>
 
     <div
       v-if="error"
@@ -106,21 +104,26 @@
             <span class="cat-heading-hint">後端尚未支援這些報表類型，暫時無法產生</span>
           </h2>
 
-          <article
-            v-for="template in comingSoonTemplates"
-            :key="template.name"
-            class="soon-tile"
-            aria-disabled="true"
+          <ul
+            v-if="comingSoonTemplates.length > 0"
+            class="ui-card soon-list"
+            :style="{ '--soon-rows': Math.ceil(comingSoonTemplates.length / 2) }"
+            aria-label="即將推出的模板"
           >
-            <span class="soon-top">
+            <li
+              v-for="template in comingSoonTemplates"
+              :key="template.name"
+              class="soon-row"
+              aria-disabled="true"
+            >
               <span class="soon-name">{{ template.name }}</span>
               <span
                 class="ui-tag soon-tag"
                 :class="template.category"
               >{{ getCategoryLabel(template.category) }}</span>
-            </span>
-            <span class="soon-desc">{{ template.description }}</span>
-          </article>
+              <span class="soon-desc">{{ template.description }}</span>
+            </li>
+          </ul>
         </div>
 
         <UiEmptyState
@@ -299,6 +302,19 @@ onMounted(() => {
 </script>
 
 <style scoped>
+.tpl-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 24px;
+}
+
+.tpl-filters {
+  flex: 1 1 420px;
+  min-width: 0;
+}
+
 .quick-row {
   display: flex;
   flex-wrap: wrap;
@@ -407,22 +423,25 @@ onMounted(() => {
   color: var(--ui-muted);
 }
 
-.soon-tile {
+.soon-list {
   display: grid;
-  grid-column: span 3;
-  gap: 6px;
-  align-content: start;
-  padding: 16px 18px;
-  border-radius: var(--ui-r-inner);
-  background: var(--ui-fill);
-  cursor: not-allowed;
+  grid-column: 1 / -1;
+  grid-auto-flow: column;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: repeat(var(--soon-rows, 4), auto);
+  column-gap: 32px;
+  margin: 0;
+  padding: 8px 12px;
+  list-style: none;
 }
 
-.soon-top {
-  display: flex;
-  gap: 8px;
+.soon-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 2px 12px;
   align-items: center;
-  justify-content: space-between;
+  padding: 12px 10px;
+  cursor: not-allowed;
 }
 
 .soon-name {
@@ -433,14 +452,17 @@ onMounted(() => {
 }
 
 .soon-desc {
+  grid-column: 1 / -1;
+  overflow: hidden;
   font-size: var(--ui-t-meta);
-  line-height: 1.45;
   color: var(--ui-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .soon-tag {
   flex: none;
-  opacity: 0.75;
+  font-weight: 600;
 }
 
 .soon-tag.enterprise {
@@ -481,10 +503,6 @@ onMounted(() => {
     grid-column: span 6;
   }
 
-  .soon-tile {
-    grid-column: span 4;
-  }
-
   .templates-layout.has-side {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -510,15 +528,15 @@ onMounted(() => {
     grid-column: 1 / -1;
   }
 
-  .soon-tile {
-    grid-column: span 1;
-    padding: 14px;
+  .soon-list {
+    grid-auto-flow: row;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: none;
+    padding: 4px 8px;
   }
 
-  .soon-top {
-    flex-direction: column-reverse;
-    gap: 6px;
-    align-items: flex-start;
+  .soon-desc {
+    white-space: normal;
   }
 
   .custom-card {
