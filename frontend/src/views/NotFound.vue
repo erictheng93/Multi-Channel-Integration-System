@@ -318,7 +318,7 @@ const goBack = () => {
   content: '';
   position: absolute;
   top: 0;
-  right: 0;
+  right: 22px;
   left: 66px;
   height: 0.5px;
   background: var(--ui-sep);
