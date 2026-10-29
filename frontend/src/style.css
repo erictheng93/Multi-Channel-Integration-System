@@ -1374,12 +1374,11 @@
       font-size: 26px;
       line-height: 30px;
     }
+    /* Captions wrap to a second line on phone; a KPI's meaning is never cut off */
     .ui-kpi-grid .ui-kpi-foot {
-      overflow: hidden;
       font-size: 13px;
       line-height: 17px;
-      text-overflow: ellipsis;
-      white-space: nowrap;
+      text-wrap: pretty;
     }
     /* Action bar: pinned to the bottom of the scrolling page, full bleed, safe-area aware.
        Bleeds through the 16px page gutter (negative margin) so it reads as a bar, not a card. */
