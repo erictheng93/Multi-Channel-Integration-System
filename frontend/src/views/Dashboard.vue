@@ -12,15 +12,7 @@
           </h1>
           <p class="ui-page-sub">
             <template v-if="summary.data.value">
-              <template v-if="waitingCount > 0">
-                {{ waitingCount }} 件待回覆，最久已等 {{ oldestWaitText }}。
-              </template>
-              <template v-else>
-                目前沒有待回覆的客戶。
-              </template>
-              <template v-if="unreadStore.total > 0">
-                我的未讀 {{ unreadStore.total }} 件。
-              </template>
+              {{ subtitle }}
             </template>
             <template v-else-if="summary.error.value">
               無法取得待回覆狀態。
@@ -593,14 +585,44 @@
                 v-for="a in feed"
                 :key="a.id"
               >
-                <span class="ico-tile"><svg
-                  class="ico"
-                  viewBox="0 0 24 24"
-                ><circle
-                  cx="12"
-                  cy="12"
-                  r="9"
-                /><path d="M12 8v4l2.5 2.5" /></svg></span>
+                <span
+                  class="ico-tile"
+                  :class="`tone-${feedKind(a.action)}`"
+                >
+                  <svg
+                    class="ico"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      v-if="feedKind(a.action) === 'close'"
+                      d="m5 12 5 5L20 7"
+                    />
+                    <template v-else-if="feedKind(a.action) === 'assign'">
+                      <circle
+                        cx="9"
+                        cy="8"
+                        r="4"
+                      />
+                      <path d="M2 21v-1a6 6 0 0 1 12 0v1" />
+                    </template>
+                    <path
+                      v-else-if="feedKind(a.action) === 'broadcast'"
+                      d="m22 2-7 20-4-9-9-4Z"
+                    />
+                    <path
+                      v-else-if="feedKind(a.action) === 'login'"
+                      d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3"
+                    />
+                    <template v-else>
+                      <circle
+                        cx="12"
+                        cy="12"
+                        r="9"
+                      />
+                      <path d="M12 8v4l2.5 2.5" />
+                    </template>
+                  </svg>
+                </span>
                 <div>
                   {{ a.userName }} {{ describeActivity(a) }}
                   <time :datetime="a.createdAt">{{ relativeTime(a.createdAt) }}</time>
@@ -628,7 +650,7 @@ import {
   type VolumeDays
 } from '@/composables/dashboard/useDashboardOverview'
 import { useUnreadStore } from '@/stores/unread'
-import { getActivityDescription } from '@/components/activity/utils'
+import { getActivityDescription, hasActivityLabel } from '@/components/activity/utils'
 import type { ActivityLog } from '@/api/activities'
 import AppLayout from '@/components/ui/AppLayout.vue'
 import MessageVolumeChart from '@/components/dashboard/MessageVolumeChart.vue'
@@ -657,6 +679,15 @@ const greeting = computed(() => {
 const dateLabel = computed(() => new Intl.DateTimeFormat('zh-TW', {
   month: 'long', day: 'numeric', weekday: 'long', timeZone: 'Asia/Taipei'
 }).format(new Date(now.value)))
+
+// No spaces around full-width punctuation: sentences are joined here, not in the template
+const subtitle = computed(() => {
+  const waitPart = waitingCount.value > 0
+    ? `${waitingCount.value} 件待回覆，最久已等 ${oldestWaitText.value}。`
+    : '目前沒有待回覆的客戶。'
+  const unreadPart = unreadStore.total > 0 ? `我的未讀 ${unreadStore.total} 件。` : ''
+  return `${waitPart}${unreadPart}`
+})
 
 const oldestWaitText = computed(() =>
   oldestWaitSeconds.value === null ? '' : formatWaitText(oldestWaitSeconds.value))
@@ -725,7 +756,18 @@ const teamRows = computed(() => activeMembers.value
 
 // ---- recent activity (hidden when empty) ----
 const feed = computed<ActivityLog[]>(() => activities.data.value ?? [])
-const describeActivity = (a: ActivityLog): string => getActivityDescription(a)
+// Always Chinese: actions without a label fall back to a generic phrase instead of the raw code
+const describeActivity = (a: ActivityLog): string =>
+  hasActivityLabel(a.action) ? getActivityDescription(a) : '進行了操作'
+
+type FeedKind = 'close' | 'assign' | 'broadcast' | 'login' | 'generic'
+const feedKind = (action: string): FeedKind => {
+  if (action === 'conversation_close' || action === 'conversation_reopen') { return 'close' }
+  if (action === 'conversation_assign' || action === 'conversation_bulk_assign' || action === 'conversation_transfer') { return 'assign' }
+  if (action.startsWith('broadcast_')) { return 'broadcast' }
+  if (action === 'user_login' || action === 'user_logout') { return 'login' }
+  return 'generic'
+}
 const relativeTime = (iso: string): string => {
   const diff = Math.max(0, now.value - Date.parse(iso)) / 1000
   if (diff < 60) { return '剛剛' }
@@ -1082,8 +1124,28 @@ onBeforeUnmount(() => {
   width: 28px;
   height: 28px;
   border-radius: 9px;
+  background: var(--ui-fill);
+  color: var(--ui-muted);
+}
+
+.ico-tile.tone-close {
+  background: var(--ui-green-soft);
+  color: var(--ui-green-ink);
+}
+
+.ico-tile.tone-assign {
   background: var(--ui-accent-soft);
   color: var(--ui-accent);
+}
+
+.ico-tile.tone-broadcast {
+  background: var(--ui-p-lavender);
+  color: var(--ui-p-lavender-ink);
+}
+
+.ico-tile.tone-login {
+  background: var(--ui-orange-soft);
+  color: var(--ui-orange-ink);
 }
 
 .feed time {
