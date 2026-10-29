@@ -6,7 +6,6 @@ import {
   formatActivityDetails,
   getActivityDescription,
   getRoleLabel,
-  getRoleBadgeClasses,
 } from './utils'
 
 // Factory function for creating a default ActivityLog object
@@ -406,20 +405,6 @@ describe('getRoleLabel', () => {
 
   it('returns the raw role string for unknown roles', () => {
     expect(getRoleLabel('unknown_role')).toBe('unknown_role')
-  })
-})
-
-// ─── getRoleBadgeClasses ──────────────────────────────────────────────────────
-
-describe('getRoleBadgeClasses', () => {
-  it("returns classes containing 'blue' for admin", () => {
-    const classes = getRoleBadgeClasses('admin')
-    expect(classes).toContain('blue')
-  })
-
-  it("returns classes containing 'green' for agent", () => {
-    const classes = getRoleBadgeClasses('agent')
-    expect(classes).toContain('green')
   })
 })
 

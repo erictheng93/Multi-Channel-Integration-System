@@ -13,11 +13,15 @@
       <div class="timeline-item__header">
         <span class="timeline-item__user">{{ activity.userName }}</span>
         <span
-          class="timeline-item__role"
-          :class="getRoleBadgeClasses(activity.userRole)"
+          class="timeline-item__role ui-pill"
+          :class="activity.userRole === 'admin' ? 'ui-pill-blue' : 'ui-pill-green'"
           :aria-label="getRoleLabel(activity.userRole)"
         >{{ getRoleLabel(activity.userRole) }}</span>
-        <span class="timeline-item__time">{{ formatTime(activity.createdAt) }}</span>
+        <time
+          class="timeline-item__time"
+          :datetime="activity.createdAt"
+          :title="fullTime"
+        >{{ formatTime(activity.createdAt) }}</time>
         <div class="timeline-item__restore-zone">
           <button
             v-if="restoreState.kind === 'eligible'"
@@ -44,7 +48,7 @@
           </span>
           <span
             v-else-if="restoreState.kind === 'already-restored'"
-            class="timeline-item__restore-hint"
+            class="ui-pill ui-pill-green ui-pill-dot"
             data-test="restore-done"
           >
             已還原
@@ -86,7 +90,7 @@ import { ROLES } from '@/constants/roles'
 import { isActivityRestoreEnabled } from '@/config/runtime'
 import { useRestoreActivity } from '@/composables/useRestoreActivity'
 import type { MidChange, RestoreState } from './types'
-import { getActionIconStyle, formatActivityDetails, getActivityDescription, getRoleLabel, getRoleBadgeClasses } from './utils'
+import { getActionIconStyle, formatActivityDetails, getActivityDescription, getRoleLabel } from './utils'
 import ActivityDetailPanel from './ActivityDetailPanel.vue'
 import RestoreConfirmModal from './RestoreConfirmModal.vue'
 
@@ -188,32 +192,12 @@ async function onConfirmRestore(payload: { force: boolean }) {
   modalOpen.value = false
 }
 
-function formatTime(isoString: string): string {
-  const now = new Date()
-  const date = new Date(isoString)
-  const diffMs = now.getTime() - date.getTime()
-  const diffSec = Math.floor(diffMs / 1000)
-  const diffMin = Math.floor(diffSec / 60)
-  const diffHrs = Math.floor(diffMin / 60)
-  const diffDays = Math.floor(diffHrs / 24)
+const fullTime = computed(() => new Date(props.activity.createdAt).toLocaleString('zh-TW'))
 
-  if (diffSec < 60) {
-    return '剛剛'
-  }
-  if (diffMin < 60) {
-    return `${diffMin} 分鐘前`
-  }
-  if (diffHrs < 24) {
-    return `${diffHrs} 小時前`
-  }
-  if (diffDays < 30) {
-    return `${diffDays} 天前`
-  }
-  return date.toLocaleDateString('zh-TW', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  })
+/** The timeline is grouped by day, so the time of day is the useful part. */
+function formatTime(isoString: string): string {
+  const date = new Date(isoString)
+  return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
 }
 
 onMounted(() => {
@@ -231,29 +215,26 @@ onUnmounted(() => {
 
 <style scoped>
 .timeline-item {
-  display: flex;
-  align-items: flex-start;
-  gap: 16px;
-  padding: 16px 20px;
-  transition: background-color 200ms ease-out;
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr);
+  gap: 14px;
+  padding: 16px 22px;
+  transition: background-color var(--ui-dur) var(--ui-ease);
 }
 
 .timeline-item:hover {
-  background-color: #F2F2F7;
+  background-color: color-mix(in srgb, var(--ui-fill) 40%, transparent);
 }
 
 .timeline-item__icon {
-  width: 40px;
-  height: 40px;
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
   border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
 }
 
 .timeline-item__content {
-  flex: 1;
   min-width: 0;
 }
 
@@ -261,60 +242,79 @@ onUnmounted(() => {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 4px 10px;
-  margin-bottom: 4px;
+  gap: 4px 8px;
 }
 
 .timeline-item__user {
-  font-size: 14px;
+  font-size: 14.5px;
   font-weight: 600;
-  color: #1C1C1E;
+  color: var(--ui-ink);
 }
 
 .timeline-item__role {
   flex-shrink: 0;
-  white-space: nowrap;
-  padding: 2px 8px;
-  border-radius: 9999px;
-  font-size: 11px;
-  font-weight: 500;
 }
 
 .timeline-item__time {
+  font-size: 12.5px;
+  color: var(--ui-muted);
   white-space: nowrap;
-  font-size: 12px;
-  color: #8E8E93;
-  margin-left: auto;
+  font-variant-numeric: tabular-nums;
 }
 
 .timeline-item__restore-zone {
+  display: flex;
+  align-items: center;
   flex-shrink: 0;
+  gap: 8px;
+  margin-left: auto;
 }
 
 .timeline-item__restore-hint {
-  padding: 2px 8px;
-  color: #8E8E93;
   font-size: 12px;
+  color: var(--ui-muted);
   white-space: nowrap;
 }
 
 .timeline-item__description {
+  margin-top: 4px;
   font-size: 14px;
-  color: #1C1C1E;
+  line-height: 1.5;
+  color: var(--ui-ink-2);
+  word-break: break-word;
 }
 
 .timeline-item__details-toggle {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
   margin-top: 6px;
-  font-size: 12px;
-  color: #007AFF;
-  background: none;
-  border: none;
   padding: 0;
+  border: 0;
+  background: none;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ui-accent);
   cursor: pointer;
 }
 
 .timeline-item__details-toggle:hover {
-  text-decoration: underline;
+  opacity: 0.75;
+}
+
+@media (max-width: 768px) {
+  .timeline-item {
+    grid-template-columns: 34px minmax(0, 1fr);
+    gap: 12px;
+    padding: 14px 16px;
+  }
+  .timeline-item__icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 11px;
+  }
+  .timeline-item__restore-zone {
+    flex-basis: 100%;
+    margin-left: 0;
+  }
 }
 </style>

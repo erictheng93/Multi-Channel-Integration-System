@@ -2,12 +2,14 @@
   <div
     v-if="loading || overview !== null"
     class="stats-grid"
+    :class="{ 'stats-grid--three': !showRestorable }"
+    aria-label="活動概覽（管理員）"
   >
     <template v-if="loading">
       <div
-        v-for="i in 4"
+        v-for="i in skeletonCount"
         :key="i"
-        class="stat-card stat-card--skeleton"
+        class="ui-card ui-kpi stat-card stat-card--skeleton"
       >
         <div class="skeleton-label shimmer" />
         <div class="skeleton-value shimmer" />
@@ -15,27 +17,51 @@
       </div>
     </template>
     <template v-else-if="overview !== null">
-      <div
+      <article
         v-for="card in cards"
         :key="card.key"
-        class="stat-card"
+        class="ui-card ui-kpi stat-card"
       >
-        <div class="stat-card__top">
+        <div class="ui-kpi-top stat-card__top">
+          <span
+            class="ui-kpi-ico"
+            :style="{ background: card.soft, color: card.ink }"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            ><path :d="card.icon" /></svg>
+          </span>
           <span class="stat-label">{{ card.label }}</span>
         </div>
         <div
-          v-if="card.secondaryLabel"
-          class="stat-secondary"
+          class="stat-value"
+          :class="card.compact ? 'stat-value--text' : 'ui-kpi-value'"
         >
-          {{ card.secondaryLabel }}
+          {{ card.value }}<small v-if="card.unit">{{ card.unit }}</small>
         </div>
-        <div class="stat-value">
-          {{ card.value }}
+        <div class="ui-kpi-foot stat-subtitle">
+          <span>{{ card.subtitle }}</span>
+          <span
+            v-if="card.key === 'total' && bars.length > 0"
+            class="bars"
+            role="img"
+            :aria-label="barsLabel"
+          >
+            <i
+              v-for="bar in bars"
+              :key="bar.date"
+              :class="{ hi: bar.hi }"
+              :style="{ height: bar.height }"
+            />
+          </span>
         </div>
-        <div class="stat-subtitle">
-          {{ card.subtitle }}
-        </div>
-      </div>
+      </article>
     </template>
   </div>
 </template>
@@ -43,175 +69,187 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { ActivityOverview } from '@/api/activities'
+import { isActivityRestoreEnabled } from '@/config/runtime'
+import { getActionLabel, getRoleLabel } from './utils'
 
 const props = defineProps<{
   overview: ActivityOverview | null
   loading: boolean
 }>()
 
-/* eslint-disable camelcase */
-const ACTION_LABEL_MAP: Record<string, string> = {
-  user_login: '\u767b\u5165',
-  user_logout: '\u767b\u51fa',
-  message_send: '\u8a0a\u606f\u767c\u9001',
-  message_recall: '\u8a0a\u606f\u64a4\u56de',
-  conversation_assign: '\u5c0d\u8a71\u6307\u6d3e',
-  conversation_transfer: '\u5c0d\u8a71\u8f49\u79fb',
-  conversation_close: '\u5c0d\u8a71\u95dc\u9589',
-  conversation_reopen: '\u5c0d\u8a71\u91cd\u958b',
-  settings_update: '\u8a2d\u5b9a\u66f4\u65b0',
-  team_invite: '\u5718\u968a\u9080\u8acb',
-  team_member_update: '\u6210\u54e1\u66f4\u65b0',
-  team_member_remove: '\u6210\u54e1\u79fb\u9664',
-}
-/* eslint-enable camelcase */
+/** The restorable count only means something while the restore feature is on. */
+const showRestorable = isActivityRestoreEnabled()
+const skeletonCount = showRestorable ? 4 : 3
 
 const topAction = computed(() => {
-  if (!props.overview) { return { label: '-', count: 0 } }
-  const stats = props.overview.actionStats
-  const entries = Object.entries(stats)
-  if (entries.length === 0) { return { label: '-', count: 0 } }
+  if (!props.overview) { return null }
+  const entries = Object.entries(props.overview.actionStats)
+  if (entries.length === 0) { return null }
   const [name, count] = entries.reduce((a, b) => (b[1] > a[1] ? b : a))
-  return { label: ACTION_LABEL_MAP[name] || name, count }
+  return { label: getActionLabel(name), count }
 })
 
-const periodLabel = computed(() => {
-  if (!props.overview) {return ''}
-  return `\u8FD1 ${props.overview.period.days} \u5929`
+const periodLabel = computed(() => (props.overview ? `近 ${props.overview.period.days} 天` : ''))
+
+const BAR_MAX_PX = 26
+const bars = computed(() => {
+  const daily = props.overview?.dailyStats ?? []
+  const max = Math.max(0, ...daily.map(d => d.count))
+  if (max === 0) { return [] }
+  return daily.map(d => ({
+    date: d.date,
+    hi: d.count === max,
+    height: `${Math.max(3, Math.round((d.count / max) * BAR_MAX_PX))}px`
+  }))
 })
 
-const cards = computed(() => {
-  if (!props.overview) {return []}
-  return [
+const barsLabel = computed(() => {
+  const daily = props.overview?.dailyStats ?? []
+  const peak = daily.reduce((a, b) => (b.count > a.count ? b : a), { date: '', count: 0 })
+  return `${periodLabel.value}每日活動數，${peak.date.slice(5).replace('-', '/')} 最多 ${peak.count} 筆`
+})
+
+interface StatCard {
+  key: string
+  label: string
+  value: string | number
+  unit?: string
+  compact?: boolean
+  subtitle: string
+  soft: string
+  ink: string
+  icon: string
+}
+
+const cards = computed<StatCard[]>(() => {
+  const overview = props.overview
+  if (!overview) { return [] }
+  const topUser = overview.topUsers[0]
+  const total = overview.totalActivities
+  const list: StatCard[] = [
     {
       key: 'total',
-      label: '\u7E3D\u6D3B\u52D5',
-      secondaryLabel: '',
-      value: props.overview.totalActivities,
+      label: '總活動',
+      value: total.toLocaleString('zh-TW'),
       subtitle: periodLabel.value,
+      soft: 'var(--ui-accent-soft)',
+      ink: 'var(--ui-accent)',
+      icon: 'M22 12h-4l-3 9L9 3l-3 9H2'
     },
     {
       key: 'users',
-      label: '\u6D3B\u8E8D\u7528\u6236',
-      secondaryLabel: '',
-      value: props.overview.topUsers.length,
-      subtitle: periodLabel.value,
+      label: '最活躍成員',
+      value: topUser ? topUser.user_name : '—',
+      compact: true,
+      subtitle: topUser
+        ? `${topUser.count.toLocaleString('zh-TW')} 筆 · ${getRoleLabel(topUser.user_role)}`
+        : '此期間沒有活動',
+      soft: 'var(--ui-green-soft)',
+      ink: 'var(--ui-green-ink)',
+      icon: 'M2 21v-1a6 6 0 0 1 12 0v1M17 11a3 3 0 1 0 0-6M22 21v-1a5 5 0 0 0-4-4.9M9 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z'
     },
     {
       key: 'action',
-      label: '\u6700\u591A\u64CD\u4F5C',
-      secondaryLabel: topAction.value.label,
-      value: topAction.value.count,
-      subtitle: periodLabel.value,
-    },
-    {
-      key: 'logins',
-      label: '\u767B\u5165\u6B21\u6578',
-      secondaryLabel: '',
-      value: props.overview.actionStats['user_login'] ?? 0,
-      subtitle: periodLabel.value,
-    },
+      label: '最常見操作',
+      value: topAction.value ? topAction.value.label : '—',
+      compact: true,
+      subtitle: topAction.value && total > 0
+        ? `${topAction.value.count.toLocaleString('zh-TW')} 筆，佔 ${Math.round((topAction.value.count / total) * 100)}%`
+        : '此期間沒有活動',
+      soft: 'var(--ui-indigo-soft)',
+      ink: 'var(--ui-indigo)',
+      icon: 'm22 2-7 20-4-9-9-4Z'
+    }
   ]
+  if (showRestorable) {
+    list.push({
+      key: 'restorable',
+      label: '可還原',
+      value: overview.restorableCount,
+      unit: '筆',
+      subtitle: '期限內、尚未還原的操作',
+      soft: 'var(--ui-orange-soft)',
+      ink: 'var(--ui-orange-ink)',
+      icon: 'M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5'
+    })
+  }
+  return list
 })
 </script>
 
 <style scoped>
+/* Reset the legacy global .stats-grid / .stat-card (styles/variables.css) */
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(1, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 16px;
+  margin-bottom: 0;
 }
-
-@media (min-width: 768px) {
-  .stats-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-@media (min-width: 1280px) {
-  .stats-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
-}
-
 .stat-card {
-  background: #FFFFFF;
-  border-radius: 28px;
-  box-shadow: 0 4px 16px rgb(0 0 0 / 0.06);
-  padding: 20px;
-  transition: transform 200ms ease-out, box-shadow 200ms ease-out;
-  cursor: default;
+  align-items: stretch;
+  gap: 10px;
+  padding: 18px 20px 16px;
+  border: 0;
+  border-radius: var(--ui-r-card);
+  background: var(--ui-surface);
+  box-shadow: var(--ui-shadow-card);
+  text-align: left;
 }
-
 .stat-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 30px rgb(0 0 0 / 0.08);
+  transform: none;
+  box-shadow: var(--ui-shadow-card);
+}
+.stats-grid--three {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
-.stat-card__top {
-  margin-bottom: 16px;
-}
-
-.stat-label {
-  font-size: 13px;
-  font-weight: 500;
-  color: #8E8E93;
-  line-height: 1.3;
-  white-space: nowrap;
-}
-
-.stat-secondary {
-  font-size: 13px;
-  color: #8E8E93;
-  margin-bottom: 4px;
-}
-
-.stat-value {
-  font-size: 32px;
-  font-weight: 700;
-  color: #1C1C1E;
-  line-height: 1.1;
-  margin-bottom: 6px;
-  white-space: nowrap;
+.stat-value--text {
+  display: flex;
+  align-items: center;
+  min-height: 34px;
+  overflow: hidden;
+  font: 600 22px / 1.15 var(--ui-font-display);
   letter-spacing: -0.02em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.stat-subtitle {
-  font-size: 12px;
-  color: #AEAEB2;
+.bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  width: 84px;
+  height: 26px;
+  margin-left: auto;
+}
+.bars i {
+  flex: 1;
+  min-height: 3px;
+  border-radius: 2px 2px 0 0;
+  background: color-mix(in srgb, var(--ui-accent) 30%, transparent);
+}
+.bars i.hi {
+  background: var(--ui-accent);
 }
 
 /* Skeleton */
-.stat-card--skeleton {
-  cursor: default;
-}
-
-.stat-card--skeleton:hover {
-  transform: none;
-  box-shadow: 0 4px 16px rgb(0 0 0 / 0.06);
-}
-
-.skeleton-label {
-  height: 12px;
-  width: 60%;
-  border-radius: 6px;
-  background: #E5E5EA;
-  margin-bottom: 8px;
-}
-
-.skeleton-value {
-  height: 28px;
-  width: 40%;
-  border-radius: 6px;
-  background: #E5E5EA;
-  margin-bottom: 6px;
-}
-
+.skeleton-label,
+.skeleton-value,
 .skeleton-subtitle {
-  height: 12px;
-  width: 50%;
   border-radius: 6px;
-  background: #E5E5EA;
+  background: var(--ui-fill);
+}
+.skeleton-label {
+  width: 60%;
+  height: 12px;
+}
+.skeleton-value {
+  width: 40%;
+  height: 28px;
+}
+.skeleton-subtitle {
+  width: 50%;
+  height: 12px;
 }
 
 @keyframes shimmer {
@@ -219,8 +257,22 @@ const cards = computed(() => {
   50% { opacity: 0.5; }
   100% { opacity: 1; }
 }
-
 .shimmer {
   animation: shimmer 1.5s ease-in-out infinite;
+}
+
+@media (max-width: 1280px) {
+  .stats-grid,
+  .stats-grid--three {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 480px) {
+  .bars {
+    display: none;
+  }
+  .stat-value--text {
+    font-size: 18px;
+  }
 }
 </style>

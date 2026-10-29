@@ -1,11 +1,14 @@
 <template>
-  <div class="pagination">
+  <nav
+    class="pagination"
+    aria-label="分頁"
+  >
     <span class="pagination__info">
       {{ infoText }}
     </span>
     <div class="pagination__buttons">
       <button
-        class="pagination__btn"
+        class="btn btn-secondary btn-sm pagination__btn"
         :disabled="currentPage <= 1 || loading"
         @click="onPrev"
       >
@@ -13,7 +16,7 @@
         <span>{{ prevLabel }}</span>
       </button>
       <button
-        class="pagination__btn"
+        class="btn btn-secondary btn-sm pagination__btn"
         :disabled="currentPage >= totalPages || loading"
         @click="onNext"
       >
@@ -21,7 +24,7 @@
         <ChevronRightIcon :size="16" />
       </button>
     </div>
-  </div>
+  </nav>
 </template>
 
 <script setup lang="ts">
@@ -40,7 +43,7 @@ const emit = defineEmits<{
 }>()
 
 const infoText = computed(() => {
-  return `\u7B2C ${props.currentPage} \u9801\uFF0C\u5171 ${props.totalPages} \u9801 (${props.totalRecords} \u7B46\u8A18\u9304)`
+  return `\u7B2C ${props.currentPage} \u9801\uFF0C\u5171 ${props.totalPages} \u9801\uFF08${props.totalRecords.toLocaleString('zh-TW')} \u7B46\u8A18\u9304\uFF09`
 })
 
 const prevLabel = computed(() => '\u4E0A\u4E00\u9801')
@@ -61,18 +64,18 @@ function onNext() {
 
 <style scoped>
 .pagination {
-  background: #F2F2F7;
-  padding: 14px 20px;
   display: flex;
-  align-items: center;
-  justify-content: space-between;
   flex-wrap: wrap;
-  gap: 12px;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 6px;
+  font-size: 13px;
+  color: var(--ui-muted);
+  font-variant-numeric: tabular-nums;
 }
 
 .pagination__info {
-  font-size: 14px;
-  color: #8E8E93;
+  margin-right: auto;
 }
 
 .pagination__buttons {
@@ -81,28 +84,9 @@ function onNext() {
   gap: 8px;
 }
 
-.pagination__btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  border: none;
-  border-radius: 9999px;
-  background: #FFFFFF;
-  box-shadow: 0 4px 16px rgb(0 0 0 / 0.06);
-  padding: 8px 16px;
-  font-size: 14px;
-  font-weight: 500;
-  color: #1C1C1E;
-  cursor: pointer;
-  transition: opacity 150ms ease-out, box-shadow 150ms ease-out;
-}
-
-.pagination__btn:hover:not(:disabled) {
-  box-shadow: 0 4px 16px rgb(0 0 0 / 0.08);
-}
-
-.pagination__btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+@media (max-width: 768px) {
+  .pagination__info {
+    flex-basis: 100%;
+  }
 }
 </style>
