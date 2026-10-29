@@ -1,167 +1,90 @@
 <!--
   FacebookIntegrationForm.vue
 
-  Facebook integration configuration form component
-  Manages Facebook Messenger credentials and connection testing
+  Facebook Messenger credentials plus the danger zone. Test and save live in the page head
+  (the save button submits this form by id). Stored values are never shown: only 已設定 ••••last4.
 -->
 
 <template>
-  <div class="facebook-integration-form">
-    <div class="form-header">
-      <div>
-        <h3 class="integration-title">
-          {{ t('systemSettings.integrations.facebook.title') }}
-        </h3>
-        <p class="integration-description">
-          {{ t('systemSettings.integrations.facebook.description') }}
-        </p>
-      </div>
-      <div
-        class="status-badge"
-        :class="statusClass"
-      >
-        <span class="status-dot" />
-        {{ statusText }}
-      </div>
-    </div>
+  <form
+    :id="SETTINGS_FORM_ID"
+    class="integration-form"
+    @submit.prevent="handleSave"
+  >
+    <SettingsGroup title="Messenger 憑證">
+      <CredentialRow
+        v-for="field in FIELDS"
+        :key="field.key"
+        v-model="localSettings[field.key]"
+        :label="field.label"
+        :hint="field.hint"
+        :input-id="field.id"
+        :configured="credentials?.[field.key]?.configured ?? false"
+        :last4="credentials?.[field.key]?.last4 ?? null"
+        :secret="field.secret"
+        :placeholder="field.placeholder"
+        :disabled="saving || testing"
+      />
+      <template #note>
+        更換憑證後請按「測試連線」確認新憑證可用，再儲存變更。
+      </template>
+    </SettingsGroup>
 
-    <form
-      class="integration-form"
-      @submit.prevent="handleSave"
+    <SettingsGroup
+      v-if="hasStoredCredentials"
+      title="危險操作"
     >
-      <div class="form-group">
-        <label
-          for="facebookAppId"
-          class="form-label"
-        >
-          {{ t('systemSettings.integrations.facebook.appId') }}
-        </label>
-        <input
-          id="facebookAppId"
-          v-model="localSettings.appId"
-          type="text"
-          class="form-input"
-          :placeholder="t('systemSettings.integrations.facebook.appIdPlaceholder')"
-          required
-        >
-      </div>
-
-      <div class="form-group">
-        <label
-          for="facebookAppSecret"
-          class="form-label"
-        >
-          {{ t('systemSettings.integrations.facebook.appSecret') }}
-        </label>
-        <input
-          id="facebookAppSecret"
-          v-model="localSettings.appSecret"
-          type="text"
-          class="form-input"
-          :placeholder="t('systemSettings.integrations.facebook.appSecretPlaceholder')"
-          required
-        >
-      </div>
-
-      <div class="form-group">
-        <label
-          for="facebookPageId"
-          class="form-label"
-        >
-          {{ t('systemSettings.integrations.facebook.pageId') }}
-        </label>
-        <input
-          id="facebookPageId"
-          v-model="localSettings.pageId"
-          type="text"
-          class="form-input"
-          :placeholder="t('systemSettings.integrations.facebook.pageIdPlaceholder')"
-          required
-        >
-      </div>
-
-      <div class="form-group">
-        <label
-          for="facebookPageToken"
-          class="form-label"
-        >
-          {{ t('systemSettings.integrations.facebook.pageToken') }}
-        </label>
-        <textarea
-          id="facebookPageToken"
-          v-model="localSettings.pageToken"
-          class="form-textarea"
-          rows="3"
-          :placeholder="t('systemSettings.integrations.facebook.pageTokenPlaceholder')"
-          required
-        />
-      </div>
-
-      <div class="form-actions">
-        <button
-          type="button"
-          class="btn btn-secondary"
-          :disabled="testing || saving"
-          @click="handleTest"
-        >
-          <span
-            v-if="testing"
-            class="spinner"
-          />
-          {{ testing ? t('common.testing') : t('common.testConnection') }}
-        </button>
-
+      <SettingsRow
+        label="清除已儲存的憑證"
+        hint="清除後無法收發 Messenger 訊息，直到重新填入憑證。"
+        danger
+        end
+      >
         <button
           type="button"
           class="btn btn-danger"
           :disabled="saving || testing"
           @click="handleClear"
         >
-          {{ t('common.clearCredentials') }}
+          清除憑證
         </button>
-
-        <button
-          type="submit"
-          class="btn btn-primary"
-          :disabled="saving || testing"
-        >
-          <span
-            v-if="saving"
-            class="spinner"
-          />
-          {{ saving ? t('common.saving') : t('common.save') }}
-        </button>
-      </div>
-    </form>
-  </div>
+      </SettingsRow>
+    </SettingsGroup>
+  </form>
 </template>
 
 <script setup lang="ts">
-import { reactive, computed, watch } from 'vue'
-import { useI18n } from 'vue-i18n'
+import { computed, reactive, watch } from 'vue'
+import type { MaskedCredential } from '@shared/api-contracts/system'
 import type { FacebookIntegration } from '@/types/system-settings'
+import CredentialRow from './CredentialRow.vue'
+import SettingsGroup from './SettingsGroup.vue'
+import SettingsRow from './SettingsRow.vue'
+import { SETTINGS_FORM_ID } from './settings-pages'
 
-// Props
 interface Props {
   settings: FacebookIntegration
+  /** Server-reported credential state (configured / last4) */
+  credentials?: Record<'appId' | 'appSecret' | 'pageId' | 'pageToken', MaskedCredential>
   saving: boolean
   testing: boolean
 }
 
 const props = defineProps<Props>()
 
-// Events
 const emit = defineEmits<{
   save: []
-  test: []
   clear: []
   'update:settings': [value: FacebookIntegration]
 }>()
 
-// Composables
-const { t } = useI18n()
+const FIELDS = [
+  { id: 'facebookAppId', key: 'appId', label: 'App ID', hint: 'Meta for Developers 應用程式編號', secret: false, placeholder: '輸入 Facebook App ID' },
+  { id: 'facebookAppSecret', key: 'appSecret', label: 'App Secret', hint: '用於驗證 Webhook 簽章，已加密儲存', secret: true, placeholder: '輸入 Facebook App Secret' },
+  { id: 'facebookPageId', key: 'pageId', label: 'Page ID', hint: '接收訊息的粉絲專頁編號', secret: false, placeholder: '輸入 Facebook Page ID' },
+  { id: 'facebookPageToken', key: 'pageToken', label: 'Page Token', hint: '粉絲專頁存取權杖，用於回覆訊息', secret: true, placeholder: '輸入 Facebook Page Token' }
+] as const
 
-// Local state
 const localSettings = reactive<FacebookIntegration>({
   appId: '',
   appSecret: '',
@@ -170,51 +93,30 @@ const localSettings = reactive<FacebookIntegration>({
   status: 'disconnected'
 })
 
-// Watch for prop changes (parent → child)
+const hasStoredCredentials = computed(() =>
+  FIELDS.some(field => props.credentials?.[field.key]?.configured)
+)
+
+// Parent -> local
 watch(
   () => props.settings,
-  (newSettings) => {
-    Object.assign(localSettings, newSettings)
+  (next) => {
+    Object.assign(localSettings, next)
   },
   { immediate: true, deep: true }
 )
 
-// Sync local changes back to parent (child → parent)
+// Local -> parent
 watch(
   localSettings,
-  (newVal) => {
-    emit('update:settings', { ...newVal })
+  (next) => {
+    emit('update:settings', { ...next })
   },
   { deep: true }
 )
 
-// Computed
-const statusClass = computed(() => ({
-  'status-connected': props.settings.status === 'connected',
-  'status-disconnected': props.settings.status === 'disconnected',
-  'status-error': props.settings.status === 'error'
-}))
-
-const statusText = computed(() => {
-  switch (props.settings.status) {
-    case 'connected':
-      return t('systemSettings.integrations.status.connected')
-    case 'disconnected':
-      return t('systemSettings.integrations.status.disconnected')
-    case 'error':
-      return t('systemSettings.integrations.status.error')
-    default:
-      return t('systemSettings.integrations.status.disconnected')
-  }
-})
-
-// Methods
 function handleSave() {
   emit('save')
-}
-
-function handleTest() {
-  emit('test')
 }
 
 function handleClear() {
@@ -223,139 +125,8 @@ function handleClear() {
 </script>
 
 <style scoped>
-.facebook-integration-form {
-  background: white;
-  border-radius: 0.5rem;
-  padding: 1.5rem;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-}
-
-.form-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 1.5rem;
-}
-
-.integration-title {
-  font-size: 1.125rem;
-  font-weight: 600;
-  color: #1a202c;
-  margin: 0 0 0.25rem 0;
-}
-
-.integration-description {
-  font-size: 0.875rem;
-  color: #718096;
-  margin: 0;
-}
-
-.status-badge {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.375rem 0.75rem;
-  border-radius: 0.375rem;
-  font-size: 0.8125rem;
-  font-weight: 500;
-}
-
-.status-dot {
-  width: 0.5rem;
-  height: 0.5rem;
-  border-radius: 50%;
-}
-
-.status-connected {
-  background: #c6f6d5;
-  color: #22543d;
-}
-
-.status-connected .status-dot {
-  background: #38a169;
-}
-
-.status-disconnected {
-  background: #e2e8f0;
-  color: #4a5568;
-}
-
-.status-disconnected .status-dot {
-  background: #a0aec0;
-}
-
-.status-error {
-  background: #fed7d7;
-  color: #742a2a;
-}
-
-.status-error .status-dot {
-  background: #e53e3e;
-}
-
 .integration-form {
-  display: flex;
-  flex-direction: column;
-  gap: 1.25rem;
-}
-
-.form-group {
-  /* spacing comes from gap; the global .form-group margin would double it */
-  margin-bottom: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.form-label {
-  margin-bottom: 0;
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: #2d3748;
-}
-
-.form-input,
-.form-textarea {
-  padding: 0.625rem 0.875rem;
-  border: 1px solid #cbd5e0;
-  border-radius: 0.375rem;
-  font-size: 0.875rem;
-  font-family: inherit;
-  transition: border-color 0.2s;
-}
-
-.form-input:focus,
-.form-textarea:focus {
-  outline: none;
-  border-color: #4299e1;
-  box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.1);
-}
-
-.form-textarea {
-  resize: vertical;
-  min-height: 80px;
-}
-
-.form-actions {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 0.75rem;
-  margin-top: 1rem;
-}
-
-.spinner {
-  width: 1rem;
-  height: 1rem;
-  border: 2px solid #ffffff;
-  border-top-color: transparent;
-  border-radius: 50%;
-  animation: spin 0.6s linear infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
+  display: grid;
+  gap: 22px;
 }
 </style>
