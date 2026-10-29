@@ -17,6 +17,12 @@ export { DEVELOPMENT_ORIGINS } from './development-origins';
 import { DEVELOPMENT_ORIGINS } from './development-origins';
 import { nowISO } from '@/utils/timestamp'
 
+// *.pages.dev subdomain of the frontend Pages project (project "mcis" in scripts/deploy-pages.ts; its
+// subdomain is mcis-ey7 because the bare name is taken, see docs/guides/CORS_CONFIGURATION_GUIDE.md).
+// Preview deployments are served from <commit-hash>.<subdomain>.pages.dev.
+export const PAGES_SUBDOMAIN = 'mcis-ey7';
+const PAGES_PREVIEW_ORIGIN = new RegExp(`^https://[a-f0-9]+\\.${PAGES_SUBDOMAIN}\\.pages\\.dev$`);
+
 /**
  * 動態獲取允許的 origins (推薦)
  * 根據環境變量動態構建允許的 origins 列表
@@ -102,7 +108,9 @@ export function isOriginAllowed(origin: string | undefined, env?: WorkerEnv): bo
 
   // 支持 Cloudflare Pages 預覽部署模式
   // 格式: https://{commit-hash}.{project-name}.pages.dev
-  if (origin.match(/^https:\/\/[a-f0-9]+\.[a-z0-9-]+\.pages\.dev$/)) {
+  // Pinned to OUR Pages project: any pages.dev subdomain is registrable by anyone, so a wildcard
+  // project name would trust attacker-hosted pages for credentialed requests.
+  if (PAGES_PREVIEW_ORIGIN.test(origin)) {
     return true;
   }
 
