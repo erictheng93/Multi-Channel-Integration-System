@@ -36,6 +36,7 @@
             :loading="controller.loading.value && !controller.lastUpdated.value"
             :meaning="leadMeaning"
             :tone="leadTone"
+            :ratio="statusCounts.all > 0 ? statusCounts.healthy / statusCounts.all : null"
           />
         </article>
         <div

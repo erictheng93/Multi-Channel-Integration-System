@@ -19,7 +19,7 @@
     skeleton while `loading`, else an em dash). Never pass a placeholder number.
   - The component has no card of its own: drop it into a `.ui-card`, a card panel or a plain
     column. It fills its container's width, clips its disc to its own box and keeps all text
-    clear of the art (the disc is cropped by the corner, never behind the caption).
+    clear of the art (the disc sits whole in the top-right safe zone, hidden on phones).
   - Type: numeral uses `--ui-t-lead` (64px, 56px on phones) at weight 300, tabular;
     label 13px / 600 ink-2; meaning 13px muted. See "type scale" in style.css.
 
@@ -30,6 +30,7 @@
     meaning  one line of what the number means (wraps on phones, never truncated)
     tone     'accent' | 'orange' | 'green' | 'red' | 'ink'  tints the wash and the disc (default accent)
     loading  show a skeleton instead of the numeral
+    ratio    0..1 share drawn as an arc on the disc (e.g. quota used); null = plain disc
     dim      de-emphasise (value reads faint, disc turns neutral): use for a quiet 0
 
   Slots
@@ -53,10 +54,12 @@
         class="ui-lead-disc"
         variant="hero"
         :tone="dim ? 'muted' : discTone"
-        :size="360"
+        :size="104"
+        :grain="false"
+        :weight="1.4"
+        :arc="dim ? null : ratio"
         fade="soft"
-        spin
-        :spin-seconds="240"
+        :spin="false"
       />
     </div>
     <div class="ui-lead-body">
@@ -108,12 +111,15 @@ const props = withDefaults(defineProps<{
   tone?: 'accent' | 'orange' | 'green' | 'red' | 'ink'
   loading?: boolean
   dim?: boolean
+  /** 0..1 share drawn as an arc on the disc's outer ring; tie it to a value already on the page */
+  ratio?: number | null
 }>(), {
   unit: '',
   meaning: '',
   tone: 'accent',
   loading: false,
   dim: false,
+  ratio: null,
 })
 
 const discTone = computed(() => props.tone)
@@ -165,13 +171,12 @@ const shown = computed(() => {
   pointer-events: none;
 }
 
-/* The disc is centred exactly on the card's top-right corner: a clean quarter-disc that bleeds off the
-   card's own edge (the art layer clips it), never a ring sliced mid-way beside text */
+/* The disc is drawn complete inside the card's top-right with a 20px safe zone: never cut by an edge */
 .ui-lead-disc {
   position: absolute;
-  top: -180px;
-  right: -180px;
-  opacity: 0.85;
+  top: 20px;
+  right: 20px;
+  opacity: 0.95;
 }
 
 .ui-lead-body {
@@ -263,9 +268,9 @@ const shown = computed(() => {
     min-height: 0;
   }
 
-  .ui-lead-disc {
-    top: -180px;
-    right: -180px;
+  /* a complete disc needs room; on a phone the numeral and meaning take the width instead */
+  .ui-lead-art {
+    display: none;
   }
 
   .ui-lead-value {

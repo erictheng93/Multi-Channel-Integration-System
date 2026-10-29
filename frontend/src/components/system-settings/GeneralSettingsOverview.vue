@@ -288,10 +288,28 @@ const tiles = computed<Tile[]>(() => [
   }
 }
 
-@media (max-width: 480px) {
+/* phone: a compact 2x2 so the form starts on the first screen; icon over label, status word, wrapping meta */
+@media (max-width: 768px) {
   .ov {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 12px;
+    gap: 10px;
+  }
+
+  .ov-tile {
+    flex-direction: column;
+    gap: 8px;
+    padding: 14px;
+  }
+
+  .ov-state {
+    font-size: 18px;
+  }
+
+  .ov-sub {
+    white-space: normal;
+  }
+
+  .ov-chev {
+    display: none;
   }
 }
 </style>

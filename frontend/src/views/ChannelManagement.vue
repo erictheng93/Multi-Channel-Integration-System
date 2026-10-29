@@ -320,7 +320,10 @@
 
           <!-- Activity: platform totals, so a disabled channel shows none of it -->
           <div class="activity">
-            <div class="stats">
+            <div
+              v-if="channel.isActive"
+              class="stats"
+            >
               <div class="stat-i">
                 <div class="l">
                   客戶來訊 · 24 小時
@@ -400,18 +403,20 @@
           >
             <span class="vol-name">{{ row.name }}</span>
             <span class="vol-bars">
-              <span class="vol-track"><span
-                class="vol-bar in"
-                :style="{ width: `${row.inPct}%` }"
-              /></span>
-              <span class="vol-track"><span
-                class="vol-bar out"
-                :style="{ width: `${row.outPct}%` }"
-              /></span>
-            </span>
-            <span class="vol-nums">
-              <b>{{ row.inText }}</b>
-              <b>{{ row.outText }}</b>
+              <span class="vol-line">
+                <span class="vol-track"><span
+                  class="vol-bar in"
+                  :style="{ width: `${row.inPct}%` }"
+                /></span>
+                <b class="vol-n">{{ row.inText }}</b>
+              </span>
+              <span class="vol-line">
+                <span class="vol-track"><span
+                  class="vol-bar out"
+                  :style="{ width: `${row.outPct}%` }"
+                /></span>
+                <b class="vol-n">{{ row.outText }}</b>
+              </span>
             </span>
           </li>
         </ul>
@@ -839,6 +844,12 @@ const selectedPlatformLabel = computed(() =>
   color: var(--ui-muted);
   font-variant-numeric: tabular-nums;
 }
+/* a disabled channel has no counters: one quiet line states it is off, under the same hairline */
+.chcard.off .last {
+  margin: 16px 20px 0;
+  padding: 14px 0 16px;
+  box-shadow: inset 0 0.5px 0 var(--ui-sep);
+}
 .chfoot {
   display: flex;
   gap: 12px;
@@ -890,7 +901,7 @@ const selectedPlatformLabel = computed(() =>
 }
 .vol-row {
   display: grid;
-  grid-template-columns: minmax(140px, 220px) minmax(0, 1fr) 120px;
+  grid-template-columns: minmax(140px, 220px) minmax(0, 1fr);
   gap: 20px;
   align-items: center;
   padding: 12px 22px;
@@ -909,6 +920,18 @@ const selectedPlatformLabel = computed(() =>
   display: grid;
   gap: 6px;
 }
+.vol-line {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 52px;
+  gap: 12px;
+  align-items: center;
+}
+.vol-n {
+  font-size: 13px;
+  font-weight: 600;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
 .vol-track {
   display: block;
   height: 8px;
@@ -920,17 +943,6 @@ const selectedPlatformLabel = computed(() =>
   display: block;
   height: 100%;
   border-radius: 999px;
-}
-.vol-nums {
-  display: grid;
-  gap: 2px;
-  font-size: 13px;
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-}
-.vol-nums b {
-  font-weight: 600;
-  line-height: 1.1;
 }
 
 @media (max-width: 1280px) {
@@ -952,13 +964,9 @@ const selectedPlatformLabel = computed(() =>
     margin-left: 50px;
   }
   .vol-row {
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: 8px 12px;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
     padding: 12px 16px;
-  }
-  .vol-bars {
-    grid-column: 1 / -1;
-    grid-row: 2;
   }
 }
 </style>

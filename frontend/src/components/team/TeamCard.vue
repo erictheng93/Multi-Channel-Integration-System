@@ -7,7 +7,7 @@
   >
     <div
       class="team-mark"
-      :style="{ background: markBackground }"
+      :style="{ background: markBackground, color: markInk }"
     >
       {{ getTeamInitial(team.name) }}
     </div>
@@ -186,7 +186,7 @@ import { createLogger } from '@/utils/logger'
   import Dropdown from '@/components/ui/Dropdown.vue'
   import DropdownItem from '@/components/ui/DropdownItem.vue'
   import TeamAvatar from '@/components/team/TeamAvatar.vue'
-  import { teamMarkBackground } from '@/utils/team-tone'
+  import { teamMarkBackground, teamMarkInk } from '@/utils/team-tone'
   import type { Team, TeamMember, LiffQRCode } from '@/types'
 
   // Composables
@@ -220,6 +220,7 @@ import { createLogger } from '@/utils/logger'
   const qrStats = ref<{ scanCount: number; assignmentCount: number } | null>(null)
 
   const markBackground = computed(() => teamMarkBackground(props.team.id))
+  const markInk = computed(() => teamMarkInk(props.team.id))
 
   // 工具函數
   const getTeamInitial = (name: string): string => {
@@ -465,9 +466,13 @@ import { createLogger } from '@/utils/logger'
   padding: 18px 20px;
   cursor: pointer;
 }
-.team-card.is-off .team-mark,
+/* an off team stays legible: only the mark loses its colour, text keeps AA contrast */
+.team-card.is-off .team-mark {
+  background: var(--ui-fill);
+  color: var(--ui-muted);
+}
 .team-card.is-off .team-name {
-  opacity: 0.55;
+  color: var(--ui-ink-2);
 }
 .team-mark {
   display: grid;
@@ -476,7 +481,6 @@ import { createLogger } from '@/utils/logger'
   place-items: center;
   border-radius: 16px;
   font: 600 21px var(--ui-font-display);
-  color: #fff;
 }
 .team-main {
   min-width: 0;

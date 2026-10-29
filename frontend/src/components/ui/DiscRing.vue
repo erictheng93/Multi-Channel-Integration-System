@@ -25,6 +25,7 @@
                  (default 1: 1px rings; pass 1.5 below ~150px)
     fade         radial mask strength: 'soft' keeps the rim visible, 'strong' dissolves it
                  (default 'soft')
+    arc          0..1 share drawn as a clockwise arc on the outer ring (hero only; null = none)
     variant      'line' (default) = hairline rings, for empty states and small art.
                  'hero' = the signature disc: heavier gradient-stroked bond rings, two
                  filled abrasive bands, an arbor-hole hub and a long radial grain rim. It is
@@ -122,6 +123,24 @@
           :d="DISC_HERO_SWEEP"
           :style="{ stroke: `url(#${uid}-stroke)` }"
         />
+        <!-- data arc: a share of the outer ring, clockwise from twelve o'clock -->
+        <template v-if="arc !== null && arc !== undefined">
+          <circle
+            class="ui-disc-arc-track"
+            cx="320"
+            cy="320"
+            r="276"
+          />
+          <circle
+            v-if="arc > 0"
+            class="ui-disc-arc"
+            cx="320"
+            cy="320"
+            r="276"
+            pathLength="100"
+            :stroke-dasharray="`${Math.min(1, Math.max(0, arc)) * 100} 100`"
+          />
+        </template>
         <!-- arbor hole -->
         <circle
           class="ui-disc-hub"
@@ -174,6 +193,7 @@ const props = withDefaults(defineProps<{
   fade?: 'soft' | 'strong'
   weight?: number
   variant?: 'line' | 'hero'
+  arc?: number | null
 }>(), {
   size: '100%',
   tone: 'accent',
@@ -183,6 +203,7 @@ const props = withDefaults(defineProps<{
   fade: 'soft',
   weight: undefined,
   variant: 'line',
+  arc: null,
 })
 
 // Gradient ids must be unique per instance (several discs can share one page)
@@ -283,6 +304,26 @@ const rootStyle = computed(() => {
   stroke-linecap: round;
   stroke-opacity: 0.9;
   vector-effect: non-scaling-stroke;
+}
+
+.ui-disc-arc-track,
+.ui-disc-arc {
+  fill: none;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.ui-disc-arc-track {
+  stroke: var(--ui-disc-a);
+  stroke-opacity: 0.18;
+  stroke-width: 3;
+}
+
+.ui-disc-arc {
+  stroke: var(--ui-disc-a);
+  stroke-width: 3.5;
+  transform: rotate(-90deg);
+  transform-origin: 320px 320px;
 }
 
 .ui-disc-hub {

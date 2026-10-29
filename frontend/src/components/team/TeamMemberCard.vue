@@ -357,10 +357,13 @@ const getRoleText = (role: string) => {
   background: var(--ui-sel-tint);
   box-shadow: var(--ui-sel-ring);
 }
-.member-row.is-off .who,
+/* a disabled member stays readable (AA text); the 停用 state pill and a desaturated avatar carry the status */
+.member-row.is-off :deep(.team-avatar) {
+  filter: saturate(0.35);
+}
 .member-row.is-off .teams,
 .member-row.is-off .sysrole {
-  opacity: 0.55;
+  filter: saturate(0.4);
 }
 
 .drag-handle {
