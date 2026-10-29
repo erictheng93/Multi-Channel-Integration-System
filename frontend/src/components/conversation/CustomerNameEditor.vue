@@ -132,7 +132,7 @@ const save = async () => {
   border: none;
   border-radius: 9999px;
   background: transparent;
-  color: #8e8e93;
+  color: var(--ui-muted);
   cursor: pointer;
   transition: background-color 0.2s ease-out, color 0.2s ease-out;
 }
@@ -163,6 +163,6 @@ const save = async () => {
 .platform-name {
   margin-top: 0.125rem;
   font-size: 0.8125rem;
-  color: #8e8e93;
+  color: var(--ui-muted);
 }
 </style>

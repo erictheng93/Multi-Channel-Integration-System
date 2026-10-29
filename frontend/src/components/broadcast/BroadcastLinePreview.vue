@@ -89,7 +89,7 @@ const order = computed(() => {
   min-height: 108px;
   place-items: center;
   font-size: 13px;
-  color: rgb(255 255 255 / 0.85);
+  color: #1d2b44; /* dark ink on the LINE chat background (white was 2.2:1) */
 }
 
 .thread {
