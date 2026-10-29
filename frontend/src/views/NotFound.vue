@@ -51,40 +51,14 @@
         :class="{ single: links.length === 0 }"
       >
         <article class="ui-card hero">
-          <svg
-            class="rings"
-            viewBox="0 0 300 300"
-            aria-hidden="true"
-          >
-            <circle
-              cx="150"
-              cy="150"
-              r="140"
-              stroke-width="1"
-              opacity=".10"
-            />
-            <circle
-              cx="150"
-              cy="150"
-              r="100"
-              stroke-width="1"
-              opacity=".16"
-            />
-            <circle
-              cx="150"
-              cy="150"
-              r="60"
-              stroke-width="1"
-              opacity=".26"
-            />
-            <circle
-              cx="150"
-              cy="150"
-              r="20"
-              stroke-width="1.5"
-              opacity=".5"
-            />
-          </svg>
+          <DiscRing
+            class="hero-disc"
+            tone="accent"
+            :size="230"
+            :weight="1.4"
+            fade="strong"
+            :grain="false"
+          />
           <div class="code">
             4<span>0</span>4
           </div>
@@ -160,6 +134,7 @@
 
 <script setup lang="ts">
 import UiPageHead from '@/components/ui/UiPageHead.vue'
+import DiscRing from '@/components/ui/DiscRing.vue'
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
@@ -182,13 +157,6 @@ const authStore = useAuthStore()
 const { isAuthenticated, isAdmin } = storeToRefs(authStore)
 
 const QUICK_LINKS: QuickLink[] = [
-  {
-    to: '/dashboard',
-    title: '儀表板',
-    text: '待回覆與今日概況',
-    tone: 'blue',
-    icon: '<rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/>'
-  },
   {
     to: '/conversations',
     title: '對話',
@@ -266,9 +234,16 @@ const goBack = () => {
   position: relative;
   display: flex;
   flex-direction: column;
+  align-items: center;
+  justify-content: center;
   gap: 14px;
   padding: 36px 32px 32px;
   overflow: hidden;
+  text-align: center;
+}
+
+.hero > :not(.hero-disc) {
+  position: relative;
 }
 
 .code {
@@ -283,7 +258,7 @@ const goBack = () => {
 }
 
 .hero p {
-  max-width: 40ch;
+  max-width: 34ch;
   margin: 0;
   font-size: 14.5px;
   color: var(--ui-muted);
@@ -291,6 +266,7 @@ const goBack = () => {
 }
 
 .asked {
+  width: min(100%, 420px);
   display: flex;
   gap: 10px;
   align-items: center;
@@ -313,19 +289,14 @@ const goBack = () => {
   white-space: nowrap;
 }
 
-.rings {
+.hero-disc {
   position: absolute;
-  top: -90px;
-  right: -90px;
-  width: 300px;
-  height: 300px;
-  color: var(--ui-accent);
+  /* centred on the numerals, small enough to fade out before the sentence below */
+  top: calc(50% - 62px);
+  left: 50%;
+  translate: -50% -50%;
+  opacity: 0.8;
   pointer-events: none;
-}
-
-.rings circle {
-  fill: none;
-  stroke: currentColor;
 }
 
 .list {
