@@ -762,7 +762,7 @@ const describeActivity = (a: ActivityLog): string =>
 
 type FeedKind = 'close' | 'assign' | 'broadcast' | 'login' | 'generic'
 const feedKind = (action: string): FeedKind => {
-  if (action === 'conversation_close' || action === 'conversation_reopen') { return 'close' }
+  if (action === 'conversation_close' || action === 'conversation_auto_close' || action === 'conversation_reopen') { return 'close' }
   if (action === 'conversation_assign' || action === 'conversation_bulk_assign' || action === 'conversation_transfer') { return 'assign' }
   if (action.startsWith('broadcast_')) { return 'broadcast' }
   if (action === 'user_login' || action === 'user_logout') { return 'login' }

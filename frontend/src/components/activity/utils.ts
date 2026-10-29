@@ -115,6 +115,11 @@ const ACTION_ICON_MAP: Record<string, ActionIconStyle> = {
     colorClass: 'text-[var(--ui-red-ink)]',
     icon: XIcon,
   },
+  'conversation_auto_close': {
+    bgClass: 'bg-[var(--ui-red-soft)]',
+    colorClass: 'text-[var(--ui-red-ink)]',
+    icon: XIcon,
+  },
   'conversation_reopen': {
     bgClass: 'bg-[var(--ui-red-soft)]',
     colorClass: 'text-[var(--ui-red-ink)]',
@@ -339,7 +344,7 @@ export function formatActivityDetails(
 // (because it doesn't match what the template placeholder represents)
 const OMIT_RESOURCE_ID_ACTIONS = new Set([
   'conversation_assign', 'conversation_transfer', 'conversation_close',
-  'conversation_reopen', 'conversation_unassign', 'conversation_bulk_assign',
+  'conversation_auto_close', 'conversation_reopen', 'conversation_unassign', 'conversation_bulk_assign',
   'tag_assign', 'tag_unassign',
 ])
 
@@ -420,6 +425,7 @@ const ACTION_TEMPLATES: Record<string, DescriptionResolver> = {
     return '轉移對話'
   },
   conversation_close: () => d('關閉對話'),
+  conversation_auto_close: () => d('系統自動結案閒置對話'),
   conversation_reopen: () => d('重新開啟對話'),
   conversation_unassign: () => d('取消指派對話'),
   conversation_bulk_assign: (det) => `批量指派 ${det['count'] ?? ''} 個對話`,
@@ -539,6 +545,7 @@ const ACTION_LABEL_MAP: Record<string, string> = {
   conversation_assign: '對話指派',
   conversation_transfer: '對話轉移',
   conversation_close: '對話關閉',
+  conversation_auto_close: '系統自動結案',
   conversation_reopen: '重新開啟對話',
   conversation_unassign: '取消對話指派',
   conversation_bulk_assign: '批量對話指派',
