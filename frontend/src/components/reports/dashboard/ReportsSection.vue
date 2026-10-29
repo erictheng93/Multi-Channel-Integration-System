@@ -7,7 +7,7 @@
         </h3>
         <p
           v-if="!loading"
-          class="ui-card-sub"
+          class="ui-card-sub report-count"
         >
           共 {{ total ?? reports.length }} 項，依建立時間{{ sortOrder === 'desc' ? '由新到舊' : '由舊到新' }}
         </p>
@@ -20,7 +20,7 @@
         >
           匯出全部
         </button>
-        <select
+        <label class="sort-control"><select
           :value="sortOrder"
           class="ui-select sort-select"
           aria-label="排序"
@@ -32,21 +32,25 @@
           <option value="asc">
             最舊優先
           </option>
-        </select>
+        </select></label>
         <div class="ui-seg view-toggle">
           <button
             type="button"
-            :aria-pressed="viewMode === 'list'"
-            @click="$emit('update:viewMode', 'list')"
-          >
-            列表
-          </button>
-          <button
-            type="button"
+            class="view-btn"
+            :class="{ active: viewMode === 'grid' }"
             :aria-pressed="viewMode === 'grid'"
             @click="$emit('update:viewMode', 'grid')"
           >
             網格
+          </button>
+          <button
+            type="button"
+            class="view-btn"
+            :class="{ active: viewMode === 'list' }"
+            :aria-pressed="viewMode === 'list'"
+            @click="$emit('update:viewMode', 'list')"
+          >
+            列表
           </button>
         </div>
       </div>
@@ -54,14 +58,14 @@
 
     <div
       v-if="loading"
-      class="state-box"
+      class="state-box loading-state"
     >
-      載入中...
+      <span class="loading-spinner" />載入中...
     </div>
 
     <div
       v-else-if="reports.length === 0"
-      class="ui-empty"
+      class="ui-empty empty-state"
     >
       <div class="ui-empty-art">
         <svg
@@ -102,6 +106,7 @@
         :format-relative-time="formatRelativeTime"
         :format-file-size="formatFileSize"
         :truncate-text="truncateText"
+        :get-report-type-label="getReportTypeLabel"
         @view-report="$emit('view-report', $event)"
         @download-report="$emit('download-report', $event)"
         @delete-report="$emit('delete-report', $event)"

@@ -1,6 +1,6 @@
 <template>
   <section class="ui-grid ui-cols-4 kpi-row">
-    <article class="ui-card ui-kpi">
+    <article class="ui-card ui-kpi stat-card">
       <div class="ui-kpi-top">
         <span class="ui-kpi-ico ico-blue"><svg
           viewBox="0 0 24 24"
@@ -18,7 +18,7 @@
       </div>
     </article>
 
-    <article class="ui-card ui-kpi">
+    <article class="ui-card ui-kpi stat-card">
       <div class="ui-kpi-top">
         <span class="ui-kpi-ico ico-green"><svg
           viewBox="0 0 24 24"
@@ -46,7 +46,7 @@
       </div>
     </article>
 
-    <article class="ui-card ui-kpi">
+    <article class="ui-card ui-kpi stat-card">
       <div class="ui-kpi-top">
         <span class="ui-kpi-ico ico-orange"><svg
           viewBox="0 0 24 24"
@@ -70,7 +70,7 @@
       </div>
     </article>
 
-    <article class="ui-card ui-kpi">
+    <article class="ui-card ui-kpi stat-card">
       <div class="ui-kpi-top">
         <span class="ui-kpi-ico ico-red"><svg
           viewBox="0 0 24 24"
@@ -129,6 +129,21 @@ const completionRate = computed(() => {
 </script>
 
 <style scoped>
+/* Neutralise the legacy global .stat-card (centered flex row, border, hover lift) */
+.stat-card {
+  align-items: stretch;
+  gap: 10px;
+  padding: 18px 20px 16px;
+  border: 0;
+  box-shadow: var(--ui-shadow-card);
+  transform: none;
+}
+
+.stat-card:hover {
+  box-shadow: var(--ui-shadow-card);
+  transform: none;
+}
+
 .ico-blue {
   background: var(--ui-accent-soft);
   color: var(--ui-accent);

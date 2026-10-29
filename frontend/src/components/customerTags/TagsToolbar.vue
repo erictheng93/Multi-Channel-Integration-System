@@ -11,11 +11,24 @@
         @input="$emit('update:search-query', localSearchQuery)"
         @keydown.escape="handleClear"
       >
+      <button
+        v-if="localSearchQuery"
+        type="button"
+        class="search-clear"
+        aria-label="清除搜尋"
+        @click="handleClear"
+      >
+        &times;
+      </button>
     </div>
-    <span class="count">
-      <template v-if="isSearching">找到 {{ filteredCount }} / {{ totalCount }}</template>
-      <template v-else>共 {{ totalCount }} 個標籤</template>
-    </span>
+    <span
+      v-if="isSearching"
+      class="count search-stats"
+    >找到 {{ filteredCount }} / {{ totalCount }}</span>
+    <span
+      v-else
+      class="count"
+    >共 {{ totalCount }} 個標籤</span>
 
     <div class="toolbar-actions">
       <!-- Bulk actions (shown when tags are selected) -->
@@ -103,6 +116,24 @@ function handleClear() {
   height: 38px;
   padding-left: 38px;
   border-radius: 999px;
+}
+
+.search-clear {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  display: grid;
+  width: 22px;
+  height: 22px;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: var(--ui-fill);
+  color: var(--ui-muted);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  transform: translateY(-50%);
 }
 
 .count {

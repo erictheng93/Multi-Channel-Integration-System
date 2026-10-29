@@ -6,17 +6,26 @@
     @click="$emit('view-report', report.id)"
     @keydown.enter="$emit('view-report', report.id)"
   >
-    <div class="row-cell title-cell">
+    <div class="row-cell type-cell title-cell">
       <h4 class="report-title">
         {{ report.title }}
       </h4>
-      <span class="ui-tag report-type-badge">{{ typeLabel }}</span>
+      <p
+        v-if="report.description"
+        class="report-description"
+      >
+        {{ truncatedDescription }}
+      </p>
+      <span
+        class="ui-tag report-type-badge"
+        :class="typeBadgeClass"
+      >{{ typeLabel }}</span>
     </div>
 
     <div class="row-cell status-cell">
       <span
         class="ui-pill ui-pill-dot status-badge"
-        :class="pillClass"
+        :class="[pillClass, statusClass]"
       >
         {{ statusLabel }}
       </span>
@@ -163,6 +172,11 @@ defineEmits<{
   'delete-report': [report: ReportBase]
 }>()
 
+const typeBadgeClass = computed(() => props.getTypeBadgeClass(props.report.type))
+const statusClass = computed(() => props.getStatusClass(props.report.status))
+const truncatedDescription = computed(() => {
+  return props.report.description ? props.truncateText(props.report.description, 60) : ''
+})
 const typeLabel = computed(() => props.getReportTypeLabel ? props.getReportTypeLabel(props.report.type) : props.report.type)
 const pillClass = computed(() => {
   switch (props.report.status) {
@@ -242,6 +256,16 @@ const canDelete = computed(() => {
   overflow: hidden;
   font-size: 14.5px;
   font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.report-description {
+  max-width: 100%;
+  margin: 0;
+  overflow: hidden;
+  font-size: 12.5px;
+  color: var(--ui-muted);
   text-overflow: ellipsis;
   white-space: nowrap;
 }

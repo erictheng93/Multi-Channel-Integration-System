@@ -4,49 +4,57 @@
       <h3 class="ui-card-title">
         最近活動
       </h3>
+      <div
+        v-if="activities.length > 0"
+        class="ui-card-end"
+      >
+        <span class="header-subtitle ui-card-sub">最近 {{ activities.length }} 項</span>
+      </div>
     </div>
 
     <div
       v-if="activities.length === 0"
-      class="empty-text"
+      class="empty-text empty-state"
     >
       暫無活動記錄
     </div>
 
-    <ul
+    <div
       v-else
-      class="activity-list"
+      class="widget-content"
     >
-      <li
-        v-for="activity in activities"
-        :key="activity.id"
-      >
-        <button
-          type="button"
-          class="activity-item"
-          @click="$emit('view-report', activity.reportId)"
+      <ul class="activity-list">
+        <li
+          v-for="activity in activities"
+          :key="activity.id"
         >
-          <span
-            class="activity-icon"
-            :class="activity.status"
-            aria-hidden="true"
+          <button
+            type="button"
+            class="activity-item"
+            @click="$emit('view-report', activity.reportId)"
           >
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            ><path :d="iconPath(activity.status)" /></svg>
-          </span>
-          <span class="activity-content">
-            <span class="activity-title">{{ describe(activity) }}</span>
-            <span class="activity-time">{{ formatRelativeTime(activity.time) }}</span>
-          </span>
-        </button>
-      </li>
-    </ul>
+            <span
+              class="activity-icon"
+              :class="activity.status"
+              aria-hidden="true"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              ><path :d="iconPath(activity.status)" /></svg>
+            </span>
+            <span class="activity-content">
+              <span class="activity-title">{{ describe(activity) }}</span>
+              <span class="activity-time">{{ activity.typeLabel }} · {{ formatRelativeTime(activity.time) }}</span>
+            </span>
+          </button>
+        </li>
+      </ul>
+    </div>
   </div>
 </template>
 
@@ -141,6 +149,11 @@ function iconPath(status: string): string {
 </script>
 
 <style scoped>
+.widget-content {
+  max-height: 420px;
+  overflow-y: auto;
+}
+
 .recent-activity-widget {
   padding-bottom: 12px;
 }

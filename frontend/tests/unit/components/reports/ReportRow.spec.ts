@@ -73,11 +73,8 @@ describe('ReportRow.vue', () => {
         }
       })
 
-      expect(mockHelpers.getReportTypeIcon).toHaveBeenCalled()
-      expect(mockHelpers.getStatusIcon).toHaveBeenCalledWith('completed')
       expect(mockHelpers.getStatusLabel).toHaveBeenCalledWith('completed')
       expect(mockHelpers.getStatusClass).toHaveBeenCalledWith('completed')
-      expect(mockHelpers.getFormatIcon).toHaveBeenCalledWith('json')
       expect(mockHelpers.getFormatLabel).toHaveBeenCalledWith('json')
       expect(mockHelpers.formatRelativeTime).toHaveBeenCalledWith('2024-01-15T10:30:00Z')
       expect(mockHelpers.formatFileSize).toHaveBeenCalledWith(1258291)

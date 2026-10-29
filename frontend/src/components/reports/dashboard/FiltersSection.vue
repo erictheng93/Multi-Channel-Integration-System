@@ -115,14 +115,17 @@
 
       <div class="ui-field filter-group">
         <label for="rf-q">搜尋</label>
-        <input
-          id="rf-q"
-          :value="searchQuery"
-          type="text"
-          class="ui-input search-input"
-          placeholder="報表標題"
-          @input="$emit('update:searchQuery', ($event.target as HTMLInputElement).value)"
-        >
+        <div class="search-input-wrapper">
+          <input
+            id="rf-q"
+            :value="searchQuery"
+            type="text"
+            class="ui-input search-input"
+            placeholder="報表標題"
+            @input="$emit('update:searchQuery', ($event.target as HTMLInputElement).value)"
+          >
+          <span class="search-icon" />
+        </div>
       </div>
     </div>
   </section>

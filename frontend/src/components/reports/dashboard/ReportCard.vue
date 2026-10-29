@@ -1,70 +1,68 @@
 <template>
-  <div
-    class="report-card"
+  <article
+    class="ui-card report-card"
+    tabindex="0"
     @click="$emit('view-report', report.id)"
+    @keydown.enter="$emit('view-report', report.id)"
   >
-    <div class="report-card-header">
-      <div
-        class="report-type-badge"
-        :class="typeBadgeClass"
-      >
-        {{ typeIcon }}
-      </div>
+    <div class="card-top">
+      <span class="ui-tag report-type-badge">{{ typeLabel }}</span>
       <div class="card-actions">
         <button
           class="action-btn"
           :disabled="!canDownload"
           title="下載"
+          aria-label="下載"
           @click.stop="$emit('download-report', report)"
-        />
+        >
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          ><path d="M12 4v11m0 0 4-4m-4 4-4-4M5 20h14" /></svg>
+        </button>
         <button
-          class="action-btn"
+          class="action-btn action-btn--danger"
           :disabled="!canDelete"
           title="刪除"
+          aria-label="刪除"
           @click.stop="$emit('delete-report', report)"
-        />
-      </div>
-    </div>
-    <div class="card-content">
-      <h4 class="report-title">
-        {{ report.title }}
-      </h4>
-      <p
-        v-if="report.description"
-        class="report-description"
-      >
-        {{ truncatedDescription }}
-      </p>
-      <div class="report-meta">
-        <div class="meta-row">
-          <span class="meta-label">狀態：</span>
-          <span
-            class="status-badge"
-            :class="statusClass"
-          >
-            {{ statusIcon }} {{ statusLabel }}
-          </span>
-        </div>
-        <div class="meta-row">
-          <span class="meta-label">格式：</span>
-          <span class="format-text">
-            {{ formatIcon }} {{ formatLabel }}
-          </span>
-        </div>
-        <div class="meta-row">
-          <span class="meta-label">建立：</span>
-          <span class="time-text">{{ formattedTime }}</span>
-        </div>
-        <div
-          v-if="report.fileSize"
-          class="meta-row"
         >
-          <span class="meta-label">大小：</span>
-          <span class="size-text">{{ formattedSize }}</span>
-        </div>
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          ><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14" /></svg>
+        </button>
       </div>
     </div>
-  </div>
+
+    <h4 class="report-title">
+      {{ report.title }}
+    </h4>
+    <p
+      v-if="report.description"
+      class="report-description"
+    >
+      {{ truncatedDescription }}
+    </p>
+
+    <div class="card-foot">
+      <span
+        class="ui-pill ui-pill-dot status-badge"
+        :class="pillClass"
+      >{{ statusLabel }}</span>
+      <span class="meta-text">{{ formatLabel }} · {{ formattedTime }}<template v-if="report.fileSize"> · {{ formattedSize }}</template></span>
+    </div>
+  </article>
 </template>
 
 <script setup lang="ts">
@@ -136,6 +134,11 @@ export interface ReportCardProps {
    * 截断文本
    */
   truncateText: (_text: string, _length: number) => string
+
+  /**
+   * 获取报表类型标签
+   */
+  getReportTypeLabel?: (_type: ReportType) => string
 }
 
 const props = defineProps<ReportCardProps>()
@@ -146,17 +149,26 @@ defineEmits<{
   'delete-report': [report: ReportBase]
 }>()
 
-const typeBadgeClass = computed(() => props.getTypeBadgeClass(props.report.type))
-const typeIcon = computed(() => props.getReportTypeIcon(props.report.type))
-const statusIcon = computed(() => props.getStatusIcon(props.report.status))
+const typeLabel = computed(() => props.getReportTypeLabel ? props.getReportTypeLabel(props.report.type) : props.report.type)
+const pillClass = computed(() => {
+  switch (props.report.status) {
+    case 'completed':
+      return 'ui-pill-green'
+    case 'failed':
+      return 'ui-pill-red'
+    case 'generating':
+    case 'pending':
+      return 'ui-pill-orange'
+    default:
+      return ''
+  }
+})
 const statusLabel = computed(() => props.getStatusLabel(props.report.status))
-const statusClass = computed(() => props.getStatusClass(props.report.status))
-const formatIcon = computed(() => props.getFormatIcon(props.report.format))
 const formatLabel = computed(() => props.getFormatLabel(props.report.format))
 const formattedTime = computed(() => props.formatRelativeTime(props.report.createdAt))
 const formattedSize = computed(() => props.report.fileSize ? props.formatFileSize(props.report.fileSize) : '-')
 const truncatedDescription = computed(() => {
-  return props.report.description ? props.truncateText(props.report.description, 100) : ''
+  return props.report.description ? props.truncateText(props.report.description, 60) : ''
 })
 
 const canDownload = computed(() => {
@@ -170,153 +182,95 @@ const canDelete = computed(() => {
 
 <style scoped>
 .report-card {
-  background: white;
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  padding: 1.5rem;
-  transition: all 0.2s;
+  display: grid;
+  gap: 8px;
+  padding: 16px;
   cursor: pointer;
+  transition:
+    box-shadow var(--ui-dur) var(--ui-ease),
+    transform var(--ui-dur) var(--ui-ease);
 }
 
-.report-card:hover {
-  border-color: #3b82f6;
-  box-shadow: 0 4px 12px -2px rgba(59, 130, 246, 0.15);
-  transform: translateY(-2px);
+.report-card:hover,
+.report-card:focus-visible {
+  box-shadow: var(--ui-shadow-raised);
+  outline: none;
+  transform: translateY(-1px);
 }
 
-.report-card-header {
+.card-top {
   display: flex;
+  align-items: center;
   justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1rem;
-}
-
-.report-type-badge {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
-  border-radius: 10px;
-  font-size: 1.2rem;
-}
-
-.report-type-badge.basic {
-  background: #dbeafe;
-}
-
-.report-type-badge.enterprise {
-  background: linear-gradient(135deg, #fbbf24, #f59e0b);
-}
-
-.report-type-badge.business-intelligence {
-  background: linear-gradient(135deg, #8b5cf6, #7c3aed);
-}
-
-.report-type-badge.advanced {
-  background: linear-gradient(135deg, #ef4444, #dc2626);
+  gap: 8px;
 }
 
 .card-actions {
   display: flex;
-  gap: 0.5rem;
+  gap: 2px;
 }
 
 .action-btn {
+  display: grid;
   width: 32px;
   height: 32px;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
-  background: white;
+  place-items: center;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--ui-muted);
   cursor: pointer;
-  font-size: 1rem;
-  transition: all 0.2s;
+}
+
+.action-btn svg {
+  width: 16px;
+  height: 16px;
 }
 
 .action-btn:hover:not(:disabled) {
-  background: #f3f4f6;
-  border-color: #9ca3af;
+  background: var(--ui-fill);
+  color: var(--ui-ink);
+}
+
+.action-btn--danger:hover:not(:disabled) {
+  background: var(--ui-red-soft);
+  color: var(--ui-red-ink);
 }
 
 .action-btn:disabled {
-  opacity: 0.5;
+  opacity: 0.35;
   cursor: not-allowed;
 }
 
-.card-content {
-  flex: 1;
-}
-
 .report-title {
-  font-size: 1.2rem;
-  font-weight: 600;
-  color: #1f2937;
-  margin: 0 0 0.5rem 0;
-  line-height: 1.4;
+  margin: 0;
+  font: 600 15px / 1.3 var(--ui-font-display);
 }
 
 .report-description {
-  color: #6b7280;
-  font-size: 0.9rem;
-  margin-bottom: 1rem;
-  line-height: 1.5;
+  margin: 0;
+  font-size: 13px;
+  color: var(--ui-muted);
 }
 
-.report-meta {
+.card-foot {
   display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.meta-row {
-  display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 0.5rem;
-  font-size: 0.9rem;
+  gap: 8px 10px;
+  margin-top: 4px;
 }
 
-.meta-label {
-  color: #6b7280;
-  font-weight: 500;
-  min-width: 40px;
+.meta-text {
+  font-size: 12.5px;
+  color: var(--ui-muted);
+  font-variant-numeric: tabular-nums;
 }
 
-.status-badge {
-  padding: 0.25rem 0.75rem;
-  border-radius: 12px;
-  font-size: 0.8rem;
-  font-weight: 500;
-}
-
-.status-badge.pending {
-  background: #fef3c7;
-  color: #92400e;
-}
-
-.status-badge.generating {
-  background: #dbeafe;
-  color: #1e40af;
-}
-
-.status-badge.completed {
-  background: #dcfce7;
-  color: #166534;
-}
-
-.status-badge.failed {
-  background: #fee2e2;
-  color: #991b1b;
-}
-
-.status-badge.expired {
-  background: #f3f4f6;
-  color: #374151;
-}
-
-.format-text,
-.time-text,
-.size-text {
-  color: #374151;
-  font-weight: 500;
+@media (max-width: 768px) {
+  .action-btn {
+    width: 44px;
+    height: 44px;
+  }
 }
 </style>
