@@ -83,7 +83,7 @@
             >{{ conversation.assignedTeam.name }}</span>
             <span
               v-else
-              class="ui-pill unassigned"
+              class="ui-pill ui-pill-orange unassigned"
             >未指派</span>
           </div>
         </div>
@@ -323,13 +323,6 @@ const getLastMessageText = (conversation: Conversation) => {
 .replied {
   font-size: 13px;
   color: var(--ui-muted);
-}
-
-.unassigned {
-  padding: 0 8px;
-  border: 1px dashed var(--ui-orange-ink);
-  background: transparent;
-  color: var(--ui-orange-ink);
 }
 
 @media (max-width: 768px) {

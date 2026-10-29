@@ -28,11 +28,13 @@
             class="status-col"
             :title="LEGEND_TEXT"
           >
-            狀態
-            <span
-              class="legend-i"
-              aria-hidden="true"
-            >i</span>
+            <span class="status-head">
+              狀態
+              <span
+                class="legend-i"
+                aria-hidden="true"
+              >i</span>
+            </span>
             <span class="sr-only">{{ LEGEND_TEXT }}</span>
           </th>
           <th class="agent-col">
@@ -99,7 +101,7 @@
                   >{{ unreadOf(conversation) }}</span>
                 </div>
                 <div class="customer-id">
-                  {{ platformName(platformOf(conversation)) }} · ID {{ conversation.userId }}
+                  {{ platformName(platformOf(conversation)) }}{{ sinceText(conversation) }}
                 </div>
               </div>
             </div>
@@ -145,7 +147,7 @@
             >{{ conversation.assignedTeam.name }}</span>
             <span
               v-else
-              class="ui-pill unassigned"
+              class="ui-pill ui-pill-orange unassigned"
             >未指派</span>
           </td>
           <td
@@ -239,6 +241,14 @@ const getCustomerName = (conversation: Conversation) => {
 
 const platformOf = (conversation: Conversation): string =>
   conversation.platform || conversation.user?.platform || 'line'
+
+// Secondary identity line: the channel plus when the conversation began (real createdAt)
+const sinceText = (conversation: Conversation): string => {
+  const created = conversation.createdAt
+  if (!created) { return '' }
+  const text = relativeTime(created, now.value)
+  return text ? ` · ${text}開始` : ''
+}
 
 const getUpdatedAt = (conversation: Conversation) => {
   const legacyConversation = withLegacyFields(conversation)
@@ -343,18 +353,22 @@ const getLastMessageText = (conversation: Conversation) => {
   text-align: right !important;
 }
 
+.status-head {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
 .legend-i {
   display: inline-grid;
   place-items: center;
   width: 14px;
   height: 14px;
-  margin-left: 4px;
   border-radius: 50%;
   background: var(--ui-fill-strong);
   color: var(--ui-muted);
   font-size: 13px;
   font-weight: 700;
-  vertical-align: 1px;
   cursor: help;
 }
 
@@ -467,14 +481,6 @@ const getLastMessageText = (conversation: Conversation) => {
   display: flex;
   width: fit-content;
   margin-top: 4px;
-}
-
-/* Unassigned = an empty slot: dashed outline, no fill */
-.unassigned {
-  padding: 0 8px;
-  border: 1px dashed var(--ui-orange-ink);
-  background: transparent;
-  color: var(--ui-orange-ink);
 }
 
 .time-cell {
