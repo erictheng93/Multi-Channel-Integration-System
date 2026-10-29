@@ -72,12 +72,11 @@ const props = withDefaults(defineProps<Props>(), {
   disabled: false,
 })
 
+const emit = defineEmits<Emits>()
 // At most three suggestions are shown; the rest sit behind 更多 so the row never needs a scroll to find the end
 const MAX_VISIBLE = 3
 const expanded = ref(false)
 const visibleReplies = computed(() => (expanded.value ? props.replies : props.replies.slice(0, MAX_VISIBLE)))
-
-const emit = defineEmits<Emits>()
 
 interface Emits {
   /**

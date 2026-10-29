@@ -160,12 +160,12 @@ const props = defineProps<{ data: MessageVolumeData }>()
 const wrap = ref<HTMLElement | null>(null)
 const W = ref(780)
 const H = ref(360)
-let observer: ResizeObserver | null = null
+let observer: globalThis.ResizeObserver | null = null
 
 const measure = (): void => {
   const el = wrap.value
   if (!el) { return }
-  const cs = getComputedStyle(el)
+  const cs = window.getComputedStyle(el)
   const w = el.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight)
   const h = el.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom)
   if (w > 0) { W.value = Math.round(w) }
@@ -175,7 +175,7 @@ const measure = (): void => {
 onMounted(() => {
   measure()
   if (typeof ResizeObserver !== 'undefined' && wrap.value) {
-    observer = new ResizeObserver(measure)
+    observer = new window.ResizeObserver(measure)
     observer.observe(wrap.value)
   }
 })
