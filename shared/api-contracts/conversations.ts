@@ -55,7 +55,7 @@ export interface RawConversationData {
   unreadCount?: number
   /** Age anchor of the unread badge: earliest unread customer message for THIS agent (ISO); null when nothing is unread */
   oldestUnreadAt?: string | null
-  /** awaiting=stale list only: start of the unanswered wait (ISO) */
+  /** Start of the unanswered wait (ISO); null = not waiting (sign-offs after a reply do not count) */
   awaitingSince?: string | null
   /** awaiting=stale list only: no human agent ever replied in this conversation */
   neverReplied?: boolean
@@ -156,8 +156,10 @@ export interface WaitingConversation {
 }
 
 export interface WaitingConversationsData {
-  /** All waiting conversations visible to the caller (not just the returned page) */
+  /** Waiting conversations (wait started within the 待回覆 window) visible to the caller, not just the returned page */
   total: number
+  /** Older unanswered conversations ("逾期待回覆"), outside `total` */
+  stale?: { count: number; neverRepliedCount: number }
   items: WaitingConversation[]
   generatedAt: string
 }

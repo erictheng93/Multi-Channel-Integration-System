@@ -22,7 +22,7 @@ import { readThrough, DASHBOARD_SUMMARY_TTL_SECONDS } from '@/modules/dashboard/
 import { RowsReadMeter } from '@/utils/d1-rows-read';
 import { getUnreadAggregate } from '@/modules/conversations/services/unread-stats-service';
 import { clampWaitingLimit, getWaitingConversations, waitingWindowStartIso } from '@/modules/dashboard/services/waiting-service';
-import { getNeverRepliedIds } from '@/modules/dashboard/services/stale-waiting-service';
+import { getNeverRepliedIds, getStaleWaitingSummary } from '@/modules/dashboard/services/stale-waiting-service';
 import { neverRepliedSql } from '@/modules/dashboard/services/awaiting-rules';
 import { visibilityScopeKey } from '@/modules/dashboard/services/dashboard-service';
 import { conversationContracts, type ConversationStats } from '@shared/api-contracts/conversations';
@@ -289,8 +289,9 @@ conversationQueriesHandler.get('/waiting', jwtAuth, async (c) => {
         const generatedAt = nowMs();
         const meter = new RowsReadMeter('conversations.waiting');
         const waiting = await getWaitingConversations(c.env.DB, user, limit, generatedAt, meter);
+        const stale = await getStaleWaitingSummary(c.env.DB, user, generatedAt, meter);
         meter.flush({ scope: visibilityScopeKey(user), limit });
-        return { ...waiting, generatedAt: new Date(generatedAt).toISOString() };
+        return { ...waiting, stale, generatedAt: new Date(generatedAt).toISOString() };
       }
     );
     return contractJson(c, conversationContracts.waiting, {
@@ -630,8 +631,9 @@ conversationQueriesHandler.get('/', jwtAuth, async (c) => {
       // Epoch ms until the next LINE reply is free (Reply API); resolved below
       // once the recall window is known. Never the token itself.
       replyTokenReceivedAt: result.replyTokenReceivedAt ?? null,
-      // Only the stale view exposes the wait start (additive; the list contract is otherwise unchanged)
-      awaitingSince: staleView ? result.awaitingSince ?? null : undefined,
+      // Start of the unanswered wait (null = not waiting); additive. The list uses it instead of guessing from the last sender,
+      // because sign-offs after a reply are not a wait.
+      awaitingSince: result.awaitingSince ?? null,
       // 完整的 customer 對象 (匹配前端類型定義)
       customer: result.customers ? {
         id: result.customers.id,
