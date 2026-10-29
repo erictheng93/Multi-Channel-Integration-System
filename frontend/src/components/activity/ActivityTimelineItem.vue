@@ -28,6 +28,11 @@
           :datetime="activity.createdAt"
           :title="fullTime"
         >{{ formatTime(activity.createdAt) }}</time>
+        <span
+          v-if="quietStatus"
+          class="timeline-item__status"
+          aria-hidden="true"
+        >{{ quietStatus }}</span>
       </div>
       <div class="timeline-item__description">
         {{ getActivityDescription(activity) }}
@@ -54,14 +59,14 @@
       </button>
       <span
         v-else-if="restoreState.kind === 'expired'"
-        class="ui-pill"
+        class="timeline-item__quiet"
         data-test="restore-expired"
       >
         已過期
       </span>
       <span
         v-else-if="restoreState.kind === 'irreversible'"
-        class="ui-pill"
+        class="timeline-item__quiet"
         data-test="restore-irreversible"
       >
         不可還原
@@ -149,6 +154,17 @@ const iconStyle = computed(() => {
 const formattedDetails = computed(() =>
   formatActivityDetails(props.activity.details ?? null, props.activity.action)
 )
+
+/** Phone: the closed states read as plain text on the meta line instead of a chip on their own line */
+const quietStatus = computed(() => {
+  switch (restoreState.value.kind) {
+    case 'eligible': return '可還原'
+    case 'expired': return '已過期'
+    case 'irreversible': return '不可還原'
+    case 'already-restored': return '已還原'
+    default: return ''
+  }
+})
 
 const restoreState = computed<RestoreState>(() => {
   if (!isActivityRestoreEnabled()) {return { kind: 'hidden' }}
@@ -357,43 +373,73 @@ onUnmounted(() => {
   cursor: pointer;
 }
 
+.timeline-item__quiet {
+  grid-column: 1;
+  justify-self: end;
+  font-size: 13px;
+  color: var(--ui-muted);
+  white-space: nowrap;
+}
+
+.timeline-item__status {
+  display: none;
+}
+
 @media (max-width: 768px) {
   .timeline-item {
-    grid-template-columns: 34px minmax(0, 1fr);
-    grid-template-areas: 'icon content' '. zone';
-    gap: 12px;
+    grid-template-columns: 34px minmax(0, 1fr) auto;
+    grid-template-areas: 'icon content zone' '. rest rest';
+    gap: 0 12px;
     padding: 14px 16px;
   }
+
   .timeline-item__icon {
+    grid-area: icon;
     width: 34px;
     height: 34px;
     border-radius: 11px;
-  }
-  /* Status chip and actions sit on their own row under the text, left-aligned with it */
-  .timeline-item__icon {
-    grid-area: icon;
   }
 
   .timeline-item__content {
     grid-area: content;
   }
 
+  /* One trailing control per row, on the title line: the chevron. The quiet status moves up next to the time. */
   .timeline-item__restore-zone {
-    grid-area: zone;
-    display: flex;
-    gap: 8px;
+    display: contents;
   }
 
   .timeline-item__restore-zone .timeline-item__details-toggle {
-    margin-left: auto;
+    grid-area: zone;
+    width: 44px;
+    height: 44px;
+    margin: -10px -12px -10px 0;
   }
 
+  .timeline-item__restore-zone .timeline-item__quiet,
   .timeline-item__restore-zone .ui-pill {
-    width: auto;
-    min-width: 72px;
+    display: none;
   }
-  /* The 還原 button already says "restorable"; the chip would wrap the name line */
-  .timeline-item__restore-zone [data-test='restore-eligible'] {
+
+  .timeline-item__status {
+    display: inline;
+    font-size: 13px;
+    color: var(--ui-muted);
+  }
+
+  .timeline-item__status::before {
+    margin-right: 8px;
+    content: '\00b7';
+  }
+
+  /* 還原 is the one real action: it appears with the details, or at once when the row has none */
+  .timeline-item__restore-zone .btn {
+    grid-area: rest;
+    justify-self: start;
+    margin-top: 10px;
+  }
+
+  .timeline-item.is-clickable:not(.is-open) .timeline-item__restore-zone .btn {
     display: none;
   }
 }
