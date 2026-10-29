@@ -182,7 +182,10 @@ export const messages = sqliteTable('messages', {
   createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
   updatedAt: text('updated_at'), // Tracks message modifications (recall, status changes) (Migration 0036)
   deletedAt: text('deleted_at'), // Soft delete (Migration 0027)
-});
+}, (table) => ({
+  // Day-ranged counts by sender, e.g. customer messages per Taipei day (Migration 0066)
+  senderTypeCreatedAtIdx: index('idx_messages_sender_type_created_at').on(table.senderType, table.createdAt),
+}));
 
 /**
  * @deprecated Legacy delayed-message table retained for historical schema compatibility.

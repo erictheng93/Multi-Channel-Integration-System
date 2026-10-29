@@ -16,6 +16,7 @@ import {
   healthMainHandler
 } from '../handlers';
 
+import dashboardMainHandler from '@modules/dashboard/handlers/dashboard-main';
 import messagingMainHandler from '@modules/messaging/handlers/messaging/index';
 // REMOVED: Old QR Code module - migrated to new LIFF QR Code system
 // import qrCodeRouterSimple from '@modules/qrcode/handlers/qrcode-router-simple';
@@ -86,6 +87,15 @@ const businessLogicGroup = createRouteGroup({
       description: 'Conversation Management',
       version: '1.3.0',
       dependencies: ['auth'],
+      healthCheck: '/health'
+    }),
+    createRouteModule({
+      name: 'dashboard',
+      path: '/dashboard',
+      handler: dashboardMainHandler,
+      description: 'Dashboard aggregates (Asia/Taipei days, visibility-scoped)',
+      version: '1.0.0',
+      dependencies: ['auth', 'conversations'],
       healthCheck: '/health'
     }),
     createRouteModule({
