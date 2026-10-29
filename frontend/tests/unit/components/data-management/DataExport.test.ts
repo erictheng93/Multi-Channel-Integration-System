@@ -23,7 +23,8 @@ vi.mock('@/components/conversation/ExportDialog.vue', () => ({
     props: {
       show: Boolean,
       conversationId: String,
-      conversationTitle: String
+      conversationTitle: String,
+      initialFormat: String
     },
     emits: ['close', 'update:show'],
     template: '<div class="mock-export-dialog" v-if="show"><button class="close-btn" @click="$emit(\'close\')">Close</button></div>'
@@ -45,7 +46,9 @@ describe('DataExport.vue', () => {
   })
 
   function createWrapper() {
-    return mount(DataExport)
+    return mount(DataExport, {
+      global: { stubs: { DataSubnav: true } }
+    })
   }
 
   // ==================== 頁面基礎渲染 ====================
@@ -60,14 +63,14 @@ describe('DataExport.vue', () => {
       wrapper = createWrapper()
       const title = wrapper.find('.page-title')
       expect(title.exists()).toBe(true)
-      expect(title.text()).toContain('匯出對話記錄')
+      expect(title.text()).toContain('匯出對話')
     })
 
     it('應該顯示頁面描述', () => {
       wrapper = createWrapper()
       const subtitle = wrapper.find('.page-subtitle')
       expect(subtitle.exists()).toBe(true)
-      expect(subtitle.text()).toContain('備份')
+      expect(subtitle.text()).toContain('5,000')
     })
 
     it('應該顯示「開始匯出」按鈕', () => {
@@ -119,20 +122,11 @@ describe('DataExport.vue', () => {
       expect(pdfCard!.text()).toContain('可攜式')
     })
 
-    it('每張卡片應該有使用場景標籤', () => {
+    it('每張卡片應該列出適用場景', () => {
       wrapper = createWrapper()
-      const tags = wrapper.findAll('.usecase-tag')
-      // 4 usecases per format * 4 formats = 16
-      expect(tags.length).toBe(16)
-    })
-
-    it('每張卡片應該有「點擊匯出」提示', () => {
-      wrapper = createWrapper()
-      const actions = wrapper.findAll('.format-action')
-      expect(actions.length).toBe(4)
-      actions.forEach(action => {
-        expect(action.text()).toContain('點擊匯出')
-      })
+      const uses = wrapper.findAll('.use')
+      expect(uses.length).toBe(4)
+      expect(uses[0]!.text()).toContain('API 整合')
     })
   })
 
@@ -142,14 +136,14 @@ describe('DataExport.vue', () => {
     it('應該渲染功能說明區標題', () => {
       wrapper = createWrapper()
       const titles = wrapper.findAll('.section-title')
-      const featureTitle = titles.find(t => t.text().includes('匯出功能'))
+      const featureTitle = titles.find(t => t.text().includes('匯出視窗可設定'))
       expect(featureTitle).toBeTruthy()
     })
 
     it('應該顯示四個功能項目', () => {
       wrapper = createWrapper()
       const features = wrapper.findAll('.feature-item')
-      expect(features.length).toBe(4)
+      expect(features.length).toBe(3)
     })
 
     it('應該包含日期範圍篩選功能', () => {
@@ -162,7 +156,7 @@ describe('DataExport.vue', () => {
     it('應該包含用戶篩選功能', () => {
       wrapper = createWrapper()
       const features = wrapper.findAll('.feature-item')
-      const userFeature = features.find(f => f.text().includes('用戶篩選'))
+      const userFeature = features.find(f => f.text().includes('客戶'))
       expect(userFeature).toBeTruthy()
     })
   })
@@ -186,14 +180,20 @@ describe('DataExport.vue', () => {
       expect(dialog.props('show')).toBe(true)
     })
 
-    it('點擊格式卡片應該打開 ExportDialog', async () => {
+    it('點擊格式卡片只選取格式，按「開始匯出」才開啟並帶入該格式', async () => {
       wrapper = createWrapper()
-      const card = wrapper.find('.format-card')
-      await card.trigger('click')
+      const cards = wrapper.findAll('.format-card')
+      await cards[1]!.trigger('click')
       await nextTick()
 
       const dialog = wrapper.findComponent({ name: 'ExportDialog' })
+      expect(dialog.props('show')).toBe(false)
+      expect(cards[1]!.attributes('aria-checked')).toBe('true')
+
+      await wrapper.find('.header-actions .btn-primary').trigger('click')
+      await nextTick()
       expect(dialog.props('show')).toBe(true)
+      expect(dialog.props('initialFormat')).toBe('csv')
     })
 
     it('ExportDialog close 事件應該關閉對話框', async () => {
