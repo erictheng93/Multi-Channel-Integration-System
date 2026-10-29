@@ -370,7 +370,7 @@ const ariaLabel = computed(() =>
   }
 
   .chart-wrap {
-    min-height: 190px;
+    min-height: 230px;
     padding: 4px 16px 14px;
   }
 
