@@ -10,6 +10,7 @@ import type {
   ReportBase,
   ReportDetails,
   ReportListQuery,
+  ReportViewer,
   ReportListResponse,
   ReportStatistics,
   ReportTimeRange,
@@ -48,13 +49,14 @@ export class ReportManagerService {
   }
 
   /**
-   * List reports with filtering and pagination
+   * List reports with filtering and pagination.
+   * Soft-deleted rows never appear. Non-admin viewers see their own reports plus their teams' reports.
    */
-  async listReports(query: ReportListQuery): Promise<ReportListResponse> {
+  async listReports(query: ReportListQuery, viewer?: ReportViewer): Promise<ReportListResponse> {
     try {
       const { drizzle } = await import('drizzle-orm/d1');
       const { reports } = await import('../../../db/schema');
-      const { eq, and, gte, lte, desc, count } = await import('drizzle-orm');
+      const { eq, and, or, gte, lte, desc, count, isNull, inArray } = await import('drizzle-orm');
       const { likeEscaped } = await import('@/utils/sql-like');
 
       const db = drizzle(this.db);
@@ -62,8 +64,17 @@ export class ReportManagerService {
       const pageSize = Math.min(query.pageSize || 20, DEFAULT_REPORT_CONFIG.maxPageSize);
       const offset = (page - 1) * pageSize;
 
+      // Visibility scope shared by the list, the total and the summary
+      const scopeConditions = [isNull(reports.deletedAt)];
+      if (viewer && viewer.role !== 'admin') {
+        const own = eq(reports.createdBy, viewer.userId);
+        scopeConditions.push(
+          viewer.teamIds.length > 0 ? or(own, inArray(reports.teamId, viewer.teamIds))! : own
+        );
+      }
+
       // Build query conditions
-      const conditions = [];
+      const conditions = [...scopeConditions];
       if (query.type) conditions.push(eq(reports.type, query.type));
       if (query.status) conditions.push(eq(reports.status, query.status));
       if (query.createdBy) conditions.push(eq(reports.createdBy, query.createdBy));
@@ -72,7 +83,7 @@ export class ReportManagerService {
       if (query.endDate) conditions.push(lte(reports.createdAt, query.endDate));
       if (query.search) conditions.push(likeEscaped(reports.title, query.search));
 
-      const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+      const whereClause = and(...conditions);
 
       // Query total count
       const totalResult = await db
@@ -111,10 +122,10 @@ export class ReportManagerService {
       }));
 
       // Summary stats (without pagination filters)
-      const summaryConditions = [];
+      const summaryConditions = [...scopeConditions];
       if (query.teamId) summaryConditions.push(eq(reports.teamId, query.teamId));
       if (query.createdBy) summaryConditions.push(eq(reports.createdBy, query.createdBy));
-      const summaryWhere = summaryConditions.length > 0 ? and(...summaryConditions) : undefined;
+      const summaryWhere = and(...summaryConditions);
       const allReports = await db.select().from(reports).where(summaryWhere).all();
 
       return {
@@ -141,12 +152,22 @@ export class ReportManagerService {
   }
 
   /**
-   * Get report details
+   * Get report details. Reports the viewer cannot see are reported as not found.
    */
-  async getReportDetails(reportId: string, generator: ReportGeneratorService): Promise<ReportDetails | null> {
+  async getReportDetails(
+    reportId: string,
+    generator: ReportGeneratorService,
+    viewer?: ReportViewer
+  ): Promise<ReportDetails | null> {
     try {
       const report = await generator.getReportStatus(reportId);
       if (!report) return null;
+
+      if (viewer && viewer.role !== 'admin') {
+        const visible = report.createdBy === viewer.userId
+          || (report.teamId !== undefined && viewer.teamIds.includes(report.teamId));
+        if (!visible) return null;
+      }
 
       const details: ReportDetails = {
         ...report,

@@ -55,6 +55,13 @@ export interface ReportListResponse {
   };
 }
 
+/** Who is asking, for report visibility: admins see all, others own reports plus their teams' reports. */
+export interface ReportViewer {
+  userId: string;
+  role: 'admin' | 'agent';
+  teamIds: number[];
+}
+
 /**
  * 報告詳細資訊
  */
@@ -199,8 +206,8 @@ export interface ReportsServiceInterface {
   downloadReport(reportId: string, userId: string): Promise<ReportDownloadContent | null>;
 
   // 報告管理
-  listReports(query: ReportListQuery): Promise<ReportListResponse>;
-  getReportDetails(reportId: string): Promise<ReportDetails | null>;
+  listReports(query: ReportListQuery, viewer?: ReportViewer): Promise<ReportListResponse>;
+  getReportDetails(reportId: string, viewer?: ReportViewer): Promise<ReportDetails | null>;
   deleteReport(reportId: string, userId: string): Promise<boolean>;
 
   // 統計分析

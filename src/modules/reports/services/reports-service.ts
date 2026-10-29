@@ -7,6 +7,7 @@ import type {
   ReportDetails,
   ReportGenerationParams,
   ReportListQuery,
+  ReportViewer,
   ReportListResponse,
   ReportStatistics,
   ReportOptions,
@@ -61,12 +62,12 @@ export class ReportsService implements ReportsServiceInterface {
 
   // ======================== Report Management ========================
 
-  async listReports(query: ReportListQuery): Promise<ReportListResponse> {
-    return this.manager.listReports(query);
+  async listReports(query: ReportListQuery, viewer?: ReportViewer): Promise<ReportListResponse> {
+    return this.manager.listReports(query, viewer);
   }
 
-  async getReportDetails(reportId: string): Promise<ReportDetails | null> {
-    return this.manager.getReportDetails(reportId, this.generator);
+  async getReportDetails(reportId: string, viewer?: ReportViewer): Promise<ReportDetails | null> {
+    return this.manager.getReportDetails(reportId, this.generator, viewer);
   }
 
   async deleteReport(reportId: string, userId: string): Promise<boolean> {
