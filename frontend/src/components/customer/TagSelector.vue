@@ -6,6 +6,7 @@
       ref="triggerBtnRef"
       class="tag-trigger-btn"
       :class="{ 'has-tags': selectedTags.length > 0 }"
+      :aria-label="selectedTags.length > 0 ? `${buttonLabel || ''}已選 ${selectedTags.length}` : (buttonLabel || '新增標籤')"
       @click="togglePanel"
     >
       <svg

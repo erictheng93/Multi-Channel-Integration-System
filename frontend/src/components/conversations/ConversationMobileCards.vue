@@ -332,7 +332,7 @@ const getLastMessageText = (conversation: Conversation) => {
 
 .replied {
   font-size: 12px;
-  color: var(--ui-faint);
+  color: var(--ui-muted);
 }
 
 .unassigned {
