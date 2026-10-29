@@ -46,14 +46,15 @@
               aria-label="對話分類"
             >
               <button
-                v-for="tab in SCOPE_TABS"
+                v-for="tab in visibleTabs"
                 :key="tab.value"
                 type="button"
                 role="tab"
                 class="scope-tab"
-                :class="{ 'is-on': scope === tab.value }"
+                :class="{ 'is-on': scope === tab.value, 'is-stale': tab.value === 'stale' }"
                 :aria-selected="scope === tab.value"
-                @click="scope = tab.value"
+                :data-testid="`scope-tab-${tab.value}`"
+                @click="selectView(tab.value)"
               >
                 {{ tab.label }}
                 <span
@@ -63,7 +64,7 @@
               </button>
             </div>
             <p
-              v-if="isSearching"
+              v-if="isSearching && scope !== 'stale'"
               class="scope-hint"
               role="status"
             >
@@ -81,6 +82,17 @@
             @clear:all="filterComposable.clearAllFilters"
           />
         </section>
+
+        <!-- 逾期待回覆：說明結案是可逆的 -->
+        <p
+          v-if="scope === 'stale'"
+          class="ui-card stale-note"
+          role="note"
+          data-testid="stale-note"
+        >
+          這些對話的客戶已超過 {{ WAITING_WINDOW_DAYS }} 天沒有收到回覆，不計入待回覆。從未獲得回覆的排在最前面，其餘依等待時間由久到近。
+          按「選取」勾選後可批量結案；結案不會刪除任何內容，客戶下次來訊時會自動重新開啟同一個對話。
+        </p>
 
         <!-- SSE 更新指示器 -->
         <ConversationSyncIndicator :visible="isUpdating" />
@@ -212,7 +224,7 @@ import { createLogger } from '@/utils/logger'
 
 const frontendLogger = createLogger('ConversationsTable')
 import { ref, onMounted, onUnmounted, computed, watch, nextTick } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useConversationsStore } from '@/stores/conversations'
 import { useConversationFilters } from '@/composables/conversation/useConversationFilters'
 import { useDebounce } from '@/composables/useDebounce'
@@ -222,7 +234,7 @@ import { conversationApi } from '@/api/conversations'
 import { useUnreadStore } from '@/stores/unread'
 import { formatWaitText } from '@/composables/dashboard/useDashboardOverview'
 import { LEGEND_TEXT } from '@/composables/conversation/useConversationRowMeta'
-import type { ConversationStats } from '@shared/api-contracts'
+import { WAITING_WINDOW_DAYS, type ConversationStats } from '@shared/api-contracts'
 import { tagCacheService } from '@/services/tagCacheService'
 import type { ConversationFilters as ConversationFiltersType } from '@/types'
 
@@ -236,6 +248,7 @@ import ConversationMobileCards from '@/components/conversations/ConversationMobi
 import { ConversationFilters } from '@/components/conversation-list'
 
 const router = useRouter()
+const route = useRoute()
 const unreadStore = useUnreadStore()
 
 // ==================== Tab counts + subtitle (real stats) ====================
@@ -243,6 +256,7 @@ const unreadStore = useUnreadStore()
 const counts = ref<ConversationStats | null>(null)
 const waitingTotal = ref(0)
 const waitingSince = ref<string | null>(null)
+const staleCount = ref(0)
 const clock = ref(Date.now())
 let clockTimer: ReturnType<typeof setInterval> | null = null
 
@@ -253,6 +267,7 @@ async function loadCounts() {
     if (waitingRes.success && waitingRes.data) {
       waitingTotal.value = waitingRes.data.total
       waitingSince.value = waitingRes.data.items[0]?.waitingSince ?? null
+      staleCount.value = waitingRes.data.stale?.count ?? 0
     }
   } catch (err) {
     console.warn('Failed to load conversation counts:', err)
@@ -266,10 +281,12 @@ const subtitle = computed(() => {
   if (!counts.value) { return '' }
   const waitPart = oldestWaitText.value ? `，最久已等 ${oldestWaitText.value}` : ''
   const unreadPart = unreadStore.total > 0 ? `我的未讀 ${unreadStore.total} 件。` : ''
-  return `${counts.value.open} 件處理中，${waitingTotal.value} 件待回覆${waitPart}。${unreadPart}`
+  const stalePart = staleCount.value > 0 ? `另有 ${staleCount.value} 件逾期未回覆（超過 ${WAITING_WINDOW_DAYS} 天）。` : ''
+  return `${counts.value.open} 件處理中，近 ${WAITING_WINDOW_DAYS} 天內 ${waitingTotal.value} 件待回覆${waitPart}。${stalePart}${unreadPart}`
 })
 
-function tabCount(value: 'open' | 'closed' | 'all'): number | null {
+function tabCount(value: ListView): number | null {
+  if (value === 'stale') { return staleCount.value }
   if (!counts.value) { return null }
   return value === 'open' ? counts.value.open : value === 'closed' ? counts.value.closed : counts.value.total
 }
@@ -290,12 +307,29 @@ async function loadAvailableTags() {
 
 // 分頁籤（處理中 / 已結案 / 全部）。不放進 filterComposable：「清除篩選」不應該切換分頁
 type ConversationScope = NonNullable<ConversationFiltersType['scope']>
-const SCOPE_TABS: ReadonlyArray<{ value: ConversationScope; label: string; empty: string }> = [
+// 'stale' (逾期待回覆) is a view over open conversations, sent to the API as awaiting=stale
+type ListView = ConversationScope | 'stale'
+const SCOPE_TABS: ReadonlyArray<{ value: ListView; label: string; empty: string }> = [
   { value: 'open', label: '處理中', empty: '沒有處理中的對話' },
+  { value: 'stale', label: '逾期待回覆', empty: '沒有逾期未回覆的對話' },
   { value: 'closed', label: '已結案', empty: '沒有已結案的對話' },
   { value: 'all', label: '全部', empty: '暫無對話記錄' }
 ]
-const scope = ref<ConversationScope>('open')
+// ?view=stale deep-links the review list (dashboard link)
+const scope = ref<ListView>(route.query.view === 'stale' ? 'stale' : 'open')
+// The 逾期 tab appears only when there is something to review (or while it is open)
+const visibleTabs = computed(() => SCOPE_TABS.filter(t => t.value !== 'stale' || staleCount.value > 0 || scope.value === 'stale'))
+
+function selectView(value: ListView) {
+  scope.value = value
+  const query = { ...route.query }
+  if (value === 'stale') { query.view = 'stale' } else { delete query.view }
+  void router.replace({ query })
+}
+watch(() => route.query.view, (view) => {
+  const next: ListView = view === 'stale' ? 'stale' : (scope.value === 'stale' ? 'open' : scope.value)
+  if (next !== scope.value) { scope.value = next }
+})
 
 // 有搜尋字時一律搜「全部」：找舊客戶不該因為對話已結案而查無結果（未結案仍排在前面）
 // lastMessageSearch 只在前端篩選已載入的列，伺服器端無法涵蓋已結案，故不納入
@@ -303,8 +337,11 @@ const isSearching = computed(() => {
   const f = filterComposable.filters.value
   return Boolean(f.customerName?.trim() || f.search?.trim())
 })
-const effectiveScope = computed<ConversationScope>(() => (isSearching.value ? 'all' : scope.value))
-const emptyText = computed(() => isSearching.value
+const effectiveScope = computed<ConversationScope>(() => {
+  if (scope.value === 'stale') { return 'open' }
+  return isSearching.value ? 'all' : scope.value
+})
+const emptyText = computed(() => isSearching.value && scope.value !== 'stale'
   ? '找不到符合的對話（已包含已結案）'
   : SCOPE_TABS.find(t => t.value === scope.value)?.empty ?? '暫無對話記錄')
 
@@ -313,6 +350,7 @@ const apiFilters = computed(() => {
   const base: ConversationFiltersType = { ...filterComposable.getApiFilters(), scope: effectiveScope.value }
   // 後端把 status 與 scope 取交集：已結案分頁不能再帶 active/assigned/pending，否則永遠是空的
   if (base.scope === 'closed') { delete base.status }
+  if (scope.value === 'stale') { base.awaiting = 'stale'; delete base.status }
   return base
 })
 const debouncedApiFilters = useDebounce(apiFilters, 300)
@@ -589,6 +627,14 @@ onUnmounted(() => {
 
 .scope-tab .ui-seg-n {
   margin-left: 2px;
+}
+
+.stale-note {
+  margin: 0;
+  padding: 14px 20px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--ui-muted);
 }
 
 .scope-hint {

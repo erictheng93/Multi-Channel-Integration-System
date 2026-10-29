@@ -73,9 +73,9 @@
             </div>
             <div
               class="ui-kpi-foot"
-              title="待回覆＝客戶來訊後尚無客服回覆"
+              :title="`待回覆＝近 ${WAITING_WINDOW_DAYS} 天內，客戶來訊後尚無客服回覆`"
             >
-              客戶來訊後尚無客服回覆
+              近 {{ WAITING_WINDOW_DAYS }} 天內，客戶來訊後尚無客服回覆
             </div>
           </template>
           <template v-else>
@@ -272,8 +272,16 @@
               <span class="sk sk-big" />
             </template>
             <p class="note">
-              待回覆＝客戶來訊後尚無客服回覆。依等待時間排序，超過 30 分鐘標為紅色。
+              待回覆＝近 {{ WAITING_WINDOW_DAYS }} 天內，客戶來訊後尚無客服回覆。依等待時間排序，超過 30 分鐘標為紅色。
             </p>
+            <router-link
+              v-if="staleWaiting && staleWaiting.count > 0"
+              to="/conversations?view=stale"
+              class="stale-line"
+              data-testid="stale-waiting-link"
+            >
+              {{ staleLine }}
+            </router-link>
           </div>
 
           <div class="focus-list">
@@ -649,6 +657,7 @@ import {
   formatWaitText,
   type VolumeDays
 } from '@/composables/dashboard/useDashboardOverview'
+import { WAITING_WINDOW_DAYS } from '@shared/api-contracts'
 import { useUnreadStore } from '@/stores/unread'
 import { getActivityDescription, hasActivityLabel } from '@/components/activity/utils'
 import type { ActivityLog } from '@/api/activities'
@@ -683,8 +692,8 @@ const dateLabel = computed(() => new Intl.DateTimeFormat('zh-TW', {
 // No spaces around full-width punctuation: sentences are joined here, not in the template
 const subtitle = computed(() => {
   const waitPart = waitingCount.value > 0
-    ? `${waitingCount.value} 件待回覆，最久已等 ${oldestWaitText.value}。`
-    : '目前沒有待回覆的客戶。'
+    ? `近 ${WAITING_WINDOW_DAYS} 天內 ${waitingCount.value} 件待回覆，最久已等 ${oldestWaitText.value}。`
+    : `近 ${WAITING_WINDOW_DAYS} 天內沒有待回覆的客戶。`
   const unreadPart = unreadStore.total > 0 ? `我的未讀 ${unreadStore.total} 件。` : ''
   return `${waitPart}${unreadPart}`
 })
@@ -694,6 +703,14 @@ const oldestWaitText = computed(() =>
 
 // ---- 待回覆 focus ----
 const topWaiting = computed(() => summary.data.value?.waiting.top ?? [])
+// Older waits are outside 待回覆; only a quiet pointer to the review list (absent on an older cached payload)
+const staleWaiting = computed(() => summary.data.value?.staleWaiting ?? null)
+const staleLine = computed(() => {
+  const stale = staleWaiting.value
+  if (!stale) { return '' }
+  const never = stale.neverRepliedCount > 0 ? `，其中 ${stale.neverRepliedCount} 位從未獲得回覆` : ''
+  return `另有 ${stale.count} 件超過 ${WAITING_WINDOW_DAYS} 天未回覆${never} →`
+})
 const oldestWait = computed(() => formatWait(oldestWaitSeconds.value ?? 0))
 const waitClass = (seconds: number): string => seconds >= 30 * 60 ? 'hot' : seconds >= 15 * 60 ? 'warm' : ''
 
@@ -915,6 +932,19 @@ onBeforeUnmount(() => {
   padding-top: 12px;
   font-size: 12.5px;
   color: var(--ui-muted);
+}
+
+.stale-line {
+  display: block;
+  margin-top: 10px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--ui-muted);
+  text-decoration: none;
+}
+
+.stale-line:hover {
+  color: var(--ui-blue);
 }
 
 .focus-list {
