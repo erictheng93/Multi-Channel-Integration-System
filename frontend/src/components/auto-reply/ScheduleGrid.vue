@@ -1,12 +1,12 @@
 <template>
-  <div class="schedule-grid">
+  <div class="ui-card schedule-grid">
     <div class="schedule-header">
       <h3 class="schedule-title">
         營業時間設定
       </h3>
       <div class="schedule-actions">
         <select
-          class="form-input timezone-select"
+          class="ui-select timezone-select"
           :value="timezone"
           @change="emit('update-timezone', ($event.target as HTMLSelectElement).value)"
         >
@@ -79,7 +79,7 @@
             <td class="col-time">
               <input
                 type="time"
-                class="form-input time-input"
+                class="ui-input time-input"
                 :value="row.startTime"
                 :disabled="!row.isActive"
                 :class="{ 'time-input--disabled': !row.isActive }"
@@ -89,7 +89,7 @@
             <td class="col-time">
               <input
                 type="time"
-                class="form-input time-input"
+                class="ui-input time-input"
                 :value="row.endTime"
                 :disabled="!row.isActive"
                 :class="{ 'time-input--disabled': !row.isActive }"
@@ -155,174 +155,142 @@ function dayColorClass(dayOfWeek: number): string {
 
 <style scoped>
 .schedule-grid {
-  background: white;
-  border-radius: var(--radius-lg);
-  border: 1px solid var(--gray-100);
-  box-shadow: var(--shadow-sm);
   overflow: hidden;
 }
 
 .schedule-header {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  padding: var(--space-5) var(--space-6);
-  border-bottom: 1px solid var(--gray-100);
-  flex-wrap: wrap;
-  gap: var(--space-3);
+  gap: 12px;
+  padding: 18px 22px 12px;
 }
 
 .schedule-title {
-  font-size: 1.125rem;
-  font-weight: 600;
-  color: var(--gray-900);
   margin: 0;
-}
-
-.schedule-actions {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
+  font: 600 var(--ui-t-title) / 1.25 var(--ui-font-display);
+  letter-spacing: -0.015em;
 }
 
 .timezone-select {
-  min-width: 200px;
-  font-size: 0.875rem;
+  width: auto;
+  min-width: 220px;
+  height: 38px;
+  border-radius: 999px;
 }
 
 .table-wrapper {
   overflow-x: auto;
+  padding-bottom: 8px;
 }
 
 .schedule-table {
   width: 100%;
-  border-collapse: collapse;
-}
-
-.schedule-table thead {
-  background: var(--gray-50, #f9fafb);
+  border-collapse: separate;
+  border-spacing: 0;
 }
 
 .schedule-table th {
-  padding: var(--space-3) var(--space-4);
-  text-align: left;
-  font-size: 0.75rem;
+  padding: 10px 14px;
+  box-shadow: inset 0 -0.5px 0 var(--ui-sep);
+  font-size: 12px;
   font-weight: 600;
-  color: var(--gray-600);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  border-bottom: 1px solid var(--gray-100);
+  color: var(--ui-muted);
+  text-align: left;
+  white-space: nowrap;
 }
 
 .schedule-table td {
-  padding: var(--space-3) var(--space-4);
-  border-bottom: 1px solid var(--gray-100);
-  vertical-align: middle;
+  padding: 10px 14px;
+  box-shadow: inset 0 -0.5px 0 var(--ui-sep);
 }
 
-.schedule-table tbody tr:last-child td {
-  border-bottom: none;
+.schedule-table tr:last-child td {
+  box-shadow: none;
 }
 
-.schedule-row--inactive td {
-  background: var(--gray-50, #f9fafb);
+.schedule-table th:first-child,
+.schedule-table td:first-child {
+  padding-left: 22px;
 }
 
-.col-day {
-  width: 100px;
-}
-
-.col-time {
-  width: 160px;
+.schedule-table th:last-child,
+.schedule-table td:last-child {
+  padding-right: 22px;
 }
 
 .col-toggle {
   width: 80px;
-  text-align: center;
-}
-
-.col-toggle:is(th) {
-  text-align: center;
 }
 
 .day-label {
-  display: inline-block;
-  font-size: 0.875rem;
+  font-size: 14px;
   font-weight: 600;
-  padding: var(--space-1) var(--space-2);
-  border-radius: var(--radius-md);
-}
-
-.day-label--weekday {
-  color: var(--gray-900);
-}
-
-.day-label--saturday {
-  color: #b45309;
-  background: #fef3c7;
 }
 
 .day-label--sunday {
-  color: #dc2626;
-  background: #fef2f2;
+  color: var(--ui-red-ink);
+}
+
+.day-label--saturday {
+  color: var(--ui-accent);
 }
 
 .time-input {
-  font-size: 0.875rem;
-  width: 130px;
-  transition: opacity 0.15s ease;
+  width: 140px;
+  height: 38px;
+  font-variant-numeric: tabular-nums;
+}
+
+.schedule-row--inactive .day-label {
+  color: var(--ui-muted);
 }
 
 .time-input--disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
+  opacity: 0.45;
 }
 
-/* Toggle Switch */
 .toggle-switch {
-  display: inline-flex;
-  align-items: center;
-  width: 44px;
-  height: 24px;
-  border-radius: 12px;
-  background: var(--gray-300, #d1d5db);
-  cursor: pointer;
-  transition: background 0.2s ease;
-  padding: 2px;
   position: relative;
-  outline: none;
+  width: 44px;
+  height: 26px;
+  border-radius: 999px;
+  background: var(--ui-fill-strong);
+  cursor: pointer;
+  transition: background var(--ui-dur) var(--ui-ease);
 }
 
 .toggle-switch:focus-visible {
-  box-shadow: 0 0 0 2px var(--primary-50), 0 0 0 4px var(--primary-700);
+  outline: 2px solid var(--ui-accent);
+  outline-offset: 2px;
 }
 
 .toggle-switch--on {
-  background: #22c55e;
+  background: var(--ui-green);
 }
 
 .toggle-thumb {
-  width: 20px;
-  height: 20px;
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 22px;
+  height: 22px;
   border-radius: 50%;
-  background: white;
-  box-shadow: 0 1px 3px rgb(0 0 0 / 0.2);
-  transition: transform 0.2s ease;
+  background: #fff;
+  box-shadow:
+    0 2px 4px rgb(0 0 0 / 0.15),
+    0 0 0 0.5px rgb(0 0 0 / 0.04);
+  transition: transform var(--ui-dur) var(--ui-ease);
 }
 
 .toggle-switch--on .toggle-thumb {
-  transform: translateX(20px);
+  transform: translateX(18px);
 }
 
-@media (max-width: 640px) {
+@media (max-width: 768px) {
   .schedule-header {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .schedule-actions {
-    width: 100%;
-    flex-direction: column;
+    padding: 16px;
   }
 
   .timezone-select {

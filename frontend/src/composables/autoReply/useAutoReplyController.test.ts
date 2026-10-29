@@ -6,11 +6,13 @@ import { ref, reactive } from 'vue'
 const mockFetchRules = vi.fn().mockResolvedValue(undefined)
 const mockFetchSchedules = vi.fn().mockResolvedValue(undefined)
 const mockFetchLogs = vi.fn().mockResolvedValue(undefined)
+const mockFetchStats = vi.fn().mockResolvedValue(undefined)
 const mockReset = vi.fn()
 const mockStoreRules = ref<Array<{ id: number; name: string; triggerType: string; isActive: boolean; conditions: Array<{ value: string }>; actions: unknown[] }>>([])
 const mockStoreSchedules = ref<Array<{ dayOfWeek: number; isActive: boolean; startTime: string; endTime: string }>>([])
 const mockStoreLogs = ref<Array<{ id: number; reply_method: string }>>([])
 const mockTodayReplyCount = ref(0)
+const mockStatsSnapshot = ref<unknown>(null)
 
 vi.mock('@/stores/autoReply', () => ({
   useAutoReplyStore: () => ({
@@ -18,9 +20,11 @@ vi.mock('@/stores/autoReply', () => ({
     schedules: mockStoreSchedules.value,
     logs: mockStoreLogs.value,
     todayReplyCount: mockTodayReplyCount.value,
+    statsSnapshot: mockStatsSnapshot.value,
     fetchRules: mockFetchRules,
     fetchSchedules: mockFetchSchedules,
     fetchLogs: mockFetchLogs,
+    fetchStats: mockFetchStats,
     $reset: mockReset,
   }),
 }))
@@ -75,6 +79,7 @@ describe('useAutoReplyController', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
     vi.clearAllMocks()
+    mockStatsSnapshot.value = null
     mockStoreRules.value = []
     mockStoreSchedules.value = []
     mockStoreLogs.value = []
@@ -196,17 +201,21 @@ describe('useAutoReplyController', () => {
     expect(ctrl.stats.value.todayReplies).toBe(7)
   })
 
-  // 14. stats - successRate calculation
-  it('stats computes successRate as percentage of reply_api logs', () => {
-    mockStoreLogs.value = [
-      { id: 1, reply_method: 'reply_api' },
-      { id: 2, reply_method: 'push_api' },
-      { id: 3, reply_method: 'reply_api' },
-      { id: 4, reply_method: 'reply_api' },
-    ]
+  // 14. stats - successRate comes from the server snapshot (ratio -> percent), not from log rows
+  it('stats takes successRate and todayReplies from the server snapshot', () => {
+    mockStatsSnapshot.value = {
+      todaySuccess: 47,
+      todayFailed: 1,
+      yesterdaySameTimeSuccess: 38,
+      successRate: 0.9792,
+      businessHours: { hasSchedule: true, isOpen: true, timezone: 'Asia/Taipei', closesAt: '17:30', opensAt: null },
+    }
     const ctrl = useAutoReplyController()
-    // 3 reply_api out of 4 total = 75%
-    expect(ctrl.stats.value.successRate).toBe(75)
+    expect(ctrl.stats.value.successRate).toBe(97.9)
+    expect(ctrl.stats.value.todayReplies).toBe(47)
+    expect(ctrl.stats.value.todayFailed).toBe(1)
+    expect(ctrl.stats.value.yesterdaySameTime).toBe(38)
+    expect(ctrl.stats.value.isBusinessHours).toBe(true)
   })
 
   // 15. loadLogsPage - calls fetchLogs with page and filters
@@ -237,12 +246,12 @@ describe('useAutoReplyController', () => {
     })
   })
 
-  // Bonus: stats successRate is 0 when no logs, todayReplies is 0 by default
-  it('stats returns successRate 0 when there are no logs', () => {
-    mockStoreLogs.value = []
+  // Bonus: no snapshot yet / no attempts -> successRate is null (not a made-up 0)
+  it('stats returns successRate null when there is no data', () => {
+    mockStatsSnapshot.value = null
     mockTodayReplyCount.value = 0
     const ctrl = useAutoReplyController()
-    expect(ctrl.stats.value.successRate).toBe(0)
+    expect(ctrl.stats.value.successRate).toBeNull()
     expect(ctrl.stats.value.todayReplies).toBe(0)
   })
 })

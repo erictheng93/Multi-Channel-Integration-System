@@ -1,17 +1,19 @@
 <template>
   <div class="rule-list">
     <!-- Toolbar -->
-    <div class="rule-list__toolbar">
+    <div class="ui-card rule-list__toolbar">
       <div class="rule-list__filters">
         <input
-          class="form-input rule-list__search"
+          class="ui-input rule-list__search"
+          aria-label="搜尋規則"
           type="text"
-          placeholder="搜尋規則..."
+          placeholder="搜尋規則"
           :value="searchQuery"
           @input="emit('update:searchQuery', ($event.target as HTMLInputElement).value)"
         >
         <select
-          class="form-input rule-list__filter-select"
+          class="ui-select rule-list__filter-select"
+          aria-label="規則類型"
           :value="filterTriggerType"
           @change="emit('update:filterTriggerType', ($event.target as HTMLSelectElement).value)"
         >
@@ -39,7 +41,7 @@
     <!-- New rule editor -->
     <div
       v-if="isCreating"
-      class="rule-list__new-card card"
+      class="ui-card rule-list__new-card"
     >
       <div class="rule-list__new-header">
         新增規則
@@ -63,7 +65,7 @@
     <!-- Rule list -->
     <div
       v-if="rules.length > 0"
-      class="rule-list__items"
+      class="ui-card rule-list__items"
     >
       <RuleCard
         v-for="rule in rules"
@@ -89,10 +91,17 @@
     <!-- Empty state -->
     <div
       v-else-if="!isCreating"
-      class="rule-list__empty"
+      class="ui-card ui-empty rule-list__empty"
     >
-      <div class="rule-list__empty-icon">
-        --
+      <div class="ui-empty-art">
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.8"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        ><path d="M13 2 3 14h9l-1 8 10-12h-9Z" /></svg>
       </div>
       <p class="rule-list__empty-text">
         尚未建立自動回覆規則
@@ -146,93 +155,69 @@ const emit = defineEmits<{
 .rule-list {
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
+  gap: 16px;
 }
 
-/* Toolbar */
 .rule-list__toolbar {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
+  gap: 12px;
+  padding: 12px 14px;
 }
 
 .rule-list__filters {
   display: flex;
-  align-items: center;
-  gap: var(--space-2);
   flex: 1;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
 }
 
 .rule-list__search {
-  max-width: 280px;
-  flex: 1;
+  flex: 1 1 220px;
+  max-width: 340px;
+  height: 38px;
+  border-radius: 999px;
 }
 
 .rule-list__filter-select {
-  max-width: 160px;
+  width: auto;
+  min-width: 140px;
+  height: 38px;
+  border-radius: 999px;
 }
 
-/* New card */
+.rule-list__items {
+  overflow: hidden;
+  padding: 4px 0;
+}
+
 .rule-list__new-card {
-  border: 2px dashed var(--primary-300);
-  border-radius: var(--radius-lg);
-  background: var(--primary-50);
   overflow: hidden;
 }
 
 .rule-list__new-header {
-  padding: var(--space-3) var(--space-4);
-  font-weight: 600;
-  color: var(--primary-700);
-  border-bottom: 1px solid var(--primary-200);
-}
-
-/* Items list */
-.rule-list__items {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-}
-
-/* Empty state */
-.rule-list__empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: var(--space-12) var(--space-4);
-  background: var(--gray-50);
-  border: 1px dashed var(--gray-300);
-  border-radius: var(--radius-lg);
-  text-align: center;
-}
-
-.rule-list__empty-icon {
-  font-size: 2.5rem;
-  margin-bottom: var(--space-3);
-  opacity: 0.6;
+  padding: 16px 22px 0;
+  font: 600 var(--ui-t-title) var(--ui-font-display);
 }
 
 .rule-list__empty-text {
-  color: var(--gray-500);
-  font-size: 1rem;
-  margin: 0 0 var(--space-4);
+  margin: 0;
+  font-size: 13.5px;
+  color: var(--ui-muted);
 }
 
-@media (max-width: 640px) {
-  .rule-list__toolbar {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .rule-list__filters {
-    flex-direction: column;
-  }
-
+@media (max-width: 768px) {
   .rule-list__search,
   .rule-list__filter-select {
+    flex: 1 1 100%;
     max-width: none;
+  }
+
+  .rule-list__toolbar > .btn {
+    width: 100%;
   }
 }
 </style>

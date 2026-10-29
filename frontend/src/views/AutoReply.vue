@@ -2,22 +2,30 @@
   <AppLayout>
     <div class="auto-reply-page">
       <!-- Page Header -->
-      <div class="page-header">
-        <div class="page-header__content">
-          <h1 class="page-title">
-            自動回覆管理
+      <div class="ui-page-head">
+        <div>
+          <div class="ui-eyebrow">
+            客戶經營
+          </div>
+          <h1 class="ui-page-title">
+            自動回覆
           </h1>
-          <p class="page-subtitle">
-            管理自動回覆規則、營業時間排程，及查看執行日誌
+          <p
+            v-if="!loading && headline"
+            class="ui-page-sub"
+          >
+            {{ headline }}
           </p>
         </div>
-        <button
-          class="btn btn-secondary"
-          :disabled="loading"
-          @click="refresh"
-        >
-          重新整理
-        </button>
+        <div class="ui-page-actions">
+          <button
+            class="btn btn-secondary"
+            :disabled="loading"
+            @click="refresh"
+          >
+            重新整理
+          </button>
+        </div>
       </div>
 
       <!-- Loading -->
@@ -32,24 +40,35 @@
         <!-- Stats -->
         <AutoReplyStats
           :active-rules="stats.activeRules"
+          :total-rules="stats.totalRules"
           :today-replies="stats.todayReplies"
+          :today-failed="stats.todayFailed"
+          :yesterday-same-time="stats.yesterdaySameTime"
           :is-business-hours="stats.isBusinessHours"
+          :business-hours="stats.businessHours"
           :success-rate="stats.successRate"
         />
 
         <!-- Tabs -->
         <div class="tabs-container">
-          <div class="tabs-bar">
+          <div
+            class="ui-seg tabs-bar"
+            role="tablist"
+          >
             <button
               class="tab-button"
+              role="tab"
+              :aria-selected="activeTab === 'rules'"
               :class="{ active: activeTab === 'rules' }"
               @click="switchTab('rules')"
             >
               規則管理
-              <span class="tab-badge">{{ store.rules.length }}</span>
+              <span class="ui-seg-n tab-badge">{{ store.rules.length }}</span>
             </button>
             <button
               class="tab-button"
+              role="tab"
+              :aria-selected="activeTab === 'schedules'"
               :class="{ active: activeTab === 'schedules' }"
               @click="switchTab('schedules')"
             >
@@ -57,11 +76,13 @@
             </button>
             <button
               class="tab-button"
+              role="tab"
+              :aria-selected="activeTab === 'logs'"
               :class="{ active: activeTab === 'logs' }"
               @click="switchTab('logs')"
             >
               執行日誌
-              <span class="tab-badge">{{ store.logsPagination.total }}</span>
+              <span class="ui-seg-n tab-badge">{{ store.logsPagination.total }}</span>
             </button>
           </div>
 
@@ -168,6 +189,20 @@ const {
 
 const { showSuccess, showError } = useToast()
 
+// One-line summary built from the server's stats (no invented numbers)
+const headline = computed(() => {
+  if (stats.value.totalRules === 0) { return '尚未建立規則，新增規則後客戶訊息會依優先序比對。' }
+  const parts: string[] = []
+  const hours = stats.value.businessHours
+  if (hours?.hasSchedule) {
+    parts.push(hours.isOpen ? '目前營業中' : '目前非營業時間')
+  }
+  parts.push(`${stats.value.totalRules} 條規則中 ${stats.value.activeRules} 條啟用`)
+  const summary = `${parts.join('，')}。`
+  const today = stats.value.todayReplies > 0 ? `今天已自動回覆 ${stats.value.todayReplies} 則，` : ''
+  return `${summary}${today}優先序數字越小越先比對。`
+})
+
 async function refresh() {
   await initialize()
 }
@@ -223,117 +258,51 @@ onUnmounted(() => cleanup())
 
 <style scoped>
 .auto-reply-page {
-  padding: var(--space-6);
-  width: 100%;
-  max-width: 1200px;
-  margin: 0 auto;
-}
-
-.page-header {
   display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: var(--space-6);
-}
-
-.page-title {
-  font-size: 1.75rem;
-  font-weight: 700;
-  color: var(--gray-900);
-  margin: 0;
-}
-
-.page-subtitle {
-  color: var(--gray-500);
-  font-size: 0.875rem;
-  margin-top: var(--space-1);
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 20px;
 }
 
 .loading-container {
   display: flex;
-  justify-content: center;
   align-items: center;
+  justify-content: center;
   min-height: 300px;
 }
 
 .tabs-container {
-  margin-top: var(--space-6);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .tabs-bar {
-  display: flex;
-  gap: 0;
-  border-bottom: 2px solid var(--gray-200);
-  margin-bottom: var(--space-4);
-}
-
-.tab-button {
-  padding: var(--space-3) var(--space-5);
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: var(--gray-500);
-  background: none;
-  border: none;
-  cursor: pointer;
-  position: relative;
-  transition: color var(--transition-fast);
-}
-
-.tab-button:hover {
-  color: var(--gray-700);
-}
-
-.tab-button.active {
-  color: var(--primary-700);
-}
-
-.tab-button.active::after {
-  content: '';
-  position: absolute;
-  bottom: -2px;
-  left: 0;
-  right: 0;
-  height: 2px;
-  background-color: var(--primary-600);
-}
-
-.tab-badge {
-  display: inline-block;
-  background-color: var(--gray-100);
-  color: var(--gray-600);
-  border-radius: 10px;
-  padding: 1px 8px;
-  font-size: 0.75rem;
-  margin-left: var(--space-1);
-}
-
-.tab-button.active .tab-badge {
-  background-color: var(--primary-50);
-  color: var(--primary-700);
+  align-self: flex-start;
+  max-width: 100%;
+  overflow-x: auto;
 }
 
 .tab-content {
-  min-height: 400px;
+  min-height: 200px;
 }
 
 @media (max-width: 768px) {
   .auto-reply-page {
-    padding: var(--space-4);
-  }
-
-  .page-header {
-    flex-direction: column;
-    gap: var(--space-3);
+    padding: 16px;
   }
 
   .tabs-bar {
-    overflow-x: auto;
+    align-self: stretch;
   }
 
-  .tab-button {
-    white-space: nowrap;
-    padding: var(--space-2) var(--space-3);
-    font-size: 0.8125rem;
+  .tabs-bar > button {
+    flex: 1;
+    justify-content: center;
+    min-height: 44px;
   }
 }
 </style>

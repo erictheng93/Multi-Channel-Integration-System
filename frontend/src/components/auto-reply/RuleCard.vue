@@ -1,6 +1,6 @@
 <template>
   <div
-    class="rule-card card"
+    class="rule-card"
     :class="{ 'rule-card--expanded': isExpanded }"
   >
     <!-- Collapsed header (always visible) -->
@@ -13,21 +13,41 @@
         <div
           class="rule-card__toggle"
           :class="{ 'rule-card__toggle--active': rule.isActive }"
+          role="switch"
+          :aria-checked="rule.isActive"
+          :aria-label="`啟用規則 ${rule.name}`"
           @click.stop="emit('toggle-active')"
         >
           <div class="rule-card__toggle-knob" />
         </div>
 
-        <!-- Rule name -->
-        <span class="rule-card__name">{{ rule.name }}</span>
+        <div class="rule-card__text">
+          <div class="rule-card__title">
+            <!-- Rule name -->
+            <span
+              class="rule-card__name"
+              :class="{ 'is-off': !rule.isActive }"
+            >{{ rule.name }}</span>
 
-        <!-- Trigger type badge -->
-        <span
-          class="badge rule-card__trigger-badge"
-          :class="`rule-card__trigger-badge--${rule.triggerType}`"
-        >
-          {{ triggerTypeLabel }}
-        </span>
+            <!-- Trigger type badge -->
+            <span
+              class="badge rule-card__trigger-badge"
+              :class="`rule-card__trigger-badge--${rule.triggerType}`"
+            >
+              {{ triggerTypeLabel }}
+            </span>
+            <span
+              v-if="!rule.isActive"
+              class="rule-card__off-badge"
+            >已停用</span>
+          </div>
+          <div
+            v-if="summary"
+            class="rule-card__summary"
+          >
+            {{ summary }}
+          </div>
+        </div>
       </div>
 
       <div class="rule-card__right">
@@ -98,6 +118,28 @@ const emit = defineEmits<{
   'update-field': [field: string, value: unknown]
 }>()
 
+const CONDITION_LABELS: Record<string, string> = {
+  exact: '完全符合',
+  contains: '包含',
+  regex: '正規',
+  'message_type': '訊息類型'
+}
+
+// One line of what the rule does, built only from the rule's own conditions / first reply text
+const summary = computed(() => {
+  const rule = props.rule
+  if (rule.triggerType === 'keyword' && rule.conditions.length > 0) {
+    const first = rule.conditions[0]
+    const sameType = rule.conditions.every(c => c.conditionType === first?.conditionType)
+    const values = rule.conditions.map(c => `「${c.value}」`).join('')
+    return sameType && first
+      ? `${CONDITION_LABELS[first.conditionType] ?? first.conditionType}${values}`
+      : rule.conditions.map(c => `${CONDITION_LABELS[c.conditionType] ?? c.conditionType}「${c.value}」`).join(' ')
+  }
+  const text = rule.actions.find(a => a.actionType === 'reply_text')?.content
+  return text ? `「${text.replace(/s+/g, ' ')}」` : ''
+})
+
 const triggerTypeLabel = computed(() => {
   return TRIGGER_TYPE_LABELS[props.rule.triggerType] || props.rule.triggerType
 })
@@ -105,19 +147,21 @@ const triggerTypeLabel = computed(() => {
 
 <style scoped>
 .rule-card {
-  border: 1px solid var(--gray-200);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
-  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
-  overflow: hidden;
+  position: relative;
 }
 
-.rule-card:hover {
-  box-shadow: var(--shadow-md, 0 4px 6px -1px rgb(0 0 0 / 0.1));
+.rule-card + .rule-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 22px;
+  left: 22px;
+  height: 0.5px;
+  background: var(--ui-sep);
 }
 
 .rule-card--expanded {
-  border-color: var(--primary-400);
+  background: color-mix(in srgb, var(--ui-fill) 35%, transparent);
 }
 
 /* Header */
@@ -125,20 +169,21 @@ const triggerTypeLabel = computed(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: var(--space-3) var(--space-4);
+  gap: 12px;
+  padding: 14px 22px;
   cursor: pointer;
   user-select: none;
-  transition: background var(--transition-fast);
+  transition: background var(--ui-dur) var(--ui-ease);
 }
 
 .rule-card__header:hover {
-  background: var(--gray-50);
+  background: color-mix(in srgb, var(--ui-fill) 45%, transparent);
 }
 
 .rule-card__left {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
+  gap: 14px;
   flex: 1;
   min-width: 0;
 }
@@ -146,26 +191,45 @@ const triggerTypeLabel = computed(() => {
 .rule-card__right {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
+  gap: 12px;
   flex-shrink: 0;
 }
 
-/* Toggle switch — iOS native style */
+.rule-card__text {
+  min-width: 0;
+  flex: 1;
+}
+
+.rule-card__title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.rule-card__summary {
+  margin-top: 2px;
+  overflow: hidden;
+  font-size: 13px;
+  color: var(--ui-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Toggle switch (same spec as .ui-switch) */
 .rule-card__toggle {
   position: relative;
+  flex: none;
   width: 44px;
   height: 26px;
-  border-radius: var(--radius-full);
-  background: #E5E5EA;
+  border-radius: 999px;
+  background: var(--ui-fill-strong);
   cursor: pointer;
-  transition: background 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  flex-shrink: 0;
-  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.06);
+  transition: background var(--ui-dur) var(--ui-ease);
 }
 
 .rule-card__toggle--active {
-  background: #34C759;
-  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.08);
+  background: var(--ui-green);
 }
 
 .rule-card__toggle-knob {
@@ -174,12 +238,12 @@ const triggerTypeLabel = computed(() => {
   left: 2px;
   width: 22px;
   height: 22px;
-  border-radius: var(--radius-full);
-  background: #FFFFFF;
-  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  border-radius: 50%;
+  background: #fff;
   box-shadow:
-    0 2px 4px rgba(0, 0, 0, 0.1),
-    0 1px 2px rgba(0, 0, 0, 0.06);
+    0 2px 4px rgb(0 0 0 / 0.15),
+    0 0 0 0.5px rgb(0 0 0 / 0.04);
+  transition: transform var(--ui-dur) var(--ui-ease);
 }
 
 .rule-card__toggle--active .rule-card__toggle-knob {
@@ -188,80 +252,105 @@ const triggerTypeLabel = computed(() => {
 
 /* Name */
 .rule-card__name {
-  font-weight: 600;
-  color: var(--gray-900);
-  white-space: nowrap;
   overflow: hidden;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ui-ink);
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-/* Trigger badge — pastel accent system */
+.rule-card__name.is-off {
+  color: var(--ui-muted);
+}
+
+/* Trigger badge */
 .rule-card__trigger-badge {
-  font-size: 0.75rem;
-  font-weight: 500;
-  padding: 3px 10px;
-  border-radius: var(--radius-full);
+  flex: none;
+  padding: 0 9px;
+  border-radius: 999px;
+  background: var(--ui-fill);
+  font-size: 11.5px;
+  font-weight: 600;
+  line-height: 22px;
+  color: var(--ui-ink-2);
   white-space: nowrap;
-  letter-spacing: 0.01em;
 }
 
 .rule-card__trigger-badge--welcome {
-  background: #E8F5E9;
-  color: #2E7D32;
+  background: var(--ui-green-soft);
+  color: var(--ui-green-ink);
 }
 
 .rule-card__trigger-badge--keyword {
-  background: #E3F2FD;
-  color: #007AFF;
+  background: var(--ui-accent-soft);
+  color: var(--ui-accent);
 }
 
 .rule-card__trigger-badge--off_hours {
-  background: #FFF3E0;
-  color: #E67E00;
+  background: var(--ui-orange-soft);
+  color: var(--ui-orange-ink);
 }
 
 .rule-card__trigger-badge--fallback {
-  background: #F3E5F5;
-  color: #7C3AED;
+  background: var(--ui-p-lavender);
+  color: var(--ui-p-lavender-ink);
+}
+
+.rule-card__off-badge {
+  flex: none;
+  padding: 0 9px;
+  border-radius: 999px;
+  background: var(--ui-fill);
+  font-size: 11.5px;
+  font-weight: 600;
+  line-height: 22px;
+  color: var(--ui-muted);
+  white-space: nowrap;
 }
 
 /* Priority badge */
 .rule-card__priority-badge {
-  font-size: 0.75rem;
-  padding: 2px 6px;
-  border-radius: var(--radius-md);
-  background: var(--gray-100);
-  color: var(--gray-600);
+  padding: 2px 7px;
+  border-radius: 8px;
+  background: var(--ui-fill);
+  font: 600 11.5px var(--ui-font-mono);
+  color: var(--ui-ink-2);
 }
 
 /* Meta text */
 .rule-card__meta {
-  font-size: 0.8125rem;
-  color: var(--gray-500);
+  font-size: 12.5px;
+  color: var(--ui-muted);
+  font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 
 /* Arrow */
 .rule-card__arrow {
-  font-size: 0.75rem;
-  color: var(--gray-400);
-  transition: transform var(--transition-fast);
+  width: 14px;
+  font-size: 10px;
+  color: var(--ui-faint);
+  text-align: center;
 }
 
 /* Body */
 .rule-card__body {
-  border-top: 1px solid var(--gray-200);
-  background: var(--primary-50);
+  padding: 0 22px 18px;
 }
 
-@media (max-width: 640px) {
+@media (max-width: 768px) {
   .rule-card__header {
-    flex-wrap: wrap;
-    gap: var(--space-2);
+    padding: 14px 16px;
   }
 
-  .rule-card__meta {
+  .rule-card__meta,
+  .rule-card__priority-badge {
     display: none;
+  }
+
+  .rule-card__body {
+    padding: 0 12px 14px;
   }
 }
 </style>

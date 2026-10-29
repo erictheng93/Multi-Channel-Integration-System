@@ -72,7 +72,7 @@
               <div class="form-group">
                 <label class="form-label">回覆文字</label>
                 <textarea
-                  class="form-input action-textarea"
+                  class="ui-textarea action-textarea"
                   rows="3"
                   :value="parseTextContent(action.content)"
                   placeholder="輸入回覆文字..."
@@ -87,7 +87,7 @@
                 <label class="form-label">圖片網址</label>
                 <input
                   type="text"
-                  class="form-input"
+                  class="ui-input"
                   :value="parseImageField(action.content, 'url')"
                   placeholder="https://example.com/image.jpg"
                   @input="handleImageUpdate(index, action.content, 'url', ($event.target as HTMLInputElement).value)"
@@ -97,7 +97,7 @@
                 <label class="form-label">預覽圖網址</label>
                 <input
                   type="text"
-                  class="form-input"
+                  class="ui-input"
                   :value="parseImageField(action.content, 'previewUrl')"
                   placeholder="https://example.com/preview.jpg"
                   @input="handleImageUpdate(index, action.content, 'previewUrl', ($event.target as HTMLInputElement).value)"
@@ -110,7 +110,7 @@
               <div class="form-group">
                 <label class="form-label">Flex Message JSON</label>
                 <textarea
-                  class="form-input action-textarea action-textarea--json"
+                  class="ui-textarea action-textarea action-textarea--json"
                   rows="6"
                   :value="formatJsonContent(action.content)"
                   placeholder="{&quot;type&quot;: &quot;bubble&quot;, ...}"
@@ -402,9 +402,8 @@ function handleAddAction(actionType: string): void {
 .action-row-list {
   display: flex;
   flex-direction: column;
-  background: white;
-  border-radius: var(--radius-2xl, 1rem);
-  box-shadow: 0 2px 8px rgb(0 0 0 / 0.04);
+  background: var(--ui-surface-2);
+  border-radius: var(--ui-r-inner);
   overflow: hidden;
 }
 
