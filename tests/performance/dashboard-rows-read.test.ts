@@ -23,7 +23,8 @@ import { computeMessageStats } from '@/modules/integrations/services/channel-ove
 import { getConversationVisibilitySql } from '@/services/conversation-visibility';
 import { rowsReadOf } from '@/utils/d1-rows-read';
 import type { Bindings } from '@/types';
-import { MIGRATION_AWAITING, MIGRATION_ROLLUP, readMigration } from '../helpers/sqlite-d1';
+import { fastUnreadAggregate, legacyUnreadAggregate } from '@/modules/conversations/services/unread-stats-service';
+import { MIGRATION_AWAITING, MIGRATION_MARKERS, MIGRATION_ROLLUP, readMigration } from '../helpers/sqlite-d1';
 
 const enabled = process.env.MEASURE_ROWS_READ === '1';
 const DAY = 24 * 3600_000;
@@ -146,8 +147,21 @@ describe.skipIf(!enabled)('dashboard rows_read, before vs after (local D1 engine
     }
     await insertBatch(raw, "INSERT INTO messages (id, conversation_id, sender_type, content, created_at) VALUES (?,?,?,'hello',?)", messages);
 
+    // Agent a1 has opened about half the conversations at some point; 3% are flagged unread
+    const readStates: unknown[][] = [];
+    for (let i = 1; i <= 428; i++) {
+      if (rnd() < 0.5) {
+        readStates.push(['a1', `c${i}`, new Date(NOW - Math.floor(rnd() * 120 * DAY)).toISOString(), rnd() < 0.06 ? new Date(NOW - DAY).toISOString() : null]);
+      }
+    }
+    // Agent a2 works the inbox: every conversation opened within the last hour except ~10 left unread, 4 flagged
+    for (let i = 1; i <= 428; i++) {
+      readStates.push(['a2', `c${i}`, i % 43 === 0 ? new Date(NOW - 100 * DAY).toISOString() : new Date(NOW - 3600_000).toISOString(), i % 107 === 0 ? new Date(NOW - 1800_000).toISOString() : null]);
+    }
+    await insertBatch(raw, 'INSERT INTO conversation_read_states (agent_id, conversation_id, last_read_at, marked_unread_at) VALUES (?,?,?,?)', readStates);
+
     // Apply the migrations exactly like production would: backfill from existing data
-    for (const file of [MIGRATION_ROLLUP, MIGRATION_AWAITING]) {
+    for (const file of [MIGRATION_ROLLUP, MIGRATION_AWAITING, MIGRATION_MARKERS]) {
       for (const statement of statementsOf(readMigration(file))) { await run(raw, statement); }
     }
     await aggregateMessageRollup(raw, NOW); // the cron catches up the last minute
@@ -293,71 +307,39 @@ describe.skipIf(!enabled)('dashboard rows_read, before vs after (local D1 engine
   });
 
 
-  /** GET /conversations/stats unread aggregate, copied verbatim from conversation-queries.ts (NOT changed by this work). */
-  const unreadStatsQuery = async (d1: D1Database, user: typeof admin | typeof agent) => {
-    const visibility = getConversationVisibilitySql(user, 'assigned_team_id');
-    await d1.prepare(`
-      WITH visible AS (
-        SELECT
-          conversation.id AS id,
-          conversation.status AS status,
-          conversation.unread_floor_at AS unread_floor_at,
-          read_state.last_read_at AS last_read_at,
-          read_state.marked_unread_at AS marked_unread_at
-        FROM conversations AS conversation
-        LEFT JOIN conversation_read_states AS read_state
-          ON read_state.conversation_id = conversation.id
-          AND read_state.agent_id = ?
-        WHERE ${visibility.clause}
-      )
-      SELECT COALESCE(SUM(
-        CASE WHEN per.manuallyUnread = 1 AND per.unreadCount = 0
-          THEN 1 ELSE per.unreadCount END
-      ), 0) as unreadCount,
-      COALESCE(SUM(
-        CASE WHEN per.manuallyUnread = 1 OR per.unreadCount > 0 THEN 1 ELSE 0 END
-      ), 0) as unreadConversations,
-      MIN(CASE WHEN per.unreadCount > 0 THEN per.oldestUnreadAt END) as oldestUnreadAt
-      FROM (
-        SELECT
-          threshold.id,
-          threshold.manuallyUnread,
-          COUNT(customer_message.id) as unreadCount,
-          MIN(customer_message.created_at) as oldestUnreadAt
-        FROM (
-          SELECT
-            visible.id,
-            -- 已結案的對話不計入未讀總數（與列表一致）
-            CASE WHEN visible.status <> 'closed' AND visible.marked_unread_at IS NOT NULL THEN 1 ELSE 0 END as manuallyUnread,
-            CASE WHEN visible.status = 'closed' THEN '9999-12-31' ELSE MAX(
-              COALESCE(last_agent.last_agent_at, '1970-01-01'),
-              COALESCE(visible.last_read_at, '1970-01-01'),
-              COALESCE(visible.unread_floor_at, '1970-01-01')
-            ) END as unread_threshold
-          FROM visible
-          LEFT JOIN (
-            SELECT message.conversation_id, MAX(message.created_at) as last_agent_at
-            FROM messages AS message
-            INNER JOIN visible ON visible.id = message.conversation_id
-            WHERE message.sender_type IN ('agent', 'system')
-              AND message.deleted_at IS NULL
-            GROUP BY message.conversation_id
-          ) AS last_agent ON last_agent.conversation_id = visible.id
-        ) AS threshold
-        LEFT JOIN messages AS customer_message
-          ON customer_message.conversation_id = threshold.id
-          AND customer_message.sender_type = 'customer'
-          AND customer_message.deleted_at IS NULL
-          AND customer_message.created_at > threshold.unread_threshold
-        GROUP BY threshold.id, threshold.manuallyUnread
-      ) AS per
-    `).bind('agent-1', ...visibility.params).all();
-  };
+  it.each([['admin', { id: 'a1', ...admin }], ['agent, 2 teams', { id: 'a1', ...agent }]] as const)(
+    'GET /conversations/stats unread aggregate (%s)', async (label, user) => {
+      let before: unknown;
+      let after: unknown;
+      const { beforeRows, afterRows } = await measure(`GET /conversations/stats unread (${label})`,
+        async d1 => { before = await legacyUnreadAggregate(d1, user); },
+        async d1 => { after = await fastUnreadAggregate(d1, user); });
+      expect(after).toEqual(before);
+      // Pessimistic dataset: ~234 of 414 conversations are unread for this agent, and every unread
+      // message is read once by design. Cost is O(unread), so the real gain is shown by the caught-up agent below.
+      expect(afterRows).toBeLessThan(beforeRows * 0.25);
+    });
 
-  it('GET /conversations/stats unread aggregate (unchanged, informational)', async () => {
-    const { afterRows } = await measure('GET /conversations/stats unread (UNCHANGED)',
-      async () => undefined, d1 => unreadStatsQuery(d1, admin));
-    expect(afterRows).toBeGreaterThan(0);
+  it('GET /conversations/stats unread aggregate (agent who keeps up with the inbox)', async () => {
+    const user = { id: 'a2', ...admin };
+    let before: unknown;
+    let after: unknown;
+    const { beforeRows, afterRows } = await measure('GET /conversations/stats unread (agent caught up)',
+      async d1 => { before = await legacyUnreadAggregate(d1, user); },
+      async d1 => { after = await fastUnreadAggregate(d1, user); });
+    expect(after).toEqual(before);
+    expect(afterRows).toBeLessThan(beforeRows * 0.1);
+  });
+
+  it('GET /conversations/stats conversation counts, by (team, status)', async () => {
+    const sql = 'SELECT assigned_team_id AS teamId, status, COUNT(*) AS n FROM conversations GROUP BY assigned_team_id, status';
+    const { beforeRows, afterRows } = await measure('GET /conversations/stats counts (team,status)',
+      async d1 => {
+        // without idx_conversations_team_status (as before migration 0071)
+        await d1.prepare(sql.replace('FROM conversations', 'FROM conversations NOT INDEXED')).all();
+      },
+      d1 => d1.prepare(sql).all());
+    expect(afterRows).toBeLessThanOrEqual(beforeRows);
   });
 
   it('*/5 cron: aggregateMessageRollup with nothing new', async () => {

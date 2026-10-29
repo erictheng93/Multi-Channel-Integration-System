@@ -631,6 +631,9 @@ describe('Conversation Handlers Integration Tests', () => {
             return null;
           }),
           all: vi.fn().mockImplementation(async () => {
+            if (query.includes('as unreadCount')) {
+              return { success: true, results: [{ unreadCount: 5, unreadConversations: 2, oldestUnreadAt: '2026-01-15T08:00:00Z' }] };
+            }
             if (query.includes('GROUP BY assigned_team_id, status')) {
               return {
                 success: true,
