@@ -15,12 +15,13 @@ import { jwtAuth } from '@/middleware/auth';
 import { WebSocketBroadcastService } from '@/services/websocket-broadcast-service';
 import { createContextLogger } from '@/utils/logger';
 import { nowISO } from '@/utils/timestamp';
+import { publicConversationColumns, toPublicConversation } from '../utils/public-columns';
 import { ActivityCapture, ACTIVITY_ACTIONS, RESOURCE_TYPES } from '@modules/activities';
 import type { DbUser } from '@/types';
 
 const log = createContextLogger('ConversationAssignmentHandler');
 
-type AssignedConversationResponse = typeof conversations.$inferSelect & {
+type AssignedConversationResponse = Omit<typeof conversations.$inferSelect, 'lineReplyToken' | 'lineReplyTokenReceivedAt'> & {
   assignedTeam?: typeof teams.$inferSelect;
   customer?: (typeof customers.$inferSelect & { name: string }) | undefined;
 };
@@ -190,7 +191,7 @@ conversationAssignmentHandler.post('/:id/assign', jwtAuth, async (c) => {
     });
 
     const [updatedConversation] = await drizzleDb
-      .select()
+      .select({ conversations: publicConversationColumns, teams, customers })
       .from(conversations)
       .leftJoin(teams, eq(conversations.assignedTeamId, teams.id))
       .leftJoin(customers, eq(conversations.customerId, customers.id))  //  FIX: Add customer JOIN
@@ -410,7 +411,7 @@ conversationAssignmentHandler.post('/:id/unassign', jwtAuth, async (c) => {
 
     // 獲取並返回更新後的完整對話對象
     const [updatedConversation] = await drizzleDb
-      .select()
+      .select({ conversations: publicConversationColumns, teams, customers })
       .from(conversations)
       .leftJoin(teams, eq(conversations.assignedTeamId, teams.id))
       .leftJoin(customers, eq(conversations.customerId, customers.id))
@@ -685,7 +686,7 @@ async function setConversationClosed(c: Context<{ Bindings: Bindings }>, closed:
     // 已是目標狀態，或讀取後被並行請求搶先改動：重讀取得實際狀態，避免回傳過期的 conv
     if (!status) {
       const [fresh] = await drizzleDb.select().from(conversations).where(eq(conversations.id, conv.id)).limit(1);
-      return c.json({ success: true, data: fresh ?? conv, timestamp: nowISO() });
+      return c.json({ success: true, data: toPublicConversation(fresh ?? conv), timestamp: nowISO() });
     }
 
     const timestamp = nowISO();
@@ -693,7 +694,7 @@ async function setConversationClosed(c: Context<{ Bindings: Bindings }>, closed:
 
     return c.json({
       success: true,
-      data: { ...conv, status, closedAt, updatedAt: timestamp },
+      data: { ...toPublicConversation(conv), status, closedAt, updatedAt: timestamp },
       timestamp: nowISO()
     });
   } catch (error) {
