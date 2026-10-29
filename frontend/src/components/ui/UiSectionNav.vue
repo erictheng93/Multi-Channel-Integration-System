@@ -157,11 +157,10 @@ onBeforeUnmount(() => observer?.disconnect())
   }
 }
 
-/* Phone: no scroll strip. Segments sit on an equal-width grid that wraps, so every label is in view */
+/* Phone: no scroll strip. Segments wrap and each row fills the track, so every label is in view */
 @media (max-width: 768px) {
   .ui-section-nav-track {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(104px, 1fr));
+    flex-wrap: wrap;
     gap: 2px;
     overflow: visible;
     scroll-snap-type: none;
@@ -171,7 +170,9 @@ onBeforeUnmount(() => observer?.disconnect())
     display: none;
   }
 
+  /* Every row fills the track: a short last row stretches its segments instead of leaving a hole */
   .ui-section-nav-track > a {
+    flex: 1 1 96px;
     height: 36px;
     padding: 0 8px;
   }
