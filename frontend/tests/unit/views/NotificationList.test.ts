@@ -104,22 +104,24 @@ describe('NotificationList.vue', () => {
       wrapper = mount(NotificationList, {
         global: {
           stubs: {
-            Teleport: true
+            Teleport: true,
+            // The page renders inside the app shell; the shell itself is not under test here
+            AppLayout: { template: '<div><slot /></div>' }
           }
         }
       })
 
       await nextTick()
-      const title = wrapper.find('.page-title')
-      expect(title.text()).toContain('通知中心')
+      const title = wrapper.find('.ui-page-title')
+      expect(title.text()).toBe('通知')
     })
 
-    it('应该渲染统计卡片', async () => {
+    it('应该用 stats 渲染副標題與分頁計數', async () => {
       store.stats = {
         total: 150,
         unread: 23,
         byType: {} as any,
-        byPriority: {} as any,
+        byPriority: { urgent: { total: 5, unread: 2 } } as any,
         timeRange: {
           today: 8,
           thisWeek: 45,
@@ -130,28 +132,31 @@ describe('NotificationList.vue', () => {
       wrapper = mount(NotificationList, {
         global: {
           stubs: {
-            Teleport: true
+            Teleport: true,
+            // The page renders inside the app shell; the shell itself is not under test here
+            AppLayout: { template: '<div><slot /></div>' }
           }
         }
       })
 
       await nextTick()
-      const statCards = wrapper.findAll('.stat-card')
-      expect(statCards.length).toBe(4)
+      const sub = wrapper.find('.ui-page-sub').text()
+      expect(sub).toContain('23 則未讀')
+      expect(sub).toContain('其中 2 則為緊急')
+      expect(sub).toContain('今天新增 8 則')
+      expect(sub).toContain('本週共 45 則')
 
-      // 检查统计数据
-      const statValues = wrapper.findAll('.stat-value')
-      expect(statValues[0].text()).toBe('150') // 全部通知
-      expect(statValues[1].text()).toBe('23')  // 未读通知
-      expect(statValues[2].text()).toBe('8') // 今日新增
-      expect(statValues[3].text()).toBe('45')  // 本周通知
+      const counts = wrapper.findAll('.filter-tab .ui-seg-n').map(n => n.text())
+      expect(counts).toEqual(['150', '23', '127'])
     })
 
     it('应该渲染筛选区域', async () => {
       wrapper = mount(NotificationList, {
         global: {
           stubs: {
-            Teleport: true
+            Teleport: true,
+            // The page renders inside the app shell; the shell itself is not under test here
+            AppLayout: { template: '<div><slot /></div>' }
           }
         }
       })
@@ -174,7 +179,9 @@ describe('NotificationList.vue', () => {
       wrapper = mount(NotificationList, {
         global: {
           stubs: {
-            Teleport: true
+            Teleport: true,
+            // The page renders inside the app shell; the shell itself is not under test here
+            AppLayout: { template: '<div><slot /></div>' }
           }
         }
       })
@@ -196,7 +203,9 @@ describe('NotificationList.vue', () => {
       wrapper = mount(NotificationList, {
         global: {
           stubs: {
-            Teleport: true
+            Teleport: true,
+            // The page renders inside the app shell; the shell itself is not under test here
+            AppLayout: { template: '<div><slot /></div>' }
           }
         }
       })
@@ -204,7 +213,7 @@ describe('NotificationList.vue', () => {
       await nextTick()
       await flushPromises()
 
-      const emptyState = wrapper.find('.empty-state')
+      const emptyState = wrapper.find('.ui-empty')
       expect(emptyState.exists()).toBe(true)
       expect(emptyState.text()).toContain('暫無通知')
     })
@@ -221,7 +230,9 @@ describe('NotificationList.vue', () => {
       wrapper = mount(NotificationList, {
         global: {
           stubs: {
-            Teleport: true
+            Teleport: true,
+            // The page renders inside the app shell; the shell itself is not under test here
+            AppLayout: { template: '<div><slot /></div>' }
           }
         }
       })
@@ -241,7 +252,9 @@ describe('NotificationList.vue', () => {
       wrapper = mount(NotificationList, {
         global: {
           stubs: {
-            Teleport: true
+            Teleport: true,
+            // The page renders inside the app shell; the shell itself is not under test here
+            AppLayout: { template: '<div><slot /></div>' }
           }
         }
       })
@@ -261,7 +274,9 @@ describe('NotificationList.vue', () => {
       wrapper = mount(NotificationList, {
         global: {
           stubs: {
-            Teleport: true
+            Teleport: true,
+            // The page renders inside the app shell; the shell itself is not under test here
+            AppLayout: { template: '<div><slot /></div>' }
           }
         }
       })
@@ -269,8 +284,9 @@ describe('NotificationList.vue', () => {
       await nextTick()
       const card = wrapper.find('.notification-card')
       expect(card.classes()).toContain('notification-urgent')
-      const indicator = card.find('.priority-indicator')
-      expect(indicator.exists()).toBe(true)
+      const pill = card.find('.ui-pill-red')
+      expect(pill.exists()).toBe(true)
+      expect(pill.text()).toBe('緊急')
     })
   })
 
@@ -281,7 +297,9 @@ describe('NotificationList.vue', () => {
       wrapper = mount(NotificationList, {
         global: {
           stubs: {
-            Teleport: true
+            Teleport: true,
+            // The page renders inside the app shell; the shell itself is not under test here
+            AppLayout: { template: '<div><slot /></div>' }
           }
         }
       })
@@ -306,7 +324,9 @@ describe('NotificationList.vue', () => {
       wrapper = mount(NotificationList, {
         global: {
           stubs: {
-            Teleport: true
+            Teleport: true,
+            // The page renders inside the app shell; the shell itself is not under test here
+            AppLayout: { template: '<div><slot /></div>' }
           }
         }
       })
@@ -331,7 +351,9 @@ describe('NotificationList.vue', () => {
       wrapper = mount(NotificationList, {
         global: {
           stubs: {
-            Teleport: true
+            Teleport: true,
+            // The page renders inside the app shell; the shell itself is not under test here
+            AppLayout: { template: '<div><slot /></div>' }
           }
         }
       })
@@ -355,7 +377,9 @@ describe('NotificationList.vue', () => {
       wrapper = mount(NotificationList, {
         global: {
           stubs: {
-            Teleport: true
+            Teleport: true,
+            // The page renders inside the app shell; the shell itself is not under test here
+            AppLayout: { template: '<div><slot /></div>' }
           }
         }
       })
@@ -389,7 +413,9 @@ describe('NotificationList.vue', () => {
       wrapper = mount(NotificationList, {
         global: {
           stubs: {
-            Teleport: true
+            Teleport: true,
+            // The page renders inside the app shell; the shell itself is not under test here
+            AppLayout: { template: '<div><slot /></div>' }
           }
         }
       })
@@ -415,7 +441,9 @@ describe('NotificationList.vue', () => {
       wrapper = mount(NotificationList, {
         global: {
           stubs: {
-            Teleport: true
+            Teleport: true,
+            // The page renders inside the app shell; the shell itself is not under test here
+            AppLayout: { template: '<div><slot /></div>' }
           }
         }
       })
@@ -438,7 +466,9 @@ describe('NotificationList.vue', () => {
       wrapper = mount(NotificationList, {
         global: {
           stubs: {
-            Teleport: true
+            Teleport: true,
+            // The page renders inside the app shell; the shell itself is not under test here
+            AppLayout: { template: '<div><slot /></div>' }
           }
         }
       })
@@ -446,8 +476,8 @@ describe('NotificationList.vue', () => {
       await nextTick()
 
       // 点击全部标记已读按钮
-      const markAllBtn = wrapper.find('.btn-secondary')
-      await markAllBtn.trigger('click')
+      const markAllBtn = wrapper.findAll('button').find(b => b.text().includes('全部標記已讀'))
+      await markAllBtn!.trigger('click')
       await flushPromises()
 
       expect(markAllReadSpy).toHaveBeenCalled()
@@ -470,7 +500,9 @@ describe('NotificationList.vue', () => {
       wrapper = mount(NotificationList, {
         global: {
           stubs: {
-            Teleport: true
+            Teleport: true,
+            // The page renders inside the app shell; the shell itself is not under test here
+            AppLayout: { template: '<div><slot /></div>' }
           }
         }
       })
@@ -504,7 +536,9 @@ describe('NotificationList.vue', () => {
       wrapper = mount(NotificationList, {
         global: {
           stubs: {
-            Teleport: true
+            Teleport: true,
+            // The page renders inside the app shell; the shell itself is not under test here
+            AppLayout: { template: '<div><slot /></div>' }
           }
         }
       })
@@ -514,7 +548,7 @@ describe('NotificationList.vue', () => {
       const loadMoreSection = wrapper.find('.load-more-section')
       expect(loadMoreSection.exists()).toBe(true)
 
-      const loadMoreBtn = wrapper.find('.btn-lg')
+      const loadMoreBtn = wrapper.find('.load-more-section .btn')
       expect(loadMoreBtn.exists()).toBe(true)
       expect(loadMoreBtn.text()).toContain('載入更多')
     })
@@ -535,14 +569,16 @@ describe('NotificationList.vue', () => {
       wrapper = mount(NotificationList, {
         global: {
           stubs: {
-            Teleport: true
+            Teleport: true,
+            // The page renders inside the app shell; the shell itself is not under test here
+            AppLayout: { template: '<div><slot /></div>' }
           }
         }
       })
 
       await nextTick()
 
-      const loadMoreBtn = wrapper.find('.btn-lg')
+      const loadMoreBtn = wrapper.find('.load-more-section .btn')
       await loadMoreBtn.trigger('click')
 
       expect(loadMoreSpy).toHaveBeenCalled()
@@ -566,7 +602,9 @@ describe('NotificationList.vue', () => {
       wrapper = mount(NotificationList, {
         global: {
           stubs: {
-            Teleport: true
+            Teleport: true,
+            // The page renders inside the app shell; the shell itself is not under test here
+            AppLayout: { template: '<div><slot /></div>' }
           }
         }
       })
@@ -574,7 +612,7 @@ describe('NotificationList.vue', () => {
       await nextTick()
       await flushPromises()
 
-      const loadMoreBtn = wrapper.find('.btn-lg')
+      const loadMoreBtn = wrapper.find('.load-more-section .btn')
       // Button should exist and be disabled
       if (loadMoreBtn.exists()) {
         expect(loadMoreBtn.attributes('disabled')).toBeDefined()
@@ -589,13 +627,14 @@ describe('NotificationList.vue', () => {
   describe('设置面板', () => {
     it('应该能打开设置面板', async () => {
       wrapper = mount(NotificationList, {
-        attachTo: document.body
+        attachTo: document.body,
+        global: { stubs: { AppLayout: { template: '<div><slot /></div>' } } }
       })
 
       await nextTick()
 
       // 点击设置按钮
-      const settingsBtn = wrapper.find('.btn-icon')
+      const settingsBtn = wrapper.find('button[title="通知設定"]')
       await settingsBtn.trigger('click')
       await nextTick()
 
@@ -606,13 +645,14 @@ describe('NotificationList.vue', () => {
 
     it('应该能关闭设置面板', async () => {
       wrapper = mount(NotificationList, {
-        attachTo: document.body
+        attachTo: document.body,
+        global: { stubs: { AppLayout: { template: '<div><slot /></div>' } } }
       })
 
       await nextTick()
 
       // 打开设置面板
-      const settingsBtn = wrapper.find('.btn-icon')
+      const settingsBtn = wrapper.find('button[title="通知設定"]')
       await settingsBtn.trigger('click')
       await nextTick()
 
@@ -646,7 +686,9 @@ describe('NotificationList.vue', () => {
       wrapper = mount(NotificationList, {
         global: {
           stubs: {
-            Teleport: true
+            Teleport: true,
+            // The page renders inside the app shell; the shell itself is not under test here
+            AppLayout: { template: '<div><slot /></div>' }
           }
         }
       })
@@ -668,7 +710,9 @@ describe('NotificationList.vue', () => {
       wrapper = mount(NotificationList, {
         global: {
           stubs: {
-            Teleport: true
+            Teleport: true,
+            // The page renders inside the app shell; the shell itself is not under test here
+            AppLayout: { template: '<div><slot /></div>' }
           }
         }
       })
