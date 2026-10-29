@@ -1,7 +1,7 @@
 <!--
   GeneralSettingsPage.vue
   The settings home: a live overview strip (each tile links to its section), then the identity form
-  beside a context column (name preview, clock in the chosen time zone, measured service latency).
+  beside a context column (measured service latency; name and clock hints live in the form's own fields).
   Below the form, a read-only glance at the advanced parameters currently in force.
 -->
 
@@ -18,21 +18,17 @@
           @update:settings="(data) => Object.assign(controller.settings.general, data)"
         />
 
-        <SettingsGroup title="目前生效的進階參數">
-          <ul class="ui-list">
-            <li
+        <SettingsGroup title="目前生效的進階參數（唯讀）">
+          <dl class="adv-grid">
+            <div
               v-for="item in advancedRows"
               :key="item.label"
-              class="ui-row is-flush"
+              class="adv-item"
             >
-              <div class="ui-row-main">
-                <div class="ui-row-title">
-                  {{ item.label }}
-                </div>
-              </div>
-              <span class="adv-val">{{ item.value }}</span>
-            </li>
-          </ul>
+              <dt>{{ item.label }}</dt>
+              <dd>{{ item.value }}</dd>
+            </div>
+          </dl>
           <template #note>
             <router-link
               class="ui-link"
@@ -48,11 +44,6 @@
         class="general-aside"
         aria-label="說明與預覽"
       >
-        <GeneralSettingsAside
-          :system-name="controller.settings.general.systemName"
-          :timezone="controller.settings.general.timezone"
-        />
-
         <article class="ui-card lat-card">
           <div class="ui-card-head">
             <div>
@@ -100,7 +91,6 @@
 import { computed, inject } from 'vue'
 import { SETTINGS_CONTROLLER_KEY } from '@/types/system-settings'
 import { GeneralSettingsForm } from '@/components/system-settings'
-import GeneralSettingsAside from '@/components/system-settings/GeneralSettingsAside.vue'
 import GeneralSettingsOverview from '@/components/system-settings/GeneralSettingsOverview.vue'
 import SettingsGroup from '@/components/system-settings/SettingsGroup.vue'
 
@@ -151,10 +141,30 @@ const advancedRows = computed(() => {
   padding-top: 28px;
 }
 
-.adv-val {
-  flex: none;
-  font: 600 15px var(--ui-font-display);
+/* read-only values: label over value, no row chrome, so nothing here looks like a field */
+.adv-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  margin: 0;
+  padding: 18px 22px;
+}
+
+.adv-item dt {
+  font-size: 13px;
+  color: var(--ui-muted);
+}
+
+.adv-item dd {
+  margin: 4px 0 0;
+  font: 600 17px var(--ui-font-display);
   font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 1280px) {
+  .adv-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 .lat-card {
