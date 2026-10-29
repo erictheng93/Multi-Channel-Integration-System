@@ -76,9 +76,9 @@
         :resolved-today="stats?.resolvedToday || 0"
       />
 
-      <!-- Analytics Comparison Section -  LCP 優化：延遲加載 -->
+      <!-- Analytics Comparison Section -  LCP 優化：延遲加載。The comparison API is admin-only. -->
       <div
-        v-if="showAnalytics"
+        v-if="showAnalytics && isAdmin"
         class="analytics-section content-ready"
       >
         <div class="section-header">
@@ -96,9 +96,9 @@
           :refresh-interval="60000"
         />
       </div>
-      <!-- Analytics 加載佔位符 -->
+      <!-- Analytics 加載佔位符 (admins only, like the widget) -->
       <div
-        v-else
+        v-else-if="isAdmin"
         class="analytics-section analytics-placeholder"
       >
         <div class="section-header">

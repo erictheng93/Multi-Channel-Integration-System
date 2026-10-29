@@ -449,7 +449,8 @@ describe('Dashboard.vue', () => {
       expect(wrapper.find('.dashboard').exists()).toBe(true)
     })
 
-    it('應該延遲加載 Analytics 組件', async () => {
+    it('管理員：應該延遲加載 Analytics 組件', async () => {
+      authStore.currentAgent = { ...authStore.currentAgent!, role: 'admin' }
       const wrapper = mount(Dashboard, {
         global: {
           plugins: [pinia],
@@ -462,16 +463,29 @@ describe('Dashboard.vue', () => {
       await new Promise(resolve => setTimeout(resolve, 200))
       await nextTick()
 
-      // Analytics 應該一開始顯示佔位符
+      // 管理員：先顯示佔位符，之後換成實際內容
       const analyticsSection = wrapper.find('.analytics-section')
       expect(analyticsSection.exists()).toBe(true)
-
-      // 初始應該是佔位符
       const hasPlaceholder = analyticsSection.classes().includes('analytics-placeholder')
       const hasContent = analyticsSection.classes().includes('content-ready')
-
-      // 應該是佔位符或實際內容之一
       expect(hasPlaceholder || hasContent).toBe(true)
+    })
+
+    it('客服：不顯示 Analytics 區塊（比較 API 僅限管理員）', async () => {
+      const wrapper = mount(Dashboard, {
+        global: {
+          plugins: [pinia],
+          stubs: commonStubs
+        }
+      })
+
+      await nextTick()
+      await flushPromises()
+      await new Promise(resolve => setTimeout(resolve, 200))
+      await nextTick()
+
+      // 客服既不載入元件，也不會永遠停在「正在準備載入」佔位符
+      expect(wrapper.find('.analytics-section').exists()).toBe(false)
     })
 
     it('有數據時應該顯示對話列表', async () => {
