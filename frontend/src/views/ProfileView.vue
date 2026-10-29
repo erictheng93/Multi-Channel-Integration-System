@@ -10,7 +10,7 @@
       <!-- Page Header -->
       <UiPageHead
         title="個人設定"
-        subtitle="你可以自行修改顯示名稱與密碼；Email、角色與團隊由管理員管理。"
+        subtitle="修改顯示名稱與密碼，其餘由管理員管理"
       />
 
       <div class="ui-grid ui-cols-2 profile-grid">
@@ -80,66 +80,23 @@
               </span>
             </div>
 
-            <div class="ui-field">
-              <label>Email</label>
-              <div class="readonly-value">
-                <span class="readonly-text">{{ profile.email || '—' }}</span>
-                <span class="readonly-hint"><svg
-                  class="ico"
-                  viewBox="0 0 24 24"
-                ><rect
-                  x="4"
-                  y="11"
-                  width="16"
-                  height="9"
-                  rx="2"
-                /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></svg>由管理員管理</span>
-              </div>
-            </div>
-
-            <div class="ui-field">
-              <label>角色</label>
-              <div class="readonly-value">
-                <span class="ui-pill ui-pill-blue">{{ roleLabel }}</span>
-                <span class="readonly-hint"><svg
-                  class="ico"
-                  viewBox="0 0 24 24"
-                ><rect
-                  x="4"
-                  y="11"
-                  width="16"
-                  height="9"
-                  rx="2"
-                /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></svg>由管理員管理</span>
-              </div>
-            </div>
-
-            <div
-              v-if="teams.length > 0"
-              class="ui-field"
+            <p
+              class="admin-line"
+              data-testid="admin-managed"
             >
-              <label>團隊</label>
-              <div class="readonly-value">
-                <span class="team-chips">
-                  <span
-                    v-for="t in teams"
-                    :key="t.id"
-                    class="ui-pill"
-                    :class="t.isPrimary ? 'ui-pill-blue' : ''"
-                  >{{ t.name }}</span>
-                </span>
-                <span class="readonly-hint"><svg
-                  class="ico"
-                  viewBox="0 0 24 24"
-                ><rect
-                  x="4"
-                  y="11"
-                  width="16"
-                  height="9"
-                  rx="2"
-                /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></svg>由管理員管理</span>
-              </div>
-            </div>
+              <svg
+                class="ico"
+                viewBox="0 0 24 24"
+              ><rect
+                x="4"
+                y="11"
+                width="16"
+                height="9"
+                rx="2"
+              /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></svg>
+              <span class="admin-text">{{ adminSummary }}</span>
+              <span class="admin-tag">由管理員管理</span>
+            </p>
 
             <div class="form-actions">
               <button
@@ -185,18 +142,6 @@
             class="form"
             @submit.prevent="onChangePassword"
           >
-            <div class="notice">
-              <svg
-                class="ico"
-                viewBox="0 0 24 24"
-              ><circle
-                cx="12"
-                cy="12"
-                r="10"
-              /><path d="M12 16v-4M12 8h.01" /></svg>
-              修改密碼後，你會被自動登出，並需要用新密碼重新登入。
-            </div>
-
             <div class="ui-field">
               <label for="current-password">
                 目前密碼 <span class="required">*</span>
@@ -233,6 +178,10 @@
               >
                 {{ passwordErrors.currentPassword }}
               </span>
+              <span
+                v-else
+                class="ui-hint"
+              >用來確認是你本人操作</span>
             </div>
 
             <div class="ui-field">
@@ -284,6 +233,10 @@
               >
                 {{ passwordErrors.newPassword }}
               </span>
+              <span
+                v-else
+                class="ui-hint"
+              >至少 8 個字元，混合大小寫、數字與符號會更安全</span>
             </div>
 
             <div class="ui-field">
@@ -322,9 +275,16 @@
               >
                 {{ passwordErrors.confirmPassword }}
               </span>
+              <span
+                v-else
+                class="ui-hint"
+              >再輸入一次新密碼</span>
             </div>
 
             <div class="form-actions">
+              <p class="action-note">
+                修改後會自動登出，需用新密碼重新登入。
+              </p>
               <button
                 type="submit"
                 class="btn btn-primary"
@@ -366,9 +326,14 @@ const { showSuccess, showError } = useToast()
 const connection = useConnectionStatus(useWebSocketStore())
 const teams = computed(() => authStore.currentAgent?.teams ?? [])
 const initial = computed(() => (profile.displayName.trim().charAt(0) || '?').toUpperCase())
-const identitySub = computed(() => {
-  const primary = teams.value.find((t) => t.isPrimary) ?? teams.value[0]
-  return primary ? `${primary.name} · ${connection.value.label}` : connection.value.label
+// Avatar caption = presence only; the team lives in the one admin-managed summary line
+const identitySub = computed(() => connection.value.label)
+
+// Email, role and teams are admin-managed: one read-only line instead of three locked fields
+const adminSummary = computed(() => {
+  const parts = [profile.email || '—', roleLabel.value]
+  if (teams.value.length > 0) { parts.push(teams.value.map((t) => t.name).join('、')) }
+  return parts.join(' · ')
 })
 
 // 密碼顯示/隱藏（僅本地 UI 狀態）
@@ -613,8 +578,24 @@ watch(
 
 <style scoped>
 
+/* Equal-height cards: the action row sits at each card's foot */
 .profile-grid {
-  align-items: start;
+  align-items: stretch;
+}
+
+.profile-card {
+  display: flex;
+  flex-direction: column;
+}
+
+.profile-card .form {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
+
+.profile-card .form-actions {
+  margin-top: auto;
 }
 
 .ico {
@@ -709,57 +690,40 @@ watch(
   color: var(--ui-red-ink);
 }
 
-.readonly-value {
+/* One summary line for the admin-managed fields */
+.admin-line {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px 12px;
+  gap: 6px 8px;
   align-items: center;
-  justify-content: space-between;
-  min-height: 40px;
-  padding: 8px 14px;
+  margin: 0;
+  padding: 10px 14px;
   border-radius: var(--ui-r-control);
   background: var(--ui-surface-2);
-  box-shadow: inset 0 0 0 0.5px var(--ui-sep);
-  font-size: 14px;
+  font-size: 13px;
+  color: var(--ui-ink-2);
 }
 
-.readonly-text {
+.admin-line .ico {
+  flex: none;
+  color: var(--ui-muted);
+}
+
+.admin-text {
   min-width: 0;
   overflow-wrap: anywhere;
 }
 
-.readonly-hint {
-  display: inline-flex;
-  gap: 5px;
-  align-items: center;
+.admin-tag {
   margin-left: auto;
-  font-size: 13px;
   color: var(--ui-muted);
 }
 
-.team-chips {
-  display: inline-flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.notice {
-  display: flex;
-  gap: 8px;
-  align-items: flex-start;
-  padding: 12px 14px;
-  border-radius: var(--ui-r-control);
-  background: var(--ui-accent-soft);
-  color: var(--ui-accent);
+.action-note {
+  flex: 1;
+  margin: 0;
   font-size: 13px;
-  line-height: 1.45;
-}
-
-.notice .ico {
-  flex: none;
-  width: 16px;
-  height: 16px;
-  margin-top: 1px;
+  color: var(--ui-muted);
 }
 
 .pw {
@@ -835,13 +799,38 @@ watch(
 .form-actions {
   display: flex;
   gap: 8px;
+  align-items: center;
   justify-content: flex-end;
   padding-top: 4px;
 }
 
 @media (max-width: 768px) {
+  .admin-line {
+    display: block;
+    line-height: 1.6;
+  }
+
+  .admin-line .ico {
+    display: inline-block;
+    margin-right: 6px;
+    vertical-align: -2px;
+  }
+
+  .admin-tag {
+    display: block;
+    margin-left: 21px;
+  }
+
   .form {
     padding: 4px 16px 18px;
+  }
+
+  .form-actions {
+    flex-wrap: wrap;
+  }
+
+  .action-note {
+    flex-basis: 100%;
   }
 
   .form-actions .btn {
