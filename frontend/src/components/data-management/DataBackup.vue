@@ -173,62 +173,59 @@
         description="按「立即備份到雲端」建立第一份備份。"
       />
       <template v-else>
-        <section
-          v-for="group in groups"
-          :key="group.key"
-          class="day"
-        >
-          <h3 class="day-head">
-            {{ group.label }}<span>{{ group.items.length }} 份</span>
-          </h3>
-          <ul class="brow-list">
-            <li
-              v-for="item in group.items"
-              :key="item.key"
-              class="brow"
-            >
-              <span
-                class="tier-dot"
-                :class="tierTone(item.tier)"
-                aria-hidden="true"
-              />
-              <div class="brow-main">
-                <div class="brow-title">
-                  {{ itemLabel(item) }}
-                </div>
-                <div
-                  class="brow-file"
-                  :title="fileName(item.key)"
-                >
-                  {{ fileName(item.key) }}
-                </div>
-                <div class="brow-meta">
-                  {{ formatClock(item.uploaded) }} · {{ formatBytes(item.size) }}
-                </div>
-              </div>
-              <span class="brow-time">{{ formatClock(item.uploaded) }}</span>
-              <span class="brow-size">{{ formatBytes(item.size) }}</span>
-              <button
-                type="button"
-                class="btn btn-ghost btn-sm brow-dl"
-                :aria-label="`下載 ${itemLabel(item)}`"
-                :aria-busy="downloadingKey === item.key"
-                :disabled="downloadingKey === item.key"
-                @click="onDownload(item)"
+        <ul class="brow-list">
+          <li
+            v-for="row in rows"
+            :key="row.item.key"
+            class="brow"
+            :class="{ 'is-day-start': row.first }"
+          >
+            <span class="brow-date">
+              <template v-if="row.first">
+                <span class="brow-day">{{ row.label }}</span>
+                <span
+                  v-if="row.count > 1"
+                  class="brow-count"
+                >{{ row.count }} 份</span>
+              </template>
+            </span>
+            <span
+              class="ui-pill brow-type"
+              :class="tierPill(row.item.tier)"
+            >{{ tierLabel(row.item.tier) }}</span>
+            <div class="brow-main">
+              <div
+                class="brow-file"
+                :title="fileName(row.item.key)"
               >
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  aria-hidden="true"
-                ><path d="M12 4v11M7 11l5 5 5-5M5 20h14" /></svg>
-              </button>
-            </li>
-          </ul>
-        </section>
+                {{ fileName(row.item.key) }}
+              </div>
+              <div class="brow-meta">
+                {{ row.label }} · {{ formatClock(row.item.uploaded) }} · {{ formatBytes(row.item.size) }}
+              </div>
+            </div>
+            <span class="brow-time">{{ formatClock(row.item.uploaded) }}</span>
+            <span class="brow-size">{{ formatBytes(row.item.size) }}</span>
+            <button
+              type="button"
+              class="btn btn-ghost btn-sm brow-dl"
+              :aria-label="`下載 ${itemLabel(row.item)}`"
+              :aria-busy="downloadingKey === row.item.key"
+              :disabled="downloadingKey === row.item.key"
+              @click="onDownload(row.item)"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              ><path d="M12 4v11M7 11l5 5 5-5M5 20h14" /></svg>
+            </button>
+          </li>
+        </ul>
         <div
           v-if="visibleItems.length > shownItems.length"
           class="more"
@@ -285,10 +282,11 @@ const RETENTION_LABELS: Record<string, string> = {
   assignments: '指派備份保留'
 }
 
-interface BackupGroup {
-  key: string
+interface BackupRow {
+  item: BackupItem
+  first: boolean
   label: string
-  items: BackupItem[]
+  count: number
 }
 
 function tierRank(tier: string): number {
@@ -299,17 +297,17 @@ function tierRank(tier: string): number {
 const tierLabel = (t: string) => TIER_LABELS[t] || t
 const fileName = (key: string) => key.split('/').pop() || key
 
-function tierTone(tier: string): string {
+function tierPill(tier: string): string {
   if (tier === 'manual') {
-    return 'blue'
+    return 'ui-pill-blue'
   }
   if (tier === 'monthly') {
-    return 'orange'
+    return 'ui-pill-orange'
   }
   if (tier === 'members' || tier === 'tags' || tier === 'assignments') {
-    return 'green'
+    return 'ui-pill-green'
   }
-  return 'grey'
+  return ''
 }
 
 const policy = computed(() => data.value?.policy ?? null)
@@ -383,16 +381,20 @@ const visibleItems = computed(() => {
 
 const shownItems = computed(() => visibleItems.value.slice(0, showCount.value))
 
-const groups = computed<BackupGroup[]>(() => {
-  const out: BackupGroup[] = []
+/** Flat, dense rows: the date prints once at the start of each day run, with a count only when the day has more than one file. */
+const rows = computed<BackupRow[]>(() => {
+  const out: BackupRow[] = []
+  const counts = new Map<string, number>()
   for (const item of shownItems.value) {
     const key = dayKey(new Date(item.uploaded))
-    const last = out[out.length - 1]
-    if (last && last.key === key) {
-      last.items.push(item)
-    } else {
-      out.push({ key, label: dayLabel(new Date(item.uploaded)), items: [item] })
-    }
+    counts.set(key, (counts.get(key) ?? 0) + 1)
+  }
+  let prev = ''
+  for (const item of shownItems.value) {
+    const d = new Date(item.uploaded)
+    const key = dayKey(d)
+    out.push({ item, first: key !== prev, label: dayLabel(d), count: counts.get(key) ?? 1 })
+    prev = key
   }
   return out
 })
@@ -402,10 +404,10 @@ function dayLabel(d: Date): string {
   const weekday = new Intl.DateTimeFormat('zh-TW', { timeZone: TAIPEI, weekday: 'short' }).format(d)
   const today = new Date()
   if (dayKey(d) === dayKey(today)) {
-    return `今天 · ${md}`
+    return `今天`
   }
   if (dayKey(d) === dayKey(new Date(today.getTime() - 24 * 3600 * 1000))) {
-    return `昨天 · ${md}`
+    return `昨天`
   }
   return `${md} ${weekday}`
 }
@@ -646,43 +648,25 @@ onMounted(load)
   color: var(--ui-faint);
 }
 
-.day-head {
-  position: sticky;
-  top: 0;
-  z-index: 2;
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
-  margin: 0;
-  padding: 8px 22px;
-  background: var(--ui-glass);
-  backdrop-filter: saturate(180%) blur(16px);
-  -webkit-backdrop-filter: saturate(180%) blur(16px);
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--ui-ink-2);
-  box-shadow: inset 0 0.5px 0 var(--ui-sep), inset 0 -0.5px 0 var(--ui-sep);
-}
-
-.day-head span {
-  font-weight: 500;
-  color: var(--ui-muted);
-}
-
 .brow-list {
   margin: 0;
-  padding: 0;
+  padding: 0 0 6px;
   list-style: none;
 }
 
 .brow {
   position: relative;
   display: grid;
-  grid-template-columns: 10px minmax(0, 1fr) 64px 84px 40px;
+  grid-template-columns: 92px 56px minmax(0, 1fr) 52px 76px 40px;
   gap: 14px;
   align-items: center;
-  min-height: 60px;
-  padding: 8px 22px;
+  min-height: 48px;
+  padding: 6px 22px;
+  transition: background var(--ui-dur) var(--ui-ease);
+}
+
+.brow:hover {
+  background: color-mix(in srgb, var(--ui-fill) 45%, transparent);
 }
 
 .brow + .brow::before {
@@ -690,39 +674,44 @@ onMounted(load)
   position: absolute;
   top: 0;
   right: 22px;
-  left: 46px;
+  left: 22px;
   height: 0.5px;
   background: var(--ui-sep);
 }
 
-.tier-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: var(--ui-faint);
+/* a new day gets a firmer break so the date column reads as a timeline */
+.brow.is-day-start:not(:first-child)::before {
+  background: var(--ui-fill-strong);
 }
 
-.tier-dot.blue {
-  background: var(--ui-accent);
+.brow-date {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
 }
 
-.tier-dot.orange {
-  background: var(--ui-orange);
+.brow-day {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.25;
+  color: var(--ui-ink);
 }
 
-.tier-dot.green {
-  background: var(--ui-green);
+.brow-count {
+  font-size: 12px;
+  line-height: 1.3;
+  color: var(--ui-muted);
 }
 
-.brow-title {
-  font-size: 14.5px;
-  font-weight: 500;
+.brow-type {
+  justify-content: center;
+  width: 100%;
 }
 
 .brow-file {
   overflow: hidden;
-  font: 12px / 1.4 var(--ui-font-mono);
-  color: var(--ui-muted);
+  font: 13px / 1.4 var(--ui-font-mono);
+  color: var(--ui-ink-2);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -768,28 +757,31 @@ onMounted(load)
   }
 
   .chips,
-  .policy-line,
-  .day-head {
+  .policy-line {
     padding-right: 16px;
     padding-left: 16px;
   }
 
-  /* Two-line rows: what, then when and how big; the file name stays on desktop */
+  /* Two-line rows: type and file name, then the day, time and size; the date column folds into line two */
   .brow {
-    grid-template-columns: 10px minmax(0, 1fr) 40px;
-    gap: 12px;
+    grid-template-columns: 52px minmax(0, 1fr) 36px;
+    gap: 10px;
     padding: 8px 12px 8px 16px;
   }
 
   .brow + .brow::before {
     right: 16px;
-    left: 38px;
+    left: 16px;
   }
 
-  .brow-file,
+  .brow-date,
   .brow-time,
   .brow-size {
     display: none;
+  }
+
+  .brow-file {
+    font-size: 12px;
   }
 
   .brow-meta {
