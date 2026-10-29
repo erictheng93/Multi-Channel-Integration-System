@@ -1,51 +1,59 @@
 <template>
-  <div class="dashboard-header">
-    <div class="header-content">
-      <h1 class="dashboard-title">
-        報表儀表板
-      </h1>
-      <p class="dashboard-subtitle">
-        管理和監控您的報表生成與使用情況
-      </p>
+  <section class="header-wrap">
+    <div class="ui-page-head">
+      <div>
+        <div class="ui-eyebrow">
+          報表
+        </div>
+        <h1 class="ui-page-title">
+          報表總覽
+        </h1>
+        <p
+          v-if="subtitle"
+          class="ui-page-sub"
+        >
+          {{ subtitle }}
+        </p>
+      </div>
+      <div class="ui-page-actions">
+        <button
+          class="btn btn-secondary"
+          :disabled="loading"
+          @click="$emit('refresh')"
+        >
+          {{ loading ? '載入中...' : '重新整理' }}
+        </button>
+        <button
+          class="btn btn-primary"
+          @click="$emit('create-report')"
+        >
+          建立報表
+        </button>
+      </div>
     </div>
-    <div class="header-actions">
-      <button
-        class="btn btn-secondary"
-        :disabled="loading"
-        @click="$emit('refresh')"
-      >
-        <span v-if="loading"> 載入中...</span>
-        <span v-else> 重新整理</span>
-      </button>
-      <button
-        class="btn btn-primary"
-        @click="$emit('create-report')"
-      >
-        建立報表
-      </button>
-    </div>
-  </div>
+    <ReportsNav />
+  </section>
 </template>
 
 <script setup lang="ts">
 /**
  * DashboardHeader Component
  *
- * 报表仪表板页面头部
- *
  * @emits refresh - 用户点击刷新按钮
  * @emits create-report - 用户点击创建报表按钮
  */
+import ReportsNav from '../ReportsNav.vue'
 
 export interface DashboardHeaderProps {
-  /**
-   * 是否正在加载
-   */
+  /** 是否正在加载 */
   loading?: boolean
+  /** One-line summary built from the list summary */
+  subtitle?: string
 }
 
 withDefaults(defineProps<DashboardHeaderProps>(), {
-  loading: false
+  loading: false,
+  subtitle: ''
 })
 
 defineEmits<{
@@ -55,51 +63,9 @@ defineEmits<{
 </script>
 
 <style scoped>
-.dashboard-header {
+.header-wrap {
   display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 2rem;
-  padding-bottom: 1rem;
-  border-bottom: 2px solid #e5e7eb;
-}
-
-.header-content {
-  flex: 1;
-}
-
-.dashboard-title {
-  font-size: 2.5rem;
-  font-weight: bold;
-  color: #1f2937;
-  margin: 0 0 0.5rem 0;
-}
-
-.dashboard-subtitle {
-  color: #6b7280;
-  font-size: 1.2rem;
-  margin: 0;
-}
-
-.header-actions {
-  display: flex;
-  gap: 1rem;
-}
-
-@media (max-width: 768px) {
-  .dashboard-header {
-    flex-direction: column;
-    gap: 1rem;
-  }
-
-  .dashboard-title {
-    font-size: 1.75rem;
-  }
-
-  .header-actions {
-    width: 100%;
-    flex-wrap: wrap;
-    justify-content: flex-end;
-  }
+  flex-direction: column;
+  gap: 14px;
 }
 </style>

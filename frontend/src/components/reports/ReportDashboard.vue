@@ -3,6 +3,7 @@
     <!-- 頁面標題和快速動作 -->
     <DashboardHeader
       :loading="loading"
+      :subtitle="subtitle"
       @refresh="refreshData"
       @create-report="handleCreateReport"
     />
@@ -35,6 +36,8 @@
           :loading="loading"
           :view-mode="viewMode"
           :sort-order="sortOrder"
+          :total="pagination.total"
+          :get-report-type-label="getReportTypeLabel"
           :get-type-badge-class="getTypeBadgeClass"
           :get-report-type-icon="getReportTypeIcon"
           :get-status-icon="getStatusIcon"
@@ -51,6 +54,7 @@
           @create-report="handleCreateReport"
           @update:view-mode="viewMode = $event"
           @update:sort-order="sortOrder = $event"
+          @export-all="exportAllReports"
         />
 
         <!-- 分頁控制 -->
@@ -64,17 +68,6 @@
       <!-- 右側：統計圖表和活動 -->
       <div class="content-right">
         <SidebarWidgets>
-          <!-- 快速操作小部件 -->
-          <template #quick-actions>
-            <QuickActionsWidget
-              :loading="loading"
-              :total-reports="stats.totalReports"
-              @create-report="handleCreateReport"
-              @refresh="refreshData"
-              @export-all="exportAllReports"
-            />
-          </template>
-
           <!-- 熱門報表類型小部件 -->
           <template #popular-types>
             <PopularTypesWidget
@@ -124,7 +117,6 @@ import FiltersSection from './dashboard/FiltersSection.vue'
 import ReportsSection from './dashboard/ReportsSection.vue'
 import PaginationControls from '@/components/ui/PaginationControls.vue'
 import SidebarWidgets from './dashboard/SidebarWidgets.vue'
-import QuickActionsWidget from './dashboard/QuickActionsWidget.vue'
 import PopularTypesWidget from './dashboard/PopularTypesWidget.vue'
 import RecentActivityWidget from './dashboard/RecentActivityWidget.vue'
 import ConfirmDialog from '@/components/ui/ConfirmDialog.vue'
@@ -215,27 +207,26 @@ const reportToDelete = ref<ReportBase | null>(null)
 // ========================================
 
 /**
- * 热门报表类型数据（用于 PopularTypesWidget）
+ * 熱門報表類型（近 30 天統計，來自 /reports/stats）
  */
-const popularTypes = computed<PopularType[]>(() => {
-  // 统计每种类型的报表数量
-  const typeCounts: Record<string, number> = {}
-  reports.value.forEach((report) => {
-    typeCounts[report.type] = (typeCounts[report.type] || 0) + 1
-  })
+const popularTypes = computed<PopularType[]>(() =>
+  stats.popularTypes.map(item => ({
+    type: item.type,
+    label: item.label,
+    count: item.count,
+    percentage: item.percentage
+  }))
+)
 
-  // 转换为数组并排序
-  const types = Object.entries(typeCounts)
-    .map(([type, count]) => ({
-      type,
-      label: getReportTypeLabel(type as ReportType),
-      count,
-      percentage: stats.totalReports > 0 ? Math.round((count / stats.totalReports) * 100) : 0
-    }))
-    .sort((a, b) => b.count - a.count)
-    .slice(0, 5) // 只显示前5个
-
-  return types
+/**
+ * One line under the title, from the list summary only
+ */
+const subtitle = computed(() => {
+  if (stats.totalReports === 0) { return '' }
+  const parts = [`已產生 ${stats.totalReports} 份報表`]
+  if (stats.failedReports > 0) { parts.push(`其中 ${stats.failedReports} 份失敗`) }
+  if (stats.pendingReports > 0) { parts.push(`${stats.pendingReports} 份正在處理`) }
+  return `${parts.join('，')}。`
 })
 
 /**
@@ -296,22 +287,27 @@ function handleFilterByType(type: string) {
 
 <style scoped>
 .report-dashboard {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
   width: 100%;
-  max-width: 1600px;
+  max-width: 1280px;
   margin: 0 auto;
-  padding: 2rem;
+  padding: 20px;
 }
 
 .main-content {
   display: grid;
   grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
-  gap: 2rem;
+  gap: 16px;
+  align-items: start;
 }
 
 .content-left {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 16px;
+  min-width: 0;
 }
 
 .content-right {
@@ -319,20 +315,15 @@ function handleFilterByType(type: string) {
   flex-direction: column;
 }
 
-/* 響應式設計 */
 @media (max-width: 1280px) {
   .main-content {
     grid-template-columns: minmax(0, 1fr);
-  }
-
-  .content-right {
-    order: -1;
   }
 }
 
 @media (max-width: 768px) {
   .report-dashboard {
-    padding: 1rem;
+    padding: 16px;
   }
 }
 </style>
