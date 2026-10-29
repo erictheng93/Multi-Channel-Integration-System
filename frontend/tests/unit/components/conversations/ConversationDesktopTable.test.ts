@@ -1,17 +1,9 @@
 /**
  * ConversationDesktopTable.vue Unit Tests
  *
- * Tests:
- * - Table structure rendering (thead, tbody, columns)
- * - Row rendering per conversation
- * - Customer name fallback logic
- * - Platform badge text and class
- * - Status badge text and class
- * - Last message display (with emoji processor mock)
- * - Assigned agent / team display
- * - Timestamp formatting
- * - Click emits 'select' with conversation id
- * - Empty list rendering
+ * Markup follows the approved list design. Two terms stay separate:
+ * - 未讀 (personal): numeric badge next to the name, from unreadCount
+ * - 待回覆 (team-wide): pill when the last message is the customer's on an open conversation (no wait minutes)
  */
 
 import { describe, it, expect, vi } from 'vitest'
@@ -40,6 +32,20 @@ function createConversation(overrides: Partial<Conversation> = {}): Conversation
   } as Conversation
 }
 
+function lastMessage(senderType: 'customer' | 'agent', content = 'Hello World'): Conversation['lastMessage'] {
+  return {
+    id: 'msg-1',
+    conversationId: 'conv-1',
+    senderType,
+    senderId: 'user-1',
+    content,
+    messageType: 'text',
+    platform: 'line',
+    timestamp: now.toISOString(),
+    createdAt: now.toISOString()
+  } as Conversation['lastMessage']
+}
+
 function mountTable(conversations: Conversation[]) {
   return mount(ConversationDesktopTable, {
     props: { conversations },
@@ -56,15 +62,18 @@ describe('ConversationDesktopTable.vue', () => {
     it('should render a table with correct column headers', () => {
       const wrapper = mountTable([])
       const headers = wrapper.findAll('th')
-      expect(headers).toHaveLength(7)
-      // 讀取狀態欄表頭視覺留白，只有螢幕閱讀器文字
-      expect(headers[0].find('.sr-only').text()).toBe('讀取狀態')
-      expect(headers[1].text()).toBe('客戶')
-      expect(headers[2].text()).toBe('平台')
+      expect(headers).toHaveLength(6)
+      expect(headers[0].text()).toBe('客戶')
+      expect(headers[1].text()).toBe('最後訊息')
+      expect(headers[2].text()).toContain('回覆狀態')
       expect(headers[3].text()).toBe('狀態')
-      expect(headers[4].text()).toBe('最後訊息')
-      expect(headers[5].text()).toBe('負責人')
-      expect(headers[6].text()).toBe('更新時間')
+      expect(headers[4].text()).toBe('負責人')
+      expect(headers[5].text()).toBe('更新')
+    })
+
+    it('explains 未讀 and 待回覆 on the reply-status header', () => {
+      const wrapper = mountTable([])
+      expect(wrapper.findAll('th')[2].attributes('title')).toBe('未讀＝你尚未開啟；待回覆＝尚無客服回覆')
     })
 
     it('should render no rows when conversations is empty', () => {
@@ -75,225 +84,162 @@ describe('ConversationDesktopTable.vue', () => {
 
   describe('Row rendering', () => {
     it('should render one row per conversation', () => {
-      const conversations = [
+      const wrapper = mountTable([
         createConversation({ id: 'c1' }),
         createConversation({ id: 'c2' }),
         createConversation({ id: 'c3' })
-      ]
-      const wrapper = mountTable(conversations)
+      ])
       expect(wrapper.findAll('.conversation-row')).toHaveLength(3)
-    })
-
-    it('should set animation delay based on index', () => {
-      const conversations = [
-        createConversation({ id: 'c1' }),
-        createConversation({ id: 'c2' })
-      ]
-      const wrapper = mountTable(conversations)
-      const rows = wrapper.findAll('.conversation-row')
-      expect(rows[0].attributes('style')).toContain('animation-delay: 0ms')
-      expect(rows[1].attributes('style')).toContain('animation-delay: 50ms')
     })
   })
 
   describe('Customer name display', () => {
     it('should display customer.name when available', () => {
       const conv = createConversation({
-        customer: {
-          id: 'c1',
-          name: 'Alice',
-          platform: 'line',
-          platformUserId: 'line-1',
-          createdAt: now.toISOString()
-        }
+        customer: { id: 'c1', name: 'Alice', platform: 'line', platformUserId: 'line-1', createdAt: now.toISOString() }
       })
-      const wrapper = mountTable([conv])
-      expect(wrapper.find('.customer-name').text()).toBe('Alice')
+      expect(mountTable([conv]).find('.customer-name').text()).toBe('Alice')
     })
 
     it('should fall back to user.name', () => {
       const conv = createConversation({
-        user: {
-          id: 'u1',
-          name: 'Bob',
-          platform: 'facebook',
-          platformUserId: 'fb-1',
-          createdAt: now.toISOString()
-        }
+        user: { id: 'u1', name: 'Bob', platform: 'facebook', platformUserId: 'fb-1', createdAt: now.toISOString() }
       })
-      const wrapper = mountTable([conv])
-      expect(wrapper.find('.customer-name').text()).toBe('Bob')
+      expect(mountTable([conv]).find('.customer-name').text()).toBe('Bob')
     })
 
     it('should display "未知用戶" when no customer or user', () => {
-      const conv = createConversation()
-      const wrapper = mountTable([conv])
-      expect(wrapper.find('.customer-name').text()).toBe('未知用戶')
+      expect(mountTable([createConversation()]).find('.customer-name').text()).toBe('未知用戶')
     })
 
-    it('should display userId in customer-id cell', () => {
-      const conv = createConversation({ userId: 'uid-42' })
-      const wrapper = mountTable([conv])
+    it('should display platform and userId in the customer-id line', () => {
+      const wrapper = mountTable([createConversation({ userId: 'uid-42', platform: 'facebook' })])
+      expect(wrapper.find('.customer-id').text()).toContain('Messenger')
       expect(wrapper.find('.customer-id').text()).toContain('uid-42')
-    })
-  })
-
-  describe('Platform badge', () => {
-    it.each([
-      ['line', 'LINE'],
-      ['facebook', 'Facebook'],
-      ['instagram', 'Instagram'],
-      ['whatsapp', 'WhatsApp']
-    ])('should display "%s" as "%s"', (platform, expected) => {
-      const conv = createConversation({ platform: platform as Conversation['platform'] })
-      const wrapper = mountTable([conv])
-      const badge = wrapper.find('.platform-badge')
-      expect(badge.text()).toBe(expected)
-      expect(badge.classes()).toContain(platform)
     })
 
     it('should default to LINE when no platform', () => {
-      const conv = createConversation()
-      // No platform set, no user.platform
-      const wrapper = mountTable([conv])
-      expect(wrapper.find('.platform-badge').text()).toBe('LINE')
+      expect(mountTable([createConversation()]).find('.customer-id').text()).toContain('LINE')
     })
   })
 
-  describe('Status badge', () => {
-    const statusCases: Array<[Conversation['status'], string]> = [
-      ['active', '進行中'],
-      ['assigned', '已指派'],
-      ['pending', '待處理'],
-      ['in-progress', '處理中'],
-      ['waiting', '等待中']
-    ]
+  describe('Status pill', () => {
+    it('closed -> 已結案', () => {
+      expect(mountTable([createConversation({ status: 'closed' })]).find('.status-cell .ui-pill').text()).toBe('已結案')
+    })
 
-    it.each(statusCases)('should display status "%s" as "%s"', (status, expected) => {
-      const conv = createConversation({ status })
-      const wrapper = mountTable([conv])
-      const badge = wrapper.find('.status-badge')
-      expect(badge.text()).toBe(expected)
-      expect(badge.classes()).toContain(status)
+    it('assigned to a team -> 進行中', () => {
+      const wrapper = mountTable([createConversation({ assignedTeamId: 1, assignedTeam: { id: 1, name: 'A' } })])
+      expect(wrapper.find('.status-cell .ui-pill').text()).toBe('進行中')
+    })
+
+    it('not assigned -> 待處理', () => {
+      expect(mountTable([createConversation()]).find('.status-cell .ui-pill').text()).toBe('待處理')
     })
   })
 
   describe('Last message', () => {
     it('should display "暫無訊息" when no lastMessage', () => {
-      const conv = createConversation()
-      const wrapper = mountTable([conv])
-      expect(wrapper.find('.last-message').text()).toBe('暫無訊息')
+      expect(mountTable([createConversation()]).find('.last-message').text()).toBe('暫無訊息')
     })
 
     it('should display message content when lastMessage exists', () => {
-      const conv = createConversation({
-        lastMessage: {
-          id: 'msg-1',
-          conversationId: 'conv-1',
-          senderType: 'customer',
-          senderId: 'user-1',
-          content: 'Hello World',
-          messageType: 'text',
-          platform: 'line',
-          timestamp: now.toISOString(),
-          createdAt: now.toISOString()
-        }
-      })
-      const wrapper = mountTable([conv])
+      const wrapper = mountTable([createConversation({ lastMessage: lastMessage('customer') })])
       expect(wrapper.find('.last-message').text()).toBe('Hello World')
+    })
+
+    it('prefixes agent messages with 你：and mutes them', () => {
+      const wrapper = mountTable([createConversation({ lastMessage: lastMessage('agent', 'Done') })])
+      expect(wrapper.find('.last-message').text()).toMatch(/^你：\s*Done$/)
+      expect(wrapper.find('.last-message').classes()).toContain('from-agent')
     })
   })
 
-  describe('Assigned agent', () => {
+  describe('待回覆 (team-wide) pill', () => {
+    it('shows 待回覆 without minutes when the customer wrote last on an open conversation', () => {
+      const wrapper = mountTable([createConversation({ lastMessage: lastMessage('customer'), oldestUnreadAt: now.toISOString() })])
+      const cell = wrapper.find('.reply-cell')
+      expect(cell.text()).toBe('待回覆')
+      expect(cell.text()).not.toMatch(/\d/)
+    })
+
+    it('shows 已回覆 when an agent replied last', () => {
+      const wrapper = mountTable([createConversation({ lastMessage: lastMessage('agent') })])
+      expect(wrapper.find('.reply-cell').text()).toBe('已回覆')
+    })
+
+    it('shows neither on a closed conversation', () => {
+      const wrapper = mountTable([createConversation({ status: 'closed', lastMessage: lastMessage('customer') })])
+      expect(wrapper.find('.reply-cell').text()).toBe('')
+    })
+
+    it('shows the free-reply countdown only while the window is open', () => {
+      const open = mountTable([createConversation({ replyWindowExpiresAt: Date.now() + 30_000 })])
+      expect(open.find('.free-pill').text()).toMatch(/^免費回覆 \d+ 秒$/)
+      const past = mountTable([createConversation({ replyWindowExpiresAt: Date.now() - 1000 })])
+      expect(past.find('.free-pill').exists()).toBe(false)
+    })
+  })
+
+  describe('Assigned team', () => {
     it('should display "未指派" when no assignedTeam', () => {
-      const conv = createConversation()
-      const wrapper = mountTable([conv])
-      expect(wrapper.find('.assigned-agent').text()).toBe('未指派')
+      expect(mountTable([createConversation()]).find('.unassigned').text()).toBe('未指派')
     })
 
     it('should display team name when assignedTeam exists', () => {
-      const conv = createConversation({
-        assignedTeam: { id: 1, name: 'Support Team' }
-      })
-      const wrapper = mountTable([conv])
-      expect(wrapper.find('.assigned-agent').text()).toContain('Support Team')
+      const wrapper = mountTable([createConversation({ assignedTeam: { id: 1, name: 'Support Team' } })])
+      expect(wrapper.find('.agent-cell').text()).toContain('Support Team')
     })
   })
 
   describe('Timestamp', () => {
-    it('should format updatedAt as locale string', () => {
-      const conv = createConversation({ updatedAt: now.toISOString() })
-      const wrapper = mountTable([conv])
-      const timestamp = wrapper.find('.timestamp').text()
-      // The formatted string should contain date components
-      expect(timestamp).toBeTruthy()
-      expect(timestamp.length).toBeGreaterThan(0)
+    it('shows a relative time with the full time as tooltip', () => {
+      const wrapper = mountTable([createConversation({ updatedAt: new Date(Date.now() - 5 * 60_000).toISOString() })])
+      expect(wrapper.find('.time-cell').text()).toBe('5 分鐘前')
+      expect(wrapper.find('.time-cell').attributes('title')).toBeTruthy()
     })
   })
 
   describe('Select emit', () => {
     it('should emit "select" with conversation id on row click', async () => {
-      const conv = createConversation({ id: 'conv-42' })
-      const wrapper = mountTable([conv])
+      const wrapper = mountTable([createConversation({ id: 'conv-42' })])
       await wrapper.find('.conversation-row').trigger('click')
-      expect(wrapper.emitted('select')).toBeTruthy()
       expect(wrapper.emitted('select')![0]).toEqual(['conv-42'])
     })
 
     it('should emit correct id for each row', async () => {
-      const conversations = [
-        createConversation({ id: 'c1' }),
-        createConversation({ id: 'c2' })
-      ]
-      const wrapper = mountTable(conversations)
-      const rows = wrapper.findAll('.conversation-row')
-
-      await rows[1].trigger('click')
+      const wrapper = mountTable([createConversation({ id: 'c1' }), createConversation({ id: 'c2' })])
+      await wrapper.findAll('.conversation-row')[1].trigger('click')
       expect(wrapper.emitted('select')![0]).toEqual(['c2'])
     })
   })
 
-  describe('Unread indicator', () => {
-    it('should show a red 未讀 badge with the count when unreadCount > 1', () => {
-      const wrapper = mountTable([createConversation({ unreadCount: 3 })])
-      const badge = wrapper.find('.read-badge')
-      expect(badge.classes()).toContain('unread')
-      expect(badge.text()).toBe('未讀 3')
+  describe('未讀 (personal) indicator', () => {
+    it('shows a numeric unread badge with the definition as tooltip', () => {
+      const badge = mountTable([createConversation({ unreadCount: 3 })]).find('.unread-badge')
+      expect(badge.text()).toBe('3')
+      expect(badge.attributes('title')).toBe('未讀＝你尚未開啟')
     })
 
-    it('should show 已讀 when there is nothing unread', () => {
-      const wrapper = mountTable([createConversation({ unreadCount: 0 })])
-      expect(wrapper.find('.read-badge').text()).toBe('已讀')
+    it('shows no badge when there is nothing unread', () => {
+      expect(mountTable([createConversation({ unreadCount: 0 })]).find('.unread-badge').exists()).toBe(false)
     })
 
-    it('should show a muted 結案 badge instead of 已讀 for closed conversations', () => {
-      const wrapper = mountTable([createConversation({ unreadCount: 0, status: 'closed' })])
-      const badge = wrapper.find('.read-badge')
-      expect(badge.classes()).toContain('closed')
-      expect(badge.text()).toBe('結案')
-    })
-
-    it('should show 結案, not 未讀, on a closed conversation even with a stale unread count', () => {
-      const wrapper = mountTable([createConversation({ unreadCount: 1, status: 'closed' })])
-      expect(wrapper.find('.read-badge').text()).toBe('結案')
+    it('shows no badge on a closed conversation even with a stale unread count', () => {
+      expect(mountTable([createConversation({ unreadCount: 1, status: 'closed' })]).find('.unread-badge').exists()).toBe(false)
     })
 
     it('should add has-unread class to row when unread', () => {
-      const conv = createConversation({ unreadCount: 5 })
-      const wrapper = mountTable([conv])
-      expect(wrapper.find('.conversation-row').classes()).toContain('has-unread')
+      expect(mountTable([createConversation({ unreadCount: 5 })]).find('.conversation-row').classes()).toContain('has-unread')
     })
 
     it('should not add has-unread class when read', () => {
-      const conv = createConversation({ unreadCount: 0 })
-      const wrapper = mountTable([conv])
-      expect(wrapper.find('.conversation-row').classes()).not.toContain('has-unread')
+      expect(mountTable([createConversation({ unreadCount: 0 })]).find('.conversation-row').classes()).not.toContain('has-unread')
     })
 
     it('should label the badge with the unread count for accessibility', () => {
-      const conv = createConversation({ unreadCount: 2 })
-      const wrapper = mountTable([conv])
-      expect(wrapper.find('.read-badge').attributes('aria-label')).toBe('未讀 2 則訊息')
+      const badge = mountTable([createConversation({ unreadCount: 2 })]).find('.unread-badge')
+      expect(badge.attributes('aria-label')).toBe('未讀 2 則訊息（未讀＝你尚未開啟）')
     })
   })
 
@@ -310,14 +256,14 @@ describe('ConversationDesktopTable.vue', () => {
     it('renders no checkboxes outside selection mode', () => {
       const wrapper = mountTable(list)
       expect(wrapper.findAll('input[type="checkbox"]')).toHaveLength(0)
-      expect(wrapper.findAll('th')).toHaveLength(7)
+      expect(wrapper.findAll('th')).toHaveLength(6)
     })
 
     it('renders a checkbox column (header + one per row) in selection mode', () => {
       const wrapper = mountSelecting(['c1'])
       const boxes = wrapper.findAll('input[type="checkbox"]')
       expect(boxes).toHaveLength(3)
-      expect(wrapper.findAll('th')).toHaveLength(8)
+      expect(wrapper.findAll('th')).toHaveLength(7)
       expect(boxes[0].attributes('aria-label')).toBe('全選本頁對話')
       expect((boxes[1].element as HTMLInputElement).checked).toBe(true)
       expect((boxes[2].element as HTMLInputElement).checked).toBe(false)

@@ -83,15 +83,7 @@ vi.mock('@/components/notification/NotificationHeader.vue', () => ({
   default: {
     name: 'NotificationHeader',
     template: '<div class="notification-header"><slot /></div>',
-    props: ['hasUnread', 'markingAllRead']
-  }
-}))
-
-vi.mock('@/components/notification/NotificationStats.vue', () => ({
-  default: {
-    name: 'NotificationStats',
-    template: '<div class="notification-stats"><slot /></div>',
-    props: ['stats']
+    props: ['hasUnread', 'markingAllRead', 'stats']
   }
 }))
 
@@ -163,7 +155,9 @@ describe('NotificationList Integration', () => {
         global: {
           plugins: [router],
           stubs: {
-            Teleport: true
+            Teleport: true,
+            // The page renders inside the app shell; the shell itself is not under test here
+            AppLayout: { template: '<div><slot /></div>' }
           }
         }
       })
@@ -176,7 +170,9 @@ describe('NotificationList Integration', () => {
         global: {
           plugins: [router],
           stubs: {
-            Teleport: true
+            Teleport: true,
+            // The page renders inside the app shell; the shell itself is not under test here
+            AppLayout: { template: '<div><slot /></div>' }
           }
         }
       })
@@ -194,7 +190,9 @@ describe('NotificationList Integration', () => {
         global: {
           plugins: [router],
           stubs: {
-            Teleport: true
+            Teleport: true,
+            // The page renders inside the app shell; the shell itself is not under test here
+            AppLayout: { template: '<div><slot /></div>' }
           }
         }
       })
@@ -215,7 +213,9 @@ describe('NotificationList Integration', () => {
         global: {
           plugins: [router],
           stubs: {
-            Teleport: true
+            Teleport: true,
+            // The page renders inside the app shell; the shell itself is not under test here
+            AppLayout: { template: '<div><slot /></div>' }
           }
         }
       })
@@ -241,7 +241,9 @@ describe('NotificationList Integration', () => {
         global: {
           plugins: [router],
           stubs: {
-            Teleport: true
+            Teleport: true,
+            // The page renders inside the app shell; the shell itself is not under test here
+            AppLayout: { template: '<div><slot /></div>' }
           }
         }
       })
@@ -271,7 +273,9 @@ describe('NotificationList Integration', () => {
         global: {
           plugins: [router],
           stubs: {
-            Teleport: true
+            Teleport: true,
+            // The page renders inside the app shell; the shell itself is not under test here
+            AppLayout: { template: '<div><slot /></div>' }
           }
         }
       })
@@ -289,7 +293,9 @@ describe('NotificationList Integration', () => {
         global: {
           plugins: [router],
           stubs: {
-            Teleport: true
+            Teleport: true,
+            // The page renders inside the app shell; the shell itself is not under test here
+            AppLayout: { template: '<div><slot /></div>' }
           }
         }
       })
@@ -297,7 +303,6 @@ describe('NotificationList Integration', () => {
       await wrapper.vm.$nextTick()
 
       expect(wrapper.findComponent({ name: 'NotificationHeader' }).exists()).toBe(true)
-      expect(wrapper.findComponent({ name: 'NotificationStats' }).exists()).toBe(true)
       expect(wrapper.findComponent({ name: 'NotificationFilters' }).exists()).toBe(true)
     })
 
@@ -306,7 +311,9 @@ describe('NotificationList Integration', () => {
         global: {
           plugins: [router],
           stubs: {
-            Teleport: true
+            Teleport: true,
+            // The page renders inside the app shell; the shell itself is not under test here
+            AppLayout: { template: '<div><slot /></div>' }
           }
         }
       })
@@ -328,8 +335,7 @@ describe('NotificationList Integration', () => {
       const header = wrapper.findComponent({ name: 'NotificationHeader' })
       expect(header.props('hasUnread')).toBe(true)
 
-      const stats = wrapper.findComponent({ name: 'NotificationStats' })
-      expect(stats.props('stats')).toEqual(store.stats)
+      expect(header.props('stats')).toEqual(store.stats)
     })
   })
 
@@ -339,7 +345,9 @@ describe('NotificationList Integration', () => {
         global: {
           plugins: [router],
           stubs: {
-            Teleport: true
+            Teleport: true,
+            // The page renders inside the app shell; the shell itself is not under test here
+            AppLayout: { template: '<div><slot /></div>' }
           }
         }
       })
@@ -385,7 +393,9 @@ describe('NotificationList Integration', () => {
         global: {
           plugins: [router],
           stubs: {
-            Teleport: true
+            Teleport: true,
+            // The page renders inside the app shell; the shell itself is not under test here
+            AppLayout: { template: '<div><slot /></div>' }
           }
         }
       })
@@ -421,7 +431,9 @@ describe('NotificationList Integration', () => {
         global: {
           plugins: [router],
           stubs: {
-            Teleport: true
+            Teleport: true,
+            // The page renders inside the app shell; the shell itself is not under test here
+            AppLayout: { template: '<div><slot /></div>' }
           }
         }
       })
@@ -438,7 +450,9 @@ describe('NotificationList Integration', () => {
         global: {
           plugins: [router],
           stubs: {
-            Teleport: true
+            Teleport: true,
+            // The page renders inside the app shell; the shell itself is not under test here
+            AppLayout: { template: '<div><slot /></div>' }
           }
         }
       })
@@ -462,7 +476,9 @@ describe('NotificationList Integration', () => {
         global: {
           plugins: [router],
           stubs: {
-            Teleport: true
+            Teleport: true,
+            // The page renders inside the app shell; the shell itself is not under test here
+            AppLayout: { template: '<div><slot /></div>' }
           }
         }
       })

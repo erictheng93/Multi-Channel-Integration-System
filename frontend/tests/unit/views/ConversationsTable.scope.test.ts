@@ -20,6 +20,13 @@ const store = reactive({
 })
 
 vi.mock('@/stores/conversations', () => ({ useConversationsStore: () => store }))
+vi.mock('@/stores/unread', () => ({ useUnreadStore: () => ({ total: 0 }) }))
+vi.mock('@/api/conversations', () => ({
+  conversationApi: {
+    getStats: vi.fn().mockResolvedValue({ success: false }),
+    getWaiting: vi.fn().mockResolvedValue({ success: false })
+  }
+}))
 vi.mock('vue-router', () => ({ useRouter: () => ({ push: vi.fn() }) }))
 vi.mock('@/services/tagCacheService', () => ({
   tagCacheService: { ensureTagsLoaded: vi.fn().mockResolvedValue([]) }
@@ -85,7 +92,7 @@ describe('ConversationsTable scope tabs', () => {
 
     expect(store.loadWithCache.mock.calls[0]?.[0]?.scope).toBe('open')
     expect(store.setActiveFilters.mock.calls[0]?.[0]?.scope).toBe('open')
-    expect(wrapper.find('.scope-tab.active').text()).toBe('處理中')
+    expect(wrapper.find('.scope-tab.is-on').text()).toBe('處理中')
     expect(shownIds(wrapper)).toEqual(['open-1', 'open-2'])
   })
 

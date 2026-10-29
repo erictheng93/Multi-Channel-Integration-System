@@ -81,6 +81,6 @@ test.describe('Login Flow (P0)', () => {
     // The sidebar shows the user name and role
     const sidebar = page.getByRole('complementary')
     await expect(sidebar.getByText(ADMIN_CREDENTIALS.displayName)).toBeVisible()
-    await expect(sidebar.getByText(ADMIN_CREDENTIALS.role, { exact: true })).toBeVisible()
+    await expect(sidebar.getByText('管理員')).toBeVisible()
   })
 })

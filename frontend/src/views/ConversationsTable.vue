@@ -1,53 +1,75 @@
 <template>
   <AppLayout>
     <ErrorBoundary>
-      <div class="conversations">
-        <header class="conversations-header">
-          <div class="header-top">
-            <h1>對話管理</h1>
-            <div class="header-actions">
-              <button
-                type="button"
-                class="btn btn-secondary btn-sm selection-toggle"
-                :class="{ 'is-active': selectionMode }"
-                :aria-pressed="selectionMode"
-                :disabled="displayedConversations.length === 0 && !selectionMode"
-                @click="toggleSelectionMode"
-              >
-                {{ selectionMode ? '完成' : '選取' }}
-              </button>
-              <RefreshButton
-                :loading="loading || isUpdating"
-                @refresh="refreshConversations"
-              />
+      <div class="conversations ui-rise">
+        <section class="ui-page-head">
+          <div>
+            <div class="ui-eyebrow">
+              客服收件匣
             </div>
+            <h1 class="ui-page-title">
+              對話
+            </h1>
+            <p class="ui-page-sub">
+              <template v-if="counts">
+                {{ subtitle }}
+              </template>
+              <template v-else>
+                &nbsp;
+              </template>
+            </p>
           </div>
-          <!-- 分頁籤：預設「處理中」，已結案的對話不佔據最顯眼的位置 -->
-          <div
-            class="scope-tabs"
-            role="tablist"
-            aria-label="對話分類"
-          >
+          <div class="ui-page-actions">
             <button
-              v-for="tab in SCOPE_TABS"
-              :key="tab.value"
               type="button"
-              role="tab"
-              class="scope-tab"
-              :class="{ active: scope === tab.value }"
-              :aria-selected="scope === tab.value"
-              @click="scope = tab.value"
+              class="btn btn-secondary btn-sm selection-toggle"
+              :class="{ 'is-active': selectionMode }"
+              :aria-pressed="selectionMode"
+              :disabled="displayedConversations.length === 0 && !selectionMode"
+              @click="toggleSelectionMode"
             >
-              {{ tab.label }}
+              {{ selectionMode ? '完成' : '選取' }}
             </button>
+            <RefreshButton
+              :loading="loading || isUpdating"
+              @refresh="refreshConversations"
+            />
           </div>
-          <p
-            v-if="isSearching"
-            class="scope-hint"
-            role="status"
-          >
-            搜尋時會一併顯示已結案的對話
-          </p>
+        </section>
+
+        <!-- 分頁籤：預設「處理中」，已結案的對話不佔據最顯眼的位置 -->
+        <section class="ui-card filter-card">
+          <div class="filter-top">
+            <div
+              class="ui-seg"
+              role="tablist"
+              aria-label="對話分類"
+            >
+              <button
+                v-for="tab in SCOPE_TABS"
+                :key="tab.value"
+                type="button"
+                role="tab"
+                class="scope-tab"
+                :class="{ 'is-on': scope === tab.value }"
+                :aria-selected="scope === tab.value"
+                @click="scope = tab.value"
+              >
+                {{ tab.label }}
+                <span
+                  v-if="tabCount(tab.value) !== null"
+                  class="ui-seg-n"
+                >{{ tabCount(tab.value) }}</span>
+              </button>
+            </div>
+            <p
+              v-if="isSearching"
+              class="scope-hint"
+              role="status"
+            >
+              搜尋時會一併顯示已結案的對話
+            </p>
+          </div>
           <ConversationFilters
             :filters="filterComposable.filters.value"
             :available-tags="availableTags"
@@ -58,7 +80,7 @@
             @clear:tags="filterComposable.clearTagFilter"
             @clear:all="filterComposable.clearAllFilters"
           />
-        </header>
+        </section>
 
         <!-- SSE 更新指示器 -->
         <ConversationSyncIndicator :visible="isUpdating" />
@@ -66,13 +88,13 @@
         <div class="conversations-content">
           <div
             v-if="loading && displayedConversations.length === 0"
-            class="loading-overlay"
+            class="ui-card loading-overlay"
           >
             <HamsterLoader message="載入對話列表中..." />
           </div>
           <div
             v-else-if="loadError && displayedConversations.length === 0"
-            class="conversations-error"
+            class="ui-card conversations-error"
             role="alert"
           >
             <div class="conversations-error-content">
@@ -94,18 +116,25 @@
           </div>
           <div
             v-else-if="displayedConversations.length === 0"
-            class="no-data"
+            class="ui-card no-data"
           >
-            <div class="no-data-content">
-              <div class="no-data-icon" />
-              <div class="no-data-text">
-                {{ emptyText }}
+            <div class="ui-empty">
+              <div class="ui-empty-art">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                ><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20.5l1.4-4.6A8 8 0 1 1 21 12Z" /></svg>
               </div>
+              <h3>{{ emptyText }}</h3>
             </div>
           </div>
           <div
             v-else
-            class="conversations-table-container"
+            class="ui-card conversations-table-container"
             :class="{ updating: isUpdating }"
           >
             <!-- Desktop Table View -->
@@ -126,6 +155,10 @@
               @select="goToConversation"
               @toggle-select="toggleSelect"
             />
+
+            <p class="list-foot">
+              {{ LEGEND_TEXT }}
+            </p>
           </div>
         </div>
 
@@ -185,6 +218,11 @@ import { useConversationFilters } from '@/composables/conversation/useConversati
 import { useDebounce } from '@/composables/useDebounce'
 import { useToast } from '@/composables/useToast'
 import { useConfirmDialog } from '@/composables/useConfirmDialog'
+import { conversationApi } from '@/api/conversations'
+import { useUnreadStore } from '@/stores/unread'
+import { formatWaitText } from '@/composables/dashboard/useDashboardOverview'
+import { LEGEND_TEXT } from '@/composables/conversation/useConversationRowMeta'
+import type { ConversationStats } from '@shared/api-contracts'
 import { tagCacheService } from '@/services/tagCacheService'
 import type { ConversationFilters as ConversationFiltersType } from '@/types'
 
@@ -198,6 +236,43 @@ import ConversationMobileCards from '@/components/conversations/ConversationMobi
 import { ConversationFilters } from '@/components/conversation-list'
 
 const router = useRouter()
+const unreadStore = useUnreadStore()
+
+// ==================== Tab counts + subtitle (real stats) ====================
+// 待回覆 (team-wide) comes from /conversations/waiting; 未讀 (personal) from the shared unread store.
+const counts = ref<ConversationStats | null>(null)
+const waitingTotal = ref(0)
+const waitingSince = ref<string | null>(null)
+const clock = ref(Date.now())
+let clockTimer: ReturnType<typeof setInterval> | null = null
+
+async function loadCounts() {
+  try {
+    const [statsRes, waitingRes] = await Promise.all([conversationApi.getStats(), conversationApi.getWaiting(1)])
+    if (statsRes.success && statsRes.data) { counts.value = statsRes.data }
+    if (waitingRes.success && waitingRes.data) {
+      waitingTotal.value = waitingRes.data.total
+      waitingSince.value = waitingRes.data.items[0]?.waitingSince ?? null
+    }
+  } catch (err) {
+    console.warn('Failed to load conversation counts:', err)
+  }
+}
+
+const oldestWaitText = computed(() =>
+  waitingSince.value ? formatWaitText(Math.max(0, (clock.value - Date.parse(waitingSince.value)) / 1000)) : '')
+
+const subtitle = computed(() => {
+  if (!counts.value) { return '' }
+  const waitPart = oldestWaitText.value ? `，最久已等 ${oldestWaitText.value}` : ''
+  const unreadPart = unreadStore.total > 0 ? `我的未讀 ${unreadStore.total} 件。` : ''
+  return `${counts.value.open} 件處理中，${waitingTotal.value} 件待回覆${waitPart}。${unreadPart}`
+})
+
+function tabCount(value: 'open' | 'closed' | 'all'): number | null {
+  if (!counts.value) { return null }
+  return value === 'open' ? counts.value.open : value === 'closed' ? counts.value.closed : counts.value.total
+}
 const conversationsStore = useConversationsStore()
 const filterComposable = useConversationFilters()
 
@@ -436,6 +511,7 @@ const performSmoothUpdate = async () => {
 // 刷新對話列表的函數
 const refreshConversations = () => {
   frontendLogger.debug('[ConversationsTable] Manual refresh requested')
+  void loadCounts()
   performSmoothUpdate()
 }
 
@@ -453,6 +529,11 @@ onMounted(async () => {
 
   // Load tags for filter dropdown (async, reactive)
   loadAvailableTags()
+  void loadCounts()
+  clockTimer = setInterval(() => {
+    clock.value = Date.now()
+    if (document.visibilityState === 'visible') { void loadCounts() }
+  }, 60_000)
 
   // FIX: 每次 mount 都刷新數據，確保返回列表時顯示最新狀態
   // 使用 loadWithCache 提供最佳 UX：
@@ -478,283 +559,143 @@ onMounted(async () => {
 onUnmounted(() => {
   frontendLogger.debug('[ConversationsTable] Component unmounting, cleaning up...')
   if (refillTimer) { clearTimeout(refillTimer) }
+  if (clockTimer) { clearInterval(clockTimer) }
   conversationsStore.cleanup()
 })
 </script>
 
 <style scoped>
 .conversations {
-  background-color: #f8f9fa;
-  min-height: calc(100vh - 120px);
-  min-height: calc(100dvh - 120px);
-  position: relative;
-}
-
-.conversations-header {
-  background: white;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
   display: flex;
   flex-direction: column;
+  gap: 16px;
+  position: relative;
+  width: 100%;
 }
 
-.scope-tabs {
-  display: inline-flex;
-  align-self: flex-start;
-  gap: 2px;
-  margin: 0.75rem 1.5rem 0;
-  padding: 3px;
-  border-radius: 9999px;
-  background: #F2F2F7;
+.filter-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 18px 18px;
 }
 
-.scope-tab {
-  min-height: 32px;
-  padding: 0 16px;
-  border: none;
-  border-radius: 9999px;
-  background: transparent;
-  color: #8E8E93;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background-color 0.2s ease-out, color 0.2s ease-out, box-shadow 0.2s ease-out;
+.filter-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 16px;
 }
 
-.scope-tab:hover {
-  color: #1C1C1E;
-}
-
-.scope-tab.active {
-  background: #FFFFFF;
-  color: #1C1C1E;
-  font-weight: 600;
-  box-shadow: 0 1px 4px rgb(0 0 0 / 0.08);
+.scope-tab .ui-seg-n {
+  margin-left: 2px;
 }
 
 .scope-hint {
-  margin: 0.5rem 1.5rem 0;
-  font-size: 13px;
-  color: #8E8E93;
-}
-
-.scope-tab:focus-visible {
-  outline: 2px solid #007AFF;
-  outline-offset: 2px;
-}
-
-.header-top {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1rem 1.5rem;
-  border-bottom: 1px solid #f0f0f0;
-}
-
-.header-top h1 {
   margin: 0;
-  color: #333;
+  font-size: 13px;
+  color: var(--ui-muted);
 }
 
-.header-actions {
-  display: flex;
-  gap: 0.75rem;
-  align-items: center;
-}
-
-.conversations-content {
-  padding: 2rem;
-  max-width: 100%;
-  margin: 0 auto;
-  position: relative;
-}
-
-/* Loading Overlay */
+/* Loading / empty / error cards */
 .loading-overlay {
   display: flex;
+  align-items: center;
   justify-content: center;
-  align-items: center;
-  min-height: 400px;
-  background: white;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-  animation: fadeIn 0.3s ease-out;
+  min-height: 360px;
 }
 
-/* Empty State */
-.no-data {
-  background: white;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-  padding: 4rem 2rem;
-  text-align: center;
-  animation: fadeIn 0.4s ease-out;
-}
-
-.no-data-content {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1rem;
-  max-width: 400px;
-  margin: 0 auto;
-}
-
-.no-data-icon {
-  font-size: 3rem;
-  opacity: 0.6;
-  animation: float 3s ease-in-out infinite;
-}
-
-.no-data-text {
-  font-size: 1.1rem;
-  color: #666;
-  font-weight: 500;
-}
-
-/* Load failure state */
+.no-data,
 .conversations-error {
-  background: #FFFFFF;
-  border-radius: 24px;
-  box-shadow: 0 4px 16px rgb(0, 0, 0, 0.06);
-  padding: 4rem 2rem;
   text-align: center;
-  animation: fadeIn 0.4s ease-out;
+}
+
+.conversations-error {
+  padding: 48px 24px;
 }
 
 .conversations-error-content {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.75rem;
+  gap: 10px;
   max-width: 400px;
   margin: 0 auto;
 }
 
 .conversations-error-title {
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: #FF3B30;
+  font: 600 16px var(--ui-font-display);
+  color: var(--ui-red-ink);
 }
 
 .conversations-error-text {
-  font-size: 0.95rem;
-  color: #8E8E93;
-  margin-bottom: 0.5rem;
+  margin-bottom: 6px;
+  font-size: 13.5px;
+  color: var(--ui-muted);
 }
 
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes float {
-  0%, 100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-10px);
-  }
-}
-
-/* Table Container */
+/* Table card */
 .conversations-table-container {
-  background: white;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-  overflow: hidden;
   position: relative;
-  transition: all 0.3s ease;
+  overflow: hidden;
+  transition: opacity var(--ui-dur) var(--ui-ease);
 }
 
 .conversations-table-container.updating {
-  background: linear-gradient(
-    135deg,
-    rgba(255, 255, 255, 0.95) 0%,
-    rgba(248, 250, 252, 0.98) 50%,
-    rgba(255, 255, 255, 0.95) 100%
-  );
+  opacity: 0.82;
 }
 
-.conversations-table-container.updating::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgba(59, 130, 246, 0.1),
-    transparent
-  );
-  animation: shimmer 1.5s infinite;
-  pointer-events: none;
-  z-index: 1;
-}
-
-@keyframes shimmer {
-  0% {
-    left: -100%;
-  }
-  100% {
-    left: 100%;
-  }
-}
-
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+.list-foot {
+  margin: 0;
+  padding: 12px 22px 14px;
+  font-size: 12px;
+  color: var(--ui-muted);
+  text-align: center;
+  box-shadow: inset 0 0.5px 0 var(--ui-sep);
 }
 
 /* Selection toggle (layout only; button look comes from global .btn) */
 .selection-toggle.is-active {
-  background: #007AFF;
-  color: #FFFFFF;
+  background: var(--ui-accent);
+  color: #fff;
 }
 
 /* Floating bulk action bar */
 .bulk-action-bar {
   position: fixed;
-  left: 50%;
   bottom: calc(20px + env(safe-area-inset-bottom, 0px));
-  transform: translateX(-50%);
+  left: 50%;
   z-index: 50;
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 8px;
   max-width: calc(100vw - 32px);
   padding: 8px 12px 8px 20px;
-  border-radius: 9999px;
-  background: rgb(255 255 255 / 0.8);
-  -webkit-backdrop-filter: blur(24px);
-  backdrop-filter: blur(24px);
-  box-shadow: 0 4px 16px rgb(0 0 0 / 0.06);
+  border-radius: 999px;
+  background: var(--ui-glass);
+  -webkit-backdrop-filter: saturate(180%) blur(24px);
+  backdrop-filter: saturate(180%) blur(24px);
+  box-shadow: var(--ui-shadow-raised);
+  transform: translateX(-50%);
 }
 
 .bulk-count {
+  margin-right: 4px;
   font-size: 14px;
   font-weight: 600;
-  color: #1C1C1E;
+  color: var(--ui-ink);
   white-space: nowrap;
-  margin-right: 0.25rem;
 }
 
 .bulk-limit {
   font-size: 12px;
-  color: #FF3B30;
+  color: var(--ui-red-ink);
   white-space: nowrap;
 }
 
 .bulk-bar-enter-active,
 .bulk-bar-leave-active {
-  transition: opacity 0.25s ease-out, transform 0.25s ease-out;
+  transition: opacity 0.25s var(--ui-ease), transform 0.25s var(--ui-ease);
 }
 
 .bulk-bar-enter-from,
@@ -763,64 +704,20 @@ onUnmounted(() => {
   transform: translateX(-50%) translateY(16px);
 }
 
-@media (max-width: 480px) {
-  .bulk-action-bar {
-    gap: 0.25rem;
-    padding: 6px 8px 6px 14px;
-  }
-}
-
-/* Reduced motion */
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-  }
-
-  .no-data-icon {
-    animation: none;
-  }
-}
-
-/* Responsive */
 @media (max-width: 768px) {
-  .scope-tabs {
-    margin: 0.75rem 1rem 0;
+  .filter-card {
+    padding: 14px;
   }
 
   .scope-tab {
     min-height: 44px;
   }
-
-  .header-top {
-    padding: 0.75rem 1rem;
-  }
-
-  .conversations-content {
-    padding: 1rem;
-  }
-
-  .conversations-table-container {
-    box-shadow: none;
-    border-radius: 0;
-  }
-
-  .no-data,
-  .conversations-error {
-    padding: 3rem 1rem;
-  }
-
-  .no-data-icon {
-    font-size: 2.5rem;
-  }
 }
 
 @media (max-width: 480px) {
-  .header-top {
-    padding: 0.75rem;
+  .bulk-action-bar {
+    gap: 4px;
+    padding: 6px 8px 6px 14px;
   }
 }
 </style>

@@ -49,33 +49,6 @@
                 size="medium"
               />
             </div>
-
-            <!-- 客戶標籤顯示區 -->
-            <div
-              v-if="customerTags.length > 0"
-              class="customer-tags"
-            >
-              <span class="tags-label">標籤:</span>
-              <div
-                v-for="tag in customerTags.slice(0, 3)"
-                :key="tag.id"
-                class="tag-chip"
-                :style="{ backgroundColor: tag.color + '20', borderColor: tag.color }"
-              >
-                <div
-                  class="tag-dot"
-                  :style="{ backgroundColor: tag.color }"
-                />
-                <span class="tag-label">{{ tag.name }}</span>
-              </div>
-              <button
-                v-if="customerTags.length > 3"
-                class="more-tags-btn"
-                @click="showAllTags = !showAllTags"
-              >
-                +{{ customerTags.length - 3 }}
-              </button>
-            </div>
           </div>
         </div>
       </div>
@@ -202,7 +175,9 @@
       </button>
 
       <button
-        class="btn btn-secondary"
+        class="header-action-btn"
+        title="重新整理"
+        aria-label="重新整理"
         :disabled="loading"
         @click="$emit('refresh')"
       >
@@ -216,12 +191,13 @@
 import { createLogger } from '@/utils/logger'
 
 const props = defineProps<Props>()
-defineEmits<{
+const emit = defineEmits<{
   back: []
   refresh: []
   search: []
   export: []
   markUnread: []
+  'tags-change': [tags: Tag[]]
 }>()
 const frontendLogger = createLogger('ConversationHeader')
 import { computed, ref, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
@@ -246,7 +222,6 @@ interface Props {
 
 const customerTags = ref<Tag[]>([])
 const selectedTagIds = ref<number[]>([])
-const showAllTags = ref(false)
 const showAssignPanel = ref(false)
 const assignPanelRef = ref<HTMLElement | null>(null)
 const assignPanelStyle = ref<Record<string, string>>({})
@@ -281,7 +256,7 @@ const handleToggleClosed = async () => {
 const customerInitials = computed(() => {
   const name = props.conversation?.customer?.name
   if (!name) {return '?'}
-  return name.slice(0, 2).toUpperCase()
+  return name.slice(0, 1).toUpperCase()
 })
 
 // 將 customer.id (string) 轉為數字
@@ -305,6 +280,7 @@ const loadCustomerTags = async () => {
     if (response.success && currentRequestId === tagLoadRequestId) {
       customerTags.value = response.data
       selectedTagIds.value = response.data.map(t => t.id)
+      emit('tags-change', response.data)
     }
   } catch (error) {
     console.error('Failed to load customer tags:', error)
@@ -321,6 +297,7 @@ const handleTagsChange = async (tags: Tag[]) => {
   const removed = customerTags.value.filter(t => !newTagIds.has(t.id))
 
   customerTags.value = tags
+  emit('tags-change', tags)
 
   // 自動同步到後端 - 使用 setCustomerTags 替換所有標籤
   if (customerIdNumber.value) {
@@ -464,6 +441,7 @@ watch(() => props.conversation?.customer?.id, (newId, oldId) => {
     // 立即清空，避免切換對話時短暫顯示上一個客戶的標籤
     customerTags.value = []
     selectedTagIds.value = []
+    emit('tags-change', [])
   }
   if (newId) {
     loadCustomerTags()
@@ -477,96 +455,114 @@ defineExpose({
 </script>
 
 <style scoped>
-/* Font Import - Professional Typography */
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
-
 .conversation-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 0.5rem 1rem;
-  padding: 1rem;
-  border-bottom: 1px solid var(--border-color);
-  background: var(--background-color);
   position: relative;
   z-index: 10;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  padding: 12px 16px;
+  background: var(--ui-surface);
+  box-shadow: inset 0 -0.5px 0 var(--ui-sep);
 }
 
 .header-left {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 10px;
   min-width: 0;
 }
 
+/* Icon-only round back button (label kept for screen readers) */
 .back-button {
-  display: flex;
-  align-items: center;
+  display: grid;
   flex-shrink: 0;
-  white-space: nowrap;
-  gap: 0.5rem;
-  padding: 0.5rem 1rem;
-  border: 1px solid var(--border-color);
-  background: var(--background-color);
-  border-radius: 0.5rem;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--ui-ink-2);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: background-color var(--ui-dur) var(--ui-ease);
 }
 
 .back-button:hover {
-  background: var(--hover-color);
+  background: var(--ui-fill);
+}
+
+.back-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
+
+.conversation-info {
+  min-width: 0;
 }
 
 .customer-details {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 12px;
+  min-width: 0;
 }
 
 .customer-avatar {
-  width: 3rem;
-  height: 3rem;
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
-  background: var(--primary-color);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  font-weight: 600;
+  background: linear-gradient(160deg, #5aa8ff, #1d6fe0);
+  color: #fff;
+  font: 600 15px var(--ui-font-display);
+}
+
+.customer-meta {
+  min-width: 0;
 }
 
 .customer-badges {
   display: flex;
-  gap: 0.5rem;
-  margin-top: 0.25rem;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
 }
 
 .header-actions {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 0.5rem;
+  gap: 6px;
 }
 
-/* 搜索按鈕樣式 */
+/* Round icon buttons */
 .header-action-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: grid;
+  place-items: center;
   width: 36px;
   height: 36px;
-  border: 1px solid var(--border-color, #e5e7eb);
-  background: var(--background-color, white);
-  border-radius: 0.5rem;
-  color: var(--gray-600, #4b5563);
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--ui-ink-2);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: background-color var(--ui-dur) var(--ui-ease), color var(--ui-dur) var(--ui-ease);
 }
 
-.header-action-btn:hover {
-  background: var(--hover-color, #f3f4f6);
-  color: var(--primary-color, #6366f1);
-  border-color: var(--primary-color, #6366f1);
+.header-action-btn:hover:not(:disabled) {
+  background: var(--ui-fill);
+  color: var(--ui-ink);
 }
 
 .header-action-btn:disabled {
@@ -574,418 +570,109 @@ defineExpose({
   cursor: not-allowed;
 }
 
-.header-action-btn:disabled:hover {
-  background: var(--background-color, white);
-  color: var(--gray-600, #4b5563);
-  border-color: var(--border-color, #e5e7eb);
-}
-
 .close-toggle-btn {
   display: inline-flex;
   align-items: center;
-  gap: 0.375rem;
+  gap: 6px;
   white-space: nowrap;
-}
-
-/* 客戶標籤樣式 */
-.customer-tags {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin-top: 0.5rem;
-  flex-wrap: wrap;
-}
-
-.tag-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.375rem;
-  padding: 0.25rem 0.75rem;
-  border: 1px solid;
-  border-radius: 9999px;
-  font-size: 0.75rem;
-  font-weight: 500;
-  transition: all 0.2s;
-}
-
-.tag-chip:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.tag-dot {
-  width: 0.5rem;
-  height: 0.5rem;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
-.tag-label {
-  line-height: 1;
-}
-
-.more-tags-btn {
-  padding: 0.25rem 0.5rem;
-  border: 1px dashed var(--border-color);
-  background: transparent;
-  border-radius: 9999px;
-  font-size: 0.75rem;
-  color: var(--text-secondary);
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.more-tags-btn:hover {
-  background: var(--hover-color);
-  border-color: var(--primary-color);
-  color: var(--primary-color);
-}
-
-/* 標籤分類標籤 */
-.tags-label {
-  font-size: 0.7rem;
-  color: var(--gray-500);
-  font-weight: 500;
-  margin-right: 0.25rem;
 }
 
 .tag-selector-wrapper {
-  position: relative;
-  z-index: 10;
+  display: flex;
+  align-items: center;
 }
 
-/* ============================================
-    REFINED ASSIGNMENT BUTTON - REDESIGNED
-   ============================================ */
-
+/* 指派管理: capsule that shows the current team */
 .assign-action-wrapper {
   position: relative;
-  display: inline-block;
 }
 
-/* Base Button Styles */
 .assign-action-btn {
-  /* Layout */
   display: inline-flex;
   align-items: center;
-  gap: 0.625rem;
-  padding: 0.625rem 1.125rem;
-  position: relative;
-  overflow: hidden;
-  isolation: isolate;
-
-  /* Typography */
-  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
-  font-size: 0.875rem;
-  font-weight: 500;
-  line-height: 1.25rem;
-  letter-spacing: -0.01em;
-
-  /* Colors - Unassigned State (Warm Neutral) */
-  color: #3f3f46;
-  background: linear-gradient(135deg, #ffffff 0%, #fafafa 100%);
-  border: 1.5px solid #e4e4e7;
-
-  /* Shape & Effects */
-  border-radius: 0.625rem;
-  box-shadow:
-    0 1px 2px rgba(0, 0, 0, 0.04),
-    0 0 0 1px rgba(0, 0, 0, 0.02);
-
-  /* Interaction */
+  gap: 8px;
+  height: 36px;
+  max-width: 220px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--ui-fill);
+  color: var(--ui-ink);
+  font-size: 13px;
+  font-weight: 600;
   cursor: pointer;
-  user-select: none;
-  white-space: nowrap;
-  transition:
-    all 0.25s cubic-bezier(0.4, 0, 0.2, 1),
-    box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: background-color var(--ui-dur) var(--ui-ease);
 }
 
-/* Status Indicator Dot */
+.assign-action-btn:hover {
+  background: var(--ui-fill-strong);
+}
+
+.assign-action-btn.has-assignment {
+  background: var(--ui-accent-soft);
+  color: var(--ui-accent);
+}
+
+.assign-action-btn.opened {
+  background: var(--ui-fill-strong);
+}
+
+.assign-action-btn.has-assignment.opened {
+  background: var(--ui-accent-soft);
+}
+
 .status-dot {
+  flex: none;
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #d4d4d8;
-  flex-shrink: 0;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 0 0 2px rgba(212, 212, 216, 0.15);
+  background: var(--ui-faint);
 }
 
 .status-dot.active {
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-  box-shadow:
-    0 0 0 3px rgba(16, 185, 129, 0.15),
-    0 0 8px rgba(16, 185, 129, 0.3);
-  animation: pulse-dot 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  background: var(--ui-accent);
 }
 
-@keyframes pulse-dot {
-  0%, 100% {
-    opacity: 1;
-    transform: scale(1);
-  }
-  50% {
-    opacity: 0.85;
-    transform: scale(1.1);
-  }
-}
-
-/* Icon Container with Animation */
 .icon-container {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  display: inline-flex;
+  flex: none;
 }
 
 .action-icon {
-  width: 1.125rem;
-  height: 1.125rem;
-  flex-shrink: 0;
-  stroke-width: 2.25;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  width: 16px;
+  height: 16px;
 }
 
-/* Button Text with Truncation */
 .button-text {
-  flex: 1;
-  min-width: 0;
-  max-width: 140px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  position: relative;
-  font-weight: 600;
 }
 
-/* Fade-out effect for long text */
-.button-text::after {
-  content: '';
-  position: absolute;
-  right: 0;
-  top: 0;
-  bottom: 0;
-  width: 24px;
-  background: linear-gradient(to right, transparent 0%, currentColor 100%);
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.2s ease;
-}
-
-.assign-action-btn:hover .button-text::after {
-  opacity: 0.05;
-}
-
-/* Chevron Container */
 .chevron-container {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-left: 0.125rem;
+  display: inline-flex;
+  flex: none;
 }
 
 .dropdown-icon {
-  width: 0.875rem;
-  height: 0.875rem;
-  flex-shrink: 0;
-  stroke-width: 2.5;
-  transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
-  opacity: 0.7;
+  width: 12px;
+  height: 12px;
+  transition: transform var(--ui-dur) var(--ui-ease);
 }
 
 .dropdown-icon.rotated {
   transform: rotate(180deg);
-  opacity: 1;
-}
-
-/* ============================================
-   ASSIGNED STATE (Sophisticated Emerald)
-   ============================================ */
-.assign-action-btn.has-assignment {
-  color: #065f46;
-  background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 50%, #6ee7b7 100%);
-  border-color: #34d399;
-  box-shadow:
-    0 1px 3px rgba(16, 185, 129, 0.12),
-    0 0 0 1px rgba(16, 185, 129, 0.08),
-    inset 0 1px 0 rgba(255, 255, 255, 0.4);
-}
-
-.assign-action-btn.has-assignment .action-icon {
-  color: #059669;
-}
-
-.assign-action-btn.has-assignment .button-text {
-  font-weight: 600;
-}
-
-/* ============================================
-   HOVER STATE
-   ============================================ */
-.assign-action-btn:hover {
-  transform: translateY(-1px);
-  border-color: #a1a1aa;
-  box-shadow:
-    0 4px 12px rgba(0, 0, 0, 0.08),
-    0 2px 4px rgba(0, 0, 0, 0.04),
-    0 0 0 1px rgba(0, 0, 0, 0.03);
-}
-
-.assign-action-btn:hover .icon-container {
-  transform: scale(1.08);
-}
-
-.assign-action-btn:hover .action-icon {
-  stroke-width: 2.5;
-}
-
-.assign-action-btn:hover .dropdown-icon {
-  opacity: 1;
-}
-
-/* Assigned State Hover */
-.assign-action-btn.has-assignment:hover {
-  border-color: #10b981;
-  background: linear-gradient(135deg, #a7f3d0 0%, #6ee7b7 50%, #34d399 100%);
-  box-shadow:
-    0 6px 16px rgba(16, 185, 129, 0.2),
-    0 2px 4px rgba(16, 185, 129, 0.15),
-    inset 0 1px 0 rgba(255, 255, 255, 0.5);
-}
-
-.assign-action-btn.has-assignment:hover .status-dot {
-  transform: scale(1.2);
-}
-
-/* ============================================
-   OPENED STATE (Dropdown Active)
-   ============================================ */
-.assign-action-btn.opened {
-  border-color: #10b981;
-  box-shadow:
-    0 0 0 3px rgba(16, 185, 129, 0.15),
-    0 4px 12px rgba(16, 185, 129, 0.25),
-    inset 0 1px 0 rgba(255, 255, 255, 0.6);
-}
-
-.assign-action-btn.has-assignment.opened {
-  background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
-  border-color: #059669;
-  box-shadow:
-    0 0 0 4px rgba(16, 185, 129, 0.2),
-    0 6px 16px rgba(16, 185, 129, 0.3),
-    inset 0 2px 4px rgba(255, 255, 255, 0.7);
-}
-
-.assign-action-btn.opened .status-dot.active {
-  box-shadow:
-    0 0 0 4px rgba(16, 185, 129, 0.25),
-    0 0 16px rgba(16, 185, 129, 0.5);
-  animation: pulse-dot-active 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-}
-
-@keyframes pulse-dot-active {
-  0%, 100% {
-    opacity: 1;
-    transform: scale(1.1);
-  }
-  50% {
-    opacity: 0.9;
-    transform: scale(1.25);
-  }
-}
-
-/* ============================================
-   ACTIVE/PRESSED STATE
-   ============================================ */
-.assign-action-btn:active {
-  transform: translateY(0) scale(0.98);
-  transition: all 0.1s ease;
-}
-
-/* ============================================
-   RESPONSIVE DESIGN
-   ============================================ */
-@media (max-width: 768px) {
-  /* Phone: two rows. Identity on top, the action buttons on their own row so none
-     of them are pushed past the right edge (they were unreachable at 375px). */
-  .conversation-header {
-    flex-wrap: wrap;
-    gap: 0.5rem;
-    padding: 0.75rem;
-  }
-
-  .header-left {
-    flex: 1 1 100%;
-    min-width: 0;
-    gap: 0.5rem;
-  }
-
-  .back-label {
-    display: none;
-  }
-
-  .back-button {
-    padding: 0.5rem;
-    min-width: 44px;
-    min-height: 44px;
-    justify-content: center;
-  }
-
-  .conversation-info,
-  .customer-details,
-  .customer-meta {
-    min-width: 0;
-  }
-
-  .customer-avatar {
-    width: 2.5rem;
-    height: 2.5rem;
-    flex-shrink: 0;
-  }
-
-  .customer-badges {
-    flex-wrap: wrap;
-  }
-
-  .header-actions {
-    flex: 1 1 100%;
-    flex-wrap: wrap;
-    justify-content: flex-start;
-  }
-
-  .assign-action-btn {
-    padding: 0.5rem 0.875rem;
-    gap: 0.5rem;
-  }
-
-  .button-text {
-    max-width: 100px;
-    font-size: 0.8125rem;
-  }
-
-  .action-icon {
-    width: 1rem;
-    height: 1rem;
-  }
-
-  .dropdown-icon {
-    width: 0.75rem;
-    height: 0.75rem;
-  }
 }
 
 .assign-panel-dropdown {
-  /* 位置由 JS 動態計算（使用 Teleport 到 body） */
+  /* Position is computed in JS (Teleport to body) */
   min-width: 20rem;
   max-width: 28rem;
-  background: white;
-  border: 1px solid var(--gray-200, #e5e7eb);
-  border-radius: 0.75rem;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1), 0 4px 6px rgba(0, 0, 0, 0.05);
   overflow: hidden;
-  animation: dropdown-appear 0.2s ease-out;
+  border-radius: 18px;
+  background: var(--ui-surface);
+  box-shadow: var(--ui-shadow-raised);
+  animation: dropdown-appear 0.2s var(--ui-ease);
   pointer-events: auto;
 }
 
@@ -994,46 +681,44 @@ defineExpose({
     opacity: 0;
     transform: translateX(-50%) translateY(-8px);
   }
+
   to {
     opacity: 1;
     transform: translateX(-50%) translateY(0);
   }
 }
 
-/* 響應式設計 */
 @media (max-width: 768px) {
+  .conversation-header {
+    padding: 10px 12px;
+  }
+
+  .header-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .assign-action-btn {
+    max-width: 170px;
+  }
+
   .assign-panel-dropdown {
     left: 50%;
-    transform: translateX(-50%);
     min-width: calc(100vw - 2rem);
     max-width: calc(100vw - 2rem);
-  }
-
-  .assign-action-btn span {
-    display: none;
-  }
-
-  .assign-action-btn .action-icon {
-    margin-right: 0;
+    transform: translateX(-50%);
   }
 }
 
-
-/* Short phone viewport (the on-screen keyboard is open): the header would take ~40% of the
-   height and leave the message list ~100px. Keep name, badges and every action; drop the
-   decorative avatar and the tag row (tags stay editable from the tag button). */
+/* Short phone viewport (on-screen keyboard open): keep name, badges and every action;
+   drop the decorative avatar. */
 @media (max-width: 768px) and (max-height: 600px) {
   .conversation-header {
-    padding: 0.5rem 0.75rem;
-    gap: 0.25rem;
+    padding: 6px 12px;
+    gap: 4px;
   }
 
-  .header-left {
-    gap: 0.25rem;
-  }
-
-  .customer-avatar,
-  .customer-tags {
+  .customer-avatar {
     display: none;
   }
 
@@ -1042,10 +727,15 @@ defineExpose({
   }
 }
 
-/* Touch: header action buttons are 36px; bring them to the 44px target size. */
+/* Touch: round icon buttons reach the 44px target size */
 @media (pointer: coarse) {
-  .header-action-btn {
+  .header-action-btn,
+  .back-button {
     min-width: 44px;
+    min-height: 44px;
+  }
+
+  .assign-action-btn {
     min-height: 44px;
   }
 }

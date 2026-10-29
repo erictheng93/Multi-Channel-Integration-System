@@ -15,17 +15,11 @@
     @click="$emit('click', notification)"
     @keydown.enter="$emit('click', notification)"
   >
-    <!-- Priority Indicator -->
-    <div
-      v-if="notification.priority === 'urgent' || notification.priority === 'high'"
-      class="priority-indicator"
-      :class="`priority-${notification.priority}`"
-    />
-
-    <!-- Icon -->
+    <!-- Icon tile, pastel per type -->
     <div
       class="notification-icon"
       :class="iconClass"
+      :title="typeLabel"
     >
       <component :is="icon" />
     </div>
@@ -36,7 +30,16 @@
         <h3 class="notification-title">
           {{ notification.title }}
         </h3>
-        <time class="notification-time">{{ formattedTime }}</time>
+        <time
+          class="notification-time"
+          :datetime="notification.createdAt"
+        >{{ formattedTime }}</time>
+        <span
+          v-if="!notification.isRead"
+          class="unread-dot"
+          role="img"
+          aria-label="未讀"
+        />
       </div>
       <p class="notification-text">
         {{ notification.content }}
@@ -45,22 +48,25 @@
         :id="`notification-${notification.id}-meta`"
         class="notification-meta"
       >
+        <span class="sr-only">{{ typeLabel }}</span>
         <span
-          class="notification-type-badge"
-          :class="`type-${notification.type}`"
+          v-if="notification.priority === 'urgent'"
+          class="ui-pill ui-pill-red"
           role="status"
-        >
-          {{ typeLabel }}
-        </span>
+          aria-label="優先級: 緊急"
+        >緊急</span>
         <span
-          v-if="notification.priority === 'urgent' || notification.priority === 'high'"
-          class="notification-priority-badge"
-          :class="`priority-${notification.priority}`"
+          v-else-if="notification.priority === 'low'"
+          class="ui-pill"
           role="status"
-          :aria-label="`優先級: ${notification.priority === 'urgent' ? '緊急' : '高優先'}`"
-        >
-          {{ notification.priority === 'urgent' ? '緊急' : '高優先' }}
-        </span>
+          aria-label="優先級: 低"
+        >低優先</span>
+        <span
+          v-if="platform"
+          class="ui-ch"
+          :class="platform === 'line' ? 'ui-ch-line' : 'ui-ch-fb'"
+          :title="platform === 'line' ? 'LINE' : 'Messenger'"
+        ><svg viewBox="0 0 24 24"><path d="M12 3C6.5 3 2 6.6 2 11c0 2.5 1.4 4.7 3.7 6.2L5 21l4.1-2.3c.9.2 1.9.3 2.9.3 5.5 0 10-3.6 10-8s-4.5-8-10-8Z" /></svg></span>
       </div>
     </div>
 
@@ -91,12 +97,6 @@
         <TrashIcon aria-hidden="true" />
       </button>
     </div>
-
-    <!-- Unread Indicator -->
-    <div
-      v-if="!notification.isRead"
-      class="unread-dot"
-    />
   </article>
 </template>
 
@@ -167,6 +167,12 @@ const typeLabelMap: Record<NotificationType, string> = {
 
 const typeLabel = computed(() => typeLabelMap[props.notification.type] || props.notification.type)
 
+// Channel glyph only when the notification really carries a platform
+const platform = computed<'line' | 'facebook' | null>(() => {
+  const value = props.notification.data?.platform
+  return value === 'line' || value === 'facebook' ? value : null
+})
+
 // Time formatting
 const formattedTime = computed(() => {
   const date = new Date(props.notification.createdAt)
@@ -199,242 +205,241 @@ const formattedTime = computed(() => {
 </script>
 
 <style scoped>
-/* Notification Card */
 .notification-card {
   position: relative;
   display: flex;
+  gap: 14px;
   align-items: flex-start;
-  gap: var(--space-4);
-  padding: var(--space-5);
-  background: white;
-  border-radius: var(--radius-xl);
-  border: 1px solid var(--gray-200);
+  padding: 14px 22px;
   cursor: pointer;
-  transition: all var(--transition-fast);
+  transition: background-color var(--ui-dur) var(--ui-ease);
 }
 
-.notification-card:hover {
-  border-color: var(--gray-300);
-  box-shadow: var(--shadow-md);
-}
-
-.notification-card:focus {
-  outline: 2px solid var(--primary-500);
-  outline-offset: 2px;
-}
-
-.notification-card.notification-focused {
-  border-color: var(--primary-400);
-  box-shadow: 0 0 0 3px var(--primary-100);
-}
-
-.notification-card:hover .notification-actions,
-.notification-card:focus .notification-actions,
-.notification-card.notification-focused .notification-actions {
-  opacity: 1;
-}
-
-.notification-unread {
-  background: linear-gradient(135deg, var(--primary-50), white);
-  border-color: var(--primary-200);
-}
-
-.notification-urgent {
-  border-left: 4px solid var(--red-500);
-}
-
-.notification-high {
-  border-left: 4px solid var(--yellow-500);
-}
-
-.priority-indicator {
+.notification-card + .notification-card::before {
   position: absolute;
   top: 0;
   right: 0;
-  width: 0;
-  height: 0;
-  border-style: solid;
-  border-width: 0 32px 32px 0;
-  border-color: transparent;
-  border-radius: 0 var(--radius-xl) 0 0;
+  left: 78px;
+  height: 0.5px;
+  background: var(--ui-sep);
+  content: '';
 }
 
-.priority-indicator.priority-urgent {
-  border-right-color: var(--red-500);
+.notification-card:hover {
+  background: color-mix(in srgb, var(--ui-fill) 45%, transparent);
 }
 
-.priority-indicator.priority-high {
-  border-right-color: var(--yellow-500);
+.notification-card:focus-visible,
+.notification-focused {
+  outline: none;
+  background: var(--ui-sel-tint);
+  box-shadow: var(--ui-sel-ring);
+}
+
+/* Read notifications recede */
+.notification-card:not(.notification-unread) .notification-title {
+  font-weight: 500;
+  color: var(--ui-ink-2);
+}
+
+.notification-card:not(.notification-unread) .notification-text {
+  color: var(--ui-muted);
 }
 
 .notification-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 44px;
-  height: 44px;
-  border-radius: var(--radius-lg);
-  flex-shrink: 0;
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 13px;
+  background: var(--ui-fill);
+  color: var(--ui-muted);
 }
 
 .notification-icon svg {
-  width: 22px;
-  height: 22px;
+  width: 19px;
+  height: 19px;
 }
 
 .icon-new_message,
+.icon-new_conversation {
+  background: var(--ui-red-soft);
+  color: var(--ui-red-ink);
+}
+
 .icon-customer_responded {
-  background: var(--blue-100);
-  color: var(--blue-600);
+  background: var(--ui-green-soft);
+  color: var(--ui-green-ink);
 }
 
 .icon-conversation_assigned,
+.icon-customer_followed {
+  background: var(--ui-accent-soft);
+  color: var(--ui-accent);
+}
+
 .icon-conversation_transferred {
-  background: var(--green-100);
-  color: var(--green-600);
+  background: var(--ui-p-lavender);
+  color: var(--ui-p-lavender-ink);
 }
 
-.icon-mention {
-  background: var(--purple-100);
-  color: var(--purple-600);
-}
-
-.icon-system {
-  background: var(--gray-100);
-  color: var(--gray-600);
-}
-
+.icon-mention,
 .icon-task_reminder {
-  background: var(--orange-100);
-  color: var(--orange-600);
+  background: var(--ui-orange-soft);
+  color: var(--ui-orange-ink);
+}
+
+.icon-agent_removed_from_team {
+  background: var(--ui-red-soft);
+  color: var(--ui-red-ink);
 }
 
 .notification-content {
-  flex: 1;
   min-width: 0;
+  flex: 1;
 }
 
 .notification-header {
   display: flex;
+  gap: 10px;
   align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-  margin-bottom: var(--space-1);
 }
 
 .notification-title {
-  font-size: 0.9375rem;
-  font-weight: 600;
-  color: var(--gray-900);
+  min-width: 0;
+  flex: 1;
   margin: 0;
-  white-space: nowrap;
   overflow: hidden;
+  font-size: 14.5px;
+  font-weight: 600;
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .notification-time {
-  font-size: 0.75rem;
-  color: var(--gray-500);
-  white-space: nowrap;
+  flex: none;
+  font-size: 12.5px;
+  color: var(--ui-muted);
+}
+
+.unread-dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ui-accent);
 }
 
 .notification-text {
-  font-size: 0.875rem;
-  color: var(--gray-600);
+  margin: 2px 0 0;
+  font-size: 13.5px;
   line-height: 1.5;
-  margin: 0 0 var(--space-2);
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  /* line-clamp does not ellipsize an unbreakable string (URL, long ID); wrap it instead of cutting it */
-  overflow-wrap: anywhere;
+  color: var(--ui-ink-2);
+  word-break: break-word;
 }
 
 .notification-meta {
   display: flex;
-  gap: var(--space-2);
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
 }
 
-.notification-type-badge,
-.notification-priority-badge {
-  font-size: 0.6875rem;
-  font-weight: 600;
-  padding: 2px 8px;
-  border-radius: var(--radius-full);
+.notification-meta:not(:has(> :not(.sr-only))) {
+  display: none;
 }
 
-.notification-type-badge {
-  background: var(--gray-100);
-  color: var(--gray-600);
+.notification-meta > :not(.sr-only):first-of-type,
+.notification-meta > .ui-pill {
+  margin-top: 8px;
 }
 
-.notification-priority-badge {
-  background: var(--red-100);
-  color: var(--red-700);
+.notification-meta > .ui-ch {
+  margin-top: 8px;
 }
 
-.notification-priority-badge.priority-high {
-  background: var(--yellow-100);
-  color: var(--yellow-700);
-}
-
+/* Hover toolbar floats over the time so rows keep the full width */
 .notification-actions {
+  position: absolute;
+  top: 50%;
+  right: 16px;
   display: flex;
-  gap: var(--space-1);
+  gap: 4px;
+  padding: 3px;
+  border-radius: 999px;
+  background: var(--ui-surface);
+  box-shadow: var(--ui-shadow-pill);
   opacity: 0;
-  transition: opacity var(--transition-fast);
+  transform: translateY(-50%);
+  transition: opacity var(--ui-dur) var(--ui-ease);
+}
+
+.notification-card:hover .notification-actions,
+.notification-card:focus-within .notification-actions {
+  opacity: 1;
+}
+
+/* Touch: no hover, so actions sit in the flow below the text */
+@media (hover: none) {
+  .notification-actions {
+    position: static;
+    padding: 0;
+    background: none;
+    box-shadow: none;
+    opacity: 1;
+    transform: none;
+  }
 }
 
 .action-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: grid;
+  place-items: center;
   width: 32px;
   height: 32px;
-  border: none;
-  background: var(--gray-100);
-  color: var(--gray-600);
-  border-radius: var(--radius-md);
+  border: 0;
+  border-radius: 50%;
+  background: var(--ui-fill);
+  color: var(--ui-ink-2);
   cursor: pointer;
-  transition: all var(--transition-fast);
+  transition: background-color var(--ui-dur) var(--ui-ease), color var(--ui-dur) var(--ui-ease);
 }
 
 .action-btn:hover {
-  background: var(--gray-200);
-  color: var(--gray-900);
+  background: var(--ui-fill-strong);
 }
 
 .action-btn-danger:hover {
-  background: var(--red-100);
-  color: var(--red-600);
+  background: var(--ui-red-soft);
+  color: var(--ui-red-ink);
 }
 
 .action-btn svg {
-  width: 16px;
-  height: 16px;
+  width: 15px;
+  height: 15px;
 }
 
-.unread-dot {
+.sr-only {
   position: absolute;
-  left: var(--space-2);
-  top: 50%;
-  transform: translateY(-50%);
-  width: 8px;
-  height: 8px;
-  background: var(--primary-500);
-  border-radius: var(--radius-full);
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
 }
 
-/* Responsive */
 @media (max-width: 768px) {
   .notification-card {
-    padding: var(--space-4);
+    padding: 14px 16px;
   }
 
-  .notification-actions {
-    opacity: 1;
+  .notification-card + .notification-card::before {
+    left: 70px;
+  }
+
+  .action-btn {
+    width: 44px;
+    height: 44px;
   }
 }
 </style>
