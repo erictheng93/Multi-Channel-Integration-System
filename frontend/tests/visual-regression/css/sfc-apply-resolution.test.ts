@@ -29,7 +29,6 @@ import { fromRepoRelative } from './helpers/repo-files'
  */
 const EXPECTED_SFCS = [
   'src/components/conversation-list/CacheStatusIndicator.vue',
-  'src/components/conversation-list/ConversationFilters.vue',
   'src/components/conversation/QuickAssignActions.vue',
   'src/components/conversation/TypingIndicator.vue',
   'src/components/team/TeamCard.vue',
@@ -55,7 +54,8 @@ describe('SFC @apply discovery', () => {
 
   it('accounts for every @apply call site', () => {
     const total = discovered.reduce((sum, entry) => sum + entry.applyCount, 0)
-    expect(total).toBeGreaterThan(150)
+    // ConversationFilters moved to --ui-* tokens (no @apply) in the workspace redesign, which removed ~60 call sites
+    expect(total).toBeGreaterThan(50)
   })
 })
 
