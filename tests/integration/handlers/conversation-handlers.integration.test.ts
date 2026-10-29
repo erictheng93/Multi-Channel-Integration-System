@@ -624,22 +624,25 @@ describe('Conversation Handlers Integration Tests', () => {
       env.DB.prepare = vi.fn((query: string) => ({
         bind: vi.fn(() => ({
           first: vi.fn().mockImplementation(async () => {
-            if (query.includes('COUNT(*) as total')) {
-              return {
-                total: 3,
-                active: 1,
-                assigned: 1,
-                pending: 1,
-              };
-            }
-
             if (query.includes('as unreadCount')) {
-              return { unreadCount: 5, unreadConversations: 2 };
+              return { unreadCount: 5, unreadConversations: 2, oldestUnreadAt: '2026-01-15T08:00:00Z' };
             }
 
             return null;
           }),
-          all: vi.fn().mockResolvedValue({ success: true, results: [] }),
+          all: vi.fn().mockImplementation(async () => {
+            if (query.includes('GROUP BY assigned_team_id, status')) {
+              return {
+                success: true,
+                results: [
+                  { teamId: null, status: 'active', n: 1 },
+                  { teamId: null, status: 'pending', n: 1 },
+                  { teamId: 4, status: 'assigned', n: 1 },
+                ],
+              };
+            }
+            return { success: true, results: [] };
+          }),
           run: vi.fn().mockResolvedValue({ success: true }),
         })),
       })) as any;
@@ -657,6 +660,13 @@ describe('Conversation Handlers Integration Tests', () => {
           pending: 1,
           unreadCount: 5,
           unreadConversations: 2,
+          open: 3,
+          closed: 0,
+          byTeam: [
+            { teamId: null, open: 2, closed: 0 },
+            { teamId: 4, open: 1, closed: 0 },
+          ],
+          oldestUnreadAt: '2026-01-15T08:00:00Z',
         },
         timestamp: '2026-01-15T12:00:00Z',
       });
@@ -677,6 +687,10 @@ describe('Conversation Handlers Integration Tests', () => {
         pending: 0,
         unreadCount: 0,
         unreadConversations: 0,
+        open: 0,
+        closed: 0,
+        byTeam: [],
+        oldestUnreadAt: null,
       });
       expect(env.DB.prepare).toHaveBeenCalledTimes(2);
     });

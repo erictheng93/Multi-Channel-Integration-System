@@ -11,7 +11,8 @@ import {
   type ConversationSendMessageRequest,
   type ConversationStats,
   type ConversationTag,
-  type RawConversationData
+  type RawConversationData,
+  type WaitingConversationsData
 } from '@shared/api-contracts'
 import { callApiContract } from './contract-client'
 import type {
@@ -111,6 +112,8 @@ function adaptConversationData(rawData: RawConversationData): Conversation {
       createdAt: rawData.lastMessageAtActual ? new Date(rawData.lastMessageAtActual).getTime() : new Date(rawData.lastMessageAt).getTime()
     } : undefined,
     unreadCount: rawData.unreadCount || 0,
+    oldestUnreadAt: rawData.oldestUnreadAt ?? null,
+    replyWindowExpiresAt: rawData.replyWindowExpiresAt ?? null,
     createdAt: new Date(rawData.createdAt).getTime(),
     updatedAt: new Date(rawData.updatedAt).getTime()
   }
@@ -178,6 +181,11 @@ export const conversationApi = {
   // 獲取對話統計
   getStats: async (): Promise<ApiResponse<ConversationStats>> => {
     return callApiContract(conversationContracts.stats, {});
+  },
+
+  // 等待回覆的對話（最久未回覆在前）；total 為全部等待數，items 最多 limit 筆
+  getWaiting: async (limit = 5): Promise<ApiResponse<WaitingConversationsData>> => {
+    return callApiContract(conversationContracts.waiting, { limit });
   },
 
   // 獲取單一對話

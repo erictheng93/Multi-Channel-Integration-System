@@ -53,6 +53,10 @@ export interface RawConversationData {
   lastMessageContent?: string
   lastMessageAtActual?: string
   unreadCount?: number
+  /** Age anchor of the unread badge: earliest unread customer message for THIS agent (ISO); null when nothing is unread */
+  oldestUnreadAt?: string | null
+  /** Epoch ms until which the next LINE reply is free (Reply API); null/absent = no free reply available */
+  replyWindowExpiresAt?: number | null
   // Manual unread override timestamp: when set, the backend floors
   // unreadCount at 1 until the conversation is next marked as read
   markedUnreadAt?: string | null
@@ -107,6 +111,49 @@ export interface ConversationStats {
   unreadCount: number
   /** Number of visible conversations this agent still has to read */
   unreadConversations: number
+  /** Visible conversations that are not closed */
+  open: number
+  /** Visible conversations that are closed (已結案) */
+  closed: number
+  /** Per assigned team split of visible conversations; teamId null = the unassigned shared pool. Sorted by open desc */
+  byTeam: ConversationTeamCount[]
+  /** Earliest unread customer message across the conversations THIS agent has unread (ISO); null when none */
+  oldestUnreadAt: string | null
+}
+
+export interface ConversationTeamCount {
+  teamId: number | null
+  open: number
+  closed: number
+}
+
+/**
+ * A conversation waiting for a human reply: open, and the customer sent at
+ * least one message after the last human agent message (auto-replies, system
+ * messages and broadcasts do not count as a reply).
+ */
+export interface WaitingConversation {
+  conversationId: string
+  customerId: number
+  customerName: string | null
+  avatarUrl: string | null
+  platform: string | null
+  assignedTeamId: number | null
+  /** Earliest customer message after the last human agent message (ISO): the oldest unanswered one */
+  waitingSince: string
+  /** now - waitingSince at generation time */
+  waitingSeconds: number
+  /** Customer messages still unanswered */
+  unansweredCount: number
+  /** Preview of the latest customer message */
+  lastCustomerMessage: string | null
+}
+
+export interface WaitingConversationsData {
+  /** All waiting conversations visible to the caller (not just the returned page) */
+  total: number
+  items: WaitingConversation[]
+  generatedAt: string
 }
 
 export interface ConversationTag {
@@ -244,6 +291,11 @@ export const conversationContracts = {
   stats: defineApiContract<Record<string, never>, void, ConversationStats>({
     method: 'GET',
     path: () => '/conversations/stats'
+  }),
+
+  waiting: defineApiContract<{ limit?: number }, void, WaitingConversationsData>({
+    method: 'GET',
+    path: ({ limit }) => `/conversations/waiting${limit ? `?limit=${limit}` : ''}`
   }),
 
   get: defineApiContract<{ id: string }, void, RawConversationData>({
