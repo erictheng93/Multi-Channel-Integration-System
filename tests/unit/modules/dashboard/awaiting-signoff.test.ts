@@ -212,6 +212,12 @@ describe('migration 0072', () => {
     expect(awaitingOf(db, 'yes')).toBe(T(3));
   });
 
+  it('creates the system actor as an inactive, non-admin agent with an unusable password', () => {
+    const db = freshDb();
+    expect(db.prepare("SELECT role, is_active, password_hash FROM agents WHERE id = 'system'").get())
+      .toEqual({ role: 'agent', is_active: 0, password_hash: 'SYSTEM_NO_LOGIN' });
+  });
+
   it('adds the system agent once and is safe to apply twice', () => {
     const db = freshDb();
     db.exec(readMigration(MIGRATION_HYGIENE));
