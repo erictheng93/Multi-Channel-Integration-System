@@ -1,395 +1,1179 @@
 <template>
   <AppLayout>
-    <!--  LCP 優化：全頁面骨架屏 (初始載入時顯示) -->
-    <DashboardSkeleton v-if="isInitialLoading" />
-
-    <div
-      v-else
-      class="dashboard"
-    >
-      <!-- Welcome Section -->
-      <WelcomeSection
-        :user-name="currentAgent?.displayName || currentAgent?.name || '載入中...'"
-        :current-date="currentDate"
-        :loading="loading || statsLoading"
-        @refresh="refreshData"
-      />
-
-      <!-- Stats Grid -->
-      <StatsGrid>
-        <StatCard
-          :value="openConversations.length"
-          label="待處理對話"
-          :icon="ChatIcon"
-          variant="pending"
-        />
-        <StatCard
-          :value="assignedConversations.length"
-          label="處理中對話"
-          :icon="UserIcon"
-          variant="active"
-        />
-        <StatCard
-          :value="stats?.todayMessages || 0"
-          label="今日訊息"
-          :icon="MessageCircleIcon"
-          variant="messages"
-        />
-        <StatCard
-          :value="stats?.onlineAgents || 0"
-          label="線上客服"
-          :icon="UserIcon"
-          variant="agents"
-        />
-      </StatsGrid>
-
-      <!-- Main Content Grid -->
-      <div class="content-grid">
-        <!-- Recent Conversations -->
-        <RecentConversationsCard
-          :conversations="recentConversations"
-          :loading="loading || statsLoading"
-          @select="goToConversation"
-          @refresh="refreshData"
-        />
-
-        <!-- Activity Feed -->
-        <ActivityFeedCard
-          :activities="importantActivities"
-          :is-connected="activityStreamConnected"
-          :is-connecting="activityStreamConnecting"
-          :connection-state="activityConnectionState"
-          :reconnect-attempts="activityReconnectAttempts"
-          :latency="activityLatency"
-          :get-activity-icon="getActivityIcon"
-          :format-time="formatTime"
-          :loading="loading"
-          :show-view-all-link="isAdmin"
-          @reconnect="reconnectActivityStream"
-        />
-      </div>
-
-      <!-- Performance Metrics -->
-      <PerformanceMetrics
-        :response-time="stats?.responseTime || '0分鐘'"
-        :satisfaction-rate="stats?.satisfactionRate || 0"
-        :resolved-today="stats?.resolvedToday || 0"
-      />
-
-      <!-- Analytics Comparison Section -  LCP 優化：延遲加載。The comparison API is admin-only. -->
-      <div
-        v-if="showAnalytics && isAdmin"
-        class="analytics-section content-ready"
-      >
-        <div class="section-header">
-          <h3 class="section-title">
-            數據趨勢分析
-          </h3>
-          <p class="section-subtitle">
-            關鍵指標期間比較與趨勢洞察
-          </p>
-        </div>
-        <MetricsComparisonDashboard
-          title="對話指標趨勢分析"
-          preset="conversation"
-          :auto-refresh="true"
-          :refresh-interval="60000"
-        />
-      </div>
-      <!-- Analytics 加載佔位符 (admins only, like the widget) -->
-      <div
-        v-else-if="isAdmin"
-        class="analytics-section analytics-placeholder"
-      >
-        <div class="section-header">
-          <h3 class="section-title">
-            數據趨勢分析
-          </h3>
-          <p class="section-subtitle">
-            正在準備載入...
-          </p>
-        </div>
-        <div class="analytics-skeleton">
-          <div class="skeleton-grid">
-            <div class="skeleton-card" />
-            <div class="skeleton-card" />
-            <div class="skeleton-card" />
-            <div class="skeleton-card" />
+    <div class="dashboard ui-rise">
+      <!-- Page head -->
+      <section class="ui-page-head">
+        <div>
+          <div class="ui-eyebrow">
+            {{ dateLabel }}
           </div>
+          <h1 class="ui-page-title">
+            {{ greeting }}，{{ displayName }}
+          </h1>
+          <p class="ui-page-sub">
+            <template v-if="summary.data.value">
+              <template v-if="waitingCount > 0">
+                {{ waitingCount }} 件待回覆，最久已等 {{ oldestWaitText }}。
+              </template>
+              <template v-else>
+                目前沒有待回覆的客戶。
+              </template>
+              <template v-if="unreadStore.total > 0">
+                我的未讀 {{ unreadStore.total }} 件。
+              </template>
+            </template>
+            <template v-else-if="summary.error.value">
+              無法取得待回覆狀態。
+            </template>
+            <template v-else>
+              &nbsp;
+            </template>
+          </p>
         </div>
-      </div>
+        <div class="ui-page-actions">
+          <button
+            type="button"
+            class="btn btn-secondary btn-sm"
+            :disabled="refreshing"
+            aria-label="重新整理"
+            @click="refreshAll"
+          >
+            <svg
+              class="ico"
+              :class="{ spinning: refreshing }"
+              viewBox="0 0 24 24"
+            ><path d="M21 12a9 9 0 0 1-15.5 6.2L3 16M3 12a9 9 0 0 1 15.5-6.2L21 8M21 3v5h-5M3 21v-5h5" /></svg>
+            重新整理
+          </button>
+          <router-link
+            to="/conversations"
+            class="btn btn-primary"
+          >
+            開始回覆
+            <svg
+              class="ico"
+              viewBox="0 0 24 24"
+            ><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+          </router-link>
+        </div>
+      </section>
+
+      <!-- KPI row -->
+      <section class="ui-grid ui-cols-4">
+        <article class="ui-card ui-kpi">
+          <div class="ui-kpi-top">
+            <span
+              class="ui-kpi-ico"
+              style="background: var(--ui-orange-soft); color: var(--ui-orange-ink)"
+            ><svg
+              class="ico"
+              viewBox="0 0 24 24"
+            ><circle
+              cx="12"
+              cy="12"
+              r="9"
+            /><path d="M12 7v5l3 2" /></svg></span>
+            待回覆
+          </div>
+          <template v-if="summary.data.value">
+            <div class="ui-kpi-value">
+              {{ summary.data.value.waiting.count }}
+            </div>
+            <div
+              class="ui-kpi-foot"
+              title="待回覆＝客戶來訊後尚無客服回覆"
+            >
+              客戶來訊後尚無客服回覆
+            </div>
+          </template>
+          <template v-else>
+            <div class="ui-kpi-value">
+              <span
+                v-if="summary.error.value"
+                class="dash"
+              >—</span>
+              <span
+                v-else
+                class="sk sk-num"
+              />
+            </div>
+            <div class="ui-kpi-foot">
+              <span
+                v-if="summary.error.value"
+                class="retry-text"
+              >無法載入 <button
+                type="button"
+                class="ui-link as-btn"
+                @click="refreshAll"
+              >重試</button></span>
+              <span
+                v-else
+                class="sk sk-line"
+              />
+            </div>
+          </template>
+        </article>
+
+        <article class="ui-card ui-kpi">
+          <div class="ui-kpi-top">
+            <span
+              class="ui-kpi-ico"
+              style="background: var(--ui-accent-soft); color: var(--ui-accent)"
+            ><svg
+              class="ico"
+              viewBox="0 0 24 24"
+            ><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20.5l1.4-4.6A8 8 0 1 1 21 12Z" /></svg></span>
+            處理中
+          </div>
+          <template v-if="summary.data.value">
+            <div class="ui-kpi-value">
+              {{ summary.data.value.openConversations }}
+            </div>
+            <div class="ui-kpi-foot">
+              <template v-if="teamSplit.length > 0">
+                {{ teamSplit.map((t) => `${t.name} ${t.open}`).join(' · ') }}
+              </template>
+              <template v-else>
+                尚未結案的對話
+              </template>
+            </div>
+          </template>
+          <template v-else>
+            <div class="ui-kpi-value">
+              <span
+                v-if="summary.error.value"
+                class="dash"
+              >—</span>
+              <span
+                v-else
+                class="sk sk-num"
+              />
+            </div>
+            <div class="ui-kpi-foot">
+              <span
+                v-if="!summary.error.value"
+                class="sk sk-line"
+              />
+            </div>
+          </template>
+        </article>
+
+        <article class="ui-card ui-kpi">
+          <div class="ui-kpi-top">
+            <span
+              class="ui-kpi-ico"
+              style="background: var(--ui-green-soft); color: var(--ui-green-ink)"
+            ><svg
+              class="ico"
+              viewBox="0 0 24 24"
+            ><path d="M4 4h16v12H8l-4 4Z" /></svg></span>
+            今日訊息
+          </div>
+          <template v-if="summary.data.value">
+            <div class="ui-kpi-value">
+              {{ summary.data.value.customerMessages.today.toLocaleString('en-US') }}
+            </div>
+            <div class="ui-kpi-foot">
+              <template v-if="messagesDelta">
+                <span
+                  class="ui-delta"
+                  :class="deltaClass(messagesDelta.direction)"
+                >{{ messagesDelta.text }}</span>
+                較昨日同時段
+              </template>
+              <template v-else>
+                客戶傳來的訊息
+              </template>
+            </div>
+          </template>
+          <template v-else>
+            <div class="ui-kpi-value">
+              <span
+                v-if="summary.error.value"
+                class="dash"
+              >—</span>
+              <span
+                v-else
+                class="sk sk-num"
+              />
+            </div>
+            <div class="ui-kpi-foot">
+              <span
+                v-if="!summary.error.value"
+                class="sk sk-line"
+              />
+            </div>
+          </template>
+        </article>
+
+        <article class="ui-card ui-kpi">
+          <div class="ui-kpi-top">
+            <span
+              class="ui-kpi-ico"
+              style="background: var(--ui-indigo-soft); color: var(--ui-indigo)"
+            ><svg
+              class="ico"
+              viewBox="0 0 24 24"
+            ><circle
+              cx="9"
+              cy="8"
+              r="4"
+            /><path d="M2 21v-1a6 6 0 0 1 12 0v1M17 11a3 3 0 1 0 0-6M22 21v-1a5 5 0 0 0-4-4.9" /></svg></span>
+            線上客服
+          </div>
+          <template v-if="presence.data.value && presence.data.value.available">
+            <div class="ui-kpi-value">
+              {{ onlineIds.size }}<small v-if="activeMembers.length > 0">/ {{ activeMembers.length }}</small>
+            </div>
+            <div class="ui-kpi-foot">
+              目前在線的客服
+            </div>
+          </template>
+          <template v-else-if="presence.data.value || presence.error.value">
+            <div class="ui-kpi-value">
+              <span class="dash">—</span>
+            </div>
+            <div class="ui-kpi-foot">
+              暫時無法取得在線狀態
+            </div>
+          </template>
+          <template v-else>
+            <div class="ui-kpi-value">
+              <span class="sk sk-num" />
+            </div>
+            <div class="ui-kpi-foot">
+              <span class="sk sk-line" />
+            </div>
+          </template>
+        </article>
+      </section>
+
+      <!-- Focus + team -->
+      <section class="bento">
+        <article class="ui-card focus">
+          <div class="focus-lead">
+            <div class="lbl">
+              等待最久
+            </div>
+            <template v-if="summary.data.value && topWaiting.length > 0">
+              <div class="big">
+                {{ oldestWait.value }}<span class="big-unit">{{ oldestWait.unit }}</span>
+              </div>
+              <div class="lead-sub">
+                {{ topWaiting[0]?.customerName || '未命名客戶' }} · {{ teamLabel(topWaiting[0]?.assignedTeamId ?? null) }}
+              </div>
+            </template>
+            <template v-else-if="summary.data.value">
+              <div class="big dim">
+                0
+              </div>
+              <div class="lead-sub">
+                沒有待回覆的客戶
+              </div>
+            </template>
+            <template v-else-if="summary.error.value">
+              <div class="big dim">
+                —
+              </div>
+            </template>
+            <template v-else>
+              <span class="sk sk-big" />
+            </template>
+            <p class="note">
+              待回覆＝客戶來訊後尚無客服回覆。依等待時間排序，超過 30 分鐘標為紅色。
+            </p>
+          </div>
+
+          <div class="focus-list">
+            <ul
+              v-if="topWaiting.length > 0"
+              class="ui-list"
+            >
+              <li
+                v-for="item in topWaiting"
+                :key="item.conversationId"
+                class="ui-row"
+              >
+                <router-link
+                  :to="`/conversations/${item.conversationId}`"
+                  class="row-link"
+                  :aria-label="`開啟 ${item.customerName || '客戶'} 的對話`"
+                />
+                <div class="avatar">
+                  <img
+                    v-if="item.avatarUrl"
+                    :src="item.avatarUrl"
+                    alt=""
+                  >
+                  <template v-else>
+                    {{ initialOf(item.customerName) }}
+                  </template>
+                  <span
+                    v-if="item.platform === 'line' || item.platform === 'facebook'"
+                    class="ui-ch ch"
+                    :class="item.platform === 'line' ? 'ui-ch-line' : 'ui-ch-fb'"
+                  ><svg viewBox="0 0 24 24"><path d="M12 3C6.5 3 2 6.6 2 11c0 2.5 1.4 4.7 3.7 6.2L5 21l4.1-2.3c.9.2 1.9.3 2.9.3 5.5 0 10-3.6 10-8s-4.5-8-10-8Z" /></svg></span>
+                </div>
+                <div class="ui-row-main">
+                  <div class="ui-row-title">
+                    {{ item.customerName || '未命名客戶' }}
+                    <span
+                      v-if="item.assignedTeamId === null"
+                      class="ui-pill ui-pill-orange"
+                    >未指派</span>
+                    <span
+                      v-else
+                      class="ui-pill"
+                    >{{ teamLabel(item.assignedTeamId) }}</span>
+                  </div>
+                  <div class="ui-row-sub">
+                    {{ item.lastCustomerMessage || '（非文字訊息）' }}
+                  </div>
+                </div>
+                <div class="ui-row-meta">
+                  <div
+                    class="wait"
+                    :class="waitClass(waitSeconds(item.waitingSince))"
+                  >
+                    {{ formatWaitText(waitSeconds(item.waitingSince)) }}
+                  </div>
+                  {{ platformName(item.platform) }}
+                </div>
+              </li>
+            </ul>
+            <div
+              v-else-if="summary.data.value"
+              class="ui-empty"
+            >
+              <div class="ui-empty-art">
+                <svg
+                  class="ico"
+                  viewBox="0 0 24 24"
+                ><path d="m5 12 5 5L20 7" /></svg>
+              </div>
+              <h3>目前沒有待回覆的客戶</h3>
+              <p>客戶來訊後，尚未有客服回覆的對話會依等待時間排在這裡。</p>
+            </div>
+            <div
+              v-else-if="summary.error.value"
+              class="ui-empty"
+            >
+              <h3>無法載入待回覆清單</h3>
+              <button
+                type="button"
+                class="btn btn-secondary btn-sm"
+                @click="refreshAll"
+              >
+                重試
+              </button>
+            </div>
+            <div
+              v-else
+              class="skel-rows"
+            >
+              <span
+                v-for="n in 4"
+                :key="n"
+                class="sk sk-row"
+              />
+            </div>
+            <div
+              v-if="summary.data.value && waitingCount > topWaiting.length"
+              class="focus-foot"
+            >
+              <router-link
+                to="/conversations"
+                class="ui-link"
+              >
+                還有 {{ waitingCount - topWaiting.length }} 件待回覆，前往對話管理
+              </router-link>
+            </div>
+          </div>
+        </article>
+
+        <article class="ui-card team-card">
+          <div class="ui-card-head">
+            <div>
+              <h2 class="ui-card-title">
+                團隊狀態
+              </h2>
+              <div class="ui-card-sub">
+                <template v-if="presence.data.value && !presence.data.value.available">
+                  暫時無法取得在線狀態
+                </template>
+                <template v-else-if="presence.data.value">
+                  {{ onlineIds.size }} 位在線 · 共 {{ activeMembers.length }} 位
+                </template>
+                <template v-else>
+                  &nbsp;
+                </template>
+              </div>
+            </div>
+          </div>
+          <ul
+            v-if="teamRows.length > 0"
+            class="people"
+          >
+            <li
+              v-for="p in teamRows"
+              :key="p.id"
+              class="person"
+            >
+              <div class="avatar sm">
+                {{ initialOf(p.name) }}
+                <span
+                  v-if="presence.data.value?.available"
+                  class="presence"
+                  :class="{ off: !p.online }"
+                />
+              </div>
+              <div class="person-main">
+                <div class="person-name">
+                  {{ p.name }}
+                </div>
+                <div class="person-sub">
+                  {{ p.sub }}
+                </div>
+              </div>
+              <span
+                v-if="presence.data.value?.available"
+                class="ui-pill"
+                :class="p.online ? 'ui-pill-green ui-pill-dot' : ''"
+              >{{ p.online ? '在線' : '離線' }}</span>
+            </li>
+          </ul>
+          <div
+            v-else-if="members.data.value || members.error.value"
+            class="ui-empty compact"
+          >
+            <p>{{ members.error.value ? '無法載入成員清單' : '尚無團隊成員' }}</p>
+          </div>
+          <div
+            v-else
+            class="skel-rows pad"
+          >
+            <span
+              v-for="n in 4"
+              :key="n"
+              class="sk sk-row"
+            />
+          </div>
+        </article>
+      </section>
+
+      <!-- Chart + today -->
+      <section class="bento">
+        <article class="ui-card">
+          <div class="ui-card-head">
+            <div>
+              <h2 class="ui-card-title">
+                訊息量
+              </h2>
+              <div class="ui-card-sub">
+                近 {{ volumeDays }} 天，每日客戶訊息數
+              </div>
+            </div>
+            <div class="ui-card-end">
+              <div
+                class="ui-seg"
+                role="tablist"
+                aria-label="訊息量期間"
+              >
+                <button
+                  v-for="d in volumeRanges"
+                  :key="d"
+                  type="button"
+                  role="tab"
+                  :class="{ 'is-on': volumeDays === d }"
+                  :aria-selected="volumeDays === d"
+                  @click="setVolumeDays(d)"
+                >
+                  {{ d }} 天
+                </button>
+              </div>
+            </div>
+          </div>
+          <MessageVolumeChart
+            v-if="volume.data.value"
+            :data="volume.data.value"
+          />
+          <div
+            v-else-if="volume.error.value"
+            class="ui-empty compact"
+          >
+            <h3>無法載入訊息量</h3>
+            <button
+              type="button"
+              class="btn btn-secondary btn-sm"
+              @click="refreshAll"
+            >
+              重試
+            </button>
+          </div>
+          <div
+            v-else
+            class="chart-skel"
+          >
+            <span class="sk sk-chart" />
+          </div>
+        </article>
+
+        <article class="ui-card today-card">
+          <div class="ui-card-head">
+            <h2 class="ui-card-title">
+              今日表現
+            </h2>
+          </div>
+          <div
+            v-if="summary.data.value"
+            class="stat-list"
+          >
+            <div class="stat">
+              <span class="k">平均首次回覆</span>
+              <span class="v">
+                <template v-if="firstResponseAvg">{{ firstResponseAvg.value }}<small>{{ firstResponseAvg.unit }}</small></template>
+                <template v-else>—</template>
+              </span>
+              <span
+                v-if="firstResponsePrev"
+                class="cap"
+              >昨天同時段 {{ firstResponsePrev }}</span>
+            </div>
+            <div class="stat">
+              <span class="k">今日已結案</span>
+              <span class="v">{{ summary.data.value.resolved.today }}</span>
+              <span
+                v-if="resolvedDelta"
+                class="cap"
+              >
+                <span
+                  class="ui-delta"
+                  :class="deltaClass(resolvedDelta.direction)"
+                >{{ resolvedDelta.text }}</span>
+                較昨日同時段
+              </span>
+            </div>
+            <div class="stat">
+              <span class="k">今日已首次回覆</span>
+              <span class="v">{{ summary.data.value.firstResponse.today.count }}<small>個新對話</small></span>
+            </div>
+          </div>
+          <div
+            v-else-if="summary.error.value"
+            class="ui-empty compact"
+          >
+            <p>無法載入今日表現</p>
+          </div>
+          <div
+            v-else
+            class="skel-rows pad"
+          >
+            <span
+              v-for="n in 3"
+              :key="n"
+              class="sk sk-row"
+            />
+          </div>
+
+          <template v-if="feed.length > 0">
+            <div class="ui-card-head feed-head">
+              <h2 class="ui-card-title small">
+                最近動態
+              </h2>
+              <router-link
+                v-if="isAdmin"
+                to="/activities"
+                class="ui-link ui-card-end"
+              >
+                全部
+              </router-link>
+            </div>
+            <ul class="feed">
+              <li
+                v-for="a in feed"
+                :key="a.id"
+              >
+                <span class="ico-tile"><svg
+                  class="ico"
+                  viewBox="0 0 24 24"
+                ><circle
+                  cx="12"
+                  cy="12"
+                  r="9"
+                /><path d="M12 8v4l2.5 2.5" /></svg></span>
+                <div>
+                  {{ a.userName }} {{ describeActivity(a) }}
+                  <time :datetime="a.createdAt">{{ relativeTime(a.createdAt) }}</time>
+                </div>
+              </li>
+            </ul>
+          </template>
+        </article>
+      </section>
     </div>
   </AppLayout>
 </template>
 
 <script setup lang="ts">
-import { createLogger } from '@/utils/logger'
-
-const frontendLogger = createLogger('Dashboard')
-import { onMounted, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuth } from '@/composables/useAuth'
 import { useTokenRefresh } from '@/composables/useTokenRefresh'
 import { useActivityTracker } from '@/composables/useActivityTracker'
-
-// Dashboard composables
-import { useDashboardStats } from '@/composables/dashboard/useDashboardStats'
-import { useDashboardActivities } from '@/composables/dashboard/useDashboardActivities'
-import { useDashboardData } from '@/composables/dashboard/useDashboardData'
-
-// UI components
-import AppLayout from '@/components/ui/AppLayout.vue'
-import DashboardSkeleton from '@/components/ui/DashboardSkeleton.vue'
-import MetricsComparisonDashboard from '@/components/analytics/MetricsComparisonDashboard.vue'
-
-// Dashboard components
 import {
-  WelcomeSection,
-  StatsGrid,
-  StatCard,
-  RecentConversationsCard,
-  ActivityFeedCard,
-  PerformanceMetrics
-} from '@/components/dashboard'
-
-// Icons
-import { ChatIcon, UserIcon, MessageCircleIcon } from '@/components/icons'
+  useDashboardOverview,
+  compareDelta,
+  formatWait,
+  formatWaitText,
+  type VolumeDays
+} from '@/composables/dashboard/useDashboardOverview'
+import { useUnreadStore } from '@/stores/unread'
+import { getActivityDescription } from '@/components/activity/utils'
+import type { ActivityLog } from '@/api/activities'
+import AppLayout from '@/components/ui/AppLayout.vue'
+import MessageVolumeChart from '@/components/dashboard/MessageVolumeChart.vue'
 
 const router = useRouter()
 const { currentAgent, isAdmin } = useAuth()
-
-// LCP 優化：初始載入狀態 - 用於顯示骨架屏
-const isInitialLoading = ref(true)
-
-// LCP 優化：延遲加載 Analytics 組件
-const showAnalytics = ref(false)
-
-// Debug auth data in development
-if (import.meta.env.DEV) {
-  import('@/utils/debug-auth').then(({ debugAuthData }) => {
-    frontendLogger.debug(' Dashboard mounted - debugging auth data:')
-    debugAuthData()
-    frontendLogger.debug(' currentAgent from useAuth:', currentAgent.value)
-  })
-}
-
-// Use dashboard composables
-const { stats, loading: statsLoading, refresh: refreshStats } = useDashboardStats()
+const unreadStore = useUnreadStore()
 
 const {
-  activities: importantActivities,
-  isConnected: activityStreamConnected,
-  isConnecting: activityStreamConnecting,
-  connectionState: activityConnectionState,
-  reconnectAttempts: activityReconnectAttempts,
-  latency: activityLatency,
-  reconnect: reconnectActivityStream,
-  getActivityIcon,
-  formatTime
-} = useDashboardActivities({
-  importantTimeRange: 2, // 2 hours
-  maxImportantActivities: 8
+  summary, volume, stats, presence, members, activities,
+  teamNames, volumeDays, waitingCount, oldestWaitSeconds, waitSeconds,
+  onlineIds, activeMembers, setVolumeDays, refresh, now
+} = useDashboardOverview()
+
+const volumeRanges: VolumeDays[] = [7, 30, 90]
+
+// ---- header ----
+const displayName = computed(() => currentAgent.value?.displayName || currentAgent.value?.name || '')
+const greeting = computed(() => {
+  const hour = Number(new Intl.DateTimeFormat('en-GB', { hour: '2-digit', hour12: false, timeZone: 'Asia/Taipei' })
+    .format(new Date(now.value)))
+  if (hour >= 5 && hour < 12) { return '早安' }
+  if (hour >= 12 && hour < 18) { return '午安' }
+  return '晚安'
 })
+const dateLabel = computed(() => new Intl.DateTimeFormat('zh-TW', {
+  month: 'long', day: 'numeric', weekday: 'long', timeZone: 'Asia/Taipei'
+}).format(new Date(now.value)))
 
-const {
-  openConversations,
-  assignedConversations,
-  recentConversations,
-  loading,
-  currentDate,
-  goToConversation,
-  refresh: refreshConversations
-} = useDashboardData({
-  recentConversationsCount: 5
-})
+const oldestWaitText = computed(() =>
+  oldestWaitSeconds.value === null ? '' : formatWaitText(oldestWaitSeconds.value))
 
-// Token refresh and activity tracking
-const tokenRefreshData = useTokenRefresh()
-const startTokenRefreshCheck = tokenRefreshData.startTokenRefreshCheck
-const stopTokenRefreshCheck = tokenRefreshData.stopTokenRefreshCheck
+// ---- 待回覆 focus ----
+const topWaiting = computed(() => summary.data.value?.waiting.top ?? [])
+const oldestWait = computed(() => formatWait(oldestWaitSeconds.value ?? 0))
+const waitClass = (seconds: number): string => seconds >= 30 * 60 ? 'hot' : seconds >= 15 * 60 ? 'warm' : ''
 
-const activityTrackerData = useActivityTracker()
-const startTracking = activityTrackerData.startTracking
-const stopTracking = activityTrackerData.stopTracking
-
-/**
- * 刷新所有數據
- */
-const refreshData = async () => {
-  await Promise.all([
-    refreshConversations(),
-    refreshStats()
-  ])
+const teamLabel = (teamId: number | null): string => {
+  if (teamId === null) { return '未指派' }
+  return teamNames.value[teamId]
+    ?? currentAgent.value?.teams?.find((t) => t.id === teamId)?.name
+    ?? `團隊 ${teamId}`
 }
 
-// 監聽 currentAgent 變化 - 啟用調試
-watch(() => currentAgent.value, (newAgent, oldAgent) => {
-  frontendLogger.debug(' Dashboard: currentAgent changed', {
-    old: oldAgent,
-    new: newAgent,
-    displayName: newAgent?.displayName,
-    name: newAgent?.name
+const platformName = (platform: string | null): string =>
+  platform === 'line' ? 'LINE' : platform === 'facebook' ? 'Messenger' : ''
+
+const initialOf = (name: string | null | undefined): string => (name?.trim().charAt(0) || '?').toUpperCase()
+
+// ---- 處理中 split by team ----
+const teamSplit = computed(() => (stats.data.value?.byTeam ?? [])
+  .filter((t) => t.open > 0)
+  .map((t) => ({ name: teamLabel(t.teamId), open: t.open })))
+
+// ---- deltas ----
+const messagesDelta = computed(() => {
+  const m = summary.data.value?.customerMessages
+  return m ? compareDelta(m.today, m.yesterdaySameTime) : null
+})
+const resolvedDelta = computed(() => {
+  const r = summary.data.value?.resolved
+  return r ? compareDelta(r.today, r.yesterdaySameTime) : null
+})
+const deltaClass = (direction: 'up' | 'down' | 'flat'): string =>
+  direction === 'up' ? 'ui-delta-up' : direction === 'down' ? 'ui-delta-down' : ''
+
+const minutesFormat = (seconds: number | null): { value: string; unit: string } | null => {
+  if (seconds === null) { return null }
+  const { value, unit } = formatWait(seconds)
+  return { value, unit: unit === '分' ? '分鐘' : unit }
+}
+const firstResponseAvg = computed(() => minutesFormat(summary.data.value?.firstResponse.today.avgSeconds ?? null))
+const firstResponsePrev = computed(() => {
+  const prev = minutesFormat(summary.data.value?.firstResponse.yesterdaySameTime.avgSeconds ?? null)
+  return prev ? `${prev.value} ${prev.unit}` : ''
+})
+
+// ---- team presence (online / offline only) ----
+const ROLE_IN_TEAM: Record<string, string> = { member: '成員', lead: '組長', supervisor: '主管' }
+const teamRows = computed(() => activeMembers.value
+  .map((m) => {
+    const primary = m.teams?.find((t) => t.isPrimary) ?? m.teams?.[0]
+    const teamName = m.primaryTeamName ?? primary?.teamName
+    const role = m.role === 'admin' ? '管理員' : primary ? ROLE_IN_TEAM[primary.roleInTeam] : '客服'
+    return {
+      id: String(m.id),
+      name: m.name || m.email || '未命名',
+      online: onlineIds.value.has(String(m.id)),
+      sub: teamName ? `${teamName} · ${role}` : role
+    }
   })
-}, { immediate: true, deep: true })
+  .sort((a, b) => Number(b.online) - Number(a.online) || a.name.localeCompare(b.name, 'zh-Hant'))
+  .slice(0, 8))
 
-// 監聽路由變化，確保Dashboard正確重新渲染
-watch(() => router.currentRoute.value.path, (newPath, oldPath) => {
-  frontendLogger.debug(' Dashboard: Route changed from', oldPath, 'to', newPath)
+// ---- recent activity (hidden when empty) ----
+const feed = computed<ActivityLog[]>(() => activities.data.value ?? [])
+const describeActivity = (a: ActivityLog): string => getActivityDescription(a)
+const relativeTime = (iso: string): string => {
+  const diff = Math.max(0, now.value - Date.parse(iso)) / 1000
+  if (diff < 60) { return '剛剛' }
+  const m = Math.floor(diff / 60)
+  if (m < 60) { return `${m} 分鐘前` }
+  const h = Math.floor(m / 60)
+  if (h < 24) { return `${h} 小時前` }
+  return `${Math.floor(h / 24)} 天前`
+}
 
-  // 如果路由到達Dashboard頁面，確保數據刷新
-  if (newPath === '/dashboard') {
-    frontendLogger.debug(' Dashboard: Refreshing data due to route change')
-    refreshData()
-  }
-}, { immediate: false })
+// ---- refresh / lifecycle ----
+const refreshing = ref(false)
+const refreshAll = async (): Promise<void> => {
+  refreshing.value = true
+  try { await refresh() } finally { refreshing.value = false }
+}
 
-onMounted(async () => {
-  // 數據會自動載入，因為 composables 都設置了 immediate: true
-  frontendLogger.debug(' Dashboard mounted')
+// Re-entering /dashboard via the router refreshes the numbers
+watch(() => router.currentRoute.value.path, (path, oldPath) => {
+  if (path === '/dashboard' && oldPath !== path) { void refreshAll() }
+})
 
-  // LCP 優化：快速切換到實際內容
-  // 使用 requestAnimationFrame 確保骨架屏至少渲染一幀後再切換
-  window.requestAnimationFrame(() => {
-    // 延遲一小段時間讓數據有機會載入
-    setTimeout(() => {
-      isInitialLoading.value = false
-      frontendLogger.debug('[Dashboard] Initial skeleton hidden, showing content')
-    }, 150) // 短暫延遲確保數據開始載入
-  })
+const tokenRefresh = useTokenRefresh()
+const activityTracker = useActivityTracker()
 
-  // LCP 優化：延遲加載 Analytics 組件
-  // 等待主要內容渲染完成後，再加載 Analytics
-  const scheduleAnalyticsLoad = () => {
-    showAnalytics.value = true
-    frontendLogger.debug('[Dashboard] Analytics component loaded (deferred)')
-  }
-
-  if ('requestIdleCallback' in window) {
-    window.requestIdleCallback(scheduleAnalyticsLoad, { timeout: 3000 })
-  } else {
-    // Fallback: 延遲 500ms 讓 LCP 優先完成
-    setTimeout(scheduleAnalyticsLoad, 500)
-  }
-
-  // 啟動 token 刷新檢查和活動追蹤
-  startTokenRefreshCheck()
-  startTracking()
+onMounted(() => {
+  tokenRefresh.startTokenRefreshCheck()
+  activityTracker.startTracking()
 })
 
 onBeforeUnmount(() => {
-  // 清理 token 刷新檢查和活動追蹤
-  frontendLogger.debug(' Stopping token refresh and activity tracking')
-  stopTokenRefreshCheck()
-  stopTracking()
+  tokenRefresh.stopTokenRefreshCheck()
+  activityTracker.stopTracking()
 })
 </script>
 
 <style scoped>
 .dashboard {
-  /* 移除 max-width 和 margin: 0 auto，讓內容占滿整個 page-content */
-  /* 不再居中，消除兩側空白 */
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
   width: 100%;
+}
+
+.ico {
+  width: 15px;
+  height: 15px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.btn .ico {
+  width: 16px;
+  height: 16px;
+}
+
+.ico.spinning {
+  animation: dash-spin 0.9s linear infinite;
+}
+
+@keyframes dash-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.bento {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.bento > :first-child {
+  grid-column: span 8;
+}
+
+.bento > :last-child {
+  grid-column: span 4;
+}
+
+.dash {
+  color: var(--ui-faint);
+}
+
+.retry-text {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.as-btn {
+  padding: 0;
+  border: 0;
+  background: none;
+}
+
+/* ---- focus card ---- */
+.focus {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  overflow: hidden;
+}
+
+.focus-lead {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 22px;
+  background: linear-gradient(180deg, var(--ui-orange-soft), transparent 85%);
+}
+
+.focus-lead .lbl {
+  font-weight: 600;
+  color: var(--ui-ink-2);
+}
+
+.focus-lead .big {
+  font: 600 52px / 1 var(--ui-font-display);
+  letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
+}
+
+.focus-lead .big.dim {
+  color: var(--ui-faint);
+}
+
+.big-unit {
+  margin-left: 4px;
+  font-size: 20px;
+  font-weight: 500;
+  letter-spacing: 0;
+  color: var(--ui-muted);
+}
+
+.lead-sub {
+  font-size: 13px;
+  color: var(--ui-muted);
+}
+
+.focus-lead .note {
+  margin: auto 0 0;
+  padding-top: 12px;
+  font-size: 12.5px;
+  color: var(--ui-muted);
+}
+
+.focus-list {
+  padding: 6px 0;
+  min-width: 0;
+}
+
+.focus-list .ui-row {
+  cursor: pointer;
+}
+
+.row-link {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+
+.focus-foot {
+  padding: 8px 22px 10px;
+}
+
+.wait {
+  font: 600 13px var(--ui-font-display);
+  font-variant-numeric: tabular-nums;
+  color: var(--ui-ink);
+}
+
+.wait.hot {
+  color: var(--ui-red-ink);
+}
+
+.wait.warm {
+  color: var(--ui-orange-ink);
+}
+
+.avatar {
+  position: relative;
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: linear-gradient(160deg, #b9b6f5, #6e6bd8);
+  color: #fff;
+  font: 600 14px var(--ui-font-display);
+}
+
+.avatar img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.avatar .ch {
+  position: absolute;
+  right: -4px;
+  bottom: -4px;
+  width: 15px;
+  height: 15px;
+  border-radius: 5px;
+  box-shadow: 0 0 0 2px var(--ui-surface);
+}
+
+.avatar .ch svg {
+  width: 9px;
+  height: 9px;
+}
+
+.avatar.sm {
+  width: 32px;
+  height: 32px;
+  font-size: 13px;
+  background: linear-gradient(160deg, #5aa8ff, #1d6fe0);
+}
+
+.avatar .presence {
+  position: absolute;
+  right: -1px;
+  bottom: -1px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--ui-green);
+  box-shadow: 0 0 0 2px var(--ui-surface);
+}
+
+.avatar .presence.off {
+  background: var(--ui-faint);
+}
+
+/* ---- team card ---- */
+.people {
+  display: grid;
+  gap: 2px;
   margin: 0;
-  padding: clamp(1rem, 2vw, 2rem) 0;
-  min-height: 100%;
-  /* 確保內容可以完整顯示並滾動 */
+  padding: 0 0 8px;
+  list-style: none;
 }
 
-.content-grid {
+.person {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 22px;
+}
+
+.person-main {
+  min-width: 0;
+  flex: 1;
+}
+
+.person-name {
+  overflow: hidden;
+  font-size: 13.5px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.person-sub {
+  overflow: hidden;
+  font-size: 12px;
+  color: var(--ui-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ---- today card ---- */
+.stat-list {
   display: grid;
-  grid-template-columns: 2fr 1fr;
-  gap: var(--space-8);
-  margin-bottom: var(--space-12);
+  padding: 4px 0 10px;
 }
 
-.analytics-section {
-  margin-top: var(--space-12);
+.stat {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 10px;
+  align-items: baseline;
+  padding: 12px 22px;
 }
 
-/* LCP 優化：Analytics 骨架屏樣式 */
-.analytics-placeholder {
-  opacity: 0.7;
+.stat + .stat::before {
+  position: absolute;
+  top: 0;
+  right: 22px;
+  left: 22px;
+  height: 0.5px;
+  background: var(--ui-sep);
+  content: '';
 }
 
-.analytics-skeleton {
-  background: white;
-  border-radius: var(--radius-2xl);
-  padding: var(--space-8);
-  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1);
-  border: 1px solid var(--gray-100);
+.stat .k {
+  font-size: 13.5px;
+  color: var(--ui-ink-2);
 }
 
-.skeleton-grid {
+.stat .v {
+  margin-left: auto;
+  font: 600 22px var(--ui-font-display);
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.stat .v small {
+  margin-left: 2px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ui-muted);
+}
+
+.stat .cap {
+  flex-basis: 100%;
+  font-size: 11.5px;
+  color: var(--ui-muted);
+}
+
+.feed-head {
+  padding-top: 6px;
+}
+
+.ui-card-title.small {
+  font-size: 15px;
+}
+
+.feed {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: var(--space-6);
+  gap: 14px;
+  margin: 0;
+  padding: 0 22px 18px;
+  list-style: none;
 }
 
-.skeleton-card {
-  height: 120px;
-  background: linear-gradient(90deg, var(--gray-100) 25%, var(--gray-50) 50%, var(--gray-100) 75%);
+.feed li {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  gap: 10px;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.ico-tile {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 9px;
+  background: var(--ui-accent-soft);
+  color: var(--ui-accent);
+}
+
+.feed time {
+  display: block;
+  font-size: 11.5px;
+  color: var(--ui-muted);
+}
+
+/* ---- empty / skeleton ---- */
+.ui-empty.compact {
+  padding: 28px 24px 32px;
+}
+
+.skel-rows {
+  display: grid;
+  gap: 14px;
+  padding: 14px 22px;
+}
+
+.skel-rows.pad {
+  padding-bottom: 20px;
+}
+
+.chart-skel {
+  padding: 8px 22px 22px;
+}
+
+.sk {
+  display: block;
+  border-radius: 8px;
+  background: linear-gradient(90deg, var(--ui-fill) 25%, var(--ui-surface-2) 50%, var(--ui-fill) 75%);
   background-size: 200% 100%;
-  animation: skeleton-shimmer 1.5s ease-in-out infinite;
-  border-radius: var(--radius-xl);
+  animation: dash-shimmer 1.5s ease-in-out infinite;
 }
 
-@keyframes skeleton-shimmer {
+.sk-num {
+  width: 64px;
+  height: 34px;
+}
+
+.sk-line {
+  width: 60%;
+  height: 12px;
+}
+
+.sk-big {
+  width: 100px;
+  height: 52px;
+}
+
+.sk-row {
+  height: 38px;
+}
+
+.sk-chart {
+  height: 200px;
+  border-radius: 14px;
+}
+
+@keyframes dash-shimmer {
   0% {
     background-position: 200% 0;
   }
+
   100% {
     background-position: -200% 0;
   }
 }
 
-.section-header {
-  margin-bottom: var(--space-8);
-  text-align: center;
-}
-
-.section-title {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: var(--gray-900);
-  margin-bottom: var(--space-2);
-  letter-spacing: -0.025em;
-}
-
-.section-subtitle {
-  font-size: 1rem;
-  color: var(--gray-600);
-  margin: 0;
-}
-
-/* Responsive Design */
-@media (max-width: 1024px) {
-  .dashboard {
-    padding: var(--space-4) 0;
+@media (prefers-reduced-motion: reduce) {
+  .sk,
+  .ico.spinning {
+    animation: none;
   }
+}
 
-  .content-grid {
-    grid-template-columns: 1fr;
-    gap: var(--space-6);
+@media (max-width: 1280px) {
+  .bento > :first-child,
+  .bento > :last-child {
+    grid-column: span 12;
   }
 }
 
 @media (max-width: 768px) {
-  .dashboard {
-    padding: var(--space-3) 0;
+  .focus {
+    grid-template-columns: minmax(0, 1fr);
   }
-}
 
-@media (max-width: 480px) {
-  .dashboard {
-    padding: var(--space-2) 0;
-  }
-}
-
-/* Reduced Motion Preference */
-@media (prefers-reduced-motion: reduce) {
-  .skeleton-card {
-    animation: none !important;
-    background: var(--gray-100);
+  .focus-lead .note {
+    display: none;
   }
 }
 </style>
