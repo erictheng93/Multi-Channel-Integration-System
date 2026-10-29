@@ -98,6 +98,7 @@ export function createRealtimeHandler(deps: RealtimeHandlerDeps) {
     const f = activeFilters.value
     const cleanFilters: Record<string, unknown> = {}
     if (f.scope) { cleanFilters.scope = f.scope }
+    if (f.awaiting) { cleanFilters.awaiting = f.awaiting }
     if (f.status) { cleanFilters.status = f.status }
     if (f.platform) { cleanFilters.platform = f.platform }
     if (f.teamId) { cleanFilters.teamId = f.teamId }

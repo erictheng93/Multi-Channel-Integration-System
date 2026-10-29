@@ -625,6 +625,11 @@ onUnmounted(() => {
   gap: 10px 16px;
 }
 
+.filter-top > .ui-seg {
+  max-width: 100%;
+  flex-wrap: wrap;
+}
+
 .scope-tab .ui-seg-n {
   margin-left: 2px;
 }
