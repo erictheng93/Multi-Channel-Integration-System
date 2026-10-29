@@ -213,14 +213,15 @@
     border-radius: 2px;
   }
 
+  /* Group labels: 11.5px / 600, with 24px of air above every group after the first */
   .nav-group + .nav-group {
-    margin-top: 14px;
+    margin-top: 24px;
   }
 
   .nav-label {
     display: block;
-    padding: 6px 10px 4px;
-    font-size: var(--ui-t-cap);
+    padding: 0 10px 6px;
+    font-size: var(--ui-t-nav-label);
     font-weight: 600;
     letter-spacing: 0.04em;
     color: var(--ui-muted);
@@ -255,12 +256,11 @@
     background-color: var(--ui-fill);
   }
 
-  /* Active: raised white pill, accent icon */
+  /* Active: the whole row is tinted (accent wash), accent icon, ink label */
   .nav-item.active {
-    background-color: var(--ui-sel-bg);
+    background-color: var(--ui-accent-soft);
     color: var(--ui-ink);
     font-weight: 600;
-    box-shadow: var(--ui-shadow-pill);
   }
 
   .nav-count {
@@ -312,6 +312,10 @@
 
   /* Medium screens: the rail shows icons only */
   @media (min-width: 769px) and (max-width: 1024px) {
+    .nav-group + .nav-group {
+      margin-top: 12px;
+    }
+
     .nav-label,
     .nav-text {
       display: none;

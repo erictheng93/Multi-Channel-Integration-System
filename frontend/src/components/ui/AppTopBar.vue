@@ -163,6 +163,17 @@
       gap: var(--space-2);
     }
 
+    /* Phone layer: the bar names the page only (no section breadcrumb) */
+    .breadcrumb-section,
+    .breadcrumb-sep {
+      display: none;
+    }
+
+    .breadcrumb-item {
+      font-size: 17px;
+      letter-spacing: -0.01em;
+    }
+
     .top-bar {
       min-height: 60px;
       padding: var(--space-2) var(--space-4) var(--space-2) 68px;

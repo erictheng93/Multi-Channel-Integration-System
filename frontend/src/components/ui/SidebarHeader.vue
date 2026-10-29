@@ -27,26 +27,35 @@
       :aria-label="sidebarCollapsed ? '展開側邊欄' : '收合側邊欄'"
       @click="$emit('toggle')"
     >
-      <!-- Hamburger menu when collapsed -->
-      <div
-        v-if="sidebarCollapsed"
-        class="hamburger-menu"
-      >
-        <span class="hamburger-line" />
-        <span class="hamburger-line" />
-        <span class="hamburger-line" />
-      </div>
-      <!-- Arrow when expanded -->
+      <!-- Sidebar panel icon (not a chevron: the nav groups already use chevrons to expand).
+           The left pane is filled while the sidebar is open. -->
       <svg
-        v-else
         width="20"
         height="20"
         viewBox="0 0 24 24"
         fill="none"
         stroke="currentColor"
-        stroke-width="2"
+        stroke-width="1.8"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        aria-hidden="true"
       >
-        <path d="m9 18 6-6-6-6" />
+        <rect
+          x="3"
+          y="4"
+          width="18"
+          height="16"
+          rx="3.5"
+        />
+        <path d="M9.5 4v16" />
+        <path
+          v-if="!sidebarCollapsed"
+          class="panel-fill"
+          d="M3 7.5a3.5 3.5 0 0 1 3.5-3.5h3v16h-3A3.5 3.5 0 0 1 3 16.5Z"
+          fill="currentColor"
+          stroke="none"
+          opacity="0.22"
+        />
       </svg>
     </button>
     <!-- Mobile close button -->
@@ -161,31 +170,6 @@
   .mobile-close-btn:hover {
     background-color: var(--ui-fill);
     color: var(--ui-ink-2);
-  }
-
-  .sidebar-toggle svg {
-    transition: transform var(--ui-dur) var(--ui-ease);
-    transform-origin: center;
-  }
-
-  .sidebar-toggle.collapsed svg {
-    transform: rotate(180deg);
-  }
-
-  /* Hamburger Menu Styles */
-  .hamburger-menu {
-    display: flex;
-    flex-direction: column;
-    gap: 3px;
-    width: 18px;
-    height: 14px;
-  }
-
-  .hamburger-line {
-    width: 100%;
-    height: 2px;
-    background-color: currentColor;
-    border-radius: 1px;
   }
 
   /* Medium screens: the rail has no room for the toggle next to the logo */
