@@ -222,12 +222,14 @@
         </option>
       </select>
 
-      <a
-        v-if="hasActiveFilters"
-        class="filter-clear"
-        href="#"
-        @click.prevent="$emit('clear')"
-      >&#28165;&#38500;&#31721;&#36984;</a>
+      <button
+        type="button"
+        class="btn btn-ghost btn-sm filter-reset"
+        :disabled="!hasActiveFilters"
+        @click="$emit('clear')"
+      >
+        重設
+      </button>
 
       <div
         v-if="dateRange === 'custom'"
@@ -383,18 +385,6 @@ function onCustomEndChange(event: Event) {
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ui-accent) 40%, transparent);
   color: var(--ui-accent);
   font-weight: 600;
-}
-
-.filter-clear {
-  margin-left: 4px;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--ui-accent);
-  text-decoration: none;
-}
-
-.filter-clear:hover {
-  opacity: 0.75;
 }
 
 .custom-date-card {

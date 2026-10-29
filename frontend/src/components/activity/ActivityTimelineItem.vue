@@ -1,5 +1,9 @@
 <template>
-  <div class="timeline-item">
+  <div
+    class="timeline-item"
+    :class="{ 'is-clickable': formattedDetails.length > 0, 'is-open': detailsExpanded }"
+    @click="onRowClick"
+  >
     <div
       class="timeline-item__icon"
       :class="[iconStyle.bgClass, iconStyle.colorClass]"
@@ -25,6 +29,11 @@
           :title="fullTime"
         >{{ formatTime(activity.createdAt) }}</time>
         <div class="timeline-item__restore-zone">
+          <span
+            v-if="restoreState.kind === 'eligible'"
+            class="ui-pill ui-pill-green"
+            data-test="restore-eligible"
+          >可還原</span>
           <button
             v-if="restoreState.kind === 'eligible'"
             class="btn btn-secondary btn-sm"
@@ -36,14 +45,14 @@
           </button>
           <span
             v-else-if="restoreState.kind === 'expired'"
-            class="timeline-item__restore-hint"
+            class="ui-pill"
             data-test="restore-expired"
           >
             已過期
           </span>
           <span
             v-else-if="restoreState.kind === 'irreversible'"
-            class="timeline-item__restore-hint"
+            class="ui-pill"
             data-test="restore-irreversible"
           >
             不可還原
@@ -55,19 +64,29 @@
           >
             已還原
           </span>
+          <button
+            v-if="formattedDetails.length > 0"
+            class="timeline-item__details-toggle"
+            type="button"
+            :aria-expanded="detailsExpanded"
+            :aria-label="detailsExpanded ? '隱藏詳情' : '查看詳情'"
+            @click.stop="detailsExpanded = !detailsExpanded"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            ><path d="m6 9 6 6 6-6" /></svg>
+          </button>
         </div>
       </div>
       <div class="timeline-item__description">
         {{ getActivityDescription(activity) }}
       </div>
-      <button
-        v-if="formattedDetails.length > 0"
-        class="timeline-item__details-toggle"
-        :aria-expanded="detailsExpanded"
-        @click="detailsExpanded = !detailsExpanded"
-      >
-        {{ detailsExpanded ? '隱藏詳情' : '查看詳情' }}
-      </button>
       <ActivityDetailPanel
         :entries="formattedDetails"
         :show="detailsExpanded"
@@ -118,13 +137,13 @@ const {
 } = useRestoreActivity()
 
 const systemActor = computed(() => isSystemActor(props.activity))
-// Not a person: neutral tile instead of the action colour, never an avatar
-const iconStyle = computed(() => {
-  const style = getActionIconStyle(props.activity.action)
-  return systemActor.value
-    ? { ...style, bgClass: 'bg-[var(--ui-fill)]', colorClass: 'text-[var(--ui-muted)]' }
-    : style
-})
+// One neutral tile for every action: the glyph says what happened, colour is kept for state
+// (the chips on the right). Only the glyph comes from the action map.
+const iconStyle = computed(() => ({
+  ...getActionIconStyle(props.activity.action),
+  bgClass: 'bg-[var(--ui-fill)]',
+  colorClass: systemActor.value ? 'text-[var(--ui-muted)]' : 'text-[var(--ui-ink-2)]',
+}))
 
 const formattedDetails = computed(() =>
   formatActivityDetails(props.activity.details ?? null, props.activity.action)
@@ -167,6 +186,13 @@ const restoreState = computed<RestoreState>(() => {
 
   return { kind: 'hidden' }
 })
+
+/** The whole row opens the details; real controls inside it keep their own behaviour. */
+function onRowClick(event: MouseEvent) {
+  if (formattedDetails.value.length === 0) {return}
+  if ((event.target as HTMLElement).closest('button, a, input, select')) {return}
+  detailsExpanded.value = !detailsExpanded.value
+}
 
 function openRestoreModal() {
   conflictMidChanges.value = null
@@ -279,12 +305,6 @@ onUnmounted(() => {
   margin-left: auto;
 }
 
-.timeline-item__restore-hint {
-  font-size: 13px;
-  color: var(--ui-muted);
-  white-space: nowrap;
-}
-
 .timeline-item__description {
   margin-top: 4px;
   font-size: 14px;
@@ -294,20 +314,30 @@ onUnmounted(() => {
 }
 
 .timeline-item__details-toggle {
-  display: inline-flex;
-  align-items: center;
-  margin-top: 6px;
-  padding: 0;
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
   border: 0;
+  border-radius: 50%;
   background: none;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--ui-accent);
+  color: var(--ui-muted);
   cursor: pointer;
+  transition: background var(--ui-dur) var(--ui-ease);
 }
-
 .timeline-item__details-toggle:hover {
-  opacity: 0.75;
+  background: var(--ui-fill);
+}
+.timeline-item__details-toggle svg {
+  width: 16px;
+  height: 16px;
+  transition: transform var(--ui-dur) var(--ui-ease);
+}
+.timeline-item.is-open .timeline-item__details-toggle svg {
+  transform: rotate(180deg);
+}
+.timeline-item.is-clickable {
+  cursor: pointer;
 }
 
 @media (max-width: 768px) {
@@ -321,9 +351,13 @@ onUnmounted(() => {
     height: 34px;
     border-radius: 11px;
   }
+  /* Status stays at the right of the name line */
   .timeline-item__restore-zone {
-    flex-basis: 100%;
-    margin-left: 0;
+    gap: 6px;
+  }
+  /* The 還原 button already says "restorable"; the chip would wrap the name line */
+  .timeline-item__restore-zone [data-test='restore-eligible'] {
+    display: none;
   }
 }
 </style>
