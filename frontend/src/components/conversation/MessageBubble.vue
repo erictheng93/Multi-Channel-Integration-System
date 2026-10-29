@@ -317,7 +317,7 @@
         </time>
         <!-- Agent attribution for internal QA -->
         <span
-          v-if="isOutgoing && message.senderName"
+          v-if="isOutgoing && message.senderName && showAttribution"
           class="agent-attribution"
         >
           {{ message.senderName }}
@@ -568,6 +568,8 @@
     message: Message
     delivered?: boolean
     showSender?: boolean
+    /** Agent signature on an outgoing bubble; the list passes false inside a group so it shows once */
+    showAttribution?: boolean
     attachmentUrl?: string
     attachmentName?: string
     attachmentSize?: number
@@ -576,6 +578,7 @@
   const props = withDefaults(defineProps<Props>(), {
     delivered: true,
     showSender: false,
+    showAttribution: true,
     attachmentUrl: '',
     attachmentName: '',
     attachmentSize: 0,

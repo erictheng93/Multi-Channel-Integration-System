@@ -67,7 +67,7 @@ describe('QuickReplies', () => {
       expect(buttons[0].text()).toBe('Single Reply')
     })
 
-    it('should render many replies', () => {
+    it('should render many replies', async () => {
       const manyReplies = Array.from({ length: 20 }, (_, i) => ({
         id: `${i + 1}`,
         text: `Reply ${i + 1}`,
@@ -79,8 +79,10 @@ describe('QuickReplies', () => {
         },
       })
 
-      const buttons = wrapper.findAll('.quick-reply-btn')
-      expect(buttons).toHaveLength(20)
+      // Three suggestions plus the 更多 toggle; 更多 reveals the rest
+      expect(wrapper.findAll('.quick-reply-btn')).toHaveLength(4)
+      await wrapper.find('.quick-reply-more').trigger('click')
+      expect(wrapper.findAll('.quick-reply-btn')).toHaveLength(21)
     })
   })
 

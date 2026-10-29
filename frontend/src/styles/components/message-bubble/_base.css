@@ -40,6 +40,13 @@
   border-color: transparent;
 }
 
+/* White-on-blue renders heavier than it is: keep it regular weight */
+.message-outgoing .message-text {
+  font-weight: 400;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
 .message-text {
   font-size: 0.9375rem;
   line-height: 1.5;
@@ -260,11 +267,13 @@
   font-weight: 500;
 }
 
+/* Signature: once per group, small and upright (no italic) */
 .agent-attribution {
-  font-size: 13px;
-  color: rgba(255, 255, 255, 0.94);
+  font-size: 11px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.9);
   margin-left: 4px;
-  font-style: italic;
+  font-style: normal;
 }
 
 /* Message bubble tails: removed in the Apple-native design (flat rounded bubbles) */
