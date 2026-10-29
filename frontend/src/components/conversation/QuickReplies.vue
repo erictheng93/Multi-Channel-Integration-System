@@ -77,41 +77,37 @@ const handleSelect = (reply: QuickReply) => {
 </script>
 
 <style scoped>
-/* ====== Quick Replies Styles ====== */
+/* Quick replies: one swipeable row of capsule chips */
 .quick-replies {
-  max-width: 1200px;
-  margin: 0 auto;
   display: flex;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-  justify-content: center;
-  padding: 0.5rem 0;
+  gap: 8px;
+  padding: 10px 0 2px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.quick-replies::-webkit-scrollbar {
+  display: none;
 }
 
 .quick-reply-btn {
-  padding: 0.5rem 1rem;
-  background: white;
-  border: 1px solid #e2e8f0;
-  border-radius: 9999px;
-  font-size: 0.8125rem;
+  flex: 0 0 auto;
+  min-height: 32px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--ui-fill);
+  color: var(--ui-ink-2);
+  font-size: 12.5px;
   font-weight: 500;
-  color: #64748b;
-  cursor: pointer;
-  transition: all 0.2s ease;
   white-space: nowrap;
+  cursor: pointer;
+  transition: background-color var(--ui-dur) var(--ui-ease);
 }
 
 .quick-reply-btn:hover:not(:disabled) {
-  background: #f8fafc;
-  border-color: #6366f1;
-  color: #6366f1;
-  transform: translateY(-1px);
-  box-shadow: 0 2px 4px rgba(99, 102, 241, 0.1);
-}
-
-.quick-reply-btn:active:not(:disabled) {
-  transform: translateY(0);
-  box-shadow: 0 1px 2px rgba(99, 102, 241, 0.1);
+  background: var(--ui-fill-strong);
 }
 
 .quick-reply-btn:disabled {
@@ -119,7 +115,6 @@ const handleSelect = (reply: QuickReply) => {
   cursor: not-allowed;
 }
 
-/* Fade in animation */
 .fade-in-enter-active {
   animation: fadeIn 0.3s ease-out;
 }
@@ -133,6 +128,7 @@ const handleSelect = (reply: QuickReply) => {
     opacity: 0;
     transform: translateY(-4px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -143,33 +139,15 @@ const handleSelect = (reply: QuickReply) => {
   from {
     opacity: 1;
   }
+
   to {
     opacity: 0;
   }
 }
 
-/* Responsive */
-@media (max-width: 768px) {
-  /* One swipeable row instead of up to 3 wrapped rows eating the chat area */
-  .quick-replies {
-    flex-wrap: nowrap;
-    justify-content: flex-start;
-    overflow-x: auto;
-    gap: 0.375rem;
-    padding: 0.375rem 0;
-    scrollbar-width: none;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  .quick-replies::-webkit-scrollbar {
-    display: none;
-  }
-
+@media (pointer: coarse) {
   .quick-reply-btn {
-    flex: 0 0 auto;
-    white-space: nowrap;
-    padding: 0.375rem 0.75rem;
-    font-size: 0.75rem;
+    min-height: 44px;
   }
 }
 </style>
