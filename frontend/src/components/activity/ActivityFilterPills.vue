@@ -435,10 +435,15 @@ function onCustomEndChange(event: Event) {
     flex: 1 1 calc(50% - 5px);
     min-width: 0;
   }
-  .filter-total,
   .custom-date-card {
     flex-basis: 100%;
     margin-left: 0;
+  }
+  /* 重設 and the count share the last row instead of stacking */
+  .filter-total {
+    flex: 1 1 0;
+    margin-left: 0;
+    text-align: right;
   }
   .date-input {
     flex: 1;
