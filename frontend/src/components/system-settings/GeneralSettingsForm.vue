@@ -14,8 +14,9 @@
     <SettingsGroup title="系統識別">
       <SettingsRow
         label="系統名稱"
-        hint="最多 40 字元"
+        :hint="`顯示在側邊欄與登入頁，最多 40 字元（已輸入 ${localSettings.systemName.length}）`"
         for-id="systemName"
+        stacked
       >
         <input
           id="systemName"
@@ -31,6 +32,7 @@
         label="聯絡信箱"
         hint="系統管理員的聯絡窗口"
         for-id="contactEmail"
+        stacked
       >
         <input
           id="contactEmail"
@@ -46,8 +48,9 @@
     <SettingsGroup title="地區與語言">
       <SettingsRow
         label="時區"
-        hint="預覽卡會顯示所選時區的目前時間"
+        :hint="clockHint"
         for-id="timezone"
+        stacked
       >
         <select
           id="timezone"
@@ -72,7 +75,7 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, watch } from 'vue'
+import { computed, reactive, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { GeneralSettings } from '@/types/system-settings'
 import SettingsGroup from './SettingsGroup.vue'
@@ -126,6 +129,23 @@ watch(
   },
   { deep: true }
 )
+
+/** Live hint: the current time in the chosen zone, read once per selection (no ticking timer) */
+const clockHint = computed(() => {
+  try {
+    const at = new Intl.DateTimeFormat('zh-TW', {
+      timeZone: localSettings.timezone || 'Asia/Taipei',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    }).format(new Date())
+    return `所選時區的目前時間：${at}`
+  } catch {
+    return '用於顯示時間與報表日期'
+  }
+})
 
 function handleSave() {
   emit('save')
