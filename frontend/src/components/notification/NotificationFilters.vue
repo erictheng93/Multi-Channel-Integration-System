@@ -124,9 +124,8 @@ defineEmits<{
 
 <style scoped>
 .filters-section {
-  /* Shrinks to its controls: no empty right half */
-  width: fit-content;
-  max-width: 100%;
+  /* Full width: tabs on the left, the two selects (and 清除) pushed to the right edge */
+  width: 100%;
   display: flex;
   flex-wrap: wrap;
   gap: 10px 12px;
@@ -134,9 +133,13 @@ defineEmits<{
   padding: 14px 18px;
 }
 
+.filter-tabs + .filter-select {
+  margin-left: auto;
+}
+
 .filter-select {
   width: auto;
-  min-width: 140px;
+  min-width: 160px;
   height: 36px;
   border-radius: 999px;
 }
@@ -154,8 +157,8 @@ defineEmits<{
 }
 
 @media (max-width: 768px) {
-  .filters-section {
-    width: auto;
+  .filter-tabs + .filter-select {
+    margin-left: 0;
   }
 
   .filter-tabs {
