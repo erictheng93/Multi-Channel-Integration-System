@@ -560,11 +560,12 @@
     display: grid;
     aspect-ratio: 1;
     place-items: center;
+    border: 1.5px dashed rgba(60, 60, 67, 0.22);
     border-radius: var(--ui-r-inner);
-    background: var(--ui-fill);
+    background: transparent;
     font-size: var(--ui-t-meta);
     font-variant-numeric: tabular-nums;
-    color: var(--ui-faint);
+    color: var(--ui-muted);
   }
 
   .image-tile,
@@ -762,5 +763,10 @@
     .actions .btn {
       flex: 1;
     }
+  }
+
+  .ui-input::placeholder,
+  .ui-textarea::placeholder {
+    color: var(--ui-muted);
   }
 </style>

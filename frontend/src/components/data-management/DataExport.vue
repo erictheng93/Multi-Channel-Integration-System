@@ -103,30 +103,23 @@
             <li>不含已收回的訊息</li>
             <li>依時間由新到舊，最多 {{ EXPORT_LIMIT.toLocaleString() }} 筆</li>
           </ul>
+          <h3 class="scope-h">
+            匯出前可篩選
+          </h3>
+          <ul class="scope-list scope-filters">
+            <li
+              v-for="f in filterOptions"
+              :key="f.name"
+            >
+              <b>{{ f.name }}</b>{{ f.hint }}
+            </li>
+          </ul>
           <div class="cap">
             <span class="cap-num">{{ EXPORT_LIMIT.toLocaleString() }}</span>
             <span class="cap-text">筆 / 單次匯出上限<br>超出部分會被截斷</span>
           </div>
         </div>
       </aside>
-    </section>
-
-    <section
-      class="ui-card filters"
-      aria-label="匯出前可篩選"
-    >
-      <h2 class="filters-title">
-        匯出前可篩選
-      </h2>
-      <ul class="filters-list">
-        <li
-          v-for="f in filterOptions"
-          :key="f.name"
-        >
-          <b>{{ f.name }}</b>
-          <span>{{ f.hint }}</span>
-        </li>
-      </ul>
     </section>
 
     <UiActionBar
@@ -176,7 +169,7 @@ const formats = [
     tone: 'blue',
     fields: ['訊息編號、對話編號', '寄件者類型與名稱', '訊息內容與類型', '傳送時間、傳送狀態、建立時間', '附加資料（metadata）', '匯出資訊：時間、匯出者、篩選條件'],
     usecases: ['API 整合', '資料分析', '系統備份'],
-    preview: '{ id, conversationId, senderType, senderName, content, messageType, sentAt, … }'
+    preview: '{ id, conversationId, senderType, senderName, content, messageType, sentAt }'
   },
   {
     id: 'csv' as const,
@@ -186,7 +179,7 @@ const formats = [
     tone: 'green',
     fields: ['訊息編號、對話編號', '寄件者類型與名稱', '訊息內容與類型', '傳送時間、傳送狀態、建立時間'],
     usecases: ['Excel 報表', '統計分析', '團隊共享'],
-    preview: 'Message ID, Conversation ID, Sender Type, Sender Name, Content, …'
+    preview: 'Message ID, Conversation ID, Sender Type, Sender Name, Content'
   },
   {
     id: 'txt' as const,
@@ -303,20 +296,18 @@ function selectFormat(format: FormatId) {
   display: block;
   margin-top: 8px;
   padding: 8px 10px;
-  overflow: hidden;
   border-radius: 10px;
   background: color-mix(in srgb, var(--ui-ink) 5%, transparent);
   font: 12px / 1.45 var(--ui-font-mono);
   color: var(--ui-ink-2);
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 
 .cap {
   display: flex;
   gap: 14px;
   align-items: center;
-  margin-top: auto;
+  margin-top: 14px;
   padding: 16px 18px;
   border-radius: var(--ui-r-inner);
   background: var(--ui-accent-soft);
@@ -335,39 +326,13 @@ function selectFormat(format: FormatId) {
   color: var(--ui-ink-2);
 }
 
-.filters {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 12px 32px;
-  padding: 20px 22px;
+.scope-filters li b {
+  display: block;
+  font-size: 13.5px;
+  font-weight: 600;
 }
 
-.filters-title {
-  margin: 0;
-  font: 600 var(--ui-t-title) / 1.25 var(--ui-font-display);
-}
-
-.filters-list {
-  display: flex;
-  flex: 1;
-  flex-wrap: wrap;
-  gap: 12px 32px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.filters-list li {
-  display: grid;
-  gap: 2px;
-}
-
-.filters-list b {
-  font-size: 14px;
-}
-
-.filters-list span {
+.scope-filters li {
   font-size: 13px;
   color: var(--ui-muted);
 }
@@ -567,15 +532,6 @@ function selectFormat(format: FormatId) {
 
   .export-actions {
     margin-top: auto;
-  }
-
-  .filters {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .filters-list {
-    flex-direction: column;
   }
 }
 </style>
