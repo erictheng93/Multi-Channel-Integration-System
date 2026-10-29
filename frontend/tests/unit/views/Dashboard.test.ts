@@ -129,7 +129,7 @@ describe('Dashboard.vue', () => {
     expect(kpis).toHaveLength(4)
     expect(kpis[0].text()).toContain('待回覆')
     expect(kpis[0].find('.ui-kpi-value').text()).toBe('9')
-    expect(kpis[0].text()).toContain('客戶來訊後尚無客服回覆')
+    expect(kpis[0].text()).toContain('尚無客服回覆')
     expect(kpis[1].find('.ui-kpi-value').text()).toBe('23')
     expect(kpis[1].text()).toContain('客服一組 15')
     expect(kpis[1].text()).toContain('未指派 8')
@@ -197,7 +197,7 @@ describe('Dashboard.vue', () => {
     const wrapper = mountDashboard()
     await flushPromises()
     expect(wrapper.find('.ui-kpi-foot[title^="待回覆"]').text()).toContain('近 7 天內')
-    expect(wrapper.find('.focus-lead .note').text()).toContain('近 7 天內')
+    expect(wrapper.find('.focus-lead .info-tip').text()).toContain('近 7 天內')
   })
 
   it('points to the stale list under the 等待最久 card, with the never-replied count', async () => {

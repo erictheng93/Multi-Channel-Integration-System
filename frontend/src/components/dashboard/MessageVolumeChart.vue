@@ -1,25 +1,43 @@
 <template>
-  <div>
+  <div class="chart-root">
     <div class="legend">
-      <span><i class="cur" />本期 {{ fmt(data.totals.current) }}</span>
-      <span><i class="prev" />上期 {{ fmt(data.totals.previous) }}</span>
-      <span
-        v-for="ch in channels"
-        :key="ch.key"
-        class="split"
+      <div
+        class="legend-group"
+        role="group"
+        aria-label="期間"
+      >
+        <span><i class="cur" />本期 {{ fmt(data.totals.current) }}</span>
+        <span><i class="prev" />上期 {{ fmt(data.totals.previous) }}</span>
+      </div>
+      <div
+        v-if="channels.length > 0"
+        class="legend-group legend-channels"
+        role="group"
+        aria-label="渠道"
       >
         <span
-          class="ui-ch"
-          :class="ch.cls"
-        ><svg viewBox="0 0 24 24"><path d="M12 3C6.5 3 2 6.6 2 11c0 2.5 1.4 4.7 3.7 6.2L5 21l4.1-2.3c.9.2 1.9.3 2.9.3 5.5 0 10-3.6 10-8s-4.5-8-10-8Z" /></svg></span>
-        {{ ch.label }} {{ fmt(ch.total) }}
-      </span>
+          v-for="ch in channels"
+          :key="ch.key"
+          class="split"
+        >
+          <span
+            class="ui-ch"
+            :class="ch.cls"
+          ><svg viewBox="0 0 24 24"><path d="M12 3C6.5 3 2 6.6 2 11c0 2.5 1.4 4.7 3.7 6.2L5 21l4.1-2.3c.9.2 1.9.3 2.9.3 5.5 0 10-3.6 10-8s-4.5-8-10-8Z" /></svg></span>
+          {{ ch.label }} {{ fmt(ch.total) }}
+        </span>
+      </div>
     </div>
 
-    <div class="chart-wrap">
+    <div
+      ref="wrap"
+      class="chart-wrap"
+    >
       <svg
         class="chart"
-        viewBox="0 0 780 220"
+        :width="W"
+        :height="H"
+        :viewBox="`0 0 ${W} ${H}`"
         role="img"
         :aria-label="ariaLabel"
       >
@@ -47,16 +65,16 @@
           <line
             v-for="t in ticks"
             :key="t.y"
-            x1="40"
-            x2="770"
+            :x1="X0"
+            :x2="X1"
             :y1="t.y"
             :y2="t.y"
           />
         </g>
         <text
-          v-for="t in ticks"
+          v-for="t in yLabelTicks"
           :key="`l${t.y}`"
-          x="30"
+          :x="X0 - 10"
           :y="t.y + 4"
           text-anchor="end"
         >{{ fmt(t.value) }}</text>
@@ -94,14 +112,14 @@
           <rect
             class="tip"
             :x="tipX"
-            y="2"
+            y="0"
             width="80"
             height="26"
             rx="8"
           />
           <text
             :x="tipX + 40"
-            y="19"
+            y="17"
             text-anchor="middle"
             class="tip-text"
           >今天 {{ fmt(lastPoint.value) }}</text>
@@ -123,8 +141,8 @@
           v-for="l in xLabels"
           :key="l.x"
           :x="l.x"
-          y="212"
-          text-anchor="middle"
+          :y="H - 6"
+          :text-anchor="l.anchor"
         >{{ l.text }}</text>
       </svg>
     </div>
@@ -132,15 +150,42 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import type { MessageVolumeData } from '@/api/dashboard'
 
 const props = defineProps<{ data: MessageVolumeData }>()
 
-const X0 = 40
-const X1 = 760
-const Y_BASE = 190
-const Y_TOP = 10
+// The plot is drawn in real pixels: the wrapper's measured size is the viewBox, so axis text keeps
+// its 11px size on a phone and the chart fills whatever height its card gives it.
+const wrap = ref<HTMLElement | null>(null)
+const W = ref(780)
+const H = ref(360)
+let observer: ResizeObserver | null = null
+
+const measure = (): void => {
+  const el = wrap.value
+  if (!el) { return }
+  const cs = getComputedStyle(el)
+  const w = el.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight)
+  const h = el.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom)
+  if (w > 0) { W.value = Math.round(w) }
+  if (h > 0) { H.value = Math.round(h) }
+}
+
+onMounted(() => {
+  measure()
+  if (typeof ResizeObserver !== 'undefined' && wrap.value) {
+    observer = new ResizeObserver(measure)
+    observer.observe(wrap.value)
+  }
+})
+onBeforeUnmount(() => observer?.disconnect())
+
+const compact = computed(() => W.value < 480)
+const X0 = computed(() => (compact.value ? 6 : 44))
+const X1 = computed(() => W.value - 16)
+const Y_BASE = computed(() => H.value - 28)
+const Y_TOP = 34
 
 const fmt = (n: number): string => n.toLocaleString('en-US')
 
@@ -159,14 +204,18 @@ const yMax = computed(() => {
   return Math.max(3, Math.round(step * 3))
 })
 
-const yOf = (v: number): number => Y_BASE - (v / yMax.value) * (Y_BASE - Y_TOP)
+const yOf = (v: number): number => Y_BASE.value - (v / yMax.value) * (Y_BASE.value - Y_TOP)
 
 const ticks = computed(() => [0, 1, 2, 3].map((i) => {
   const value = Math.round((yMax.value / 3) * i)
   return { value, y: yOf(value) }
 }))
 
-const xOf = (i: number, n: number): number => n <= 1 ? X1 : X0 + (i * (X1 - X0)) / (n - 1)
+// No y labels on a phone: the grid and the "today" tooltip carry the scale
+const yLabelTicks = computed(() => (compact.value ? [] : ticks.value))
+
+const xOf = (i: number, n: number): number =>
+  n <= 1 ? X1.value : X0.value + (i * (X1.value - X0.value)) / (n - 1)
 
 const toPoints = (rows: { date: string; total: number }[]) =>
   rows.map((d, i) => ({ date: d.date, value: d.total, x: xOf(i, rows.length), y: yOf(d.total) }))
@@ -181,21 +230,32 @@ const currentPath = computed(() => line(points.value))
 const previousPath = computed(() => line(previousPoints.value))
 const areaPath = computed(() => points.value.length === 0
   ? ''
-  : `${currentPath.value} L${X1} ${Y_BASE} L${X0} ${Y_BASE} Z`)
+  : `${currentPath.value} L${X1.value} ${Y_BASE.value} L${X0.value} ${Y_BASE.value} Z`)
 
 const lastPoint = computed(() => points.value[points.value.length - 1] ?? null)
-const tipX = computed(() => (lastPoint.value ? Math.min(lastPoint.value.x - 48, X1 - 72) : 0))
+const tipX = computed(() => (lastPoint.value ? Math.min(lastPoint.value.x - 48, W.value - 84) : 0))
 
+type Anchor = 'start' | 'middle' | 'end'
 const xLabels = computed(() => {
   const rows = props.data.current
   const n = rows.length
+  const label = (i: number): string => i === n - 1 ? '今天' : (rows[i]?.date ?? '').slice(5).replace('-', '/')
+  if (compact.value) {
+    // Three ticks: first, middle, today
+    const idx = n <= 2 ? [...new Set([0, n - 1])] : [0, Math.round((n - 1) / 2), n - 1]
+    return idx.map((i, k): { x: number; text: string; anchor: Anchor } => ({
+      x: xOf(i, n),
+      text: label(i),
+      anchor: k === 0 ? 'start' : k === idx.length - 1 ? 'end' : 'middle'
+    }))
+  }
   const every = n <= 7 ? 1 : Math.ceil(n / 7)
-  const out: { x: number; text: string }[] = []
-  rows.forEach((d, i) => {
+  const out: { x: number; text: string; anchor: Anchor }[] = []
+  rows.forEach((_, i) => {
     const isLast = i === n - 1
     // Keep the last label (今天) and skip a neighbour that would collide with it
     if (isLast || (i % every === 0 && n - 1 - i >= every)) {
-      out.push({ x: xOf(i, n), text: isLast ? '今天' : d.date.slice(5).replace('-', '/') })
+      out.push({ x: xOf(i, n), text: label(i), anchor: isLast ? 'end' : i === 0 ? 'start' : 'middle' })
     }
   })
   return out
@@ -214,16 +274,38 @@ const ariaLabel = computed(() =>
 </script>
 
 <style scoped>
+/* Fills the height its card gives it; the plot never drops below a readable minimum */
+.chart-root {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
 .legend {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px 16px;
+  gap: 6px 24px;
+  align-items: center;
   padding: 0 22px 6px;
   font-size: 13px;
   color: var(--ui-muted);
 }
 
-.legend > span {
+.legend-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  align-items: center;
+}
+
+/* Period legend and channel legend are two groups: a hairline divides them */
+.legend-channels {
+  padding-left: 24px;
+  border-left: 1px solid var(--ui-sep);
+}
+
+.legend span {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -243,13 +325,17 @@ const ariaLabel = computed(() =>
 }
 
 .chart-wrap {
+  position: relative;
+  flex: 1;
+  min-height: 300px;
   padding: 4px 22px 18px;
 }
 
 .chart {
+  position: absolute;
+  top: 4px;
+  left: 22px;
   display: block;
-  width: 100%;
-  height: auto;
   overflow: visible;
 }
 
@@ -271,5 +357,25 @@ const ariaLabel = computed(() =>
 .chart .tip-text {
   fill: var(--ui-ink);
   font-weight: 600;
+}
+
+@media (max-width: 768px) {
+  .legend {
+    padding: 0 16px 6px;
+  }
+
+  .legend-channels {
+    padding-left: 0;
+    border-left: 0;
+  }
+
+  .chart-wrap {
+    min-height: 230px;
+    padding: 4px 16px 14px;
+  }
+
+  .chart {
+    left: 16px;
+  }
 }
 </style>
