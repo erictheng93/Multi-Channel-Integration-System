@@ -94,7 +94,8 @@
               ]"
               :message="virtualItems[virtualItem.index]?.data as Message"
               :delivered="true"
-              :show-attribution="!continuesGroup(virtualItem.index + 1)"
+              :show-attribution="!continuesGroup(virtualItem.index)"
+              :show-meta="!continuesGroup(virtualItem.index + 1)"
               @copy="$emit('messageCopy', $event)"
               @reply="$emit('messageReply', $event)"
               @forward="$emit('messageForward', $event)"
@@ -329,7 +330,7 @@ const scrollToMessage = async (messageId: string, retries = 3, delay = 100) => {
 }
 
 // Thread grouping: consecutive messages from the same sender within 5 minutes read as one group
-// (4px apart inside a group, 16px between groups; the agent signature shows once, on the last bubble)
+// (4px apart inside a group, 16px between groups; the agent signature shows once above the first bubble; time and state once below the last)
 const GROUP_WINDOW_MS = 5 * 60 * 1000
 const continuesGroup = (index: number): boolean => {
   const cur = virtualItems.value[index]
