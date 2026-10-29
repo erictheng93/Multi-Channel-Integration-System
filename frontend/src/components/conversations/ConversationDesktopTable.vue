@@ -15,6 +15,18 @@
       >
       全選本頁
     </label>
+    <!-- Column heads share the row grid, so every value sits under its label -->
+    <div
+      class="col-head"
+      :class="{ 'has-select': selectionMode }"
+      aria-hidden="true"
+    >
+      <span>客戶</span>
+      <span>最後訊息</span>
+      <span>狀態</span>
+      <span>負責人</span>
+      <span class="col-end">更新</span>
+    </div>
     <TransitionGroup
       name="conversation-list"
       tag="ul"
@@ -106,6 +118,8 @@
               :class="`state-${replyStateOf(conversation, now).state}`"
             >{{ replyStateOf(conversation, now).text }}</span>
           </div>
+        </div>
+        <div class="owner-cell">
           <span
             v-if="conversation.assignedTeam?.name"
             class="team-text"
@@ -238,7 +252,29 @@ const getLastMessageText = (conversation: Conversation) => {
 
 <style scoped>
 .desktop-table {
+  --conv-cols: minmax(200px, 0.9fr) minmax(0, 1.3fr) 104px 104px 132px;
   display: block;
+}
+
+/* Column heads: grouped-list header strip above the first row */
+.col-head {
+  display: grid;
+  grid-template-columns: var(--conv-cols);
+  gap: 8px 20px;
+  padding: 10px 20px 8px 28px;
+  box-shadow: inset 0 -0.5px 0 var(--ui-sep);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 18px;
+  color: var(--ui-muted);
+}
+
+.col-head.has-select {
+  padding-left: 68px;
+}
+
+.col-head .col-end {
+  text-align: right;
 }
 
 .conv-list {
@@ -270,8 +306,8 @@ const getLastMessageText = (conversation: Conversation) => {
 .conversation-row {
   position: relative;
   display: grid;
-  grid-template-columns: minmax(220px, 0.9fr) minmax(0, 1.3fr) 150px 128px;
-  gap: 8px 24px;
+  grid-template-columns: var(--conv-cols);
+  gap: 8px 20px;
   align-items: center;
   padding: 13px 20px 13px 28px;
   cursor: pointer;
@@ -455,11 +491,16 @@ const getLastMessageText = (conversation: Conversation) => {
   color: var(--ui-muted);
 }
 
-.status-cell {
-  display: grid;
-  gap: 4px;
-  justify-items: start;
+.status-cell,
+.owner-cell {
+  min-width: 0;
   white-space: nowrap;
+}
+
+.owner-cell .team-text {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .status-line .ui-pill-orange {
@@ -523,14 +564,13 @@ const getLastMessageText = (conversation: Conversation) => {
 }
 
 @media (max-width: 1024px) {
-  .conversation-row {
-    grid-template-columns: minmax(180px, 1fr) minmax(0, 1.2fr) 130px;
+  .desktop-table {
+    --conv-cols: minmax(150px, 1fr) minmax(0, 1.1fr) 92px 84px 118px;
   }
 
-  .time-cell {
-    grid-column: 3;
-    justify-items: start;
-    text-align: left;
+  .conversation-row,
+  .col-head {
+    gap: 8px 14px;
   }
 }
 
