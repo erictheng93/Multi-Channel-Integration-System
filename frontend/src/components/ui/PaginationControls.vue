@@ -5,11 +5,11 @@
     </div>
     <div class="pagination-controls">
       <button
-        class="pagination-btn"
+        class="btn btn-secondary btn-sm pagination-btn"
         :disabled="!pagination.hasPrev"
         @click="$emit('change-page', pagination.page - 1)"
       >
-        ← 上一頁
+        上一頁
       </button>
       <div class="page-numbers">
         <button
@@ -23,11 +23,11 @@
         </button>
       </div>
       <button
-        class="pagination-btn"
+        class="btn btn-secondary btn-sm pagination-btn"
         :disabled="!pagination.hasNext"
         @click="$emit('change-page', pagination.page + 1)"
       >
-        下一頁 →
+        下一頁
       </button>
     </div>
   </div>
@@ -87,78 +87,68 @@ const endItem = computed(() => {
 <style scoped>
 .pagination-section {
   display: flex;
-  justify-content: space-between;
+  flex-wrap: wrap;
   align-items: center;
-  padding: 1.5rem;
-  border-top: 1px solid #e5e7eb;
-  background: #f8fafc;
-  border-radius: 0 0 12px 12px;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 22px;
 }
 
 .pagination-info {
-  color: #6b7280;
-  font-size: 0.9rem;
+  font-size: 12.5px;
+  color: var(--ui-muted);
+  font-variant-numeric: tabular-nums;
 }
 
 .pagination-controls {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-}
-
-.pagination-btn {
-  padding: 0.5rem 1rem;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
-  background: white;
-  cursor: pointer;
-  font-size: 0.9rem;
-  transition: all 0.2s;
-}
-
-.pagination-btn:hover:not(:disabled) {
-  background: #f3f4f6;
-}
-
-.pagination-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+  gap: 8px;
 }
 
 .page-numbers {
   display: flex;
-  gap: 0.25rem;
+  gap: 4px;
 }
 
 .page-btn {
-  width: 36px;
-  height: 36px;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
-  background: white;
+  min-width: 32px;
+  height: 32px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ui-ink-2);
+  font-variant-numeric: tabular-nums;
   cursor: pointer;
-  font-size: 0.9rem;
-  transition: all 0.2s;
+  transition: background var(--ui-dur) var(--ui-ease);
 }
 
 .page-btn:hover {
-  background: #f3f4f6;
+  background: var(--ui-fill);
 }
 
 .page-btn.active {
-  background: #3b82f6;
-  color: white;
-  border-color: #3b82f6;
+  background: var(--ui-ink);
+  color: var(--ui-surface);
+  font-weight: 600;
 }
 
 @media (max-width: 768px) {
   .pagination-section {
-    flex-direction: column;
-    gap: 1rem;
+    padding: 12px 16px;
   }
 
-  .pagination-controls {
-    flex-wrap: wrap;
+  .page-btn,
+  .pagination-btn {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .page-numbers {
+    display: none;
   }
 }
 </style>
