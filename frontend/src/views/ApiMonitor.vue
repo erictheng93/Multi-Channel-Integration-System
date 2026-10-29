@@ -34,55 +34,53 @@
       </template>
 
       <section class="bento">
-        <ApiMetricsSetup
-          v-if="!hasMetrics && !controller.loading.value"
-          class="s8"
-          :error="controller.metricsError.value"
-        />
+        <div class="s8 stack">
+          <ApiMetricsSetup
+            v-if="!hasMetrics && !controller.loading.value"
+            :error="controller.metricsError.value"
+          />
 
-        <article
-          v-else-if="hasMetrics"
-          class="ui-card s8"
-        >
-          <div class="ui-card-head">
-            <div>
-              <h2 class="ui-card-title">
-                端點狀態
-              </h2>
-              <div class="ui-card-sub">
-                點選一列查看延遲分布與狀態碼
+          <article
+            v-else-if="hasMetrics"
+            class="ui-card"
+          >
+            <div class="ui-card-head">
+              <div>
+                <h2 class="ui-card-title">
+                  端點狀態
+                </h2>
+                <div class="ui-card-sub">
+                  點選一列查看延遲分布與狀態碼
+                </div>
               </div>
             </div>
-          </div>
-          <ApiFilter
-            :filters="controller.filters.value"
-            :counts="statusCounts"
-            @update:filters="handleFilterUpdate"
-          />
-          <ApiCardList
-            :endpoints="controller.filteredApis.value"
-            :expanded-card="controller.expandedCard.value"
-            :total="controller.endpoints.value.length"
-            @toggle-card="controller.toggleCard"
-          />
-        </article>
+            <ApiFilter
+              :filters="controller.filters.value"
+              :counts="statusCounts"
+              @update:filters="handleFilterUpdate"
+            />
+            <ApiCardList
+              :endpoints="controller.filteredApis.value"
+              :expanded-card="controller.expandedCard.value"
+              :total="controller.endpoints.value.length"
+              @toggle-card="controller.toggleCard"
+            />
+          </article>
 
-        <div
-          v-else
-          class="ui-card s8 loading"
-        >
-          載入中...
+          <div
+            v-else
+            class="ui-card loading"
+          >
+            載入中...
+          </div>
+
+          <RecentEventsCard :events="controller.events.value" />
         </div>
 
         <div class="s4 stack">
           <InfrastructureCard :infrastructure="controller.infrastructure.value" />
           <ChannelIntegrationsCard :channels="controller.channels.value" />
         </div>
-
-        <RecentEventsCard
-          class="s12"
-          :events="controller.events.value"
-        />
       </section>
 
       <!-- Statistics Detail Modal -->
