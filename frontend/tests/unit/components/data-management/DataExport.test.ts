@@ -133,31 +133,10 @@ describe('DataExport.vue', () => {
   // ==================== 功能說明和使用提示 ====================
 
   describe('功能說明區', () => {
-    it('應該渲染功能說明區標題', () => {
+    it('以一行說明取代三步驟面板，並說明篩選在匯出視窗設定', () => {
       wrapper = createWrapper()
-      const titles = wrapper.findAll('.ui-card-title')
-      const stepsTitle = titles.find(t => t.text().includes('接下來'))
-      expect(stepsTitle).toBeTruthy()
-    })
-
-    it('應該顯示三個步驟', () => {
-      wrapper = createWrapper()
-      const features = wrapper.findAll('.step')
-      expect(features.length).toBe(3)
-    })
-
-    it('應該說明日期範圍篩選', () => {
-      wrapper = createWrapper()
-      const features = wrapper.findAll('.step')
-      const dateFeature = features.find(f => f.text().includes('日期'))
-      expect(dateFeature).toBeTruthy()
-    })
-
-    it('應該說明客戶篩選', () => {
-      wrapper = createWrapper()
-      const features = wrapper.findAll('.step')
-      const userFeature = features.find(f => f.text().includes('客戶'))
-      expect(userFeature).toBeTruthy()
+      expect(wrapper.find('.step').exists()).toBe(false)
+      expect(wrapper.text()).toContain('在匯出視窗再設定日期、客戶與客服人員的篩選')
     })
   })
 
