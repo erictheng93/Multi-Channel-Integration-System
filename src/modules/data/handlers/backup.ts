@@ -2,13 +2,19 @@
 // automatic (GitHub Actions) backups stored in R2 `mcis-backups`.
 //
 // Routes (mounted at /api/data/backup):
-//   GET  /            list recent backups + last automatic backup
+//   GET  /            list backups per prefix (paged) + last automatic backup + policy
 //   POST /run         create an on-demand full DB backup -> R2 manual/
 //   GET  /download    stream a backup object for download (?key=...)
 import { Hono } from 'hono';
 import type { Bindings } from '@/types';
 import { jwtAuth, requireRole } from '@/middleware/auth';
 import { nowISO } from '@/utils/timestamp';
+import {
+  BACKUP_LIST_MAX_PAGES_PER_PREFIX,
+  BACKUP_LIST_PAGE_SIZE,
+  BACKUP_POLICY,
+  BACKUP_PREFIXES,
+} from '@modules/data/services/backup-policy';
 
 const backupHandler = new Hono<{ Bindings: Bindings }>();
 
@@ -104,26 +110,69 @@ export async function putDump(
   }
 }
 
-// GET /api/data/backup — list backups + last automatic backup
+export interface BackupListItem {
+  key: string;
+  size: number;
+  uploaded: string;
+  tier: string;
+}
+
+/**
+ * List every object under one prefix, following R2's `truncated`/`cursor` so more than 1000
+ * objects are never silently dropped. Bounded by BACKUP_LIST_MAX_PAGES_PER_PREFIX; hitting the
+ * bound is reported (`incomplete`) rather than hidden.
+ */
+export async function listPrefix(
+  bucket: R2Bucket,
+  tier: string
+): Promise<{ items: BackupListItem[]; incomplete: boolean }> {
+  const items: BackupListItem[] = [];
+  let cursor: string | undefined;
+
+  for (let page = 0; page < BACKUP_LIST_MAX_PAGES_PER_PREFIX; page++) {
+    const listed = await bucket.list({
+      prefix: `${tier}/`,
+      limit: BACKUP_LIST_PAGE_SIZE,
+      ...(cursor ? { cursor } : {}),
+    });
+    for (const o of listed.objects) {
+      items.push({
+        key: o.key,
+        size: o.size,
+        uploaded: o.uploaded instanceof Date ? o.uploaded.toISOString() : String(o.uploaded),
+        tier,
+      });
+    }
+    if (!listed.truncated) return { items, incomplete: false };
+    cursor = listed.cursor;
+  }
+  return { items, incomplete: true };
+}
+
+// GET /api/data/backup — list backups per prefix + last automatic backup + schedule/retention policy
 backupHandler.get('/', async (c) => {
   const bucket = c.env.R2_BACKUP;
   if (!bucket) {
     return c.json({ success: false, error: 'Backup storage not configured' }, 500);
   }
-  const listed = await bucket.list({ limit: 1000 });
-  const items = listed.objects
-    .map((o) => ({
-      key: o.key,
-      size: o.size,
-      uploaded: o.uploaded instanceof Date ? o.uploaded.toISOString() : String(o.uploaded),
-      tier: o.key.split('/')[0] || 'other',
-    }))
+
+  const perPrefix = await Promise.all(BACKUP_PREFIXES.map((tier) => listPrefix(bucket, tier)));
+  const items = perPrefix
+    .flatMap((r) => r.items)
     .sort((a, b) => b.uploaded.localeCompare(a.uploaded));
+  const incompletePrefixes = BACKUP_PREFIXES.filter((_, i) => perPrefix[i]?.incomplete);
 
   const lastAuto = items.find((i) => i.tier === 'daily') || null;
   return c.json({
     success: true,
-    data: { items, lastAuto, count: items.length },
+    data: {
+      items,
+      lastAuto,
+      count: items.length,
+      countsByTier: Object.fromEntries(BACKUP_PREFIXES.map((tier, i) => [tier, perPrefix[i]?.items.length ?? 0])),
+      incompletePrefixes,
+      policy: BACKUP_POLICY,
+    },
     timestamp: nowISO(),
   });
 });
