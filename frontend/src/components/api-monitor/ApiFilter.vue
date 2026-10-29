@@ -1,70 +1,64 @@
 <template>
-  <div class="flex flex-col gap-2.5">
-    <!-- Pills row: horizontal scroll on mobile -->
-    <div class="filter-pills-scroll flex gap-2 overflow-x-auto pb-0.5 -mx-1 px-1">
-      <!-- Status pills -->
+  <div class="toolbar">
+    <div
+      class="ui-seg"
+      role="group"
+      aria-label="依狀態篩選"
+    >
       <button
         v-for="s in statusOptions"
         :key="s.value"
-        class="rounded-full px-3.5 py-1.5 text-xs font-medium transition-colors duration-200 border-none cursor-pointer whitespace-nowrap flex-shrink-0"
-        :class="filters.status === s.value
-          ? 'bg-[#007AFF] text-white'
-          : 'bg-[#F2F2F7] text-[#8E8E93] hover:bg-[#E5E5EA]'"
+        type="button"
+        :aria-pressed="filters.status === s.value"
         @click="updateFilter('status', s.value)"
       >
         {{ s.label }}
+        <span
+          v-if="counts"
+          class="ui-seg-n"
+        >{{ counts[s.value] }}</span>
       </button>
+    </div>
 
-      <!-- Divider -->
-      <div class="w-px h-6 bg-[#E5E5EA] self-center mx-0.5 flex-shrink-0" />
-
-      <!-- Category pills -->
+    <div
+      class="ui-seg"
+      role="group"
+      aria-label="依分類篩選"
+    >
       <button
         v-for="c in categoryOptions"
         :key="c.value"
-        class="rounded-full px-3.5 py-1.5 text-xs font-medium transition-colors duration-200 border-none cursor-pointer whitespace-nowrap flex-shrink-0"
-        :class="filters.category === c.value
-          ? 'bg-[#007AFF] text-white'
-          : 'bg-[#F2F2F7] text-[#8E8E93] hover:bg-[#E5E5EA]'"
+        type="button"
+        :aria-pressed="filters.category === c.value"
         @click="updateFilter('category', c.value)"
       >
         {{ c.label }}
       </button>
     </div>
 
-    <!-- Search input (full width row) -->
-    <div class="relative">
+    <label class="find">
       <svg
-        width="14"
-        height="14"
         viewBox="0 0 24 24"
         fill="none"
-        stroke="#8E8E93"
+        stroke="currentColor"
         stroke-width="2"
         stroke-linecap="round"
         stroke-linejoin="round"
-        class="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
-      >
-        <circle
-          cx="11"
-          cy="11"
-          r="8"
-        />
-        <line
-          x1="21"
-          y1="21"
-          x2="16.65"
-          y2="16.65"
-        />
-      </svg>
+        aria-hidden="true"
+      ><circle
+        cx="11"
+        cy="11"
+        r="7"
+      /><path d="m21 21-4.3-4.3" /></svg>
       <input
         :value="filters.search"
         type="text"
-        placeholder="Search endpoints..."
-        class="w-full rounded-full pl-9 pr-3.5 py-1.5 text-xs bg-[#F2F2F7] text-[#1C1C1E] border-none outline-hidden placeholder-[#8E8E93] focus:ring-2 focus:ring-[#007AFF]/30"
+        placeholder="搜尋端點路徑或說明"
+        aria-label="搜尋端點"
+        class="ui-input"
         @input="updateSearch"
       >
-    </div>
+    </label>
   </div>
 </template>
 
@@ -73,6 +67,8 @@ import type { FilterState } from '@/types/api-monitor'
 
 const props = defineProps<{
   filters: FilterState
+  /** Endpoint count per status ('all' = total); shown on the status segments when given */
+  counts?: Record<'all' | 'healthy' | 'warning' | 'error', number>
 }>()
 
 const emit = defineEmits<{
@@ -80,18 +76,18 @@ const emit = defineEmits<{
 }>()
 
 const statusOptions = [
-  { value: 'all' as const, label: 'All' },
-  { value: 'healthy' as const, label: 'Healthy' },
-  { value: 'warning' as const, label: 'Warning' },
-  { value: 'error' as const, label: 'Error' },
+  { value: 'all' as const, label: '全部' },
+  { value: 'healthy' as const, label: '正常' },
+  { value: 'warning' as const, label: '警告' },
+  { value: 'error' as const, label: '錯誤' },
 ]
 
 const categoryOptions = [
-  { value: 'all' as const, label: 'All' },
-  { value: 'system' as const, label: 'System' },
-  { value: 'auth' as const, label: 'Auth' },
-  { value: 'conversation' as const, label: 'Business' },
-  { value: 'integration' as const, label: 'Integration' },
+  { value: 'all' as const, label: '全部' },
+  { value: 'system' as const, label: '系統' },
+  { value: 'auth' as const, label: '驗證' },
+  { value: 'conversation' as const, label: '業務' },
+  { value: 'integration' as const, label: '整合' },
 ]
 
 function updateFilter(key: 'status' | 'category', value: string) {
@@ -105,11 +101,47 @@ function updateSearch(e: Event) {
 </script>
 
 <style scoped>
-.filter-pills-scroll::-webkit-scrollbar {
-  display: none;
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  padding: 0 22px 14px;
 }
-.filter-pills-scroll {
-  -ms-overflow-style: none;
+
+.toolbar .ui-seg {
+  max-width: 100%;
+  overflow-x: auto;
   scrollbar-width: none;
+}
+
+.find {
+  position: relative;
+  flex: 1;
+  min-width: 180px;
+}
+
+.find svg {
+  position: absolute;
+  top: 50%;
+  left: 12px;
+  width: 15px;
+  height: 15px;
+  color: var(--ui-muted);
+  pointer-events: none;
+  transform: translateY(-50%);
+}
+
+.find .ui-input {
+  height: 34px;
+  padding-left: 34px;
+  border-radius: 999px;
+  font-size: 13px;
+}
+
+@media (max-width: 768px) {
+  .toolbar {
+    padding: 0 16px 14px;
+  }
 }
 </style>

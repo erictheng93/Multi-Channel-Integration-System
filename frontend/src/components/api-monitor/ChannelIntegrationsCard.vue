@@ -1,66 +1,61 @@
 <template>
-  <div class="bg-white rounded-2xl shadow-[0_4px_16px_rgba(0,0,0,0.04)] p-5">
-    <h3 class="text-[17px] font-bold text-[#1C1C1E] mb-4">
-      Channel Integrations
-    </h3>
-    <div class="flex flex-col">
-      <div
-        v-for="(channel, index) in channels"
-        :key="channel.id"
-        class="flex items-center gap-3 px-3 py-3 rounded-xl"
-        :class="index % 2 === 0 ? 'bg-[#FAFBFC]' : 'bg-white'"
-      >
-        <div
-          class="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
-          :style="{ backgroundColor: getBrandBg(channel.name) }"
-        >
-          <svg
-            width="20"
-            height="20"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            :style="{ color: getBrandColor(channel.name) }"
-          >
-            <path
-              v-if="isLine(channel.name)"
-              d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"
-            />
-            <template v-else-if="isFacebook(channel.name)">
-              <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" />
-            </template>
-            <template v-else>
-              <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
-              <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
-            </template>
-          </svg>
-        </div>
-
-        <div class="flex-1 min-w-0">
-          <div class="text-[14px] font-semibold text-[#1C1C1E] truncate">
-            {{ channel.name }}
-          </div>
-          <div
-            class="text-[12px]"
-            :class="channel.status === 'connected' ? 'text-[#34C759]' : 'text-[#FF3B30]'"
-          >
-            {{ statusLabel(channel.status) }}
-          </div>
-        </div>
-
-        <div class="flex items-center gap-2 flex-shrink-0">
-          <span class="text-[12px] text-[#8E8E93] tabular-nums">{{ channel.latencyMs }}ms</span>
-          <span
-            class="w-2 h-2 rounded-full"
-            :class="statusDotClass(channel.status)"
-          />
+  <article class="ui-card">
+    <div class="ui-card-head">
+      <div>
+        <h2 class="ui-card-title">
+          頻道整合
+        </h2>
+        <div class="ui-card-sub">
+          Webhook 與發送狀態
         </div>
       </div>
     </div>
-  </div>
+    <div class="list">
+      <div
+        v-for="channel in channels"
+        :key="channel.id"
+        class="chn"
+      >
+        <span
+          class="tile"
+          :class="brand(channel.name)"
+          aria-hidden="true"
+        >
+          <svg
+            v-if="brand(channel.name) !== 'other'"
+            viewBox="0 0 24 24"
+          ><path d="M12 3C6.5 3 2 6.6 2 11c0 2.5 1.4 4.7 3.7 6.2L5 21l4.1-2.3c.9.2 1.9.3 2.9.3 5.5 0 10-3.6 10-8s-4.5-8-10-8Z" /></svg>
+          <svg
+            v-else
+            class="stroke"
+            viewBox="0 0 24 24"
+          ><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" /></svg>
+        </span>
+        <div class="main">
+          <b>
+            {{ channel.name }}
+            <span
+              class="ui-pill ui-pill-dot"
+              :class="pillClass(channel.status)"
+            >{{ statusLabel(channel.status) }}</span>
+          </b>
+          <small>{{ channel.details }}</small>
+        </div>
+        <div
+          v-if="channel.latencyMs > 0"
+          class="lat"
+        >
+          <b>{{ channel.latencyMs }} ms</b>
+        </div>
+      </div>
+      <div
+        v-if="channels.length === 0"
+        class="none"
+      >
+        尚無資料
+      </div>
+    </div>
+  </article>
 </template>
 
 <script setup lang="ts">
@@ -70,38 +65,112 @@ defineProps<{
   channels: ChannelItem[]
 }>()
 
-function isLine(name: string): boolean {
-  return name.toLowerCase().includes('line')
-}
-
-function isFacebook(name: string): boolean {
-  return name.toLowerCase().includes('facebook') || name.toLowerCase().includes('messenger')
-}
-
-function getBrandColor(name: string): string {
-  if (isLine(name)) {return '#06C755'}
-  if (isFacebook(name)) {return '#1877F2'}
-  return '#007AFF'
-}
-
-function getBrandBg(name: string): string {
-  if (isLine(name)) {return 'rgba(6, 199, 85, 0.1)'}
-  if (isFacebook(name)) {return 'rgba(24, 119, 242, 0.1)'}
-  return 'rgba(0, 122, 255, 0.1)'
+function brand(name: string): 'line' | 'facebook' | 'other' {
+  const lower = name.toLowerCase()
+  if (lower.includes('line')) { return 'line' }
+  if (lower.includes('facebook') || lower.includes('messenger')) { return 'facebook' }
+  return 'other'
 }
 
 function statusLabel(status: ChannelStatus): string {
   const map: Record<ChannelStatus, string> = {
-    connected: 'Connected',
-    disconnected: 'Disconnected',
-    error: 'Error',
+    connected: '已連線',
+    disconnected: '未連線',
+    error: '錯誤',
   }
   return map[status]
 }
 
-function statusDotClass(status: ChannelStatus): string {
-  if (status === 'connected') {return 'bg-[#34C759]'}
-  if (status === 'error') {return 'bg-[#FF3B30]'}
-  return 'bg-[#8E8E93]'
+function pillClass(status: ChannelStatus): string {
+  if (status === 'connected') { return 'ui-pill-green' }
+  return status === 'error' ? 'ui-pill-red' : ''
 }
 </script>
+
+<style scoped>
+.list {
+  padding-bottom: 8px;
+}
+
+.chn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 22px;
+}
+
+.tile {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 11px;
+  background: var(--ui-accent);
+}
+
+.tile.line {
+  background: var(--ui-line);
+}
+
+.tile.facebook {
+  background: var(--ui-messenger);
+}
+
+.tile.other {
+  background: var(--ui-fill);
+  color: var(--ui-muted);
+}
+
+.tile svg {
+  width: 20px;
+  height: 20px;
+  fill: #fff;
+}
+
+.tile svg.stroke {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.main {
+  flex: 1;
+  min-width: 0;
+}
+
+.main b {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.main small {
+  display: block;
+  margin-top: 2px;
+  font-size: 12.5px;
+  color: var(--ui-muted);
+}
+
+.lat {
+  flex: none;
+  font-size: 12px;
+  color: var(--ui-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.lat b {
+  font: 600 14px var(--ui-font-display);
+  color: var(--ui-ink);
+}
+
+.none {
+  padding: 12px 22px;
+  font-size: 13px;
+  color: var(--ui-muted);
+}
+</style>

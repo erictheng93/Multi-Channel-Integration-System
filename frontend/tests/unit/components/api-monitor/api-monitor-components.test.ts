@@ -27,7 +27,7 @@ describe('ApiHeader', () => {
   it('should render title', () => {
     const wrapper = mount(ApiHeader)
 
-    expect(wrapper.text()).toContain('System Status')
+    expect(wrapper.text()).toContain('API 監控')
   })
 
   it('should emit refresh event when refresh button clicked', async () => {
@@ -43,7 +43,7 @@ describe('ApiHeader', () => {
   it('should show operational status badge by default', () => {
     const wrapper = mount(ApiHeader)
 
-    expect(wrapper.text()).toContain('Operational')
+    expect(wrapper.text()).toContain('運作正常')
   })
 
   it('should show degraded status badge', () => {
@@ -51,7 +51,7 @@ describe('ApiHeader', () => {
       props: { systemStatus: 'degraded' }
     })
 
-    expect(wrapper.text()).toContain('Degraded')
+    expect(wrapper.text()).toContain('部分降級')
   })
 
   it('should emit toggle-auto-refresh event', async () => {
@@ -101,9 +101,9 @@ describe('ApiFilter', () => {
       props: { filters: defaultFilters }
     })
 
-    // Find the "Healthy" pill button
+    // Find the 正常 status segment
     const buttons = wrapper.findAll('button')
-    const healthyBtn = buttons.find(btn => btn.text() === 'Healthy')
+    const healthyBtn = buttons.find(btn => btn.text().startsWith('正常'))
     expect(healthyBtn).toBeDefined()
     await healthyBtn!.trigger('click')
 
@@ -118,7 +118,7 @@ describe('ApiFilter', () => {
     })
 
     const buttons = wrapper.findAll('button')
-    const systemBtn = buttons.find(btn => btn.text() === 'System')
+    const systemBtn = buttons.find(btn => btn.text() === '系統')
     expect(systemBtn).toBeDefined()
     await systemBtn!.trigger('click')
 
@@ -176,10 +176,10 @@ describe('ApiStatsGrid', () => {
       props: { stats: mockStats }
     })
 
-    expect(wrapper.text()).toContain('Healthy')
-    expect(wrapper.text()).toContain('Warnings')
-    expect(wrapper.text()).toContain('Errors')
-    expect(wrapper.text()).toContain('Avg Response')
+    expect(wrapper.text()).toContain('正常')
+    expect(wrapper.text()).toContain('警告')
+    expect(wrapper.text()).toContain('錯誤')
+    expect(wrapper.text()).toContain('平均回應')
   })
 
   it('should emit stat-click events when cards are clicked', async () => {
@@ -189,7 +189,7 @@ describe('ApiStatsGrid', () => {
 
     // Multi-root component: 4 cards rendered as siblings inside a VTU wrapper div
     // Each card has a bg-white class and a click handler
-    const cards = wrapper.findAll('.bg-white')
+    const cards = wrapper.findAll('.tile')
     expect(cards).toHaveLength(4)
 
     await cards[0].trigger('click')
@@ -272,7 +272,7 @@ describe('ApiCard', () => {
 
     expect(wrapper.text()).toContain('GET')
     expect(wrapper.text()).toContain('/api/test')
-    expect(wrapper.text()).toContain('150ms')
+    expect(wrapper.text()).toContain('150')
     expect(wrapper.text()).toContain('98%')
   })
 

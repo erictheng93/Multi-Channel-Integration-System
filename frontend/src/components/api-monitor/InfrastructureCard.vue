@@ -1,21 +1,27 @@
 <template>
-  <div class="bg-white rounded-2xl shadow-[0_4px_16px_rgba(0,0,0,0.04)] p-5">
-    <h3 class="text-[17px] font-bold text-[#1C1C1E] mb-4">
-      Infrastructure
-    </h3>
-    <div class="flex flex-col gap-[14px]">
+  <article class="ui-card">
+    <div class="ui-card-head">
+      <div>
+        <h2 class="ui-card-title">
+          基礎設施
+        </h2>
+        <div class="ui-card-sub">
+          Cloudflare 服務延遲
+        </div>
+      </div>
+    </div>
+    <div class="list">
       <div
         v-for="item in infrastructure"
         :key="item.id"
-        class="flex items-center gap-3"
+        class="inf"
       >
-        <div
-          class="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-          :class="[infraConfig(item.id).bg, infraConfig(item.id).color]"
+        <span
+          class="t"
+          :class="tone(item)"
+          aria-hidden="true"
         >
           <svg
-            width="16"
-            height="16"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
@@ -24,22 +30,31 @@
             stroke-linejoin="round"
           >
             <path
-              v-for="(d, pi) in infraIconPaths(item.id)"
+              v-for="(d, pi) in iconPaths(item.id)"
               :key="pi"
               :d="d"
             />
           </svg>
+        </span>
+        <div class="inf-name">
+          <b>{{ item.name }}</b>
         </div>
-        <span class="text-[13px] text-[#1C1C1E] flex-1">{{ item.name }}</span>
         <span
-          class="text-[13px] font-semibold tabular-nums"
-          :class="latencyColorClass(item.latencyMs)"
+          class="ms"
+          :class="tone(item)"
         >
-          {{ item.latencyMs }}ms
+          <template v-if="item.latencyMs >= 0">{{ item.latencyMs }}<small>ms</small></template>
+          <template v-else>無回應</template>
         </span>
       </div>
+      <div
+        v-if="infrastructure.length === 0"
+        class="none"
+      >
+        尚無資料
+      </div>
     </div>
-  </div>
+  </article>
 </template>
 
 <script setup lang="ts">
@@ -49,49 +64,105 @@ defineProps<{
   infrastructure: InfrastructureItem[]
 }>()
 
-const INFRA_CONFIG: Record<string, { bg: string; color: string }> = {
-  d1: { bg: 'bg-[#E3F2FD]', color: 'text-[#007AFF]' },
-  kv: { bg: 'bg-[#FFF3E0]', color: 'text-[#FF9500]' },
-  r2: { bg: 'bg-[#E8F5E9]', color: 'text-[#2E7D32]' },
-  'durable-objects': { bg: 'bg-[#F3E5F5]', color: 'text-[#7B1FA2]' },
-}
-
-const DEFAULT_CONFIG = { bg: 'bg-[#E3F2FD]', color: 'text-[#007AFF]' }
-
-function infraConfig(id: string): { bg: string; color: string } {
-  return INFRA_CONFIG[id] ?? DEFAULT_CONFIG
-}
-
 const ICON_PATHS: Record<string, string[]> = {
   d1: [
-    'M12 2C6.48 2 2 3.79 2 6v12c0 2.21 4.48 4 10 4s10-1.79 10-4V6c0-2.21-4.48-4-10-4z',
-    'M2 6c0 2.21 4.48 4 10 4s10-1.79 10-4',
-    'M2 12c0 2.21 4.48 4 10 4s10-1.79 10-4',
+    'M12 2C6.5 2 2 3.8 2 6v12c0 2.2 4.5 4 10 4s10-1.8 10-4V6c0-2.2-4.5-4-10-4Z',
+    'M2 6c0 2.2 4.5 4 10 4s10-1.8 10-4',
+    'M2 12c0 2.2 4.5 4 10 4s10-1.8 10-4',
   ],
-  kv: [
-    'M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4',
-  ],
-  r2: [
-    'M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z',
-  ],
-  'durable-objects': [
-    'M13 2L3 14h9l-1 10 10-12h-9l1-10z',
-  ],
+  kv: ['M4 7h16M4 12h16M4 17h16'],
+  r2: ['M21 8 12 3 3 8v8l9 5 9-5ZM3 8l9 5 9-5M12 13v8'],
+  'durable-objects': ['M12 2 3 7v10l9 5 9-5V7ZM12 12l9-5M12 12 3 7M12 12v10'],
+  queue: ['M3 6h18M3 12h18M3 18h12'],
 }
 
-const DEFAULT_PATHS: string[] = [
-  'M12 2C6.48 2 2 3.79 2 6v12c0 2.21 4.48 4 10 4s10-1.79 10-4V6c0-2.21-4.48-4-10-4z',
-  'M2 6c0 2.21 4.48 4 10 4s10-1.79 10-4',
-  'M2 12c0 2.21 4.48 4 10 4s10-1.79 10-4',
-]
+const DEFAULT_PATHS = ICON_PATHS.d1 ?? []
 
-function infraIconPaths(id: string): string[] {
+function iconPaths(id: string): string[] {
   return ICON_PATHS[id] ?? DEFAULT_PATHS
 }
 
-function latencyColorClass(ms: number): string {
-  if (ms < 50) {return 'text-[#34C759]'}
-  if (ms < 200) {return 'text-[#FF9500]'}
-  return 'text-[#FF3B30]'
+/** The server reports latency bands as status colours: green < 50 ms, orange < 200 ms, else red. */
+function tone(item: InfrastructureItem): 'ok' | 'mid' | 'bad' {
+  if (item.latencyMs < 0) { return 'bad' }
+  if (item.latencyMs < 50) { return 'ok' }
+  return item.latencyMs < 200 ? 'mid' : 'bad'
 }
 </script>
+
+<style scoped>
+.list {
+  padding-bottom: 8px;
+}
+
+.inf {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 22px;
+}
+
+.t {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+}
+
+.t svg {
+  width: 16px;
+  height: 16px;
+}
+
+.t.ok {
+  background: var(--ui-green-soft);
+  color: var(--ui-green-ink);
+}
+
+.t.mid {
+  background: var(--ui-orange-soft);
+  color: var(--ui-orange-ink);
+}
+
+.t.bad {
+  background: var(--ui-red-soft);
+  color: var(--ui-red-ink);
+}
+
+.inf-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+}
+
+.ms {
+  font: 600 14px var(--ui-font-display);
+  font-variant-numeric: tabular-nums;
+}
+
+.ms small {
+  margin-left: 2px;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.ms.ok {
+  color: var(--ui-green-ink);
+}
+
+.ms.mid {
+  color: var(--ui-orange-ink);
+}
+
+.ms.bad {
+  color: var(--ui-red-ink);
+}
+
+.none {
+  padding: 12px 22px;
+  font-size: 13px;
+  color: var(--ui-muted);
+}
+</style>

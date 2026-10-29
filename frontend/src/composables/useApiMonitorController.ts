@@ -52,7 +52,12 @@ export function useApiMonitorController() {
   let refreshTimer: ReturnType<typeof setInterval> | null = null
 
   // ===== Computed =====
-  const systemStatus = computed<SystemStatus>(() => monitorData.value?.status ?? 'operational')
+  /** false = Analytics Engine is not set up: no endpoint metrics, show the setup state. Missing meta = configured. */
+  const metricsConfigured = computed(() => monitorData.value?.metrics?.configured !== false)
+  /** Set when metrics are configured but the last query failed */
+  const metricsError = computed(() => monitorData.value?.metrics?.error ?? null)
+
+  const systemStatus = computed<SystemStatus>(() => monitorData.value?.overallStatus ?? monitorData.value?.status ?? 'operational')
 
   const endpoints = computed<ApiEndpoint[]>(() => monitorData.value?.endpoints ?? [])
 
@@ -239,6 +244,8 @@ export function useApiMonitorController() {
 
     // Computed
     systemStatus,
+    metricsConfigured,
+    metricsError,
     endpoints,
     infrastructure,
     channels,

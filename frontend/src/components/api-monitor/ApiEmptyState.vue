@@ -1,6 +1,22 @@
 <template>
-  <div class="empty-state">
-    <div class="empty-icon" />
+  <div class="ui-empty empty-state">
+    <div
+      class="ui-empty-art empty-icon"
+      aria-hidden="true"
+    >
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.8"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      ><circle
+        cx="11"
+        cy="11"
+        r="7"
+      /><path d="m21 21-4.3-4.3" /></svg>
+    </div>
     <h3>{{ title }}</h3>
     <p>{{ message }}</p>
   </div>
@@ -17,27 +33,3 @@ withDefaults(defineProps<Props>(), {
   message: '請調整篩選條件或搜索關鍵詞'
 })
 </script>
-
-<style scoped>
-.empty-state {
-  text-align: center;
-  padding: 4rem 2rem;
-  color: #64748b;
-}
-
-.empty-icon {
-  font-size: 4rem;
-  margin-bottom: 1rem;
-}
-
-.empty-state h3 {
-  margin: 0 0 0.5rem 0;
-  color: #374151;
-  font-size: 1.25rem;
-}
-
-.empty-state p {
-  margin: 0;
-  font-size: 1rem;
-}
-</style>
