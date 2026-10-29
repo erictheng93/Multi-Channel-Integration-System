@@ -14,6 +14,7 @@
           :loading="controller.processing.value && !controller.healthOverall.value"
           :meaning="heroSubtitle"
           :tone="leadTone"
+          :ratio="rows.length > 0 ? counts.healthy / rows.length : null"
         >
           <ul
             v-if="rows.length > 0"
@@ -34,48 +35,6 @@
             </li>
           </ul>
         </UiLeadMetric>
-      </article>
-
-      <article class="ui-card lat-card">
-        <div class="ui-card-head">
-          <div>
-            <h2 class="ui-card-title">
-              回應時間
-            </h2>
-            <div class="ui-card-sub">
-              各服務本次實測，條長為相對比例
-            </div>
-          </div>
-        </div>
-        <ul
-          v-if="latencyRows.length > 0"
-          class="lat-list"
-        >
-          <li
-            v-for="row in latencyRows"
-            :key="row.key"
-            class="lat-item"
-          >
-            <span class="lat-name">{{ row.name }}</span>
-            <span
-              class="lat-track"
-              aria-hidden="true"
-            >
-              <span
-                class="lat-bar"
-                :class="row.tone"
-                :style="{ width: `${row.pct}%` }"
-              />
-            </span>
-            <span class="lat-val">{{ row.latencyMs }}<small> ms</small></span>
-          </li>
-        </ul>
-        <p
-          v-else
-          class="lat-none"
-        >
-          {{ controller.processing.value ? '檢查中...' : '尚無實測資料' }}
-        </p>
       </article>
     </div>
 
@@ -142,6 +101,17 @@
             </div>
           </div>
           <div class="lat">
+            <span
+              v-if="row.latencyMs !== null"
+              class="lat-track"
+              aria-hidden="true"
+            >
+              <span
+                class="lat-bar"
+                :class="row.tone"
+                :style="{ width: `${barPct(row.latencyMs)}%` }"
+              />
+            </span>
             <span
               class="lat-n"
               :class="row.tone"
@@ -341,19 +311,10 @@ const counts = computed(() => ({
   unchecked: rows.value.filter(row => row.tone === 'unknown').length
 }))
 
-/** Measured latencies as relative bars (scaled to at least 100 ms so 12 ms vs 64 ms is not exaggerated) */
-const latencyRows = computed(() => {
-  const measured = rows.value.filter(row => row.latencyMs !== null)
-  const max = Math.max(100, ...measured.map(row => row.latencyMs ?? 0))
-  return measured.map(row => ({
-    key: row.key,
-    name: row.name,
-    tone: row.tone,
-    latencyMs: (row.latencyMs ?? 0).toLocaleString(),
-    pct: Math.max(3, Math.round(((row.latencyMs ?? 0) / max) * 100))
-  }))
-})
-
+/** Bar length inside each row: relative to the slowest measured service, floored at 100 ms so 12 ms vs 64 ms is not exaggerated */
+const latencyScale = computed(() =>
+  Math.max(100, ...rows.value.map(row => row.latencyMs ?? 0)))
+const barPct = (ms: number): number => Math.max(3, Math.round((ms / latencyScale.value) * 100))
 
 const overallTone = computed<'ok' | 'warn' | 'bad' | 'unknown'>(() => {
   if (counts.value.critical > 0) {
@@ -436,47 +397,21 @@ onMounted(() => {
   min-width: 0;
 }
 
-/* Verdict and measured latencies side by side */
+/* The verdict; each service row below carries its own measured latency bar */
 .health-top {
   display: grid;
-  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  grid-template-columns: minmax(0, 1fr);
   gap: 16px;
-  align-items: stretch;
 }
 
 .hero {
   overflow: hidden;
 }
 
-.lat-card {
-  padding-bottom: 20px;
-}
-
-.lat-list {
-  display: grid;
-  gap: 12px;
-  margin: 0;
-  padding: 4px 22px 0;
-  list-style: none;
-}
-
-.lat-item {
-  display: grid;
-  grid-template-columns: 120px minmax(0, 1fr) 64px;
-  gap: 14px;
-  align-items: center;
-  font-size: 13.5px;
-}
-
-.lat-name {
-  overflow: hidden;
-  font-weight: 500;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .lat-track {
-  height: 8px;
+  display: block;
+  width: 140px;
+  height: 6px;
   overflow: hidden;
   border-radius: 999px;
   background: var(--ui-fill);
@@ -495,25 +430,6 @@ onMounted(() => {
 
 .lat-bar.bad {
   background: var(--ui-red);
-}
-
-.lat-val {
-  font: 600 14px var(--ui-font-display);
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-}
-
-.lat-val small {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--ui-muted);
-}
-
-.lat-none {
-  margin: 0;
-  padding: 4px 22px;
-  font-size: 13px;
-  color: var(--ui-muted);
 }
 
 /* LINE webhook is its own on-demand state, not one more row of the always-on checks */
@@ -657,20 +573,14 @@ onMounted(() => {
   white-space: normal;
 }
 
-@media (max-width: 1024px) {
-  .health-top {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
-
 @media (max-width: 768px) {
   .lat-n {
     width: auto;
   }
 
-  .lat-item {
-    grid-template-columns: 96px minmax(0, 1fr) 58px;
-    gap: 10px;
+  /* the number already says it; the bar would squeeze the row's own text on a phone */
+  .lat-track {
+    display: none;
   }
 
   .wh {
