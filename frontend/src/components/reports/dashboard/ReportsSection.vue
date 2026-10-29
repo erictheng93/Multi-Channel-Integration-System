@@ -1,51 +1,53 @@
 <template>
-  <div class="reports-section">
-    <!-- 區段標題和控制項 -->
-    <div class="section-header">
-      <div class="section-title">
-        <h3 class="title-text">
+  <section class="ui-card reports-section">
+    <div class="ui-card-head">
+      <div>
+        <h3 class="ui-card-title">
           報表列表
         </h3>
-        <span
+        <p
           v-if="!loading"
-          class="report-count"
+          class="ui-card-sub report-count"
         >
-          共 {{ reports.length }} 項
-        </span>
+          共 {{ total ?? reports.length }} 項，依建立時間{{ sortOrder === 'desc' ? '由新到舊' : '由舊到新' }}
+        </p>
       </div>
-
-      <div class="section-controls">
-        <!-- 排序控制 -->
-        <div class="sort-control">
-          <label class="control-label">排序：</label>
-          <select
-            :value="sortOrder"
-            class="sort-select"
-            @change="$emit('update:sortOrder', ($event.target as HTMLSelectElement).value as 'asc' | 'desc')"
-          >
-            <option value="desc">
-              最新優先
-            </option>
-            <option value="asc">
-              最舊優先
-            </option>
-          </select>
-        </div>
-
-        <!-- 視圖模式切換 -->
-        <div class="view-toggle">
+      <div class="ui-card-end section-controls">
+        <button
+          type="button"
+          class="btn btn-secondary btn-sm"
+          @click="$emit('export-all')"
+        >
+          匯出全部
+        </button>
+        <label class="sort-control"><select
+          :value="sortOrder"
+          class="ui-select sort-select"
+          aria-label="排序"
+          @change="$emit('update:sortOrder', ($event.target as HTMLSelectElement).value as 'asc' | 'desc')"
+        >
+          <option value="desc">
+            最新優先
+          </option>
+          <option value="asc">
+            最舊優先
+          </option>
+        </select></label>
+        <div class="ui-seg view-toggle">
           <button
+            type="button"
             class="view-btn"
-            :class="{ 'active': viewMode === 'grid' }"
-            title="網格視圖"
+            :class="{ active: viewMode === 'grid' }"
+            :aria-pressed="viewMode === 'grid'"
             @click="$emit('update:viewMode', 'grid')"
           >
             網格
           </button>
           <button
+            type="button"
             class="view-btn"
-            :class="{ 'active': viewMode === 'list' }"
-            title="列表視圖"
+            :class="{ active: viewMode === 'list' }"
+            :aria-pressed="viewMode === 'list'"
             @click="$emit('update:viewMode', 'list')"
           >
             列表
@@ -54,29 +56,29 @@
       </div>
     </div>
 
-    <!-- 載入狀態 -->
     <div
       v-if="loading"
-      class="loading-state"
+      class="state-box loading-state"
     >
-      <div class="loading-spinner" />
-      <p class="loading-text">
-        載入中...
-      </p>
+      <span class="loading-spinner" />載入中...
     </div>
 
-    <!-- 空狀態 -->
     <div
       v-else-if="reports.length === 0"
-      class="empty-state"
+      class="ui-empty empty-state"
     >
-      <div class="empty-icon" />
-      <h3 class="empty-title">
-        暫無報表
-      </h3>
-      <p class="empty-description">
-        {{ emptyMessage }}
-      </p>
+      <div class="ui-empty-art">
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.8"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        ><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z M14 3v5h5" /></svg>
+      </div>
+      <h3>暫無報表</h3>
+      <p>{{ emptyMessage }}</p>
       <button
         v-if="showCreateButton"
         class="btn btn-primary"
@@ -86,7 +88,6 @@
       </button>
     </div>
 
-    <!-- 網格視圖 -->
     <div
       v-else-if="viewMode === 'grid'"
       class="reports-grid"
@@ -105,65 +106,60 @@
         :format-relative-time="formatRelativeTime"
         :format-file-size="formatFileSize"
         :truncate-text="truncateText"
+        :get-report-type-label="getReportTypeLabel"
         @view-report="$emit('view-report', $event)"
         @download-report="$emit('download-report', $event)"
         @delete-report="$emit('delete-report', $event)"
       />
     </div>
 
-    <!-- 列表視圖 -->
     <div
       v-else
       class="reports-list"
+      role="table"
     >
-      <!-- 列表表頭 -->
-      <div class="list-header">
-        <div class="header-cell type-cell">
-          類型
-        </div>
+      <div
+        class="list-header"
+        role="row"
+      >
         <div class="header-cell title-cell">
-          標題
+          報表
         </div>
-        <div class="header-cell status-cell">
+        <div class="header-cell">
           狀態
         </div>
-        <div class="header-cell format-cell">
+        <div class="header-cell">
           格式
         </div>
-        <div class="header-cell time-cell">
+        <div class="header-cell">
           建立時間
         </div>
         <div class="header-cell size-cell">
           大小
         </div>
-        <div class="header-cell actions-cell">
-          操作
-        </div>
+        <div class="header-cell actions-cell" />
       </div>
-
-      <!-- 列表項目 -->
-      <div class="list-body">
-        <ReportRow
-          v-for="report in reports"
-          :key="report.id"
-          :report="report"
-          :get-type-badge-class="getTypeBadgeClass"
-          :get-report-type-icon="getReportTypeIcon"
-          :get-status-icon="getStatusIcon"
-          :get-status-label="getStatusLabel"
-          :get-status-class="getStatusClass"
-          :get-format-icon="getFormatIcon"
-          :get-format-label="getFormatLabel"
-          :format-relative-time="formatRelativeTime"
-          :format-file-size="formatFileSize"
-          :truncate-text="truncateText"
-          @view-report="$emit('view-report', $event)"
-          @download-report="$emit('download-report', $event)"
-          @delete-report="$emit('delete-report', $event)"
-        />
-      </div>
+      <ReportRow
+        v-for="report in reports"
+        :key="report.id"
+        :report="report"
+        :get-type-badge-class="getTypeBadgeClass"
+        :get-report-type-icon="getReportTypeIcon"
+        :get-status-icon="getStatusIcon"
+        :get-status-label="getStatusLabel"
+        :get-status-class="getStatusClass"
+        :get-format-icon="getFormatIcon"
+        :get-format-label="getFormatLabel"
+        :format-relative-time="formatRelativeTime"
+        :format-file-size="formatFileSize"
+        :truncate-text="truncateText"
+        :get-report-type-label="getReportTypeLabel"
+        @view-report="$emit('view-report', $event)"
+        @download-report="$emit('download-report', $event)"
+        @delete-report="$emit('delete-report', $event)"
+      />
     </div>
-  </div>
+  </section>
 </template>
 
 <script setup lang="ts">
@@ -264,11 +260,23 @@ export interface ReportsSectionProps {
    * 截断文本
    */
   truncateText: (_text: string, _length: number) => string
+
+  /**
+   * 获取报表类型标签
+   */
+  getReportTypeLabel?: (_type: ReportType) => string
+
+  /**
+   * Total matching reports (all pages)
+   */
+  total?: number
 }
 
 withDefaults(defineProps<ReportsSectionProps>(), {
   emptyMessage: '開始建立您的第一份報表',
-  showCreateButton: true
+  showCreateButton: true,
+  getReportTypeLabel: undefined,
+  total: undefined
 })
 
 defineEmits<{
@@ -278,264 +286,65 @@ defineEmits<{
   'create-report': []
   'update:viewMode': [mode: 'grid' | 'list']
   'update:sortOrder': [order: 'asc' | 'desc']
+  'export-all': []
 }>()
 </script>
 
 <style scoped>
 .reports-section {
-  background: white;
-  border-radius: 12px;
   overflow: hidden;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-}
-
-/* Section Header */
-.section-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1.5rem;
-  border-bottom: 1px solid #e5e7eb;
-  background: #f8fafc;
-}
-
-.section-title {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-.title-text {
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: #1f2937;
-  margin: 0;
-}
-
-.report-count {
-  padding: 0.25rem 0.75rem;
-  background: #dbeafe;
-  color: #1e40af;
-  border-radius: 12px;
-  font-size: 0.85rem;
-  font-weight: 500;
+  padding-bottom: 6px;
 }
 
 .section-controls {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
-/* Sort Control */
-.sort-control {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.control-label {
-  font-size: 0.9rem;
-  color: #6b7280;
-  font-weight: 500;
+  flex-wrap: wrap;
 }
 
 .sort-select {
-  padding: 0.5rem 0.75rem;
-  border: 2px solid #e5e7eb;
-  border-radius: 6px;
-  font-size: 0.9rem;
-  background: white;
-  cursor: pointer;
-  transition: border-color 0.2s;
+  width: auto;
+  height: 34px;
+  border-radius: 10px;
+  font-size: 13px;
 }
 
-.sort-select:focus {
-  outline: none;
-  border-color: #3b82f6;
+.state-box {
+  padding: 32px 22px;
+  font-size: 13.5px;
+  color: var(--ui-muted);
 }
 
-/* View Toggle */
-.view-toggle {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.view-btn {
-  padding: 0.5rem 1rem;
-  border: 2px solid #e5e7eb;
-  border-radius: 6px;
-  background: white;
-  color: #6b7280;
-  font-size: 0.9rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.view-btn:hover {
-  border-color: #3b82f6;
-  color: #3b82f6;
-}
-
-.view-btn.active {
-  background: #3b82f6;
-  color: white;
-  border-color: #3b82f6;
-}
-
-/* Loading State */
-.loading-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 4rem 2rem;
-  gap: 1rem;
-}
-
-.loading-spinner {
-  width: 48px;
-  height: 48px;
-  border: 4px solid #e5e7eb;
-  border-top-color: #3b82f6;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-.loading-text {
-  color: #6b7280;
-  font-size: 1rem;
-}
-
-/* Empty State */
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 4rem 2rem;
-  text-align: center;
-}
-
-.empty-icon {
-  font-size: 4rem;
-  margin-bottom: 1rem;
-  opacity: 0.5;
-}
-
-.empty-title {
-  font-size: 1.5rem;
-  font-weight: 600;
-  color: #1f2937;
-  margin: 0 0 0.5rem 0;
-}
-
-.empty-description {
-  color: #6b7280;
-  font-size: 1rem;
-  margin: 0 0 2rem 0;
-}
-
-/* Grid View */
 .reports-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: 1.5rem;
-  padding: 1.5rem;
-}
-
-/* List View */
-.reports-list {
-  display: flex;
-  flex-direction: column;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+  padding: 4px 22px 16px;
 }
 
 .list-header {
   display: grid;
-  grid-template-columns: 60px 1fr 140px 100px 140px 100px 100px;
-  gap: 1rem;
-  padding: 1rem;
-  background: #f8fafc;
-  border-bottom: 2px solid #e5e7eb;
-  font-weight: 600;
-  color: #374151;
-  font-size: 0.9rem;
+  grid-template-columns: minmax(0, 2.4fr) 110px 70px minmax(100px, 1fr) 80px 76px;
+  gap: 12px;
+  padding: 10px 22px;
+  box-shadow: inset 0 -0.5px 0 var(--ui-sep);
 }
 
 .header-cell {
-  display: flex;
-  align-items: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ui-muted);
 }
 
-.header-cell.type-cell {
-  justify-content: center;
-}
-
-.header-cell.status-cell,
-.header-cell.format-cell,
-.header-cell.time-cell,
 .header-cell.size-cell {
-  justify-content: center;
-}
-
-.header-cell.actions-cell {
-  justify-content: flex-end;
-}
-
-.list-body {
-  background: white;
-}
-
-/* Responsive */
-@media (max-width: 1280px) {
-  .reports-grid {
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  }
-
-  .list-header {
-    grid-template-columns: 60px 1fr 120px 90px 120px 90px 90px;
-    gap: 0.75rem;
-  }
+  text-align: right;
 }
 
 @media (max-width: 768px) {
-  .section-header {
-    flex-direction: column;
-    gap: 1rem;
-    align-items: flex-start;
-  }
-
-  .section-controls {
-    width: 100%;
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .sort-control {
-    justify-content: space-between;
-  }
-
-  .view-toggle {
-    width: 100%;
-  }
-
-  .view-btn {
-    flex: 1;
+  .list-header {
+    display: none;
   }
 
   .reports-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .list-header {
-    display: none;
+    padding: 4px 16px 16px;
   }
 }
 </style>

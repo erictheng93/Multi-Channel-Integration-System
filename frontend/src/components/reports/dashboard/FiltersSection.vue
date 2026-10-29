@@ -1,25 +1,27 @@
 <template>
-  <div class="filter-section">
-    <div class="filter-header">
-      <h3 class="filter-title">
-        篩選器
+  <section class="ui-card filter-section">
+    <div class="ui-card-head">
+      <h3 class="ui-card-title filter-title">
+        篩選
       </h3>
-      <button
-        v-if="hasActiveFilters"
-        class="filter-reset"
-        @click="$emit('reset-filters')"
-      >
-        清除篩選
-      </button>
+      <div class="ui-card-end">
+        <button
+          v-if="hasActiveFilters"
+          type="button"
+          class="ui-link filter-reset"
+          @click="$emit('reset-filters')"
+        >
+          重設
+        </button>
+      </div>
     </div>
-
     <div class="filter-controls">
-      <!-- 報表類型篩選 -->
-      <div class="filter-group">
-        <label class="filter-label">報表類型</label>
+      <div class="ui-field filter-group">
+        <label for="rf-type">報表類型</label>
         <select
+          id="rf-type"
           :value="filters.type"
-          class="filter-select"
+          class="ui-select filter-select"
           @change="handleFilterChange('type', ($event.target as HTMLSelectElement).value)"
         >
           <option value="">
@@ -35,18 +37,18 @@
               :key="type.value"
               :value="type.value"
             >
-              {{ getReportTypeIcon(type.value as ReportType) }} {{ type.label }}
+              {{ type.label }}
             </option>
           </optgroup>
         </select>
       </div>
 
-      <!-- 狀態篩選 -->
-      <div class="filter-group">
-        <label class="filter-label">狀態</label>
+      <div class="ui-field filter-group">
+        <label for="rf-status">狀態</label>
         <select
+          id="rf-status"
           :value="filters.status"
-          class="filter-select"
+          class="ui-select filter-select"
           @change="handleFilterChange('status', ($event.target as HTMLSelectElement).value)"
         >
           <option value="">
@@ -70,12 +72,12 @@
         </select>
       </div>
 
-      <!-- 格式篩選 -->
-      <div class="filter-group">
-        <label class="filter-label">格式</label>
+      <div class="ui-field filter-group">
+        <label for="rf-format">格式</label>
         <select
+          id="rf-format"
           :value="filters.format"
-          class="filter-select"
+          class="ui-select filter-select"
           @change="handleFilterChange('format', ($event.target as HTMLSelectElement).value)"
         >
           <option value="">
@@ -87,54 +89,46 @@
           <option value="csv">
             CSV
           </option>
-          <option value="excel">
-            Excel
-          </option>
-          <option value="pdf">
-            PDF
-          </option>
-          <option value="html">
-            HTML
-          </option>
         </select>
       </div>
 
-      <!-- 日期範圍篩選 -->
-      <div class="filter-group filter-group--date">
-        <label class="filter-label">建立時間</label>
+      <div class="ui-field filter-group filter-group--date">
+        <label for="rf-from">建立時間</label>
         <div class="date-filters">
           <input
+            id="rf-from"
             :value="filters.startDate"
             type="date"
-            class="filter-date"
+            class="ui-input filter-date"
             @change="handleFilterChange('startDate', ($event.target as HTMLInputElement).value)"
           >
           <span class="date-separator">至</span>
           <input
             :value="filters.endDate"
             type="date"
-            class="filter-date"
+            class="ui-input filter-date"
+            aria-label="建立時間結束"
             @change="handleFilterChange('endDate', ($event.target as HTMLInputElement).value)"
           >
         </div>
       </div>
 
-      <!-- 搜尋 -->
-      <div class="filter-group">
-        <label class="filter-label">搜尋</label>
+      <div class="ui-field filter-group">
+        <label for="rf-q">搜尋</label>
         <div class="search-input-wrapper">
           <input
+            id="rf-q"
             :value="searchQuery"
             type="text"
-            class="search-input"
-            placeholder="搜尋報表標題..."
+            class="ui-input search-input"
+            placeholder="報表標題"
             @input="$emit('update:searchQuery', ($event.target as HTMLInputElement).value)"
           >
-          <div class="search-icon" />
+          <span class="search-icon" />
         </div>
       </div>
     </div>
-  </div>
+  </section>
 </template>
 
 <script setup lang="ts">
@@ -205,123 +199,60 @@ function handleFilterChange(key: keyof ReportListQuery, value: string) {
 </script>
 
 <style scoped>
-.filter-section {
-  background: white;
-  border-radius: 12px;
-  padding: 1.5rem;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-}
-
-.filter-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1rem;
-  padding-bottom: 0.75rem;
-  border-bottom: 1px solid #e5e7eb;
-}
-
-.filter-title {
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: #1f2937;
-  margin: 0;
-}
-
-.filter-reset {
-  color: #6b7280;
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-size: 0.9rem;
-  text-decoration: underline;
-}
-
-.filter-reset:hover {
-  color: #374151;
-}
-
 .filter-controls {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 1rem;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 14px;
+  padding: 4px 22px 20px;
 }
 
 .filter-group {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  /* a grid item defaults to min-width:auto, so a select's longest option would set the track */
-  min-width: 0;
-}
-
-.filter-label {
-  font-weight: 500;
-  color: #374151;
-  font-size: 0.9rem;
-}
-
-.filter-select,
-.filter-date,
-.search-input {
-  min-width: 0;
-  max-width: 100%;
-  padding: 0.75rem;
-  border: 2px solid #e5e7eb;
-  border-radius: 8px;
-  font-size: 0.9rem;
-  transition: border-color 0.2s;
-}
-
-.filter-select:focus,
-.filter-date:focus,
-.search-input:focus {
-  outline: none;
-  border-color: #3b82f6;
-}
-
-.date-filters .filter-date {
-  flex: 1;
+  grid-column: span 2;
   min-width: 0;
 }
 
 .filter-group--date {
-  /* a date range needs two inputs side by side; a single grid column is too narrow for it */
-  grid-column: 1 / -1;
+  grid-column: span 3;
+}
+
+.filter-group:last-child {
+  grid-column: span 3;
 }
 
 .date-filters {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 8px;
+  min-width: 0;
+}
+
+/* Native date inputs and selects have a wide intrinsic width; let them shrink with the column */
+.date-filters .filter-date {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.filter-select,
+.search-input {
+  min-width: 0;
 }
 
 .date-separator {
-  color: #6b7280;
-  font-size: 0.9rem;
-}
-
-.search-input-wrapper {
-  position: relative;
-}
-
-.search-input {
-  width: 100%;
-  padding-right: 2.5rem;
-}
-
-.search-icon {
-  position: absolute;
-  right: 0.75rem;
-  top: 50%;
-  transform: translateY(-50%);
-  color: #6b7280;
-  pointer-events: none;
+  font-size: 12.5px;
+  color: var(--ui-muted);
 }
 
 @media (max-width: 768px) {
   .filter-controls {
+    /* minmax(0, …) not 1fr: a bare 1fr column cannot shrink below its widest control */
     grid-template-columns: minmax(0, 1fr);
+    padding: 4px 16px 16px;
+  }
+
+  .filter-group,
+  .filter-group--date,
+  .filter-group:last-child {
+    grid-column: auto;
   }
 }
 </style>

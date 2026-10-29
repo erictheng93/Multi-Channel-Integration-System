@@ -1,112 +1,112 @@
 <template>
-  <div class="preview-section">
-    <!-- 報表預覽卡片 -->
-    <div
-      v-if="reportType"
-      class="preview-card"
-    >
-      <div class="preview-header">
-        <h3 class="preview-title">
-          報表預覽
-        </h3>
+  <aside class="preview-section">
+    <section class="ui-card preview-card">
+      <div class="ui-card-head">
+        <div>
+          <h3 class="ui-card-title">
+            即將產生
+          </h3>
+          <p class="ui-card-sub">
+            依目前設定
+          </p>
+        </div>
       </div>
-      <div class="preview-content">
-        <div class="preview-item">
-          <span class="preview-label">類型：</span>
-          <span class="preview-value">{{ reportTypeLabel }}</span>
+      <dl
+        v-if="reportType"
+        class="kv"
+      >
+        <div class="kv-row">
+          <dt>報表類型</dt>
+          <dd>{{ reportTypeLabel }}</dd>
         </div>
         <div
           v-if="title"
-          class="preview-item"
+          class="kv-row"
         >
-          <span class="preview-label">標題：</span>
-          <span class="preview-value">{{ title }}</span>
+          <dt>標題</dt>
+          <dd>{{ title }}</dd>
         </div>
-        <div class="preview-item">
-          <span class="preview-label">格式：</span>
-          <span class="preview-value">{{ formatLabel }}</span>
+        <div class="kv-row">
+          <dt>格式</dt>
+          <dd>{{ formatLabel }}</dd>
         </div>
         <div
           v-if="timeRange"
-          class="preview-item"
+          class="kv-row"
         >
-          <span class="preview-label">時間範圍：</span>
-          <span class="preview-value">{{ timeRangeLabel }}</span>
+          <dt>時間範圍</dt>
+          <dd>{{ timeRangeLabel }}</dd>
         </div>
-        <div
-          v-if="estimatedTime"
-          class="preview-item"
-        >
-          <span class="preview-label">預估時間：</span>
-          <span class="preview-value">{{ estimatedTime }} 秒</span>
-        </div>
-      </div>
-    </div>
+      </dl>
+      <p
+        v-else
+        class="hint"
+      >
+        選擇報表類型後會在這裡顯示設定摘要。
+      </p>
+      <slot name="action" />
+    </section>
 
-    <!-- 生成進度 -->
-    <div
+    <section
       v-if="isGenerating"
-      class="progress-card"
+      class="ui-card progress-card"
+      aria-live="polite"
     >
-      <div class="progress-header">
-        <h3 class="progress-title">
-          生成進度
+      <div class="ui-card-head">
+        <h3 class="ui-card-title">
+          產生中
         </h3>
       </div>
       <div class="progress-content">
-        <div class="progress-bar">
-          <div
-            class="progress-fill"
-            :style="{ width: `${progress}%` }"
-          />
-        </div>
-        <div class="progress-text">
-          {{ progress }}% 完成
-        </div>
         <div
+          class="progress-bar"
+          role="progressbar"
+          aria-label="報表產生中"
+        >
+          <div class="progress-fill" />
+        </div>
+        <p
           v-if="currentStep"
           class="progress-status"
         >
           {{ currentStep }}
-        </div>
+        </p>
       </div>
-    </div>
+    </section>
 
-    <!-- 最近生成的報表 -->
-    <div
+    <section
       v-if="recentReports.length > 0"
-      class="recent-reports"
+      class="ui-card recent-reports"
     >
-      <div class="recent-header">
-        <h3 class="recent-title">
-          最近的報表
+      <div class="ui-card-head">
+        <h3 class="ui-card-title">
+          最近報表
         </h3>
       </div>
-      <div class="recent-list">
-        <div
+      <ul class="recent-list">
+        <li
           v-for="report in recentReports.slice(0, 3)"
           :key="report.id"
-          class="recent-item"
-          @click="$emit('view-report', report.id)"
         >
-          <div class="recent-icon">
-            {{ getReportTypeIcon(report.type) }}
-          </div>
-          <div class="recent-info">
-            <div class="recent-name">
-              {{ report.title }}
-            </div>
-            <div class="recent-meta">
-              {{ formatDate(report.createdAt) }}
-            </div>
-          </div>
-          <div class="recent-status">
-            {{ getStatusIcon(report.status) }}
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
+          <button
+            type="button"
+            class="recent-item"
+            @click="$emit('view-report', report.id)"
+          >
+            <span
+              class="recent-dot"
+              :class="report.status"
+              aria-hidden="true"
+            />
+            <span class="recent-info">
+              <span class="recent-name">{{ report.title }}</span>
+              <span class="recent-meta">{{ formatDate(report.createdAt) }} · {{ statusLabel(report.status) }}</span>
+            </span>
+          </button>
+        </li>
+      </ul>
+    </section>
+  </aside>
 </template>
 
 <script setup lang="ts">
@@ -125,7 +125,6 @@ interface Props {
   format: ReportFormat;
   timeRange: ReportTimeRange | '';
   isGenerating: boolean;
-  progress: number;
   currentStep: string;
   recentReports: ReportBase[];
 }
@@ -136,7 +135,6 @@ defineEmits<{
   'view-report': [reportId: string];
 }>();
 
-// Computed labels
 const reportTypeLabel = computed(() => {
   if (!props.reportType) {
     return '';
@@ -156,210 +154,171 @@ const timeRangeLabel = computed(() => {
   return found?.label || props.timeRange;
 });
 
-const estimatedTime = computed(() => {
-  if (!props.reportType) {
-    return null;
-  }
-
-  const typeMap: Record<ReportType, number> = {
-    'conversation_summary': 30,
-    'agent_performance': 45,
-    'team_analytics': 60,
-    'customer_satisfaction': 40,
-    'platform_usage': 25,
-    'message_statistics': 35,
-    'response_time_analysis': 50,
-    'workload_distribution': 40,
-    'system_health': 20,
-    'custom': 120,
-    'cost_analysis': 90,
-    'sla_compliance': 75,
-    'anomaly_detection': 120,
-    'audit_trail': 100,
-    'resource_utilization': 80,
-    'trend_forecast': 150,
-    'customer_insights': 135,
-    'channel_integration': 110,
-    'goal_achievement': 95,
-    'automation_effectiveness': 125,
-    'security_risk': 180,
-    'knowledge_base': 105,
-    'call_quality': 140,
-    'executive_summary': 200
-  };
-
-  return typeMap[props.reportType] || 60;
-});
-
-// Helper methods
-const getReportTypeIcon = (type: ReportType): string => {
-  const iconMap: Record<ReportType, string> = {
-    'conversation_summary': '\uD83D\uDCAC',
-    'agent_performance': '\uD83D\uDC64',
-    'team_analytics': '\uD83D\uDC65',
-    'customer_satisfaction': '\uD83D\uDE0A',
-    'platform_usage': '\uD83D\uDCF1',
-    'message_statistics': '\uD83D\uDCCA',
-    'response_time_analysis': '\u23F1\uFE0F',
-    'workload_distribution': '\u2696\uFE0F',
-    'system_health': '\uD83C\uDFE5',
-    'custom': '\uD83D\uDD27',
-    'cost_analysis': '\uD83D\uDCB0',
-    'sla_compliance': '\u2696\uFE0F',
-    'anomaly_detection': '\uD83D\uDEA8',
-    'audit_trail': '\uD83D\uDCCB',
-    'resource_utilization': '\u26A1',
-    'trend_forecast': '\uD83D\uDCC8',
-    'customer_insights': '\uD83D\uDCA1',
-    'channel_integration': '\uD83C\uDF10',
-    'goal_achievement': '\uD83C\uDFAF',
-    'automation_effectiveness': '\uD83E\uDD16',
-    'security_risk': '\uD83D\uDD12',
-    'knowledge_base': '\uD83D\uDCDA',
-    'call_quality': '\uD83D\uDCDE',
-    'executive_summary': '\uD83D\uDCBC'
-  };
-  return iconMap[type] || '\uD83D\uDCCA';
-};
-
-const getStatusIcon = (status: string): string => {
-  const statusMap: Record<string, string> = {
-    'pending': '\u23F3',
-    'generating': '\u2699\uFE0F',
-    'completed': '\u2705',
-    'failed': '\u274C',
-    'expired': '\u23F0'
-  };
-  return statusMap[status] || '\u2753';
-};
+const statusLabel = (status: string): string => ReportsAPI.formatReportStatus(status).label;
 
 const formatDate = (dateString: string): string => {
-  return new Date(dateString).toLocaleDateString('zh-TW');
+  const date = new Date(dateString);
+  if (Number.isNaN(date.getTime())) {
+    return '';
+  }
+  return date.toLocaleString('zh-TW', {
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false
+  });
 };
 </script>
 
 <style scoped>
 .preview-section {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
+  display: grid;
+  gap: 16px;
 }
 
-.preview-card,
-.progress-card,
-.recent-reports {
-  background: white;
-  border-radius: 12px;
-  padding: 1.5rem;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-}
-
-.preview-header,
-.progress-header,
-.recent-header {
-  margin-bottom: 1rem;
-  padding-bottom: 0.5rem;
-  border-bottom: 1px solid #e5e7eb;
-}
-
-.preview-title,
-.progress-title,
-.recent-title {
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: #1f2937;
+.kv {
   margin: 0;
+  padding: 0 22px;
 }
 
-.preview-item {
+.kv-row {
   display: flex;
   justify-content: space-between;
-  margin-bottom: 0.75rem;
+  gap: 16px;
+  padding: 12px 0;
+  font-size: 13.5px;
+  box-shadow: 0 0.5px 0 var(--ui-sep);
 }
 
-.preview-label {
-  font-weight: 500;
-  color: #6b7280;
+.kv-row:last-child {
+  box-shadow: none;
 }
 
-.preview-value {
+.kv-row dt {
+  flex: none;
+  color: var(--ui-muted);
+}
+
+.kv-row dd {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
   font-weight: 600;
-  color: #1f2937;
   text-align: right;
-  flex: 1;
-  margin-left: 1rem;
+}
+
+.hint {
+  margin: 0;
+  padding: 0 22px 18px;
+  font-size: 13.5px;
+  color: var(--ui-muted);
+}
+
+.progress-content {
+  padding: 0 22px 20px;
 }
 
 .progress-bar {
-  width: 100%;
-  height: 8px;
-  background-color: #e5e7eb;
-  border-radius: 4px;
+  height: 6px;
   overflow: hidden;
-  margin-bottom: 0.5rem;
+  border-radius: 999px;
+  background: var(--ui-fill);
 }
 
+/* Indeterminate: the server gives no percentage, so none is shown */
 .progress-fill {
+  width: 35%;
   height: 100%;
-  background: linear-gradient(90deg, #3b82f6, #1d4ed8);
-  transition: width 0.3s ease;
+  border-radius: inherit;
+  background: var(--ui-accent);
+  animation: report-indeterminate 1.4s var(--ui-ease) infinite;
 }
 
-.progress-text {
-  text-align: center;
-  font-weight: 600;
-  color: #1f2937;
-  margin-bottom: 0.5rem;
+@keyframes report-indeterminate {
+  from {
+    transform: translateX(-100%);
+  }
+
+  to {
+    transform: translateX(300%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .progress-fill {
+    width: 100%;
+    animation: none;
+    opacity: 0.6;
+  }
 }
 
 .progress-status {
-  text-align: center;
-  color: #6b7280;
-  font-style: italic;
+  margin: 10px 0 0;
+  font-size: 12.5px;
+  color: var(--ui-muted);
 }
 
 .recent-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
+  margin: 0;
+  padding: 0 8px 10px;
+  list-style: none;
 }
 
 .recent-item {
   display: flex;
+  width: 100%;
   align-items: center;
-  padding: 0.75rem;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
+  gap: 12px;
+  padding: 10px 14px;
+  border: 0;
+  border-radius: 12px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
   cursor: pointer;
-  transition: all 0.2s;
 }
 
 .recent-item:hover {
-  border-color: #3b82f6;
-  background-color: #f8fafc;
+  background: color-mix(in srgb, var(--ui-fill) 45%, transparent);
 }
 
-.recent-icon {
-  font-size: 1.25rem;
-  margin-right: 0.75rem;
+.recent-dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ui-orange);
+}
+
+.recent-dot.completed {
+  background: var(--ui-green);
+}
+
+.recent-dot.failed {
+  background: var(--ui-red);
+}
+
+.recent-dot.expired {
+  background: var(--ui-faint);
 }
 
 .recent-info {
-  flex: 1;
+  display: grid;
+  min-width: 0;
 }
 
 .recent-name {
-  font-weight: 500;
-  color: #1f2937;
-  margin-bottom: 0.25rem;
+  overflow: hidden;
+  font-size: 13.5px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .recent-meta {
-  font-size: 0.9rem;
-  color: #6b7280;
-}
-
-.recent-status {
-  font-size: 1.1rem;
+  font-size: 12px;
+  color: var(--ui-muted);
 }
 </style>

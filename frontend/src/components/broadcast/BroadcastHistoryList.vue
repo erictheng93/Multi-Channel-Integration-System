@@ -1,19 +1,32 @@
 <template>
   <section
-    class="history-card"
+    class="ui-card history-card"
     aria-labelledby="broadcast-history-title"
   >
-    <div class="section-heading">
-      <h2 id="broadcast-history-title">
-        群發紀錄
-      </h2>
-      <button
-        class="btn btn-secondary btn-sm"
-        type="button"
-        @click="$emit('refresh')"
-      >
-        重新整理
-      </button>
+    <div class="ui-card-head">
+      <div>
+        <h2
+          id="broadcast-history-title"
+          class="ui-card-title"
+        >
+          群發紀錄
+        </h2>
+        <p
+          v-if="pagination && pagination.total > 0"
+          class="ui-card-sub"
+        >
+          共 {{ pagination.total }} 筆，選擇一筆查看收件人明細
+        </p>
+      </div>
+      <div class="ui-card-end">
+        <button
+          class="btn btn-secondary btn-sm"
+          type="button"
+          @click="$emit('refresh')"
+        >
+          重新整理
+        </button>
+      </div>
     </div>
 
     <div
@@ -24,71 +37,109 @@
     </div>
     <div
       v-else-if="broadcasts.length === 0"
-      class="state"
+      class="ui-empty"
     >
-      尚未建立群發。
+      <div class="ui-empty-art">
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.8"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        ><path d="m22 2-7 20-4-9-9-4Z" /><path d="M22 2 11 13" /></svg>
+      </div>
+      <h3>尚未建立群發</h3>
+      <p>建立第一則群發後，結果會顯示在這裡。</p>
     </div>
     <div
       v-else
       class="table-wrap"
     >
-      <table>
-        <thead>
-          <tr>
-            <th>活動</th>
-            <th>狀態</th>
-            <th>收件人</th>
-            <th>成功</th>
-            <th>失敗</th>
-            <th>略過</th>
-            <th>發送時間</th>
-            <th />
-          </tr>
-        </thead>
-        <tbody>
-          <tr
-            v-for="broadcast in broadcasts"
-            :key="broadcast.id"
-          >
-            <td>
-              <strong>{{ broadcast.title }}</strong>
-              <small>
+      <div class="ui-table-wrap">
+        <table class="ui-table">
+          <thead>
+            <tr>
+              <th>活動</th>
+              <th>狀態</th>
+              <th>結果</th>
+              <th />
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              v-for="broadcast in broadcasts"
+              :key="broadcast.id"
+              :class="{ 'is-selected': broadcast.id === selectedId }"
+            >
+              <td class="col-title">
+                <strong class="title-line">
+                  <span class="title-text">{{ broadcast.title }}</span>
+                  <span
+                    v-if="broadcast.contentType === 'mixed'"
+                    class="ui-pill ui-pill-blue mixed-pill"
+                  >圖文</span>
+                </strong>
+                <small>{{ broadcast.content || '（僅圖片）' }}</small>
+              </td>
+              <td class="col-status">
                 <span
-                  v-if="broadcast.contentType === 'mixed'"
-                  class="mixed-pill"
-                >圖文</span>
-                {{ broadcast.content || '（僅圖片）' }}
-              </small>
-            </td>
-            <td>
-              <span
-                class="status-pill"
-                :data-status="broadcast.status"
-              >{{ statusLabel(broadcast.status) }}</span>
-            </td>
-            <td>{{ broadcast.totalRecipients }}</td>
-            <td>{{ broadcast.sentCount }}</td>
-            <td>{{ broadcast.failedCount }}</td>
-            <td>{{ broadcast.skippedCount }}</td>
-            <td>{{ formatDate(broadcast.sentAt || broadcast.createdAt) }}</td>
-            <td>
-              <button
-                class="btn btn-ghost btn-sm"
-                type="button"
-                @click="$emit('select', broadcast.id)"
-              >
-                明細
-              </button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+                  class="ui-pill ui-pill-dot status-pill"
+                  :class="statusClass(broadcast.status)"
+                  :data-status="broadcast.status"
+                >{{ statusLabel(broadcast.status) }}</span>
+                <small class="when">{{ formatDate(broadcast.sentAt || broadcast.createdAt) }}</small>
+              </td>
+              <td class="col-result">
+                <template v-if="broadcast.totalRecipients > 0">
+                  <div
+                    class="result-bar"
+                    aria-hidden="true"
+                  >
+                    <i
+                      class="seg-ok"
+                      :style="{ width: share(broadcast.sentCount, broadcast) }"
+                    />
+                    <i
+                      class="seg-fail"
+                      :style="{ width: share(broadcast.failedCount, broadcast) }"
+                    />
+                    <i
+                      class="seg-skip"
+                      :style="{ width: share(broadcast.skippedCount, broadcast) }"
+                    />
+                  </div>
+                  <small class="result-text">
+                    {{ broadcast.totalRecipients }} 人 · 成功 <b>{{ broadcast.sentCount }}</b> ·
+                    失敗 <b :class="{ 'is-bad': broadcast.failedCount > 0 }">{{ broadcast.failedCount }}</b> ·
+                    略過 <b>{{ broadcast.skippedCount }}</b>
+                  </small>
+                </template>
+                <small
+                  v-else
+                  class="result-text"
+                >尚未發送</small>
+              </td>
+              <td class="col-act">
+                <button
+                  class="btn btn-ghost btn-sm"
+                  type="button"
+                  @click="$emit('select', broadcast.id)"
+                >
+                  明細
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
 
       <nav
         v-if="pagination && pagination.totalPages > 1"
         class="pagination"
         aria-label="群發紀錄分頁"
       >
+        <span>第 {{ pagination.page }} / {{ pagination.totalPages }} 頁，共 {{ pagination.total }} 筆</span>
         <button
           type="button"
           class="btn btn-secondary btn-sm"
@@ -98,7 +149,6 @@
         >
           上一頁
         </button>
-        <span>第 {{ pagination.page }} / {{ pagination.totalPages }} 頁，共 {{ pagination.total }} 筆</span>
         <button
           type="button"
           class="btn btn-secondary btn-sm"
@@ -125,6 +175,8 @@ defineProps<{
     total: number
     totalPages: number
   } | null
+  /** Row whose recipient detail is open */
+  selectedId?: string | null
 }>()
 
 defineEmits<{
@@ -148,111 +200,165 @@ function statusLabel(status: BroadcastStatus): string {
   }
 }
 
+function statusClass(status: BroadcastStatus): string {
+  switch (status) {
+    case 'completed':
+      return 'ui-pill-green'
+    case 'partial_failed':
+    case 'sending':
+      return 'ui-pill-orange'
+    case 'failed':
+      return 'ui-pill-red'
+    default:
+      return ''
+  }
+}
+
+function share(count: number, broadcast: BroadcastRecord): string {
+  if (broadcast.totalRecipients <= 0 || count <= 0) {return '0%'}
+  return `${(count / broadcast.totalRecipients) * 100}%`
+}
+
 function formatDate(value: string | null): string {
   if (!value) {return '-'}
   return new Intl.DateTimeFormat('zh-TW', {
     month: '2-digit',
     day: '2-digit',
     hour: '2-digit',
-    minute: '2-digit'
+    minute: '2-digit',
+    hour12: false
   }).format(new Date(value))
 }
 </script>
 
 <style scoped>
-.history-card {
-  background: #fff;
-  border-radius: 16px;
-  padding: var(--space-6);
-  box-shadow: var(--shadow-sm);
-}
-
-.section-heading {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-}
-
-.section-heading h2 {
-  margin: 0;
-  font-size: var(--text-xl);
-}
-
 .state {
-  padding: var(--space-8);
-  color: var(--gray-500);
-  text-align: center;
+  padding: 24px 22px 28px;
+  font-size: 13.5px;
+  color: var(--ui-muted);
 }
 
 .table-wrap {
-  overflow-x: auto;
-  margin-top: var(--space-4);
+  padding-bottom: 6px;
 }
 
-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-th,
-td {
-  padding: var(--space-3);
-  text-align: left;
+.ui-table td {
   vertical-align: top;
-  border-bottom: 1px solid #f2f2f7;
 }
 
-th {
-  color: var(--gray-500);
-  font-size: var(--text-sm);
-  font-weight: 600;
+.ui-table tbody tr.is-selected {
+  background: var(--ui-sel-tint);
 }
 
-td small {
-  display: block;
-  max-width: 28rem;
-  color: var(--gray-500);
+.col-title {
+  min-width: 190px;
+  max-width: 280px;
+}
+
+.title-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+}
+
+.title-text {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.status-pill {
-  display: inline-flex;
-  padding: var(--space-1) var(--space-3);
+.col-title small {
+  display: block;
+  max-width: 100%;
+  margin-top: 2px;
+  overflow: hidden;
+  font-size: 12.5px;
+  color: var(--ui-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.col-status {
+  white-space: nowrap;
+}
+
+.when {
+  display: block;
+  margin-top: 4px;
+  font-size: 12.5px;
+  color: var(--ui-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.col-result {
+  min-width: 190px;
+}
+
+.result-bar {
+  display: flex;
+  height: 6px;
+  margin-top: 6px;
+  overflow: hidden;
   border-radius: 999px;
-  background: #f2f2f7;
-  font-size: var(--text-sm);
-  font-weight: 600;
+  background: var(--ui-fill);
 }
 
-.status-pill[data-status='completed'] {
-  color: #1f7a4d;
+.result-bar i {
+  display: block;
+  height: 100%;
 }
 
-.status-pill[data-status='partial_failed'],
-.status-pill[data-status='failed'] {
-  color: #ff3b30;
+.seg-ok {
+  background: var(--ui-green);
+}
+
+.seg-fail {
+  background: var(--ui-red);
+}
+
+.seg-skip {
+  background: var(--ui-faint);
+}
+
+.result-text {
+  display: block;
+  white-space: nowrap;
+  margin-top: 6px;
+  font-size: 12.5px;
+  color: var(--ui-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.result-text b {
+  color: var(--ui-ink);
+}
+
+.result-text b.is-bad {
+  color: var(--ui-red-ink);
+}
+
+.col-act {
+  text-align: right;
 }
 
 .pagination {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
-  gap: var(--space-3);
-  margin-top: var(--space-4);
-  color: var(--gray-500);
-  font-size: var(--text-sm);
+  gap: 8px;
+  padding: 12px 22px 8px;
+  font-size: 12.5px;
+  color: var(--ui-muted);
+  font-variant-numeric: tabular-nums;
 }
 
-.mixed-pill {
-  display: inline-block;
-  margin-right: var(--space-1);
-  padding: 0 var(--space-2);
-  border-radius: 999px;
-  background: #e5f1ff;
-  color: #007aff;
-  font-weight: 600;
+.pagination span {
+  margin-right: auto;
+}
+
+@media (max-width: 768px) {
+  .pagination .btn {
+    min-height: 44px;
+  }
 }
 </style>

@@ -1,104 +1,116 @@
 <template>
-  <div class="stats-section">
-    <div class="stats-grid">
-      <!-- 總報表數 -->
-      <StatCard
-        icon=""
-        :number="stats.totalReports"
-        label="總報表數"
-        type="total"
-      >
-        <template #extra>
-          <div
-            v-if="stats.thisMonthGenerated > 0"
-            class="stat-trend"
-          >
-            <span class="trend-indicator up" />
-            <span class="trend-text">本月 +{{ stats.thisMonthGenerated }}</span>
-          </div>
-        </template>
-      </StatCard>
+  <section class="ui-grid ui-cols-4 kpi-row">
+    <article class="ui-card ui-kpi stat-card">
+      <div class="ui-kpi-top">
+        <span class="ui-kpi-ico ico-blue"><svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        ><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z M14 3v5h5" /></svg></span>
+        總報表數
+      </div>
+      <div class="ui-kpi-value">
+        {{ stats.totalReports }}
+      </div>
+    </article>
 
-      <!-- 已完成 -->
-      <StatCard
-        icon=""
-        :number="stats.completedReports"
-        label="已完成"
-        type="completed"
+    <article class="ui-card ui-kpi stat-card">
+      <div class="ui-kpi-top">
+        <span class="ui-kpi-ico ico-green"><svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        ><path d="m5 12.5 4.5 4.5L19 7.5" /></svg></span>
+        已完成
+      </div>
+      <div class="ui-kpi-value">
+        {{ stats.completedReports }}
+      </div>
+      <div
+        v-if="stats.totalReports > 0"
+        class="ui-kpi-foot rate"
       >
-        <template #extra>
-          <div class="stat-progress">
-            <div class="progress-bar">
-              <div
-                class="progress-fill"
-                :style="{ width: `${completionRate}%` }"
-              />
-            </div>
-            <span class="progress-text">{{ completionRate }}%</span>
-          </div>
-        </template>
-      </StatCard>
+        <span
+          class="bar"
+          aria-hidden="true"
+        ><i :style="{ width: completionRate + '%' }" /></span>
+        <b>{{ completionRate }}%</b>
+      </div>
+    </article>
 
-      <!-- 處理中 -->
-      <StatCard
-        icon=""
-        :number="stats.pendingReports"
-        label="處理中"
-        type="generating"
+    <article class="ui-card ui-kpi stat-card">
+      <div class="ui-kpi-top">
+        <span class="ui-kpi-ico ico-orange"><svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        ><path d="M12 7v5l3 2 M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" /></svg></span>
+        處理中
+      </div>
+      <div class="ui-kpi-value">
+        {{ stats.pendingReports }}
+      </div>
+      <div
+        v-if="stats.pendingReports > 0"
+        class="ui-kpi-foot"
       >
-        <template #extra>
-          <div
-            v-if="stats.pendingReports > 0"
-            class="stat-indicator"
-          >
-            <span class="indicator-dot" />
-            <span class="indicator-text">進行中</span>
-          </div>
-        </template>
-      </StatCard>
+        <span class="ui-pill ui-pill-orange ui-pill-dot">進行中</span>
+      </div>
+    </article>
 
-      <!-- 失敗 -->
-      <StatCard
-        icon=""
-        :number="stats.failedReports"
-        label="失敗"
-        type="failed"
-      >
-        <template #extra>
-          <div
-            v-if="stats.failedReports > 0"
-            class="stat-action"
-          >
-            <button
-              class="action-link"
-              @click="$emit('show-failed-reports')"
-            >
-              查看詳情
-            </button>
-          </div>
-        </template>
-      </StatCard>
-    </div>
-  </div>
+    <article class="ui-card ui-kpi stat-card">
+      <div class="ui-kpi-top">
+        <span class="ui-kpi-ico ico-red"><svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        ><path d="M12 9v4 M12 17h.01 M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z" /></svg></span>
+        失敗
+      </div>
+      <div class="ui-kpi-value">
+        {{ stats.failedReports }}
+      </div>
+      <div class="ui-kpi-foot">
+        <span>累計失敗</span>
+        <button
+          v-if="stats.failedReports > 0"
+          type="button"
+          class="ui-link action-link"
+          @click="$emit('show-failed-reports')"
+        >
+          查看詳情
+        </button>
+      </div>
+    </article>
+  </section>
 </template>
 
 <script setup lang="ts">
 /**
  * StatsGrid Component
  *
- * 显示报表仪表板的统计卡片网格
- *
- * @emits show-failed-reports - 用户点击查看失败报表详情
+ * 显示报表仪表板的统计卡片网格（数字来自报表列表 summary）
  */
-
 import { computed } from 'vue'
-import StatCard from './StatCard.vue'
 import type { DashboardStats } from '@/types/reports'
 
 export interface StatsGridProps {
-  /**
-   * 统计数据
-   */
   stats: DashboardStats
 }
 
@@ -108,9 +120,6 @@ defineEmits<{
   'show-failed-reports': []
 }>()
 
-/**
- * 报表完成率百分比
- */
 const completionRate = computed(() => {
   if (props.stats.totalReports === 0) {
     return 0
@@ -120,125 +129,71 @@ const completionRate = computed(() => {
 </script>
 
 <style scoped>
-.stats-section {
-  margin-bottom: 2rem;
+/* Neutralise the legacy global .stat-card (centered flex row, border, hover lift) */
+.stat-card {
+  align-items: stretch;
+  gap: 10px;
+  padding: 18px 20px 16px;
+  border: 0;
+  box-shadow: var(--ui-shadow-card);
+  transform: none;
 }
 
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 1.5rem;
+.stat-card:hover {
+  box-shadow: var(--ui-shadow-card);
+  transform: none;
 }
 
-/* Trend styles */
-.stat-trend {
-  position: absolute;
-  top: 1rem;
-  right: 1rem;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.9rem;
+.ico-blue {
+  background: var(--ui-accent-soft);
+  color: var(--ui-accent);
 }
 
-.trend-indicator.up {
-  color: #10b981;
+.ico-green {
+  background: var(--ui-green-soft);
+  color: var(--ui-green-ink);
 }
 
-.trend-text {
-  color: #6b7280;
+.ico-orange {
+  background: var(--ui-orange-soft);
+  color: var(--ui-orange-ink);
 }
 
-/* Progress styles */
-.stat-progress {
-  position: absolute;
-  bottom: 1rem;
-  right: 1rem;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
+.ico-red {
+  background: var(--ui-red-soft);
+  color: var(--ui-red-ink);
 }
 
-.progress-bar {
-  width: 80px;
-  height: 6px;
-  background: #e5e7eb;
-  border-radius: 3px;
+.rate .bar {
+  flex: 1;
+  height: 5px;
   overflow: hidden;
+  border-radius: 999px;
+  background: var(--ui-fill);
 }
 
-.progress-fill {
+.rate .bar i {
+  display: block;
   height: 100%;
-  background: #10b981;
-  transition: width 0.3s ease;
+  border-radius: inherit;
+  background: var(--ui-green);
 }
 
-.progress-text {
-  font-size: 0.9rem;
-  color: #6b7280;
-  font-weight: 500;
-}
-
-/* Indicator styles */
-.stat-indicator {
-  position: absolute;
-  bottom: 1rem;
-  right: 1rem;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.9rem;
-}
-
-.indicator-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #3b82f6;
-  animation: pulse 2s infinite;
-}
-
-.indicator-text {
-  color: #3b82f6;
-  font-weight: 500;
-}
-
-/* Action styles */
-.stat-action {
-  position: absolute;
-  bottom: 1rem;
-  right: 1rem;
+.rate b {
+  font-variant-numeric: tabular-nums;
+  color: var(--ui-green-ink);
 }
 
 .action-link {
-  color: #ef4444;
+  margin-left: auto;
+  padding: 0;
+  border: 0;
   background: none;
-  border: none;
-  cursor: pointer;
-  font-size: 0.9rem;
-  font-weight: 500;
-  text-decoration: underline;
 }
 
-.action-link:hover {
-  color: #dc2626;
-}
-
-/* Animation */
-@keyframes pulse {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.5;
-  }
-}
-
-/* Responsive */
-@media (max-width: 768px) {
-  .stats-grid {
-    grid-template-columns: 1fr;
+@media (max-width: 640px) {
+  .kpi-row {
+    gap: 10px;
   }
 }
 </style>

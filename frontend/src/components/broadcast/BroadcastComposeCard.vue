@@ -1,15 +1,20 @@
 <template>
   <section
     ref="composeRoot"
-    class="compose-card"
+    class="ui-card compose-card"
     aria-labelledby="broadcast-compose-title"
   >
-    <div class="section-heading">
+    <div class="ui-card-head">
       <div>
-        <h2 id="broadcast-compose-title">
+        <h2
+          id="broadcast-compose-title"
+          class="ui-card-title"
+        >
           建立群發
         </h2>
-        <p>選擇一個標籤，系統會先凍結收件人快照再發送。</p>
+        <p class="ui-card-sub">
+          選擇一個標籤，系統會先凍結收件人快照再發送。
+        </p>
       </div>
     </div>
 
@@ -17,68 +22,78 @@
       class="compose-form"
       @submit.prevent="handleSubmit"
     >
-      <label class="field">
-        <span>活動名稱</span>
-        <input
-          v-model.trim="title"
-          maxlength="100"
-          type="text"
-          required
-          placeholder="七月製造業客戶通知"
-        >
-      </label>
+      <div class="field-pair">
+        <label class="ui-field">
+          <span class="lbl">活動名稱</span>
+          <input
+            v-model.trim="title"
+            class="ui-input"
+            maxlength="100"
+            type="text"
+            required
+            placeholder="七月製造業客戶通知"
+          >
+          <span class="ui-hint hint-split"><span>僅內部紀錄，客戶看不到</span><span class="num">{{ title.length }} / 100</span></span>
+        </label>
 
-      <label class="field">
-        <span>目標標籤</span>
-        <select
-          v-model.number="selectedTagId"
-          required
-          @change="emitPreview"
-        >
-          <option
-            :value="0"
-            disabled
-          >選擇標籤</option>
-          <option
-            v-for="tag in tags"
-            :key="tag.id"
-            :value="tag.id"
-          >{{ tag.name }}</option>
-        </select>
-      </label>
+        <label class="ui-field">
+          <span class="lbl">目標標籤</span>
+          <select
+            v-model.number="selectedTagId"
+            class="ui-select"
+            required
+            @change="emitPreview"
+          >
+            <option
+              :value="0"
+              disabled
+            >選擇標籤</option>
+            <option
+              v-for="tag in tags"
+              :key="tag.id"
+              :value="tag.id"
+            >{{ tag.name }}</option>
+          </select>
+          <span class="ui-hint">一次只能選一個標籤</span>
+        </label>
+      </div>
 
-      <label class="field">
-        <span>訊息內容</span>
+      <label class="ui-field">
+        <span class="lbl">訊息內容 <small>選填，可只發圖片</small></span>
         <textarea
           v-model.trim="content"
+          class="ui-textarea"
           maxlength="2000"
           rows="6"
           placeholder="輸入文字（選填，可只發圖片）"
         />
-        <small>{{ content.length }} / 2000</small>
+        <span class="ui-hint hint-split"><span>LINE 單則文字上限 2,000 字</span><span class="num">{{ content.length }} / 2000</span></span>
       </label>
 
-      <div class="field">
-        <span>圖片（選填，最多 4 張，JPEG / PNG，每張 10MB 以內）</span>
-        <ul
-          v-if="images.length"
-          class="image-grid"
-        >
+      <div class="ui-field">
+        <span class="lbl">圖片 <small>最多 4 張，JPEG / PNG，每張 10 MB 以內</small></span>
+        <ul class="image-grid">
           <li
             v-for="(image, index) in images"
             :key="image.key"
             :data-image-key="image.key"
             class="image-tile"
+            :class="{ 'is-error': image.status === 'error' }"
           >
             <img
               :src="image.objectUrl"
               :alt="`圖片 ${index + 1}`"
             >
+            <span class="tile-n">{{ index + 1 }}</span>
+            <span
+              v-if="image.status === 'uploading'"
+              class="tile-busy"
+            >上傳中</span>
             <div class="tile-actions">
               <button
                 v-if="image.status === 'error'"
                 type="button"
-                class="btn btn-ghost btn-sm"
+                class="tile-btn"
                 :aria-label="`重試上傳圖片 ${index + 1}`"
                 @click="retry(image)"
               >
@@ -86,7 +101,7 @@
               </button>
               <button
                 type="button"
-                class="btn btn-ghost btn-sm"
+                class="tile-btn"
                 :disabled="index === 0"
                 data-action="move-before"
                 :aria-label="`將圖片 ${index + 1} 往前移`"
@@ -96,7 +111,7 @@
               </button>
               <button
                 type="button"
-                class="btn btn-ghost btn-sm"
+                class="tile-btn"
                 :disabled="index === images.length - 1"
                 data-action="move-after"
                 :aria-label="`將圖片 ${index + 1} 往後移`"
@@ -106,7 +121,7 @@
               </button>
               <button
                 type="button"
-                class="btn btn-ghost btn-sm"
+                class="tile-btn"
                 :aria-label="`移除圖片 ${index + 1}`"
                 data-action="remove"
                 @click="remove(index)"
@@ -115,20 +130,27 @@
               </button>
             </div>
           </li>
-        </ul>
-        <label
-          v-if="images.length < MAX_IMAGES"
-          class="btn btn-secondary btn-sm image-picker"
-        >
-          加入圖片
-          <input
-            type="file"
-            accept="image/jpeg,image/png"
-            multiple
-            class="visually-hidden"
-            @change="onPick"
+          <li
+            v-if="images.length < MAX_IMAGES"
+            class="image-add"
           >
-        </label>
+            <label class="image-picker">
+              <svg
+                class="plus"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              ><path d="M12 5v14M5 12h14" /></svg>
+              加入圖片
+              <input
+                type="file"
+                accept="image/jpeg,image/png"
+                multiple
+                class="visually-hidden"
+                @change="onPick"
+              >
+            </label>
+          </li>
+        </ul>
         <div
           role="status"
           aria-live="polite"
@@ -136,6 +158,7 @@
           class="tile-state"
         >
           <span v-if="uploadingCount">{{ uploadingCount }} 張圖片上傳中...</span>
+          <span v-else-if="images.length">LINE 會把每張圖片當成獨立訊息，順序即送達順序。</span>
           <small v-if="imageNotice">{{ imageNotice }}</small>
         </div>
         <div
@@ -152,16 +175,6 @@
         </div>
       </div>
 
-      <div
-        v-if="currentPreview"
-        class="preview-panel"
-        aria-live="polite"
-      >
-        <strong>符合 {{ currentPreview.total }} 人</strong>
-        <span>LINE 可發 {{ currentPreview.byPlatform.line }} 人</span>
-        <span>Facebook {{ currentPreview.byPlatform.facebook }} 人本期略過</span>
-      </div>
-
       <p
         v-if="error"
         class="error-text"
@@ -170,29 +183,42 @@
         {{ error }}
       </p>
 
-      <div class="actions">
-        <button
-          type="button"
-          class="btn btn-secondary"
-          :disabled="previewLoading || !selectedTagId"
-          @click="emitPreview"
-        >
-          {{ previewLoading ? '預覽中...' : '更新預覽' }}
-        </button>
-        <button
-          type="submit"
-          class="btn btn-primary"
-          :disabled="sending || !canSubmit"
-        >
-          {{ sending ? '發送中...' : '建立並發送' }}
-        </button>
+      <div class="compose-foot">
+        <p class="foot-note">
+          <template v-if="currentPreview">
+            將發送給 <b>{{ currentPreview.sendable }}</b> 位 LINE 客戶，送出時會凍結名單。
+          </template>
+          <template v-else-if="selectedTagId">
+            尚未取得受眾預覽，請按「更新預覽」。
+          </template>
+          <template v-else>
+            選擇目標標籤後會顯示受眾預覽。
+          </template>
+        </p>
+        <div class="actions">
+          <button
+            type="button"
+            class="btn btn-secondary"
+            :disabled="previewLoading || !selectedTagId"
+            @click="emitPreview"
+          >
+            {{ previewLoading ? '預覽中...' : '更新預覽' }}
+          </button>
+          <button
+            type="submit"
+            class="btn btn-primary"
+            :disabled="sending || !canSubmit"
+          >
+            {{ sending ? '發送中...' : '建立並發送' }}
+          </button>
+        </div>
       </div>
     </form>
   </section>
 </template>
 
 <script setup lang="ts">
-  import { computed, nextTick, onBeforeUnmount, ref } from 'vue'
+  import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
   import type { Tag } from '@/api/tags'
   import { cleanupBroadcastImage, uploadBroadcastImage, type BroadcastAttachmentInput } from '@/api/broadcasts'
   import type {
@@ -215,6 +241,8 @@
     // The parent calls onCreateSettled once the create request ends: true when the broadcast
     // exists and references the uploads, false when it was not created.
     send: [input: CreateBroadcastRequest, onCreateSettled: (_created: boolean) => void]
+    // Live draft for the LINE preview card (text + object URLs of the picked images, in order)
+    draft: [value: { content: string; imageUrls: string[] }]
   }>()
 
   const title = ref('')
@@ -357,6 +385,12 @@
     })
   })
 
+  watch(
+    () => [content.value, images.value.map(image => image.objectUrl)] as const,
+    ([text, urls]) => emit('draft', { content: text, imageUrls: [...urls] }),
+    { immediate: true }
+  )
+
   const imagesReady = computed(() => images.value.every(image => image.status === 'done'))
 
   const input = computed<CreateBroadcastRequest>(() => ({
@@ -428,117 +462,173 @@
 
 <style scoped>
   .compose-card {
-    background: #fff;
-    border-radius: 16px;
-    padding: var(--space-6);
-    box-shadow: var(--shadow-sm);
-  }
-
-  .section-heading h2 {
-    margin: 0;
-    font-size: var(--text-xl);
-  }
-
-  .section-heading p,
-  .field small {
-    color: var(--gray-500);
+    padding-bottom: 0;
   }
 
   .compose-form {
     display: grid;
-    gap: var(--space-4);
-    margin-top: var(--space-5);
+    gap: 18px;
+    padding: 4px 22px 0;
   }
 
-  .field {
+  .field-pair {
     display: grid;
-    gap: var(--space-2);
+    grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+    gap: 16px;
+  }
+
+  .lbl {
+    font-size: 13px;
     font-weight: 600;
+    color: var(--ui-ink-2);
   }
 
-  .field input,
-  .field select,
-  .field textarea {
-    width: 100%;
-    border: 0;
-    border-radius: 12px;
-    background: #f2f2f7;
-    padding: var(--space-3) var(--space-4);
-    font: inherit;
+  .lbl small {
+    margin-left: 6px;
+    font-size: 12px;
+    font-weight: 400;
+    color: var(--ui-muted);
   }
 
-  .field textarea {
-    resize: vertical;
-  }
-
-  .preview-panel {
+  .hint-split {
     display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-3);
-    align-items: center;
-    padding: var(--space-4);
-    border-radius: 14px;
-    background: #f2f2f7;
+    justify-content: space-between;
+    gap: 8px;
   }
 
-  .error-text {
-    color: #ff3b30;
-    margin: 0;
+  .num {
+    font-variant-numeric: tabular-nums;
   }
 
-  .actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: var(--space-3);
+  .ui-textarea {
+    min-height: 150px;
   }
 
   .image-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-    gap: var(--space-3);
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
     margin: 0;
     padding: 0;
     list-style: none;
   }
 
-  .image-tile {
+  .image-tile,
+  .image-add {
     position: relative;
-    display: grid;
-    gap: var(--space-2);
-    padding: var(--space-2);
-    border-radius: 14px;
-    background: #f2f2f7;
+    aspect-ratio: 1;
+    overflow: hidden;
+    border-radius: var(--ui-r-inner);
+    background: var(--ui-surface-2);
   }
 
   .image-tile img {
     width: 100%;
-    aspect-ratio: 1;
+    height: 100%;
     object-fit: cover;
-    border-radius: 10px;
   }
 
-  .tile-state {
-    font-size: var(--text-sm);
-    font-weight: 500;
-    color: #8e8e93;
+  .image-tile.is-error {
+    box-shadow: inset 0 0 0 2px var(--ui-red);
   }
 
-  .tile-state.is-error {
-    color: #ff3b30;
+  .tile-n {
+    position: absolute;
+    top: 6px;
+    left: 6px;
+    display: grid;
+    width: 22px;
+    height: 22px;
+    place-items: center;
+    border-radius: 7px;
+    background: rgb(0 0 0 / 0.5);
+    font-size: 11.5px;
+    font-weight: 600;
+    color: #fff;
+  }
+
+  .tile-busy {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    background: rgb(255 255 255 / 0.7);
+    font-size: 12.5px;
+    font-weight: 600;
   }
 
   .tile-actions {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    left: 0;
     display: flex;
-    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 4px;
+    padding: 6px;
+    background: linear-gradient(transparent, rgb(0 0 0 / 0.55));
+    opacity: 0;
+    transition: opacity var(--ui-dur) var(--ui-ease);
   }
 
-  .image-picker {
-    justify-self: start;
+  .image-tile:hover .tile-actions,
+  .image-tile:focus-within .tile-actions {
+    opacity: 1;
+  }
+
+  @media (hover: none) {
+    .tile-actions {
+      opacity: 1;
+    }
+  }
+
+  .tile-btn {
+    height: 24px;
+    padding: 0 8px;
+    border: 0;
+    border-radius: 999px;
+    background: rgb(255 255 255 / 0.92);
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--ui-ink);
     cursor: pointer;
   }
 
+  .tile-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  .image-add {
+    background: var(--ui-surface);
+    box-shadow: inset 0 0 0 1px var(--ui-sep);
+  }
+
+  .image-picker {
+    display: grid;
+    height: 100%;
+    place-content: center;
+    justify-items: center;
+    gap: 4px;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--ui-ink-2);
+    cursor: pointer;
+  }
+
+  .image-picker .plus {
+    width: 18px;
+    height: 18px;
+    fill: none;
+    stroke: currentcolor;
+    stroke-width: 2;
+    stroke-linecap: round;
+  }
+
   .image-picker:focus-within {
-    box-shadow: 0 0 0 3px rgb(var(--ring) / 0.3);
+    outline: 2px solid var(--ui-accent);
+    outline-offset: -2px;
+    border-radius: var(--ui-r-inner);
   }
 
   .visually-hidden {
@@ -547,5 +637,71 @@
     height: 1px;
     overflow: hidden;
     clip: rect(0 0 0 0);
+  }
+
+  .tile-state {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 12px;
+    font-size: 12px;
+    font-weight: 400;
+    color: var(--ui-muted);
+  }
+
+  .tile-state:empty {
+    display: none;
+  }
+
+  .tile-state.is-error {
+    color: var(--ui-red-ink);
+  }
+
+  .error-text {
+    margin: 0;
+    font-size: 13px;
+    color: var(--ui-red-ink);
+  }
+
+  .compose-foot {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin: 0 -22px;
+    padding: 14px 22px;
+    box-shadow: 0 -0.5px 0 var(--ui-sep);
+  }
+
+  .foot-note {
+    margin: 0;
+    font-size: 13px;
+    color: var(--ui-muted);
+  }
+
+  .foot-note b {
+    color: var(--ui-ink);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .actions {
+    display: flex;
+    gap: 8px;
+    margin-left: auto;
+  }
+
+  @media (max-width: 768px) {
+    .field-pair {
+      grid-template-columns: 1fr;
+    }
+    .image-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .actions {
+      width: 100%;
+    }
+    .actions .btn {
+      flex: 1;
+    }
   }
 </style>

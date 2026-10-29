@@ -1,61 +1,59 @@
 <template>
   <div class="recent-activity-widget">
-    <div class="widget-header">
-      <h3 class="widget-title">
+    <div class="ui-card-head">
+      <h3 class="ui-card-title">
         最近活動
       </h3>
-      <span
+      <div
         v-if="activities.length > 0"
-        class="header-subtitle"
+        class="ui-card-end"
       >
-        最近 {{ activities.length }} 項
-      </span>
+        <span class="header-subtitle ui-card-sub">最近 {{ activities.length }} 項</span>
+      </div>
     </div>
 
-    <div class="widget-content">
-      <!-- 空狀態 -->
-      <div
-        v-if="activities.length === 0"
-        class="empty-state"
-      >
-        <div class="empty-icon" />
-        <p class="empty-text">
-          暫無活動記錄
-        </p>
-      </div>
+    <div
+      v-if="activities.length === 0"
+      class="empty-text empty-state"
+    >
+      暫無活動記錄
+    </div>
 
-      <!-- 活動列表 -->
-      <div
-        v-else
-        class="activity-list"
-      >
-        <div
+    <div
+      v-else
+      class="widget-content"
+    >
+      <ul class="activity-list">
+        <li
           v-for="activity in activities"
           :key="activity.id"
-          class="activity-item"
-          @click="$emit('view-report', activity.reportId)"
         >
-          <div
-            class="activity-icon"
-            :class="activity.status"
+          <button
+            type="button"
+            class="activity-item"
+            @click="$emit('view-report', activity.reportId)"
           >
-            {{ getStatusIcon(activity.status) }}
-          </div>
-          <div class="activity-content">
-            <div class="activity-title">
-              {{ activity.title }}
-            </div>
-            <div class="activity-meta">
-              <span class="activity-type">{{ activity.typeLabel }}</span>
-              <span class="activity-separator">•</span>
-              <span class="activity-time">{{ formatRelativeTime(activity.time) }}</span>
-            </div>
-          </div>
-          <div class="activity-arrow">
-            →
-          </div>
-        </div>
-      </div>
+            <span
+              class="activity-icon"
+              :class="activity.status"
+              aria-hidden="true"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              ><path :d="iconPath(activity.status)" /></svg>
+            </span>
+            <span class="activity-content">
+              <span class="activity-title">{{ describe(activity) }}</span>
+              <span class="activity-time">{{ activity.typeLabel }} · {{ formatRelativeTime(activity.time) }}</span>
+            </span>
+          </button>
+        </li>
+      </ul>
     </div>
   </div>
 </template>
@@ -125,207 +123,115 @@ defineEmits<{
 }>()
 </script>
 
+<script lang="ts">
+// Event wording is derived from each report row's real status; nothing is invented.
+function describe(activity: { title: string; status: string }): string {
+  switch (activity.status) {
+    case 'completed':
+      return `「${  activity.title  }」已完成`
+    case 'failed':
+      return `「${  activity.title  }」產生失敗`
+    default:
+      return `開始產生「${  activity.title  }」`
+  }
+}
+
+function iconPath(status: string): string {
+  switch (status) {
+    case 'completed':
+      return 'm5 12.5 4.5 4.5L19 7.5'
+    case 'failed':
+      return 'M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z'
+    default:
+      return 'M12 7v5l3 2M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z'
+  }
+}
+</script>
+
 <style scoped>
-.recent-activity-widget {
-  display: flex;
-  flex-direction: column;
-}
-
-.widget-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1rem 1.25rem;
-  border-bottom: 1px solid #e5e7eb;
-  background: #f8fafc;
-}
-
-.widget-title {
-  font-size: 1rem;
-  font-weight: 600;
-  color: #1f2937;
-  margin: 0;
-}
-
-.header-subtitle {
-  font-size: 0.8rem;
-  color: #6b7280;
-  font-weight: 500;
-}
-
 .widget-content {
-  padding: 1rem;
-  max-height: 400px;
+  max-height: 420px;
   overflow-y: auto;
 }
 
-/* Empty State */
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 2rem 1rem;
-  text-align: center;
-}
-
-.empty-icon {
-  font-size: 2.5rem;
-  margin-bottom: 0.5rem;
-  opacity: 0.5;
+.recent-activity-widget {
+  padding-bottom: 12px;
 }
 
 .empty-text {
-  color: #6b7280;
-  font-size: 0.9rem;
-  margin: 0;
+  padding: 8px 22px 12px;
+  font-size: 13.5px;
+  color: var(--ui-muted);
 }
 
-/* Activity List */
 .activity-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
+  margin: 0;
+  padding: 0 8px;
+  list-style: none;
 }
 
 .activity-item {
   display: flex;
+  width: 100%;
   align-items: center;
-  gap: 0.75rem;
-  padding: 0.75rem;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  background: white;
+  gap: 12px;
+  padding: 10px 14px;
+  border: 0;
+  border-radius: 12px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: background var(--ui-dur) var(--ui-ease);
 }
 
 .activity-item:hover {
-  background: #f9fafb;
-  border-color: #3b82f6;
-  transform: translateX(2px);
+  background: color-mix(in srgb, var(--ui-fill) 45%, transparent);
 }
 
 .activity-icon {
-  width: 36px;
-  height: 36px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 8px;
-  font-size: 1.1rem;
-  flex-shrink: 0;
+  display: grid;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  border-radius: 10px;
+  background: var(--ui-orange-soft);
+  color: var(--ui-orange-ink);
+}
+
+.activity-icon svg {
+  width: 16px;
+  height: 16px;
 }
 
 .activity-icon.completed {
-  background: #dcfce7;
-}
-
-.activity-icon.generating {
-  background: #dbeafe;
+  background: var(--ui-green-soft);
+  color: var(--ui-green-ink);
 }
 
 .activity-icon.failed {
-  background: #fee2e2;
-}
-
-.activity-icon.pending {
-  background: #fef3c7;
+  background: var(--ui-red-soft);
+  color: var(--ui-red-ink);
 }
 
 .activity-content {
-  flex: 1;
+  display: grid;
   min-width: 0;
+  gap: 1px;
 }
 
 .activity-title {
-  font-size: 0.9rem;
-  font-weight: 500;
-  color: #1f2937;
-  margin-bottom: 0.25rem;
-  white-space: nowrap;
   overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.activity-meta {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.8rem;
-  color: #6b7280;
-}
-
-.activity-type {
+  font-size: 13.5px;
   font-weight: 500;
-}
-
-.activity-separator {
-  color: #d1d5db;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .activity-time {
-  white-space: nowrap;
-}
-
-.activity-arrow {
-  color: #9ca3af;
-  font-size: 1.1rem;
-  flex-shrink: 0;
-  transition: transform 0.2s;
-}
-
-.activity-item:hover .activity-arrow {
-  transform: translateX(4px);
-  color: #3b82f6;
-}
-
-/* Scrollbar Styling */
-.widget-content::-webkit-scrollbar {
-  width: 6px;
-}
-
-.widget-content::-webkit-scrollbar-track {
-  background: #f1f5f9;
-  border-radius: 3px;
-}
-
-.widget-content::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 3px;
-}
-
-.widget-content::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
-}
-
-/* Responsive */
-@media (max-width: 768px) {
-  .widget-content {
-    padding: 0.75rem;
-    max-height: 300px;
-  }
-
-  .activity-list {
-    gap: 0.5rem;
-  }
-
-  .activity-item {
-    padding: 0.5rem;
-  }
-
-  .activity-icon {
-    width: 32px;
-    height: 32px;
-    font-size: 1rem;
-  }
-
-  .activity-title {
-    font-size: 0.85rem;
-  }
-
-  .activity-meta {
-    font-size: 0.75rem;
-  }
+  font-size: 12px;
+  color: var(--ui-muted);
 }
 </style>

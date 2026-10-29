@@ -29,7 +29,7 @@
       <div class="form-group">
         <select
           v-model="newConditionType"
-          class="form-input condition-select"
+          class="ui-select condition-select"
         >
           <option value="exact">
             完全匹配
@@ -50,8 +50,8 @@
         <input
           v-model="newValue"
           type="text"
-          class="form-input"
-          placeholder="輸入條件值..."
+          class="ui-input"
+          placeholder="輸入條件值，Enter 新增"
           @keydown.enter.prevent="handleEnterKey"
           @compositionend="ime.onCompositionEnd"
         >
@@ -123,80 +123,72 @@ function handleAdd(): void {
 .condition-editor {
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
+  gap: 12px;
 }
 
 .condition-list {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-2);
-  min-height: 36px;
   align-items: center;
+  gap: 8px;
+  min-height: 32px;
 }
 
 .condition-tag {
   display: inline-flex;
   align-items: center;
-  gap: var(--space-1);
-  background: var(--primary-50);
-  border: 1px solid var(--primary-200, #bfdbfe);
-  border-radius: 9999px;
-  padding: var(--space-1) var(--space-3);
-  font-size: 0.8125rem;
-  line-height: 1.4;
-  transition: background-color var(--transition-fast);
-}
-
-.condition-tag:hover {
-  background: var(--primary-100, #dbeafe);
+  gap: 6px;
+  height: 32px;
+  padding: 0 6px 0 12px;
+  border-radius: 999px;
+  background: var(--ui-surface-2);
+  box-shadow: inset 0 0 0 0.5px var(--ui-sep);
+  font-size: 13px;
 }
 
 .condition-type-label {
-  color: var(--primary-700);
+  font-size: 12px;
   font-weight: 600;
-  font-size: 0.75rem;
+  color: var(--ui-accent);
 }
 
 .condition-value {
-  color: var(--gray-900);
+  color: var(--ui-ink);
 }
 
 .condition-remove {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 18px;
-  height: 18px;
-  border: none;
-  background: transparent;
-  color: var(--gray-600);
-  font-size: 1rem;
+  display: inline-grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--ui-fill);
+  color: var(--ui-muted);
+  font-size: 14px;
   line-height: 1;
   cursor: pointer;
-  border-radius: 50%;
-  padding: 0;
-  transition: all var(--transition-fast);
 }
 
 .condition-remove:hover {
-  background: var(--primary-200, #bfdbfe);
-  color: var(--primary-700);
+  background: var(--ui-fill-strong);
+  color: var(--ui-ink);
 }
 
 .condition-empty {
-  color: var(--gray-600);
-  font-size: 0.875rem;
-  font-style: italic;
+  font-size: 13px;
+  color: var(--ui-muted);
 }
 
 .condition-add-form {
   display: flex;
-  gap: var(--space-2);
-  align-items: flex-end;
+  align-items: center;
+  gap: 8px;
 }
 
 .condition-add-form .form-group {
-  margin-bottom: 0;
+  margin: 0;
 }
 
 .condition-select {
@@ -206,6 +198,7 @@ function handleAdd(): void {
 
 .condition-input-group {
   flex: 1;
+  min-width: 0;
 }
 
 .btn-add {
@@ -213,7 +206,7 @@ function handleAdd(): void {
   white-space: nowrap;
 }
 
-@media (max-width: 640px) {
+@media (max-width: 768px) {
   .condition-add-form {
     flex-direction: column;
     align-items: stretch;

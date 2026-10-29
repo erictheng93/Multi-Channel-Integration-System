@@ -1,106 +1,60 @@
-<!-- 報表模板卡片 -->
-<!-- Individual template card displayed in the grid -->
-
 <template>
-  <div
-    class="template-card"
-    :class="{ selected: isSelected }"
+  <button
+    type="button"
+    class="ui-card template-card"
+    :class="{ selected: isSelected, unsupported: !supported }"
+    :aria-pressed="isSelected"
+    :aria-disabled="!supported"
+    :disabled="!supported"
     @click="$emit('select', template)"
   >
-    <!-- 模板圖標和基本資訊 -->
-    <div class="template-header">
-      <div class="template-icon">
-        {{ template.icon }}
-      </div>
-      <div class="template-basic-info">
-        <h3 class="template-name">
-          {{ template.name }}
-        </h3>
-        <p class="template-description">
-          {{ template.description }}
-        </p>
-      </div>
-      <div class="template-category">
-        <span
-          class="category-badge"
-          :class="template.category"
-        >
-          {{ getCategoryLabel(template.category) }}
-        </span>
-      </div>
-    </div>
-
-    <!-- 模板詳細資訊 -->
-    <div class="template-details">
-      <div class="template-type">
-        <strong>報表類型：</strong>
-        <span class="type-label">{{ getReportTypeLabel(template.type) }}</span>
-      </div>
-
-      <div class="template-time">
-        <strong>預估時間：</strong>
-        <span class="time-estimate">{{ formatEstimatedTime(template.estimatedTime) }}</span>
-      </div>
-
-      <div class="template-filters">
-        <strong>必需篩選：</strong>
-        <div class="required-filters">
-          <span
-            v-for="filter in template.requiredFilters"
-            :key="filter"
-            class="filter-tag required"
-          >
-            {{ getFilterLabel(filter) }}
-          </span>
-          <span
-            v-if="template.requiredFilters.length === 0"
-            class="no-filters"
-          >
-            無必需篩選
-          </span>
-        </div>
-      </div>
-
-      <div
-        v-if="template.optionalFilters.length > 0"
-        class="template-optional-filters"
+    <span class="card-top">
+      <span
+        class="tpl-ico"
+        :class="template.category"
       >
-        <strong>可選篩選：</strong>
-        <div class="optional-filters">
-          <span
-            v-for="filter in template.optionalFilters"
-            :key="filter"
-            class="filter-tag optional"
-          >
-            {{ getFilterLabel(filter) }}
-          </span>
-        </div>
-      </div>
-    </div>
-
-    <!-- 選擇指示器 -->
-    <div
-      v-if="isSelected"
-      class="selection-indicator"
-    >
-      <i class="check-icon" />
-    </div>
-  </div>
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        ><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z" /><path d="M14 3v5h5M9 13h6M9 17h6" /></svg>
+      </span>
+      <span class="template-name">{{ template.name }}</span>
+    </span>
+    <span class="template-description">{{ template.description }}</span>
+    <span class="card-foot">
+      <span
+        class="ui-tag category-badge"
+        :class="template.category"
+      >{{ getCategoryLabel(template.category) }}</span>
+      <span
+        v-if="isSelected"
+        class="ui-pill ui-pill-blue"
+      >已選取</span>
+      <span
+        v-if="!supported"
+        class="ui-pill"
+      >尚未支援</span>
+    </span>
+  </button>
 </template>
 
 <script setup lang="ts">
 import type { ReportTemplate } from '@/types/reports';
-import {
-  getCategoryLabel,
-  getReportTypeLabel,
-  getFilterLabel,
-  formatEstimatedTime
-} from './templateHelpers';
+import { getCategoryLabel } from './templateHelpers';
 
-defineProps<{
+withDefaults(defineProps<{
   template: ReportTemplate;
   isSelected: boolean;
-}>();
+  /** False when the backend cannot generate this template's report type */
+  supported?: boolean;
+}>(), {
+  supported: true
+});
 
 defineEmits<{
   select: [template: ReportTemplate];
@@ -109,185 +63,115 @@ defineEmits<{
 
 <style scoped>
 .template-card {
-  background: white;
-  border: 2px solid #e1e5e9;
-  border-radius: 12px;
-  padding: 1.5rem;
+  display: grid;
+  gap: 10px;
+  width: 100%;
+  padding: 16px;
+  border: 0;
+  color: inherit;
+  font: inherit;
+  text-align: left;
   cursor: pointer;
-  transition: all 0.3s ease;
-  position: relative;
-  overflow: hidden;
+  transition:
+    box-shadow var(--ui-dur) var(--ui-ease),
+    transform var(--ui-dur) var(--ui-ease);
 }
 
-.template-card:hover {
-  border-color: #007bff;
-  box-shadow: 0 4px 12px rgba(0, 123, 255, 0.15);
-  transform: translateY(-2px);
+.template-card:hover:not(:disabled) {
+  box-shadow: var(--ui-shadow-raised);
+  transform: translateY(-1px);
 }
 
 .template-card.selected {
-  border-color: #007bff;
-  background: #f8f9ff;
-  box-shadow: 0 4px 12px rgba(0, 123, 255, 0.2);
+  background: color-mix(in srgb, var(--ui-accent-soft) 60%, var(--ui-surface));
+  box-shadow: var(--ui-sel-ring), var(--ui-shadow-raised);
 }
 
-.template-header {
+.template-card.unsupported {
+  cursor: not-allowed;
+}
+
+.template-card.unsupported .card-top,
+.template-card.unsupported .template-description {
+  opacity: 0.55;
+}
+
+.card-top {
   display: flex;
-  align-items: flex-start;
-  gap: 1rem;
-  margin-bottom: 1.5rem;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
 }
 
-.template-icon {
-  font-size: 2.5rem;
-  flex-shrink: 0;
+.tpl-ico {
+  display: grid;
+  flex: none;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border-radius: 11px;
+  background: var(--ui-accent-soft);
+  color: var(--ui-accent);
 }
 
-.template-basic-info {
-  flex: 1;
+.tpl-ico svg {
+  width: 18px;
+  height: 18px;
+}
+
+.tpl-ico.enterprise {
+  background: var(--ui-indigo-soft);
+  color: var(--ui-indigo);
+}
+
+.tpl-ico.business_intelligence {
+  background: var(--ui-green-soft);
+  color: var(--ui-green-ink);
+}
+
+.tpl-ico.advanced_analytics {
+  background: var(--ui-orange-soft);
+  color: var(--ui-orange-ink);
 }
 
 .template-name {
-  font-size: 1.3rem;
-  font-weight: 600;
-  color: #1a1a1a;
-  margin-bottom: 0.5rem;
-}
-
-.template-description {
-  color: #666;
-  font-size: 0.95rem;
-  line-height: 1.4;
-}
-
-.category-badge {
-  padding: 0.25rem 0.75rem;
-  border-radius: 20px;
-  font-size: 0.8rem;
-  font-weight: 500;
+  overflow: hidden;
+  font: 600 15px var(--ui-font-display);
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.category-badge.basic {
-  background: #e3f2fd;
-  color: #1565c0;
+.template-description {
+  min-height: 38px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--ui-muted);
+}
+
+.card-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
 }
 
 .category-badge.enterprise {
-  background: #fff3e0;
-  color: #e65100;
+  background: var(--ui-p-lavender);
+  color: var(--ui-p-lavender-ink);
+}
+
+.category-badge.basic {
+  background: var(--ui-p-sky);
+  color: var(--ui-p-sky-ink);
 }
 
 .category-badge.business_intelligence {
-  background: #f3e5f5;
-  color: #7b1fa2;
+  background: var(--ui-p-mint);
+  color: var(--ui-p-mint-ink);
 }
 
 .category-badge.advanced_analytics {
-  background: #e8f5e8;
-  color: #2e7d32;
-}
-
-.template-details {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.template-type,
-.template-time {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.9rem;
-}
-
-.template-type strong,
-.template-time strong {
-  color: #333;
-  min-width: 80px;
-}
-
-.type-label {
-  background: #f0f4f8;
-  padding: 0.25rem 0.5rem;
-  border-radius: 4px;
-  font-size: 0.85rem;
-}
-
-.time-estimate {
-  color: #007bff;
-  font-weight: 500;
-}
-
-.template-filters,
-.template-optional-filters {
-  font-size: 0.9rem;
-}
-
-.template-filters strong,
-.template-optional-filters strong {
-  color: #333;
-  display: block;
-  margin-bottom: 0.5rem;
-}
-
-.required-filters,
-.optional-filters {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-}
-
-.filter-tag {
-  padding: 0.25rem 0.5rem;
-  border-radius: 4px;
-  font-size: 0.8rem;
-  font-weight: 500;
-}
-
-.filter-tag.required {
-  background: #ffebee;
-  color: #c62828;
-  border: 1px solid #ffcdd2;
-}
-
-.filter-tag.optional {
-  background: #e8f5e8;
-  color: #2e7d32;
-  border: 1px solid #c8e6c9;
-}
-
-.no-filters {
-  color: #999;
-  font-style: italic;
-}
-
-.selection-indicator {
-  position: absolute;
-  top: 1rem;
-  right: 1rem;
-  width: 2rem;
-  height: 2rem;
-  background: #007bff;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  font-weight: bold;
-}
-
-@media (max-width: 768px) {
-  .template-header {
-    flex-direction: column;
-    text-align: center;
-  }
-}
-
-@media (max-width: 480px) {
-  .template-card {
-    padding: 1rem;
-  }
+  background: var(--ui-p-peach);
+  color: var(--ui-p-peach-ink);
 }
 </style>

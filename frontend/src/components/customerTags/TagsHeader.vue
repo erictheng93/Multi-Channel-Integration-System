@@ -1,100 +1,63 @@
 <template>
-  <div class="welcome-section">
-    <div class="welcome-content">
-      <div class="welcome-greeting">
-        <h1 class="welcome-title">
-          客戶標籤管理 
-        </h1>
-        <p class="welcome-subtitle">
-          統一管理和組織您的客戶標籤，提升客戶分類效率
-        </p>
+  <section class="ui-page-head">
+    <div>
+      <div class="ui-eyebrow">
+        客戶經營
       </div>
-      <div class="welcome-actions">
-        <button
-          class="btn btn-primary btn-lg"
-          @click="$emit('create-tag')"
-        >
-          <PlusIcon />
-          <span>新增標籤</span>
-        </button>
-      </div>
+      <h1 class="ui-page-title">
+        客戶標籤
+      </h1>
+      <p
+        v-if="subtitle"
+        class="ui-page-sub"
+      >
+        {{ subtitle }}
+      </p>
     </div>
-  </div>
+    <div class="ui-page-actions">
+      <button
+        class="btn btn-primary"
+        @click="$emit('create-tag')"
+      >
+        <PlusIcon class="head-ico" />
+        <span>新增標籤</span>
+      </button>
+    </div>
+  </section>
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
 import { PlusIcon } from '@/components/icons'
+
+const props = defineProps<{
+  totalTags?: number
+  totalConversations?: number
+  unusedTagNames?: string[]
+}>()
 
 defineEmits<{
   'create-tag': []
 }>()
+
+// Built only from loaded tag data; hidden until tags exist.
+const subtitle = computed(() => {
+  const total = props.totalTags ?? 0
+  if (total === 0) { return '' }
+  const parts = [`${total} 個標籤、共標記 ${props.totalConversations ?? 0} 個對話。`]
+  const unused = props.unusedTagNames ?? []
+  if (unused.length === 1) {
+    parts.push(`「${unused[0]}」尚未套用到任何對話。`)
+  } else if (unused.length > 1) {
+    parts.push(`${unused.length} 個標籤尚未套用到任何對話。`)
+  }
+  return parts.join('')
+})
 </script>
 
 <style scoped>
-/* Welcome Section */
-.welcome-section {
-  margin-bottom: var(--space-12);
-  padding: var(--space-8) 0;
-}
-
-.welcome-content {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  max-width: 100%;
-  gap: var(--space-6);
-}
-
-.welcome-greeting {
-  flex: 1;
-}
-
-.welcome-title {
-  font-size: clamp(1.75rem, 1.5rem + 2vw, 2.8rem);
-  font-weight: 800;
-  color: var(--gray-900);
-  margin-bottom: var(--space-2);
-  letter-spacing: -0.025em;
-  line-height: 1.2;
-}
-
-.welcome-subtitle {
-  font-size: 1rem;
-  color: var(--gray-600);
-  font-weight: 400;
-  margin: 0;
-  line-height: 1.5;
-}
-
-.welcome-actions {
-  display: flex;
-  gap: var(--space-4);
-  align-items: center;
-  flex-shrink: 0;
-}
-
-.btn svg {
-  width: 18px;
-  height: 18px;
-}
-
-/* Responsive Design */
-@media (max-width: 768px) {
-  .welcome-content {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .welcome-actions {
-    width: 100%;
-  }
-
-  .btn-lg {
-    width: 100%;
-  }
-
-  .welcome-title {
-    font-size: 1.75rem;
-  }
+.head-ico {
+  width: 16px;
+  height: 16px;
 }
 </style>

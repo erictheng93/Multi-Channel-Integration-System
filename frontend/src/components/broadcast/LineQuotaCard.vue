@@ -1,25 +1,30 @@
 <template>
   <section
-    class="quota-card"
+    class="ui-card quota-card"
     aria-labelledby="line-quota-title"
   >
-    <div class="section-heading">
+    <div class="ui-card-head">
       <div>
-        <h2 id="line-quota-title">
+        <h2
+          id="line-quota-title"
+          class="ui-card-title"
+        >
           LINE 訊息額度
         </h2>
-        <p class="meta">
+        <p class="ui-card-sub">
           {{ updatedText }}
         </p>
       </div>
-      <button
-        class="btn btn-secondary btn-sm"
-        type="button"
-        :disabled="refreshing"
-        @click="refresh"
-      >
-        {{ refreshing ? '查詢中...' : '立即查詢' }}
-      </button>
+      <div class="ui-card-end">
+        <button
+          class="btn btn-secondary btn-sm"
+          type="button"
+          :disabled="refreshing"
+          @click="refresh"
+        >
+          {{ refreshing ? '查詢中...' : '立即查詢' }}
+        </button>
+      </div>
     </div>
 
     <div
@@ -51,24 +56,69 @@
       >
         <div class="channel-head">
           <strong>{{ channel.label }}</strong>
-          <span class="figures">{{ figuresText(channel) }}</span>
+        </div>
+        <div class="big-row">
+          <span
+            v-if="channel.used === null || !channel.limited || channel.limit === null"
+            class="figures"
+          >{{ figuresText(channel) }}</span>
+          <template v-else>
+            <span class="big">{{ channel.used.toLocaleString() }}</span>
+            <span class="of figures">{{ ` / ${channel.limit.toLocaleString()}` }}</span>
+            <span class="unit">則本月</span>
+          </template>
+          <span class="rule">LINE 額度每月重置，以收件人計，每位每則算 1</span>
         </div>
 
-        <div
-          v-if="channel.limited && channel.limit !== null && channel.used !== null"
-          class="bar"
-          role="progressbar"
-          aria-valuemin="0"
-          :aria-valuemax="channel.limit"
-          :aria-valuenow="Math.min(channel.used, channel.limit)"
-          :aria-label="`${channel.label} 已使用 ${percent(channel)}%`"
-        >
-          <span
-            class="bar-fill"
-            :class="tone(channel)"
-            :style="{ width: `${percent(channel)}%` }"
-          />
-        </div>
+        <template v-if="channel.limited && channel.limit !== null && channel.used !== null">
+          <div
+            class="bar"
+            role="progressbar"
+            aria-valuemin="0"
+            :aria-valuemax="channel.limit"
+            :aria-valuenow="Math.min(channel.used, channel.limit)"
+            :aria-label="`${channel.label} 已使用 ${percent(channel)}%`"
+          >
+            <span
+              class="bar-fill"
+              :class="tone(channel)"
+              :style="{ width: `${percent(channel)}%` }"
+            />
+            <span
+              v-if="pendingPercent(channel) > 0"
+              class="bar-pending"
+              :style="{ width: `${pendingPercent(channel)}%` }"
+            />
+          </div>
+
+          <div class="stats">
+            <div class="stat ui-well">
+              <span class="stat-label"><i class="dot used" />已使用</span>
+              <b>{{ channel.used.toLocaleString() }}<small>{{ percent(channel) }}%</small></b>
+            </div>
+            <div class="stat ui-well">
+              <span class="stat-label"><i class="dot pend" />本次預計消耗</span>
+              <b>{{ pendingFor(channel) > 0 ? pendingFor(channel).toLocaleString() : '—' }}</b>
+            </div>
+            <div class="stat ui-well">
+              <span class="stat-label"><i class="dot keep" />保留給客服回覆</span>
+              <b>{{ fmt(channel.reserve) }}</b>
+            </div>
+            <div
+              class="stat ui-well"
+              :class="{ 'is-short': isShort(channel) }"
+            >
+              <span class="stat-label"><i class="dot free" />發送後可用</span>
+              <b>{{ afterSend(channel) === null ? '不限' : Math.max(afterSend(channel) ?? 0, 0).toLocaleString() }}</b>
+            </div>
+          </div>
+          <p
+            class="remain"
+            :class="{ 'is-short': isShort(channel) }"
+          >
+            {{ remainText(channel) }}
+          </p>
+        </template>
 
         <p
           v-if="channel.error"
@@ -90,6 +140,11 @@ import {
   type LineQuotaChannel,
   type LineQuotaSnapshot
 } from '@/api/broadcasts'
+
+const props = defineProps<{
+  /** Recipients the current preview would send, keyed by channelKey (preview.tokenGroups) */
+  pending?: Record<string, number>
+}>()
 
 const { showError, showSuccess } = useToast()
 
@@ -140,6 +195,48 @@ async function refresh() {
   }
 }
 
+function pendingFor(channel: LineQuotaChannel): number {
+  return props.pending?.[channel.channelKey] ?? 0
+}
+
+/** Width of the hatched "this broadcast" segment, capped to what is left of the bar */
+function pendingPercent(channel: LineQuotaChannel): number {
+  if (!channel.limit || channel.used === null) {
+    return 0
+  }
+  const raw = (pendingFor(channel) / channel.limit) * 100
+  return Math.max(0, Math.min(raw, 100 - percent(channel)))
+}
+
+/** usableRemaining minus this broadcast; null when the channel has no cap */
+function afterSend(channel: LineQuotaChannel): number | null {
+  if (channel.usableRemaining === null) {
+    return null
+  }
+  return channel.usableRemaining - pendingFor(channel)
+}
+
+function isShort(channel: LineQuotaChannel): boolean {
+  const after = afterSend(channel)
+  return after !== null && after < 0
+}
+
+/** One sentence built in script so no template whitespace lands before full-width punctuation */
+function remainText(channel: LineQuotaChannel): string {
+  let text = `剩餘 ${(channel.remaining ?? 0).toLocaleString()} 則`
+  if (channel.reserve) {
+    text += `，其中 ${channel.reserve.toLocaleString()} 則保留給客服回覆`
+  }
+  if (isShort(channel)) {
+    text += `。本次發送將超出可用額度 ${Math.abs(afterSend(channel) ?? 0).toLocaleString()} 則，可能無法發送。`
+  }
+  return text
+}
+
+function fmt(value: number | null): string {
+  return value === null ? '—' : value.toLocaleString()
+}
+
 function percent(channel: LineQuotaChannel): number {
   if (!channel.limit || channel.used === null) {
     return 0
@@ -162,7 +259,7 @@ function figuresText(channel: LineQuotaChannel): string {
   if (!channel.limited || channel.limit === null) {
     return `已用 ${channel.used.toLocaleString()}（不限額）`
   }
-  return `${channel.used.toLocaleString()} / ${channel.limit.toLocaleString()}，剩餘 ${(channel.remaining ?? 0).toLocaleString()}`
+  return `${channel.used.toLocaleString()} / ${channel.limit.toLocaleString()}`
 }
 
 function formatTime(iso: string): string {
@@ -182,96 +279,190 @@ function formatTime(iso: string): string {
 
 <style scoped>
 .quota-card {
-  background: #fff;
-  border-radius: 16px;
-  padding: var(--space-6);
-  box-shadow: var(--shadow-sm);
+  padding-bottom: 18px;
 }
 
-.section-heading {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--space-3);
-}
-
-.section-heading h2 {
-  margin: 0;
-  font-size: var(--text-xl);
-  color: #1c1c1e;
-}
-
-.meta {
-  margin: var(--space-1) 0 0;
-  font-size: var(--text-sm);
-  color: #8e8e93;
+.quota-card .ui-card-head {
+  padding-bottom: 4px;
 }
 
 .state {
-  padding: var(--space-6);
-  color: #8e8e93;
-  text-align: center;
+  padding: 20px 22px 8px;
+  font-size: 13.5px;
+  color: var(--ui-muted);
 }
 
 .channel-list {
+  margin: 0;
+  padding: 0 22px;
   list-style: none;
-  margin: var(--space-4) 0 0;
-  padding: 0;
-  display: grid;
-  gap: var(--space-4);
 }
 
-.channel-head {
+.channel + .channel {
+  margin-top: 18px;
+  padding-top: 16px;
+  box-shadow: 0 -0.5px 0 var(--ui-sep);
+}
+
+.channel-head strong {
+  font-size: 13px;
+  color: var(--ui-ink-2);
+}
+
+.big-row {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
-  justify-content: space-between;
-  gap: var(--space-2);
-  color: #1c1c1e;
+  gap: 4px 8px;
+  margin: 6px 0 12px;
 }
 
-.figures {
-  font-size: var(--text-sm);
-  color: #8e8e93;
+.big {
+  font: 600 38px / 1 var(--ui-font-display);
+  letter-spacing: -0.03em;
   font-variant-numeric: tabular-nums;
 }
 
+.of,
+.unit {
+  font-size: 15px;
+  color: var(--ui-muted);
+}
+
+.figures {
+  font-size: 15px;
+  color: var(--ui-ink-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.rule {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--ui-muted);
+}
+
 .bar {
-  margin-top: var(--space-2);
+  display: flex;
   height: 10px;
-  border-radius: 9999px;
-  background: #f2f2f7;
   overflow: hidden;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ui-green) 38%, var(--ui-surface));
 }
 
 .bar-fill {
   display: block;
   height: 100%;
-  border-radius: 9999px;
-  transition: width 300ms ease-out;
-}
-
-.bar-fill.ok {
-  background: #007aff;
+  background: var(--ui-accent);
 }
 
 .bar-fill.warn {
-  background: #ff9500;
+  background: var(--ui-orange);
 }
 
 .bar-fill.danger {
-  background: #ff3b30;
+  background: var(--ui-red);
+}
+
+.bar-pending {
+  display: block;
+  height: 100%;
+  background: repeating-linear-gradient(
+    135deg,
+    var(--ui-orange) 0 4px,
+    color-mix(in srgb, var(--ui-orange) 45%, var(--ui-surface)) 4px 8px
+  );
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.stat {
+  display: grid;
+  gap: 4px;
+  padding: 12px 14px;
+}
+
+.stat-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  color: var(--ui-muted);
+}
+
+.stat b {
+  font: 600 20px var(--ui-font-display);
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.stat b small {
+  margin-left: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ui-muted);
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.dot.used {
+  background: var(--ui-accent);
+}
+
+.dot.pend {
+  background: var(--ui-orange);
+}
+
+.dot.keep {
+  background: var(--ui-indigo);
+}
+
+.dot.free {
+  background: var(--ui-green);
+}
+
+.stat.is-short {
+  background: var(--ui-orange-soft);
+}
+
+.stat.is-short b {
+  color: var(--ui-orange-ink);
+}
+
+.remain {
+  margin: 12px 0 0;
+  font-size: 12.5px;
+  color: var(--ui-muted);
+}
+
+.remain.is-short {
+  color: var(--ui-orange-ink);
 }
 
 .warn {
-  margin: var(--space-2) 0 0;
-  font-size: var(--text-sm);
-  color: #ff9500;
+  margin: 10px 0 0;
+  font-size: 12.5px;
+  color: var(--ui-orange-ink);
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .bar-fill {
-    transition: none;
+@media (max-width: 768px) {
+  .stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .rule {
+    width: 100%;
+    margin-left: 0;
+  }
+  .big {
+    font-size: 32px;
   }
 }
 </style>

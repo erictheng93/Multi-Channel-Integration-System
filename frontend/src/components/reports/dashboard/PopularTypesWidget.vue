@@ -1,57 +1,53 @@
 <template>
   <div class="popular-types-widget">
-    <div class="widget-header">
-      <h3 class="widget-title">
-        熱門報表類型
-      </h3>
-      <span
-        v-if="popularTypes.length > 0"
-        class="header-subtitle"
-      >
-        Top {{ popularTypes.length }}
-      </span>
-    </div>
-
-    <div class="widget-content">
-      <!-- 空狀態 -->
-      <div
-        v-if="popularTypes.length === 0"
-        class="empty-state"
-      >
-        <div class="empty-icon" />
-        <p class="empty-text">
-          暫無報表數據
+    <div class="ui-card-head">
+      <div>
+        <h3 class="ui-card-title">
+          熱門報表類型
+        </h3>
+        <p class="ui-card-sub">
+          近 30 天產生次數<span
+            v-if="popularTypes.length > 0"
+            class="header-subtitle"
+          > · Top {{ popularTypes.length }}</span>
         </p>
       </div>
+    </div>
 
-      <!-- 類型列表 -->
-      <div
-        v-else
-        class="types-list"
+    <div
+      v-if="popularTypes.length === 0"
+      class="empty-text empty-state"
+    >
+      暫無報表數據
+    </div>
+
+    <ul
+      v-else
+      class="types-list"
+    >
+      <li
+        v-for="type in popularTypes"
+        :key="type.type"
       >
-        <div
-          v-for="type in popularTypes"
-          :key="type.type"
+        <button
+          type="button"
           class="type-item"
           @click="$emit('filter-by-type', type.type)"
         >
-          <div class="type-header">
-            <span class="type-icon">{{ getReportTypeIcon(type.type) }}</span>
+          <span class="type-header">
             <span class="type-name">{{ type.label }}</span>
-            <span class="type-count">{{ type.count }}</span>
-          </div>
-          <div class="type-progress">
-            <div class="progress-bar">
-              <div
-                class="progress-fill"
-                :style="{ width: `${type.percentage}%` }"
-              />
-            </div>
-            <span class="percentage-text">{{ type.percentage }}%</span>
-          </div>
-        </div>
-      </div>
-    </div>
+            <span class="type-count">{{ type.count }}<small class="percentage-text">{{ type.percentage }}%</small></span>
+          </span>
+          <span
+            class="progress-bar"
+            aria-hidden="true"
+          ><i
+            class="progress-fill"
+            :style="{ width: type.percentage + '%' }"
+          /></span>
+        </button>
+      </li>
+    </ul>
   </div>
 </template>
 
@@ -107,162 +103,74 @@ defineEmits<{
 
 <style scoped>
 .popular-types-widget {
-  display: flex;
-  flex-direction: column;
-}
-
-.widget-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1rem 1.25rem;
-  border-bottom: 1px solid #e5e7eb;
-  background: #f8fafc;
-}
-
-.widget-title {
-  font-size: 1rem;
-  font-weight: 600;
-  color: #1f2937;
-  margin: 0;
-}
-
-.header-subtitle {
-  font-size: 0.8rem;
-  color: #6b7280;
-  font-weight: 500;
-}
-
-.widget-content {
-  padding: 1rem;
-}
-
-/* Empty State */
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 2rem 1rem;
-  text-align: center;
-}
-
-.empty-icon {
-  font-size: 2.5rem;
-  margin-bottom: 0.5rem;
-  opacity: 0.5;
+  padding-bottom: 18px;
 }
 
 .empty-text {
-  color: #6b7280;
-  font-size: 0.9rem;
-  margin: 0;
+  padding: 8px 22px 4px;
+  font-size: 13.5px;
+  color: var(--ui-muted);
 }
 
-/* Types List */
 .types-list {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0 14px;
+  list-style: none;
 }
 
 .type-item {
-  padding: 0.75rem;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  background: white;
+  display: grid;
+  width: 100%;
+  gap: 6px;
+  padding: 8px;
+  border: 0;
+  border-radius: 10px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: background var(--ui-dur) var(--ui-ease);
 }
 
 .type-item:hover {
-  background: #f9fafb;
-  border-color: #3b82f6;
-  transform: translateX(2px);
+  background: color-mix(in srgb, var(--ui-fill) 45%, transparent);
 }
 
 .type-header {
   display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  margin-bottom: 0.5rem;
-}
-
-.type-icon {
-  font-size: 1.25rem;
-  flex-shrink: 0;
-}
-
-.type-name {
-  flex: 1;
-  font-size: 0.9rem;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 13.5px;
   font-weight: 500;
-  color: #374151;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .type-count {
-  font-size: 0.9rem;
   font-weight: 600;
-  color: #3b82f6;
-  flex-shrink: 0;
-}
-
-.type-progress {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.progress-bar {
-  flex: 1;
-  height: 6px;
-  background: #e5e7eb;
-  border-radius: 3px;
-  overflow: hidden;
-}
-
-.progress-fill {
-  height: 100%;
-  background: linear-gradient(90deg, #3b82f6, #2563eb);
-  border-radius: 3px;
-  transition: width 0.3s ease;
+  font-variant-numeric: tabular-nums;
 }
 
 .percentage-text {
-  font-size: 0.8rem;
-  color: #6b7280;
+  margin-left: 6px;
+  font-size: 12px;
   font-weight: 500;
-  min-width: 40px;
-  text-align: right;
+  color: var(--ui-muted);
 }
 
-/* Responsive */
-@media (max-width: 768px) {
-  .widget-content {
-    padding: 0.75rem;
-  }
+.progress-bar {
+  display: block;
+  height: 5px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--ui-fill);
+}
 
-  .types-list {
-    gap: 0.75rem;
-  }
-
-  .type-item {
-    padding: 0.5rem;
-  }
-
-  .type-icon {
-    font-size: 1.1rem;
-  }
-
-  .type-name {
-    font-size: 0.85rem;
-  }
-
-  .type-count {
-    font-size: 0.85rem;
-  }
+.progress-fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--ui-accent);
 }
 </style>
