@@ -55,47 +55,6 @@
     </div>
 
     <div class="header-actions">
-      <!-- One segmented group of three tools (desktop); on a phone they fold into the 更多 menu -->
-      <div
-        class="tool-seg"
-        role="group"
-        aria-label="對話工具"
-      >
-        <!-- 標示為未讀按鈕：設定手動未讀標記，讓其他客服在列表看到未讀徽章
-             （即使最後一則訊息是客服傳送，後端也會將未讀數下限設為 1） -->
-        <button
-          type="button"
-          class="header-action-btn"
-          :disabled="!conversation || isClosed"
-          :title="isClosed ? '已結案的對話不會顯示未讀' : '標示為未讀'"
-          :aria-label="isClosed ? '已結案的對話不會顯示未讀' : '標示為未讀'"
-          :data-tip="isClosed ? '已結案不顯示未讀' : '標示為未讀'"
-          @click="$emit('markUnread')"
-        >
-          <MailIcon :size="18" />
-        </button>
-        <button
-          type="button"
-          class="header-action-btn"
-          title="搜尋訊息"
-          aria-label="搜尋訊息"
-          data-tip="搜尋訊息"
-          @click="$emit('search')"
-        >
-          <SearchIcon :size="18" />
-        </button>
-        <button
-          type="button"
-          class="header-action-btn"
-          title="匯出此對話記錄"
-          aria-label="匯出此對話記錄"
-          data-tip="匯出對話"
-          @click="$emit('export')"
-        >
-          <DownloadIcon :size="18" />
-        </button>
-      </div>
-
       <!-- 指派管理按鈕 - Redesigned -->
       <div
         v-if="conversation"
@@ -185,7 +144,7 @@
         <InfoIcon :size="18" />
       </button>
 
-      <!-- Overflow: 重新整理 always; on a phone the three tools fold in as well -->
+      <!-- Overflow: the secondary tools (未讀 / 搜尋 / 匯出) and 重新整理 live here at every width -->
       <div class="more-wrapper">
         <button
           type="button"
@@ -687,62 +646,12 @@ defineExpose({
   cursor: not-allowed;
 }
 
-/* Segmented tool group: three icon buttons share one capsule */
-.tool-seg {
-  display: inline-flex;
-  gap: 2px;
-  padding: 2px;
-  border-radius: 999px;
-  background: var(--ui-fill);
-}
-
-.tool-seg .header-action-btn {
-  width: 32px;
-  height: 32px;
-}
-
-.tool-seg .header-action-btn:hover:not(:disabled) {
-  background: var(--ui-surface);
-  box-shadow: var(--ui-shadow-pill);
-}
-
 .more-wrapper {
   position: relative;
 }
 
-/* Tool-group tooltips: the icons carry a name on hover and keyboard focus */
-.tool-seg .header-action-btn {
-  position: relative;
-}
-
-.tool-seg .header-action-btn::after {
-  position: absolute;
-  top: calc(100% + 8px);
-  left: 50%;
-  z-index: 30;
-  padding: 4px 10px;
-  border-radius: 999px;
-  background: var(--ui-ink);
-  color: #fff;
-  content: attr(data-tip);
-  font-size: 12px;
-  font-weight: 500;
-  white-space: nowrap;
-  opacity: 0;
-  pointer-events: none;
-  transform: translate(-50%, -2px);
-  transition: opacity var(--ui-dur) var(--ui-ease), transform var(--ui-dur) var(--ui-ease);
-}
-
-.tool-seg .header-action-btn:hover::after,
-.tool-seg .header-action-btn:focus-visible::after {
-  opacity: 1;
-  transform: translate(-50%, 0);
-  transition-delay: 300ms;
-}
-
-.more-tool {
-  display: none !important;
+.more-wrapper > .more-btn[aria-expanded='true'] {
+  background: var(--ui-fill);
 }
 
 .more-menu {
@@ -958,14 +867,6 @@ defineExpose({
     width: 100%;
     flex-wrap: nowrap;
     justify-content: flex-start;
-  }
-
-  .tool-seg {
-    display: none;
-  }
-
-  .more-tool {
-    display: flex !important;
   }
 
   .assign-action-btn {

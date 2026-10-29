@@ -168,6 +168,23 @@ const handleSelect = (reply: QuickReply) => {
   }
 }
 
+/* Phone: chips wrap onto a second row instead of clipping at the edge */
+@media (max-width: 768px) {
+  .quick-replies {
+    flex-wrap: wrap;
+    overflow: visible;
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+
+  .quick-reply-btn {
+    flex: 0 1 auto;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
 @media (pointer: coarse) {
   .quick-reply-btn {
     min-height: 44px;
