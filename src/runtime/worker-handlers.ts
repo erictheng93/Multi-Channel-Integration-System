@@ -10,6 +10,7 @@ import { createDbClient } from '@/db/drizzle-factory';
 import { aggregateMessageRollup, healRecentMessageRollup } from '@modules/dashboard/services/message-rollup-service';
 import { healMessageMarkers } from '@modules/conversations/services/message-markers-service';
 import { healAwaitingSince } from '@modules/dashboard/services/awaiting-service';
+import { checkSchemaTriggers } from '@/health-checkers/schema-integrity';
 import { RowsReadMeter } from '@/utils/d1-rows-read';
 import type { Bindings } from '../types';
 import type { LineQueuePayload } from '../types/bindings';
@@ -93,6 +94,16 @@ async function runNightlyHeal(env: Bindings): Promise<void> {
     log.info('Conversation message markers healed', { corrected: markers.corrected });
   } catch (error) {
     log.error('Message marker heal failed', {}, error instanceof Error ? error : new Error(String(error)));
+  }
+  // A rebuild or restore can silently drop migration-only triggers (it happened on 2026-06-17). The heals above
+  // repair the data either way; this makes the lost trigger visible instead of silently degrading.
+  try {
+    const missing = await checkSchemaTriggers(env.DB, env.CACHE);
+    if (missing.length > 0) {
+      log.error('Required database triggers are missing; re-run the CREATE TRIGGER statements from migrations 0070/0071', { missing });
+    }
+  } catch (error) {
+    log.error('Schema trigger check failed', {}, error instanceof Error ? error : new Error(String(error)));
   }
   meter.flush();
 }
