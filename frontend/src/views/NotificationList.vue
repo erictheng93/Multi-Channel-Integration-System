@@ -1,129 +1,139 @@
 <!--
-  NotificationList.vue (Refactored)
+  NotificationList.vue
 
-  Size: ~200 lines (down from 1,865 lines)
-  Components: 5 reusable components
-  Controller: useNotificationController composable
+  Renders inside the app shell (sidebar + top bar) like every other page.
+  Components: header, filters, card; state lives in useNotificationController.
 -->
 
 <template>
-  <div
-    class="notification-page"
-    role="main"
-    aria-label="通知中心頁面"
-  >
-    <!-- Page Header -->
-    <NotificationHeader
-      :has-unread="hasUnread"
-      :marking-all-read="actions.markingAllRead.value"
-      @mark-all-read="actions.handleMarkAllRead"
-      @open-settings="showSettings = true"
-    />
-
-    <!-- Stats Overview -->
-    <NotificationStats :stats="stats" />
-
-    <!-- Filters Section -->
-    <NotificationFilters
-      v-model:selected-type="filters.selectedType.value"
-      v-model:selected-priority="filters.selectedPriority.value"
-      v-model:selected-read-status="filters.selectedReadStatus.value"
-      :has-active-filters="filters.hasActiveFilters.value"
-      :notification-types="filters.notificationTypes"
-      :priorities="filters.priorities"
-      @apply-filters="filters.applyFilters"
-      @clear-filters="filters.clearFilters"
-    />
-
-    <!-- Notifications List -->
-    <section
-      class="notifications-section"
-      role="region"
-      aria-label="通知列表"
-      aria-live="polite"
-      :aria-busy="loading"
+  <AppLayout>
+    <div
+      class="notification-page ui-rise"
+      role="main"
+      aria-label="通知中心頁面"
     >
-      <!-- Loading State -->
-      <div
-        v-if="loading && notifications.length === 0"
-        class="loading-state"
-        role="status"
-        aria-live="polite"
-      >
-        <LoadingSpinner size="lg" />
-        <p>載入通知中...</p>
-      </div>
+      <!-- Page Header: subtitle from /notifications/stats -->
+      <NotificationHeader
+        :has-unread="hasUnread"
+        :marking-all-read="actions.markingAllRead.value"
+        :stats="stats"
+        @mark-all-read="actions.handleMarkAllRead"
+        @open-settings="showSettings = true"
+      />
 
-      <!-- Empty State -->
-      <NotificationEmptyState
-        v-else-if="notifications.length === 0"
+      <!-- Filters Section -->
+      <NotificationFilters
+        v-model:selected-type="filters.selectedType.value"
+        v-model:selected-priority="filters.selectedPriority.value"
+        v-model:selected-read-status="filters.selectedReadStatus.value"
         :has-active-filters="filters.hasActiveFilters.value"
+        :notification-types="filters.notificationTypes"
+        :priorities="filters.priorities"
+        :counts="stats ? { total: stats.total, unread: stats.unread } : null"
+        @apply-filters="filters.applyFilters"
         @clear-filters="filters.clearFilters"
       />
 
-      <!-- Notifications Grid -->
-      <div
-        v-else
-        class="notifications-list"
+      <!-- Notifications List -->
+      <section
+        class="notifications-section ui-card"
+        role="region"
+        aria-label="通知列表"
+        aria-live="polite"
+        :aria-busy="loading"
       >
-        <TransitionGroup name="notification-list">
-          <NotificationCard
-            v-for="(notification, index) in notifications"
-            :key="notification.id"
-            :notification="notification"
-            :index="index"
-            :is-focused="keyboard.focusedNotificationIndex.value === index"
-            @click="actions.handleNotificationClick"
-            @mark-read="actions.handleMarkRead"
-            @delete="actions.handleDelete"
-            @set-ref="keyboard.setNotificationRef"
-          />
-        </TransitionGroup>
-
-        <!-- Load More -->
+        <!-- Loading State -->
         <div
-          v-if="canLoadMore"
-          class="load-more-section"
+          v-if="loading && notifications.length === 0"
+          class="loading-state"
+          role="status"
+          aria-live="polite"
         >
-          <button
-            class="btn btn-secondary btn-lg"
-            :disabled="loadingMore"
-            @click="actions.handleLoadMore"
-          >
-            <LoadingSpinner
-              v-if="loadingMore"
-              size="sm"
-            />
-            <span v-else>載入更多</span>
-          </button>
-          <p class="load-more-info">
-            已顯示 {{ notifications.length }} / {{ pagination.total }} 則通知
-          </p>
+          <LoadingSpinner size="lg" />
+          <p>載入通知中...</p>
         </div>
-      </div>
-    </section>
 
-    <!-- Settings Modal -->
-    <NotificationSettingsModal
-      v-model:visible="showSettings"
-      :settings="settings.settings.value"
-      @save="settings.saveSettings"
-    />
-  </div>
+        <!-- Empty State -->
+        <NotificationEmptyState
+          v-else-if="notifications.length === 0"
+          :has-active-filters="filters.hasActiveFilters.value"
+          @clear-filters="filters.clearFilters"
+        />
+
+        <!-- Notifications grouped by day (Asia/Taipei) -->
+        <div
+          v-else
+          class="notifications-list"
+        >
+          <div
+            v-for="group in groups"
+            :key="group.key"
+            class="day-group"
+          >
+            <h2 class="day-label">
+              {{ group.label }}
+            </h2>
+            <TransitionGroup name="notification-list">
+              <NotificationCard
+                v-for="item in group.items"
+                :key="item.notification.id"
+                :notification="item.notification"
+                :index="item.index"
+                :is-focused="keyboard.focusedNotificationIndex.value === item.index"
+                @click="actions.handleNotificationClick"
+                @mark-read="actions.handleMarkRead"
+                @delete="actions.handleDelete"
+                @set-ref="keyboard.setNotificationRef"
+              />
+            </TransitionGroup>
+          </div>
+
+          <!-- Load More -->
+          <div
+            v-if="canLoadMore"
+            class="load-more-section"
+          >
+            <button
+              class="btn btn-secondary"
+              :disabled="loadingMore"
+              @click="actions.handleLoadMore"
+            >
+              <LoadingSpinner
+                v-if="loadingMore"
+                size="sm"
+              />
+              <span v-else>載入更多</span>
+            </button>
+            <p class="load-more-info">
+              已顯示 {{ notifications.length }} / {{ pagination.total }} 則通知
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Settings Modal -->
+      <NotificationSettingsModal
+        v-model:visible="showSettings"
+        :settings="settings.settings.value"
+        @save="settings.saveSettings"
+      />
+    </div>
+  </AppLayout>
 </template>
 
 <script setup lang="ts">
-import { onMounted, onUnmounted } from 'vue'
+import { computed, onMounted, onUnmounted } from 'vue'
 import { useNotificationController } from '@/composables/notification/useNotificationController'
+import AppLayout from '@/components/ui/AppLayout.vue'
 import { LoadingSpinner } from '@/components/ui'
 import {
   NotificationHeader,
-  NotificationStats,
   NotificationFilters,
   NotificationCard,
   NotificationEmptyState
 } from '@/components/notification'
 import NotificationSettingsModal from '@/components/notification/NotificationSettingsModal.vue'
+import type { Notification } from '@/stores/notifications'
 
 // ==================== Controller & State ====================
 
@@ -146,6 +156,40 @@ const {
   keyboard
 } = controller
 
+// ==================== Day grouping ====================
+
+const DAY_FORMAT = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Taipei', year: 'numeric', month: '2-digit', day: '2-digit' })
+
+interface IndexedNotification {
+  notification: Notification
+  /** Position in the flat list, used by keyboard navigation */
+  index: number
+}
+
+interface DayGroup {
+  key: string
+  label: string
+  items: IndexedNotification[]
+}
+
+const groups = computed<DayGroup[]>(() => {
+  const nowMs = Date.now()
+  const today = DAY_FORMAT.format(nowMs)
+  const yesterday = DAY_FORMAT.format(nowMs - 864e5)
+  const out: DayGroup[] = []
+  notifications.value.forEach((notification, index) => {
+    const key = DAY_FORMAT.format(new Date(notification.createdAt))
+    let group = out[out.length - 1]
+    if (!group || group.key !== key) {
+      const label = key === today ? '今天' : key === yesterday ? '昨天' : key.replace(/-/g, '/')
+      group = { key, label, items: [] }
+      out.push(group)
+    }
+    group.items.push({ notification, index })
+  })
+  return out
+})
+
 // ==================== Lifecycle ====================
 
 onMounted(async () => {
@@ -158,17 +202,16 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-/* ==================== Page Layout ==================== */
 .notification-page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
   width: 100%;
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: var(--space-6);
 }
 
-/* ==================== Notifications List ==================== */
 .notifications-section {
-  min-height: 400px;
+  min-height: 240px;
+  overflow: hidden;
 }
 
 .loading-state {
@@ -176,66 +219,63 @@ onUnmounted(() => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: var(--space-16);
+  padding: 64px 24px;
   text-align: center;
 }
 
 .loading-state p {
-  margin-top: var(--space-4);
-  color: var(--gray-500);
+  margin-top: 16px;
+  color: var(--ui-muted);
 }
 
 .notifications-list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
+  padding: 4px 0 8px;
 }
 
-/* ==================== Load More ==================== */
+.day-label {
+  margin: 0;
+  padding: 16px 22px 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ui-muted);
+}
+
 .load-more-section {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-6);
+  gap: 10px;
+  padding: 20px 24px 22px;
 }
 
 .load-more-info {
-  font-size: 0.875rem;
-  color: var(--gray-500);
   margin: 0;
+  font-size: 13px;
+  color: var(--ui-muted);
 }
 
-/* ==================== Buttons ==================== */
-.btn svg {
-  width: 18px;
-  height: 18px;
-}
-
-/* ==================== Animations ==================== */
 .notification-list-enter-active,
 .notification-list-leave-active {
-  transition: all 0.3s ease;
+  transition: opacity 0.3s var(--ui-ease), transform 0.3s var(--ui-ease);
 }
 
 .notification-list-enter-from {
   opacity: 0;
-  transform: translateY(-20px);
+  transform: translateY(-8px);
 }
 
 .notification-list-leave-to {
   opacity: 0;
-  transform: translateX(20px);
+  transform: translateX(16px);
 }
 
 .notification-list-move {
-  transition: transform 0.3s ease;
+  transition: transform 0.3s var(--ui-ease);
 }
 
-/* ==================== Responsive Design ==================== */
 @media (max-width: 768px) {
-  .notification-page {
-    padding: var(--space-4);
+  .day-label {
+    padding: 14px 16px 4px;
   }
 }
 </style>
