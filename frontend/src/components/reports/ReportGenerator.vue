@@ -1,53 +1,43 @@
 <template>
   <div class="report-generator">
-    <!-- Page Header -->
-    <div class="page-header">
-      <div class="header-content">
-        <h1 class="page-title">
-          報表生成器
-        </h1>
-        <p class="page-subtitle">
-          建立自訂報表以分析您的客服資料
-        </p>
+    <header class="header-wrap">
+      <div class="ui-page-head">
+        <div>
+          <div class="ui-eyebrow">
+            報表
+          </div>
+          <h1 class="ui-page-title">
+            產生報表
+          </h1>
+          <p class="ui-page-sub">
+            依序選擇類型、內容、時間與格式；右側即時顯示將產生的內容。
+          </p>
+        </div>
+        <div class="ui-page-actions">
+          <button
+            class="btn btn-secondary"
+            :disabled="isGenerating"
+            @click="resetForm"
+          >
+            重置
+          </button>
+        </div>
       </div>
-      <div class="header-actions">
-        <button
-          class="btn btn-secondary"
-          :disabled="isGenerating"
-          @click="resetForm"
-        >
-          重置
-        </button>
-        <button
-          class="btn btn-primary"
-          :disabled="!isFormValid || isGenerating"
-          @click="generateReport"
-        >
-          <span v-if="isGenerating">
-            生成中...
-          </span>
-          <span v-else>
-            生成報表
-          </span>
-        </button>
-      </div>
-    </div>
+      <ReportsNav />
+    </header>
 
     <div class="generator-container">
-      <!-- Left side: Form -->
       <div class="form-section">
         <form
           class="report-form report-generator-form"
           @submit.prevent="generateReport"
         >
-          <!-- Report Type Selector -->
           <ReportTypeSelector
             :selected-type="formData.type"
             :error="errors.type"
             @select="selectReportType"
           />
 
-          <!-- Parameters Form: title, description, format, time range, advanced options -->
           <ReportParameterForm
             :title="formData.title"
             :description="formData.description"
@@ -68,21 +58,33 @@
         </form>
       </div>
 
-      <!-- Right side: Preview and Progress -->
-      <ReportPreviewPanel
-        :report-type="formData.type"
-        :title="formData.title"
-        :format="formData.format"
-        :time-range="formData.timeRange"
-        :is-generating="isGenerating"
-        :progress="generationProgress"
-        :current-step="currentStep"
-        :recent-reports="recentReports"
-        @view-report="(id) => emit('view-report', id)"
-      />
+      <div class="side-section">
+        <ReportPreviewPanel
+          :report-type="formData.type"
+          :title="formData.title"
+          :format="formData.format"
+          :time-range="formData.timeRange"
+          :is-generating="isGenerating"
+          :current-step="currentStep"
+          :recent-reports="recentReports"
+          @view-report="(id) => emit('view-report', id)"
+        >
+          <template #action>
+            <div class="generate-action">
+              <button
+                class="btn btn-primary"
+                type="button"
+                :disabled="!isFormValid || isGenerating"
+                @click="generateReport"
+              >
+                {{ isGenerating ? '產生中...' : '產生報表' }}
+              </button>
+            </div>
+          </template>
+        </ReportPreviewPanel>
+      </div>
     </div>
 
-    <!-- Success Toast -->
     <ReportSuccessToast
       :visible="showSuccess"
       @close="showSuccess = false"
@@ -90,10 +92,12 @@
   </div>
 </template>
 
+
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import ReportsAPI from '@/api/reports';
+import ReportsNav from './ReportsNav.vue';
 import ReportTypeSelector from './ReportTypeSelector.vue';
 import ReportParameterForm from './ReportParameterForm.vue';
 import ReportPreviewPanel from './ReportPreviewPanel.vue';
@@ -145,7 +149,6 @@ const formData = reactive<ReportFormState>({
 });
 
 const isGenerating = ref(false);
-const generationProgress = ref(0);
 const currentStep = ref('');
 const showSuccess = ref(false);
 const errors = reactive<Record<string, string>>({});
@@ -232,25 +235,10 @@ const generateReport = async () => {
   }
 
   isGenerating.value = true;
-  generationProgress.value = 0;
-  currentStep.value = '正在準備報表生成...';
+  currentStep.value = '正在產生報表，完成後會自動開啟';
 
   try {
     // Simulate progress updates
-    const progressInterval = setInterval(() => {
-      if (generationProgress.value < 90) {
-        generationProgress.value += Math.random() * 10;
-
-        if (generationProgress.value < 30) {
-          currentStep.value = '正在收集資料...';
-        } else if (generationProgress.value < 60) {
-          currentStep.value = '正在處理資料...';
-        } else if (generationProgress.value < 90) {
-          currentStep.value = '正在生成報表...';
-        }
-      }
-    }, 500);
-
     if (!formData.type) {
       emit('error', new Error('請選擇報表類型'));
       return;
@@ -271,9 +259,6 @@ const generateReport = async () => {
     const report = await ReportsAPI.generateReport(reportParams);
 
     // Complete progress
-    clearInterval(progressInterval);
-    generationProgress.value = 100;
-    currentStep.value = '報表生成完成！';
 
     // Show success toast
     showSuccess.value = true;
@@ -296,13 +281,11 @@ const generateReport = async () => {
     // Clean up progress
     setTimeout(() => {
       isGenerating.value = false;
-      generationProgress.value = 0;
       currentStep.value = '';
     }, 2000);
   } finally {
     setTimeout(() => {
       isGenerating.value = false;
-      generationProgress.value = 0;
       currentStep.value = '';
     }, 1500);
   }
@@ -357,76 +340,63 @@ onMounted(() => {
 
 <style scoped>
 .report-generator {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
   width: 100%;
-  max-width: 1400px;
+  max-width: 1280px;
   margin: 0 auto;
-  padding: 2rem;
+  padding: 20px;
 }
 
-.page-header {
+.header-wrap {
   display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 2rem;
-  padding-bottom: 1rem;
-  border-bottom: 2px solid #e5e7eb;
-}
-
-.header-content {
-  flex: 1;
-}
-
-.page-title {
-  font-size: 2rem;
-  font-weight: bold;
-  color: #1f2937;
-  margin: 0 0 0.5rem 0;
-}
-
-.page-subtitle {
-  color: #6b7280;
-  font-size: 1.1rem;
-  margin: 0;
-}
-
-.header-actions {
-  display: flex;
-  gap: 1rem;
+  flex-direction: column;
+  gap: 14px;
 }
 
 .generator-container {
   display: grid;
-  grid-template-columns: 2fr 1fr;
-  gap: 2rem;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
 }
 
 .form-section {
-  background: white;
-  border-radius: 12px;
-  padding: 2rem;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  min-width: 0;
 }
 
-/* Responsive design */
-@media (max-width: 1024px) {
+.report-form {
+  display: grid;
+  gap: 16px;
+}
+
+.side-section {
+  position: sticky;
+  top: 16px;
+}
+
+.generate-action {
+  padding: 8px 22px 22px;
+}
+
+.generate-action .btn {
+  width: 100%;
+}
+
+@media (max-width: 1280px) {
   .generator-container {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .side-section {
+    position: static;
   }
 }
 
 @media (max-width: 768px) {
   .report-generator {
-    padding: 1rem;
-  }
-
-  .page-header {
-    flex-direction: column;
-    gap: 1rem;
-  }
-
-  .header-actions {
-    width: 100%;
-    justify-content: flex-end;
+    padding: 16px;
   }
 }
 </style>

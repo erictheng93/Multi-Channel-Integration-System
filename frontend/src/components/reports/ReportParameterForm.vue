@@ -1,262 +1,283 @@
 <template>
   <div class="parameter-form">
-    <!-- 基本資訊：標題 -->
-    <div class="form-group">
-      <label
-        for="title"
-        class="form-label required"
-      >報表標題</label>
-      <input
-        id="title"
-        :value="title"
-        type="text"
-        class="form-input"
-        placeholder="輸入報表標題"
-        :class="{ 'error': errors.title }"
-        @input="$emit('update:title', ($event.target as HTMLInputElement).value)"
-      >
-      <div
-        v-if="errors.title"
-        class="error-message"
-      >
-        {{ errors.title }}
+    <section class="ui-card step-card">
+      <div class="ui-card-head">
+        <span class="step-n">2</span>
+        <div>
+          <h3 class="ui-card-title">
+            內容與時間範圍
+          </h3>
+          <p class="ui-card-sub">
+            標題會顯示在報表列表與檔名
+          </p>
+        </div>
       </div>
-    </div>
+      <div class="step-body">
+        <div class="ui-field">
+          <label for="title">報表標題 <span class="req">*</span></label>
+          <input
+            id="title"
+            :value="title"
+            type="text"
+            class="ui-input"
+            placeholder="輸入報表標題"
+            :class="{ error: errors.title }"
+            @input="$emit('update:title', ($event.target as HTMLInputElement).value)"
+          >
+          <p
+            v-if="errors.title"
+            class="error-message"
+          >
+            {{ errors.title }}
+          </p>
+        </div>
 
-    <!-- 基本資訊：描述 -->
-    <div class="form-group">
-      <label
-        for="description"
-        class="form-label"
-      >報表描述</label>
-      <textarea
-        id="description"
-        :value="description"
-        class="form-textarea"
-        placeholder="輸入報表描述（可選）"
-        rows="3"
-        @input="$emit('update:description', ($event.target as HTMLTextAreaElement).value)"
-      />
-    </div>
+        <div class="ui-field">
+          <label for="description">報表描述（選填）</label>
+          <textarea
+            id="description"
+            :value="description"
+            class="ui-textarea"
+            placeholder="輸入報表描述"
+            rows="3"
+            @input="$emit('update:description', ($event.target as HTMLTextAreaElement).value)"
+          />
+        </div>
 
-    <!-- 格式選擇 -->
-    <div class="form-group">
-      <label class="form-label required">輸出格式</label>
-      <div class="format-options">
-        <div
+        <div class="range-row">
+          <div class="ui-field">
+            <label for="timeRange">時間範圍 <span class="req">*</span></label>
+            <select
+              id="timeRange"
+              :value="timeRange"
+              class="ui-select"
+              :class="{ error: errors.timeRange }"
+              @change="emit('update:timeRange', ($event.target as HTMLSelectElement).value as ReportTimeRange | '')"
+            >
+              <option value="">
+                請選擇時間範圍
+              </option>
+              <option
+                v-for="range in timeRangeOptions"
+                :key="range.value"
+                :value="range.value"
+              >
+                {{ range.label }}
+              </option>
+            </select>
+            <p
+              v-if="errors.timeRange"
+              class="error-message"
+            >
+              {{ errors.timeRange }}
+            </p>
+          </div>
+
+          <div
+            v-if="timeRange === 'custom'"
+            class="ui-field"
+          >
+            <label for="startDate">自訂日期範圍</label>
+            <div class="date-range">
+              <input
+                id="startDate"
+                :value="startDate"
+                type="date"
+                class="ui-input"
+                aria-label="開始日期"
+                :max="endDate || today"
+                @input="$emit('update:startDate', ($event.target as HTMLInputElement).value)"
+              >
+              <span class="date-separator">至</span>
+              <input
+                id="endDate"
+                :value="endDate"
+                type="date"
+                class="ui-input"
+                aria-label="結束日期"
+                :min="startDate"
+                :max="today"
+                @input="$emit('update:endDate', ($event.target as HTMLInputElement).value)"
+              >
+            </div>
+            <p
+              v-if="errors.dateRange || errors.startDate || errors.endDate"
+              class="error-message"
+            >
+              {{ errors.dateRange || errors.startDate || errors.endDate }}
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="ui-card step-card">
+      <div class="ui-card-head">
+        <span class="step-n">3</span>
+        <div>
+          <h3 class="ui-card-title">
+            輸出格式
+          </h3>
+          <p class="ui-card-sub">
+            依用途選擇
+          </p>
+        </div>
+      </div>
+      <div
+        class="format-options"
+        role="radiogroup"
+        aria-label="輸出格式"
+      >
+        <button
           v-for="fmt in availableFormats"
           :key="fmt.value"
+          type="button"
+          role="radio"
           class="format-option"
-          :class="{ 'selected': format === fmt.value }"
+          :class="{ selected: format === fmt.value }"
+          :aria-checked="format === fmt.value"
           @click="$emit('update:format', fmt.value)"
         >
-          <div class="format-icon">
-            {{ fmt.icon }}
-          </div>
-          <div class="format-label">
-            {{ fmt.label }}
-          </div>
-        </div>
+          {{ fmt.label }}
+        </button>
       </div>
-      <div
+      <p
         v-if="errors.format"
-        class="error-message"
+        class="error-message pad"
       >
         {{ errors.format }}
-      </div>
-    </div>
+      </p>
+    </section>
 
-    <!-- 時間範圍 -->
-    <div class="form-group">
-      <label class="form-label required">時間範圍</label>
-      <select
-        :value="timeRange"
-        class="form-select"
-        :class="{ 'error': errors.timeRange }"
-        @change="emit('update:timeRange', ($event.target as HTMLSelectElement).value as ReportTimeRange | '')"
-      >
-        <option value="">
-          請選擇時間範圍
-        </option>
-        <option
-          v-for="range in timeRangeOptions"
-          :key="range.value"
-          :value="range.value"
-        >
-          {{ range.label }}
-        </option>
-      </select>
-      <div
-        v-if="errors.timeRange"
-        class="error-message"
-      >
-        {{ errors.timeRange }}
-      </div>
-    </div>
-
-    <!-- 自定義日期範圍 -->
-    <div
-      v-if="timeRange === 'custom'"
-      class="form-group"
-    >
-      <label class="form-label">自定義日期範圍</label>
-      <div class="date-range">
-        <div class="date-input">
-          <label
-            for="startDate"
-            class="date-label"
-          >開始日期</label>
-          <input
-            id="startDate"
-            :value="startDate"
-            type="date"
-            class="form-input"
-            :max="endDate || today"
-            @input="$emit('update:startDate', ($event.target as HTMLInputElement).value)"
-          >
-        </div>
-        <div class="date-separator">
-          至
-        </div>
-        <div class="date-input">
-          <label
-            for="endDate"
-            class="date-label"
-          >結束日期</label>
-          <input
-            id="endDate"
-            :value="endDate"
-            type="date"
-            class="form-input"
-            :min="startDate"
-            :max="today"
-            @input="$emit('update:endDate', ($event.target as HTMLInputElement).value)"
-          >
+    <section class="ui-card step-card">
+      <div class="ui-card-head">
+        <span class="step-n">4</span>
+        <div>
+          <h3 class="ui-card-title">
+            進階選項
+          </h3>
+          <p class="ui-card-sub">
+            預設值已適合大多數報表
+          </p>
         </div>
       </div>
-    </div>
-
-    <!-- 進階選項 -->
-    <div class="form-group">
-      <details class="advanced-options">
-        <summary class="options-toggle">
-          進階選項
-        </summary>
-        <div class="options-content">
-          <!-- 圖表選項 -->
-          <div class="option-row">
-            <label class="checkbox-label">
-              <input
-                :checked="options.includeCharts"
-                type="checkbox"
-                class="checkbox"
-                @change="updateOption('includeCharts', ($event.target as HTMLInputElement).checked)"
-              >
-              <span class="checkmark" />
+      <div class="switch-list">
+        <div class="switch-row">
+          <div>
+            <div class="sw-title">
               包含圖表
-            </label>
+            </div>
+            <div class="sw-sub">
+              在報表中加入趨勢與分布圖
+            </div>
           </div>
-
-          <div class="option-row">
-            <label class="checkbox-label">
-              <input
-                :checked="options.includeSummary"
-                type="checkbox"
-                class="checkbox"
-                @change="updateOption('includeSummary', ($event.target as HTMLInputElement).checked)"
-              >
-              <span class="checkmark" />
-              包含摘要
-            </label>
-          </div>
-
-          <div class="option-row">
-            <label class="checkbox-label">
-              <input
-                :checked="options.includeDetails"
-                type="checkbox"
-                class="checkbox"
-                @change="updateOption('includeDetails', ($event.target as HTMLInputElement).checked)"
-              >
-              <span class="checkmark" />
-              包含詳細資料
-            </label>
-          </div>
-
-          <!-- 圖表類型 -->
-          <div
-            v-if="options.includeCharts"
-            class="option-row"
-          >
-            <label
-              for="chartType"
-              class="option-label"
-            >圖表類型</label>
-            <select
-              id="chartType"
-              :value="options.chartType"
-              class="form-select small"
-              @change="updateOption('chartType', ($event.target as HTMLSelectElement).value)"
-            >
-              <option value="line">
-                線圖
-              </option>
-              <option value="bar">
-                長條圖
-              </option>
-              <option value="pie">
-                圓餅圖
-              </option>
-              <option value="donut">
-                甜甜圈圖
-              </option>
-              <option value="area">
-                面積圖
-              </option>
-            </select>
-          </div>
-
-          <!-- 記錄限制 -->
-          <div class="option-row">
-            <label
-              for="maxRecords"
-              class="option-label"
-            >最大記錄數</label>
-            <input
-              id="maxRecords"
-              :value="options.maxRecords"
-              type="number"
-              class="form-input small"
-              placeholder="例如: 1000"
-              min="1"
-              max="50000"
-              @input="updateOption('maxRecords', Number(($event.target as HTMLInputElement).value))"
-            >
-          </div>
-
-          <!-- 語言選擇 -->
-          <div class="option-row">
-            <label
-              for="language"
-              class="option-label"
-            >語言</label>
-            <select
-              id="language"
-              :value="options.language"
-              class="form-select small"
-              @change="updateOption('language', ($event.target as HTMLSelectElement).value)"
-            >
-              <option value="zh-TW">
-                繁體中文
-              </option>
-              <option value="en-US">
-                English
-              </option>
-            </select>
-          </div>
+          <button
+            type="button"
+            role="switch"
+            class="ui-switch"
+            aria-label="包含圖表"
+            :aria-checked="!!options.includeCharts"
+            @click="updateOption('includeCharts', !options.includeCharts)"
+          />
         </div>
-      </details>
-    </div>
+        <div class="switch-row">
+          <div>
+            <div class="sw-title">
+              包含摘要
+            </div>
+            <div class="sw-sub">
+              報表開頭列出重點數字
+            </div>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            class="ui-switch"
+            aria-label="包含摘要"
+            :aria-checked="!!options.includeSummary"
+            @click="updateOption('includeSummary', !options.includeSummary)"
+          />
+        </div>
+        <div class="switch-row">
+          <div>
+            <div class="sw-title">
+              包含詳細資料
+            </div>
+            <div class="sw-sub">
+              附上逐筆明細，檔案會較大
+            </div>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            class="ui-switch"
+            aria-label="包含詳細資料"
+            :aria-checked="!!options.includeDetails"
+            @click="updateOption('includeDetails', !options.includeDetails)"
+          />
+        </div>
+      </div>
+
+      <div class="adv-grid">
+        <div
+          v-if="options.includeCharts"
+          class="ui-field"
+        >
+          <label for="chartType">圖表類型</label>
+          <select
+            id="chartType"
+            :value="options.chartType"
+            class="ui-select"
+            @change="updateOption('chartType', ($event.target as HTMLSelectElement).value)"
+          >
+            <option value="line">
+              折線圖
+            </option>
+            <option value="bar">
+              長條圖
+            </option>
+            <option value="pie">
+              圓餅圖
+            </option>
+            <option value="donut">
+              甜甜圈圖
+            </option>
+            <option value="area">
+              面積圖
+            </option>
+          </select>
+        </div>
+        <div class="ui-field">
+          <label for="maxRecords">最大記錄數</label>
+          <input
+            id="maxRecords"
+            :value="options.maxRecords"
+            type="number"
+            class="ui-input"
+            placeholder="例如 1000"
+            min="1"
+            max="50000"
+            @input="updateOption('maxRecords', Number(($event.target as HTMLInputElement).value))"
+          >
+        </div>
+        <div class="ui-field">
+          <label for="language">語言</label>
+          <select
+            id="language"
+            :value="options.language"
+            class="ui-select"
+            @change="updateOption('language', ($event.target as HTMLSelectElement).value)"
+          >
+            <option value="zh-TW">
+              繁體中文
+            </option>
+            <option value="en-US">
+              English
+            </option>
+          </select>
+        </div>
+      </div>
+    </section>
   </div>
 </template>
 
@@ -313,168 +334,145 @@ const updateOption = (key: string, value: unknown) => {
 </script>
 
 <style scoped>
-.form-group {
-  margin-bottom: 1.5rem;
-}
-
-.form-label {
-  display: block;
-  font-weight: 600;
-  color: #374151;
-  margin-bottom: 0.5rem;
-}
-
-.form-label.required::after {
-  content: ' *';
-  color: #ef4444;
-}
-
-.format-options {
+.parameter-form {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-  gap: 1rem;
-  margin-top: 0.5rem;
+  gap: 16px;
 }
 
-.format-option {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 1rem;
-  border: 2px solid #e5e7eb;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.2s;
+.step-n {
+  display: grid;
+  flex: none;
+  width: 26px;
+  height: 26px;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--ui-fill);
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--ui-muted);
 }
 
-.format-option:hover {
-  border-color: #3b82f6;
-  background-color: #f8fafc;
+.step-body {
+  display: grid;
+  gap: 16px;
+  padding: 4px 22px 22px;
 }
 
-.format-option.selected {
-  border-color: #3b82f6;
-  background-color: #eff6ff;
+.req {
+  color: var(--ui-red);
 }
 
-.format-icon {
-  font-size: 1.5rem;
-  margin-bottom: 0.5rem;
-}
-
-.format-label {
-  font-weight: 500;
-  text-align: center;
-}
-
-.advanced-options {
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  padding: 1rem;
-}
-
-.options-toggle {
-  font-weight: 600;
-  color: #374151;
-  cursor: pointer;
-  list-style: none;
-}
-
-.options-content {
-  margin-top: 1rem;
-  padding-top: 1rem;
-  border-top: 1px solid #e5e7eb;
-}
-
-.option-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 1rem;
-}
-
-.checkbox-label {
-  display: flex;
-  align-items: center;
-  cursor: pointer;
-}
-
-.checkbox {
-  margin-right: 0.5rem;
+.range-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
 }
 
 .date-range {
   display: flex;
   align-items: center;
-  gap: 1rem;
-}
-
-.date-input {
-  flex: 1;
-}
-
-.date-label {
-  font-size: 0.9rem;
-  color: #6b7280;
-  margin-bottom: 0.25rem;
+  gap: 8px;
 }
 
 .date-separator {
-  font-weight: 500;
-  color: #6b7280;
-}
-
-.form-input,
-.form-select,
-.form-textarea {
-  width: 100%;
-  padding: 0.75rem;
-  border: 2px solid #e5e7eb;
-  border-radius: 8px;
-  font-size: 1rem;
-  transition: border-color 0.2s;
-}
-
-.form-input:focus,
-.form-select:focus,
-.form-textarea:focus {
-  outline: none;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-}
-
-.form-input.error,
-.form-select.error {
-  border-color: #ef4444;
-}
-
-.form-input.small,
-.form-select.small {
-  width: auto;
-  min-width: 120px;
+  font-size: 12.5px;
+  color: var(--ui-muted);
 }
 
 .error-message {
-  color: #ef4444;
-  font-size: 0.9rem;
-  margin-top: 0.25rem;
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--ui-red-ink);
 }
 
-@media (max-width: 1024px) {
-  .format-options {
-    grid-template-columns: repeat(3, 1fr);
-  }
+.error-message.pad {
+  padding: 0 22px 16px;
+}
+
+.ui-input.error,
+.ui-select.error {
+  box-shadow: inset 0 0 0 1px var(--ui-red);
+}
+
+.format-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  padding: 4px 22px 20px;
+}
+
+.format-option {
+  padding: 16px 12px;
+  border: 0;
+  border-radius: var(--ui-r-inner);
+  background: var(--ui-surface-2);
+  box-shadow: inset 0 0 0 0.5px var(--ui-sep);
+  color: inherit;
+  font: 600 14px var(--ui-font-display);
+  cursor: pointer;
+  transition:
+    background var(--ui-dur) var(--ui-ease),
+    box-shadow var(--ui-dur) var(--ui-ease);
+}
+
+.format-option.selected {
+  background: color-mix(in srgb, var(--ui-accent-soft) 60%, var(--ui-surface));
+  box-shadow: var(--ui-sel-ring);
+}
+
+.switch-list {
+  padding: 0 22px;
+}
+
+.switch-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 0;
+  box-shadow: 0 0.5px 0 var(--ui-sep);
+}
+
+.switch-row:last-child {
+  box-shadow: none;
+}
+
+.sw-title {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.sw-sub {
+  font-size: 12.5px;
+  color: var(--ui-muted);
+}
+
+.adv-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  padding: 8px 22px 22px;
 }
 
 @media (max-width: 768px) {
-  .date-range {
-    flex-direction: column;
-    align-items: stretch;
+  .step-body,
+  .adv-grid {
+    padding-right: 16px;
+    padding-left: 16px;
   }
 
-  .date-separator {
-    text-align: center;
-    padding: 0.5rem 0;
+  .range-row,
+  .adv-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .switch-list {
+    padding: 0 16px;
+  }
+
+  .format-options {
+    padding-right: 16px;
+    padding-left: 16px;
   }
 }
 </style>
