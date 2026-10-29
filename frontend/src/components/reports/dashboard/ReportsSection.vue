@@ -182,6 +182,13 @@
         @delete-report="$emit('delete-report', $event)"
       />
     </div>
+
+    <div
+      v-if="$slots.footer"
+      class="section-footer"
+    >
+      <slot name="footer" />
+    </div>
   </section>
 </template>
 
@@ -329,6 +336,10 @@ defineEmits<{
   height: 34px;
   border-radius: 10px;
   font-size: 13px;
+}
+
+.section-footer {
+  box-shadow: inset 0 0.5px 0 var(--ui-sep);
 }
 
 .state-box {
