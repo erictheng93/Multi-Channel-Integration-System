@@ -184,7 +184,7 @@ const getLastMessageText = (conversation: Conversation) => {
 .conversation-card + .conversation-card::before {
   position: absolute;
   top: 0;
-  right: 0;
+  right: 16px;
   left: 68px;
   height: 0.5px;
   background: var(--ui-sep);

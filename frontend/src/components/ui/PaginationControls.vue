@@ -131,8 +131,8 @@ const endItem = computed(() => {
 }
 
 .page-btn.active {
-  background: var(--ui-ink);
-  color: var(--ui-surface);
+  background: var(--ui-accent-soft);
+  color: var(--ui-accent);
   font-weight: 600;
 }
 

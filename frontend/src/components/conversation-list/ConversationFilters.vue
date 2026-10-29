@@ -724,8 +724,8 @@ function clearAll() {
   height: 22px;
   padding: 0 8px;
   border-radius: 999px;
-  background: var(--ui-ink);
-  color: var(--ui-surface);
+  background: var(--ui-accent-soft);
+  color: var(--ui-accent);
   font-size: 11.5px;
   font-weight: 600;
   cursor: pointer;

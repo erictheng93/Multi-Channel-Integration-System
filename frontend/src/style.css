@@ -134,10 +134,20 @@
     --ui-font-display: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Geist', 'Noto Sans TC', 'PingFang TC', 'Microsoft JhengHei', sans-serif;
     --ui-font-mono: 'SF Mono', 'Geist Mono', ui-monospace, Menlo, Consolas, monospace;
 
+    /* Type scale (one scale, used through the shared components; pages never invent sizes):
+       lead numeral 64 (56 phone) light / page title 30 / section title 19 / row head 15 /
+       body 14 / meta 13. Tracking tightens as the size grows. */
+    --ui-t-lead: 64px;
+    --ui-t-lead-sm: 56px;
+    --ui-w-lead: 300;
+    --ui-track-lead: -0.045em;
     --ui-t-large: 30px;
+    --ui-track-large: -0.03em;
     --ui-t-title: 19px;
+    --ui-track-title: -0.015em;
     --ui-t-head: 15px;
     --ui-t-body: 14px;
+    --ui-t-kpi: 34px;
     /* Typography floor: 13px for meta, labels, table headers, chips. Chart axes may go to 11px. */
     --ui-t-foot: 13px;
     --ui-t-cap: 13px;
@@ -661,7 +671,7 @@
     min-height: var(--ui-head-h);
     margin: 0;
     font: 700 var(--ui-t-large) / 36px var(--ui-font-display);
-    letter-spacing: -0.025em;
+    letter-spacing: var(--ui-track-large);
     color: var(--ui-ink);
   }
   .ui-page-title-text {
@@ -731,7 +741,7 @@
   .ui-card-title {
     margin: 0;
     font: 600 var(--ui-t-title) / 1.25 var(--ui-font-display);
-    letter-spacing: -0.015em;
+    letter-spacing: var(--ui-track-title);
   }
   .ui-card-head .ui-card-sub {
     margin-top: 2px;
@@ -773,11 +783,13 @@
     padding: 12px 22px;
     transition: background var(--ui-dur) var(--ui-ease);
   }
+  /* Dividers are inset symmetrically: the leading inset clears the avatar/icon, the trailing
+     inset mirrors the row padding (22px), so the hairline never runs to one card edge only. */
   .ui-row + .ui-row::before {
     content: '';
     position: absolute;
     top: 0;
-    right: 0;
+    right: 22px;
     left: 66px;
     height: 0.5px;
     background: var(--ui-sep);
@@ -888,7 +900,9 @@
     color: var(--ui-p-rose-ink);
   }
 
-  /* Segmented control: buttons inside; active one carries .is-on or aria-pressed/selected */
+  /* THE segmented control (one per app: tabs, ranges, view switches, formats): buttons inside,
+     the active one carries .is-on or aria-pressed/selected. Never hand-roll a second style, and
+     never put two segmented controls side by side: a second axis is a dropdown or a chip row. */
   .ui-seg {
     display: inline-flex;
     gap: 2px;
@@ -942,10 +956,14 @@
     color: var(--ui-ink-2);
     cursor: pointer;
   }
+  /* On state = the accent wash with accent ink (same family as .ui-seg and .ui-pill-blue).
+     Never a solid black capsule: that reads as a second, competing control language. */
   .ui-chip.is-on,
   .ui-chip[aria-pressed='true'] {
-    background: var(--ui-ink);
-    color: var(--ui-surface);
+    background: var(--ui-accent-soft);
+    color: var(--ui-accent);
+    font-weight: 600;
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ui-accent) 26%, transparent);
   }
 
   /* Channel glyph tile (brand-coloured). Put an svg (fill #fff) inside. */
@@ -1140,7 +1158,7 @@
     height: 15px;
   }
   .ui-kpi-value {
-    font: 600 34px / 1 var(--ui-font-display);
+    font: 600 var(--ui-t-kpi) / 1 var(--ui-font-display);
     letter-spacing: -0.03em;
     font-variant-numeric: tabular-nums;
   }
@@ -1323,7 +1341,7 @@
     .ui-page-title {
       font-size: 26px;
     }
-    /* Compact KPI tiles: label, number and one footer line; the icon tile is dropped */
+    /* Compact KPI tiles: icon + label, number and one footer line */
     .ui-kpi-grid {
       gap: 10px;
     }
@@ -1332,8 +1350,15 @@
       min-width: 0;
       padding: 10px 14px;
     }
+    /* Icons stay on at every width (parity with desktop), just a size down */
     .ui-kpi-grid .ui-kpi-ico {
-      display: none;
+      width: 22px;
+      height: 22px;
+      border-radius: 7px;
+    }
+    .ui-kpi-grid .ui-kpi-ico svg {
+      width: 13px;
+      height: 13px;
     }
     .ui-kpi-grid .ui-kpi-top {
       font-size: 13px;
@@ -1377,8 +1402,16 @@
         'actions';
       row-gap: 4px;
     }
+    /* Phone: the subtitle may wrap to two lines (desktop stays one) so key information is never cut */
     .ui-page-sub {
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
+      line-clamp: 2;
+      min-height: 20px;
       font-size: 13px;
+      line-height: 18px;
+      white-space: normal;
     }
     .ui-page-actions {
       justify-content: stretch;
