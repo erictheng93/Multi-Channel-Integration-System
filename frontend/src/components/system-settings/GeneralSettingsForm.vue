@@ -80,19 +80,9 @@
           </option>
         </select>
       </SettingsRow>
-      <SettingsRow
-        label="語言"
-        hint="目前僅支援繁體中文"
-        for-id="language"
-      >
-        <select
-          id="language"
-          class="ui-select"
-          disabled
-        >
-          <option>繁體中文</option>
-        </select>
-      </SettingsRow>
+      <template #note>
+        介面語言：繁體中文（目前僅支援）
+      </template>
     </SettingsGroup>
   </form>
 </template>

@@ -57,13 +57,22 @@
         v-if="rows.length > 0"
         class="hero-stats"
       >
-        <div class="hs g">
+        <div
+          class="hs g"
+          :class="{ zero: counts.healthy === 0 }"
+        >
           <b>{{ counts.healthy }}</b><span>正常</span>
         </div>
-        <div class="hs o">
+        <div
+          class="hs o"
+          :class="{ zero: counts.warning === 0 }"
+        >
           <b>{{ counts.warning }}</b><span>警告</span>
         </div>
-        <div class="hs r">
+        <div
+          class="hs r"
+          :class="{ zero: counts.critical === 0 }"
+        >
           <b>{{ counts.critical }}</b><span>異常</span>
         </div>
       </div>
@@ -139,13 +148,6 @@
               <template v-if="row.latencyMs !== null">{{ row.latencyMs.toLocaleString() }}<small>ms</small></template>
               <template v-else>—</template>
             </span>
-            <span class="lbar">
-              <i
-                v-if="row.latencyMs !== null"
-                :class="row.tone"
-                :style="{ width: `${barWidth(row.latencyMs)}%` }"
-              />
-            </span>
           </div>
           <span
             class="ui-pill ui-pill-dot"
@@ -154,7 +156,7 @@
         </li>
       </ul>
       <template #note>
-        長條以 0 – {{ BAR_MAX_MS.toLocaleString() }} ms 為滿格。LINE webhook 只在按「立即檢查」時測試；若持續失敗，請到 LINE Developers 主控台對 Webhook URL 按「Verify」。
+        LINE webhook 只在按「立即檢查」時測試；若持續失敗，請到 LINE Developers 主控台對 Webhook URL 按「Verify」。
       </template>
     </SettingsGroup>
   </div>
@@ -177,8 +179,6 @@ interface Row {
   label: string
   latencyMs: number | null
 }
-
-const BAR_MAX_MS = 2000
 
 const controller = inject(SETTINGS_CONTROLLER_KEY)
 if (!controller) {
@@ -328,10 +328,6 @@ function formatChecked(iso: string): string {
   return `今天 ${time}`
 }
 
-function barWidth(latencyMs: number): number {
-  return Math.max(1.5, Math.min(100, (latencyMs / BAR_MAX_MS) * 100))
-}
-
 function pillClass(tone: Tone): string {
   if (tone === 'ok') {
     return 'ui-pill-green'
@@ -473,6 +469,11 @@ onMounted(() => {
   color: var(--ui-red-ink);
 }
 
+/* A zero is not news: grey, not a green/orange/red numeral */
+.hs.zero b {
+  color: var(--ui-muted);
+}
+
 .hrow {
   padding: 14px 22px;
   gap: 14px;
@@ -517,7 +518,7 @@ onMounted(() => {
 }
 
 .lat-n {
-  width: 74px;
+  width: 64px;
   font: 600 14px var(--ui-font-display);
   text-align: right;
   font-variant-numeric: tabular-nums;
@@ -538,29 +539,6 @@ onMounted(() => {
   color: var(--ui-red-ink);
 }
 
-.lbar {
-  width: 120px;
-  height: 6px;
-  overflow: hidden;
-  border-radius: 999px;
-  background: var(--ui-fill);
-}
-
-.lbar i {
-  display: block;
-  height: 100%;
-  border-radius: inherit;
-  background: var(--ui-green);
-}
-
-.lbar i.warn {
-  background: var(--ui-orange);
-}
-
-.lbar i.bad {
-  background: var(--ui-red);
-}
-
 .hrow .ui-pill {
   justify-content: center;
   width: 62px;
@@ -571,10 +549,6 @@ onMounted(() => {
 }
 
 @media (max-width: 768px) {
-  .lbar {
-    display: none;
-  }
-
   .lat-n {
     width: auto;
   }

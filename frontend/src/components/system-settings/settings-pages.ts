@@ -66,7 +66,7 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
     routeName: 'SettingsMaintenanceHealth',
     path: '/settings/maintenance/health',
     title: '健康檢查',
-    subtitle: '逐項檢查資料庫、快取、儲存、佇列與 LINE webhook 的運行狀態與回應時間。',
+    subtitle: '逐項檢查資料庫、快取、儲存、佇列與 LINE webhook。',
     group: '維護',
     color: 'orange',
     icon: '<path d="M22 12h-4l-3 9L9 3l-3 9H2"/>'
