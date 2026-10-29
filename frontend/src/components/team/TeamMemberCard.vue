@@ -90,14 +90,9 @@
         <span
           v-for="t in visibleTeams"
           :key="t.teamId"
-          class="team-chip"
-        >
-          <span
-            class="ui-tag"
-            :class="teamTagClass(t.teamId)"
-          >{{ t.teamName || `團隊 ${t.teamId}` }}</span>
-          <span class="tr">{{ teamRoleText(t.roleInTeam) }}</span>
-        </span>
+          class="ui-tag"
+          :class="teamTagClass(t.teamId)"
+        >{{ t.teamName || `團隊 ${t.teamId}` }}<span class="tr-in"> · {{ teamRoleText(t.roleInTeam) }}</span></span>
         <span
           v-if="hiddenTeamCount > 0"
           class="tr"
@@ -113,7 +108,10 @@
       >未加入團隊</span>
     </div>
 
-    <div class="stcell">
+    <div
+      class="stcell"
+      :class="{ 'is-active': member.status === 'active' }"
+    >
       <span
         class="ui-pill"
         :class="statusClass"
@@ -451,10 +449,9 @@ const getRoleText = (role: string) => {
   align-items: center;
   gap: 6px 10px;
 }
-.team-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
+.tr-in {
+  font-weight: 500;
+  opacity: 0.8;
 }
 .tr {
   font-size: 13px;
@@ -530,6 +527,11 @@ const getRoleText = (role: string) => {
     left: 16px;
   }
   .drag-handle {
+    display: none;
+  }
+  /* Phone rows keep to two chips: the plain "active" state is the default, only a deactivated
+     account needs a pill of its own. */
+  .stcell.is-active {
     display: none;
   }
 }
