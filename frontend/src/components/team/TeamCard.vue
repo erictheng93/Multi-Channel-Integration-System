@@ -16,7 +16,10 @@
       <div class="team-name">
         {{ team.name }}
       </div>
-      <div class="team-desc">
+      <div
+        class="team-desc"
+        :title="team.description || undefined"
+      >
         {{ team.description || '尚未填寫描述' }}
       </div>
       <div class="team-meta">
@@ -554,8 +557,11 @@ import { createLogger } from '@/utils/logger'
 }
 
 @media (max-width: 768px) {
+  /* The whole card opens the team, so the phone keeps only the overflow menu, top right: no crowded action row */
   .team-card {
-    grid-template-columns: 44px minmax(0, 1fr);
+    grid-template-columns: 44px minmax(0, 1fr) auto;
+    align-items: start;
+    padding: 16px;
   }
   .team-mark {
     width: 44px;
@@ -563,11 +569,18 @@ import { createLogger } from '@/utils/logger'
     border-radius: 14px;
     font-size: 18px;
   }
-  .team-acts {
-    grid-column: 1 / -1;
-  }
   .team-acts .btn {
-    flex: 1;
+    display: none;
+  }
+  .team-acts {
+    margin: -6px -8px 0 0;
+  }
+  .team-desc {
+    display: -webkit-box;
+    overflow: hidden;
+    white-space: normal;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
   }
 }
 </style>

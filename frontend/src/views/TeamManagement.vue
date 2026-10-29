@@ -52,47 +52,46 @@
         </template>
       </UiPageHead>
 
-      <!-- Lead metric: who is online right now, and where -->
+      <!-- Presence strip: who is online right now, and where. One compact card; no art, no stretched halves -->
       <section
         v-if="members.length > 0"
-        class="top"
+        class="ui-card presence"
+        aria-label="目前在線"
       >
-        <article class="ui-card lead-card">
-          <UiLeadMetric
-            label="目前在線"
-            :value="onlineCount"
-            unit="位"
-            tone="green"
-            :loading="loading && !presence.available.value"
-            :meaning="onlineMeaning"
-          />
-        </article>
-        <article
-          v-if="teamOnline.length > 0"
-          class="ui-card by-team"
-        >
-          <div class="ui-card-head">
-            <div>
-              <h2 class="ui-card-title">
-                各團隊在線
-              </h2>
-              <div class="ui-card-sub">
-                成員同時屬於多個團隊時，各團隊分別計算
-              </div>
-            </div>
+        <div class="pres-lead">
+          <div class="pres-label">
+            <span
+              class="pres-dot"
+              aria-hidden="true"
+            />目前在線
           </div>
-          <ul class="tm-list">
-            <li
-              v-for="row in teamOnline"
-              :key="row.id"
-              class="tm-row"
-            >
+          <div
+            class="pres-value"
+            :aria-busy="(loading && !presence.available.value) || undefined"
+          >
+            {{ onlineCount === null ? '—' : onlineCount }}<small v-if="onlineCount !== null">位</small>
+          </div>
+          <p class="pres-meaning">
+            {{ onlineMeaning }}
+          </p>
+        </div>
+        <ul
+          v-if="teamOnline.length > 0"
+          class="tm-list"
+          aria-label="各團隊在線"
+        >
+          <li
+            v-for="row in teamOnline"
+            :key="row.id"
+            class="tm-row"
+          >
+            <span class="tm-top">
               <span class="tm-name">{{ row.name }}</span>
-              <span class="tm-bar"><i :style="{ width: row.percent + '%' }" /></span>
-              <span class="tm-n">{{ row.online === null ? '—' : row.online }} / {{ row.total }}</span>
-            </li>
-          </ul>
-        </article>
+              <span class="tm-n"><b>{{ row.online === null ? '—' : row.online }}</b> / {{ row.total }}</span>
+            </span>
+            <span class="tm-bar"><i :style="{ width: row.percent + '%' }" /></span>
+          </li>
+        </ul>
       </section>
 
       <!-- Member Management Section -->
@@ -230,7 +229,6 @@
 
 <script setup lang="ts">
 import UiPageHead from '@/components/ui/UiPageHead.vue'
-import UiLeadMetric from '@/components/ui/UiLeadMetric.vue'
 import { onMounted, onUnmounted, computed } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useTeamManagementController } from '@/composables/team-management'
@@ -422,41 +420,83 @@ onUnmounted(() => {
   height: 16px;
 }
 
-.top {
+.presence {
   display: grid;
-  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
-  gap: 16px;
+  grid-template-columns: minmax(240px, 300px) minmax(0, 1fr);
+  gap: 8px 32px;
+  align-items: center;
+  padding: 18px 24px;
 }
 
-.top:has(.lead-card:only-child) {
-  grid-template-columns: minmax(0, 1fr);
+.pres-lead {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
 }
 
-.lead-card {
-  overflow: hidden;
+.pres-label {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: var(--ui-t-meta);
+  font-weight: 600;
+  color: var(--ui-ink-2);
 }
 
-.lead-card :deep(.ui-lead-meaning) {
-  max-width: min(100%, 300px);
+.pres-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ui-green);
 }
 
+.pres-value {
+  font: 600 44px / 1.1 var(--ui-font-display);
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+}
+
+.pres-value small {
+  margin-left: 4px;
+  font-size: 18px;
+  font-weight: 500;
+  letter-spacing: 0;
+  color: var(--ui-muted);
+}
+
+.pres-meaning {
+  margin: 0;
+  font-size: var(--ui-t-meta);
+  color: var(--ui-muted);
+}
+
+/* Teams as equal columns beside the number, each a name, a count and a bar */
 .tm-list {
   display: grid;
-  gap: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 18px 28px;
   margin: 0;
-  padding: 2px 22px 22px;
+  padding: 0 0 0 32px;
   list-style: none;
+  box-shadow: inset 0.5px 0 0 var(--ui-sep);
 }
 
 .tm-row {
   display: grid;
-  grid-template-columns: minmax(80px, 140px) minmax(0, 1fr) 56px;
-  gap: 14px;
-  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.tm-top {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  justify-content: space-between;
   font-size: 14px;
 }
 
 .tm-name {
+  min-width: 0;
   overflow: hidden;
   font-weight: 500;
   text-overflow: ellipsis;
@@ -479,22 +519,52 @@ onUnmounted(() => {
 }
 
 .tm-n {
-  text-align: right;
+  flex: none;
   font-size: 13px;
   color: var(--ui-muted);
   font-variant-numeric: tabular-nums;
 }
 
+.tm-n b {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ui-ink);
+}
+
 @media (max-width: 1024px) {
-  .top,
-  .top:has(.lead-card:only-child) {
+  .presence {
     grid-template-columns: minmax(0, 1fr);
+    gap: 14px;
+  }
+
+  .tm-list {
+    padding: 14px 0 0;
+    box-shadow: inset 0 0.5px 0 var(--ui-sep);
   }
 }
 
+/* Phone: the number and its caption share a line, so the list starts within the first screen */
 @media (max-width: 768px) {
-  .tm-list {
-    padding: 2px 16px 18px;
+  .presence {
+    padding: 14px 16px;
+  }
+
+  .pres-lead {
+    grid-template-columns: auto 1fr;
+    column-gap: 12px;
+    align-items: baseline;
+  }
+
+  .pres-label {
+    grid-column: 1 / -1;
+  }
+
+  .pres-value {
+    font-size: 36px;
+  }
+
+  .pres-meaning {
+    align-self: center;
   }
 }
 </style>
