@@ -4,6 +4,7 @@
 // writeDataPoint is non-blocking and needs no waitUntil.
 
 import type { Context, Next } from 'hono';
+import { routePath } from 'hono/route';
 import type { Bindings } from '@/types';
 
 export const UNMATCHED_ROUTE = 'unmatched';
@@ -45,7 +46,7 @@ export async function apiMetricsMiddleware(c: Context<{ Bindings: Bindings }>, n
   } finally {
     try {
       const status = c.res?.status ?? 500;
-      const pattern = resolveRoutePattern(c.req.routePath, status);
+      const pattern = resolveRoutePattern(routePath(c, -1), status);
       const latencyMs = Math.round((performance.now() - start) * 10) / 10;
       dataset.writeDataPoint({
         blobs: [method, pattern, statusClassOf(status), String(status)],
