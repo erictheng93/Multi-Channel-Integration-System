@@ -11,13 +11,14 @@
       受眾預覽
     </h2>
 
-    <UiEmptyState
+    <div
       v-if="!preview"
-      class="compact"
-      title="受眾預覽"
-      :description="loading ? '計算受眾中...' : '選擇目標標籤後，會在這裡顯示會收到訊息的人數。'"
+      class="aud-empty"
     >
-      <template #icon>
+      <span
+        class="aud-ico"
+        aria-hidden="true"
+      >
         <svg
           viewBox="0 0 24 24"
           fill="none"
@@ -25,14 +26,17 @@
           stroke-width="1.8"
           stroke-linecap="round"
           stroke-linejoin="round"
-          aria-hidden="true"
         ><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle
           cx="9"
           cy="7"
           r="4"
         /><path d="M22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8" /></svg>
-      </template>
-    </UiEmptyState>
+      </span>
+      <div>
+        <b>受眾預覽</b>
+        <span>{{ loading ? '計算受眾中...' : '選擇目標標籤後，會在這裡顯示會收到訊息的人數。' }}</span>
+      </div>
+    </div>
 
     <template v-else>
       <div class="big-row">
@@ -70,7 +74,6 @@
 </template>
 
 <script setup lang="ts">
-import UiEmptyState from '@/components/ui/UiEmptyState.vue'
 import { computed } from 'vue'
 import type { BroadcastPreviewResult, BroadcastRecipientErrorReason } from '@/api/broadcasts'
 
@@ -126,8 +129,36 @@ const notes = computed(() => {
   padding: 18px 22px 20px;
 }
 
-.compact {
-  padding: 28px 8px;
+.aud-empty {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+}
+
+.aud-ico {
+  display: grid;
+  flex: none;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  border-radius: 14px;
+  background: var(--ui-fill);
+  color: var(--ui-muted);
+}
+
+.aud-ico svg {
+  width: 22px;
+  height: 22px;
+}
+
+.aud-empty b {
+  display: block;
+  font: 600 var(--ui-t-title) / 1.3 var(--ui-font-display);
+}
+
+.aud-empty span {
+  font-size: 13.5px;
+  color: var(--ui-muted);
 }
 
 .big-row {

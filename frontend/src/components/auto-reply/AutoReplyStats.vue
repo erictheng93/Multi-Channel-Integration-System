@@ -17,10 +17,10 @@
           {{ activeRules }}<small v-if="totalRules !== undefined">/ {{ totalRules }}</small>
         </div>
         <div
-          v-if="totalRules !== undefined && totalRules > activeRules"
+          v-if="totalRules !== undefined"
           class="ui-kpi-foot"
         >
-          {{ totalRules - activeRules }} 條已停用
+          {{ totalRules > activeRules ? `${totalRules - activeRules} 條已停用` : '全部規則啟用中' }}
         </div>
       </div>
 
@@ -67,11 +67,11 @@
           /><path d="M12 7v5l3 2" /></svg></span>
           <span class="stat-label">營業狀態</span>
         </div>
-        <div>
-          <span
-            class="ui-pill ui-pill-dot hours-pill stat-value"
-            :class="noSchedule ? [] : isBusinessHours ? ['ui-pill-green', 'text-amber'] : ['ui-pill-red', 'text-red']"
-          >{{ noSchedule ? '未設定' : isBusinessHours ? '營業中' : '非營業時間' }}</span>
+        <div
+          class="ui-kpi-value stat-value hours-value"
+          :class="noSchedule ? 'is-none' : isBusinessHours ? ['is-open', 'text-amber'] : ['is-closed', 'text-red']"
+        >
+          {{ noSchedule ? '未設定' : isBusinessHours ? '營業中' : '非營業時間' }}
         </div>
         <div
           v-if="hoursNote"
@@ -205,9 +205,40 @@ const hoursNote = computed(() => {
   color: var(--ui-indigo);
 }
 
-.hours-pill {
-  height: 26px;
-  padding: 0 12px;
-  font-size: 13px;
+.hours-value {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 26px;
+  letter-spacing: -0.02em;
+}
+
+.hours-value::before {
+  width: 10px;
+  height: 10px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--ui-faint);
+  content: '';
+}
+
+.hours-value.is-open {
+  color: var(--ui-green-ink);
+}
+
+.hours-value.is-open::before {
+  background: var(--ui-green);
+}
+
+.hours-value.is-closed {
+  color: var(--ui-red-ink);
+}
+
+.hours-value.is-closed::before {
+  background: var(--ui-red);
+}
+
+.hours-value.is-none {
+  color: var(--ui-muted);
 }
 </style>

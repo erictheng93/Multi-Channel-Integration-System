@@ -22,29 +22,11 @@
       </div>
     </div>
 
-    <UiEmptyState
-      v-if="!hasContent"
-      compact
-      title="尚無預覽內容"
-      description="輸入文字或加入圖片後，會在這裡預覽。"
-    >
-      <template #icon>
-        <svg
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="1.8"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          aria-hidden="true"
-        ><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12Z" /></svg>
-      </template>
-    </UiEmptyState>
-    <div
-      v-else
-      class="phone"
-    >
-      <div class="thread">
+    <div class="phone">
+      <div
+        v-if="hasContent"
+        class="thread"
+      >
         <div
           v-if="content"
           class="bubble"
@@ -59,6 +41,12 @@
           :alt="`預覽圖片 ${index + 1}`"
         >
       </div>
+      <p
+        v-else
+        class="phone-empty"
+      >
+        輸入文字或加入圖片後，會在這裡預覽
+      </p>
     </div>
     <p class="disclaimer">
       示意圖。實際字型、氣泡寬度與圖片裁切依客戶的 LINE 版本而異。
@@ -68,7 +56,6 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import UiEmptyState from '@/components/ui/UiEmptyState.vue'
 
 const props = defineProps<{
   content: string
@@ -86,15 +73,32 @@ const order = computed(() => {
 
 <style scoped>
 .preview-card {
+  display: flex;
+  flex-direction: column;
   padding-bottom: 16px;
 }
 
 .phone {
-  min-height: 140px;
-  margin: 0 22px;
-  padding: 16px;
-  border-radius: var(--ui-r-inner);
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  width: min(100% - 44px, 300px);
+  min-height: 300px;
+  max-height: 460px;
+  margin: 0 auto;
+  padding: 18px 16px;
+  border-radius: 28px;
   background: #8ea4c8;
+}
+
+.phone-empty {
+  margin: auto;
+  max-width: 220px;
+  text-wrap: balance;
+  font-size: 13.5px;
+  line-height: 1.5;
+  text-align: center;
+  color: #1c1c1e;
 }
 
 .thread {
@@ -119,6 +123,7 @@ const order = computed(() => {
   display: block;
   width: 62%;
   max-width: 220px;
+  text-wrap: balance;
   aspect-ratio: 1;
   border-radius: 4px 18px 18px 18px;
   background: #fff;

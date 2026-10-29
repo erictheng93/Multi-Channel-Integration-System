@@ -10,28 +10,34 @@
 
     <!-- 統計區域：本月報表為唯一的主指標，其餘為狀態分佈 -->
     <section class="overview-top">
-      <div
-        class="ui-card lead-card"
+      <article
+        class="ui-card ui-kpi lead-card"
         role="group"
         aria-label="本月報表"
         :aria-busy="!loaded || undefined"
       >
-        <div class="lead-label">
+        <div class="ui-kpi-top">
+          <span class="ui-kpi-ico ico-lead"><svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          ><path d="M8 3v3M16 3v3M4 9h16M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Z" /></svg></span>
           本月報表
         </div>
         <div
-          class="lead-value"
+          class="ui-kpi-value"
           :class="{ 'is-dim': loaded && stats.thisMonthGenerated === 0 }"
         >
-          <span class="lead-num">{{ loaded ? stats.thisMonthGenerated.toLocaleString('en-US') : '—' }}</span><span
-            v-if="loaded"
-            class="lead-unit"
-          >份</span>
+          {{ loaded ? stats.thisMonthGenerated.toLocaleString('en-US') : '—' }}
         </div>
-        <p class="lead-meaning">
-          本月已產生的報表數
-        </p>
-      </div>
+        <div class="ui-kpi-foot">
+          <span>本月已產生的報表數</span>
+        </div>
+      </article>
       <StatsGrid
         :stats="stats"
         @show-failed-reports="showFailedReports"
@@ -243,17 +249,16 @@ const loaded = computed(() => !loading.value || reports.value.length > 0 || stat
 
 // Feed derived from the loaded report rows (newest first); the status is the row's own
 const recentActivities = computed<RecentActivity[]>(() =>
-  [...reports.value]
+  reports.value
+    .filter(report => report.status === 'completed' || report.status === 'generating' || report.status === 'failed')
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-    .slice(0, 5)
+    .slice(0, 8)
     .map(report => ({
       id: report.id,
       reportId: report.id,
       title: report.title,
       typeLabel: getReportTypeLabel(report.type),
-      status: report.status === 'completed' || report.status === 'generating' || report.status === 'failed'
-        ? report.status
-        : 'pending',
+      status: report.status === 'completed' || report.status === 'failed' ? report.status : 'generating',
       time: report.createdAt
     }))
 )
@@ -318,73 +323,30 @@ function handleFilterByType(type: string) {
 
 <style scoped>
 
-/* One row: the lead number first, the four status KPIs after it. Every card is as tall as a KPI card,
-   so the lead card has no empty half; its content is top-aligned */
+/* One row of five identical KPI cards: the month figure is the first of them */
 .overview-top {
   display: grid;
-  grid-template-columns: minmax(200px, 1fr) minmax(0, 4fr);
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 16px;
-  align-items: stretch;
-}
-
-.lead-card {
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-start;
-  gap: 8px;
-  padding: 18px 20px 16px;
-}
-
-.lead-label {
-  grid-area: label;
-  padding-top: 6px;
-}
-
-.lead-card > .lead-value {
-  grid-area: value;
-}
-
-.lead-card > .lead-meaning {
-  grid-area: meaning;
-}
-
-.lead-label {
-  font-size: var(--ui-t-meta);
-  font-weight: 600;
-  color: var(--ui-ink-2);
-}
-
-.lead-value {
-  display: flex;
-  align-items: baseline;
-  gap: 6px;
-  font-family: var(--ui-font-display);
-  font-size: var(--ui-t-lead);
-  font-weight: var(--ui-w-lead);
-  line-height: 1;
-  letter-spacing: var(--ui-track-lead);
-  font-variant-numeric: tabular-nums;
-  color: var(--ui-ink);
-}
-
-.lead-value.is-dim {
-  color: var(--ui-muted);
-}
-
-.lead-unit {
-  font: 500 17px var(--ui-font-ui);
-  letter-spacing: 0;
-  color: var(--ui-muted);
-}
-
-.lead-meaning {
-  margin: 0;
-  font-size: var(--ui-t-meta);
-  color: var(--ui-muted);
 }
 
 .overview-top :deep(.ui-kpi-grid) {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  display: contents;
+}
+
+.lead-card {
+  gap: 10px;
+  padding: 18px 20px 16px;
+  box-shadow: var(--ui-shadow-card);
+}
+
+.ico-lead {
+  background: var(--ui-indigo-soft);
+  color: var(--ui-indigo);
+}
+
+.ui-kpi-value.is-dim {
+  color: var(--ui-muted);
 }
 
 .main-content {
@@ -429,54 +391,19 @@ function handleFilterByType(type: string) {
   }
 }
 
-@media (max-width: 1280px) {
-  /* Narrower: the lead number becomes a band on top of the KPI row */
+@media (max-width: 1024px) {
   .overview-top {
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .lead-card {
-    display: grid;
-    grid-template-areas:
-      'value label'
-      'value meaning';
-    grid-template-columns: auto minmax(0, 1fr);
-    grid-template-rows: auto 1fr;
-    gap: 4px 20px;
-    align-items: start;
-    padding: 20px 22px;
-  }
-
-  .lead-card > .lead-label {
-    grid-area: label;
-    padding-top: 6px;
-  }
-
-  .lead-card > .lead-value {
-    grid-area: value;
-  }
-
-  .lead-card > .lead-meaning {
-    grid-area: meaning;
-  }
-}
-
-@media (max-width: 1024px) {
-  .overview-top :deep(.ui-kpi-grid) {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-column: 1 / -1;
   }
 }
 
 @media (max-width: 768px) {
-  /* Phone: label, numeral and meaning stack, top-aligned */
-  .lead-card {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-  }
-
-  .lead-card > .lead-label {
-    padding-top: 0;
+  .overview-top {
+    gap: 12px;
   }
 }
 </style>

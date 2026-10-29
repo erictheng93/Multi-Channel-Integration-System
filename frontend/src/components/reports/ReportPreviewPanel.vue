@@ -11,24 +11,34 @@
           </p>
         </div>
       </div>
+      <p
+        v-if="missing.length > 0"
+        class="need"
+        role="status"
+      >
+        還需要：{{ missing.join('、') }}
+      </p>
       <dl class="kv">
-        <div class="kv-row">
+        <div
+          v-if="reportType"
+          class="kv-row"
+        >
           <dt>報表類型</dt>
-          <dd :class="{ 'is-empty': !reportType }">
-            {{ reportType ? reportTypeLabel : '尚未選擇' }}
-          </dd>
+          <dd>{{ reportTypeLabel }}</dd>
         </div>
-        <div class="kv-row">
+        <div
+          v-if="title.trim()"
+          class="kv-row"
+        >
           <dt>標題</dt>
-          <dd :class="{ 'is-empty': !title }">
-            {{ title || '尚未填寫' }}
-          </dd>
+          <dd>{{ title }}</dd>
         </div>
-        <div class="kv-row">
+        <div
+          v-if="timeRange"
+          class="kv-row"
+        >
           <dt>時間範圍</dt>
-          <dd :class="{ 'is-empty': !timeRange }">
-            {{ timeRange ? timeRangeLabel : '尚未選擇' }}
-          </dd>
+          <dd>{{ timeRangeLabel }}</dd>
         </div>
         <div class="kv-row">
           <dt>格式</dt>
@@ -87,7 +97,7 @@
       </div>
       <ul class="recent-list">
         <li
-          v-for="report in recentReports.slice(0, 3)"
+          v-for="report in recentReports.slice(0, 5)"
           :key="report.id"
         >
           <button
@@ -139,6 +149,12 @@ defineEmits<{
   'view-report': [reportId: string];
 }>();
 
+// What the primary action still needs; shown as one line instead of a column of empty rows
+const missing = computed(() => [
+  !props.reportType && '報表類型',
+  !props.title.trim() && '標題'
+].filter((item): item is string => !!item));
+
 const contentLabel = computed(() => {
   const o = props.options;
   if (!o) { return '預設' }
@@ -186,6 +202,16 @@ const formatDate = (dateString: string): string => {
 .preview-section {
   display: grid;
   gap: 16px;
+}
+
+.need {
+  margin: 0 22px 4px;
+  padding: 10px 14px;
+  border-radius: var(--ui-r-inner);
+  background: var(--ui-orange-soft);
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--ui-orange-ink);
 }
 
 .kv {

@@ -219,7 +219,7 @@
           <button
             type="submit"
             class="btn btn-primary"
-            :disabled="sending || !canSubmit"
+            :disabled="sending"
           >
             {{ sending ? '發送中...' : '建立並發送' }}
           </button>
@@ -450,7 +450,24 @@
     }
   }
 
+  // Pressing the primary action with something missing takes the user to the first missing field
+  function focusFirstMissing() {
+    const root = composeRoot.value
+    if (!root) {return}
+    const target = !title.value
+      ? root.querySelector<HTMLElement>('input[type="text"]')
+      : !selectedTagId.value
+        ? root.querySelector<HTMLElement>('select')
+        : root.querySelector<HTMLElement>('textarea')
+    target?.scrollIntoView?.({ block: 'center', behavior: 'smooth' })
+    target?.focus({ preventScroll: true })
+  }
+
   function handleSubmit() {
+    if (missing.value.length > 0) {
+      focusFirstMissing()
+      return
+    }
     if (selectedTagId.value > 0 && props.previewTagId !== selectedTagId.value) {
       emitPreview()
       return

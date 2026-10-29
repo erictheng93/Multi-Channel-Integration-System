@@ -227,6 +227,13 @@ async function fetchCurrentRecipients() {
   align-self: stretch;
 }
 
+/* The browser wraps open <details> content in a slot; make it a flex column so the preview can fill the panel */
+.side-panel::details-content {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
+
 /* the two cards share one panel: flatten them and separate with one hairline */
 .side-panel :deep(.ui-card) {
   border-radius: 0;
