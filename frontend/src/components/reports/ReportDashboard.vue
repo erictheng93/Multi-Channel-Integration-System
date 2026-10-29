@@ -55,14 +55,18 @@
           @update:view-mode="viewMode = $event"
           @update:sort-order="sortOrder = $event"
           @export-all="exportAllReports"
-        />
-
-        <!-- 分頁控制 -->
-        <PaginationControls
-          :pagination="pagination"
-          :visible-pages="visiblePages"
-          @change-page="changePage"
-        />
+        >
+          <template
+            v-if="pagination.totalPages > 1"
+            #footer
+          >
+            <PaginationControls
+              :pagination="pagination"
+              :visible-pages="visiblePages"
+              @change-page="changePage"
+            />
+          </template>
+        </ReportsSection>
       </div>
 
       <!-- 右側：統計圖表和活動 -->
@@ -74,16 +78,6 @@
               :popular-types="popularTypes"
               :get-report-type-icon="getReportTypeIcon"
               @filter-by-type="handleFilterByType"
-            />
-          </template>
-
-          <!-- 最近活動小部件 -->
-          <template #recent-activity>
-            <RecentActivityWidget
-              :activities="recentActivities"
-              :get-status-icon="getStatusIcon"
-              :format-relative-time="formatRelativeTime"
-              @view-report="handleViewReport"
             />
           </template>
         </SidebarWidgets>
@@ -108,7 +102,6 @@ import { ref, computed } from 'vue'
 import { useReportDashboard } from '@/composables/useReportDashboard'
 import type { ReportBase, ReportType, ReportStatus } from '@/types/reports'
 import type { PopularType } from './dashboard/PopularTypesWidget.vue'
-import type { RecentActivity } from './dashboard/RecentActivityWidget.vue'
 
 // 导入子组件
 import DashboardHeader from './dashboard/DashboardHeader.vue'
@@ -118,7 +111,6 @@ import ReportsSection from './dashboard/ReportsSection.vue'
 import PaginationControls from '@/components/ui/PaginationControls.vue'
 import SidebarWidgets from './dashboard/SidebarWidgets.vue'
 import PopularTypesWidget from './dashboard/PopularTypesWidget.vue'
-import RecentActivityWidget from './dashboard/RecentActivityWidget.vue'
 import ConfirmDialog from '@/components/ui/ConfirmDialog.vue'
 
 // Emits
@@ -227,24 +219,6 @@ const subtitle = computed(() => {
   if (stats.failedReports > 0) { parts.push(`其中 ${stats.failedReports} 份失敗`) }
   if (stats.pendingReports > 0) { parts.push(`${stats.pendingReports} 份正在處理`) }
   return `${parts.join('，')}。`
-})
-
-/**
- * 最近活动数据（用于 RecentActivityWidget）
- */
-const recentActivities = computed<RecentActivity[]>(() => {
-  // 取最近10个报表作为活动记录，过滤掉已过期的报表
-  return reports.value
-    .filter((report) => report.status !== 'expired')
-    .slice(0, 10)
-    .map((report) => ({
-      id: report.id,
-      reportId: report.id,
-      title: report.title,
-      typeLabel: getReportTypeLabel(report.type),
-      status: report.status as 'completed' | 'generating' | 'failed' | 'pending',
-      time: report.createdAt
-    }))
 })
 
 // ========================================

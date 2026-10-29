@@ -16,6 +16,13 @@
       <div class="ui-kpi-value">
         {{ stats.totalReports }}
       </div>
+      <div class="ui-kpi-foot">
+        <span>{{ stats.thisMonthGenerated > 0 ? '本月新增' : '全部狀態合計' }}</span>
+        <b
+          v-if="stats.thisMonthGenerated > 0"
+          class="foot-val"
+        >{{ stats.thisMonthGenerated.toLocaleString() }}</b>
+      </div>
     </article>
 
     <article class="ui-card ui-kpi stat-card">
@@ -34,15 +41,9 @@
       <div class="ui-kpi-value">
         {{ stats.completedReports }}
       </div>
-      <div
-        v-if="stats.totalReports > 0"
-        class="ui-kpi-foot rate"
-      >
-        <span
-          class="bar"
-          aria-hidden="true"
-        ><i :style="{ width: completionRate + '%' }" /></span>
-        <b>{{ completionRate }}%</b>
+      <div class="ui-kpi-foot">
+        <span>完成率</span>
+        <b class="foot-val is-green">{{ completionRate }}%</b>
       </div>
     </article>
 
@@ -62,11 +63,12 @@
       <div class="ui-kpi-value">
         {{ stats.pendingReports }}
       </div>
-      <div
-        v-if="stats.pendingReports > 0"
-        class="ui-kpi-foot"
-      >
-        <span class="ui-pill ui-pill-orange ui-pill-dot">進行中</span>
+      <div class="ui-kpi-foot">
+        <span
+          v-if="stats.pendingReports > 0"
+          class="ui-pill ui-pill-orange ui-pill-dot"
+        >進行中</span>
+        <span v-else>目前沒有進行中的報表</span>
       </div>
     </article>
 
@@ -164,23 +166,19 @@ const completionRate = computed(() => {
   color: var(--ui-red-ink);
 }
 
-.rate .bar {
-  flex: 1;
-  height: 5px;
-  overflow: hidden;
-  border-radius: 999px;
-  background: var(--ui-fill);
+.ui-kpi-foot {
+  min-height: 24px;
 }
 
-.rate .bar i {
-  display: block;
-  height: 100%;
-  border-radius: inherit;
-  background: var(--ui-green);
-}
-
-.rate b {
+.foot-val {
+  margin-left: auto;
+  font-size: 13px;
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
+  color: var(--ui-ink-2);
+}
+
+.foot-val.is-green {
   color: var(--ui-green-ink);
 }
 
