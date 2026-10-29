@@ -30,6 +30,12 @@
         <div class="desc">
           {{ endpoint.description }}
         </div>
+        <div
+          class="sr"
+          :class="successClass"
+        >
+          成功率 {{ endpoint.successRate }}%
+        </div>
       </div>
 
       <span
@@ -195,6 +201,25 @@ const successClass = computed(() => {
   white-space: nowrap;
 }
 
+.sr {
+  display: none;
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.sr.warn {
+  color: var(--ui-orange-ink);
+}
+
+.sr.bad {
+  color: var(--ui-red-ink);
+}
+
+.sr:not(.warn, .bad) {
+  color: var(--ui-green-ink);
+}
+
 .m {
   font-size: 13px;
   font-weight: 600;
@@ -236,6 +261,19 @@ const successClass = computed(() => {
 
   .hide-m {
     display: none;
+  }
+
+  /* Phone: nothing is cut. Paths and descriptions wrap, and the success rate keeps a line of its own */
+  .path,
+  .desc {
+    overflow: visible;
+    overflow-wrap: anywhere;
+    text-overflow: clip;
+    white-space: normal;
+  }
+
+  .sr {
+    display: block;
   }
 
   .ep-wrap + .ep-wrap::before {

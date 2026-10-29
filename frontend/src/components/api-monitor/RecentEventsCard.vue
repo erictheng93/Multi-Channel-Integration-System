@@ -147,6 +147,18 @@ time {
   color: var(--ui-muted);
 }
 
+/* Full-width card: two columns of events so a short message is not stranded far from its time */
+@media (min-width: 1025px) {
+  .ev {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .ev li:nth-child(2)::before {
+    display: none;
+  }
+}
+
 @media (max-width: 768px) {
   .ev li {
     padding: 11px 16px;
