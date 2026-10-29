@@ -122,22 +122,40 @@
         class="list-header"
         role="row"
       >
-        <div class="header-cell title-cell">
+        <div
+          role="columnheader"
+          class="header-cell title-cell"
+        >
           報表
         </div>
-        <div class="header-cell">
+        <div
+          role="columnheader"
+          class="header-cell"
+        >
           狀態
         </div>
-        <div class="header-cell">
+        <div
+          role="columnheader"
+          class="header-cell"
+        >
           格式
         </div>
-        <div class="header-cell">
+        <div
+          role="columnheader"
+          class="header-cell"
+        >
           建立時間
         </div>
-        <div class="header-cell size-cell">
+        <div
+          role="columnheader"
+          class="header-cell size-cell"
+        >
           大小
         </div>
-        <div class="header-cell actions-cell" />
+        <div
+          role="columnheader"
+          class="header-cell actions-cell"
+        />
       </div>
       <ReportRow
         v-for="report in reports"

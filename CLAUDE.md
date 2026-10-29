@@ -92,8 +92,9 @@ See `docs/claude/ENVIRONMENT_CONFIG.md` for details.
 - No hard 1px borders — use shadow + background color difference
 - Buttons/tags: capsule shape (rounded-full)
 - Page background: `#F2F2F7` (iOS system gray), cards: `#FFFFFF`
-- Text: never pure black — primary `#1C1C1E`, secondary `#8E8E93`
-- Accent colors: Blue `#007AFF`, Green `#34C759`, Orange `#FF9500`, Red `#FF3B30`
+- Text: never pure black — primary `#1C1C1E`, secondary `#636366` (`--ui-muted`)
+- Accent colors: Blue `#0066CC` (`--ui-accent`), Green `#34C759`, Orange `#FF9500`, Red `#FF3B30` — green/orange are fills; text uses the darker `--ui-*-ink` tokens
+- **WCAG 2.2 AA is mandatory**: text ≥ 4.5:1. iOS `#8E8E93` / `#007AFF` fail as text on white, so text colours come only from the `--ui-*` tokens in `frontend/src/style.css`; verify pages with axe-core (0 violations)
 - Pastel accents for tags/categories (low saturation, high brightness)
 - Navigation bars: frosted glass `bg-white/80 backdrop-blur-xl`
 - Icons: SF Symbols / Lucide Icons (outline/filled toggle)

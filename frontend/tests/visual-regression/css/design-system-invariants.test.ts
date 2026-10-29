@@ -655,8 +655,9 @@ describe('Apple-native button system in src/style.css', () => {
     }
 
     // Solid variants stay on the iOS system colours.
-    expect(background('btn-primary')).toBe('rgb(0, 122, 255, 1)')
-    expect(background('btn-success')).toBe('rgb(52, 199, 89, 1)')
+    // Accessible system blue: #007AFF with white text is 4.0:1 (fails WCAG AA); #0066CC is 5.6:1
+    expect(background('btn-primary')).toBe('rgb(0, 102, 204, 1)')
+    expect(background('btn-success')).toBe('rgb(31, 122, 53, 1)')
     expect(background('btn-warning')).toBe('rgb(255, 149, 0, 1)')
     expect(background('btn-secondary')).toBe('rgb(118, 118, 128, 0.12)')
 
@@ -665,7 +666,7 @@ describe('Apple-native button system in src/style.css', () => {
     expect(effectiveColor(appStylesheet, 'btn-danger', 'color')).not.toBe('rgb(255, 255, 255, 1)')
 
     expect(effectiveColor(appStylesheet, 'btn-secondary', 'color')).toBe('rgb(28, 28, 30, 1)')
-    expect(effectiveColor(appStylesheet, 'btn-ghost', 'color')).toBe('rgb(0, 122, 255, 1)')
+    expect(effectiveColor(appStylesheet, 'btn-ghost', 'color')).toBe('rgb(0, 102, 204, 1)')
   })
 
   it('resolves @apply inside src/style.css component classes', () => {

@@ -481,7 +481,7 @@ const getLastMessageText = (conversation: Conversation) => {
 
 .replied {
   font-size: 12.5px;
-  color: var(--ui-faint);
+  color: var(--ui-muted);
 }
 
 .free-pill {
