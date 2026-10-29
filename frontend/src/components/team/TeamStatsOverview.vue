@@ -1,175 +1,133 @@
 <template>
-  <div class="stats-overview">
-    <div class="stats-grid">
-      <!-- 总成员数 -->
-      <div class="stat-card members">
-        <div class="stat-content">
-          <div class="stat-number">
-            {{ stats.totalMembers }}
-          </div>
-          <div class="stat-label">
-            總成員數
-          </div>
-        </div>
-        <div class="stat-icon">
-          <UsersIcon />
-        </div>
+  <section class="ui-grid ui-cols-3">
+    <article class="ui-card ui-kpi">
+      <div class="ui-kpi-top">
+        <span
+          class="ui-kpi-ico"
+          style="background: var(--ui-accent-soft); color: var(--ui-accent)"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          ><circle
+            cx="9"
+            cy="8"
+            r="4"
+          /><path d="M2 21v-1a6 6 0 0 1 12 0v1M17 11a3 3 0 1 0 0-6M22 21v-1a5 5 0 0 0-4-4.9" /></svg>
+        </span>總成員數
       </div>
+      <div class="ui-kpi-value">
+        {{ stats.totalMembers }}
+      </div>
+      <div class="ui-kpi-foot">
+        {{ activeMembers }} 位啟用 · {{ inactiveMembers }} 位停用
+      </div>
+    </article>
 
-      <!-- 团队数量 -->
-      <div class="stat-card active">
-        <div class="stat-content">
-          <div class="stat-number">
-            {{ stats.teamCount }}
-          </div>
-          <div class="stat-label">
-            現存團隊數量
-          </div>
-        </div>
-        <div class="stat-icon">
-          <TeamsIcon />
-        </div>
+    <article class="ui-card ui-kpi">
+      <div class="ui-kpi-top">
+        <span
+          class="ui-kpi-ico"
+          style="background: var(--ui-green-soft); color: var(--ui-green-ink)"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          ><rect
+            x="3"
+            y="3"
+            width="7"
+            height="7"
+            rx="2"
+          /><rect
+            x="14"
+            y="3"
+            width="7"
+            height="7"
+            rx="2"
+          /><rect
+            x="3"
+            y="14"
+            width="7"
+            height="7"
+            rx="2"
+          /><rect
+            x="14"
+            y="14"
+            width="7"
+            height="7"
+            rx="2"
+          /></svg>
+        </span>啟用中團隊
       </div>
+      <div class="ui-kpi-value">
+        {{ stats.activeTeams }}
+      </div>
+      <div class="ui-kpi-foot">
+        {{ teamsFoot }}
+      </div>
+    </article>
 
-      <!-- 管理员人数 -->
-      <div class="stat-card admins">
-        <div class="stat-content">
-          <div class="stat-number">
-            {{ stats.adminCount }}
-          </div>
-          <div class="stat-label">
-            管理員人數
-          </div>
-        </div>
-        <div class="stat-icon">
-          <ShieldIcon />
-        </div>
+    <article class="ui-card ui-kpi">
+      <div class="ui-kpi-top">
+        <span
+          class="ui-kpi-ico"
+          style="background: var(--ui-orange-soft); color: var(--ui-orange-ink)"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          ><path d="M12 3 4 6v6c0 4.5 3.4 8 8 9 4.6-1 8-4.5 8-9V6Z" /></svg>
+        </span>管理員
       </div>
-    </div>
-  </div>
+      <div class="ui-kpi-value">
+        {{ stats.adminCount }}
+      </div>
+      <div class="ui-kpi-foot">
+        其餘 {{ stats.agentCount }} 位為客服人員
+      </div>
+    </article>
+  </section>
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
 import type { TeamStatsData } from '@/composables/team-management'
-import UsersIcon from '@/components/icons/UsersIcon.vue'
-import TeamsIcon from '@/components/icons/TeamsIcon.vue'
-import ShieldIcon from '@/components/icons/ShieldIcon.vue'
+import type { Team, TeamMember } from '@/types'
 
 interface Props {
   stats: TeamStatsData
+  members?: TeamMember[]
+  teams?: Team[]
 }
 
-defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), { members: () => [], teams: () => [] })
+
+const activeMembers = computed(() => props.members.filter(m => m.status === 'active').length)
+const inactiveMembers = computed(() => props.members.length - activeMembers.value)
+
+/** "客服一組 5 人 · 業務支援 3 人" for the first two active teams, then "等 N 個團隊". */
+const teamsFoot = computed(() => {
+  const active = props.teams.filter(t => t.isActive)
+  if (active.length === 0) {
+    return props.teams.length > 0 ? '目前沒有啟用中的團隊' : '尚未建立團隊'
+  }
+  const shown = active.slice(0, 2).map(t => `${t.name} ${t.memberCount ?? 0} 人`).join(' · ')
+  return active.length > 2 ? `${shown} 等 ${active.length} 個團隊` : shown
+})
 </script>
-
-<style scoped>
-.stats-overview {
-  margin-bottom: 2rem;
-}
-
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 1.5rem;
-}
-
-.stat-card {
-  background: white;
-  border-radius: 12px;
-  padding: 1.5rem;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-  transition: all 0.3s ease;
-  border: 2px solid transparent;
-}
-
-.stat-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
-}
-
-.stat-card.members {
-  border-color: rgba(59, 130, 246, 0.2);
-}
-
-.stat-card.members:hover {
-  border-color: rgba(59, 130, 246, 0.4);
-}
-
-.stat-card.active {
-  border-color: rgba(16, 185, 129, 0.2);
-}
-
-.stat-card.active:hover {
-  border-color: rgba(16, 185, 129, 0.4);
-}
-
-.stat-card.admins {
-  border-color: rgba(245, 158, 11, 0.2);
-}
-
-.stat-card.admins:hover {
-  border-color: rgba(245, 158, 11, 0.4);
-}
-
-.stat-content {
-  flex: 1;
-}
-
-.stat-number {
-  font-size: 2.5rem;
-  font-weight: 700;
-  color: #1f2937;
-  line-height: 1;
-  margin-bottom: 0.5rem;
-}
-
-.stat-label {
-  font-size: 0.875rem;
-  color: #6b7280;
-  font-weight: 500;
-}
-
-.stat-icon {
-  width: 64px;
-  height: 64px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  flex-shrink: 0;
-  margin-left: 1rem;
-}
-
-.stat-card.members .stat-icon {
-  background: rgba(59, 130, 246, 0.1);
-  color: #3b82f6;
-}
-
-.stat-card.active .stat-icon {
-  background: rgba(16, 185, 129, 0.1);
-  color: #10b981;
-}
-
-.stat-card.admins .stat-icon {
-  background: rgba(245, 158, 11, 0.1);
-  color: #f59e0b;
-}
-
-@media (max-width: 768px) {
-  .stats-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .stat-number {
-    font-size: 2rem;
-  }
-
-  .stat-icon {
-    width: 48px;
-    height: 48px;
-  }
-}
-</style>

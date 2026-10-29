@@ -1,75 +1,88 @@
 <template>
-  <div
+  <article
     ref="sectionRef"
-    class="content-section"
+    class="ui-card member-section"
   >
     <!-- Header -->
-    <div class="content-header">
-      <h2 class="content-title">
-        <UsersIcon />
-        人員管理 Staff Management ({{ members.length }})
-      </h2>
-      <div class="header-actions">
-        <!-- Bulk Selection Mode Toggle -->
-        <button
-          class="btn btn-outline"
-          :class="{ 'btn-outline-active': isSelectionMode }"
-          @click="emit('toggle-selection-mode')"
+    <div class="ui-card-head">
+      <div>
+        <h2 class="ui-card-title">
+          人員管理
+        </h2>
+        <div class="ui-card-sub">
+          共 {{ members.length }} 位成員，{{ sortCaption }}
+        </div>
+      </div>
+      <div class="ui-card-end legend">
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          aria-hidden="true"
+        ><circle
+          cx="12"
+          cy="12"
+          r="9"
+        /><path d="M12 8v5M12 16.5h.01" /></svg>團隊角色：成員 → 組長 → 主管
+      </div>
+    </div>
+
+    <!-- Tools -->
+    <div
+      v-if="!loading && members.length > 0"
+      class="tools"
+    >
+      <div class="search-bar">
+        <SearchIcon class="search-icon" />
+        <input
+          v-model="searchQuery"
+          class="search-input"
+          type="text"
+          placeholder="搜尋成員 (姓名、信箱、帳號)..."
+          aria-label="搜尋成員"
+          @keydown.escape="clearSearch"
         >
-          <CheckSquareIcon v-if="isSelectionMode" />
-          <SquareIcon v-else />
-          {{ isSelectionMode ? '取消選擇' : '批量選擇' }}
+        <button
+          v-if="searchQuery"
+          class="search-clear"
+          aria-label="清除搜尋"
+          @click="clearSearch"
+        />
+        <span
+          v-if="isSearching"
+          class="search-stats"
+        >
+          找到 {{ filteredMembers.length }} / {{ members.length }}
+        </span>
+      </div>
+
+      <div
+        v-if="teamFilterOptions.length > 0"
+        class="ui-seg team-seg"
+        role="group"
+        aria-label="依團隊篩選"
+      >
+        <button
+          type="button"
+          :aria-pressed="teamFilter === null"
+          @click="setTeamFilter(null)"
+        >
+          全部 <span class="ui-seg-n">{{ members.length }}</span>
         </button>
+        <button
+          v-for="opt in teamFilterOptions"
+          :key="opt.id"
+          type="button"
+          :aria-pressed="teamFilter === opt.id"
+          @click="setTeamFilter(opt.id)"
+        >
+          {{ opt.name }} <span class="ui-seg-n">{{ opt.count }}</span>
+        </button>
+      </div>
 
-        <!-- Bulk Actions (shown when in selection mode) -->
-        <template v-if="isSelectionMode && (selectedCount ?? 0) > 0">
-          <span class="selection-count">
-            已選擇 {{ selectedCount ?? 0 }} 位
-          </span>
-          <button
-            class="btn btn-primary"
-            @click="emit('bulk-edit')"
-          >
-            <EditIcon />
-            批量編輯
-          </button>
-          <button
-            class="btn btn-danger"
-            @click="emit('bulk-delete')"
-          >
-            <TrashIcon />
-            移除選取
-          </button>
-        </template>
-
-        <!-- Select All (shown when in selection mode) -->
-        <template v-if="isSelectionMode">
-          <!-- Multi-page: show page/all options -->
-          <template v-if="pagination.totalPages.value > 1">
-            <button
-              class="btn btn-outline"
-              @click="handleSelectPage"
-            >
-              全選本頁
-            </button>
-            <button
-              class="btn btn-outline"
-              @click="emit('select-all')"
-            >
-              全選全部
-            </button>
-          </template>
-          <!-- Single page: show original single button -->
-          <button
-            v-else
-            class="btn btn-outline"
-            @click="emit('select-all')"
-          >
-            全選
-          </button>
-        </template>
-
-        <!-- Sort Dropdown (hidden in selection mode) -->
+      <div class="tools-end">
         <SortDropdown
           v-if="!isSelectionMode"
           :options="sortOptions"
@@ -81,41 +94,65 @@
           @toggle-order="emit('sort-toggle')"
           @reset-to-auto="handleResetToAuto"
         />
-        <PrimaryActionButton
-          v-if="!isSelectionMode"
-          class="add-member-btn"
-          text="新增成員"
-          :icon="PlusIcon"
-          :loading="loading"
-          @click="emit('add-member')"
-        />
+        <button
+          type="button"
+          class="btn btn-secondary btn-sm"
+          :aria-pressed="isSelectionMode"
+          @click="emit('toggle-selection-mode')"
+        >
+          <CheckSquareIcon v-if="isSelectionMode" />
+          <SquareIcon v-else />
+          {{ isSelectionMode ? '取消選擇' : '批量選擇' }}
+        </button>
       </div>
     </div>
 
-    <!-- Search Bar -->
+    <!-- Bulk bar (selection mode) -->
     <div
-      v-if="!loading && members.length > 0"
-      class="search-bar"
+      v-if="isSelectionMode"
+      class="bulkbar"
     >
-      <SearchIcon class="search-icon" />
-      <input
-        v-model="searchQuery"
-        class="search-input"
-        type="text"
-        placeholder="搜尋成員 (姓名、信箱、帳號)..."
-        @keydown.escape="clearSearch"
-      >
-      <button
-        v-if="searchQuery"
-        class="search-clear"
-        @click="clearSearch"
-      />
-      <span
-        v-if="isSearching"
-        class="search-stats"
-      >
-        找到 {{ filteredMembers.length }} / {{ members.length }}
-      </span>
+      <b>已選擇 {{ selectedCount ?? 0 }} 位成員</b>
+      <span class="muted">無法選取自己的帳號</span>
+      <div class="btns">
+        <template v-if="pagination.totalPages.value > 1">
+          <button
+            class="btn btn-secondary btn-sm"
+            @click="handleSelectPage"
+          >
+            全選本頁
+          </button>
+          <button
+            class="btn btn-secondary btn-sm"
+            @click="emit('select-all')"
+          >
+            全選全部
+          </button>
+        </template>
+        <button
+          v-else
+          class="btn btn-secondary btn-sm"
+          @click="emit('select-all')"
+        >
+          全選
+        </button>
+        <button
+          class="btn btn-secondary btn-sm"
+          :disabled="(selectedCount ?? 0) === 0"
+          @click="emit('bulk-edit')"
+        >
+          <EditIcon />
+          批量編輯
+        </button>
+        <button
+          class="btn btn-danger btn-sm"
+          :disabled="(selectedCount ?? 0) === 0"
+          @click="emit('bulk-delete')"
+        >
+          <TrashIcon />
+          移除選取
+        </button>
+      </div>
     </div>
 
     <!-- Content Body -->
@@ -157,51 +194,82 @@
 
         <!-- Search active hint -->
         <div
-          v-if="isSearching && isCustomMode"
+          v-if="(isSearching || teamFilter !== null) && isCustomMode"
           class="drag-hint"
         >
-          搜尋模式下無法拖曳排序
+          搜尋或篩選時無法拖曳排序
         </div>
 
-        <VueDraggable
-          v-model="localMembers"
-          class="members-list"
-          :animation="200"
-          handle=".drag-handle"
-          ghost-class="drag-ghost"
-          chosen-class="drag-chosen"
-          drag-class="drag-active"
-          :disabled="isSearching"
-          @start="onDragStart"
-          @end="onDragEnd"
+        <div
+          v-if="filteredMembers.length === 0"
+          class="no-match"
         >
-          <TeamMemberCard
-            v-for="member in localMembers"
-            :key="member.id"
-            :member="member"
-            :all-teams="allTeams"
-            :current-user-id="currentUserId"
-            :loading="loading"
-            :is-selection-mode="isSelectionMode"
-            :is-selected="selectedMemberIds?.has(member.id) ?? false"
-            class="draggable-card"
-            @update-role="(memberId: string, role: string) => emit('update-role', memberId, role)"
-            @toggle-status="(m) => emit('toggle-status', m)"
-            @reset-password="(m) => emit('reset-password', m)"
-            @remove-member="(m) => emit('remove-member', m)"
-            @toggle-selection="(memberId: string) => emit('toggle-member-selection', memberId)"
-          />
-        </VueDraggable>
+          沒有符合條件的成員
+        </div>
+
+        <template v-else>
+          <div
+            class="mhead"
+            aria-hidden="true"
+          >
+            <span v-if="isSelectionMode" />
+            <span>成員</span>
+            <span>系統角色</span>
+            <span>團隊與角色</span>
+            <span>狀態</span>
+            <span>最後登入</span>
+            <span />
+          </div>
+
+          <VueDraggable
+            v-model="localMembers"
+            class="members-list"
+            role="list"
+            :animation="200"
+            handle=".drag-handle"
+            ghost-class="drag-ghost"
+            chosen-class="drag-chosen"
+            drag-class="drag-active"
+            :disabled="isReorderDisabled"
+            @start="onDragStart"
+            @end="onDragEnd"
+          >
+            <TeamMemberCard
+              v-for="member in localMembers"
+              :key="member.id"
+              :member="member"
+              :all-teams="allTeams"
+              :current-user-id="currentUserId"
+              :loading="loading"
+              :is-selection-mode="isSelectionMode"
+              :is-selected="selectedMemberIds?.has(member.id) ?? false"
+              :presence="presenceOf(member.id)"
+              class="draggable-card"
+              @update-role="(memberId: string, role: string) => emit('update-role', memberId, role)"
+              @toggle-status="(m) => emit('toggle-status', m)"
+              @reset-password="(m) => emit('reset-password', m)"
+              @remove-member="(m) => emit('remove-member', m)"
+              @toggle-selection="(memberId: string) => emit('toggle-member-selection', memberId)"
+            />
+          </VueDraggable>
+        </template>
 
         <!-- Pagination Controls -->
+        <div
+          v-if="paginationInfo.totalPages <= 1 && filteredMembers.length > 0"
+          class="mfoot"
+        >
+          顯示 1 – {{ filteredMembers.length }}，共 {{ filteredMembers.length }} 位
+        </div>
         <PaginationControls
+          v-show="paginationInfo.totalPages > 1"
           :pagination="paginationInfo"
           :visible-pages="pagination.pageRange.value"
           @change-page="handlePageChange"
         />
       </template>
     </div>
-  </div>
+  </article>
 </template>
 
 <script setup lang="ts">
@@ -215,10 +283,8 @@ import HamsterLoader from '@/components/ui/HamsterLoader.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
 import PaginationControls from '@/components/ui/PaginationControls.vue'
 import TeamMemberCard from '@/components/team/TeamMemberCard.vue'
-import PrimaryActionButton from '@/components/ui/PrimaryActionButton.vue'
 import SortDropdown from '@/components/ui/SortDropdown.vue'
 import UsersIcon from '@/components/icons/UsersIcon.vue'
-import PlusIcon from '@/components/icons/PlusIcon.vue'
 import CheckSquareIcon from '@/components/icons/CheckSquareIcon.vue'
 import SquareIcon from '@/components/icons/SquareIcon.vue'
 import TrashIcon from '@/components/icons/TrashIcon.vue'
@@ -240,6 +306,9 @@ interface Props {
   isSelectionMode?: boolean
   selectedMemberIds?: Set<string>
   selectedCount?: number
+  // Presence (GET /team/presence). Omit or false = unknown, no dot is drawn.
+  onlineIds?: Set<string>
+  presenceAvailable?: boolean
 }
 
 interface Emits {
@@ -261,7 +330,14 @@ interface Emits {
   (_e: 'bulk-delete'): void
 }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  currentUserId: undefined,
+  isSelectionMode: false,
+  selectedMemberIds: undefined,
+  selectedCount: 0,
+  onlineIds: undefined,
+  presenceAvailable: false
+})
 const emit = defineEmits<Emits>()
 
 // Template ref for scroll-into-view on page change
@@ -272,10 +348,34 @@ const searchQuery = ref('')
 const debouncedSearch = useDebounce(searchQuery, 300)
 const isSearching = computed(() => debouncedSearch.value.trim().length > 0)
 
+// Team filter (null = all)
+const teamFilter = ref<number | null>(null)
+
+function memberInTeam(m: TeamMember, teamId: number): boolean {
+  return m.primaryTeamId === teamId || (m.teams ?? []).some(t => t.teamId === teamId)
+}
+
+const teamFilterOptions = computed(() =>
+  props.allTeams.map(t => ({
+    id: t.id,
+    name: t.name,
+    count: props.members.filter(m => memberInTeam(m, t.id)).length
+  }))
+)
+
+function setTeamFilter(id: number | null) {
+  teamFilter.value = id
+  pagination.setPage(1)
+}
+
+const teamScopedMembers = computed(() =>
+  teamFilter.value === null ? props.members : props.members.filter(m => memberInTeam(m, teamFilter.value as number))
+)
+
 const filteredMembers = computed(() => {
   const query = debouncedSearch.value.trim().toLowerCase()
-  if (!query) {return props.members}
-  return props.members.filter(m =>
+  if (!query) {return teamScopedMembers.value}
+  return teamScopedMembers.value.filter(m =>
     (m.name?.toLowerCase().includes(query)) ||
     (m.email?.toLowerCase().includes(query)) ||
     (m.loginId?.toLowerCase().includes(query)) ||
@@ -293,6 +393,18 @@ const pagination = usePagination({ limit: PAGE_SIZE, total: filteredMembers.valu
 
 // Computed
 const isCustomMode = computed(() => props.sortMode === 'custom')
+
+// Reordering a filtered view would rewrite the full order from a partial list
+const isReorderDisabled = computed(() => isSearching.value || teamFilter.value !== null)
+
+const sortCaption = computed(() =>
+  isCustomMode.value ? '依自訂順序排列' : `依${props.currentSortLabel}排序`
+)
+
+function presenceOf(memberId: string): 'online' | 'offline' | undefined {
+  if (!props.presenceAvailable || !props.onlineIds) {return undefined}
+  return props.onlineIds.has(memberId) ? 'online' : 'offline'
+}
 
 // Paginated members from full sorted list
 const paginatedMembers = computed(() => {
@@ -342,7 +454,7 @@ function onDragStart() {
 // Handle drag end - reconstruct full order with page slice replaced
 function onDragEnd() {
   // Ignore drag in search mode (filtered order is meaningless for reorder)
-  if (isSearching.value) {return}
+  if (isReorderDisabled.value) {return}
 
   // Switch to custom mode if not already
   if (props.sortMode !== 'custom') {
@@ -393,215 +505,221 @@ function handleSelectPage() {
 </script>
 
 <style scoped>
-.content-section {
-  background: white;
-  border-radius: 12px;
-  padding: 2rem;
-  margin-bottom: 2rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+.member-section {
+  --member-cols: minmax(210px, 1.5fr) 96px minmax(180px, 1.3fr) 90px 110px 40px;
+  padding-bottom: 6px;
+}
+.member-section:has(.selection-mode) {
+  --member-cols: 24px minmax(210px, 1.5fr) 96px minmax(180px, 1.3fr) 90px 110px 40px;
 }
 
-.content-header {
+.legend {
+  font-size: 12.5px;
+  color: var(--ui-muted);
+}
+.legend svg {
+  width: 13px;
+  height: 13px;
+  color: var(--ui-faint);
+}
+
+/* Tools row */
+.tools {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 1.5rem;
   flex-wrap: wrap;
-  gap: 1rem;
-}
-
-.content-title {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: #1f2937;
-  display: flex;
   align-items: center;
-  gap: 0.75rem;
-  margin: 0;
+  gap: 10px;
+  padding: 0 22px 14px;
 }
-
-.content-title svg {
-  width: 24px;
-  height: 24px;
-  color: #6366f1;
-}
-
-.header-actions {
+.tools-end {
   display: flex;
-  gap: 0.75rem;
-  align-items: center;
   flex-wrap: wrap;
-  flex: 1;
-}
-
-/* Push add member button to the right */
-.add-member-btn {
+  align-items: center;
+  gap: 8px;
   margin-left: auto;
 }
 
-/* Search Bar */
 .search-bar {
+  position: relative;
   display: flex;
+  flex: 1 1 240px;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 0.75rem;
-  margin-bottom: 1rem;
-  background: #f9fafb;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  transition: border-color 0.2s;
+  gap: 8px;
+  min-width: 0;
+  max-width: 340px;
+  height: 36px;
+  padding: 0 12px;
+  border-radius: 10px;
+  background: var(--ui-fill);
+  color: var(--ui-muted);
 }
-
-.search-bar:focus-within {
-  border-color: #6366f1;
-  background: white;
-}
-
 .search-icon {
-  width: 18px;
-  height: 18px;
-  color: #9ca3af;
-  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  flex: none;
 }
-
 .search-input {
   flex: 1;
-  border: none;
+  min-width: 0;
+  height: 100%;
+  border: 0;
   background: transparent;
-  font-size: 0.875rem;
-  color: #1f2937;
+  font-size: 13.5px;
+  color: var(--ui-ink);
   outline: none;
 }
-
 .search-input::placeholder {
-  color: #9ca3af;
+  color: var(--ui-muted);
 }
-
 .search-clear {
-  background: none;
-  border: none;
-  color: #9ca3af;
+  position: relative;
+  width: 18px;
+  height: 18px;
+  flex: none;
+  border: 0;
+  border-radius: 50%;
+  background: var(--ui-fill-strong);
   cursor: pointer;
-  font-size: 0.875rem;
-  padding: 0.25rem;
-  line-height: 1;
-  border-radius: 4px;
-  transition: all 0.15s;
 }
-
-.search-clear:hover {
-  color: #4b5563;
-  background: #e5e7eb;
+.search-clear::before,
+.search-clear::after {
+  content: '';
+  position: absolute;
+  top: 8px;
+  left: 4px;
+  width: 10px;
+  height: 1.5px;
+  background: var(--ui-ink-2);
+  transform: rotate(45deg);
 }
-
+.search-clear::after {
+  transform: rotate(-45deg);
+}
 .search-stats {
-  font-size: 0.75rem;
-  color: #6366f1;
-  font-weight: 600;
+  flex: none;
+  font-size: 11.5px;
   white-space: nowrap;
-  padding: 0.25rem 0.5rem;
-  background: #eef2ff;
-  border-radius: 4px;
 }
 
+.team-seg {
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+/* Bulk bar */
+.bulkbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin: 0 22px 12px;
+  padding: 10px 14px;
+  border-radius: var(--ui-r-inner);
+  background: var(--ui-accent-soft);
+  font-size: 13px;
+  color: var(--ui-ink);
+}
+.bulkbar .muted {
+  color: var(--ui-muted);
+}
+.bulkbar .btns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-left: auto;
+}
+
+/* Table */
 .content-body {
-  min-height: 200px;
+  min-width: 0;
 }
-
-.members-list {
+.mhead {
   display: grid;
-  gap: 1rem;
+  grid-template-columns: var(--member-cols);
+  column-gap: 16px;
+  align-items: center;
+  height: 36px;
+  padding: 0 22px;
+  box-shadow:
+    inset 0 -0.5px 0 var(--ui-sep),
+    inset 0 0.5px 0 var(--ui-sep);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ui-muted);
 }
-
-/* Drag hint */
-.drag-hint {
-  padding: 0.5rem 1rem;
-  margin-bottom: 0.75rem;
-  background: #fef3c7;
-  color: #92400e;
-  font-size: 0.8rem;
-  border-radius: 6px;
+.members-list {
+  display: block;
+}
+.no-match {
+  padding: 36px 22px;
+  font-size: 13.5px;
+  color: var(--ui-muted);
   text-align: center;
 }
-
-/* Draggable card styles */
-.draggable-card {
-  transition: all 0.2s ease;
+.drag-hint {
+  padding: 8px 22px;
+  font-size: 12px;
+  color: var(--ui-muted);
 }
-
-.draggable-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
-/* Drag states */
 .drag-ghost {
   opacity: 0.4;
-  background: #e0e7ff;
-  border-radius: 12px;
 }
-
 .drag-chosen {
-  box-shadow: 0 8px 25px rgba(99, 102, 241, 0.25);
-  transform: scale(1.02);
+  background: var(--ui-surface-2);
 }
-
 .drag-active {
-  transform: rotate(1deg) scale(1.02);
-  box-shadow: 0 12px 35px rgba(99, 102, 241, 0.3);
+  box-shadow: var(--ui-shadow-raised);
 }
 
-/* Outline Button */
-.btn-outline {
-  background: white;
-  color: #4b5563;
-  border: 1px solid #d1d5db;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
+.mfoot {
+  position: relative;
+  padding: 12px 22px 14px;
+  font-size: 12.5px;
+  color: var(--ui-muted);
+}
+.mfoot::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 22px;
+  height: 0.5px;
+  background: var(--ui-sep);
 }
 
-.btn-outline:hover {
-  background: #f3f4f6;
-  border-color: #9ca3af;
+@media (max-width: 1280px) {
+  .mhead {
+    display: none;
+  }
 }
-
-.btn-outline-active {
-  background: #eef2ff;
-  color: #4f46e5;
-  border-color: #6366f1;
-}
-
-.btn-outline-active:hover {
-  background: #e0e7ff;
-}
-
-/* Selection Count Badge */
-.selection-count {
-  padding: 0.5rem 1rem;
-  background: #eef2ff;
-  color: #4f46e5;
-  border-radius: 8px;
-  font-weight: 600;
-  font-size: 0.875rem;
-}
-
 @media (max-width: 768px) {
-  .content-section {
-    padding: 1.5rem;
+  .tools {
+    padding-right: 16px;
+    padding-left: 16px;
   }
-
-  .content-header {
-    flex-direction: column;
-    align-items: stretch;
+  .search-bar {
+    flex-basis: 100%;
+    max-width: none;
   }
-
-  .header-actions {
-    justify-content: flex-end;
+  .tools-end {
+    width: 100%;
+    margin-left: 0;
   }
-
-  .content-title {
-    font-size: 1.25rem;
+  .bulkbar {
+    margin-right: 16px;
+    margin-left: 16px;
+  }
+  .mfoot {
+    padding-right: 16px;
+    padding-left: 16px;
+  }
+  .mfoot::before {
+    left: 16px;
+  }
+  .drag-hint {
+    padding-right: 16px;
+    padding-left: 16px;
   }
 }
 </style>

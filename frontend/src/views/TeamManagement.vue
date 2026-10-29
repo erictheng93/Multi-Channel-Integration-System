@@ -1,28 +1,74 @@
 <template>
   <AppLayout>
-    <div class="team-management">
+    <div class="team-management ui-rise">
       <!-- Header Section -->
-      <div class="page-header">
-        <div class="header-content">
-          <div class="header-info">
-            <h1 class="page-title">
-              團隊管理
-            </h1>
-            <p class="page-subtitle">
-              管理系統人員與團隊設置，控制存取權限
-            </p>
+      <header class="ui-page-head">
+        <div>
+          <div class="ui-eyebrow">
+            團隊與頻道
           </div>
-          <div class="header-actions">
-            <RefreshButton
-              :loading="loading"
-              @refresh="controller.refresh"
-            />
-          </div>
+          <h1 class="ui-page-title">
+            團隊成員
+          </h1>
+          <p
+            v-if="members.length > 0"
+            class="ui-page-sub"
+          >
+            {{ headSummary }}
+          </p>
         </div>
-      </div>
+        <div class="ui-page-actions">
+          <RefreshButton
+            :loading="loading"
+            @refresh="controller.refresh"
+          />
+          <button
+            type="button"
+            class="btn btn-secondary"
+            :disabled="loading"
+            @click="controller.team.openAddTeamModal"
+          >
+            <svg
+              class="head-ico"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            ><path d="M12 5v14M5 12h14" /></svg>新增團隊
+          </button>
+          <button
+            type="button"
+            class="btn btn-primary"
+            :disabled="loading"
+            @click="controller.member.openAddMemberModal"
+          >
+            <svg
+              class="head-ico"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            ><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle
+              cx="9"
+              cy="7"
+              r="4"
+            /><path d="M19 8v6M22 11h-6" /></svg>新增成員
+          </button>
+        </div>
+      </header>
 
       <!-- Stats Overview -->
-      <TeamStatsOverview :stats="stats" />
+      <TeamStatsOverview
+        :stats="stats"
+        :members="members"
+        :teams="teams"
+      />
 
       <!-- Member Management Section -->
       <MemberListSection
@@ -30,6 +76,8 @@
         :all-teams="teams"
         :loading="loading"
         :current-user-id="currentUserId"
+        :online-ids="presence.onlineIds.value"
+        :presence-available="presence.available.value"
         :sort-options="memberSorting.sortOptions"
         :sort-state="memberSorting.sortState.value"
         :current-sort-label="memberSorting.currentSortLabel.value"
@@ -57,6 +105,7 @@
       <!-- Team Management Section -->
       <TeamListSection
         :teams="teams"
+        :members="members"
         :loading="loading"
         :sort-options="teamSorting.sortOptions"
         :sort-state="teamSorting.sortState.value"
@@ -158,6 +207,7 @@
 import { onMounted, onUnmounted, computed } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useTeamManagementController } from '@/composables/team-management'
+import { useTeamPresence } from '@/composables/team-management/useTeamPresence'
 import { useToast } from '@/composables/useToast'
 import { teamApi } from '@/api/team'
 import type { MemberSortField, TeamSortField } from '@/composables/useListSorting'
@@ -178,6 +228,9 @@ import BulkEditMemberModal from '@/components/team/BulkEditMemberModal.vue'
 // Initialize main controller
 const controller = useTeamManagementController()
 
+// Online dots (GET /team/presence)
+const presence = useTeamPresence()
+
 // Toast notifications
 const { showSuccess, showError } = useToast()
 
@@ -187,6 +240,24 @@ const currentUserId = computed(() => authStore.currentAgent?.id)
 
 // Extract state from controller
 const { loading, teams, members, stats, memberSorting, teamSorting, memberSortMode, teamSortMode } = controller
+
+/** "8 位成員分屬 2 個團隊，其中 5 位目前在線。王柏翰已停用，無法登入。" built from loaded data only. */
+const headSummary = computed(() => {
+  const parts: string[] = [`${members.value.length} 位成員分屬 ${stats.value.teamCount} 個團隊`]
+  if (presence.available.value) {
+    const online = members.value.filter(m => presence.onlineIds.value.has(m.id)).length
+    parts[0] += `，其中 ${online} 位目前在線`
+  }
+  const inactive = members.value.filter(m => m.status === 'inactive')
+  const [onlyInactive] = inactive
+  let text = `${parts[0]}。`
+  if (inactive.length === 1 && onlyInactive) {
+    text += `${onlyInactive.name || onlyInactive.loginId}已停用，無法登入。`
+  } else if (inactive.length > 1) {
+    text += `${inactive.length} 位成員已停用，無法登入。`
+  }
+  return text
+})
 
 // Handle select-page: add page member IDs to selection
 function handleSelectPage(memberIds: string[]) {
@@ -282,6 +353,7 @@ const handleBulkEditSaved = (payload: BulkEditSavedPayload) => {
 // ==================== Lifecycle ====================
 
 onMounted(async () => {
+  presence.start()
   await controller.initialize()
 })
 
@@ -293,75 +365,23 @@ onUnmounted(() => {
 <style scoped>
 /* ==================== Page Layout ==================== */
 .team-management {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
   width: 100%;
-  max-width: 1400px;
+  max-width: 1280px;
   margin: 0 auto;
-  padding: 2rem;
+  /* AppLayout's page area already pads 24px / 20px */
+  padding: 4px 8px 32px;
+}
+.head-ico {
+  width: 16px;
+  height: 16px;
 }
 
-/* ==================== Page Header ==================== */
-.page-header {
-  margin-bottom: 2rem;
-}
-
-.header-content {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 1.5rem;
-  flex-wrap: wrap;
-}
-
-.header-info {
-  flex: 1;
-  min-width: 0;
-}
-
-.page-title {
-  font-size: 2rem;
-  font-weight: 800;
-  color: #1f2937;
-  margin: 0 0 0.5rem 0;
-  background: linear-gradient(135deg, #1f2937 0%, #4b5563 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-.page-subtitle {
-  font-size: 1rem;
-  color: #6b7280;
-  margin: 0;
-  line-height: 1.5;
-}
-
-.header-actions {
-  display: flex;
-  gap: 0.75rem;
-  align-items: center;
-}
-
-/* ==================== Responsive Design ==================== */
 @media (max-width: 768px) {
   .team-management {
-    padding: 1rem;
-  }
-
-  .page-title {
-    font-size: 1.5rem;
-  }
-
-  .page-subtitle {
-    font-size: 0.875rem;
-  }
-
-  .header-content {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .header-actions {
-    justify-content: flex-end;
+    padding: 0 0 24px;
   }
 }
 </style>

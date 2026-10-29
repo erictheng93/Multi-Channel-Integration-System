@@ -1,17 +1,47 @@
 <template>
-  <div
+  <section
     ref="sectionRef"
-    class="content-section"
+    class="team-section"
   >
     <!-- Header -->
-    <div class="content-header">
-      <h2 class="content-title">
-        <TeamsIcon />
-        團隊設置 Team Settings ({{ teams.length }})
-      </h2>
-      <div class="header-actions">
-        <!-- Sort Dropdown -->
+    <div class="section-head">
+      <div>
+        <h2 class="ui-card-title">
+          團隊設置
+        </h2>
+        <div class="ui-card-sub">
+          共 {{ teams.length }} 個團隊，成員只會看到所屬團隊的對話與共享池
+        </div>
+      </div>
+      <div class="section-end">
+        <div
+          v-if="!loading && teams.length > 0"
+          class="search-bar"
+        >
+          <SearchIcon class="search-icon" />
+          <input
+            v-model="searchQuery"
+            class="search-input"
+            type="text"
+            placeholder="搜尋團隊 (名稱、描述)..."
+            aria-label="搜尋團隊"
+            @keydown.escape="clearSearch"
+          >
+          <button
+            v-if="searchQuery"
+            class="search-clear"
+            aria-label="清除搜尋"
+            @click="clearSearch"
+          />
+          <span
+            v-if="isSearching"
+            class="search-stats"
+          >
+            找到 {{ filteredTeams.length }} / {{ teams.length }}
+          </span>
+        </div>
         <SortDropdown
+          v-if="teams.length > 0"
           :options="sortOptions"
           :current-field="sortState.field"
           :current-label="isCustomMode ? '自訂順序' : currentSortLabel"
@@ -21,39 +51,7 @@
           @toggle-order="emit('sort-toggle')"
           @reset-to-auto="handleResetToAuto"
         />
-        <PrimaryActionButton
-          text="新增團隊"
-          :icon="PlusIcon"
-          :loading="loading"
-          @click="emit('add-team')"
-        />
       </div>
-    </div>
-
-    <!-- Search Bar -->
-    <div
-      v-if="!loading && teams.length > 0"
-      class="search-bar"
-    >
-      <SearchIcon class="search-icon" />
-      <input
-        v-model="searchQuery"
-        class="search-input"
-        type="text"
-        placeholder="搜尋團隊 (名稱、描述)..."
-        @keydown.escape="clearSearch"
-      >
-      <button
-        v-if="searchQuery"
-        class="search-clear"
-        @click="clearSearch"
-      />
-      <span
-        v-if="isSearching"
-        class="search-stats"
-      >
-        找到 {{ filteredTeams.length }} / {{ teams.length }}
-      </span>
     </div>
 
     <!-- Content Body -->
@@ -103,7 +101,7 @@
 
         <VueDraggable
           v-model="localTeams"
-          class="teams-list"
+          class="ui-grid ui-cols-2 teams-list"
           :animation="200"
           ghost-class="drag-ghost"
           chosen-class="drag-chosen"
@@ -117,6 +115,7 @@
             :key="team.id"
             :team="team"
             :loading="loading"
+            :preview-members="previewMembersFor(team.id)"
             class="draggable-card"
             @toggle-status="(t) => emit('toggle-status', t)"
             @remove-team="(t) => emit('remove-team', t)"
@@ -127,19 +126,21 @@
 
         <!-- Pagination Controls -->
         <PaginationControls
+          v-show="paginationInfo.totalPages > 1"
           :pagination="paginationInfo"
           :visible-pages="pagination.pageRange.value"
           @change-page="handlePageChange"
         />
       </template>
     </div>
-  </div>
+  </section>
 </template>
 
 <script setup lang="ts">
 import { ref, watch, computed, nextTick } from 'vue'
 import { VueDraggable } from 'vue-draggable-plus'
 import type { Team } from '@/composables/team-management'
+import type { TeamMember } from '@/types'
 import type { SortOption, SortState, SortMode } from '@/composables/useListSorting'
 import { usePagination } from '@/composables/usePagination'
 import { useDebounce } from '@/composables/useDebounce'
@@ -147,10 +148,8 @@ import HamsterLoader from '@/components/ui/HamsterLoader.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
 import PaginationControls from '@/components/ui/PaginationControls.vue'
 import TeamCard from '@/components/team/TeamCard.vue'
-import PrimaryActionButton from '@/components/ui/PrimaryActionButton.vue'
 import SortDropdown from '@/components/ui/SortDropdown.vue'
 import TeamsIcon from '@/components/icons/TeamsIcon.vue'
-import PlusIcon from '@/components/icons/PlusIcon.vue'
 import { SearchIcon } from '@/components/icons'
 
 interface Props {
@@ -162,6 +161,8 @@ interface Props {
   currentSortLabel: string
   // Sort mode props
   sortMode: SortMode
+  /** All members, used to draw each team's avatar stack. */
+  members?: TeamMember[]
 }
 
 interface Emits {
@@ -176,8 +177,17 @@ interface Emits {
   (_e: 'custom-order-change', _ids: string[]): void
 }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), { members: () => [] })
+
 const emit = defineEmits<Emits>()
+
+const PREVIEW_COUNT = 4
+
+function previewMembersFor(teamId: number): TeamMember[] {
+  return props.members
+    .filter(m => m.primaryTeamId === teamId || (m.teams ?? []).some(t => t.teamId === teamId))
+    .slice(0, PREVIEW_COUNT)
+}
 
 // Template ref for scroll-into-view on page change
 const sectionRef = ref<HTMLElement | null>(null)
@@ -300,179 +310,121 @@ function handlePageChange(page: number) {
 </script>
 
 <style scoped>
-.content-section {
-  background: white;
-  border-radius: 12px;
-  padding: 2rem;
-  margin-bottom: 2rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-}
-
-.content-header {
+.team-section {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 1.5rem;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+.section-head {
+  display: flex;
   flex-wrap: wrap;
-  gap: 1rem;
-}
-
-.content-title {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: #1f2937;
-  display: flex;
   align-items: center;
-  gap: 0.75rem;
-  margin: 0;
+  gap: 12px;
+  padding: 4px 4px 0;
 }
-
-.content-title svg {
-  width: 24px;
-  height: 24px;
-  color: #10b981;
+.section-head > :first-child {
+  min-width: 0;
+  flex: 1;
 }
-
-.header-actions {
+.section-head .ui-card-sub {
+  margin-top: 2px;
+  font-size: var(--ui-t-foot);
+  color: var(--ui-muted);
+}
+.section-end {
   display: flex;
-  gap: 0.75rem;
-  align-items: center;
   flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
 }
 
-/* Search Bar */
 .search-bar {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 0.75rem;
-  margin-bottom: 1rem;
-  background: #f9fafb;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  transition: border-color 0.2s;
+  gap: 8px;
+  width: 260px;
+  max-width: 100%;
+  height: 36px;
+  padding: 0 12px;
+  border-radius: 10px;
+  background: var(--ui-fill);
+  color: var(--ui-muted);
 }
-
-.search-bar:focus-within {
-  border-color: #10b981;
-  background: white;
-}
-
 .search-icon {
-  width: 18px;
-  height: 18px;
-  color: #9ca3af;
-  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  flex: none;
 }
-
 .search-input {
   flex: 1;
-  border: none;
+  min-width: 0;
+  height: 100%;
+  border: 0;
   background: transparent;
-  font-size: 0.875rem;
-  color: #1f2937;
+  font-size: 13.5px;
+  color: var(--ui-ink);
   outline: none;
 }
-
 .search-input::placeholder {
-  color: #9ca3af;
+  color: var(--ui-muted);
 }
-
 .search-clear {
-  background: none;
-  border: none;
-  color: #9ca3af;
+  position: relative;
+  width: 18px;
+  height: 18px;
+  flex: none;
+  border: 0;
+  border-radius: 50%;
+  background: var(--ui-fill-strong);
   cursor: pointer;
-  font-size: 0.875rem;
-  padding: 0.25rem;
-  line-height: 1;
-  border-radius: 4px;
-  transition: all 0.15s;
 }
-
-.search-clear:hover {
-  color: #4b5563;
-  background: #e5e7eb;
+.search-clear::before,
+.search-clear::after {
+  content: '';
+  position: absolute;
+  top: 8px;
+  left: 4px;
+  width: 10px;
+  height: 1.5px;
+  background: var(--ui-ink-2);
+  transform: rotate(45deg);
 }
-
+.search-clear::after {
+  transform: rotate(-45deg);
+}
 .search-stats {
-  font-size: 0.75rem;
-  color: #10b981;
-  font-weight: 600;
+  flex: none;
+  font-size: 11.5px;
   white-space: nowrap;
-  padding: 0.25rem 0.5rem;
-  background: #ecfdf5;
-  border-radius: 4px;
 }
 
 .content-body {
-  min-height: 200px;
+  min-width: 0;
 }
-
-.teams-list {
-  display: grid;
-  gap: 1rem;
-}
-
-/* Drag hint */
 .drag-hint {
-  padding: 0.5rem 1rem;
-  margin-bottom: 0.75rem;
-  background: #fef3c7;
-  color: #92400e;
-  font-size: 0.8rem;
-  border-radius: 6px;
-  text-align: center;
+  padding: 4px 4px 8px;
+  font-size: 12px;
+  color: var(--ui-muted);
 }
-
-/* Draggable card styles */
-.draggable-card {
-  cursor: grab;
-  transition: all 0.2s ease;
-}
-
-.draggable-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
-.draggable-card:active {
-  cursor: grabbing;
-}
-
-/* Drag states */
 .drag-ghost {
   opacity: 0.4;
-  background: #d1fae5;
-  border-radius: 12px;
 }
-
 .drag-chosen {
-  box-shadow: 0 8px 25px rgba(16, 185, 129, 0.25);
-  transform: scale(1.02);
+  cursor: grabbing;
 }
-
 .drag-active {
-  transform: rotate(1deg) scale(1.02);
-  box-shadow: 0 12px 35px rgba(16, 185, 129, 0.3);
+  box-shadow: var(--ui-shadow-raised);
 }
 
 @media (max-width: 768px) {
-  .content-section {
-    padding: 1.5rem;
+  .section-end {
+    width: 100%;
   }
-
-  .content-header {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .header-actions {
-    justify-content: flex-end;
-  }
-
-  .content-title {
-    font-size: 1.25rem;
+  .search-bar {
+    flex: 1 1 100%;
+    width: auto;
   }
 }
 </style>
