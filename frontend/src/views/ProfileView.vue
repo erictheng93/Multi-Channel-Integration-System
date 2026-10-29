@@ -6,54 +6,77 @@
 
 <template>
   <AppLayout>
-    <div class="profile-page">
+    <div class="profile-page ui-rise">
       <!-- Page Header -->
-      <header class="profile-header">
-        <h1 class="page-title">
-          個人設定
-        </h1>
-        <p class="page-subtitle">
-          管理您的帳號資訊與安全性設定
-        </p>
+      <header class="ui-page-head">
+        <div>
+          <div class="ui-eyebrow">
+            帳號
+          </div>
+          <h1 class="ui-page-title">
+            個人設定
+          </h1>
+          <p class="ui-page-sub">
+            你可以自行修改顯示名稱與密碼；Email、角色與團隊由管理員管理。
+          </p>
+        </div>
       </header>
 
-      <!-- Bento Grid -->
-      <div class="profile-grid">
+      <div class="ui-grid ui-cols-2 profile-grid">
         <!-- Card 1: 基本資料 -->
         <section
           id="basic"
-          class="profile-card"
+          class="ui-card profile-card"
           aria-labelledby="basic-title"
         >
-          <header class="profile-card-header">
-            <h2
-              id="basic-title"
-              class="card-title"
-            >
-              基本資料
-            </h2>
-            <p class="card-subtitle">
-              您可以修改顯示名稱；Email、角色與團隊由管理員管理。
-            </p>
+          <header class="ui-card-head">
+            <div>
+              <h2
+                id="basic-title"
+                class="ui-card-title"
+              >
+                基本資料
+              </h2>
+              <div class="ui-card-sub">
+                顯示名稱會出現在你送出的訊息署名
+              </div>
+            </div>
           </header>
 
           <form
             class="form"
             @submit.prevent="onSaveProfile"
           >
-            <div class="form-field">
-              <label
-                for="display-name"
-                class="form-label"
-              >
+            <div class="identity">
+              <div class="avatar">
+                {{ initial }}
+                <span
+                  class="presence"
+                  :class="`presence--${connection.tone}`"
+                  :title="connection.label"
+                />
+              </div>
+              <div>
+                <div class="identity-name">
+                  {{ profile.displayName || '—' }}
+                </div>
+                <div class="identity-sub">
+                  {{ identitySub }}
+                </div>
+              </div>
+            </div>
+
+            <div class="ui-field">
+              <label for="display-name">
                 顯示名稱 <span class="required">*</span>
+                <span class="count">{{ profile.displayName.length }} / 50</span>
               </label>
               <input
                 id="display-name"
                 v-model.trim="profile.displayName"
                 type="text"
                 maxlength="50"
-                class="form-input"
+                class="ui-input"
                 :class="{ 'is-invalid': profileErrors.displayName }"
                 autocomplete="name"
                 :disabled="profileSaving"
@@ -66,23 +89,64 @@
               </span>
             </div>
 
-            <div class="form-field">
-              <label class="form-label">
-                Email
-              </label>
+            <div class="ui-field">
+              <label>Email</label>
               <div class="readonly-value">
-                {{ profile.email || '—' }}
-                <span class="readonly-hint">（由管理員管理）</span>
+                <span class="readonly-text">{{ profile.email || '—' }}</span>
+                <span class="readonly-hint"><svg
+                  class="ico"
+                  viewBox="0 0 24 24"
+                ><rect
+                  x="4"
+                  y="11"
+                  width="16"
+                  height="9"
+                  rx="2"
+                /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></svg>由管理員管理</span>
               </div>
             </div>
 
-            <div class="form-field">
-              <label class="form-label">
-                角色
-              </label>
+            <div class="ui-field">
+              <label>角色</label>
               <div class="readonly-value">
-                {{ roleLabel }}
-                <span class="readonly-hint">（由管理員管理）</span>
+                <span class="ui-pill ui-pill-blue">{{ roleLabel }}</span>
+                <span class="readonly-hint"><svg
+                  class="ico"
+                  viewBox="0 0 24 24"
+                ><rect
+                  x="4"
+                  y="11"
+                  width="16"
+                  height="9"
+                  rx="2"
+                /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></svg>由管理員管理</span>
+              </div>
+            </div>
+
+            <div
+              v-if="teams.length > 0"
+              class="ui-field"
+            >
+              <label>團隊</label>
+              <div class="readonly-value">
+                <span class="team-chips">
+                  <span
+                    v-for="t in teams"
+                    :key="t.id"
+                    class="ui-pill"
+                    :class="t.isPrimary ? 'ui-pill-blue' : ''"
+                  >{{ t.name }}</span>
+                </span>
+                <span class="readonly-hint"><svg
+                  class="ico"
+                  viewBox="0 0 24 24"
+                ><rect
+                  x="4"
+                  y="11"
+                  width="16"
+                  height="9"
+                  rx="2"
+                /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></svg>由管理員管理</span>
               </div>
             </div>
 
@@ -109,41 +173,69 @@
         <!-- Card 2: 安全性 -->
         <section
           id="security"
-          class="profile-card"
+          class="ui-card profile-card"
           aria-labelledby="security-title"
         >
-          <header class="profile-card-header">
-            <h2
-              id="security-title"
-              class="card-title"
-            >
-              安全性
-            </h2>
-            <p class="card-subtitle">
-              修改密碼後，您將被自動登出並需要重新登入。
-            </p>
+          <header class="ui-card-head">
+            <div>
+              <h2
+                id="security-title"
+                class="ui-card-title"
+              >
+                安全性
+              </h2>
+              <div class="ui-card-sub">
+                定期更換密碼，保護客戶資料
+              </div>
+            </div>
           </header>
 
           <form
             class="form"
             @submit.prevent="onChangePassword"
           >
-            <div class="form-field">
-              <label
-                for="current-password"
-                class="form-label"
-              >
+            <div class="notice">
+              <svg
+                class="ico"
+                viewBox="0 0 24 24"
+              ><circle
+                cx="12"
+                cy="12"
+                r="10"
+              /><path d="M12 16v-4M12 8h.01" /></svg>
+              修改密碼後，你會被自動登出，並需要用新密碼重新登入。
+            </div>
+
+            <div class="ui-field">
+              <label for="current-password">
                 目前密碼 <span class="required">*</span>
               </label>
-              <input
-                id="current-password"
-                v-model="passwordForm.currentPassword"
-                type="password"
-                class="form-input"
-                :class="{ 'is-invalid': passwordErrors.currentPassword }"
-                autocomplete="current-password"
-                :disabled="passwordSaving"
-              >
+              <div class="pw">
+                <input
+                  id="current-password"
+                  v-model="passwordForm.currentPassword"
+                  :type="show.current ? 'text' : 'password'"
+                  class="ui-input"
+                  :class="{ 'is-invalid': passwordErrors.currentPassword }"
+                  autocomplete="current-password"
+                  :disabled="passwordSaving"
+                >
+                <button
+                  type="button"
+                  class="pw-toggle"
+                  :aria-label="show.current ? '隱藏密碼' : '顯示密碼'"
+                  @click="show.current = !show.current"
+                >
+                  <svg
+                    class="ico"
+                    viewBox="0 0 24 24"
+                  ><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z" /><circle
+                    cx="12"
+                    cy="12"
+                    r="3"
+                  /></svg>
+                </button>
+              </div>
               <span
                 v-if="passwordErrors.currentPassword"
                 class="form-error"
@@ -152,31 +244,47 @@
               </span>
             </div>
 
-            <div class="form-field">
-              <label
-                for="new-password"
-                class="form-label"
-              >
+            <div class="ui-field">
+              <label for="new-password">
                 新密碼 <span class="required">*</span>
               </label>
-              <input
-                id="new-password"
-                v-model="passwordForm.newPassword"
-                type="password"
-                class="form-input"
-                :class="{ 'is-invalid': passwordErrors.newPassword }"
-                autocomplete="new-password"
-                :disabled="passwordSaving"
-              >
+              <div class="pw">
+                <input
+                  id="new-password"
+                  v-model="passwordForm.newPassword"
+                  :type="show.next ? 'text' : 'password'"
+                  class="ui-input"
+                  :class="{ 'is-invalid': passwordErrors.newPassword }"
+                  autocomplete="new-password"
+                  :disabled="passwordSaving"
+                >
+                <button
+                  type="button"
+                  class="pw-toggle"
+                  :aria-label="show.next ? '隱藏密碼' : '顯示密碼'"
+                  @click="show.next = !show.next"
+                >
+                  <svg
+                    class="ico"
+                    viewBox="0 0 24 24"
+                  ><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z" /><circle
+                    cx="12"
+                    cy="12"
+                    r="3"
+                  /></svg>
+                </button>
+              </div>
               <div
                 v-if="passwordForm.newPassword"
                 class="strength-bar"
               >
-                <div
-                  class="strength-fill"
-                  :class="`strength-${passwordStrength.level}`"
-                  :style="{ width: `${passwordStrength.percent}%` }"
-                />
+                <div class="strength-track">
+                  <div
+                    class="strength-fill"
+                    :class="`strength-${passwordStrength.level}`"
+                    :style="{ width: `${passwordStrength.percent}%` }"
+                  />
+                </div>
                 <span class="strength-label">{{ passwordStrength.label }}</span>
               </div>
               <span
@@ -187,22 +295,36 @@
               </span>
             </div>
 
-            <div class="form-field">
-              <label
-                for="confirm-password"
-                class="form-label"
-              >
+            <div class="ui-field">
+              <label for="confirm-password">
                 確認新密碼 <span class="required">*</span>
               </label>
-              <input
-                id="confirm-password"
-                v-model="passwordForm.confirmPassword"
-                type="password"
-                class="form-input"
-                :class="{ 'is-invalid': passwordErrors.confirmPassword }"
-                autocomplete="new-password"
-                :disabled="passwordSaving"
-              >
+              <div class="pw">
+                <input
+                  id="confirm-password"
+                  v-model="passwordForm.confirmPassword"
+                  :type="show.confirm ? 'text' : 'password'"
+                  class="ui-input"
+                  :class="{ 'is-invalid': passwordErrors.confirmPassword }"
+                  autocomplete="new-password"
+                  :disabled="passwordSaving"
+                >
+                <button
+                  type="button"
+                  class="pw-toggle"
+                  :aria-label="show.confirm ? '隱藏密碼' : '顯示密碼'"
+                  @click="show.confirm = !show.confirm"
+                >
+                  <svg
+                    class="ico"
+                    viewBox="0 0 24 24"
+                  ><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z" /><circle
+                    cx="12"
+                    cy="12"
+                    r="3"
+                  /></svg>
+                </button>
+              </div>
               <span
                 v-if="passwordErrors.confirmPassword"
                 class="form-error"
@@ -232,6 +354,8 @@ import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppLayout from '@/components/ui/AppLayout.vue'
 import { useAuthStore } from '@/stores/auth'
+import { useWebSocketStore } from '@/stores/websocket'
+import { useConnectionStatus } from '@/composables/useConnectionStatus'
 import { useToast } from '@/composables/useToast'
 import { apiClient } from '@/api/base'
 import { authApi } from '@/api/auth'
@@ -246,6 +370,18 @@ const authStore = useAuthStore()
 const { showSuccess, showError } = useToast()
 
 // ============== 基本資料 ==============
+// Presence = own websocket state; teams from /auth/me teams[]
+const connection = useConnectionStatus(useWebSocketStore())
+const teams = computed(() => authStore.currentAgent?.teams ?? [])
+const initial = computed(() => (profile.displayName.trim().charAt(0) || '?').toUpperCase())
+const identitySub = computed(() => {
+  const primary = teams.value.find((t) => t.isPrimary) ?? teams.value[0]
+  return primary ? `${primary.name} · ${connection.value.label}` : connection.value.label
+})
+
+// 密碼顯示/隱藏（僅本地 UI 狀態）
+const show = reactive({ current: false, next: false, confirm: false })
+
 // Email 與角色由管理員管理，客服僅能修改 displayName
 const profile = reactive({
   displayName: '',
@@ -260,7 +396,7 @@ const profileErrors = reactive<{ displayName?: string }>({})
 const roleLabel = computed(() => {
   const role = authStore.currentAgent?.role
   if (role === 'admin') {return '管理員'}
-  if (role === 'agent') {return '客服人員'}
+  if (role === 'agent') {return '客服'}
   return role ?? '—'
 })
 
@@ -482,188 +618,248 @@ watch(
 )
 </script>
 
+
 <style scoped>
 .profile-page {
-  padding: 20px;
-  background: #f2f2f7;
-  min-height: 100%;
-}
-
-.profile-header {
-  margin-bottom: 20px;
-}
-
-.page-title {
-  font-size: 28px;
-  font-weight: 600;
-  color: #1c1c1e;
-  margin: 0 0 4px 0;
-}
-
-.page-subtitle {
-  font-size: 15px;
-  color: #8e8e93;
-  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
 }
 
 .profile-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
-  gap: 16px;
-  max-width: 1200px;
+  align-items: start;
 }
 
-.profile-card {
-  background: #ffffff;
-  border-radius: 20px;
-  box-shadow: 0 4px 16px rgb(0 0 0 / 6%);
-  padding: 24px;
-  scroll-margin-top: 80px;
-}
-
-.profile-card-header {
-  margin-bottom: 20px;
-}
-
-.card-title {
-  font-size: 20px;
-  font-weight: 600;
-  color: #1c1c1e;
-  margin: 0 0 4px 0;
-}
-
-.card-subtitle {
-  font-size: 13px;
-  color: #8e8e93;
-  margin: 0;
+.ico {
+  width: 15px;
+  height: 15px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .form {
-  display: flex;
-  flex-direction: column;
+  display: grid;
   gap: 16px;
+  padding: 4px 22px 22px;
 }
 
-.form-field {
+/* Identity row: avatar with own websocket presence */
+.identity {
   display: flex;
-  flex-direction: column;
-  gap: 6px;
+  gap: 14px;
+  align-items: center;
+  padding-bottom: 4px;
 }
 
-.form-label {
-  margin-bottom: 0; /* spacing comes from the field gap; the global .form-label margin would double it */
-  font-size: 13px;
-  font-weight: 500;
-  color: #1c1c1e;
+.avatar {
+  position: relative;
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: linear-gradient(160deg, #5aa8ff, #1d6fe0);
+  color: #fff;
+  font: 600 22px var(--ui-font-display);
+}
+
+.presence {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: var(--ui-green);
+  box-shadow: 0 0 0 3px var(--ui-surface);
+}
+
+.presence--connecting {
+  background: var(--ui-orange);
+}
+
+.presence--offline {
+  background: var(--ui-faint);
+}
+
+.identity-name {
+  font: 600 17px var(--ui-font-display);
+}
+
+.identity-sub {
+  font-size: 12.5px;
+  color: var(--ui-muted);
+}
+
+.ui-field > label {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
 }
 
 .required {
-  color: #ff3b30;
-  margin-left: 2px;
+  color: var(--ui-red);
 }
 
-.form-input {
-  width: 100%;
-  padding: 10px 14px;
-  background: #f2f2f7;
-  border: none;
-  border-radius: 12px;
-  font-size: 15px;
-  color: #1c1c1e;
-  outline: none;
-  transition: background 200ms ease-out, box-shadow 200ms ease-out;
+.count {
+  margin-left: auto;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--ui-muted);
+  font-variant-numeric: tabular-nums;
 }
 
-.form-input:focus {
-  background: #ffffff;
-  box-shadow: 0 0 0 2px #007aff;
-}
-
-.form-input:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.form-input.is-invalid {
-  box-shadow: 0 0 0 2px #ff3b30;
+.ui-input.is-invalid {
+  box-shadow: inset 0 0 0 1px var(--ui-red), 0 0 0 4px var(--ui-red-soft);
 }
 
 .form-error {
   font-size: 12px;
-  color: #ff3b30;
+  color: var(--ui-red-ink);
 }
 
 .readonly-value {
-  padding: 10px 14px;
-  background: #f2f2f7;
-  border-radius: 12px;
-  font-size: 15px;
-  color: #1c1c1e;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 40px;
+  padding: 8px 14px;
+  border-radius: var(--ui-r-control);
+  background: var(--ui-surface-2);
+  box-shadow: inset 0 0 0 0.5px var(--ui-sep);
+  font-size: 14px;
+}
+
+.readonly-text {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .readonly-hint {
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+  margin-left: auto;
   font-size: 12px;
-  color: #8e8e93;
-  margin-left: 8px;
+  color: var(--ui-muted);
+}
+
+.team-chips {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.notice {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  padding: 12px 14px;
+  border-radius: var(--ui-r-control);
+  background: var(--ui-accent-soft);
+  color: var(--ui-accent);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.notice .ico {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  margin-top: 1px;
+}
+
+.pw {
+  position: relative;
+}
+
+.pw .ui-input {
+  padding-right: 46px;
+}
+
+.pw-toggle {
+  position: absolute;
+  top: 50%;
+  right: 4px;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--ui-muted);
+  cursor: pointer;
+  transform: translateY(-50%);
+}
+
+.pw-toggle:hover {
+  background: var(--ui-fill);
+  color: var(--ui-ink-2);
+}
+
+.strength-bar {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.strength-track {
+  flex: 1;
+  height: 5px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--ui-fill);
+}
+
+.strength-fill {
+  height: 100%;
+  border-radius: inherit;
+  transition: width var(--ui-dur) var(--ui-ease), background-color var(--ui-dur) var(--ui-ease);
+}
+
+.strength-weak {
+  background: var(--ui-red);
+}
+
+.strength-fair {
+  background: var(--ui-orange);
+}
+
+.strength-good {
+  background: var(--ui-accent);
+}
+
+.strength-strong {
+  background: var(--ui-green);
+}
+
+.strength-label {
+  font-size: 12px;
+  color: var(--ui-muted);
 }
 
 .form-actions {
   display: flex;
   gap: 8px;
   justify-content: flex-end;
-  margin-top: 4px;
+  padding-top: 4px;
 }
 
-.strength-bar {
-  position: relative;
-  height: 4px;
-  background: #f2f2f7;
-  border-radius: 2px;
-  overflow: hidden;
-  margin-top: 6px;
-}
-
-.strength-fill {
-  height: 100%;
-  border-radius: 2px;
-  transition: width 200ms ease-out, background 200ms ease-out;
-}
-
-.strength-fill.strength-weak {
-  background: #ff3b30;
-}
-
-.strength-fill.strength-fair {
-  background: #ff9500;
-}
-
-.strength-fill.strength-good {
-  background: #007aff;
-}
-
-.strength-fill.strength-strong {
-  background: #34c759;
-}
-
-.strength-label {
-  position: absolute;
-  right: 0;
-  top: -18px;
-  font-size: 11px;
-  color: #8e8e93;
-}
-
-@media (max-width: 640px) {
-  .profile-page {
-    padding: 16px;
+@media (max-width: 768px) {
+  .form {
+    padding: 4px 16px 18px;
   }
 
-  .profile-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .profile-card {
-    padding: 20px;
+  .form-actions .btn {
+    flex: 1;
   }
 }
 </style>
