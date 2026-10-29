@@ -866,6 +866,8 @@ defineExpose({
 
   .detail-side {
     display: flex;
+    align-self: start;
+    max-height: 100%;
   }
 }
 
