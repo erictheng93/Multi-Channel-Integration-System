@@ -25,22 +25,23 @@
 }
 
 .message-content {
-  background: white;
-  border-radius: var(--radius-xl);
-  padding: var(--space-3) var(--space-4);
-  box-shadow: var(--shadow-sm);
-  border: 1px solid var(--gray-200);
+  background: var(--ui-surface);
+  color: var(--ui-ink);
+  border-radius: 18px;
+  padding: 10px 16px;
+  box-shadow: var(--ui-shadow-pill);
+  border: 0;
   position: relative;
 }
 
 .message-outgoing .message-content {
-  background: var(--primary-500);
-  color: white;
-  border-color: var(--primary-600);
+  background: var(--ui-accent);
+  color: #fff;
+  border-color: transparent;
 }
 
 .message-text {
-  font-size: 0.875rem;
+  font-size: 0.9375rem;
   line-height: 1.5;
   word-wrap: break-word;
   margin-bottom: var(--space-2);
@@ -56,6 +57,7 @@
 .message-time {
   font-size: 0.75rem;
   opacity: 0.7;
+  font-variant-numeric: tabular-nums;
 }
 
 .message-outgoing .message-time {
@@ -105,7 +107,7 @@
 }
 
 .message-incoming .message-time {
-  color: var(--gray-500);
+  color: var(--ui-muted);
 }
 
 .message-status {
@@ -265,37 +267,15 @@
   font-style: italic;
 }
 
-/* Message bubble tails */
+/* Message bubble tails: removed in the Apple-native design (flat rounded bubbles) */
 .message-content::before {
-  content: '';
-  position: absolute;
-  width: 0;
-  height: 0;
-  border-style: solid;
-}
-
-.message-incoming .message-content::before {
-  left: -8px;
-  top: 12px;
-  border-width: 8px 8px 8px 0;
-  border-color: transparent white transparent transparent;
-}
-
-.message-outgoing .message-content::before {
-  right: -8px;
-  top: 12px;
-  border-width: 8px 0 8px 8px;
-  border-color: transparent transparent transparent var(--primary-500);
+  display: none;
 }
 
 .message-failed .message-content {
-  background: var(--red-50);
-  border-color: var(--red-200);
-  color: var(--red-800);
-}
-
-.message-failed .message-content::before {
-  border-left-color: var(--red-50);
+  background: var(--ui-red-soft);
+  border-color: transparent;
+  color: var(--ui-red-ink);
 }
 
 /* ─── Image messages: strip card wrapper to match LINE native display ─── */

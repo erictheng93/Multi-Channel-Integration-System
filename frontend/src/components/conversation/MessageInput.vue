@@ -459,55 +459,55 @@ const props = defineProps<Props>()
 </script>
 
 <style scoped>
-  /* Core layout */
+  /* Core layout: one rounded field, round icon actions, capsule send */
   .message-input {
-    max-width: 1000px;
-    margin: 0 auto;
     width: 100%;
   }
 
   .input-container {
     display: flex;
     align-items: center;
-    gap: 0.75rem;
-    background: white;
-    border: 1px solid #e2e8f0;
-    border-radius: 1rem;
-    padding: 0.5rem 0.75rem;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
-    transition: all 0.2s ease;
+    gap: 10px;
+    padding: 6px 6px 6px 14px;
+    border-radius: 24px;
+    background: var(--ui-surface-2);
+    box-shadow: inset 0 0 0 0.5px var(--ui-sep);
+    transition: box-shadow var(--ui-dur) var(--ui-ease), background var(--ui-dur) var(--ui-ease);
   }
 
   .input-container:focus-within {
-    border-color: #6366f1;
-    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+    background: var(--ui-surface);
+    box-shadow: inset 0 0 0 1px var(--ui-accent), 0 0 0 4px var(--ui-accent-soft);
   }
 
   .input-wrapper {
     flex: 1;
     display: flex;
+    flex-direction: row-reverse;
     align-items: center;
     gap: var(--space-2);
+    min-width: 0;
   }
 
   .message-textarea {
     flex: 1;
+    min-width: 0;
+    min-height: 24px;
+    max-height: 120px;
+    padding: 8px 0;
     border: none;
     outline: none;
     resize: none;
-    font-size: 1rem;
-    line-height: 1.4;
-    padding: 0.6em 0;
     background: transparent;
-    color: var(--gray-900);
-    min-height: 24px;
-    max-height: 120px;
+    color: var(--ui-ink);
+    font-size: 15px;
+    line-height: 1.4;
     vertical-align: middle;
   }
 
   .message-textarea::placeholder {
-    color: var(--gray-400);
-    font-size: 1rem;
+    color: var(--ui-faint);
+    font-size: 15px;
   }
 
   .message-textarea:disabled {
@@ -515,11 +515,11 @@ const props = defineProps<Props>()
     cursor: not-allowed;
   }
 
-  /* Action buttons */
+  /* Action buttons (left of the text, as in the approved design) */
   .input-actions {
     display: flex;
     align-items: center;
-    gap: var(--space-1);
+    gap: 2px;
   }
 
   .emoji-picker-container {
@@ -529,7 +529,7 @@ const props = defineProps<Props>()
   .emoji-picker-popup {
     position: absolute;
     bottom: 100%;
-    right: 0;
+    left: 0;
     margin-bottom: var(--space-2);
     z-index: 1000;
   }
@@ -538,19 +538,19 @@ const props = defineProps<Props>()
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 32px;
-    height: 32px;
+    width: 34px;
+    height: 34px;
     border: none;
+    border-radius: 50%;
     background: none;
-    color: var(--gray-500);
+    color: var(--ui-muted);
     cursor: pointer;
-    border-radius: var(--radius-md);
-    transition: all var(--transition-fast);
+    transition: background-color var(--ui-dur) var(--ui-ease), color var(--ui-dur) var(--ui-ease);
   }
 
   .action-btn:hover:not(:disabled) {
-    background: var(--gray-100);
-    color: var(--gray-700);
+    background: var(--ui-fill);
+    color: var(--ui-ink-2);
   }
 
   .action-btn:disabled {
@@ -563,104 +563,51 @@ const props = defineProps<Props>()
     height: 18px;
   }
 
-  /* Send button */
+  /* Send: flat iOS-blue capsule */
   .send-button {
-    --bezier: cubic-bezier(0.22, 0.61, 0.36, 1);
-    --edge-light: hsla(0, 0%, 50%, 0.8);
-    --text-light: rgba(255, 255, 255, 0.4);
-    --back-color: 140, 70%;
-
-    cursor: pointer;
-    padding: 1em 2em;
-    border-radius: 0.7em;
-    min-height: 3.5em;
-    min-width: 7em;
     display: flex;
     align-items: center;
-    gap: 0.7em;
     justify-content: center;
+    gap: 6px;
     flex-shrink: 0;
-
-    font-size: 18px;
-    letter-spacing: 0.05em;
-    line-height: 1;
-    font-weight: 600;
-
-    background: linear-gradient(
-      140deg,
-      hsla(var(--back-color), 60%, 1) min(2em, 20%),
-      hsla(var(--back-color), 55%, 0.6) min(8em, 100%)
-    );
-    color: #000;
+    min-width: 76px;
+    height: 38px;
+    padding: 0 16px;
     border: 0;
-    box-shadow: inset 0.4px 1px 4px var(--edge-light);
-
-    transition: all 0.1s var(--bezier);
+    border-radius: 999px;
+    background: var(--ui-accent);
+    color: #fff;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color var(--ui-dur) var(--ui-ease);
   }
 
   .send-button:hover {
-    --edge-light: hsla(0, 0%, 50%, 1);
-    text-shadow: 0px 0px 10px var(--text-light);
-    box-shadow:
-      inset 0.4px 1px 4px var(--edge-light),
-      2px 4px 8px hsla(0, 0%, 0%, 0.295);
-    transform: scale(1.1);
+    background: color-mix(in srgb, var(--ui-accent) 88%, #000);
   }
 
   .send-button:active {
-    --text-light: rgba(255, 255, 255, 1);
-
-    background: linear-gradient(
-      140deg,
-      hsla(var(--back-color), 60%, 1) min(2em, 20%),
-      hsla(var(--back-color), 55%, 0.6) min(8em, 100%)
-    );
-    box-shadow:
-      inset 0.4px 1px 8px var(--edge-light),
-      0px 0px 8px hsla(var(--back-color), 50%, 0.6);
-    text-shadow: 0px 0px 20px var(--text-light);
-    color: #000;
-    letter-spacing: 0.1em;
-    transform: scale(1);
+    background: color-mix(in srgb, var(--ui-accent) 78%, #000);
   }
 
   .send-button.sending {
-    --back-color: 140, 60%;
-    animation: pulse-green 2s infinite;
+    opacity: 0.75;
   }
 
   .send-button svg {
-    width: 20px;
-    height: 20px;
+    width: 16px;
+    height: 16px;
     flex-shrink: 0;
   }
 
   .send-button span {
-    font-weight: 600;
     white-space: nowrap;
   }
 
   .send-button .loading-icon {
-    width: 20px;
-    height: 20px;
-  }
-
-  @keyframes pulse-green {
-    0%,
-    100% {
-      background: linear-gradient(
-        140deg,
-        hsla(140, 60%, 60%, 1) min(2em, 20%),
-        hsla(140, 60%, 55%, 0.6) min(8em, 100%)
-      );
-    }
-    50% {
-      background: linear-gradient(
-        140deg,
-        hsla(140, 80%, 70%, 1) min(2em, 20%),
-        hsla(140, 80%, 65%, 0.6) min(8em, 100%)
-      );
-    }
+    width: 16px;
+    height: 16px;
   }
 
   .file-input {
@@ -671,9 +618,8 @@ const props = defineProps<Props>()
   .error-message {
     margin-top: var(--space-2);
     padding: var(--space-3);
-    background: var(--red-50);
-    border: 1px solid var(--red-200);
-    border-radius: var(--radius-md);
+    background: var(--ui-red-soft);
+    border-radius: var(--ui-r-control);
     font-size: 0.875rem;
     display: flex;
     align-items: center;
@@ -720,9 +666,8 @@ const props = defineProps<Props>()
   .success-message {
     margin-top: var(--space-2);
     padding: var(--space-3);
-    background: var(--green-50);
-    border: 1px solid var(--green-200);
-    border-radius: var(--radius-md);
+    background: var(--ui-green-soft);
+    border-radius: var(--ui-r-control);
     font-size: 0.875rem;
     display: flex;
     align-items: center;
@@ -771,17 +716,12 @@ const props = defineProps<Props>()
       margin: 0 auto;
     }
 
-    .emoji-picker-popup {
-      right: auto;
-      left: 0;
-    }
   }
 
   @media (max-width: 768px) {
     .input-container {
-      padding: 12px 16px;
-      gap: 10px;
-      border-radius: 18px;
+      padding: 6px 6px 6px 12px;
+      gap: 8px;
     }
 
     .message-textarea {
@@ -791,34 +731,8 @@ const props = defineProps<Props>()
       line-height: 1.4;
     }
 
-    .send-button {
-      min-width: 5.5em;
-      min-height: 3em;
-      padding: 0.8em 1.5em;
-      font-size: 16px;
-      gap: 0.6em;
-    }
 
-    .send-button svg {
-      width: 18px;
-      height: 18px;
-    }
 
-    .send-button .loading-icon {
-      width: 18px;
-      height: 18px;
-    }
-
-    .action-btn {
-      width: 32px;
-      height: 32px;
-      border-radius: 16px;
-    }
-
-    .action-btn svg {
-      width: 18px;
-      height: 18px;
-    }
 
     /* Bottom sheet pinned to the viewport edge: no dependence on the input bar height,
        which changes with multi-line text, attachments and the on-screen keyboard. */
@@ -844,7 +758,7 @@ const props = defineProps<Props>()
   /* Small screens */
   @media (max-width: 480px) {
     .input-container {
-      padding: var(--space-1) var(--space-2);
+      padding: 4px 4px 4px 10px;
     }
 
     /* a textarea keeps its intrinsic (cols) width as min-content: let the row shrink so the
@@ -859,32 +773,12 @@ const props = defineProps<Props>()
     }
 
     .action-btn {
-      width: 24px;
-      height: 24px;
+      width: 30px;
+      height: 30px;
     }
 
-    .action-btn svg {
-      width: 14px;
-      height: 14px;
-    }
 
-    .send-button {
-      min-width: 4.5em;
-      min-height: 2.5em;
-      padding: 0.6em 1em;
-      font-size: 14px;
-      gap: 0.5em;
-    }
 
-    .send-button svg {
-      width: 16px;
-      height: 16px;
-    }
-
-    .send-button .loading-icon {
-      width: 16px;
-      height: 16px;
-    }
 
     .emoji-picker-popup {
       left: var(--space-1);
@@ -899,10 +793,6 @@ const props = defineProps<Props>()
       min-height: 44px;
     }
 
-    .send-button {
-      min-width: 44px;
-      min-height: 44px;
-    }
 
     .quick-reply-btn {
       min-height: 44px;
