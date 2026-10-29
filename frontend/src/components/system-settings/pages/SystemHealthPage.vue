@@ -14,6 +14,15 @@
         class="hero-ico"
         aria-hidden="true"
       >
+        <DiscRing
+          class="hero-disc"
+          :size="116"
+          :weight="1.6"
+          :tone="discTone"
+          fade="strong"
+          :grain="false"
+          spin
+        />
         <svg
           viewBox="0 0 24 24"
           fill="none"
@@ -61,14 +70,12 @@
     </article>
 
     <SettingsGroup title="服務檢查">
-      <div
+      <UiEmptyState
         v-if="rows.length === 0"
-        class="ui-empty"
+        :title="controller.processing.value ? '檢查中...' : '尚無檢查結果'"
+        :description="controller.processing.value ? '正在逐項檢查服務。' : '按右上角「立即檢查」開始。'"
       >
-        <div
-          class="ui-empty-art"
-          aria-hidden="true"
-        >
+        <template #icon>
           <svg
             viewBox="0 0 24 24"
             fill="none"
@@ -76,11 +83,10 @@
             stroke-width="1.8"
             stroke-linecap="round"
             stroke-linejoin="round"
+            aria-hidden="true"
           ><path d="M22 12h-4l-3 9L9 3l-3 9H2" /></svg>
-        </div>
-        <h3>{{ controller.processing.value ? '檢查中...' : '尚無檢查結果' }}</h3>
-        <p>{{ controller.processing.value ? '正在逐項檢查服務。' : '按右上角「立即檢查」開始。' }}</p>
-      </div>
+        </template>
+      </UiEmptyState>
       <ul
         v-else
         class="ui-list"
@@ -155,6 +161,8 @@
 </template>
 
 <script setup lang="ts">
+import DiscRing from '@/components/ui/DiscRing.vue'
+import UiEmptyState from '@/components/ui/UiEmptyState.vue'
 import { computed, inject, onMounted } from 'vue'
 import { SETTINGS_CONTROLLER_KEY } from '@/types/system-settings'
 import SettingsGroup from '@/components/system-settings/SettingsGroup.vue'
@@ -267,6 +275,8 @@ const counts = computed(() => ({
   critical: rows.value.filter(row => row.tone === 'bad').length
 }))
 
+const discTone = computed(() => ({ ok: 'green', warn: 'orange', bad: 'red', unknown: 'muted' } as const)[overallTone.value])
+
 const overallTone = computed<'ok' | 'warn' | 'bad' | 'unknown'>(() => {
   if (counts.value.critical > 0) {
     return 'bad'
@@ -351,6 +361,8 @@ onMounted(() => {
 }
 
 .hero {
+  position: relative;
+  overflow: hidden;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -394,9 +406,22 @@ onMounted(() => {
   background: var(--ui-red);
 }
 
-.hero-ico svg {
+.hero-ico > svg:not(.ui-disc) {
+  position: relative;
   width: 28px;
   height: 28px;
+}
+
+/* Signature disc ring behind the status tile; fades out before the title text */
+.hero-disc {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  translate: -50% -50%;
+}
+
+.hero-ico {
+  position: relative;
 }
 
 .hero-main {

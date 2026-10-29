@@ -38,35 +38,11 @@
             class="wheel-box"
             aria-hidden="true"
           >
-            <svg
+            <DiscRing
               class="wheel"
-              viewBox="0 0 640 640"
-            >
-              <g>
-                <circle
-                  v-for="ring in wheelRings"
-                  :key="ring.r"
-                  class="wheel-ring"
-                  cx="320"
-                  cy="320"
-                  :r="ring.r"
-                  :stroke-width="ring.w"
-                  :opacity="ring.o"
-                />
-              </g>
-              <g class="grain">
-                <line
-                  v-for="(tick, i) in grainTicks"
-                  :key="i"
-                  :x1="tick.x1"
-                  :y1="tick.y1"
-                  :x2="tick.x2"
-                  :y2="tick.y2"
-                  stroke-width="1"
-                  :opacity="tick.o"
-                />
-              </g>
-            </svg>
+              :spin-seconds="90"
+              spin
+            />
           </div>
 
           <div class="brand-top">
@@ -260,6 +236,7 @@ import { useI18n } from '@/composables/useI18n'
 import { useModernForm } from '@/composables/useModernVue'
 import { useLoginAttempts } from '@/composables/useLoginAttempts'
 import ForcedPasswordChange from '@/components/auth/ForcedPasswordChange.vue'
+import DiscRing from '@/components/ui/DiscRing.vue'
 import { ROLES } from '@/constants/roles'
 import { validateLoginEmail, validateLoginPassword } from '@/utils/login-validation'
 
@@ -306,25 +283,6 @@ const showPassword = ref(false)
 // Errors show once the field was touched or the form was submitted
 const emailError = computed(() => (emailTouched.value || formSubmitted.value) ? errors.value.email : null)
 const passwordError = computed(() => (passwordTouched.value || formSubmitted.value) ? errors.value.password : null)
-
-// ===== Decorative abrasive disc (deterministic geometry, carries no data) =====
-const wheelRings = [
-  { r: 296, w: 1.5, o: 0.3 }, { r: 276, w: 1, o: 0.22 }, { r: 240, w: 1, o: 0.18 },
-  { r: 204, w: 1, o: 0.16 }, { r: 168, w: 1, o: 0.14 }, { r: 132, w: 1, o: 0.14 },
-  { r: 96, w: 1, o: 0.16 }, { r: 60, w: 1, o: 0.2 }, { r: 26, w: 1.5, o: 0.34 }
-]
-const grainTicks = Array.from({ length: 240 }, (_, i) => {
-  const a = (i * Math.PI) / 120
-  const r1 = 302 + (i % 5 === 0 ? 0 : 3)
-  const r2 = r1 + 4 + ((i * 7) % 5) * 2.2
-  return {
-    x1: (320 + r1 * Math.cos(a)).toFixed(1),
-    y1: (320 + r1 * Math.sin(a)).toFixed(1),
-    x2: (320 + r2 * Math.cos(a)).toFixed(1),
-    y2: (320 + r2 * Math.sin(a)).toFixed(1),
-    o: (0.22 + ((i * 3) % 4) * 0.08).toFixed(2)
-  }
-})
 
 // ===== Form Validators =====
 setValidator('email', (value) => validateLoginEmail(value))
@@ -565,44 +523,14 @@ const handleLogin = async (event?: Event) => {
   margin: -280px 0 0 -280px;
   color: var(--ui-accent);
   pointer-events: none;
-  -webkit-mask-image: radial-gradient(circle at 50% 50%, #000 66%, transparent 82%);
-  mask-image: radial-gradient(circle at 50% 50%, #000 66%, transparent 82%);
 }
 
-.wheel {
-  display: block;
-  width: 100%;
-  height: 100%;
-  animation: spin 90s linear infinite;
-}
-
-.wheel .wheel-ring {
-  fill: none;
-  stroke: currentColor;
-}
-
-.wheel .grain line {
-  stroke: currentColor;
-  stroke-linecap: round;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
+/* The disc itself is the shared <DiscRing> (it fades its own edge and honours reduced motion) */
 
 /* Dark: the disc turns white for contrast on the black canvas */
-.login-page[data-theme='dark'] .wheel-box {
+.login-page[data-theme='dark'] .wheel-box .ui-disc {
+  --ui-disc-weight: 1.8;
   color: #fff;
-}
-
-.login-page[data-theme='dark'] .wheel .wheel-ring {
-  stroke-width: 1.8;
-}
-
-.login-page[data-theme='dark'] .wheel .grain line {
-  stroke-width: 1.6;
 }
 
 /* Form side */
@@ -743,12 +671,6 @@ const handleLogin = async (event?: Event) => {
 .m-brand,
 .m-foot {
   display: none;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .wheel {
-    animation: none;
-  }
 }
 
 @media (max-width: 1024px) {
