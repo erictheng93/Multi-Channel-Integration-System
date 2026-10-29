@@ -85,18 +85,29 @@
                 class="admin-line"
                 data-testid="admin-managed"
               >
-                <svg
-                  class="ico"
-                  viewBox="0 0 24 24"
-                ><rect
-                  x="4"
-                  y="11"
-                  width="16"
-                  height="9"
-                  rx="2"
-                /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></svg>
-                <span class="admin-text">{{ adminSummary }}</span>
-                <span class="admin-tag">由管理員管理</span>
+                <span class="admin-head">
+                  <svg
+                    class="ico"
+                    viewBox="0 0 24 24"
+                  ><rect
+                    x="4"
+                    y="11"
+                    width="16"
+                    height="9"
+                    rx="2"
+                  /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></svg>
+                  <span class="admin-tag">由管理員管理</span>
+                </span>
+                <span class="admin-items">
+                  <span
+                    v-for="item in adminItems"
+                    :key="item.label"
+                    class="admin-item"
+                  >
+                    <span class="admin-label">{{ item.label }}</span>
+                    <span class="admin-value">{{ item.value }}</span>
+                  </span>
+                </span>
               </p>
 
               <div class="form-actions">
@@ -368,10 +379,13 @@ const initial = computed(() => (profile.displayName.trim().charAt(0) || '?').toU
 const identitySub = computed(() => connection.value.label)
 
 // Email, role and teams are admin-managed: one read-only line instead of three locked fields
-const adminSummary = computed(() => {
-  const parts = [profile.email || '—', roleLabel.value]
-  if (teams.value.length > 0) { parts.push(teams.value.map((t) => t.name).join('、')) }
-  return parts.join(' · ')
+const adminItems = computed(() => {
+  const parts = [
+    { label: '電子郵件', value: profile.email || '—' },
+    { label: '角色', value: roleLabel.value },
+  ]
+  if (teams.value.length > 0) { parts.push({ label: '團隊', value: teams.value.map((t) => t.name).join('、') }) }
+  return parts
 })
 
 // 密碼顯示/隱藏（僅本地 UI 狀態）
@@ -621,13 +635,57 @@ watch(
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
-  align-items: start;
+  align-items: stretch;
 }
 
+/* `.profile-col` only groups the markup. Desktop: basic (left) and security (right) share row 1
+   and stretch to the same height, with each action row pinned to its card's bottom edge;
+   the notification card is a full-width row 2. Below 1024px everything stacks in DOM order. */
 .profile-col {
-  display: grid;
-  gap: 16px;
-  min-width: 0;
+  display: contents;
+}
+
+.profile-card {
+  display: flex;
+  flex-direction: column;
+}
+
+.profile-card > .form {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
+
+.profile-card > .form > .form-actions {
+  margin-top: auto;
+}
+
+#basic {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+#security {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+#notification-prefs {
+  grid-column: 1 / -1;
+  grid-row: 2;
+}
+
+#notification-prefs > .prefs {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+#notification-prefs > .prefs > .form-actions {
+  flex: none;
+  margin-top: 0;
+  padding-top: 0;
 }
 
 .prefs {
@@ -737,33 +795,54 @@ watch(
   color: var(--ui-red-ink);
 }
 
-/* One summary line for the admin-managed fields */
+/* Read-only facts block: eyebrow ("managed by admin") above the three facts; the facts
+   wrap between items (never inside one), so it stays tidy at any width */
 .admin-line {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px 8px;
-  align-items: center;
+  display: grid;
+  gap: 6px;
   margin: 0;
-  padding: 10px 14px;
+  padding: 12px 14px;
   border-radius: var(--ui-r-control);
   background: var(--ui-surface-2);
-  font-size: 13px;
-  color: var(--ui-ink-2);
+  font-size: 14px;
+  color: var(--ui-ink);
 }
 
-.admin-line .ico {
-  flex: none;
+.admin-head {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  font-size: 12px;
   color: var(--ui-muted);
 }
 
-.admin-text {
+.admin-head .ico {
+  flex: none;
+  width: 13px;
+  height: 13px;
+}
+
+.admin-items {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 0.7fr) minmax(0, 1.2fr);
+  gap: 8px 16px;
+  min-width: 0;
+}
+
+.admin-item {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+}
+
+.admin-label {
+  font-size: 12px;
+  color: var(--ui-muted);
+}
+
+.admin-value {
   min-width: 0;
   overflow-wrap: anywhere;
-}
-
-.admin-tag {
-  margin-left: auto;
-  color: var(--ui-muted);
 }
 
 .action-note {
@@ -855,23 +934,32 @@ watch(
   .profile-cols {
     grid-template-columns: minmax(0, 1fr);
   }
+
+  #basic,
+  #security,
+  #notification-prefs {
+    grid-column: 1;
+    grid-row: auto;
+  }
+
+  #notification-prefs > .prefs {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 14px;
+  }
 }
 
 @media (max-width: 768px) {
-  .admin-line {
-    display: block;
-    line-height: 1.6;
+  /* Phone: one fact per row, label left / value right */
+  .admin-items {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 6px;
   }
 
-  .admin-line .ico {
-    display: inline-block;
-    margin-right: 6px;
-    vertical-align: -2px;
-  }
-
-  .admin-tag {
-    display: block;
-    margin-left: 21px;
+  .admin-item {
+    grid-template-columns: 64px minmax(0, 1fr);
+    gap: 8px;
+    align-items: baseline;
   }
 
   .form {
