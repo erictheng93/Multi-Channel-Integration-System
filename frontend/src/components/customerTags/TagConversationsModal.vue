@@ -30,13 +30,33 @@
               {{ pagination.total }} 個對話
             </span>
           </div>
-          <button
-            class="close-btn"
-            aria-label="關閉"
-            @click="$emit('update:visible', false)"
-          >
-            <XIcon />
-          </button>
+          <div class="head-actions">
+            <button
+              type="button"
+              class="head-btn"
+              :aria-label="`編輯標籤 ${tag?.name ?? ''}`"
+              title="編輯標籤"
+              @click="$emit('edit')"
+            >
+              <EditIcon />
+            </button>
+            <button
+              type="button"
+              class="head-btn head-btn-danger"
+              :aria-label="`刪除標籤 ${tag?.name ?? ''}`"
+              title="刪除標籤"
+              @click="$emit('delete')"
+            >
+              <TrashIcon />
+            </button>
+            <button
+              class="close-btn"
+              aria-label="關閉"
+              @click="$emit('update:visible', false)"
+            >
+              <XIcon />
+            </button>
+          </div>
         </div>
 
         <!-- Content -->
@@ -148,7 +168,7 @@
 <script setup lang="ts">
 import { ref, watch, onUnmounted } from 'vue'
 import { LoadingSpinner } from '@/components/ui'
-import { XIcon, MessageCircleIcon, ExternalLinkIcon } from '@/components/icons'
+import { XIcon, MessageCircleIcon, ExternalLinkIcon, EditIcon, TrashIcon } from '@/components/icons'
 import { getTagConversations } from '@/api/tags'
 import type { Tag } from '@/types/tag'
 import type { TagConversation } from '@/api/tags'
@@ -165,6 +185,8 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:visible': [value: boolean]
+  edit: []
+  delete: []
 }>()
 
 // ==================== State ====================
@@ -355,6 +377,48 @@ function formatDate(dateStr: string): string {
 
 .is-inline .close-btn {
   display: none;
+}
+
+.head-actions {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 4px;
+}
+
+.head-btn {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: var(--ui-fill);
+  color: var(--ui-ink-2);
+  cursor: pointer;
+  transition: background var(--ui-dur) var(--ui-ease), color var(--ui-dur) var(--ui-ease);
+}
+
+.head-btn:hover {
+  background: var(--ui-fill-strong);
+}
+
+.head-btn-danger:hover {
+  background: var(--ui-red-soft);
+  color: var(--ui-red-ink);
+}
+
+.head-btn svg {
+  width: 15px;
+  height: 15px;
+}
+
+@media (max-width: 768px) {
+  .head-btn,
+  .close-btn {
+    width: 44px;
+    height: 44px;
+  }
 }
 
 .modal-body {
