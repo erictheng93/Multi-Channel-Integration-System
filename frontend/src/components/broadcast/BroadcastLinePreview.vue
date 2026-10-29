@@ -16,23 +16,35 @@
             客戶看到的順序：{{ order }}
           </template>
           <template v-else>
-            輸入文字或加入圖片後，會在這裡預覽
+            即時顯示客戶端的樣子
           </template>
         </p>
       </div>
     </div>
 
-    <div class="phone">
-      <div
-        v-if="!hasContent"
-        class="phone-empty"
-      >
-        尚無內容
-      </div>
-      <div
-        v-else
-        class="thread"
-      >
+    <UiEmptyState
+      v-if="!hasContent"
+      compact
+      title="尚無預覽內容"
+      description="輸入文字或加入圖片後，會在這裡預覽。"
+    >
+      <template #icon>
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.8"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        ><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12Z" /></svg>
+      </template>
+    </UiEmptyState>
+    <div
+      v-else
+      class="phone"
+    >
+      <div class="thread">
         <div
           v-if="content"
           class="bubble"
@@ -56,6 +68,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import UiEmptyState from '@/components/ui/UiEmptyState.vue'
 
 const props = defineProps<{
   content: string
@@ -82,14 +95,6 @@ const order = computed(() => {
   padding: 16px;
   border-radius: var(--ui-r-inner);
   background: #8ea4c8;
-}
-
-.phone-empty {
-  display: grid;
-  min-height: 108px;
-  place-items: center;
-  font-size: 13px;
-  color: #1d2b44; /* dark ink on the LINE chat background (white was 2.2:1) */
 }
 
 .thread {
