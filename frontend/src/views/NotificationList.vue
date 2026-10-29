@@ -94,7 +94,7 @@
             class="load-more-section"
           >
             <button
-              class="btn btn-secondary"
+              class="btn btn-secondary btn-sm"
               :disabled="loadingMore"
               @click="actions.handleLoadMore"
             >
@@ -238,12 +238,16 @@ onUnmounted(() => {
   color: var(--ui-muted);
 }
 
+/* A footer strip, not a lone pill in an empty card: the count on the left, the action on the right */
 .load-more-section {
   display: flex;
-  flex-direction: column;
+  flex-direction: row-reverse;
   align-items: center;
-  gap: 10px;
-  padding: 20px 24px 22px;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 6px;
+  padding: 12px 22px;
+  box-shadow: inset 0 0.5px 0 var(--ui-sep);
 }
 
 .load-more-info {
@@ -274,6 +278,10 @@ onUnmounted(() => {
 @media (max-width: 768px) {
   .day-label {
     padding: 14px 16px 4px;
+  }
+
+  .load-more-section {
+    padding: 10px 16px;
   }
 }
 </style>
