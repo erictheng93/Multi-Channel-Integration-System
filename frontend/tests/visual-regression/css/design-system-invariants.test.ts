@@ -626,14 +626,24 @@ describe('form controls', () => {
 })
 
 describe('Apple-native button system in src/style.css', () => {
-  it('.btn keeps the 12px radius, flat surface and 250ms ease-out transition', () => {
+  it('.btn keeps the 12px radius, flat surface and a short eased transition', () => {
     const declarations = present(appStylesheet, 'btn')
 
     expect(effectiveLengthPx(appStylesheet, 'btn', 'border-radius')).toBe(12)
     expect(effectiveLonghand(appStylesheet, 'btn', 'border-style')).toBe('none')
-    expect(declarations.get('transition')).toBe(
-      'background-color 250ms ease-out, color 250ms ease-out, opacity 150ms ease-out'
-    )
+
+    // The redesign drives timing from --ui-dur / --ui-ease. Assert the intent, not the literal:
+    // every transitioned property is eased (never linear) and finishes within 300ms.
+    const transition = declarations.get('transition') ?? ''
+    const segments = transition.split(/,(?![^(]*\))/).map(part => part.trim()).filter(Boolean)
+    expect(segments.length).toBeGreaterThan(0)
+    for (const segment of segments) {
+      const duration = /(\d+(?:\.\d+)?)ms/.exec(segment)
+      expect(duration, `no duration in "${segment}"`).not.toBeNull()
+      expect(Number(duration?.[1])).toBeLessThanOrEqual(300)
+      expect(segment).toMatch(/ease-out|cubic-bezier\(/)
+      expect(segment).not.toContain('linear')
+    }
     // No glow: the resting state must not carry a box-shadow at all.
     expect([...declarations.keys()]).not.toContain('box-shadow')
   })
@@ -644,11 +654,15 @@ describe('Apple-native button system in src/style.css', () => {
       return effectiveColor(appStylesheet, className, 'background-color')
     }
 
+    // Solid variants stay on the iOS system colours.
     expect(background('btn-primary')).toBe('rgb(0, 122, 255, 1)')
     expect(background('btn-success')).toBe('rgb(52, 199, 89, 1)')
     expect(background('btn-warning')).toBe('rgb(255, 149, 0, 1)')
-    expect(background('btn-danger')).toBe('rgb(255, 59, 48, 1)')
-    expect(background('btn-secondary')).toBe('rgb(242, 242, 247, 1)')
+    expect(background('btn-secondary')).toBe('rgb(118, 118, 128, 0.12)')
+
+    // Danger is a soft red tint (the approved design): the red token at 12% alpha, red ink on top.
+    expect(background('btn-danger')).toBe('rgb(255, 59, 48, 0.12)')
+    expect(effectiveColor(appStylesheet, 'btn-danger', 'color')).not.toBe('rgb(255, 255, 255, 1)')
 
     expect(effectiveColor(appStylesheet, 'btn-secondary', 'color')).toBe('rgb(28, 28, 30, 1)')
     expect(effectiveColor(appStylesheet, 'btn-ghost', 'color')).toBe('rgb(0, 122, 255, 1)')
