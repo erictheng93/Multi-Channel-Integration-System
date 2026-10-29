@@ -498,6 +498,11 @@ const ACTION_TEMPLATES: Record<string, DescriptionResolver> = {
 }
 /* eslint-enable camelcase */
 
+/** True when the action has a Chinese label (anything else would fall back to the raw action code) */
+export function hasActivityLabel(action: string): boolean {
+  return action in ACTION_TEMPLATES
+}
+
 export function getActivityDescription(activity: ActivityLog): string {
   const details = (activity.details ?? {}) as Record<string, unknown>
   const resolver = ACTION_TEMPLATES[activity.action]
