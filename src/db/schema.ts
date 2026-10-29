@@ -887,3 +887,24 @@ export const wsMetricsSnapshots = sqliteTable('ws_metrics_snapshots', {
 }));
 export type WsMetricsSnapshot = typeof wsMetricsSnapshots.$inferSelect;
 export type NewWsMetricsSnapshot = typeof wsMetricsSnapshots.$inferInsert;
+
+// Message count rollup by Asia/Taipei day (Migration 0069). The migration creates the table
+// WITHOUT ROWID (not expressible here); this mirror keeps the column and key shape.
+// team_id: >0 team at aggregation time, 0 = unassigned pool, -1 = all teams (what admins read).
+// day '0000-00-00' = all-time totals (team -1). See migrations/0069 for the full semantics.
+export const messageDailyStats = sqliteTable('message_daily_stats', {
+  teamId: integer('team_id').notNull(),
+  senderType: text('sender_type').notNull(),
+  day: text('day').notNull(),
+  platform: text('platform').notNull(),
+  count: integer('count').notNull().default(0),
+}, (table) => ({
+  pk: primaryKey({ columns: [table.teamId, table.senderType, table.day, table.platform] }),
+}));
+
+// Key/value watermarks for incremental aggregation jobs (Migration 0069)
+export const statsWatermarks = sqliteTable('stats_watermarks', {
+  key: text('key').primaryKey(),
+  value: text('value').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
