@@ -5,11 +5,69 @@
     :class="{ 'bare-shell': !isAuthenticated }"
   >
     <div class="ui-page not-found-page">
-      <UiPageHead
-        title="找不到這個頁面"
-        :subtitle="headSubtitle"
-      >
-        <template #actions>
+      <section class="nf">
+        <div class="code-wrap">
+          <DiscRing
+            class="hero-disc"
+            tone="accent"
+            :size="190"
+            :weight="1.4"
+            fade="strong"
+            :grain="false"
+          />
+          <div class="code">
+            4<span>0</span>4
+          </div>
+        </div>
+        <h1 class="nf-title">
+          找不到這個頁面
+        </h1>
+        <p class="nf-reason">
+          可能原因：網址輸入有誤、頁面已被移除，或你沒有權限查看。
+        </p>
+        <div class="asked ui-well">
+          <span class="k">你開啟的網址</span>
+          <span
+            class="mono"
+            :title="route.fullPath"
+          >{{ route.fullPath }}</span>
+        </div>
+
+        <div
+          v-if="links.length > 0"
+          class="list"
+        >
+          <router-link
+            v-for="link in links"
+            :key="link.to"
+            :to="link.to"
+            class="go"
+          >
+            <span
+              class="go-ico"
+              :class="link.tone"
+              aria-hidden="true"
+            >
+              <!-- eslint-disable vue/no-v-html -->
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                v-html="link.icon"
+              />
+              <!-- eslint-enable vue/no-v-html -->
+            </span>
+            <div>
+              <b>{{ link.title }}</b>
+              <small>{{ link.text }}</small>
+            </div>
+          </router-link>
+        </div>
+
+        <div class="nf-actions">
           <button
             type="button"
             class="btn btn-secondary"
@@ -43,99 +101,13 @@
             ><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1Z" /></svg>
             {{ isAuthenticated ? '回到儀表板' : '前往登入' }}
           </router-link>
-        </template>
-      </UiPageHead>
-
-      <section
-        class="nf"
-        :class="{ single: links.length === 0 }"
-      >
-        <article class="ui-card hero">
-          <div class="code-wrap">
-            <DiscRing
-              class="hero-disc"
-              tone="accent"
-              :size="190"
-              :weight="1.4"
-              fade="strong"
-              :grain="false"
-            />
-            <div class="code">
-              4<span>0</span>4
-            </div>
-          </div>
-          <p>可能原因：網址輸入有誤、頁面已被移除，或你沒有權限查看。</p>
-          <div class="asked ui-well">
-            <span class="k">你開啟的網址</span>
-            <span
-              class="mono"
-              :title="route.fullPath"
-            >{{ route.fullPath }}</span>
-          </div>
-        </article>
-
-        <article
-          v-if="links.length > 0"
-          class="ui-card links-card"
-        >
-          <div class="ui-card-head">
-            <div>
-              <h2 class="ui-card-title">
-                常用頁面
-              </h2>
-              <div class="ui-card-sub">
-                直接前往工作台的主要區域
-              </div>
-            </div>
-          </div>
-          <div class="list">
-            <router-link
-              v-for="link in links"
-              :key="link.to"
-              :to="link.to"
-              class="go"
-            >
-              <span
-                class="go-ico"
-                :class="link.tone"
-                aria-hidden="true"
-              >
-                <!-- eslint-disable vue/no-v-html -->
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  v-html="link.icon"
-                />
-                <!-- eslint-enable vue/no-v-html -->
-              </span>
-              <div>
-                <b>{{ link.title }}</b>
-                <small>{{ link.text }}</small>
-              </div>
-              <svg
-                class="chev"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                aria-hidden="true"
-              ><path d="m9 18 6-6-6-6" /></svg>
-            </router-link>
-          </div>
-        </article>
+        </div>
       </section>
     </div>
   </component>
 </template>
 
 <script setup lang="ts">
-import UiPageHead from '@/components/ui/UiPageHead.vue'
 import DiscRing from '@/components/ui/DiscRing.vue'
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -195,9 +167,6 @@ const links = computed(() =>
   isAuthenticated.value ? QUICK_LINKS.filter(link => !link.adminOnly || isAdmin.value) : []
 )
 
-const headSubtitle = computed(() =>
-  `抱歉，您要找的頁面不存在或已被移除。${links.value.length > 0 ? '可以從下方常用頁面繼續。' : ''}`)
-
 const homePath = computed(() => (isAuthenticated.value ? '/dashboard' : '/login'))
 
 const goBack = () => {
@@ -225,25 +194,26 @@ const goBack = () => {
   height: 16px;
 }
 
+/* One centred column, vertically centred in the viewport; nothing stretches */
+.not-found-page {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: calc(100vh - var(--ui-topbar-h) - 2 * var(--ui-gutter));
+  min-height: calc(100dvh - var(--ui-topbar-h) - 2 * var(--ui-gutter));
+}
+
+.bare-shell .not-found-page {
+  min-height: 0;
+}
+
 .nf {
-  display: grid;
-  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
-  gap: 16px;
-}
-
-.nf.single {
-  grid-template-columns: minmax(0, 1fr);
-}
-
-.hero {
-  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 14px;
-  padding: 36px 32px 32px;
-  overflow: hidden;
+  width: 100%;
+  max-width: 760px;
+  margin: 0 auto;
   text-align: center;
 }
 
@@ -252,13 +222,12 @@ const goBack = () => {
   position: relative;
   display: grid;
   place-items: center;
-  margin-bottom: 14px;
-  padding: 8px 40px;
+  padding: 8px 80px;
 }
 
 .code {
   position: relative;
-  font: 300 128px / 1 var(--ui-font-display);
+  font: 300 168px / 1 var(--ui-font-display);
   letter-spacing: -0.05em;
   font-variant-numeric: tabular-nums;
   color: var(--ui-ink);
@@ -268,20 +237,37 @@ const goBack = () => {
   color: var(--ui-accent);
 }
 
-.hero p {
-  max-width: 34ch;
-  margin: 0;
-  font-size: 14.5px;
+.hero-disc {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 320px !important;
+  height: 320px !important;
+  translate: -50% -50%;
+  opacity: 0.8;
+  pointer-events: none;
+}
+
+.nf-title {
+  margin: 18px 0 0;
+  font: 700 28px/1.2 var(--ui-font-display);
+  letter-spacing: -0.02em;
+}
+
+.nf-reason {
+  max-width: 38ch;
+  margin: 8px 0 0;
+  font-size: 15px;
   color: var(--ui-muted);
   text-wrap: balance;
 }
 
 .asked {
-  width: min(100%, 420px);
   display: flex;
   gap: 10px;
   align-items: center;
-  margin-top: 10px;
+  width: min(100%, 420px);
+  margin-top: 18px;
   padding: 12px 14px;
   font-size: 13px;
   background: var(--ui-fill);
@@ -302,61 +288,51 @@ const goBack = () => {
   white-space: nowrap;
 }
 
-.hero-disc {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  translate: -50% -50%;
-  opacity: 0.8;
-  pointer-events: none;
-}
-
+/* Compact shortcut tiles: 4 across on desktop, 2 x 2 on phone */
 .list {
-  padding-bottom: 8px;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  width: 100%;
+  margin-top: 28px;
 }
 
 .go {
-  position: relative;
   display: flex;
-  gap: 12px;
-  align-items: center;
-  padding: 12px 22px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 16px;
+  border-radius: 18px;
+  background: var(--ui-surface);
+  box-shadow: var(--ui-shadow-card);
   color: inherit;
+  text-align: left;
   text-decoration: none;
   transition: background var(--ui-dur) var(--ui-ease);
 }
 
-.go + .go::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  right: 22px;
-  left: 66px;
-  height: 0.5px;
-  background: var(--ui-sep);
-}
-
 .go:hover {
-  background: color-mix(in srgb, var(--ui-fill) 45%, transparent);
+  background: var(--ui-surface-2);
 }
 
 .go:focus-visible {
   outline: 2px solid var(--ui-accent);
-  outline-offset: -2px;
+  outline-offset: 2px;
 }
 
 .go-ico {
   display: grid;
   flex: none;
   place-items: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 10px;
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
 }
 
 .go-ico svg {
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
 }
 
 .go-ico.blue {
@@ -387,113 +363,27 @@ const goBack = () => {
 
 .go small {
   font-size: 13px;
+  line-height: 1.4;
   color: var(--ui-muted);
 }
 
-.go .chev {
-  width: 15px;
-  height: 15px;
-  margin-left: auto;
-  color: var(--ui-faint);
-}
-
-/* Desktop: a composed full-height screen. The head sits on top, the two cards fill the rest and
-   end together; the numerals scale up and the shortcut rows share the height evenly. */
-@media (min-width: 1025px) {
-  .not-found-page {
-    display: flex;
-    flex-direction: column;
-    min-height: calc(100vh - var(--ui-topbar-h) - 2 * var(--ui-gutter));
-    min-height: calc(100dvh - var(--ui-topbar-h) - 2 * var(--ui-gutter));
-  }
-
-  .bare-shell .not-found-page {
-    min-height: 0;
-  }
-
-  .nf {
-    flex: 1;
-    align-items: stretch;
-  }
-
-  .code {
-    font-size: 200px;
-  }
-
-  .hero-disc {
-    width: 340px !important;
-    height: 340px !important;
-  }
-
-  .code-wrap {
-    padding: 8px 80px;
-  }
-
-  .hero p {
-    font-size: 16px;
-  }
-
-  .links-card {
-    display: flex;
-    flex-direction: column;
-  }
-
-  /* The shortcuts become a 2 x 2 grid of tiles that fills the card's height */
-  .links-card .list {
-    display: grid;
-    flex: 1;
-    grid-auto-rows: 1fr;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px;
-    padding: 4px 22px 22px;
-  }
-
-  .links-card .go {
-    flex-direction: column;
-    align-items: flex-start;
-    justify-content: flex-end;
-    gap: 14px;
-    padding: 20px;
-    border-radius: 20px;
-    background: var(--ui-surface-2);
-  }
-
-  .links-card .go + .go::before {
-    display: none;
-  }
-
-  .links-card .go:hover {
-    background: var(--ui-fill);
-  }
-
-  .links-card .go-ico {
-    width: 44px;
-    height: 44px;
-    border-radius: 14px;
-  }
-
-  .links-card .go-ico svg {
-    width: 22px;
-    height: 22px;
-  }
-
-  .links-card .go .chev {
-    position: absolute;
-    top: 20px;
-    right: 18px;
-    margin: 0;
-  }
-}
-
-@media (max-width: 1024px) {
-  .nf {
-    grid-template-columns: minmax(0, 1fr);
-  }
+.nf-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin-top: 28px;
 }
 
 @media (max-width: 768px) {
-  /* Both header buttons share the row equally */
-  .not-found-page :deep(.ui-page-actions) > .btn {
+  .list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .nf-actions {
+    width: 100%;
+  }
+
+  .nf-actions > .btn {
     flex: 1 1 0;
     justify-content: center;
   }
@@ -501,11 +391,16 @@ const goBack = () => {
 
 @media (max-width: 480px) {
   .code {
-    font-size: 92px;
+    font-size: 96px;
   }
 
-  .hero {
-    padding: 28px 22px 22px;
+  .code-wrap {
+    padding: 8px 40px;
+  }
+
+  .hero-disc {
+    width: 200px !important;
+    height: 200px !important;
   }
 
   .asked {
