@@ -2,7 +2,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const createDOMonitor = vi.fn()
 vi.mock('@/services/durable-objects-monitor', () => ({ createDOMonitor: (...a: unknown[]) => createDOMonitor(...a) }))
-vi.mock('@/middleware/auth', () => ({ jwtAuth: async (_c: unknown, next: () => Promise<void>) => next() }))
+vi.mock('@/middleware/auth', () => ({
+  jwtAuth: async (_c: unknown, next: () => Promise<void>) => next(),
+  requireAdmin: () => async (_c: unknown, next: () => Promise<void>) => next(),
+}))
 
 import monitoringHandler from '@/modules/monitoring/handlers/monitoring-main'
 

@@ -3,7 +3,7 @@
 
 import { Hono } from 'hono';
 import type { Bindings } from '@/types';
-import { jwtAuth } from '@/middleware/auth';
+import { jwtAuth, requireAdmin } from '@/middleware/auth';
 import { createDataOptimizationService } from '@/services/data-optimization-service';
 import type { DataOptimizationConfig, QueryOptimizationStats } from '@/services/data-optimization-service';
 import { HTTP_STATUS } from '@/constants/http-status';
@@ -353,7 +353,8 @@ dataOptimizationHandler.get('/indexes/:indexName/:field', jwtAuth, async (c) => 
 // =================== 系統健康檢查 ===================
 
 // 數據優化系統健康檢查
-dataOptimizationHandler.get('/health', async (c) => {
+// Reads config and query stats and reports internals: admin only (it used to be anonymous)
+dataOptimizationHandler.get('/health', jwtAuth, requireAdmin(), async (c) => {
   try {
     const optimizationService = createDataOptimizationService(c.env);
     const config = await optimizationService.getConfig();
