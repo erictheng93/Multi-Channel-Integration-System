@@ -71,11 +71,6 @@ export class ActivityStatsService {
       .from(activities)
       .where(gte(activities.createdAt, startDateStr))
 
-    const { activeUserCount, restorableCount } = await this.countActiveAndRestorable(
-      drizzleDb,
-      gte(activities.createdAt, startDateStr)
-    )
-
     // 按操作類型統計
     const actionStats = await drizzleDb
       .select({
@@ -110,6 +105,11 @@ export class ActivityStatsService {
       .where(gte(activities.createdAt, startDateStr))
       .groupBy(sql`DATE(${activities.createdAt})`)
       .orderBy(sql`date DESC`)
+
+    const { activeUserCount, restorableCount } = await this.countActiveAndRestorable(
+      drizzleDb,
+      gte(activities.createdAt, startDateStr)
+    )
 
     return {
       totalActivities: totalResult[0]?.count || 0,
