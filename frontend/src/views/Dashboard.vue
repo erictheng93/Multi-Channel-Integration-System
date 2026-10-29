@@ -100,7 +100,7 @@
             v-if="summary.data.value"
             summary="待回覆概況"
             :rings="ringsData"
-            :size="176"
+            :size="150"
           />
           <div
             v-else-if="summary.error.value"
@@ -311,6 +311,22 @@
                 class="sk sk-row"
               />
             </div>
+            <div
+              v-if="teamRows.length > 0"
+              class="group-foot"
+            >
+              <router-link
+                v-if="isAdmin"
+                to="/team"
+                class="ui-link"
+              >
+                前往團隊成員
+              </router-link>
+              <span
+                v-else-if="presence.data.value?.available"
+                class="foot-note"
+              >{{ onlineIds.size }} 位在線，共 {{ activeMembers.length }} 位</span>
+            </div>
           </div>
         </div>
       </section>
@@ -323,7 +339,6 @@
         <div class="col">
           <h2 class="ui-group-label">
             訊息量
-            <span class="label-note">近 {{ volumeDays }} 天，每日客戶訊息數</span>
             <div
               class="ui-seg label-end"
               role="tablist"
@@ -343,6 +358,9 @@
             </div>
           </h2>
           <div class="ui-group grow chart-group">
+            <h3 class="chart-title">
+              近 {{ volumeDays }} 天，每日客戶訊息數
+            </h3>
             <MessageVolumeChart
               v-if="volume.data.value"
               :data="volume.data.value"
@@ -828,10 +846,11 @@ onBeforeUnmount(() => {
 /* ---- lead ---- */
 .lead {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 24px 40px;
+  grid-template-columns: auto auto;
+  justify-content: center;
+  gap: 24px 72px;
   align-items: center;
-  padding: 32px 40px 32px 40px;
+  padding: 22px 40px;
 }
 
 .lead-main {
@@ -852,7 +871,7 @@ onBeforeUnmount(() => {
 
 .lead-num {
   margin-top: 4px;
-  font: 600 56px / 1.05 var(--ui-font-display);
+  font: 600 52px / 1.05 var(--ui-font-display);
   letter-spacing: -0.035em;
   font-variant-numeric: tabular-nums;
   color: var(--ui-ink);
@@ -897,7 +916,7 @@ onBeforeUnmount(() => {
   position: absolute;
   top: 4px;
   bottom: 4px;
-  left: -20px;
+  left: -36px;
   width: 0.5px;
   background: var(--ui-sep);
   content: '';
@@ -993,8 +1012,23 @@ onBeforeUnmount(() => {
 }
 
 .group-foot {
+  margin-top: auto;
+  min-height: 46px;
   padding: 12px 18px 14px;
   box-shadow: inset 0 0.5px 0 var(--ui-sep);
+}
+
+.foot-note {
+  font-size: 13px;
+  color: var(--ui-muted);
+}
+
+/* in-card title of the chart group (the label above only names the group) */
+.chart-title {
+  margin: 0;
+  padding: 16px 22px 0;
+  font: 600 15px / 20px var(--ui-font-display);
+  color: var(--ui-ink);
 }
 
 .foot-phone {
@@ -1083,7 +1117,7 @@ onBeforeUnmount(() => {
 /* ---- today group: five metrics on one baseline ---- */
 .stat-list {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1.7fr) repeat(4, minmax(0, 1fr));
   padding: 18px 0;
 }
 
@@ -1242,8 +1276,8 @@ onBeforeUnmount(() => {
 }
 
 .sk-ring {
-  width: 176px;
-  height: 176px;
+  width: 150px;
+  height: 150px;
   border-radius: 50%;
 }
 
@@ -1299,7 +1333,8 @@ onBeforeUnmount(() => {
 @media (max-width: 768px) {
   .lead {
     grid-template-columns: minmax(0, 1fr);
-    padding: 22px 20px;
+    justify-content: stretch;
+    padding: 20px;
   }
 
   .lead-rings {
