@@ -234,12 +234,11 @@ const filteredTemplates = computed(() => {
 // Only report types the backend can generate may be used; the rest are shown disabled
 const generatableTypes = ReportsAPI.getGeneratableOptions().types.map(option => option.value);
 const isSupported = (template: ReportTemplate) => generatableTypes.includes(template.type);
-const unsupportedCount = computed(() => templates.value.filter(t => !isSupported(t)).length);
-const templatesSubtitle = computed(() => {
-  if (templates.value.length === 0) { return '' }
-  const unsupported = unsupportedCount.value > 0 ? `，其中 ${unsupportedCount.value} 組尚未支援產生` : ''
-  return `${templates.value.length} 組預設模板${unsupported}`
-});
+const supportedCount = computed(() => templates.value.filter(isSupported).length);
+// Lead with what works; the not-yet-supported count lives in the 即將推出 section header
+const templatesSubtitle = computed(() =>
+  supportedCount.value === 0 ? '' : `${supportedCount.value} 組可直接使用的模板，或自訂報表`
+);
 
 const usableTemplates = computed(() => filteredTemplates.value.filter(isSupported));
 const comingSoonTemplates = computed(() => filteredTemplates.value.filter(t => !isSupported(t)));
