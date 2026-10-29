@@ -63,11 +63,13 @@
       <span class="loading-spinner" />載入中...
     </div>
 
-    <div
+    <UiEmptyState
       v-else-if="reports.length === 0"
-      class="ui-empty empty-state"
+      class="empty-state"
+      title="暫無報表"
+      :description="emptyMessage"
     >
-      <div class="ui-empty-art">
+      <template #icon>
         <svg
           viewBox="0 0 24 24"
           fill="none"
@@ -75,18 +77,21 @@
           stroke-width="1.8"
           stroke-linecap="round"
           stroke-linejoin="round"
+          aria-hidden="true"
         ><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z M14 3v5h5" /></svg>
-      </div>
-      <h3>暫無報表</h3>
-      <p>{{ emptyMessage }}</p>
-      <button
+      </template>
+      <template
         v-if="showCreateButton"
-        class="btn btn-primary"
-        @click="$emit('create-report')"
+        #action
       >
-        建立報表
-      </button>
-    </div>
+        <button
+          class="btn btn-primary"
+          @click="$emit('create-report')"
+        >
+          建立報表
+        </button>
+      </template>
+    </UiEmptyState>
 
     <div
       v-else-if="viewMode === 'grid'"
@@ -181,6 +186,7 @@
 </template>
 
 <script setup lang="ts">
+import UiEmptyState from '@/components/ui/UiEmptyState.vue'
 /**
  * ReportsSection Component
  *

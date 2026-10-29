@@ -70,13 +70,12 @@
       </div>
 
       <!-- Loading State -->
-      <div
+      <UiEmptyState
         v-if="isLoading"
-        class="ui-card ui-empty"
+        class="ui-card"
         role="status"
-      >
-        <p>載入頻道資料中...</p>
-      </div>
+        description="載入頻道資料中..."
+      />
 
       <!-- Error State -->
       <div
@@ -96,11 +95,13 @@
       </div>
 
       <!-- Empty State -->
-      <div
+      <UiEmptyState
         v-else-if="filteredChannels.length === 0"
-        class="ui-card ui-empty"
+        class="ui-card"
+        :title="selectedPlatform ? `尚未設定 ${selectedPlatformLabel} 頻道` : '尚未設定任何頻道'"
+        :description="selectedPlatform ? '此平台還沒有頻道，新增後客戶訊息才會進到系統。' : '點擊右上角「新增頻道」開始設定您的第一個通訊平台。'"
       >
-        <div class="ui-empty-art">
+        <template #icon>
           <svg
             viewBox="0 0 24 24"
             fill="none"
@@ -114,10 +115,11 @@
             cy="12"
             r="1.5"
           /></svg>
-        </div>
-        <template v-if="selectedPlatform">
-          <h3>尚未設定 {{ selectedPlatformLabel }} 頻道</h3>
-          <p>此平台還沒有頻道，新增後客戶訊息才會進到系統。</p>
+        </template>
+        <template
+          v-if="selectedPlatform"
+          #action
+        >
           <button
             type="button"
             class="btn btn-secondary"
@@ -126,11 +128,7 @@
             新增頻道
           </button>
         </template>
-        <template v-else>
-          <h3>尚未設定任何頻道</h3>
-          <p>點擊右上角「新增頻道」開始設定您的第一個通訊平台。</p>
-        </template>
-      </div>
+      </UiEmptyState>
 
       <!-- Channel List -->
       <div
@@ -383,6 +381,7 @@
 </template>
 
 <script setup lang="ts">
+import UiEmptyState from '@/components/ui/UiEmptyState.vue'
 import UiPageHead from '@/components/ui/UiPageHead.vue'
 import { computed } from 'vue'
 import AppLayout from '@/components/ui/AppLayout.vue'

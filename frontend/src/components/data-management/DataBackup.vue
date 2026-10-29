@@ -129,33 +129,30 @@
           部分類型的備份數量過多，列表可能不完整。
         </p>
 
-        <div
+        <UiEmptyState
           v-if="loading && !data"
-          class="ui-empty"
-        >
-          <p>載入中...</p>
-        </div>
-        <div
+          description="載入中..."
+        />
+        <UiEmptyState
           v-else-if="!data"
-          class="ui-empty"
+          title="無法載入備份列表"
+          :description="loadError || '請稍後再試。'"
         >
-          <h3>無法載入備份列表</h3>
-          <p>{{ loadError || '請稍後再試。' }}</p>
-          <button
-            type="button"
-            class="btn btn-secondary btn-sm"
-            @click="load"
-          >
-            重試
-          </button>
-        </div>
-        <div
+          <template #action>
+            <button
+              type="button"
+              class="btn btn-secondary btn-sm"
+              @click="load"
+            >
+              重試
+            </button>
+          </template>
+        </UiEmptyState>
+        <UiEmptyState
           v-else-if="visibleItems.length === 0"
-          class="ui-empty"
-        >
-          <h3>尚無備份檔</h3>
-          <p>按「立即備份到雲端」建立第一份備份。</p>
-        </div>
+          title="尚無備份檔"
+          description="按「立即備份到雲端」建立第一份備份。"
+        />
         <template v-else>
           <div class="ui-table-wrap">
             <table class="ui-table">
@@ -260,6 +257,7 @@
 </template>
 
 <script setup lang="ts">
+import UiEmptyState from '@/components/ui/UiEmptyState.vue'
 import UiPageHead from '@/components/ui/UiPageHead.vue'
 import { computed, onMounted, ref } from 'vue'
 import { listBackups, runBackup, downloadBackup, type BackupItem, type BackupList } from '@/api/backup'

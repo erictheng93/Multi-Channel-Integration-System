@@ -82,11 +82,13 @@
       </div>
     </div>
 
-    <div
+    <UiEmptyState
       v-else
-      class="ui-empty empty-state"
+      class="empty-state"
+      title="尚無回覆記錄"
+      description="當自動回覆觸發時，記錄將會顯示在這裡"
     >
-      <div class="empty-icon">
+      <template #icon>
         <svg
           viewBox="0 0 24 24"
           fill="none"
@@ -94,15 +96,10 @@
           stroke-width="1.8"
           stroke-linecap="round"
           stroke-linejoin="round"
+          aria-hidden="true"
         ><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" /></svg>
-      </div>
-      <p class="empty-title">
-        尚無回覆記錄
-      </p>
-      <p class="empty-desc">
-        當自動回覆觸發時，記錄將會顯示在這裡
-      </p>
-    </div>
+      </template>
+    </UiEmptyState>
 
     <div
       v-if="logs.length > 0"
@@ -141,6 +138,7 @@
 </template>
 
 <script setup lang="ts">
+import UiEmptyState from '@/components/ui/UiEmptyState.vue'
 import { computed } from 'vue'
 import { TRIGGER_TYPE_LABELS, type AutoReplyLog, type AutoReplyRule } from '@/api/autoReply'
 

@@ -48,11 +48,13 @@
           />
         </div>
 
-        <div
+        <UiEmptyState
           v-else
-          class="ui-card ui-empty"
+          class="ui-card"
+          title="找不到符合的模板"
+          description="請嘗試調整篩選條件或搜尋關鍵字"
         >
-          <div class="ui-empty-art">
+          <template #icon>
             <svg
               viewBox="0 0 24 24"
               fill="none"
@@ -60,15 +62,14 @@
               stroke-width="1.8"
               stroke-linecap="round"
               stroke-linejoin="round"
+              aria-hidden="true"
             ><circle
               cx="11"
               cy="11"
               r="7"
             /><path d="m21 21-4.3-4.3" /></svg>
-          </div>
-          <h3>找不到符合的模板</h3>
-          <p>請嘗試調整篩選條件或搜尋關鍵字</p>
-        </div>
+          </template>
+        </UiEmptyState>
       </div>
 
       <aside class="templates-side">
@@ -92,6 +93,7 @@
 
 
 <script setup lang="ts">
+import UiEmptyState from '@/components/ui/UiEmptyState.vue'
 import UiPageHead from '@/components/ui/UiPageHead.vue'
 import UiSectionNav from '@/components/ui/UiSectionNav.vue'
 import { ref, computed, onMounted } from 'vue';

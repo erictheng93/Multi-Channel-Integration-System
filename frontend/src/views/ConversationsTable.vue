@@ -113,24 +113,23 @@
               </button>
             </div>
           </div>
-          <div
+          <UiEmptyState
             v-else-if="displayedConversations.length === 0"
             class="ui-card no-data"
+            :title="emptyText"
           >
-            <div class="ui-empty">
-              <div class="ui-empty-art">
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="1.8"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                ><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20.5l1.4-4.6A8 8 0 1 1 21 12Z" /></svg>
-              </div>
-              <h3>{{ emptyText }}</h3>
-            </div>
-          </div>
+            <template #icon>
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              ><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20.5l1.4-4.6A8 8 0 1 1 21 12Z" /></svg>
+            </template>
+          </UiEmptyState>
           <div
             v-else
             class="ui-card conversations-table-container"
@@ -207,6 +206,7 @@
 </template>
 
 <script setup lang="ts">
+import UiEmptyState from '@/components/ui/UiEmptyState.vue'
 import UiPageHead from '@/components/ui/UiPageHead.vue'
 import { createLogger } from '@/utils/logger'
 

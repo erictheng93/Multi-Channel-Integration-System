@@ -35,11 +35,12 @@
     >
       載入群發紀錄中...
     </div>
-    <div
+    <UiEmptyState
       v-else-if="broadcasts.length === 0"
-      class="ui-empty"
+      title="尚未建立群發"
+      description="建立第一則群發後，結果會顯示在這裡。"
     >
-      <div class="ui-empty-art">
+      <template #icon>
         <svg
           viewBox="0 0 24 24"
           fill="none"
@@ -47,11 +48,10 @@
           stroke-width="1.8"
           stroke-linecap="round"
           stroke-linejoin="round"
+          aria-hidden="true"
         ><path d="m22 2-7 20-4-9-9-4Z" /><path d="M22 2 11 13" /></svg>
-      </div>
-      <h3>尚未建立群發</h3>
-      <p>建立第一則群發後，結果會顯示在這裡。</p>
-    </div>
+      </template>
+    </UiEmptyState>
     <div
       v-else
       class="table-wrap"
@@ -164,6 +164,7 @@
 </template>
 
 <script setup lang="ts">
+import UiEmptyState from '@/components/ui/UiEmptyState.vue'
 import type { BroadcastRecord, BroadcastStatus } from '@/api/broadcasts'
 
 defineProps<{
