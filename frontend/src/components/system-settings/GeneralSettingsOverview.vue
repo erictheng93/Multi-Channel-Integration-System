@@ -1,63 +1,97 @@
 <!--
   GeneralSettingsOverview.vue
-
-  The settings hub strip: four live tiles (LINE, Facebook, system health, backup), each linking to the
-  section that owns it. Every value is read from an endpoint the settings page already uses:
-  the integration `status` / `lastTest` from /system/settings, the overall verdict from /health/system
-  (the same plain check the health page runs), and the newest automatic backup from /data/backup.
+  The settings home lead: system status as Service Rings (services healthy, channels connected) beside the
+  overall verdict, then an inset group of four rows (LINE, Facebook, system health, backup), each linking
+  to the section that owns it. The page puts its own context group (service latency) in the #aside slot.
+  Every value is read from an endpoint the settings page already uses: the integration `status` /
+  `lastTest` from /system/settings, the overall verdict from /health/system (the same plain check the
+  health page runs), and the newest automatic backup from /data/backup.
 -->
 <template>
   <section
     class="ov"
     aria-label="系統概覽"
   >
-    <router-link
-      v-for="tile in tiles"
-      :key="tile.key"
-      :to="tile.to"
-      class="ui-card ov-tile"
-    >
-      <span
-        class="ov-ico"
-        :class="tile.tone"
-        aria-hidden="true"
-      >
-        <!-- eslint-disable vue/no-v-html -->
-        <svg
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          v-html="tile.icon"
+    <article class="ui-lead ov-lead">
+      <div class="ov-main">
+        <div class="ov-kicker">
+          系統狀態
+        </div>
+        <div
+          class="ov-big"
+          :class="healthTile.tone"
+        >
+          {{ healthTile.state }}
+        </div>
+        <div class="ov-meaning">
+          {{ healthTile.sub }}
+        </div>
+        <div
+          v-if="backupTile.tone === 'green'"
+          class="ov-meaning"
+        >
+          最近自動備份 {{ backupTile.state }}
+        </div>
+      </div>
+      <div class="ov-rings">
+        <ServiceRings
+          summary="系統狀態"
+          :rings="rings"
+          :size="168"
         />
-        <!-- eslint-enable vue/no-v-html -->
-      </span>
-      <span class="ov-body">
-        <span class="ov-label">{{ tile.label }}</span>
-        <span
-          class="ov-state"
-          :class="tile.tone"
-        >{{ tile.state }}</span>
-        <span class="ov-sub">{{ tile.sub }}</span>
-      </span>
-      <svg
-        class="ov-chev"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="2"
-        stroke-linecap="round"
-        stroke-linejoin="round"
-        aria-hidden="true"
-      ><path d="m9 18 6-6-6-6" /></svg>
-    </router-link>
+      </div>
+    </article>
+
+    <div class="ov-grid">
+      <div class="ov-col">
+        <h2 class="ui-group-label">
+          連線與備份
+        </h2>
+        <div class="ui-group ov-group">
+          <router-link
+            v-for="tile in tiles"
+            :key="tile.key"
+            :to="tile.to"
+            class="ui-row is-nav ov-row"
+          >
+            <span
+              class="ov-ico"
+              :class="tile.tone"
+              aria-hidden="true"
+            >
+              <!-- eslint-disable vue/no-v-html -->
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                v-html="tile.icon"
+              />
+              <!-- eslint-enable vue/no-v-html -->
+            </span>
+            <span class="ui-row-main">
+              <span class="ov-label">{{ tile.label }}</span>
+              <span class="ov-sub">{{ tile.sub }}</span>
+            </span>
+            <span
+              class="ov-state"
+              :class="tile.tone"
+            >{{ tile.state }}</span>
+          </router-link>
+        </div>
+      </div>
+      <div class="ov-col">
+        <slot name="aside" />
+      </div>
+    </div>
   </section>
 </template>
 
 <script setup lang="ts">
 import { computed, inject, onMounted, ref } from 'vue'
+import ServiceRings, { type ServiceRing } from '@/components/ui/ServiceRings.vue'
 import { SETTINGS_CONTROLLER_KEY } from '@/types/system-settings'
 import type { IntegrationLastTest, IntegrationStatus } from '@/types/system-settings'
 import { SETTINGS_SECTIONS } from './settings-pages'
@@ -165,6 +199,30 @@ const backupTile = computed<Tile>(() => {
   }
 })
 
+// Service Rings of the system: healthy services of those checked, connected channels of the two integrations
+const rings = computed<ServiceRing[]>(() => {
+  const rows = controller.healthCheckResults.value
+  const list: ServiceRing[] = []
+  if (rows.length > 0) {
+    list.push({
+      label: '服務正常',
+      value: rows.filter(r => r.status === 'healthy').length,
+      total: rows.length,
+      of: '項服務',
+      hue: 'var(--ui-green)',
+    })
+  }
+  const channels = [controller.settings.integrations.line.status, controller.settings.integrations.facebook.status]
+  list.push({
+    label: '頻道已連線',
+    value: channels.filter(status => status === 'connected').length,
+    total: channels.length,
+    of: '個頻道',
+    hue: 'var(--section-hue)',
+  })
+  return list
+})
+
 const tiles = computed<Tile[]>(() => [
   integrationTile('line', 'LINE 官方帳號', controller.settings.integrations.line.status, controller.settings.integrations.line.lastTest),
   integrationTile('facebook', 'Facebook', controller.settings.integrations.facebook.status, controller.settings.integrations.facebook.lastTest),
@@ -176,36 +234,102 @@ const tiles = computed<Tile[]>(() => [
 <style scoped>
 .ov {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 16px;
+  gap: 20px;
+  min-width: 0;
 }
 
-.ov-tile {
+.ov-lead {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 24px 40px;
+  align-items: center;
+  padding: 32px 40px;
+}
+
+.ov-main {
+  display: grid;
+  gap: 4px;
+  justify-items: start;
+  min-width: 0;
+}
+
+.ov-kicker {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--section-ink);
+}
+
+.ov-big {
+  font: 600 56px / 1.1 var(--ui-font-display);
+  letter-spacing: -0.035em;
+  color: var(--ui-ink);
+}
+
+.ov-big.green {
+  color: var(--ui-green-ink);
+}
+
+.ov-big.orange {
+  color: var(--ui-orange-ink);
+}
+
+.ov-big.red {
+  color: var(--ui-red-ink);
+}
+
+.ov-big.muted {
+  color: var(--ui-muted);
+}
+
+.ov-meaning {
+  font-size: 15px;
+  color: var(--ui-ink-2);
+}
+
+.ov-rings {
+  position: relative;
   display: flex;
-  gap: 14px;
-  align-items: flex-start;
-  padding: 18px 16px 18px 20px;
+  justify-content: center;
+}
+
+.ov-rings::before {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: -20px;
+  width: 0.5px;
+  background: var(--ui-sep);
+  content: '';
+}
+
+.ov-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 20px 16px;
+  align-items: start;
+}
+
+.ov-col {
+  min-width: 0;
+}
+
+.ov-row {
   color: inherit;
   text-decoration: none;
-  transition: box-shadow var(--ui-dur) var(--ui-ease);
 }
 
-.ov-tile:hover {
-  box-shadow: var(--ui-shadow-raised);
-}
-
-.ov-tile:focus-visible {
+.ov-row:focus-visible {
   outline: 2px solid var(--ui-accent);
-  outline-offset: 2px;
+  outline-offset: -2px;
 }
 
 .ov-ico {
   display: grid;
   flex: none;
   place-items: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 11px;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
   background: var(--ui-fill);
   color: var(--ui-muted);
 }
@@ -230,22 +354,26 @@ const tiles = computed<Tile[]>(() => [
   color: var(--ui-red-ink);
 }
 
-.ov-body {
-  display: grid;
-  flex: 1;
-  gap: 2px;
-  min-width: 0;
+.ov-label {
+  display: block;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ui-ink);
 }
 
-.ov-label {
-  font-size: var(--ui-t-meta);
-  font-weight: 600;
-  color: var(--ui-ink-2);
+.ov-sub {
+  display: block;
+  overflow: hidden;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--ui-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .ov-state {
-  font: 600 22px / 1.2 var(--ui-font-display);
-  letter-spacing: -0.01em;
+  flex: none;
+  font: 600 15px var(--ui-font-display);
   color: var(--ui-ink);
 }
 
@@ -265,51 +393,32 @@ const tiles = computed<Tile[]>(() => [
   color: var(--ui-muted);
 }
 
-.ov-sub {
-  overflow: hidden;
-  font-size: var(--ui-t-meta);
-  line-height: 1.4;
-  color: var(--ui-muted);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.ov-chev {
-  flex: none;
-  width: 16px;
-  height: 16px;
-  margin-top: 10px;
-  color: var(--ui-faint);
-}
-
-@media (max-width: 1280px) {
-  .ov {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+@media (max-width: 1024px) {
+  .ov-grid {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
-/* phone: a compact 2x2 so the form starts on the first screen; icon over label, status word, wrapping meta */
 @media (max-width: 768px) {
-  .ov {
-    gap: 10px;
+  .ov-lead {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 22px 20px;
   }
 
-  .ov-tile {
-    flex-direction: column;
-    gap: 8px;
-    padding: 14px;
+  .ov-big {
+    font-size: 44px;
   }
 
-  .ov-state {
-    font-size: 18px;
+  .ov-rings {
+    justify-content: flex-start;
+  }
+
+  .ov-rings::before {
+    display: none;
   }
 
   .ov-sub {
     white-space: normal;
-  }
-
-  .ov-chev {
-    display: none;
   }
 }
 </style>
