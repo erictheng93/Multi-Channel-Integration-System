@@ -13,6 +13,7 @@ import { SettingsIcon, IntegrationIcon, AdvancedIcon, SystemIcon } from '@/compo
 import { useI18n } from '@/composables/useI18n'
 import { useConfirmDialog } from '@/composables/useConfirmDialog'
 import { createLogger } from '@/utils/logger'
+import type { CredentialsStatus, MaskedCredential } from '@shared/api-contracts/system'
 import type {
   SystemSettings,
   AdvancedSettings,
@@ -92,6 +93,8 @@ export function useSystemSettingsController() {
 
   /** Testing state for integration tests */
   const testing = ref(false)
+  // Server-reported state of stored credentials (configured / last4). Secrets themselves never reach the browser.
+  const credentialStatus = ref<CredentialsStatus | null>(null)
 
   /** Processing state for system operations */
   const processing = ref(false)
@@ -245,18 +248,9 @@ export function useSystemSettingsController() {
           settings.integrations.facebook = { appId: '', appSecret: '', pageId: '', pageToken: '', status: 'disconnected' }
         }
 
-        // Safely merge credentials data
-        if (credentialsResponse.data.line) {
-          settings.integrations.line.channelId = credentialsResponse.data.line.channelId || ''
-          settings.integrations.line.channelSecret = credentialsResponse.data.line.channelSecret || ''
-          settings.integrations.line.accessToken = credentialsResponse.data.line.accessToken || ''
-        }
-        if (credentialsResponse.data.facebook) {
-          settings.integrations.facebook.appId = credentialsResponse.data.facebook.appId || ''
-          settings.integrations.facebook.appSecret = credentialsResponse.data.facebook.appSecret || ''
-          settings.integrations.facebook.pageId = credentialsResponse.data.facebook.pageId || ''
-          settings.integrations.facebook.pageToken = credentialsResponse.data.facebook.pageToken || ''
-        }
+        // Secrets are never sent to the browser: the form fields stay empty and hold only values the
+        // user types. The server reports just configured/last4 per field.
+        credentialStatus.value = credentialsResponse.data
       }
 
       frontendLogger.debug('Loaded settings:', settings)
@@ -303,6 +297,39 @@ export function useSystemSettingsController() {
     }
   }
 
+  const LINE_FIELDS = ['channelId', 'channelSecret', 'accessToken'] as const
+  const FACEBOOK_FIELDS = ['appId', 'appSecret', 'pageId', 'pageToken'] as const
+
+  /** A value is only "replaced" when the user typed something that is not a masked placeholder. */
+  function isReplacement(value: string | undefined): value is string {
+    const trimmed = (value ?? '').trim()
+    return trimmed.length > 0 && !/^[•*]+/.test(trimmed)
+  }
+
+  /** Fields the user explicitly replaced, and fields that are neither replaced nor already stored. */
+  function collectCredentialEdits<K extends string>(
+    platform: 'line' | 'facebook',
+    fields: readonly K[],
+    values: Record<K, string>
+  ): { edits: Partial<Record<K, string>>; missing: K[] } {
+    const stored = credentialStatus.value?.[platform] as Record<string, MaskedCredential> | undefined
+    const edits: Partial<Record<K, string>> = {}
+    const missing: K[] = []
+    for (const field of fields) {
+      if (isReplacement(values[field])) {
+        edits[field] = values[field].trim()
+      } else if (!stored?.[field]?.configured) {
+        missing.push(field)
+      }
+    }
+    return { edits, missing }
+  }
+
+  async function refreshCredentialStatus(): Promise<void> {
+    const response = await credentialsApi.getAllCredentials()
+    if (response.success && response.data) {credentialStatus.value = response.data}
+  }
+
   /**
    * Save LINE integration settings
    */
@@ -316,24 +343,27 @@ export function useSystemSettingsController() {
         return
       }
 
-      const { channelId, channelSecret, accessToken } = settings.integrations.line
+      const { edits, missing } = collectCredentialEdits('line', LINE_FIELDS, settings.integrations.line)
 
-      if (!channelId || !channelSecret || !accessToken) {
+      if (missing.length > 0) {
         showMessage('請填寫完整的 LINE 設定資料', 'error')
         return
       }
 
-      // Store credentials encrypted in KV via credentials API
-      const [r1, r2, r3] = await Promise.all([
-        credentialsApi.storeCredential('line', 'channelId', channelId),
-        credentialsApi.storeCredential('line', 'channelSecret', channelSecret),
-        credentialsApi.storeCredential('line', 'accessToken', accessToken)
-      ])
+      // Only fields the user explicitly replaced are written; stored secrets are never echoed back.
+      const results = await Promise.all(
+        LINE_FIELDS.filter(f => edits[f] !== undefined).map(f =>
+          credentialsApi.storeCredential('line', f, edits[f] as string)
+        )
+      )
 
-      if (!r1.success || !r2.success || !r3.success) {
+      if (results.some(r => !r.success)) {
         showMessage('部分 LINE 憑證儲存失敗', 'error')
         return
       }
+
+      for (const f of LINE_FIELDS) {settings.integrations.line[f] = ''}
+      await refreshCredentialStatus()
 
       // Update integration status in system settings (no credentials)
       await systemApi.updateSettings({
@@ -364,25 +394,27 @@ export function useSystemSettingsController() {
         return
       }
 
-      const { appId, appSecret, pageId, pageToken } = settings.integrations.facebook
+      const { edits, missing } = collectCredentialEdits('facebook', FACEBOOK_FIELDS, settings.integrations.facebook)
 
-      if (!appId || !appSecret || !pageId || !pageToken) {
+      if (missing.length > 0) {
         showMessage('請填寫完整的 Facebook 設定資料', 'error')
         return
       }
 
-      // Store credentials encrypted in KV via credentials API
-      const [r1, r2, r3, r4] = await Promise.all([
-        credentialsApi.storeCredential('facebook', 'appId', appId),
-        credentialsApi.storeCredential('facebook', 'appSecret', appSecret),
-        credentialsApi.storeCredential('facebook', 'pageId', pageId),
-        credentialsApi.storeCredential('facebook', 'pageToken', pageToken)
-      ])
+      // Only fields the user explicitly replaced are written; stored secrets are never echoed back.
+      const results = await Promise.all(
+        FACEBOOK_FIELDS.filter(f => edits[f] !== undefined).map(f =>
+          credentialsApi.storeCredential('facebook', f, edits[f] as string)
+        )
+      )
 
-      if (!r1.success || !r2.success || !r3.success || !r4.success) {
+      if (results.some(r => !r.success)) {
         showMessage('部分 Facebook 憑證儲存失敗', 'error')
         return
       }
+
+      for (const f of FACEBOOK_FIELDS) {settings.integrations.facebook[f] = ''}
+      await refreshCredentialStatus()
 
       // Update integration status in system settings (no credentials)
       await systemApi.updateSettings({
@@ -448,18 +480,15 @@ export function useSystemSettingsController() {
         return
       }
 
-      const { channelId, channelSecret, accessToken } = settings.integrations.line
+      const { edits, missing } = collectCredentialEdits('line', LINE_FIELDS, settings.integrations.line)
 
-      if (!channelId || !channelSecret || !accessToken) {
+      if (missing.length > 0) {
         showMessage('請先填寫 LINE 設定資料', 'error')
         return
       }
 
-      const response = await systemApi.testIntegration('line', {
-        channelId,
-        channelSecret,
-        accessToken
-      })
+      // Unreplaced fields are omitted; the server falls back to the stored (encrypted) values.
+      const response = await systemApi.testIntegration('line', edits)
 
       if (response.success) {
         settings.integrations.line.status = 'connected'
@@ -491,19 +520,15 @@ export function useSystemSettingsController() {
         return
       }
 
-      const { appId, appSecret, pageId, pageToken } = settings.integrations.facebook
+      const { edits, missing } = collectCredentialEdits('facebook', FACEBOOK_FIELDS, settings.integrations.facebook)
 
-      if (!appId || !appSecret || !pageId || !pageToken) {
+      if (missing.length > 0) {
         showMessage('請先填寫 Facebook 設定資料', 'error')
         return
       }
 
-      const response = await systemApi.testIntegration('facebook', {
-        appId,
-        appSecret,
-        pageId,
-        pageToken
-      })
+      // Unreplaced fields are omitted; the server falls back to the stored (encrypted) values.
+      const response = await systemApi.testIntegration('facebook', edits)
 
       if (response.success) {
         settings.integrations.facebook.status = 'connected'
@@ -553,6 +578,7 @@ export function useSystemSettingsController() {
           accessToken: '',
           status: 'disconnected'
         }
+        await refreshCredentialStatus().catch(() => undefined)
         showMessage('LINE 憑證已清除', 'success')
       } else {
         const errorMessage = response.message || '清除 LINE 憑證失敗'
@@ -594,6 +620,7 @@ export function useSystemSettingsController() {
           pageToken: '',
           status: 'disconnected'
         }
+        await refreshCredentialStatus().catch(() => undefined)
         showMessage('Facebook 憑證已清除', 'success')
       } else {
         const errorMessage = response.message || '清除 Facebook 憑證失敗'
@@ -740,6 +767,7 @@ export function useSystemSettingsController() {
     message,
     messageType,
     settings,
+    credentialStatus,
 
     // Computed
     tabs,
