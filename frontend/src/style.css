@@ -830,9 +830,16 @@
     gap: 10px;
     margin: 0 0 8px;
     padding: 0 6px 0 16px;
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 600;
+    line-height: 20px;
     letter-spacing: 0.01em;
+    color: var(--ui-ink-2);
+  }
+  /* the quiet note after a group label stays secondary, still AA */
+  .ui-group-label .label-note {
+    font-size: 13px;
+    font-weight: 400;
     color: var(--ui-muted);
   }
   .ui-group-label .ui-link {

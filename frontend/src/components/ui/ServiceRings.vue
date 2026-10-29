@@ -31,6 +31,7 @@
     size         px of the square graphic (default 168)
     summary      aria-label prefix naming what the rings describe
     centerValue / centerLabel   optional text inside the innermost arc (or use the #center slot)
+    tagged       legend labels start with 外圈 / 中圈 / 內圈
     stacked      legend under the graphic instead of beside it (narrow boxes)
 -->
 
@@ -101,7 +102,7 @@
           class="sr-dot"
           :style="{ background: item.hue }"
         />
-        <span class="sr-label">{{ item.label }}</span>
+        <span class="sr-label"><em v-if="tagged && used.length > 1">{{ positionName(item.index) }}</em>{{ item.label }}</span>
         <span class="sr-num">
           <strong>{{ item.display }}</strong>
           <small v-if="item.total > 0">/ {{ item.total.toLocaleString('en-US') }}{{ item.of ? ` ${item.of}` : '' }}</small>
@@ -138,17 +139,25 @@ const props = withDefaults(defineProps<{
   centerValue?: string | number
   centerLabel?: string
   stacked?: boolean
+  /** Prefix each legend label with its ring position (外圈 / 中圈 / 內圈) so the graphic explains itself */
+  tagged?: boolean
 }>(), {
   size: 168,
   summary: '',
   centerValue: undefined,
   centerLabel: '',
   stacked: false,
+  tagged: false,
 })
 const MAX_RINGS = 3
 const DEFAULT_HUES = ['var(--section-hue)', 'var(--ui-green)', 'var(--ui-orange)'] as const
 
 const used = computed(() => props.rings.slice(0, MAX_RINGS))
+
+const positionName = (index: number): string => {
+  if (index === 0) { return '外圈' }
+  return index === used.value.length - 1 ? '內圈' : '中圈'
+}
 
 // Thinner strokes when three rings share the box, so the centre stays usable
 const layout = computed<RingLayout>(() => {
@@ -284,6 +293,12 @@ onBeforeUnmount(() => { window.cancelAnimationFrame(frame) })
   font-size: 13px;
   font-weight: 500;
   color: var(--ui-muted);
+}
+.sr-label em {
+  margin-right: 6px;
+  font-style: normal;
+  font-weight: 600;
+  color: var(--ui-ink-2);
 }
 .sr-num {
   grid-area: num;
