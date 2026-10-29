@@ -36,10 +36,8 @@
         >{{ formattedTime }}</time>
         <span
           v-if="!notification.isRead"
-          class="unread-dot"
-          role="img"
-          aria-label="未讀"
-        />
+          class="sr-only"
+        >未讀</span>
       </div>
       <p class="notification-text">
         {{ notification.content }}
@@ -229,6 +227,37 @@ const formattedTime = computed(() => {
   background: color-mix(in srgb, var(--ui-fill) 45%, transparent);
 }
 
+/* Unread rows are tinted and carry a 3px accent lead bar; urgent ones carry a red one */
+.notification-unread {
+  background: color-mix(in srgb, var(--ui-accent-soft) 45%, transparent);
+}
+
+.notification-unread:hover {
+  background: color-mix(in srgb, var(--ui-accent-soft) 70%, transparent);
+}
+
+.notification-unread::after,
+.notification-urgent::after {
+  position: absolute;
+  top: 10px;
+  bottom: 10px;
+  left: 0;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: var(--ui-accent);
+  content: '';
+}
+
+.notification-urgent::after {
+  background: var(--ui-red);
+}
+
+/* Urgent: a solid red icon tile whatever the type */
+.notification-urgent .notification-icon {
+  background: var(--ui-red);
+  color: #fff;
+}
+
 .notification-card:focus-visible,
 .notification-focused {
   outline: none;
@@ -295,8 +324,10 @@ const formattedTime = computed(() => {
   color: var(--ui-red-ink);
 }
 
+/* Row copy stays readable on wide screens; the lead bar and separators still run full width */
 .notification-content {
   min-width: 0;
+  max-width: 760px;
   flex: 1;
 }
 
@@ -321,14 +352,6 @@ const formattedTime = computed(() => {
   flex: none;
   font-size: 13px;
   color: var(--ui-muted);
-}
-
-.unread-dot {
-  flex: none;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--ui-accent);
 }
 
 .notification-text {
@@ -359,19 +382,17 @@ const formattedTime = computed(() => {
   margin-top: 8px;
 }
 
-/* Hover toolbar floats over the time so rows keep the full width */
+/* Hover toolbar sits right after the copy column (not at the far edge of a wide card) */
 .notification-actions {
-  position: absolute;
-  top: 50%;
-  right: 16px;
   display: flex;
+  flex: none;
   gap: 4px;
+  align-self: center;
   padding: 3px;
   border-radius: 999px;
   background: var(--ui-surface);
   box-shadow: var(--ui-shadow-pill);
   opacity: 0;
-  transform: translateY(-50%);
   transition: opacity var(--ui-dur) var(--ui-ease);
 }
 
@@ -380,15 +401,29 @@ const formattedTime = computed(() => {
   opacity: 1;
 }
 
-/* Touch: no hover, so actions sit in the flow below the text */
+/* Narrow: the toolbar overlays the row's right edge instead of squeezing the copy */
+@media (max-width: 768px) {
+  .notification-actions {
+    position: absolute;
+    top: 8px;
+    right: 12px;
+  }
+}
+
+/* Touch: no hover, so actions sit in the flow under the copy */
 @media (hover: none) {
+  .notification-card {
+    flex-wrap: wrap;
+  }
+
   .notification-actions {
     position: static;
+    flex-basis: 100%;
+    justify-content: flex-end;
     padding: 0;
     background: none;
     box-shadow: none;
     opacity: 1;
-    transform: none;
   }
 }
 

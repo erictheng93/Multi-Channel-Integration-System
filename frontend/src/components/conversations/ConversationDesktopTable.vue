@@ -25,18 +25,15 @@
             最後訊息
           </th>
           <th
-            class="reply-col"
+            class="status-col"
             :title="LEGEND_TEXT"
           >
-            回覆狀態
+            狀態
             <span
               class="legend-i"
               aria-hidden="true"
             >i</span>
             <span class="sr-only">{{ LEGEND_TEXT }}</span>
-          </th>
-          <th class="status-col">
-            狀態
           </th>
           <th class="agent-col">
             負責人
@@ -117,18 +114,12 @@
               </template>{{ getLastMessageText(conversation) }}
             </div>
           </td>
-          <td class="reply-cell">
-            <template v-if="awaitingKind(conversation, now) === 'waiting'">
-              <span
-                class="ui-pill ui-pill-orange"
-                :title="WAITING_HINT"
-              >待回覆</span>
-            </template>
-            <template v-else-if="awaitingKind(conversation, now) === 'stale'">
+          <td class="status-cell">
+            <template v-if="replyStateOf(conversation, now).state === 'stale'">
               <span
                 class="ui-pill"
                 :title="STALE_HINT"
-              >{{ staleWaitText(conversation.awaitingSince, now) }}</span>
+              >{{ replyStateOf(conversation, now).text }}</span>
               <span
                 v-if="conversation.neverReplied"
                 class="ui-pill ui-pill-red never-pill"
@@ -136,20 +127,16 @@
               >從未回覆</span>
             </template>
             <span
-              v-else-if="isReplied(conversation, now)"
-              class="replied"
-            >已回覆</span>
+              v-else
+              class="ui-pill"
+              :class="replyPillClass(replyStateOf(conversation, now).state)"
+              :title="replyStateOf(conversation, now).state === 'waiting' ? WAITING_HINT : undefined"
+            >{{ replyStateOf(conversation, now).text }}</span>
             <span
               v-if="freeReplySeconds(conversation, now) !== null"
               class="ui-pill ui-pill-green ui-pill-dot free-pill"
               title="Reply API 免費回覆時間"
             >免費回覆 {{ freeReplySeconds(conversation, now) }} 秒</span>
-          </td>
-          <td class="status-cell">
-            <span
-              class="ui-pill"
-              :class="statusPillClass(statusOf(conversation).tone)"
-            >{{ statusOf(conversation).text }}</span>
           </td>
           <td class="agent-cell">
             <span
@@ -158,7 +145,7 @@
             >{{ conversation.assignedTeam.name }}</span>
             <span
               v-else
-              class="unassigned"
+              class="ui-pill unassigned"
             >未指派</span>
           </td>
           <td
@@ -184,15 +171,12 @@ import {
   freeReplySeconds,
   initialOf,
   STALE_HINT,
-  awaitingKind,
-  staleWaitText,
-  isReplied,
+  replyStateOf,
+  type ReplyState,
   platformName,
   relativeTime,
-  statusOf,
   unreadOf,
-  useRowClock,
-  type StatusTone
+  useRowClock
 } from '@/composables/conversation/useConversationRowMeta'
 
 const props = withDefaults(defineProps<{
@@ -261,8 +245,8 @@ const getUpdatedAt = (conversation: Conversation) => {
   return conversation.updatedAt || legacyConversation.updated_at
 }
 
-const statusPillClass = (tone: StatusTone): string =>
-  tone === 'active' ? 'ui-pill-blue' : tone === 'pending' ? 'ui-pill-orange' : ''
+const replyPillClass = (state: ReplyState): string =>
+  state === 'waiting' ? 'ui-pill-orange' : state === 'replied' ? 'ui-pill-green' : ''
 
 const formatFull = (date?: Date | number | string) => {
   if (!date) { return '' }
@@ -339,27 +323,23 @@ const getLastMessageText = (conversation: Conversation) => {
 
 /* Column widths */
 .customer-col {
-  width: 24%;
+  width: 26%;
 }
 
 .message-col {
-  width: 30%;
-}
-
-.reply-col {
-  width: 14%;
+  width: 31%;
 }
 
 .status-col {
-  width: 9%;
+  width: 17%;
 }
 
 .agent-col {
-  width: 12%;
+  width: 14%;
 }
 
 .time-col {
-  width: 11%;
+  width: 12%;
   text-align: right !important;
 }
 
@@ -475,13 +455,12 @@ const getLastMessageText = (conversation: Conversation) => {
   color: var(--ui-muted);
 }
 
-.reply-cell {
+.status-cell {
   white-space: nowrap;
 }
 
-.replied {
-  font-size: 13px;
-  color: var(--ui-muted);
+.status-cell .never-pill {
+  margin-left: 4px;
 }
 
 .free-pill {
@@ -490,9 +469,11 @@ const getLastMessageText = (conversation: Conversation) => {
   margin-top: 4px;
 }
 
+/* Unassigned = an empty slot: dashed outline, no fill */
 .unassigned {
-  font-size: 13px;
-  font-weight: 600;
+  padding: 0 8px;
+  border: 1px dashed var(--ui-orange-ink);
+  background: transparent;
   color: var(--ui-orange-ink);
 }
 

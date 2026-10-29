@@ -124,6 +124,9 @@ defineEmits<{
 
 <style scoped>
 .filters-section {
+  /* Shrinks to its controls: no empty right half */
+  width: fit-content;
+  max-width: 100%;
   display: flex;
   flex-wrap: wrap;
   gap: 10px 12px;
@@ -151,6 +154,10 @@ defineEmits<{
 }
 
 @media (max-width: 768px) {
+  .filters-section {
+    width: auto;
+  }
+
   .filter-tabs {
     width: 100%;
   }
