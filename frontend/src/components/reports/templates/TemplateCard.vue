@@ -210,4 +210,21 @@ defineEmits<{
     align-items: center;
   }
 }
+
+@media (max-width: 768px) {
+  /* Phone: the tier pill moves above the title and 使用 gets its own full-width row */
+  .card-foot {
+    display: contents;
+  }
+
+  .category-badge {
+    order: -1;
+    justify-self: start;
+  }
+
+  .use-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
 </style>
