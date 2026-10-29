@@ -5,79 +5,83 @@
       appear
     >
       <div
-        v-for="(conversation, index) in conversations"
+        v-for="conversation in conversations"
         :key="conversation.id"
         class="conversation-card"
         :class="{
-          'has-unread': conversation.status !== 'closed' && conversation.unreadCount > 0,
+          'has-unread': unreadOf(conversation) > 0,
           'is-selected': selectionMode && selectedIds.has(conversation.id)
         }"
-        :style="{ animationDelay: `${index * 50}ms` }"
         @click="handleCardClick(conversation.id)"
       >
-        <div class="conv-card-header">
-          <div class="customer-info">
-            <label
-              v-if="selectionMode"
-              class="select-hit"
-              @click.stop
-            >
-              <input
-                type="checkbox"
-                class="select-checkbox"
-                :aria-label="`選取 ${getCustomerName(conversation)} 的對話`"
-                :checked="selectedIds.has(conversation.id)"
-                @change="$emit('toggle-select', conversation.id)"
-              >
-            </label>
-            <span
-              class="read-badge"
-              :class="readBadge(conversation).cls"
-              :aria-label="readBadge(conversation).aria"
-            >
-              {{ readBadge(conversation).text }}
-            </span>
-            <span
-              v-if="conversation.status !== 'closed' && conversation.unreadCount > 0"
-              class="sr-only"
-            >
-              未讀 {{ conversation.unreadCount }} 則訊息
-            </span>
-            <div>
-              <div class="customer-name">
-                {{ getCustomerName(conversation) }}
-              </div>
-              <div class="customer-id">
-                ID: {{ conversation.userId }}
-              </div>
-            </div>
-          </div>
-          <div class="badges">
-            <div
-              class="platform-badge"
-              :class="conversation.platform || conversation.user?.platform"
-            >
-              {{ getPlatformText(conversation.platform || conversation.user?.platform || 'line') }}
-            </div>
-            <div
-              class="status-badge"
-              :class="conversation.status"
-            >
-              {{ getStatusText(conversation.status) }}
-            </div>
-          </div>
+        <label
+          v-if="selectionMode"
+          class="select-hit"
+          @click.stop
+        >
+          <input
+            type="checkbox"
+            class="select-checkbox"
+            :aria-label="`選取 ${getCustomerName(conversation)} 的對話`"
+            :checked="selectedIds.has(conversation.id)"
+            @change="$emit('toggle-select', conversation.id)"
+          >
+        </label>
+
+        <div class="avatar">
+          {{ initialOf(getCustomerName(conversation)) }}
+          <span
+            v-if="platformOf(conversation) === 'line' || platformOf(conversation) === 'facebook'"
+            class="ui-ch ch"
+            :class="platformOf(conversation) === 'line' ? 'ui-ch-line' : 'ui-ch-fb'"
+          ><svg viewBox="0 0 24 24"><path d="M12 3C6.5 3 2 6.6 2 11c0 2.5 1.4 4.7 3.7 6.2L5 21l4.1-2.3c.9.2 1.9.3 2.9.3 5.5 0 10-3.6 10-8s-4.5-8-10-8Z" /></svg></span>
         </div>
-        <div class="conv-card-body">
-          <div class="last-message">
-            {{ getLastMessageText(conversation) }}
+
+        <div class="card-main">
+          <div class="card-top">
+            <span class="customer-name">{{ getCustomerName(conversation) }}</span>
+            <span
+              v-if="unreadOf(conversation) > 0"
+              class="unread-badge"
+              :title="UNREAD_HINT"
+              :aria-label="`未讀 ${unreadOf(conversation)} 則訊息（${UNREAD_HINT}）`"
+            >{{ unreadOf(conversation) }}</span>
+            <span class="card-time">{{ relativeTime(getUpdatedAt(conversation), now) }}</span>
           </div>
-        </div>
-        <div class="conv-card-footer">
-          <div class="assigned-agent">
-            負責人: {{ getAssignedTo(conversation) }}
+          <div
+            class="last-message"
+            :class="{ 'from-agent': conversation.lastMessage?.senderType === 'agent' }"
+          >
+            <template v-if="conversation.lastMessage?.senderType === 'agent'">
+              你：
+            </template>{{ getLastMessageText(conversation) }}
           </div>
-          <div class="timestamp">
-            {{ formatTime(getUpdatedAt(conversation)) }}
+          <div class="card-pills">
+            <span
+              v-if="isAwaitingReply(conversation)"
+              class="ui-pill ui-pill-orange"
+              :title="WAITING_HINT"
+            >待回覆</span>
+            <span
+              v-else-if="isReplied(conversation)"
+              class="replied"
+            >已回覆</span>
+            <span
+              v-if="freeReplySeconds(conversation, now) !== null"
+              class="ui-pill ui-pill-green ui-pill-dot"
+            >免費回覆 {{ freeReplySeconds(conversation, now) }} 秒</span>
+            <span
+              class="ui-pill"
+              :class="statusPillClass(statusOf(conversation).tone)"
+            >{{ statusOf(conversation).text }}</span>
+            <span
+              v-if="conversation.assignedTeam?.name"
+              class="ui-pill"
+            >{{ conversation.assignedTeam.name }}</span>
+            <span
+              v-else
+              class="unassigned"
+            >未指派</span>
           </div>
         </div>
       </div>
@@ -86,8 +90,22 @@
 </template>
 
 <script setup lang="ts">
+import { toRef } from 'vue'
 import type { Conversation } from '@/types'
 import { convertEmojiForConversationList } from '@/utils/layered-emoji-processor'
+import {
+  UNREAD_HINT,
+  WAITING_HINT,
+  freeReplySeconds,
+  initialOf,
+  isAwaitingReply,
+  isReplied,
+  relativeTime,
+  statusOf,
+  unreadOf,
+  useRowClock,
+  type StatusTone
+} from '@/composables/conversation/useConversationRowMeta'
 
 const props = withDefaults(defineProps<{
   conversations: Conversation[]
@@ -102,6 +120,8 @@ const emit = defineEmits<{
   select: [id: string]
   'toggle-select': [id: string]
 }>()
+
+const { now } = useRowClock(toRef(props, 'conversations'))
 
 // 選取模式下，點擊整張卡片切換選取而非導覽
 const handleCardClick = (id: string) => {
@@ -128,66 +148,20 @@ const getCustomerName = (conversation: Conversation) => {
   return conversation.customer?.name || conversation.user?.name || legacyConversation.customer_name || '未知用戶'
 }
 
+const platformOf = (conversation: Conversation): string =>
+  conversation.platform || conversation.user?.platform || 'line'
+
 const getUpdatedAt = (conversation: Conversation) => {
   const legacyConversation = withLegacyFields(conversation)
   return conversation.updatedAt || legacyConversation.updated_at
 }
 
-const getPlatformText = (platform: string) => {
-  const platformMap = {
-    line: 'LINE',
-    facebook: 'Facebook',
-    instagram: 'Instagram',
-    whatsapp: 'WhatsApp'
-  }
-  return platformMap[platform as keyof typeof platformMap] || platform
-}
-
-const readBadge = (conversation: Conversation) => {
-  // 已結案優先：結案的對話對所有客服都算 0 未讀（新訊息會自動重新開啟）
-  if (conversation.status === 'closed') {
-    return { cls: 'closed', text: '結案', aria: '已結案' }
-  }
-  const unread = conversation.unreadCount
-  if (unread > 0) {
-    return { cls: 'unread', text: unread > 1 ? `未讀 ${unread}` : '未讀', aria: `未讀 ${unread} 則訊息` }
-  }
-  return { cls: 'read', text: '已讀', aria: '已讀' }
-}
-
-const getStatusText = (status: string) => {
-  const statusMap: Record<string, string> = {
-    active: '進行中',
-    assigned: '已指派',
-    pending: '待處理',
-    'in-progress': '處理中',
-    waiting: '等待中',
-    closed: '已結案'
-  }
-  return statusMap[status] || status
-}
-
-const formatTime = (date?: Date | number | string) => {
-  if (!date) {
-    return ''
-  }
-  const dateObj = typeof date === 'number' || typeof date === 'string' ? new Date(date) : date
-  if (Number.isNaN(dateObj.getTime())) {
-    return ''
-  }
-  return dateObj.toLocaleString('zh-TW')
-}
+const statusPillClass = (tone: StatusTone): string =>
+  tone === 'active' ? 'ui-pill-blue' : tone === 'pending' ? 'ui-pill-orange' : ''
 
 const getLastMessageText = (conversation: Conversation) => {
   const content = conversation.lastMessage?.content || '暫無訊息'
   return convertEmojiForConversationList(content)
-}
-
-const getAssignedTo = (conversation: Conversation) => {
-  if (conversation.assignedTeam?.name) {
-    return ` ${conversation.assignedTeam.name}`
-  }
-  return '未指派'
 }
 </script>
 
@@ -197,330 +171,167 @@ const getAssignedTo = (conversation: Conversation) => {
 }
 
 .conversation-card {
-  background: white;
-  border-bottom: 1px solid #e9ecef;
-  padding: 1rem;
-  cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
-  animation: slideInFromLeft var(--animation-duration, 0.4s) cubic-bezier(0.4, 0, 0.2, 1) backwards;
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 14px 16px;
+  cursor: pointer;
 }
 
-.conversation-card:hover {
-  background-color: #f8f9fa;
-  transform: translateX(4px);
-  box-shadow:
-    0 4px 12px rgba(0, 0, 0, 0.08),
-    -4px 0 0 rgba(59, 130, 246, 0.3);
+.conversation-card + .conversation-card::before {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 68px;
+  height: 0.5px;
+  background: var(--ui-sep);
+  content: '';
 }
 
-.conversation-card:active {
-  transform: translateX(2px);
-  transition-duration: 0.1s;
+.conversation-card.is-selected {
+  background: var(--ui-sel-tint);
+  box-shadow: var(--ui-sel-ring);
 }
 
-@keyframes slideInFromLeft {
-  0% {
-    opacity: 0;
-    transform: translateX(-30px) scale(0.98);
-  }
-  100% {
-    opacity: 1;
-    transform: translateX(0) scale(1);
-  }
-}
-
-/* Animation duration per card */
-.conversation-card:nth-child(1) { --animation-duration: 0.3s; }
-.conversation-card:nth-child(2) { --animation-duration: 0.4s; }
-.conversation-card:nth-child(3) { --animation-duration: 0.5s; }
-.conversation-card:nth-child(4) { --animation-duration: 0.6s; }
-.conversation-card:nth-child(5) { --animation-duration: 0.7s; }
-
-.conversation-card:last-child {
-  border-bottom: none;
-}
-
-/* TransitionGroup Animation */
 .conversation-card-enter-active,
 .conversation-card-leave-active {
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: opacity 0.3s var(--ui-ease), transform 0.3s var(--ui-ease);
 }
 
-.conversation-card-enter-from {
-  opacity: 0;
-  transform: translateX(-30px) scale(0.98);
-}
-
+.conversation-card-enter-from,
 .conversation-card-leave-to {
   opacity: 0;
-  transform: translateX(30px) scale(0.98);
-}
-
-.conversation-card-move {
-  transition: transform 0.3s ease;
+  transform: translateY(6px);
 }
 
 .select-hit {
   display: inline-flex;
+  flex: none;
   align-items: center;
   justify-content: center;
   width: 44px;
   height: 44px;
-  margin: -10px 0 -10px -10px;
-  flex-shrink: 0;
+  margin: -4px -8px -4px -12px;
   cursor: pointer;
 }
 
 .select-checkbox {
-  width: 22px;
-  height: 22px;
-  accent-color: #007AFF;
+  width: 20px;
+  height: 20px;
+  accent-color: var(--ui-accent);
   cursor: pointer;
 }
 
-.conversation-card.is-selected {
-  background: #EAF3FF;
+.avatar {
+  position: relative;
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: linear-gradient(160deg, #b9b6f5, #6e6bd8);
+  color: #fff;
+  font: 600 15px var(--ui-font-display);
 }
 
-.conv-card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 0.75rem;
+.avatar .ch {
+  position: absolute;
+  right: -4px;
+  bottom: -4px;
+  width: 16px;
+  height: 16px;
+  border-radius: 5px;
+  box-shadow: 0 0 0 2px var(--ui-surface);
 }
 
-.conv-card-header .customer-info {
+.avatar .ch svg {
+  width: 10px;
+  height: 10px;
+}
+
+.card-main {
+  min-width: 0;
   flex: 1;
 }
 
-.customer-info {
+.card-top {
   display: flex;
+  gap: 6px;
   align-items: center;
-  gap: 10px;
 }
 
 .customer-name {
-  font-weight: 500;
-  color: #333;
-}
-
-.customer-id {
-  font-size: 0.85rem;
-  color: #666;
-}
-
-.read-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 44px;
-  padding: 2px 10px;
-  border-radius: 9999px;
-  font-size: 11px;
-  font-weight: 600;
-  line-height: 1.6;
-  white-space: nowrap;
-  flex-shrink: 0;
-  letter-spacing: 0.02em;
-}
-
-.read-badge.unread {
-  background: #FF3B30;
-  color: #FFFFFF;
-}
-
-.read-badge.read {
-  background: #F2F2F7;
-  color: #8E8E93;
-  font-weight: 500;
-}
-
-/* 已結案：同尺寸但更淡，不搶注意力 */
-.read-badge.closed {
-  background: #F7F7FA;
-  color: #C7C7CC;
-  font-weight: 500;
-}
-
-.conversation-card.has-unread {
-  background: #F8FAFF;
-}
-
-.conversation-card.has-unread .customer-name {
-  font-weight: 700;
-  color: #1C1C1E;
-}
-
-.conversation-card.has-unread .last-message {
-  font-weight: 600;
-  color: #1C1C1E;
-}
-
-.sr-only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
   overflow: hidden;
-  clip: rect(0, 0, 0, 0);
+  font-size: 14.5px;
+  font-weight: 600;
+  text-overflow: ellipsis;
   white-space: nowrap;
-  border-width: 0;
 }
 
-.badges {
-  display: flex;
-  gap: 0.5rem;
-  flex-wrap: wrap;
+.unread-badge {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--ui-accent);
+  color: #fff;
+  font: 600 11px var(--ui-font-display);
 }
 
-.platform-badge {
-  display: inline-block;
-  padding: 0.25rem 0.5rem;
-  border-radius: 12px;
-  font-size: 0.75rem;
-  font-weight: 500;
-  color: white;
-  text-align: center;
-}
-
-.platform-badge.line {
-  background-color: #00c300;
-}
-
-.platform-badge.facebook {
-  background-color: #1877f2;
-}
-
-.platform-badge.instagram {
-  background-color: #e4405f;
-}
-
-.platform-badge.whatsapp {
-  background-color: #25d366;
-}
-
-.status-badge {
-  display: inline-block;
-  padding: 0.25rem 0.5rem;
-  border-radius: 12px;
-  font-size: 0.75rem;
-  font-weight: 500;
-  color: white;
-  text-align: center;
-}
-
-.status-badge.active {
-  background-color: #27ae60;
-}
-
-.status-badge.assigned {
-  background-color: #3498db;
-}
-
-.status-badge.pending {
-  background-color: #f39c12;
-}
-
-.status-badge.in-progress {
-  background-color: #2980b9;
-}
-
-.status-badge.waiting {
-  background-color: #e67e22;
-}
-
-.status-badge.closed {
-  background-color: #E5E5EA;
-  color: #8E8E93;
-}
-
-.conv-card-body {
-  margin-bottom: 0.75rem;
-}
-
-.conv-card-body .last-message {
-  max-width: none;
-  -webkit-line-clamp: 3;
+.card-time {
+  flex: none;
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--ui-muted);
 }
 
 .last-message {
-  color: #555;
-  line-height: 1.4;
   display: -webkit-box;
+  margin-top: 2px;
+  overflow: hidden;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
-  overflow: hidden;
-  /* line-clamp does not ellipsize an unbreakable string (URL, long ID); wrap it instead of cutting it */
-  overflow-wrap: anywhere;
+  line-clamp: 2;
+  font-size: 13.5px;
+  color: var(--ui-ink);
+  word-break: break-word;
 }
 
-.conv-card-footer {
+.has-unread .last-message {
+  font-weight: 600;
+}
+
+.last-message.from-agent {
+  color: var(--ui-muted);
+}
+
+.card-pills {
   display: flex;
-  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 6px;
   align-items: center;
-  font-size: 0.85rem;
-  color: #666;
+  margin-top: 8px;
 }
 
-.assigned-agent {
-  color: #3498db;
-  font-weight: 500;
+.replied {
+  font-size: 12px;
+  color: var(--ui-faint);
 }
 
-.timestamp {
-  color: #666;
-  font-size: 0.85rem;
+.unassigned {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ui-orange-ink);
 }
 
-/* Performance */
-.conversation-card {
-  contain: layout style paint;
-  will-change: transform, opacity;
-}
-
-/* Reduced motion */
-@media (prefers-reduced-motion: reduce) {
-  .conversation-card {
-    animation: none;
-  }
-}
-
-/* Responsive */
 @media (max-width: 768px) {
   .mobile-cards {
     display: block;
-  }
-
-  .conversation-card:hover {
-    transform: translateX(2px);
-    box-shadow:
-      0 2px 8px rgba(0, 0, 0, 0.06),
-      -2px 0 0 rgba(59, 130, 246, 0.2);
-  }
-}
-
-@media (max-width: 480px) {
-  .conversation-card {
-    padding: 0.75rem;
-  }
-
-  .conv-card-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.5rem;
-  }
-
-  .badges {
-    width: 100%;
-    justify-content: flex-start;
-  }
-
-  .conv-card-footer {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.25rem;
   }
 }
 </style>
