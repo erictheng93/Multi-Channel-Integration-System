@@ -16,7 +16,6 @@
         label="系統名稱"
         :hint="`顯示在側邊欄與登入頁，最多 40 字元（已輸入 ${localSettings.systemName.length}）`"
         for-id="systemName"
-        stacked
       >
         <input
           id="systemName"
@@ -32,7 +31,6 @@
         label="聯絡信箱"
         hint="系統管理員的聯絡窗口"
         for-id="contactEmail"
-        stacked
       >
         <input
           id="contactEmail"
@@ -50,7 +48,6 @@
         label="時區"
         :hint="clockHint"
         for-id="timezone"
-        stacked
       >
         <select
           id="timezone"
@@ -67,9 +64,12 @@
           </option>
         </select>
       </SettingsRow>
-      <template #note>
-        介面語言：繁體中文（目前僅支援）
-      </template>
+      <SettingsRow
+        label="介面語言"
+        hint="目前僅支援繁體中文"
+      >
+        <span class="lang-value">繁體中文</span>
+      </SettingsRow>
     </SettingsGroup>
   </form>
 </template>
@@ -155,6 +155,25 @@ function handleSave() {
 <style scoped>
 .general-form {
   display: grid;
-  gap: 22px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px 16px;
+  align-items: start;
+}
+
+.lang-value {
+  width: 100%;
+  font-size: 15px;
+  color: var(--ui-muted);
+  text-align: right;
+}
+
+@media (max-width: 1024px) {
+  .general-form {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .lang-value {
+    text-align: left;
+  }
 }
 </style>

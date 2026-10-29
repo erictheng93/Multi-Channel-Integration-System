@@ -6,36 +6,16 @@
 
 <template>
   <div class="general">
-    <GeneralSettingsOverview />
-
-    <div class="general-split">
-      <div class="general-main">
-        <GeneralSettingsForm
-          :settings="controller.settings.general"
-          :saving="controller.saving.value"
-          @save="controller.saveGeneralSettings"
-          @update:settings="(data) => Object.assign(controller.settings.general, data)"
-        />
-      </div>
-
-      <aside
-        class="general-aside"
-        aria-label="說明與預覽"
-      >
-        <article class="ui-card lat-card">
-          <div class="ui-card-head">
-            <div>
-              <h2 class="ui-card-title">
-                服務延遲
-              </h2>
-              <div class="ui-card-sub">
-                最近一次健康檢查的實測值
-              </div>
-            </div>
-          </div>
+    <GeneralSettingsOverview>
+      <template #aside>
+        <h2 class="ui-group-label">
+          服務延遲
+          <span class="label-note">最近一次健康檢查的實測值</span>
+        </h2>
+        <div class="ui-group">
           <ul
             v-if="controller.healthCheckResults.value.length > 0"
-            class="ui-list"
+            class="ui-list lat-list"
           >
             <li
               v-for="row in controller.healthCheckResults.value"
@@ -59,33 +39,40 @@
           >
             {{ controller.processing.value ? '正在檢查服務...' : '尚無檢查結果' }}
           </p>
-        </article>
+        </div>
+      </template>
+    </GeneralSettingsOverview>
 
-        <SettingsGroup
-          class="adv-group"
-          title="目前生效的進階參數（唯讀）"
+    <GeneralSettingsForm
+      :settings="controller.settings.general"
+      :saving="controller.saving.value"
+      @save="controller.saveGeneralSettings"
+      @update:settings="(data) => Object.assign(controller.settings.general, data)"
+    />
+
+    <SettingsGroup
+      class="adv-group"
+      title="目前生效的進階參數（唯讀）"
+    >
+      <dl class="adv-grid">
+        <div
+          v-for="item in advancedRows"
+          :key="item.label"
+          class="adv-item"
         >
-          <dl class="adv-grid">
-            <div
-              v-for="item in advancedRows"
-              :key="item.label"
-              class="adv-item"
-            >
-              <dt>{{ item.label }}</dt>
-              <dd>{{ item.value }}</dd>
-            </div>
-          </dl>
-          <template #note>
-            <router-link
-              class="ui-link"
-              to="/settings/advanced"
-            >
-              前往進階設定調整
-            </router-link>
-          </template>
-        </SettingsGroup>
-      </aside>
-    </div>
+          <dt>{{ item.label }}</dt>
+          <dd>{{ item.value }}</dd>
+        </div>
+      </dl>
+      <template #note>
+        <router-link
+          class="ui-link"
+          to="/settings/advanced"
+        >
+          前往進階設定調整
+        </router-link>
+      </template>
+    </SettingsGroup>
   </div>
 </template>
 
@@ -116,40 +103,17 @@ const advancedRows = computed(() => {
 <style scoped>
 .general {
   display: grid;
-  gap: 22px;
+  gap: 20px;
   min-width: 0;
-}
-
-/* Spans the full page grid: the context column ends on the same right edge as every other page */
-.general-split {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 400px);
-  gap: 22px;
-  align-items: start;
-  min-width: 0;
-}
-
-.general-main {
-  display: grid;
-  gap: 22px;
-  min-width: 0;
-}
-
-.general-aside {
-  display: grid;
-  gap: 16px;
-  min-width: 0;
-  /* line the first card up with the first form card, below its group caption */
-  padding-top: 28px;
 }
 
 /* read-only values: label over value, no row chrome, so nothing here looks like a field */
 .adv-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px 16px;
   margin: 0;
-  padding: 14px 22px;
+  padding: 16px 22px;
 }
 
 .adv-item dt {
@@ -165,8 +129,8 @@ const advancedRows = computed(() => {
 
 
 
-.lat-card {
-  padding-bottom: 8px;
+.label-note {
+  font-weight: 400;
 }
 
 .lat-row {
@@ -212,18 +176,9 @@ const advancedRows = computed(() => {
   color: var(--ui-muted);
 }
 
-@media (max-width: 1024px) {
-  .general-split {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .general-aside {
-    padding-top: 0;
-  }
-
-  /* phone order: tiles, forms, params, latency */
-  .adv-group {
-    order: -1;
+@media (max-width: 768px) {
+  .adv-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 </style>
