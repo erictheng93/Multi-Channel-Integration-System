@@ -25,7 +25,12 @@
 
       <div class="ep-main">
         <div class="path">
-          {{ endpoint.endpoint }}
+          <template
+            v-for="(seg, i) in pathSegments"
+            :key="i"
+          >
+            <span class="seg">{{ seg }}</span><wbr>
+          </template>
         </div>
         <div class="desc">
           {{ endpoint.description }}
@@ -82,6 +87,14 @@ const props = defineProps<{
 defineEmits<{
   (_e: 'toggle'): void
 }>()
+
+/** Path split after each slash ("/api/", "auth/", "login"): the only places a phone may wrap a path */
+const pathSegments = computed(() => {
+  const raw = props.endpoint.endpoint
+  const lead = raw.startsWith('/') ? '/' : ''
+  const parts = raw.slice(lead.length).split(/(?<=\/)/)
+  return parts.map((part, i) => (i === 0 ? lead + part : part))
+})
 
 const statusText = computed(() => {
   const map: Record<string, string> = { healthy: '正常', warning: '警告', error: '錯誤' }
@@ -263,8 +276,18 @@ const successClass = computed(() => {
     display: none;
   }
 
-  /* Phone: nothing is cut. Paths and descriptions wrap, and the success rate keeps a line of its own */
-  .path,
+  /* Phone: nothing is cut. Paths wrap only after a slash (the segments never break), descriptions wrap,
+     and the success rate keeps a line of its own */
+  .path {
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+  }
+
+  .seg {
+    white-space: nowrap;
+  }
+
   .desc {
     overflow: visible;
     overflow-wrap: anywhere;
