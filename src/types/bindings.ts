@@ -99,6 +99,12 @@ export interface Bindings {
   ADMIN_TOKEN?: string;
   ADDITIONAL_ALLOWED_ORIGINS?: string; // Comma-separated list of additional CORS origins
   
+  // Analytics Engine: per-endpoint API metrics (optional; no-op when absent)
+  API_METRICS?: AnalyticsEngineDataset;
+  // Secrets for the Analytics Engine SQL API (see docs/operations/API_METRICS_SETUP.md)
+  CF_ACCOUNT_ID?: string;
+  CF_ANALYTICS_TOKEN?: string;
+
   // Environment variables - Cloudflare
   CLOUDFLARE_ACCOUNT_ID?: string;
   CLOUDFLARE_DATABASE_ID?: string;
