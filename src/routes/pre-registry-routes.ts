@@ -144,7 +144,8 @@ export function registerPreRegistryRoutes(app: Hono<{ Bindings: Bindings }>): vo
     ]
   });
 
-  app.use('/api/analytics/comparison/*', jwtAuth);
+  // Org-wide aggregates: admin only, like the rest of /api/analytics
+  app.use('/api/analytics/comparison/*', jwtAuth, requireAdmin());
   app.route('/api/analytics/comparison', comparisonAPI);
   log.info('Analytics Comparison API registered', {
     endpoints: ['/api/analytics/comparison/* (with internal OPTIONS handler)']
