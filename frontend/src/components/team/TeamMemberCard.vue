@@ -460,7 +460,14 @@ const getRoleText = (role: string) => {
   font-size: 13px;
   color: var(--ui-muted);
 }
+.stcell,
+.sysrole {
+  display: flex;
+  align-items: center;
+}
 .last {
+  display: flex;
+  align-items: center;
   font-size: 13px;
   color: var(--ui-muted);
   font-variant-numeric: tabular-nums;
