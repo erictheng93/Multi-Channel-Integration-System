@@ -11,39 +11,41 @@
           </p>
         </div>
       </div>
-      <dl
-        v-if="reportType"
-        class="kv"
-      >
+      <dl class="kv">
         <div class="kv-row">
           <dt>報表類型</dt>
-          <dd>{{ reportTypeLabel }}</dd>
+          <dd :class="{ 'is-empty': !reportType }">
+            {{ reportType ? reportTypeLabel : '尚未選擇' }}
+          </dd>
         </div>
-        <div
-          v-if="title"
-          class="kv-row"
-        >
+        <div class="kv-row">
           <dt>標題</dt>
-          <dd>{{ title }}</dd>
+          <dd :class="{ 'is-empty': !title }">
+            {{ title || '尚未填寫' }}
+          </dd>
+        </div>
+        <div class="kv-row">
+          <dt>時間範圍</dt>
+          <dd :class="{ 'is-empty': !timeRange }">
+            {{ timeRange ? timeRangeLabel : '尚未選擇' }}
+          </dd>
         </div>
         <div class="kv-row">
           <dt>格式</dt>
           <dd>{{ formatLabel }}</dd>
         </div>
+        <div class="kv-row">
+          <dt>內容</dt>
+          <dd>{{ contentLabel }}</dd>
+        </div>
         <div
-          v-if="timeRange"
+          v-if="options?.maxRecords"
           class="kv-row"
         >
-          <dt>時間範圍</dt>
-          <dd>{{ timeRangeLabel }}</dd>
+          <dt>筆數上限</dt>
+          <dd>{{ options.maxRecords.toLocaleString('en-US') }}</dd>
         </div>
       </dl>
-      <p
-        v-else
-        class="hint"
-      >
-        選擇報表類型後會在這裡顯示設定摘要。
-      </p>
       <slot name="action" />
     </section>
 
@@ -116,7 +118,8 @@ import type {
   ReportType,
   ReportFormat,
   ReportTimeRange,
-  ReportBase
+  ReportBase,
+  ReportOptions
 } from '@/types/reports';
 
 interface Props {
@@ -127,6 +130,7 @@ interface Props {
   isGenerating: boolean;
   currentStep: string;
   recentReports: ReportBase[];
+  options?: ReportOptions;
 }
 
 const props = defineProps<Props>();
@@ -134,6 +138,13 @@ const props = defineProps<Props>();
 defineEmits<{
   'view-report': [reportId: string];
 }>();
+
+const contentLabel = computed(() => {
+  const o = props.options;
+  if (!o) { return '預設' }
+  const parts = [o.includeSummary && '摘要', o.includeCharts && '圖表', o.includeDetails && '明細'].filter(Boolean);
+  return parts.length > 0 ? parts.join('、') : '僅基本資料';
+});
 
 const reportTypeLabel = computed(() => {
   if (!props.reportType) {
@@ -208,11 +219,9 @@ const formatDate = (dateString: string): string => {
   text-align: right;
 }
 
-.hint {
-  margin: 0;
-  padding: 0 22px 18px;
-  font-size: 13.5px;
-  color: var(--ui-muted);
+.kv-row dd.is-empty {
+  font-weight: 400;
+  color: var(--ui-faint);
 }
 
 .progress-content {
