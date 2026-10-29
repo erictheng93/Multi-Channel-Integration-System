@@ -110,11 +110,14 @@
                 </span>
               </p>
 
-              <div class="form-actions">
+              <div
+                v-if="profileChanged || profileSaving"
+                class="form-actions"
+              >
                 <button
                   type="button"
                   class="btn btn-ghost"
-                  :disabled="!profileChanged || profileSaving"
+                  :disabled="profileSaving"
                   @click="resetProfile"
                 >
                   重設
@@ -122,7 +125,7 @@
                 <button
                   type="submit"
                   class="btn btn-primary"
-                  :disabled="!profileChanged || profileSaving"
+                  :disabled="profileSaving"
                 >
                   {{ profileSaving ? '儲存中…' : '儲存變更' }}
                 </button>
@@ -150,9 +153,14 @@
               </div>
             </header>
             <div class="form prefs">
-              <p class="prefs-text">
-                桌面通知只套用於這台裝置，其餘跟著你的帳號。
-              </p>
+              <div class="prefs-text">
+                <span
+                  class="ui-pill"
+                  :class="devicePerm.pill"
+                  data-testid="device-notify"
+                >這台裝置：{{ devicePerm.label }}</span>
+                <p>桌面通知只套用於這台裝置，其餘跟著你的帳號。</p>
+              </div>
               <div class="form-actions">
                 <RouterLink
                   class="btn btn-secondary"
@@ -336,7 +344,7 @@
                 <button
                   type="submit"
                   class="btn btn-primary"
-                  :disabled="!passwordReady || passwordSaving"
+                  :disabled="passwordSaving"
                 >
                   {{ passwordSaving ? '修改中…' : '修改密碼' }}
                 </button>
@@ -386,6 +394,15 @@ const adminItems = computed(() => {
   ]
   if (teams.value.length > 0) { parts.push({ label: '團隊', value: teams.value.map((t) => t.name).join('、') }) }
   return parts
+})
+
+// 這台裝置的桌面通知權限（瀏覽器 Notification.permission，只讀）
+const devicePerm = computed(() => {
+  const perm = typeof Notification === 'undefined' ? 'unsupported' : Notification.permission
+  if (perm === 'granted') { return { label: '桌面通知已開啟', pill: 'ui-pill-green ui-pill-dot' } }
+  if (perm === 'denied') { return { label: '桌面通知已被瀏覽器封鎖', pill: 'ui-pill-red' } }
+  if (perm === 'unsupported') { return { label: '瀏覽器不支援桌面通知', pill: '' } }
+  return { label: '桌面通知尚未開啟', pill: 'ui-pill-orange' }
 })
 
 // 密碼顯示/隱藏（僅本地 UI 狀態）
@@ -515,16 +532,6 @@ const passwordStrength = computed<StrengthInfo>(() => {
   return { level: 'strong', percent: 100, label: '強' }
 })
 
-const passwordReady = computed(() => {
-  return (
-    passwordForm.currentPassword.length > 0 &&
-    passwordForm.newPassword.length >= 8 &&
-    passwordForm.confirmPassword.length > 0 &&
-    passwordForm.newPassword === passwordForm.confirmPassword &&
-    passwordForm.newPassword !== passwordForm.currentPassword
-  )
-})
-
 function validatePassword(): boolean {
   passwordErrors.currentPassword = undefined
   passwordErrors.newPassword = undefined
@@ -554,7 +561,13 @@ function validatePassword(): boolean {
 }
 
 async function onChangePassword(): Promise<void> {
-  if (!validatePassword()) {return}
+  // The button stays enabled: pressing it explains what is missing and jumps to the first problem
+  if (!validatePassword()) {
+    const first = passwordErrors.currentPassword ? 'current-password' : passwordErrors.newPassword ? 'new-password' : 'confirm-password'
+    await nextTick()
+    document.getElementById(first)?.focus()
+    return
+  }
 
   passwordSaving.value = true
   try {
@@ -630,13 +643,13 @@ watch(
 
 <style scoped>
 
-/* Two content-sized columns: 基本資料 + 通知偏好 on the left, 安全性 on the right. Cards never stretch,
-   so each action row sits right under its fields and the column bottoms land close together. */
+/* Two columns of equal height: 基本資料 + 通知偏好 on the left, 安全性 on the right. The last card of each
+   column absorbs the difference and its action row sits at the card's foot, so the bottoms land together. */
 .profile-cols {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
-  align-items: start;
+  align-items: stretch;
 }
 
 .profile-col {
@@ -644,6 +657,22 @@ watch(
   flex-direction: column;
   gap: 16px;
   min-width: 0;
+}
+
+.profile-col > .profile-card:last-child {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
+
+.profile-col > .profile-card:last-child > .form {
+  flex: 1;
+  align-content: start;
+}
+
+#security > .form > .form-actions {
+  align-self: end;
+  margin-top: auto;
 }
 
 .profile-card > .form > .form-actions {
@@ -667,10 +696,16 @@ watch(
 
 /* The security form is the one long column: give its fields room so the two columns end together */
 #security > .form {
-  gap: 32px;
+  gap: 24px;
 }
 
 .prefs-text {
+  display: grid;
+  gap: 8px;
+  justify-items: start;
+}
+
+.prefs-text p {
   margin: 0;
   font-size: 14px;
   line-height: 1.6;
