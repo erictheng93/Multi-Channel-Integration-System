@@ -114,7 +114,7 @@
     --ui-p-lavender: #eee8fb;
     --ui-p-lavender-ink: #5c4f7c;
     --ui-p-peach: #fff1e0;
-    --ui-p-peach-ink: #8d6e4c;
+    --ui-p-peach-ink: #86643e; /* 4.8:1 on --ui-p-peach */
     --ui-p-mint: #e6f5ea;
     --ui-p-mint-ink: #3f7452;
     --ui-p-sky: #e4f0fd;
