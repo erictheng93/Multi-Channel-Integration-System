@@ -36,7 +36,7 @@ broadcastRouter.post('/preview', async (c) => {
 
   const service = new BroadcastService(createDbClient(c.env.DB), c.env);
   try {
-    const preview = await service.preview(parsed.tagIds[0]);
+    const preview = await service.preview(parsed.tagIds[0], c.get('user'));
     return successResponse(c, preview, 'Broadcast audience preview retrieved');
   } catch (error) {
     return handleBroadcastError(c, error);
