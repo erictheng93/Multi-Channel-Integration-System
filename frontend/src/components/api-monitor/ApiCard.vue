@@ -43,12 +43,9 @@
         </div>
       </div>
 
+      <span class="m m-p95">{{ endpoint.responseTime }}<small> ms</small></span>
       <span
-        class="m"
-        :class="p95Class"
-      >{{ endpoint.responseTime }}<small> ms</small></span>
-      <span
-        class="m hide-m"
+        class="m m-rate hide-m"
         :class="successClass"
       >{{ endpoint.successRate }}%</span>
       <span class="m hide-m">{{ endpoint.requestCount.toLocaleString() }}<small>/時</small></span>
@@ -101,14 +98,10 @@ const statusText = computed(() => {
   return map[props.endpoint.status] ?? props.endpoint.status
 })
 
-const p95Class = computed(() => {
-  if (props.endpoint.responseTime >= 1000) { return 'bad' }
-  return props.endpoint.responseTime >= 400 ? 'warn' : ''
-})
-
+/** Measurements (P95, requests) stay ink; only the success rate carries health colour, always one weight */
 const successClass = computed(() => {
   if (props.endpoint.successRate < 95) { return 'bad' }
-  return props.endpoint.successRate < 99 ? 'warn' : ''
+  return props.endpoint.successRate < 99 ? 'warn' : 'ok'
 })
 </script>
 
@@ -246,6 +239,10 @@ const successClass = computed(() => {
   color: var(--ui-muted);
 }
 
+.m.ok {
+  color: var(--ui-green-ink);
+}
+
 .m.warn {
   color: var(--ui-orange-ink);
 }
@@ -266,10 +263,40 @@ const successClass = computed(() => {
 }
 
 @media (max-width: 768px) {
+  /* Method pill sits above the path so the path owns the full middle column (no 3-4 line wrap) */
   .ep {
-    grid-template-columns: 10px 48px minmax(0, 1fr) 76px 16px;
-    gap: 10px;
+    grid-template-areas:
+      'sd meth m chev'
+      'sd main m chev';
+    grid-template-columns: 10px minmax(0, 1fr) 76px 16px;
+    gap: 4px 10px;
     padding: 12px 16px;
+  }
+
+  .sd {
+    grid-area: sd;
+    align-self: start;
+    margin-top: 5px;
+  }
+
+  .meth {
+    grid-area: meth;
+    justify-self: start;
+    padding: 0 9px;
+    height: 20px;
+    font-size: 12px;
+  }
+
+  .ep-main {
+    grid-area: main;
+  }
+
+  .m-p95 {
+    grid-area: m;
+  }
+
+  .chev {
+    grid-area: chev;
   }
 
   .hide-m {
@@ -280,6 +307,7 @@ const successClass = computed(() => {
      and the success rate keeps a line of its own */
   .path {
     overflow: visible;
+    font-size: 12.5px;
     text-overflow: clip;
     white-space: normal;
   }

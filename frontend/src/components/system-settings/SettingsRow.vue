@@ -10,23 +10,26 @@
     class="srow"
     :class="{ 'is-danger': danger }"
   >
-    <div class="srow-l">
-      <label
-        v-if="forId"
-        class="srow-t"
-        :for="forId"
-      >{{ label }}</label>
-      <div
-        v-else
-        class="srow-t"
-      >
-        {{ label }}
-      </div>
-      <div
-        v-if="hint"
-        class="srow-h"
-      >
-        {{ hint }}
+    <div class="srow-head">
+      <slot name="lead" />
+      <div class="srow-l">
+        <label
+          v-if="forId"
+          class="srow-t"
+          :for="forId"
+        >{{ label }}</label>
+        <div
+          v-else
+          class="srow-t"
+        >
+          {{ label }}
+        </div>
+        <div
+          v-if="hint"
+          class="srow-h"
+        >
+          {{ hint }}
+        </div>
       </div>
     </div>
     <div
@@ -67,6 +70,14 @@ defineProps<{
   left: 22px;
   height: 0.5px;
   background: var(--ui-sep);
+}
+
+.srow-head {
+  display: flex;
+  flex: 1;
+  gap: 14px;
+  align-items: center;
+  min-width: 0;
 }
 
 .srow-l {
