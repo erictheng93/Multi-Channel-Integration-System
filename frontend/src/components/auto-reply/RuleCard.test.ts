@@ -82,9 +82,9 @@ describe('RuleCard -- rendering', () => {
     expect(wrapper.find('.rule-card__trigger-badge').text()).toBe('關鍵字')
   })
 
-  it('renders priority badge with P prefix', () => {
+  it('renders priority pill as 優先 N', () => {
     const wrapper = mountRuleCard({ rule: makeRule({ priority: 50 }) })
-    expect(wrapper.find('.rule-card__priority-badge').text()).toBe('P50')
+    expect(wrapper.find('.rule-card__priority-badge').text()).toBe('優先 50')
   })
 
   it('renders condition and action counts in meta', () => {
