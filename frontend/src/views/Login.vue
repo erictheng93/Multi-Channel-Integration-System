@@ -79,7 +79,7 @@
             >
               <DiscRing
                 variant="hero"
-                :size="460"
+                :size="360"
               />
             </div>
             <div class="brand-mark">
@@ -421,10 +421,12 @@ const handleLogin = async (event?: Event) => {
 }
 
 .wrap {
-  width: min(1240px, 100%);
+  /* Brand + card read as ONE unit, centred; the disc is anchored behind the brand side */
+  position: relative;
+  width: min(900px, 100%);
   display: grid;
-  grid-template-columns: minmax(0, 400px) minmax(0, 1fr) 400px;
-  gap: 0;
+  grid-template-columns: minmax(0, 1fr) 400px;
+  gap: 72px;
   align-items: center;
 }
 
@@ -456,7 +458,6 @@ const handleLogin = async (event?: Event) => {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  min-height: 520px;
   padding: 8px 0;
 }
 
@@ -529,24 +530,24 @@ const handleLogin = async (event?: Event) => {
   color: var(--ui-muted);
 }
 
-/* Open zone: the hero abrasive disc sits centred between the brand column and the card.
-   It is wider than the zone on purpose: its rim tucks under the card and the headline's right
-   edge (both sit above it), and the mask trims the outermost grain. */
+/* The hero disc is anchored behind the brand column and runs off the LEFT viewport edge on
+   purpose (the stage clips it). A mask fades its right side so it never reaches the card. */
 .zone {
-  position: relative;
-  align-self: stretch;
-  min-width: 0;
+  position: absolute;
+  top: 50%;
+  left: -590px;
+  width: 640px;
+  height: 640px;
+  margin-top: -320px;
   pointer-events: none;
+  -webkit-mask-image: linear-gradient(to right, #000 0%, #000 62%, transparent 96%);
+  mask-image: linear-gradient(to right, #000 0%, #000 62%, transparent 96%);
 }
 
 .wheel {
-  position: absolute;
-  top: 50%;
-  left: 60%;
-  width: 540px;
-  height: 540px;
-  margin: -270px 0 0 -270px;
-  opacity: 0.95;
+  width: 100%;
+  height: 100%;
+  opacity: 0.8;
 }
 
 /* Dark: the rim turns white for contrast on the black canvas */
@@ -676,14 +677,11 @@ const handleLogin = async (event?: Event) => {
   transform: translateX(3px);
 }
 
-.submit-btn:disabled {
-  /* normal blue at half strength: still reads as THE primary action, just not yet available */
+/* Disabled colours come from the global .btn:disabled (neutral iOS fill). While submitting we
+   keep the brand blue so the spinner state still reads as in progress. */
+.submit-btn.is-loading:disabled {
   background: var(--ui-accent);
   color: #fff;
-  opacity: 0.5;
-}
-
-.submit-btn.is-loading:disabled {
   opacity: 0.75;
 }
 
@@ -707,19 +705,20 @@ const handleLogin = async (event?: Event) => {
 .m-disc {
   position: absolute;
   left: 50%;
-  top: 22px;
+  top: 78px;
   z-index: -1;
-  margin: -230px 0 0 -230px;
-  opacity: 0.9;
+  margin: -180px 0 0 -180px;
+  opacity: 0.85;
   pointer-events: none;
-  -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 42%, transparent 62%);
-  mask-image: linear-gradient(to bottom, #000 0%, #000 42%, transparent 62%);
+  /* radial fade: the whole disc dissolves into the canvas instead of being cut by the screen top */
+  -webkit-mask-image: radial-gradient(circle at center, #000 38%, transparent 70%);
+  mask-image: radial-gradient(circle at center, #000 38%, transparent 70%);
 }
 
 @media (max-width: 1024px) {
   .stage {
     align-content: center;
-    padding: 72px 16px 32px;
+    padding: 96px 16px 24px;
   }
 
   .wrap {
@@ -735,7 +734,8 @@ const handleLogin = async (event?: Event) => {
 
   .m-brand {
     display: block;
-    margin-bottom: 24px;
+    margin-bottom: 20px;
+    padding-top: 56px;
     text-align: center;
   }
 
