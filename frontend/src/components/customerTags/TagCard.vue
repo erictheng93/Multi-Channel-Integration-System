@@ -55,14 +55,13 @@
         </button>
       </div>
       <span
-        v-if="(tag.conversationCount || 0) > 0"
+        v-if="!(tag.conversationCount || 0)"
+        class="ui-pill"
+      >尚未套用</span>
+      <span
         class="meter"
         aria-hidden="true"
       ><i :style="{ width: meterWidth }" /></span>
-      <span
-        v-else
-        class="ui-pill"
-      >尚未套用</span>
 
       <div class="tag-actions">
         <button
@@ -145,10 +144,15 @@ const meterWidth = computed(() => {
   transform: translateY(-1px);
 }
 
-.tag-card.tag-active,
+/* Selection reads as tint + lift, never as a hard ring */
+.tag-card.tag-active {
+  background: color-mix(in srgb, var(--tag-c) 9%, var(--ui-surface));
+  box-shadow: var(--ui-shadow-raised);
+}
+
 .tag-card.tag-selected {
-  background: color-mix(in srgb, var(--ui-accent-soft) 60%, var(--ui-surface));
-  box-shadow: var(--ui-sel-ring), var(--ui-shadow-raised);
+  background: color-mix(in srgb, var(--ui-accent-soft) 70%, var(--ui-surface));
+  box-shadow: var(--ui-shadow-raised);
 }
 
 .t-top {
@@ -267,8 +271,9 @@ const meterWidth = computed(() => {
 
 .t-foot {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 10px;
+  gap: 8px 10px;
 }
 
 .tag-stats {
@@ -304,9 +309,9 @@ const meterWidth = computed(() => {
 }
 
 .meter {
-  flex: 1;
-  min-width: 24px;
-  height: 5px;
+  order: 3;
+  flex: 1 1 100%;
+  height: 4px;
   overflow: hidden;
   border-radius: 999px;
   background: var(--ui-fill);
@@ -371,9 +376,30 @@ const meterWidth = computed(() => {
 }
 
 @media (max-width: 768px) {
-  .action-btn {
-    width: 44px;
-    height: 44px;
+  .tag-card {
+    gap: 8px;
+    padding: 12px;
+  }
+
+  /* Compact tile: chip + count only. Edit and delete live in the detail sheet. */
+  .tag-description,
+  .tag-description-spacer,
+  .meter,
+  .tag-actions {
+    display: none;
+  }
+
+  .t-top {
+    gap: 6px;
+  }
+
+  .tag-chip {
+    padding: 0 10px;
+  }
+
+  .t-foot {
+    flex-wrap: wrap;
+    min-height: 28px;
   }
 }
 </style>

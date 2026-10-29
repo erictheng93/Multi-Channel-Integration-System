@@ -60,10 +60,18 @@
         <table class="ui-table">
           <thead>
             <tr>
-              <th>活動</th>
-              <th>狀態</th>
-              <th>結果</th>
-              <th />
+              <th class="th-title">
+                活動
+              </th>
+              <th class="th-status">
+                狀態
+              </th>
+              <th class="th-result">
+                結果
+              </th>
+              <th class="th-act">
+                <span class="sr-only">操作</span>
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -71,6 +79,7 @@
               v-for="broadcast in broadcasts"
               :key="broadcast.id"
               :class="{ 'is-selected': broadcast.id === selectedId }"
+              @click="$emit('select', broadcast.id)"
             >
               <td class="col-title">
                 <strong class="title-line">
@@ -110,9 +119,10 @@
                     />
                   </div>
                   <small class="result-text">
-                    {{ broadcast.totalRecipients }} 人 · 成功 <b>{{ broadcast.sentCount }}</b> ·
-                    失敗 <b :class="{ 'is-bad': broadcast.failedCount > 0 }">{{ broadcast.failedCount }}</b> ·
-                    略過 <b>{{ broadcast.skippedCount }}</b>
+                    <span class="r-total">{{ broadcast.totalRecipients }} 人</span>
+                    <span>成功 <b>{{ broadcast.sentCount }}</b></span>
+                    <span>失敗 <b :class="{ 'is-bad': broadcast.failedCount > 0 }">{{ broadcast.failedCount }}</b></span>
+                    <span>略過 <b>{{ broadcast.skippedCount }}</b></span>
                   </small>
                 </template>
                 <small
@@ -124,7 +134,8 @@
                 <button
                   class="btn btn-ghost btn-sm"
                   type="button"
-                  @click="$emit('select', broadcast.id)"
+                  :aria-label="`${broadcast.title} 收件人明細`"
+                  @click.stop="$emit('select', broadcast.id)"
                 >
                   明細
                 </button>
@@ -243,17 +254,30 @@ function formatDate(value: string | null): string {
   padding-bottom: 6px;
 }
 
+.ui-table {
+  table-layout: fixed;
+  width: 100%;
+}
+
 .ui-table td {
   vertical-align: top;
 }
+
+.ui-table tbody tr {
+  cursor: pointer;
+}
+
+.th-title { width: 38%; }
+.th-status { width: 20%; }
+.th-result { width: 31%; }
+.th-act { width: 11%; }
 
 .ui-table tbody tr.is-selected {
   background: var(--ui-sel-tint);
 }
 
 .col-title {
-  min-width: 190px;
-  max-width: 280px;
+  min-width: 0;
 }
 
 .title-line {
@@ -293,7 +317,7 @@ function formatDate(value: string | null): string {
 }
 
 .col-result {
-  min-width: 190px;
+  min-width: 0;
 }
 
 .result-bar {
@@ -323,12 +347,18 @@ function formatDate(value: string | null): string {
 }
 
 .result-text {
-  display: block;
-  white-space: nowrap;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 12px;
   margin-top: 6px;
   font-size: 13px;
   color: var(--ui-muted);
   font-variant-numeric: tabular-nums;
+}
+
+.r-total {
+  font-weight: 600;
+  color: var(--ui-ink);
 }
 
 .result-text b {
@@ -360,6 +390,59 @@ function formatDate(value: string | null): string {
 @media (max-width: 768px) {
   .pagination .btn {
     min-height: 44px;
+  }
+
+  /* Stacked rows: title, status + time, result, then the detail action */
+  .ui-table,
+  .ui-table tbody {
+    display: block;
+  }
+
+  .ui-table thead {
+    display: none;
+  }
+
+  .ui-table tbody tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px 12px;
+    padding: 14px 16px;
+    box-shadow: 0 -0.5px 0 var(--ui-sep);
+  }
+
+  .ui-table tbody td {
+    display: block;
+    padding: 0;
+    box-shadow: none;
+  }
+
+  .col-title {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .col-status {
+    grid-column: 2;
+    grid-row: 1;
+    text-align: right;
+  }
+
+  .col-result {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+
+  /* The whole row is the tap target; the button stays for keyboard and screen readers */
+  .ui-table tbody td.col-act {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+  }
+
+  .ui-table tbody tr {
+    position: relative;
   }
 }
 </style>

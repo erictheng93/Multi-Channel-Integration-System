@@ -75,6 +75,26 @@
       </div>
     </div>
 
+    <UiActionBar
+      class="generate-bar"
+      label="產生報表"
+    >
+      <p
+        v-if="!isFormValid"
+        class="generate-hint"
+      >
+        {{ missingHint }}
+      </p>
+      <button
+        class="btn btn-primary"
+        type="button"
+        :disabled="!isFormValid || isGenerating"
+        @click="generateReport"
+      >
+        {{ isGenerating ? '產生中...' : '產生報表' }}
+      </button>
+    </UiActionBar>
+
     <ReportSuccessToast
       :visible="showSuccess"
       @close="showSuccess = false"
@@ -86,6 +106,7 @@
 <script setup lang="ts">
 import UiPageHead from '@/components/ui/UiPageHead.vue'
 import UiSectionNav from '@/components/ui/UiSectionNav.vue'
+import UiActionBar from '@/components/ui/UiActionBar.vue'
 import { ref, reactive, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import ReportsAPI from '@/api/reports';
@@ -153,6 +174,14 @@ const isFormValid = computed(() => {
          formData.timeRange &&
          (formData.timeRange !== 'custom' ||
           (formData.startDate && formData.endDate));
+});
+
+// What still blocks the primary action (shown beside the phone action bar)
+const missingHint = computed(() => {
+  if (!formData.type) { return '請先選擇報表類型'; }
+  if (!formData.title.trim()) { return '請輸入報表標題'; }
+  if (formData.timeRange === 'custom' && !(formData.startDate && formData.endDate)) { return '請選擇自訂日期範圍'; }
+  return '';
 });
 
 // Methods
@@ -370,6 +399,30 @@ onMounted(() => {
   }
 }
 
+.generate-bar {
+  display: none;
+}
+
+.generate-hint {
+  flex: 1;
+  margin: 0;
+  font-size: 13px;
+  color: var(--ui-muted);
+}
+
 @media (max-width: 768px) {
+  /* The action bar replaces the in-card button so the primary action never scrolls away */
+  .generate-bar {
+    display: flex;
+  }
+
+  .generate-action {
+    display: none;
+  }
+
+  .generate-bar .btn {
+    flex: 0 0 auto;
+    min-width: 140px;
+  }
 }
 </style>

@@ -84,6 +84,8 @@
             :visible="true"
             :tag="conversationsTag"
             inline
+            @edit="editActiveTag"
+            @delete="deleteActiveTag"
           />
         </aside>
       </section>
@@ -120,6 +122,8 @@
         :visible="showConversationsModal && !isWide"
         :tag="conversationsTag"
         @update:visible="showConversationsModal = $event"
+        @edit="editActiveTag"
+        @delete="deleteActiveTag"
       />
     </div>
   </AppLayout>
@@ -229,6 +233,20 @@ watch(allTags, (list) => {
 
 // ==================== Methods ====================
 
+// Edit / delete from the detail panel or sheet (the sheet closes first on phones)
+const editActiveTag = () => {
+  const tag = conversationsTag.value
+  if (!tag) { return }
+  showConversationsModal.value = false
+  openEditModal(tag)
+}
+const deleteActiveTag = () => {
+  const tag = conversationsTag.value
+  if (!tag) { return }
+  showConversationsModal.value = false
+  openDeleteModal(tag)
+}
+
 /**
  * Handle bulk delete confirmation
  */
@@ -267,7 +285,7 @@ onUnmounted(() => {
 }
 
 .tags-layout.has-panel {
-  grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+  grid-template-columns: minmax(0, 8fr) minmax(0, 4fr);
 }
 
 .tags-panel {

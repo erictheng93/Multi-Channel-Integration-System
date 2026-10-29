@@ -32,6 +32,7 @@
 
       <!-- Pagination Controls -->
       <PaginationControls
+        v-if="paginationInfo.totalPages > 1"
         :pagination="paginationInfo"
         :visible-pages="pagination.pageRange.value"
         @change-page="pagination.setPage"
@@ -103,13 +104,20 @@ watch(
 
 .tags-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
 }
 
-@media (max-width: 480px) {
+@media (max-width: 1024px) {
   .tags-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Phone: compact 2-up tiles; the detail opens in a bottom sheet */
+@media (max-width: 768px) {
+  .tags-grid {
+    gap: 10px;
   }
 }
 </style>

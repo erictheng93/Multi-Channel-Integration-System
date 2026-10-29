@@ -52,8 +52,11 @@
 
       <div class="rule-card__right">
         <!-- Priority badge -->
-        <span class="badge rule-card__priority-badge">
-          P{{ rule.priority }}
+        <span
+          class="rule-card__priority-badge"
+          title="數字越小越先比對"
+        >
+          優先 {{ rule.priority }}
         </span>
 
         <!-- Meta text -->
@@ -62,8 +65,19 @@
         </span>
 
         <!-- Expand arrow -->
-        <span class="rule-card__arrow">
-          {{ isExpanded ? '\u25BC' : '\u25B6' }}
+        <span
+          class="rule-card__arrow"
+          :class="{ 'is-open': isExpanded }"
+          aria-hidden="true"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2.2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          ><path d="m9 6 6 6-6 6" /></svg>
         </span>
       </div>
     </div>
@@ -270,8 +284,8 @@ const triggerTypeLabel = computed(() => {
   padding: 0 9px;
   border-radius: 999px;
   background: var(--ui-fill);
-  font-size: 11.5px;
-  font-weight: 600;
+  font-size: 13px;
+  font-weight: 500;
   line-height: 22px;
   color: var(--ui-ink-2);
   white-space: nowrap;
@@ -302,8 +316,8 @@ const triggerTypeLabel = computed(() => {
   padding: 0 9px;
   border-radius: 999px;
   background: var(--ui-fill);
-  font-size: 11.5px;
-  font-weight: 600;
+  font-size: 13px;
+  font-weight: 500;
   line-height: 22px;
   color: var(--ui-muted);
   white-space: nowrap;
@@ -311,11 +325,14 @@ const triggerTypeLabel = computed(() => {
 
 /* Priority badge */
 .rule-card__priority-badge {
-  padding: 2px 7px;
-  border-radius: 8px;
+  padding: 3px 10px;
+  border-radius: 999px;
   background: var(--ui-fill);
-  font: 600 11.5px var(--ui-font-mono);
+  font-size: 13px;
+  font-weight: 500;
   color: var(--ui-ink-2);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 /* Meta text */
@@ -328,10 +345,21 @@ const triggerTypeLabel = computed(() => {
 
 /* Arrow */
 .rule-card__arrow {
-  width: 14px;
-  font-size: 13px;
-  color: var(--ui-faint);
-  text-align: center;
+  display: grid;
+  width: 18px;
+  height: 18px;
+  place-items: center;
+  color: var(--ui-muted);
+  transition: transform var(--ui-dur) var(--ui-ease);
+}
+
+.rule-card__arrow svg {
+  width: 16px;
+  height: 16px;
+}
+
+.rule-card__arrow.is-open {
+  transform: rotate(90deg);
 }
 
 /* Body */

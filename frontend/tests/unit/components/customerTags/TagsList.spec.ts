@@ -96,23 +96,16 @@ describe('TagsList', () => {
   })
 
   describe('Pagination', () => {
-    it('PaginationControls rendered when tags exist (even <= 24)', () => {
-      // PaginationControls is always in the v-else block (tags.length > 0)
+    it('PaginationControls is hidden when everything fits on one page (<= 24)', () => {
       const wrapper = factory({ tags: makeTags(PAGE_SIZE) })
       const pagination = wrapper.findComponent({ name: 'PaginationControls' })
-      expect(pagination.exists()).toBe(true)
+      expect(pagination.exists()).toBe(false)
     })
 
     it('PaginationControls rendered when tags.length > 24', () => {
       const wrapper = factory({ tags: makeTags(PAGE_SIZE + 1) })
       const pagination = wrapper.findComponent({ name: 'PaginationControls' })
       expect(pagination.exists()).toBe(true)
-    })
-
-    it('pagination shows totalPages=1 when tags.length <= 24', () => {
-      const wrapper = factory({ tags: makeTags(PAGE_SIZE) })
-      const pagination = wrapper.findComponent({ name: 'PaginationControls' })
-      expect(pagination.props('pagination').totalPages).toBe(1)
     })
 
     it('pagination shows totalPages=2 when tags.length > 24', () => {

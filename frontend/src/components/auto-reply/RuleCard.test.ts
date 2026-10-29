@@ -82,9 +82,9 @@ describe('RuleCard -- rendering', () => {
     expect(wrapper.find('.rule-card__trigger-badge').text()).toBe('關鍵字')
   })
 
-  it('renders priority badge with P prefix', () => {
+  it('renders priority pill as 優先 N', () => {
     const wrapper = mountRuleCard({ rule: makeRule({ priority: 50 }) })
-    expect(wrapper.find('.rule-card__priority-badge').text()).toBe('P50')
+    expect(wrapper.find('.rule-card__priority-badge').text()).toBe('優先 50')
   })
 
   it('renders condition and action counts in meta', () => {
@@ -106,16 +106,15 @@ describe('RuleCard -- rendering', () => {
     expect(wrapper.find('.rule-card').classes()).not.toContain('rule-card--expanded')
   })
 
-  it('shows down arrow when expanded', () => {
+  it('rotates the chevron when expanded', () => {
     const wrapper = mountRuleCard({ isExpanded: true })
-    // U+25BC = down arrow
-    expect(wrapper.find('.rule-card__arrow').text()).toBe('\u25BC')
+    expect(wrapper.find('.rule-card__arrow svg').exists()).toBe(true)
+    expect(wrapper.find('.rule-card__arrow').classes()).toContain('is-open')
   })
 
-  it('shows right arrow when collapsed', () => {
+  it('keeps the chevron closed when collapsed', () => {
     const wrapper = mountRuleCard({ isExpanded: false })
-    // U+25B6 = right arrow
-    expect(wrapper.find('.rule-card__arrow').text()).toBe('\u25B6')
+    expect(wrapper.find('.rule-card__arrow').classes()).not.toContain('is-open')
   })
 
   it('shows RuleEditor when isExpanded is true', () => {
