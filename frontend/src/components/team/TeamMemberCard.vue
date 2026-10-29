@@ -131,13 +131,14 @@
       class="macts"
       @click.stop
     >
-      <Dropdown placement="bottom-end">
+      <Dropdown
+        placement="bottom-end"
+        :disabled="loading"
+      >
         <template #trigger>
-          <button
-            type="button"
+          <span
             class="more-btn"
             :aria-label="`更多操作：${displayName}`"
-            :disabled="loading"
           >
             <svg
               viewBox="0 0 24 24"
@@ -159,7 +160,7 @@
               cy="19"
               r="1"
             /></svg>
-          </button>
+          </span>
         </template>
         <DropdownItem
           :label="member.status === 'active' ? '停用' : '啟用'"

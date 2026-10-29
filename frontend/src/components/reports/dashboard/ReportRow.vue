@@ -6,7 +6,10 @@
     @click="$emit('view-report', report.id)"
     @keydown.enter="$emit('view-report', report.id)"
   >
-    <div class="row-cell type-cell title-cell">
+    <div
+      role="cell"
+      class="row-cell type-cell title-cell"
+    >
       <h4 class="report-title">
         {{ report.title }}
       </h4>
@@ -22,7 +25,10 @@
       >{{ typeLabel }}</span>
     </div>
 
-    <div class="row-cell status-cell">
+    <div
+      role="cell"
+      class="row-cell status-cell"
+    >
       <span
         class="ui-pill ui-pill-dot status-badge"
         :class="[pillClass, statusClass]"
@@ -31,11 +37,17 @@
       </span>
     </div>
 
-    <div class="row-cell format-cell">
+    <div
+      role="cell"
+      class="row-cell format-cell"
+    >
       <span class="format-text">{{ formatLabel }}</span>
     </div>
 
-    <div class="row-cell time-cell">
+    <div
+      role="cell"
+      class="row-cell time-cell"
+    >
       <span class="time-text">{{ formattedTime }}</span>
       <span
         v-if="expiryText"
@@ -43,11 +55,17 @@
       >{{ expiryText }}</span>
     </div>
 
-    <div class="row-cell size-cell">
+    <div
+      role="cell"
+      class="row-cell size-cell"
+    >
       <span class="size-text">{{ formattedSize }}</span>
     </div>
 
-    <div class="row-cell actions-cell">
+    <div
+      role="cell"
+      class="row-cell actions-cell"
+    >
       <div class="row-actions">
         <button
           class="action-btn"

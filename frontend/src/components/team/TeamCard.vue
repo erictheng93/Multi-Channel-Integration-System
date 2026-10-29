@@ -52,13 +52,14 @@
       >
         編輯團隊
       </button>
-      <Dropdown placement="bottom-end">
+      <Dropdown
+        placement="bottom-end"
+        :disabled="loading"
+      >
         <template #trigger>
-          <button
-            type="button"
+          <span
             class="more-btn"
             :aria-label="`更多操作：${team.name}`"
-            :disabled="loading"
           >
             <svg
               viewBox="0 0 24 24"
@@ -80,7 +81,7 @@
               cy="19"
               r="1"
             /></svg>
-          </button>
+          </span>
         </template>
         <DropdownItem
           :label="team.isActive ? '停用團隊' : '啟用團隊'"
