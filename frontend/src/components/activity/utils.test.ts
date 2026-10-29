@@ -83,30 +83,30 @@ describe('groupActivitiesByDate', () => {
 // ─── getActionIconStyle ───────────────────────────────────────────────────────
 
 describe('getActionIconStyle', () => {
-  it('returns blue style for user_login (bgClass contains blue)', () => {
+  it('returns accent style for user_login', () => {
     const style = getActionIconStyle('user_login')
-    expect(style.bgClass).toContain('blue')
+    expect(style.bgClass).toContain('--ui-accent-soft')
     expect(style.icon).toBeDefined()
   })
 
   it('returns green style for message_send', () => {
     const style = getActionIconStyle('message_send')
-    expect(style.bgClass).toContain('green')
+    expect(style.bgClass).toContain('--ui-green-soft')
   })
 
   it('returns orange style for conversation_assign', () => {
     const style = getActionIconStyle('conversation_assign')
-    expect(style.bgClass).toContain('orange')
+    expect(style.bgClass).toContain('--ui-orange-soft')
   })
 
-  it('returns bg containing F2E8FB for settings_update (purple)', () => {
+  it('returns indigo token for settings_update', () => {
     const style = getActionIconStyle('settings_update')
-    expect(style.bgClass).toContain('F2E8FB')
+    expect(style.bgClass).toContain('--ui-indigo-soft')
   })
 
-  it('returns bg containing E6F7FA for team_invite (teal)', () => {
+  it('returns teal token for team_invite', () => {
     const style = getActionIconStyle('team_invite')
-    expect(style.bgClass).toContain('E6F7FA')
+    expect(style.bgClass).toContain('--ui-teal-soft')
   })
 
   it('returns a default style for unknown actions', () => {
