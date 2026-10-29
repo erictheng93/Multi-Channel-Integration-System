@@ -15,49 +15,27 @@
           {{ section?.title ?? '系統設定' }}
         </template>
         <template
-          v-if="section && (section.key === 'health' || section.key === 'line' || section.key === 'facebook')"
+          v-if="section && section.key === 'health'"
           #actions
         >
-          <template v-if="section.key === 'health'">
-            <button
-              type="button"
-              class="btn btn-primary"
-              :disabled="controller.processing.value"
-              @click="controller.healthCheck(true)"
-            >
-              <svg
-                class="act-ico"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                aria-hidden="true"
-              ><path d="M22 12h-4l-3 9L9 3l-3 9H2" /></svg>
-              {{ controller.processing.value ? '檢查中...' : '立即檢查' }}
-            </button>
-          </template>
-          <template v-else-if="section.key === 'line' || section.key === 'facebook'">
-            <button
-              type="button"
-              class="btn btn-secondary"
-              :disabled="controller.testing.value || controller.saving.value"
-              @click="testConnection"
-            >
-              <svg
-                class="act-ico"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                aria-hidden="true"
-              ><path d="M5 12.5 10 17.5 19 7" /></svg>
-              {{ controller.testing.value ? '測試中...' : '測試連線' }}
-            </button>
-          </template>
+          <button
+            type="button"
+            class="btn btn-primary"
+            :disabled="controller.processing.value"
+            @click="controller.healthCheck(true)"
+          >
+            <svg
+              class="act-ico"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            ><path d="M22 12h-4l-3 9L9 3l-3 9H2" /></svg>
+            {{ controller.processing.value ? '檢查中...' : '立即檢查' }}
+          </button>
         </template>
       </UiPageHead>
 
@@ -75,7 +53,7 @@
       <div class="settings">
         <div
           class="scontent"
-          :class="{ 'is-narrow': isForm }"
+          :class="{ 'is-narrow': isNarrow }"
         >
           <router-view v-slot="{ Component }">
             <transition
@@ -88,28 +66,30 @@
         </div>
       </div>
 
-      <UiActionBar
-        v-if="isForm"
-        class="settings-actions"
-        label="儲存設定"
-      >
-        <button
-          type="button"
-          class="btn btn-secondary"
-          :disabled="!dirty || controller.saving.value || controller.loading.value"
-          @click="controller.loadSettings"
+      <Transition name="settings-bar">
+        <UiActionBar
+          v-if="isForm && (dirty || controller.saving.value)"
+          class="settings-actions"
+          label="儲存設定"
         >
-          還原
-        </button>
-        <button
-          type="submit"
-          class="btn btn-primary"
-          :form="SETTINGS_FORM_ID"
-          :disabled="!dirty || controller.saving.value || controller.testing.value"
-        >
-          {{ controller.saving.value ? '儲存中...' : '儲存變更' }}
-        </button>
-      </UiActionBar>
+          <button
+            type="button"
+            class="btn btn-secondary"
+            :disabled="!dirty || controller.saving.value || controller.loading.value"
+            @click="controller.loadSettings"
+          >
+            還原
+          </button>
+          <button
+            type="submit"
+            class="btn btn-primary"
+            :form="SETTINGS_FORM_ID"
+            :disabled="!dirty || controller.saving.value || controller.testing.value"
+          >
+            {{ controller.saving.value ? '儲存中...' : '儲存變更' }}
+          </button>
+        </UiActionBar>
+      </Transition>
     </div>
   </AppLayout>
 </template>
@@ -134,6 +114,8 @@ const section = computed(() => findSettingsSection(route.name))
 
 // Pages with a form and a save button (everything but the health check)
 const isForm = computed(() => !!section.value && section.value.key !== 'health')
+// Facebook and advanced keep one readable column; general and LINE lay out a context column beside it
+const isNarrow = computed(() => section.value?.key === 'facebook' || section.value?.key === 'advanced')
 
 // Dirty tracking: general/advanced compare against the last loaded or saved values;
 // the credential pages are dirty once something has been typed into a credential field.
@@ -166,14 +148,6 @@ watch(controller.loading, (now) => {
 watch(controller.saving, (now) => {
   if (!now && controller.messageType.value === 'success') { baseline.value = valuesSnapshot() }
 })
-
-function testConnection(): void {
-  if (section.value?.key === 'facebook') {
-    void controller.testFacebookIntegration()
-  } else {
-    void controller.testLineIntegration()
-  }
-}
 
 // Lifecycle
 onMounted(() => controller.initialize())
@@ -232,6 +206,20 @@ onUnmounted(() => controller.cleanup())
   font-size: 13.5px;
   font-weight: 500;
   color: var(--ui-green-ink);
+}
+
+/* Save bar appears only once something changed */
+.settings-bar-enter-active,
+.settings-bar-leave-active {
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease;
+}
+
+.settings-bar-enter-from,
+.settings-bar-leave-to {
+  opacity: 0;
+  transform: translateY(8px);
 }
 
 .settings-message.is-error {

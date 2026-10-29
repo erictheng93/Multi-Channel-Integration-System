@@ -502,10 +502,11 @@ import { createLogger } from '@/utils/logger'
 .avs {
   display: flex;
   align-items: center;
-  margin-left: 4px;
+  margin-left: 8px;
 }
 .avs > :deep(*) {
-  margin-left: -8px;
+  margin-left: -6px;
+  box-shadow: 0 0 0 2px var(--ui-surface);
 }
 .avs > :deep(*:first-child) {
   margin-left: 0;

@@ -310,7 +310,12 @@
 
           <!-- Activity: platform totals, so a disabled channel shows none of it -->
           <div class="activity">
-            <template v-if="!channel.isActive" />
+            <div
+              v-if="!channel.isActive"
+              class="last is-off"
+            >
+              已停用 · 啟用後才會顯示訊息量
+            </div>
             <template v-else-if="channel.activity">
               <div class="stats">
                 <div class="stat-i">
@@ -436,7 +441,7 @@ const PLATFORM_FILTERS: Array<{ id: ChannelPlatform; label: string }> = [
 /** Optional display name lives in configMetadata.name; fall back to the platform. */
 function channelTitle(channel: ChannelIntegration): string {
   const name = channel.configMetadata?.name
-  return typeof name === 'string' && name.trim() ? name.trim() : getPlatformName(channel.platform)
+  return typeof name === 'string' && name.trim() ? name.trim() : `${PLATFORM_KIND[channel.platform]}（未命名）`
 }
 
 function channelDescription(channel: ChannelIntegration): string {
@@ -742,6 +747,9 @@ const selectedPlatformLabel = computed(() =>
   font-size: 13px;
   color: var(--ui-muted);
   font-variant-numeric: tabular-nums;
+}
+.last.is-off {
+  padding-top: 14px;
 }
 .last {
   padding: 0 20px 14px;
