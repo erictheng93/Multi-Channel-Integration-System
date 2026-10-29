@@ -176,7 +176,7 @@ const createdAtText = computed(() => {
 }
 
 .sub {
-  font-size: 12.5px;
+  font-size: 13px;
   color: var(--ui-muted);
 }
 
@@ -187,7 +187,7 @@ const createdAtText = computed(() => {
 
 .block h3 {
   margin: 0 0 10px;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--ui-muted);
 }
@@ -207,7 +207,7 @@ const createdAtText = computed(() => {
   border-radius: 999px;
   background: color-mix(in srgb, var(--tag, var(--ui-muted)) 14%, var(--ui-surface));
   color: var(--ui-ink-2);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 500;
 }
 

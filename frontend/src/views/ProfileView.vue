@@ -678,7 +678,7 @@ watch(
 }
 
 .identity-sub {
-  font-size: 12.5px;
+  font-size: 13px;
   color: var(--ui-muted);
 }
 
@@ -705,7 +705,7 @@ watch(
 }
 
 .form-error {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--ui-red-ink);
 }
 
@@ -733,7 +733,7 @@ watch(
   gap: 5px;
   align-items: center;
   margin-left: auto;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--ui-muted);
 }
 
@@ -828,7 +828,7 @@ watch(
 }
 
 .strength-label {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--ui-muted);
 }
 

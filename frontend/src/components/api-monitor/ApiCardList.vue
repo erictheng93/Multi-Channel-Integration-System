@@ -58,7 +58,7 @@ defineEmits<{
   gap: 12px;
   padding: 8px 22px;
   box-shadow: inset 0 -0.5px 0 var(--ui-sep);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--ui-muted);
 }

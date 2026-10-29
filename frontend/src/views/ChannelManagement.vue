@@ -585,7 +585,7 @@ const selectedPlatformLabel = computed(() =>
   white-space: nowrap;
 }
 .chname span {
-  font-size: 12.5px;
+  font-size: 13px;
   color: var(--ui-muted);
 }
 .chtools {
@@ -683,7 +683,7 @@ const selectedPlatformLabel = computed(() =>
   padding: 10px 12px;
   border-radius: var(--ui-r-inner);
   background: var(--ui-orange-soft);
-  font-size: 12.5px;
+  font-size: 13px;
   line-height: 1.45;
   color: var(--ui-orange-ink);
 }
@@ -699,7 +699,7 @@ const selectedPlatformLabel = computed(() =>
 }
 .scope {
   margin: 14px 20px 0;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--ui-muted);
 }
@@ -724,7 +724,7 @@ const selectedPlatformLabel = computed(() =>
   background: var(--ui-sep);
 }
 .stat-i .l {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--ui-muted);
 }
 .stat-i .n {
@@ -733,13 +733,13 @@ const selectedPlatformLabel = computed(() =>
   font-variant-numeric: tabular-nums;
 }
 .stat-i .s {
-  font-size: 11.5px;
+  font-size: 13px;
   color: var(--ui-muted);
   font-variant-numeric: tabular-nums;
 }
 .last {
   padding: 0 20px 14px;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--ui-muted);
   font-variant-numeric: tabular-nums;
 }

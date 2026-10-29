@@ -690,7 +690,7 @@ function clearAll() {
   border-radius: 999px;
   background: var(--ui-accent-soft);
   color: var(--ui-accent);
-  font-size: 12px;
+  font-size: 13px;
 }
 
 .pill-label {
@@ -736,7 +736,7 @@ function clearAll() {
   display: flex;
   align-items: baseline;
   gap: 4px;
-  font-size: 12.5px;
+  font-size: 13px;
   color: var(--ui-muted);
 }
 
@@ -814,7 +814,7 @@ function clearAll() {
 }
 
 .field-label {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--ui-ink-2);
 }
@@ -1023,7 +1023,7 @@ function clearAll() {
   border: 0;
   border-radius: 999px;
   background: transparent;
-  font-size: 12.5px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--ui-red-ink);
   cursor: pointer;

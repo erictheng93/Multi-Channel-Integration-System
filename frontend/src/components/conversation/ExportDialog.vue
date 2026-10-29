@@ -583,14 +583,14 @@ watch(() => props.show, (isShow) => {
 
 .section-hint {
   margin: 0;
-  font-size: 12px;
+  font-size: 13px;
   line-height: 1.4;
   color: var(--ui-muted);
 }
 
 .section-error {
   margin: 0;
-  font-size: 12px;
+  font-size: 13px;
   line-height: 1.4;
   color: var(--ui-red-ink);
 }
@@ -768,7 +768,7 @@ watch(() => props.show, (isShow) => {
 
   .segment {
     padding: 0.5rem;
-    font-size: 12px;
+    font-size: 13px;
   }
 }
 </style>

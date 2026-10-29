@@ -151,7 +151,7 @@ const successClass = computed(() => {
   height: 22px;
   border-radius: 999px;
   background: var(--ui-fill);
-  font: 700 11px var(--ui-font-ui);
+  font: 700 13px var(--ui-font-ui);
   color: var(--ui-muted);
 }
 
@@ -189,7 +189,7 @@ const successClass = computed(() => {
 
 .desc {
   overflow: hidden;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--ui-muted);
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -203,7 +203,7 @@ const successClass = computed(() => {
 }
 
 .m small {
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 400;
   color: var(--ui-muted);
 }

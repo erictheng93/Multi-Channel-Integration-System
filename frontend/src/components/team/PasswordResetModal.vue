@@ -203,13 +203,13 @@ function handleSubmit() {
 .form-hint {
   display: block;
   margin-top: 0.5rem;
-  font-size: 0.75rem;
+  font-size: 13px;
   color: #6b7280;
 }
 
 .error-message {
   margin-top: 0.5rem;
-  font-size: 0.75rem;
+  font-size: 13px;
   color: #ef4444;
   font-weight: 500;
 }

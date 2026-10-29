@@ -182,7 +182,7 @@ defineEmits<{
 }
 
 .action-subtitle {
-  font-size: 0.8rem;
+  font-size: 13px;
   color: #6b7280;
   white-space: nowrap;
   overflow: hidden;
@@ -212,7 +212,7 @@ defineEmits<{
   }
 
   .action-subtitle {
-    font-size: 0.75rem;
+    font-size: 13px;
   }
 }
 </style>

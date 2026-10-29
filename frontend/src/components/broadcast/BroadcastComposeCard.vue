@@ -485,7 +485,7 @@
 
   .lbl small {
     margin-left: 6px;
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 400;
     color: var(--ui-muted);
   }
@@ -542,7 +542,7 @@
     place-items: center;
     border-radius: 7px;
     background: rgb(0 0 0 / 0.5);
-    font-size: 11.5px;
+    font-size: 13px;
     font-weight: 600;
     color: #fff;
   }
@@ -553,7 +553,7 @@
     display: grid;
     place-items: center;
     background: rgb(255 255 255 / 0.7);
-    font-size: 12.5px;
+    font-size: 13px;
     font-weight: 600;
   }
 
@@ -588,7 +588,7 @@
     border: 0;
     border-radius: 999px;
     background: rgb(255 255 255 / 0.92);
-    font-size: 11.5px;
+    font-size: 13px;
     font-weight: 600;
     color: var(--ui-ink);
     cursor: pointer;
@@ -610,7 +610,7 @@
     place-content: center;
     justify-items: center;
     gap: 4px;
-    font-size: 12.5px;
+    font-size: 13px;
     font-weight: 600;
     color: var(--ui-ink-2);
     cursor: pointer;
@@ -643,7 +643,7 @@
     display: flex;
     flex-wrap: wrap;
     gap: 4px 12px;
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 400;
     color: var(--ui-muted);
   }

@@ -751,7 +751,7 @@ const props = defineProps<Props>()
     .error-message,
     .success-message {
       padding: var(--space-2);
-      font-size: 0.75rem;
+      font-size: 13px;
     }
   }
 

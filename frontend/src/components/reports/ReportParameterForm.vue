@@ -347,7 +347,7 @@ const updateOption = (key: string, value: unknown) => {
   place-items: center;
   border-radius: 50%;
   background: var(--ui-fill);
-  font-size: 12.5px;
+  font-size: 13px;
   font-weight: 700;
   color: var(--ui-muted);
 }
@@ -375,13 +375,13 @@ const updateOption = (key: string, value: unknown) => {
 }
 
 .date-separator {
-  font-size: 12.5px;
+  font-size: 13px;
   color: var(--ui-muted);
 }
 
 .error-message {
   margin: 0;
-  font-size: 12.5px;
+  font-size: 13px;
   color: var(--ui-red-ink);
 }
 
@@ -443,7 +443,7 @@ const updateOption = (key: string, value: unknown) => {
 }
 
 .sw-sub {
-  font-size: 12.5px;
+  font-size: 13px;
   color: var(--ui-muted);
 }
 

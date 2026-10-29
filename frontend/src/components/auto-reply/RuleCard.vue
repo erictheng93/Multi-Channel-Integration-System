@@ -320,7 +320,7 @@ const triggerTypeLabel = computed(() => {
 
 /* Meta text */
 .rule-card__meta {
-  font-size: 12.5px;
+  font-size: 13px;
   color: var(--ui-muted);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
@@ -329,7 +329,7 @@ const triggerTypeLabel = computed(() => {
 /* Arrow */
 .rule-card__arrow {
   width: 14px;
-  font-size: 10px;
+  font-size: 13px;
   color: var(--ui-faint);
   text-align: center;
 }

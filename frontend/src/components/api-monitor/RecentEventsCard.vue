@@ -136,7 +136,7 @@ function relativeTime(timestamp: string): string {
 
 time {
   flex: none;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--ui-muted);
   font-variant-numeric: tabular-nums;
 }

@@ -255,7 +255,7 @@ const formatDate = (dateString: string): string => {
 
 .progress-status {
   margin: 10px 0 0;
-  font-size: 12.5px;
+  font-size: 13px;
   color: var(--ui-muted);
 }
 
@@ -318,7 +318,7 @@ const formatDate = (dateString: string): string => {
 }
 
 .recent-meta {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--ui-muted);
 }
 </style>

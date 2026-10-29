@@ -337,7 +337,7 @@ function formatTime(iso: string): string {
 
 .rule {
   margin-left: auto;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--ui-muted);
 }
 
@@ -390,7 +390,7 @@ function formatTime(iso: string): string {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 12.5px;
+  font-size: 13px;
   color: var(--ui-muted);
 }
 
@@ -402,7 +402,7 @@ function formatTime(iso: string): string {
 
 .stat b small {
   margin-left: 6px;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 500;
   color: var(--ui-muted);
 }
@@ -439,7 +439,7 @@ function formatTime(iso: string): string {
 
 .remain {
   margin: 12px 0 0;
-  font-size: 12.5px;
+  font-size: 13px;
   color: var(--ui-muted);
 }
 
@@ -449,7 +449,7 @@ function formatTime(iso: string): string {
 
 .warn {
   margin: 10px 0 0;
-  font-size: 12.5px;
+  font-size: 13px;
   color: var(--ui-orange-ink);
 }
 

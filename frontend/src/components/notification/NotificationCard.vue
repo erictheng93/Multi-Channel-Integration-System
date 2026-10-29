@@ -319,7 +319,7 @@ const formattedTime = computed(() => {
 
 .notification-time {
   flex: none;
-  font-size: 12.5px;
+  font-size: 13px;
   color: var(--ui-muted);
 }
 

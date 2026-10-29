@@ -229,7 +229,7 @@ function resetToAuto() {
 }
 
 .custom-mode-text {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 500;
   color: var(--ui-orange-ink);
 }
@@ -243,7 +243,7 @@ function resetToAuto() {
   border: 0;
   border-radius: 999px;
   background: var(--ui-surface);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--ui-orange-ink);
   cursor: pointer;
@@ -256,7 +256,7 @@ function resetToAuto() {
 
 .dropdown-header {
   padding: 10px 14px 6px;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--ui-muted);
 }
@@ -294,7 +294,7 @@ function resetToAuto() {
   padding: 2px 10px;
   border-radius: 999px;
   background: var(--ui-surface);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   cursor: pointer;
 }

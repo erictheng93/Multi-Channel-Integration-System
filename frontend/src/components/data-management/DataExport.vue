@@ -302,7 +302,7 @@ function selectFormat(format: FormatId) {
 .format-name small {
   display: block;
   margin-top: 1px;
-  font: 500 12.5px var(--ui-font-ui);
+  font: 500 13px var(--ui-font-ui);
   letter-spacing: 0;
   color: var(--ui-muted);
 }
@@ -331,7 +331,7 @@ function selectFormat(format: FormatId) {
 .use {
   display: flex;
   gap: 8px;
-  font-size: 12.5px;
+  font-size: 13px;
   color: var(--ui-ink-2);
 }
 

@@ -332,7 +332,7 @@ function methodBadgeClass(method: string): string {
   align-items: center;
   gap: 8px;
   margin-left: auto;
-  font-size: 12.5px;
+  font-size: 13px;
   color: var(--ui-muted);
 }
 
@@ -436,7 +436,7 @@ function methodBadgeClass(method: string): string {
 }
 
 .pagination-info {
-  font-size: 12.5px;
+  font-size: 13px;
   color: var(--ui-muted);
   font-variant-numeric: tabular-nums;
 }

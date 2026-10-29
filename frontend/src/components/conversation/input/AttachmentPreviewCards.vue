@@ -160,7 +160,7 @@
     display: flex;
     align-items: center;
     gap: var(--space-2);
-    font-size: 0.6875rem;
+    font-size: 13px;
   }
 
   .attachment-type {
@@ -233,11 +233,11 @@
     }
 
     .attachment-name {
-      font-size: 0.75rem;
+      font-size: 13px;
     }
 
     .attachment-meta {
-      font-size: 0.625rem;
+      font-size: 13px;
     }
   }
 

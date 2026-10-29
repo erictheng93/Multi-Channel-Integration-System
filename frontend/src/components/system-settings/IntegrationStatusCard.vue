@@ -151,14 +151,14 @@ const metaText = computed(() => {
 
 .conn-meta {
   margin-top: 2px;
-  font-size: 12.5px;
+  font-size: 13px;
   color: var(--ui-muted);
   font-variant-numeric: tabular-nums;
 }
 
 .conn-error {
   margin-top: 4px;
-  font-size: 12.5px;
+  font-size: 13px;
   color: var(--ui-red-ink);
 }
 </style>

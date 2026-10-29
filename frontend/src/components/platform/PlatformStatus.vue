@@ -578,7 +578,7 @@ onUnmounted(() => {
 }
 
 .metric-label {
-  font-size: 0.75rem;
+  font-size: 13px;
   color: var(--gray-600);
   margin-bottom: var(--space-1);
 }
@@ -655,7 +655,7 @@ onUnmounted(() => {
   padding: var(--space-1) var(--space-2);
   border-radius: var(--radius-sm);
   font-family: monospace;
-  font-size: 0.75rem;
+  font-size: 13px;
   color: var(--gray-700);
 }
 
@@ -720,7 +720,7 @@ onUnmounted(() => {
 }
 
 .history-time {
-  font-size: 0.75rem;
+  font-size: 13px;
   color: var(--gray-500);
 }
 
@@ -729,7 +729,7 @@ onUnmounted(() => {
 }
 
 .error-text {
-  font-size: 0.75rem;
+  font-size: 13px;
   color: var(--red-600);
   max-width: 200px;
   white-space: nowrap;

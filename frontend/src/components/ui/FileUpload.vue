@@ -602,7 +602,7 @@ defineExpose({
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
-  font-size: 0.75rem;
+  font-size: 13px;
   color: var(--gray-500);
 }
 
@@ -697,7 +697,7 @@ defineExpose({
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  font-size: 0.75rem;
+  font-size: 13px;
 }
 
 .file-size {
@@ -876,7 +876,7 @@ defineExpose({
   }
   
   .file-constraints {
-    font-size: 0.625rem;
+    font-size: 13px;
   }
   
   .file-actions {

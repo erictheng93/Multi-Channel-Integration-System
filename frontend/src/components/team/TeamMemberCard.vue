@@ -434,14 +434,14 @@ const getRoleText = (role: string) => {
 .who .mail {
   display: block;
   overflow: hidden;
-  font-size: 12.5px;
+  font-size: 13px;
   color: var(--ui-muted);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .you {
   margin-left: 6px;
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--ui-muted);
 }
@@ -457,7 +457,7 @@ const getRoleText = (role: string) => {
   gap: 6px;
 }
 .tr {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--ui-muted);
 }
 .last {

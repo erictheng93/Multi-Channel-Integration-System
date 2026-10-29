@@ -379,7 +379,7 @@
   .btn-sm {
     min-height: 30px;
     padding: 0 11px;
-    font-size: 12.5px;
+    font-size: 13px;
     border-radius: 10px;
   }
 
@@ -749,7 +749,7 @@
     align-items: center;
     gap: 2px;
     font-size: 13px;
-    font-weight: 600;
+    font-weight: 500;
     color: var(--ui-accent);
     text-decoration: none;
     cursor: pointer;
@@ -812,7 +812,7 @@
     white-space: nowrap;
   }
   .ui-row-meta {
-    font-size: 12px;
+    font-size: 13px;
     color: var(--ui-muted);
     text-align: right;
     white-space: nowrap;
@@ -828,8 +828,8 @@
     padding: 0 9px;
     border-radius: 999px;
     background: var(--ui-fill);
-    font-size: 11.5px;
-    font-weight: 600;
+    font-size: 13px;
+    font-weight: 500;
     color: var(--ui-ink-2);
     white-space: nowrap;
   }
@@ -863,7 +863,7 @@
     padding: 0 9px;
     border-radius: 999px;
     background: var(--ui-fill);
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 500;
     color: var(--ui-ink-2);
   }
@@ -917,11 +917,11 @@
   .ui-seg > button[aria-selected='true'] {
     background: var(--ui-sel-bg);
     color: var(--ui-ink);
-    font-weight: 600;
+    font-weight: 500;
     box-shadow: var(--ui-shadow-pill);
   }
   .ui-seg .ui-seg-n {
-    font-size: 11.5px;
+    font-size: 13px;
     color: var(--ui-muted);
     font-variant-numeric: tabular-nums;
   }
@@ -937,7 +937,7 @@
     border-radius: 999px;
     background: var(--ui-surface);
     box-shadow: var(--ui-shadow-pill);
-    font-size: 12.5px;
+    font-size: 13px;
     font-weight: 500;
     color: var(--ui-ink-2);
     cursor: pointer;
@@ -976,11 +976,11 @@
   }
   .ui-field > label {
     font-size: 13px;
-    font-weight: 600;
+    font-weight: 500;
     color: var(--ui-ink-2);
   }
   .ui-field .ui-hint {
-    font-size: 12px;
+    font-size: 13px;
     color: var(--ui-muted);
   }
   .ui-input,
@@ -1084,8 +1084,8 @@
     padding: 10px 14px;
     background: var(--ui-surface);
     box-shadow: inset 0 -0.5px 0 var(--ui-sep);
-    font-size: 12px;
-    font-weight: 600;
+    font-size: 13px;
+    font-weight: 500;
     color: var(--ui-muted);
     text-align: left;
     white-space: nowrap;
@@ -1125,7 +1125,7 @@
     align-items: center;
     gap: 8px;
     font-size: 13px;
-    font-weight: 600;
+    font-weight: 500;
     color: var(--ui-ink-2);
   }
   .ui-kpi-ico {
@@ -1155,7 +1155,7 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    font-size: 12px;
+    font-size: 13px;
     color: var(--ui-muted);
   }
   .ui-delta {

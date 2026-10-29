@@ -231,7 +231,7 @@ function iconPath(status: string): string {
 }
 
 .activity-time {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--ui-muted);
 }
 </style>

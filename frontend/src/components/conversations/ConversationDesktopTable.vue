@@ -372,7 +372,7 @@ const getLastMessageText = (conversation: Conversation) => {
   border-radius: 50%;
   background: var(--ui-fill-strong);
   color: var(--ui-muted);
-  font-size: 10px;
+  font-size: 13px;
   font-weight: 700;
   vertical-align: 1px;
   cursor: help;
@@ -450,7 +450,7 @@ const getLastMessageText = (conversation: Conversation) => {
 
 .customer-id {
   overflow: hidden;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--ui-muted);
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -480,7 +480,7 @@ const getLastMessageText = (conversation: Conversation) => {
 }
 
 .replied {
-  font-size: 12.5px;
+  font-size: 13px;
   color: var(--ui-muted);
 }
 
@@ -491,13 +491,13 @@ const getLastMessageText = (conversation: Conversation) => {
 }
 
 .unassigned {
-  font-size: 12.5px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--ui-orange-ink);
 }
 
 .time-cell {
-  font-size: 12.5px;
+  font-size: 13px;
   color: var(--ui-muted);
   text-align: right;
   white-space: nowrap;

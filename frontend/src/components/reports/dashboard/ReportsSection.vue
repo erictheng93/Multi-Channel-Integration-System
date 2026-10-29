@@ -353,7 +353,7 @@ defineEmits<{
 }
 
 .header-cell {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--ui-muted);
 }

@@ -265,7 +265,7 @@ onUnmounted(() => {
 }
 
 .timeline-item__time {
-  font-size: 12.5px;
+  font-size: 13px;
   color: var(--ui-muted);
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
@@ -280,7 +280,7 @@ onUnmounted(() => {
 }
 
 .timeline-item__restore-hint {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--ui-muted);
   white-space: nowrap;
 }
@@ -300,7 +300,7 @@ onUnmounted(() => {
   padding: 0;
   border: 0;
   background: none;
-  font-size: 12.5px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--ui-accent);
   cursor: pointer;

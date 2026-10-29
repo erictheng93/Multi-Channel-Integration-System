@@ -43,6 +43,8 @@ function factory(props: Partial<{ tags: Tag[]; loading: boolean; isSelected: (_i
       isSelected: () => false,
       ...props,
     },
+    // render the real shared empty state (shallowMount would stub it)
+    global: { stubs: { UiEmptyState: false } },
   })
 }
 

@@ -298,7 +298,7 @@ const meterWidth = computed(() => {
 }
 
 .stat-item small {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 500;
   color: var(--ui-muted);
 }

@@ -715,7 +715,7 @@ defineExpose({
 
   .clear-search-btn {
     padding: 0.3125rem 0.875rem;
-    font-size: 0.75rem;
+    font-size: 13px;
   }
 
   .typing-indicator {

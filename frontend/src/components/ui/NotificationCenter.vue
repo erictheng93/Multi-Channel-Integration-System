@@ -382,7 +382,7 @@ defineExpose({ open, close, toggle, isOpen })
   /* iOS 系統橘 #FF9500 淡底:暫停是需要被注意到的狀態,--warning-50 在白色頂部列上幾乎看不見 */
   background: rgb(255 149 0 / 0.14);
   color: #A64B00;
-  font-size: 0.75rem;
+  font-size: 13px;
   font-weight: 500;
   white-space: nowrap;
 }

@@ -396,7 +396,7 @@ function handlePageChange(page: number) {
 }
 .search-stats {
   flex: none;
-  font-size: 11.5px;
+  font-size: 13px;
   white-space: nowrap;
 }
 
@@ -405,7 +405,7 @@ function handlePageChange(page: number) {
 }
 .drag-hint {
   padding: 4px 4px 8px;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--ui-muted);
 }
 .drag-ghost {
