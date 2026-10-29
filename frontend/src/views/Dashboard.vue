@@ -234,6 +234,7 @@
               :unit="leadUnit"
               :meaning="leadMeaning"
               tone="orange"
+              :ratio="leadRatio"
               :loading="!summary.data.value && !summary.error.value"
               :dim="!!summary.data.value && topWaiting.length === 0"
             >
@@ -730,6 +731,9 @@ const leadValue = computed<string | number | null>(() => {
   if (hasWaiting.value) { return oldestWait.value.value }
   return summary.data.value ? 0 : null
 })
+/** Arc on the disc: the longest wait against the 30 minute line the page marks red */
+const leadRatio = computed<number | null>(() =>
+  hasWaiting.value ? Math.min(1, (oldestWaitSeconds.value ?? 0) / (30 * 60)) : null)
 const leadUnit = computed(() => (hasWaiting.value ? oldestWait.value.unit : ''))
 const leadMeaning = computed(() => {
   if (hasWaiting.value) {
@@ -918,12 +922,6 @@ onBeforeUnmount(() => {
 
 .focus-lead > :deep(.ui-lead) {
   flex: 1;
-}
-
-/* The disc fades out into the list, so hero and list read as one card (no hard edge) */
-.focus-lead > :deep(.ui-lead) .ui-lead-art {
-  -webkit-mask-image: linear-gradient(90deg, #000 55%, transparent 100%);
-  mask-image: linear-gradient(90deg, #000 55%, transparent 100%);
 }
 
 .focus-lead > :deep(.ui-lead) {
