@@ -62,13 +62,12 @@ describe('ConversationDesktopTable.vue', () => {
     it('should render a table with correct column headers', () => {
       const wrapper = mountTable([])
       const headers = wrapper.findAll('th')
-      expect(headers).toHaveLength(6)
+      expect(headers).toHaveLength(5)
       expect(headers[0].text()).toBe('客戶')
       expect(headers[1].text()).toBe('最後訊息')
-      expect(headers[2].text()).toContain('回覆狀態')
-      expect(headers[3].text()).toBe('狀態')
-      expect(headers[4].text()).toBe('負責人')
-      expect(headers[5].text()).toBe('更新')
+      expect(headers[2].text()).toContain('狀態')
+      expect(headers[3].text()).toBe('負責人')
+      expect(headers[4].text()).toBe('更新')
     })
 
     it('explains 未讀 and 待回覆 on the reply-status header', () => {
@@ -158,26 +157,26 @@ describe('ConversationDesktopTable.vue', () => {
   describe('待回覆 (team-wide) pill', () => {
     it('shows 待回覆 without minutes when the customer wrote last on an open conversation', () => {
       const wrapper = mountTable([createConversation({ lastMessage: lastMessage('customer'), oldestUnreadAt: now.toISOString() })])
-      const cell = wrapper.find('.reply-cell')
+      const cell = wrapper.find('.status-cell')
       expect(cell.text()).toBe('待回覆')
       expect(cell.text()).not.toMatch(/\d/)
     })
 
     it('shows 已回覆 when an agent replied last', () => {
       const wrapper = mountTable([createConversation({ lastMessage: lastMessage('agent') })])
-      expect(wrapper.find('.reply-cell').text()).toBe('已回覆')
+      expect(wrapper.find('.status-cell').text()).toBe('已回覆')
     })
 
     const daysAgo = (d: number): string => new Date(Date.now() - d * 86_400_000).toISOString()
 
     it('uses the backend marker: a sticker or thanks after a reply (awaitingSince null) is answered, not waiting', () => {
       const wrapper = mountTable([createConversation({ lastMessage: lastMessage('customer', '謝謝'), awaitingSince: null })])
-      expect(wrapper.find('.reply-cell').text()).toBe('已回覆')
+      expect(wrapper.find('.status-cell').text()).toBe('已回覆')
     })
 
     it('shows 待回覆 for a wait inside the 7-day window', () => {
       const wrapper = mountTable([createConversation({ lastMessage: lastMessage('customer'), awaitingSince: daysAgo(6) })])
-      expect(wrapper.find('.reply-cell').text()).toBe('待回覆')
+      expect(wrapper.find('.status-cell').text()).toBe('待回覆')
     })
 
     it('shows a stale wait as 已等 N 天 (not 待回覆), with 從未回覆 only when no human ever replied', () => {
@@ -185,7 +184,7 @@ describe('ConversationDesktopTable.vue', () => {
         createConversation({ id: 'a', lastMessage: lastMessage('customer'), awaitingSince: daysAgo(30), neverReplied: true }),
         createConversation({ id: 'b', lastMessage: lastMessage('customer'), awaitingSince: daysAgo(9), neverReplied: false })
       ])
-      const cells = wrapper.findAll('.reply-cell')
+      const cells = wrapper.findAll('.status-cell')
       expect(cells[0]!.text()).toContain('已等 30 天')
       expect(cells[0]!.text()).toContain('從未回覆')
       expect(cells[0]!.text()).not.toContain('待回覆')
@@ -195,7 +194,7 @@ describe('ConversationDesktopTable.vue', () => {
 
     it('shows neither on a closed conversation', () => {
       const wrapper = mountTable([createConversation({ status: 'closed', lastMessage: lastMessage('customer') })])
-      expect(wrapper.find('.reply-cell').text()).toBe('')
+      expect(wrapper.find('.status-cell').text()).toBe('已結案')
     })
 
     it('shows the free-reply countdown only while the window is open', () => {
@@ -281,14 +280,14 @@ describe('ConversationDesktopTable.vue', () => {
     it('renders no checkboxes outside selection mode', () => {
       const wrapper = mountTable(list)
       expect(wrapper.findAll('input[type="checkbox"]')).toHaveLength(0)
-      expect(wrapper.findAll('th')).toHaveLength(6)
+      expect(wrapper.findAll('th')).toHaveLength(5)
     })
 
     it('renders a checkbox column (header + one per row) in selection mode', () => {
       const wrapper = mountSelecting(['c1'])
       const boxes = wrapper.findAll('input[type="checkbox"]')
       expect(boxes).toHaveLength(3)
-      expect(wrapper.findAll('th')).toHaveLength(7)
+      expect(wrapper.findAll('th')).toHaveLength(6)
       expect(boxes[0].attributes('aria-label')).toBe('全選本頁對話')
       expect((boxes[1].element as HTMLInputElement).checked).toBe(true)
       expect((boxes[2].element as HTMLInputElement).checked).toBe(false)
