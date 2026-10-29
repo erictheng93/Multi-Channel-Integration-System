@@ -1,5 +1,8 @@
 <template>
-  <div class="app-layout">
+  <div
+    class="app-layout"
+    :data-section="sectionId"
+  >
     <!-- Mobile Menu Button -->
     <button
       v-if="isMobile && !showMobileMenu"
@@ -77,7 +80,7 @@
   import { computed, onMounted, onUnmounted, nextTick, ref, watch } from 'vue'
   import { useRoute, useRouter } from 'vue-router'
   import { useSidebarState } from '@/composables/useSidebarState'
-  import { sectionForPath } from '@/config/nav-sections'
+  import { sectionForPath, sectionIdForPath } from '@/config/nav-sections'
   import type { Notification } from '@/stores/notifications'
 
   import SidebarHeader from './SidebarHeader.vue'
@@ -109,6 +112,8 @@
   })
 
   // Section the page belongs to (same grouping as the sidebar); empty for pages like /profile
+  // Colour identity of the page: the CSS tokens --section-hue / -soft / -ink resolve from this attribute
+  const sectionId = computed(() => sectionIdForPath(route.path))
   const currentSectionLabel = computed(() => {
     // /profile sits outside the sidebar groups: 帳號 is its parent segment
     const label = sectionForPath(route.path)?.label ?? (route.path === '/profile' ? '帳號' : '')

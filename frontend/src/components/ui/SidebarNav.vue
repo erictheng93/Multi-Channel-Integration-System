@@ -12,6 +12,7 @@
       v-for="group in navigationGroups"
       :key="group.id"
       class="nav-group"
+      :data-section="group.id"
     >
       <span
         v-if="!sidebarCollapsed || isMobile"
@@ -74,23 +75,8 @@
   import { useNotificationsStore } from '@/stores/notifications'
   import { NAV_SECTIONS, sectionForPath } from '@/config/nav-sections'
   import { SECTION_NAV, sectionNavItems, type SectionNavItem, type SectionNavKey } from '@/config/section-nav'
+  import { NAV_ICONS } from '@/config/nav-icons'
   import ExpandableNavGroup from './ExpandableNavGroup.vue'
-
-  // Icon imports
-  import DashboardIcon from '@/components/icons/DashboardIcon.vue'
-  import ChatIcon from '@/components/icons/ChatIcon.vue'
-  import TagIcon from '@/components/icons/TagIcon.vue'
-  import UsersIcon from '@/components/icons/UsersIcon.vue'
-  import ActivityIcon from '@/components/icons/ActivityIcon.vue'
-  import SettingsIcon from '@/components/icons/SettingsIcon.vue'
-  import ApiIcon from '@/components/icons/ApiIcon.vue'
-  import RealtimeIcon from '@/components/icons/RealtimeIcon.vue'
-  import ReportsIcon from '@/components/icons/ReportsIcon.vue'
-  import DataManagementIcon from '@/components/icons/DataManagementIcon.vue'
-  import ChannelIcon from '@/components/icons/ChannelIcon.vue'
-  import AutoReplyIcon from '@/components/icons/AutoReplyIcon.vue'
-  import SendIcon from '@/components/icons/SendIcon.vue'
-  import BellIcon from '@/components/icons/BellIcon.vue'
 
   interface NavItem {
     path: string
@@ -103,6 +89,8 @@
     sidebarCollapsed: boolean
     isMobile: boolean
   }>()
+
+  const iconFor = (path: string): Component => NAV_ICONS[path] as Component
 
   const route = useRoute()
   const router = useRouter()
@@ -227,26 +215,26 @@
     })
 
     const items: NavItem[] = [
-      { path: '/dashboard', label: '儀表板', icon: DashboardIcon },
-      { path: '/conversations', label: '對話', icon: ChatIcon },
+      { path: '/dashboard', label: '儀表板', icon: iconFor('/dashboard') },
+      { path: '/conversations', label: '對話', icon: iconFor('/conversations') },
       // Personal inbox + per-device desktop notification settings: visible to everyone, not under admin-only settings
-      { path: '/notifications', label: '通知', icon: BellIcon },
-      { path: '/tags', label: '客戶標籤', icon: TagIcon },
+      { path: '/notifications', label: '通知', icon: iconFor('/notifications') },
+      { path: '/tags', label: '客戶標籤', icon: iconFor('/tags') },
       // Broadcast goes right after the tags item
-      { path: '/broadcasts', label: '群發訊息', icon: SendIcon },
-      group('reports', ReportsIcon),
-      group('data', DataManagementIcon),
+      { path: '/broadcasts', label: '群發訊息', icon: iconFor('/broadcasts') },
+      group('reports', iconFor('/reports')),
+      group('data', iconFor('/data')),
     ]
     if (!isAdmin) { return items }
     return [
       ...items,
-      { path: '/team', label: '團隊成員', icon: UsersIcon },
-      { path: '/channels', label: '頻道', icon: ChannelIcon },
-      { path: '/auto-reply', label: '自動回覆', icon: AutoReplyIcon },
-      { path: '/activities', label: '活動記錄', icon: ActivityIcon },
-      { path: '/monitoring/api', label: 'API 監控', icon: ApiIcon },
-      { path: '/monitoring/websocket', label: '即時連線監控', icon: RealtimeIcon },
-      group('settings', SettingsIcon),
+      { path: '/team', label: '團隊成員', icon: iconFor('/team') },
+      { path: '/channels', label: '頻道', icon: iconFor('/channels') },
+      { path: '/auto-reply', label: '自動回覆', icon: iconFor('/auto-reply') },
+      { path: '/activities', label: '活動記錄', icon: iconFor('/activities') },
+      { path: '/monitoring/api', label: 'API 監控', icon: iconFor('/monitoring/api') },
+      { path: '/monitoring/websocket', label: '即時連線監控', icon: iconFor('/monitoring/websocket') },
+      group('settings', iconFor('/settings')),
     ]
   }
 
@@ -361,7 +349,7 @@
 
   /* Active: the whole row is tinted (accent wash), accent icon, ink label */
   .nav-item.active {
-    background-color: var(--ui-accent-soft);
+    background-color: var(--section-hue-soft);
     color: var(--ui-ink);
     font-weight: 500;
   }
@@ -403,7 +391,7 @@
   }
 
   .nav-item.active .nav-icon {
-    color: var(--ui-accent);
+    color: var(--section-hue);
   }
 
   .nav-text {
