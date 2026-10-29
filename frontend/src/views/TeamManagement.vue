@@ -52,6 +52,49 @@
         </template>
       </UiPageHead>
 
+      <!-- Lead metric: who is online right now, and where -->
+      <section
+        v-if="members.length > 0"
+        class="top"
+      >
+        <article class="ui-card lead-card">
+          <UiLeadMetric
+            label="目前在線"
+            :value="onlineCount"
+            unit="位"
+            tone="green"
+            :loading="loading && !presence.available.value"
+            :meaning="onlineMeaning"
+          />
+        </article>
+        <article
+          v-if="teamOnline.length > 0"
+          class="ui-card by-team"
+        >
+          <div class="ui-card-head">
+            <div>
+              <h2 class="ui-card-title">
+                各團隊在線
+              </h2>
+              <div class="ui-card-sub">
+                成員同時屬於多個團隊時，各團隊分別計算
+              </div>
+            </div>
+          </div>
+          <ul class="tm-list">
+            <li
+              v-for="row in teamOnline"
+              :key="row.id"
+              class="tm-row"
+            >
+              <span class="tm-name">{{ row.name }}</span>
+              <span class="tm-bar"><i :style="{ width: row.percent + '%' }" /></span>
+              <span class="tm-n">{{ row.online === null ? '—' : row.online }} / {{ row.total }}</span>
+            </li>
+          </ul>
+        </article>
+      </section>
+
       <!-- Member Management Section -->
       <MemberListSection
         :members="members"
@@ -187,6 +230,7 @@
 
 <script setup lang="ts">
 import UiPageHead from '@/components/ui/UiPageHead.vue'
+import UiLeadMetric from '@/components/ui/UiLeadMetric.vue'
 import { onMounted, onUnmounted, computed } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useTeamManagementController } from '@/composables/team-management'
@@ -223,16 +267,11 @@ const currentUserId = computed(() => authStore.currentAgent?.id)
 // Extract state from controller
 const { loading, teams, members, stats, memberSorting, teamSorting, memberSortMode, teamSortMode } = controller
 
-/** "8 位成員分屬 2 個團隊，其中 5 位目前在線。王柏翰已停用，無法登入。" built from loaded data only. */
+/** "8 位成員分屬 2 個團隊。王柏翰已停用，無法登入。" built from loaded data only (who is online lives in the lead metric). */
 const headSummary = computed(() => {
-  const parts: string[] = [`${members.value.length} 位成員分屬 ${stats.value.teamCount} 個團隊`]
-  if (presence.available.value) {
-    const online = members.value.filter(m => presence.onlineIds.value.has(m.id)).length
-    parts[0] += `，其中 ${online} 位目前在線`
-  }
+  let text = `${members.value.length} 位成員分屬 ${stats.value.teamCount} 個團隊。`
   const inactive = members.value.filter(m => m.status === 'inactive')
   const [onlyInactive] = inactive
-  let text = `${parts[0]}。`
   if (inactive.length === 1 && onlyInactive) {
     text += `${onlyInactive.name || onlyInactive.loginId}已停用，無法登入。`
   } else if (inactive.length > 1) {
@@ -240,6 +279,38 @@ const headSummary = computed(() => {
   }
   return text
 })
+
+/** Online members; null when presence is unavailable (never a made-up zero) */
+const onlineCount = computed<number | null>(() =>
+  presence.available.value ? members.value.filter(m => presence.onlineIds.value.has(m.id)).length : null
+)
+
+const onlineMeaning = computed(() => {
+  if (onlineCount.value === null) {
+    return '目前無法取得在線狀態'
+  }
+  const active = members.value.filter(m => m.status !== 'inactive').length
+  return `共 ${active} 位啟用中的成員`
+})
+
+/** Online / total per team, from the loaded members only */
+const teamOnline = computed(() =>
+  teams.value
+    .map((team) => {
+      const people = members.value.filter(
+        m => m.status !== 'inactive' && (m.primaryTeamId === team.id || (m.teams ?? []).some(t => t.teamId === team.id))
+      )
+      const online = presence.available.value ? people.filter(m => presence.onlineIds.value.has(m.id)).length : null
+      return {
+        id: team.id,
+        name: team.name,
+        total: people.length,
+        online,
+        percent: online === null || people.length === 0 ? 0 : Math.round((online / people.length) * 100)
+      }
+    })
+    .filter(row => row.total > 0)
+)
 
 // Handle select-page: add page member IDs to selection
 function handleSelectPage(memberIds: string[]) {
@@ -351,6 +422,79 @@ onUnmounted(() => {
   height: 16px;
 }
 
+.top {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  gap: 16px;
+}
+
+.top:has(.lead-card:only-child) {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.lead-card {
+  overflow: hidden;
+}
+
+.lead-card :deep(.ui-lead-meaning) {
+  max-width: min(100%, 300px);
+}
+
+.tm-list {
+  display: grid;
+  gap: 14px;
+  margin: 0;
+  padding: 2px 22px 22px;
+  list-style: none;
+}
+
+.tm-row {
+  display: grid;
+  grid-template-columns: minmax(80px, 140px) minmax(0, 1fr) 56px;
+  gap: 14px;
+  align-items: center;
+  font-size: 14px;
+}
+
+.tm-name {
+  overflow: hidden;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tm-bar {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--ui-fill);
+}
+
+.tm-bar i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--ui-green);
+  transition: width var(--ui-dur) var(--ui-ease);
+}
+
+.tm-n {
+  text-align: right;
+  font-size: 13px;
+  color: var(--ui-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 1024px) {
+  .top,
+  .top:has(.lead-card:only-child) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 @media (max-width: 768px) {
+  .tm-list {
+    padding: 2px 16px 18px;
+  }
 }
 </style>
