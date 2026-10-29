@@ -349,9 +349,9 @@
 
   /* Active: the whole row is tinted (accent wash), accent icon, ink label */
   .nav-item.active {
-    background-color: var(--section-hue-soft);
-    color: var(--ui-ink);
-    font-weight: 500;
+    background-color: color-mix(in srgb, var(--section-hue) 15%, transparent);
+    color: var(--section-ink);
+    font-weight: 600;
   }
 
   .nav-count {

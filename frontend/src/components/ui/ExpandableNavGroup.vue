@@ -124,8 +124,8 @@
 
   /* A group holds no page of its own, so the active state is quiet: ink + weight, no pill */
   .nav-item.active {
-    color: var(--ui-ink);
-    font-weight: 500;
+    color: var(--section-ink);
+    font-weight: 600;
   }
 
   .nav-icon {
@@ -187,9 +187,9 @@
   }
 
   .submenu-item.active {
-    background: var(--section-hue-soft);
+    background: color-mix(in srgb, var(--section-hue) 15%, transparent);
     color: var(--section-ink);
-    font-weight: 500;
+    font-weight: 600;
   }
 
   /* Submenu Animation */
