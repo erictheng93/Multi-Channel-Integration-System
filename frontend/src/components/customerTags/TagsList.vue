@@ -1,22 +1,16 @@
 <template>
   <div class="tags-section">
     <!-- Empty State -->
-    <div
+    <UiEmptyState
       v-if="tags.length === 0 && !loading"
-      class="ui-card ui-empty"
+      class="ui-card"
+      :title="isSearching ? '找不到符合的標籤' : '暫無標籤'"
+      :description="isSearching ? '換個關鍵字，或直接新增這個標籤。' : '點擊「新增標籤」開始創建您的第一個標籤'"
     >
-      <div class="ui-empty-art">
+      <template #icon>
         <TagIcon />
-      </div>
-      <template v-if="isSearching">
-        <h3>找不到符合的標籤</h3>
-        <p>換個關鍵字，或直接新增這個標籤。</p>
       </template>
-      <template v-else>
-        <h3>暫無標籤</h3>
-        <p>點擊「新增標籤」開始創建您的第一個標籤</p>
-      </template>
-    </div>
+    </UiEmptyState>
 
     <!-- Tags Grid (paginated) -->
     <template v-else>
@@ -48,6 +42,7 @@
 
 
 <script setup lang="ts">
+import UiEmptyState from '@/components/ui/UiEmptyState.vue'
 import { computed, watch } from 'vue'
 import { TagIcon } from '@/components/icons'
 import TagCard from './TagCard.vue'

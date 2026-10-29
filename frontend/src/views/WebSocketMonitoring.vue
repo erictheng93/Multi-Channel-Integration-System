@@ -49,7 +49,7 @@
       </div>
 
       <!-- 即時指標 -->
-      <section class="kpis">
+      <section class="ui-kpi-grid">
         <article class="ui-card ui-kpi">
           <div class="ui-kpi-top">
             <span
@@ -792,12 +792,6 @@ function formatTime(timestamp: number) {
   color: var(--ui-red-ink);
 }
 
-.kpis {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 16px;
-}
-
 .ui-kpi-ico.blue {
   background: var(--ui-accent-soft);
   color: var(--ui-accent);
@@ -1015,12 +1009,6 @@ svg.chart .g line {
   }
 }
 
-@media (max-width: 1024px) {
-  .kpis {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
 @media (max-width: 768px) {
   .legend,
   .chart-wrap,
@@ -1051,10 +1039,6 @@ svg.chart .g line {
 }
 
 @media (max-width: 480px) {
-  .kpis {
-    grid-template-columns: 1fr;
-  }
-
   svg.chart text {
     font-size: 18px;
   }

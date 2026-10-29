@@ -1,5 +1,5 @@
 <template>
-  <section class="ui-grid ui-cols-4 kpi-row">
+  <section class="ui-kpi-grid">
     <article class="ui-card ui-kpi stat-card">
       <div class="ui-kpi-top">
         <span class="ui-kpi-ico ico-blue"><svg
@@ -189,11 +189,5 @@ const completionRate = computed(() => {
   padding: 0;
   border: 0;
   background: none;
-}
-
-@media (max-width: 640px) {
-  .kpi-row {
-    gap: 10px;
-  }
 }
 </style>

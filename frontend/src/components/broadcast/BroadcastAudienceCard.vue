@@ -11,11 +11,13 @@
       受眾預覽
     </h2>
 
-    <div
+    <UiEmptyState
       v-if="!preview"
-      class="ui-empty compact"
+      class="compact"
+      title="受眾預覽"
+      :description="loading ? '計算受眾中...' : '選擇目標標籤後，會在這裡顯示會收到訊息的人數。'"
     >
-      <div class="ui-empty-art">
+      <template #icon>
         <svg
           viewBox="0 0 24 24"
           fill="none"
@@ -23,15 +25,14 @@
           stroke-width="1.8"
           stroke-linecap="round"
           stroke-linejoin="round"
+          aria-hidden="true"
         ><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle
           cx="9"
           cy="7"
           r="4"
         /><path d="M22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8" /></svg>
-      </div>
-      <h3>受眾預覽</h3>
-      <p>{{ loading ? '計算受眾中...' : '選擇目標標籤後，會在這裡顯示會收到訊息的人數。' }}</p>
-    </div>
+      </template>
+    </UiEmptyState>
 
     <template v-else>
       <div class="big-row">
@@ -69,6 +70,7 @@
 </template>
 
 <script setup lang="ts">
+import UiEmptyState from '@/components/ui/UiEmptyState.vue'
 import { computed } from 'vue'
 import type { BroadcastPreviewResult, BroadcastRecipientErrorReason } from '@/api/broadcasts'
 

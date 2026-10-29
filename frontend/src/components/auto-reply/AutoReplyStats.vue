@@ -1,6 +1,6 @@
 <template>
   <div class="auto-reply-stats">
-    <div class="ui-grid ui-cols-4 stats-grid">
+    <div class="ui-kpi-grid">
       <div class="ui-card ui-kpi stat-card stat-card--rules">
         <div class="ui-kpi-top">
           <span class="ui-kpi-ico ico-blue"><svg
@@ -200,12 +200,5 @@ const hoursNote = computed(() => {
   height: 26px;
   padding: 0 12px;
   font-size: 13px;
-}
-
-@media (max-width: 640px) {
-  .stats-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
-  }
 }
 </style>
