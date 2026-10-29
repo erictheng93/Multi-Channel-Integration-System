@@ -317,8 +317,9 @@
   }
 
   /* Success - iOS System Green */
+  /* WCAG AA: white on #34C759 is ~2.2:1; this deeper green is 5.2:1 */
   .btn-success {
-    background-color: var(--ui-green);
+    background-color: #1f7a35;
     color: #fff;
   }
   .btn-success:hover:not(:disabled) {
@@ -329,9 +330,10 @@
   }
 
   /* Warning - iOS System Orange */
+  /* WCAG AA: white on #FF9500 is ~2.2:1; dark ink on the orange fill is 7.4:1 */
   .btn-warning {
     background-color: var(--ui-orange);
-    color: #fff;
+    color: var(--ui-ink);
   }
   .btn-warning:hover:not(:disabled) {
     background-color: color-mix(in srgb, var(--ui-orange) 88%, #000);
