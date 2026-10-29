@@ -32,9 +32,6 @@
         {{ date }}
       </div>
     </div>
-    <p class="aside-note">
-      修改後頁面底部會出現儲存列。
-    </p>
   </article>
 </template>
 
@@ -67,7 +64,6 @@ const date = computed(() => parts({ year: 'numeric', month: 'long', day: 'numeri
   display: flex;
   flex-direction: column;
   gap: 18px;
-  height: 100%;
   padding: 20px;
 }
 
@@ -126,14 +122,6 @@ const date = computed(() => parts({ year: 'numeric', month: 'long', day: 'numeri
 .clock-date {
   margin-top: 4px;
   font-size: var(--ui-t-meta);
-  color: var(--ui-muted);
-}
-
-/* sits at the bottom of the card, which stretches to the form's height */
-.aside-note {
-  margin: auto 0 0;
-  font-size: var(--ui-t-meta);
-  line-height: 1.55;
   color: var(--ui-muted);
 }
 </style>
