@@ -2,8 +2,9 @@
   <div class="app-layout">
     <!-- Mobile Menu Button -->
     <button
-      v-if="isMobile"
+      v-if="isMobile && !showMobileMenu"
       class="mobile-menu-btn"
+      aria-label="開啟選單"
       @click="toggleSidebar"
     >
       <div class="hamburger-menu">
@@ -51,6 +52,7 @@
     <main class="main-content">
       <AppTopBar
         :page-title="currentPageTitle"
+        :section-label="currentSectionLabel"
         @notification-click="handleNotificationClick"
       >
         <template #stats>
@@ -70,6 +72,7 @@
   import { computed, onMounted, onUnmounted, nextTick } from 'vue'
   import { useRoute, useRouter } from 'vue-router'
   import { useSidebarState } from '@/composables/useSidebarState'
+  import { sectionForPath } from '@/config/nav-sections'
   import type { Notification } from '@/stores/notifications'
 
   import SidebarHeader from './SidebarHeader.vue'
@@ -89,32 +92,21 @@
     cleanup,
   } = useSidebarState()
 
-  // Static page title map (avoids coupling to SidebarNav's navigation items)
-  const PAGE_TITLES: Record<string, string> = {
-    '/dashboard': '\u5100\u8868\u677F',
-    '/conversations': '\u5C0D\u8A71\u7BA1\u7406',
-    '/tags': '\u6A19\u7C64\u7BA1\u7406',
-    '/broadcasts': '\u7FA4\u767C\u8A0A\u606F',
-    '/reports': '\u5831\u8868\u7CFB\u7D71',
-    '/data': '\u8CC7\u6599\u7BA1\u7406',
-    '/team': '\u5718\u968A\u7BA1\u7406',
-    '/channels': '\u983B\u9053\u7BA1\u7406',
-    '/activities': '\u6D3B\u52D5\u8A18\u9304',
-    '/monitoring/api': 'API\u76E3\u63A7',
-    '/monitoring/websocket': 'WebSocket 性能監控',
-    '/auto-reply': '\u81EA\u52D5\u56DE\u8986',
-    '/settings': '\u7CFB\u7D71\u8A2D\u5B9A',
-  }
-
+  // Page title comes from the route's own meta (router/index.ts), never a generic fallback.
+  // Nested routes use the deepest matched record's title.
   const currentPageTitle = computed(() => {
-    const currentPath = route.path
-
-    // Conversation detail pages
-    if (currentPath.startsWith('/conversations/') && route.params.id) {
-      return '\u5C0D\u8A71'
+    const metaTitle = route.meta.title
+    if (typeof metaTitle === 'string' && metaTitle) {
+      return metaTitle
     }
+    // Last resort for a route without a title: the nav section it lives in
+    return sectionForPath(route.path)?.label ?? ''
+  })
 
-    return PAGE_TITLES[currentPath] || '\u9801\u9762'
+  // Section the page belongs to (same grouping as the sidebar); empty for pages like /profile
+  const currentSectionLabel = computed(() => {
+    const label = sectionForPath(route.path)?.label ?? ''
+    return label === currentPageTitle.value ? '' : label
   })
 
   // Notification click routing logic
@@ -181,20 +173,33 @@
     /* landscape phones: the notch sits at the left/right edge (viewport-fit=cover) */
     padding-left: env(safe-area-inset-left);
     padding-right: env(safe-area-inset-right);
-    background-color: #f9fafb !important;
+    background-color: var(--ui-canvas);
+    color: var(--ui-ink);
+    font-family: var(--ui-font-ui);
   }
 
-  /* Sidebar */
+  /* Sidebar: quiet frosted rail on the canvas. The frost lives on a pseudo-element
+     because backdrop-filter on the sidebar itself would trap the fixed user menu. */
   .sidebar {
-    width: 240px;
-    background-color: white;
-    border-right: 1px solid var(--gray-200);
+    width: var(--ui-sidebar-w);
+    flex: none;
     display: flex;
     flex-direction: column;
     transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     position: relative;
     z-index: 10;
     overflow: hidden;
+    box-shadow: inset -0.5px 0 0 var(--ui-sep);
+  }
+
+  .sidebar::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background: var(--ui-sidebar-bg);
+    backdrop-filter: saturate(180%) blur(24px);
+    -webkit-backdrop-filter: saturate(180%) blur(24px);
   }
 
   .sidebar-collapsed {
@@ -204,6 +209,7 @@
   /* Main Content */
   .main-content {
     flex: 1;
+    min-width: 0;
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -214,36 +220,26 @@
     display: flex;
     flex-direction: column;
     padding: var(--space-6) var(--space-5);
-    background-color: #f9fafb !important;
+    background-color: transparent;
     min-height: 0;
     overflow-y: auto;
     overflow-x: hidden;
     scroll-behavior: smooth;
+    scrollbar-width: thin;
+    scrollbar-color: var(--ui-fill-strong) transparent;
   }
 
-  /* Custom Scrollbar Styles */
   .page-content::-webkit-scrollbar {
     width: 8px;
   }
 
   .page-content::-webkit-scrollbar-track {
-    background: rgba(0, 0, 0, 0.05);
-    border-radius: 4px;
+    background: transparent;
   }
 
   .page-content::-webkit-scrollbar-thumb {
-    background: rgba(0, 0, 0, 0.2);
+    background: var(--ui-fill-strong);
     border-radius: 4px;
-    transition: background 0.3s ease;
-  }
-
-  .page-content::-webkit-scrollbar-thumb:hover {
-    background: rgba(0, 0, 0, 0.3);
-  }
-
-  .page-content {
-    scrollbar-width: thin;
-    scrollbar-color: rgba(0, 0, 0, 0.2) rgba(0, 0, 0, 0.05);
   }
 
   /* Mobile Menu Button */
@@ -255,19 +251,18 @@
     width: 44px;
     height: 44px;
     border: none;
-    background: white;
-    border-radius: var(--radius-xl);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    background: var(--ui-surface);
+    border-radius: 14px;
+    box-shadow: var(--ui-shadow-pill);
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    transition: all var(--transition-fast);
+    transition: transform 120ms var(--ui-ease);
   }
 
-  .mobile-menu-btn:hover {
-    transform: scale(1.05);
-    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+  .mobile-menu-btn:active {
+    transform: scale(0.96);
   }
 
   .mobile-menu-btn .hamburger-menu {
@@ -281,9 +276,8 @@
   .mobile-menu-btn .hamburger-line {
     width: 100%;
     height: 2px;
-    background-color: var(--gray-700);
+    background-color: var(--ui-ink-2);
     border-radius: 1px;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   /* Mobile Overlay */
@@ -293,7 +287,7 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background-color: rgba(0, 0, 0, 0.5);
+    background-color: rgba(0, 0, 0, 0.32);
     z-index: 15;
     backdrop-filter: blur(4px);
   }
@@ -303,7 +297,7 @@
   /* Large screens */
   @media (min-width: 1025px) {
     .sidebar {
-      width: 240px;
+      width: var(--ui-sidebar-w);
     }
 
     .sidebar-collapsed {
@@ -344,9 +338,9 @@
     .sidebar {
       position: fixed;
       top: 0;
-      left: -240px;
+      left: -260px;
       bottom: 0;
-      width: 240px;
+      width: 260px;
       padding-top: env(safe-area-inset-top);
       padding-bottom: env(safe-area-inset-bottom);
       z-index: 20;
@@ -354,9 +348,13 @@
       box-shadow: 0 0 0 rgba(0, 0, 0, 0);
     }
 
+    .sidebar::before {
+      background: var(--ui-canvas);
+    }
+
     .sidebar-mobile-open {
       left: 0;
-      box-shadow: 4px 0 24px rgba(0, 0, 0, 0.15);
+      box-shadow: var(--ui-shadow-raised);
     }
   }
 </style>

@@ -11,7 +11,12 @@
       class="logo"
     >
       <div class="logo-icon">
-        &#x1F4AC;
+        <svg
+          viewBox="0 0 24 24"
+          aria-hidden="true"
+        >
+          <path d="M12 3C6.5 3 2 6.6 2 11c0 2.5 1.4 4.7 3.7 6.2L5 21l4.1-2.3c.9.2 1.9.3 2.9.3 5.5 0 10-3.6 10-8s-4.5-8-10-8Z" />
+        </svg>
       </div>
       <span class="logo-text">多渠道客服整合</span>
     </div>
@@ -19,6 +24,7 @@
       v-if="!isMobile"
       class="sidebar-toggle"
       :class="{ collapsed: sidebarCollapsed }"
+      :aria-label="sidebarCollapsed ? '展開側邊欄' : '收合側邊欄'"
       @click="$emit('toggle')"
     >
       <!-- Hamburger menu when collapsed -->
@@ -47,6 +53,7 @@
     <button
       v-if="isMobile"
       class="mobile-close-btn"
+      aria-label="關閉選單"
       @click="$emit('close-mobile')"
     >
       <svg
@@ -81,102 +88,88 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: var(--space-6);
-    border-bottom: 1px solid var(--gray-200);
-    min-height: 80px;
+    padding: 18px 14px 14px 18px;
+    min-height: 64px;
   }
 
   /* Prop-driven collapsed style (replaces .sidebar-collapsed .sidebar-header) */
   .sidebar-header--collapsed {
     justify-content: center;
-    padding: var(--space-4);
+    padding: 18px 10px 14px;
   }
 
   /* Prop-driven mobile style (replaces .sidebar-mobile .sidebar-header) */
   .sidebar-header--mobile {
     justify-content: space-between;
-    padding: var(--space-6);
   }
 
   .logo {
     display: flex;
     align-items: center;
-    gap: var(--space-3);
-    opacity: 1;
-    transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    gap: 10px;
+    min-width: 0;
   }
 
   .logo-icon {
-    font-size: 1.5rem;
-    width: 32px;
-    height: 32px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: linear-gradient(135deg, var(--primary-500), var(--primary-600));
-    border-radius: var(--radius-lg);
+    flex: none;
+    width: 30px;
+    height: 30px;
+    display: grid;
+    place-items: center;
+    border-radius: 9px;
+    background: linear-gradient(160deg, #3d9bff, #0060df);
+    box-shadow:
+      inset 0 0.5px 0 rgba(255, 255, 255, 0.4),
+      0 1px 3px rgba(0, 96, 223, 0.3);
+  }
+
+  .logo-icon svg {
+    width: 17px;
+    height: 17px;
+    fill: #fff;
   }
 
   .logo-text {
-    font-weight: 600;
-    font-size: 1.125rem;
-    color: var(--gray-900);
+    overflow: hidden;
+    font: 600 15px/1.2 var(--ui-font-display);
+    letter-spacing: -0.01em;
+    color: var(--ui-ink);
     white-space: nowrap;
+    text-overflow: ellipsis;
   }
 
-  .sidebar-toggle {
-    padding: var(--space-2);
-    border: none;
-    background: none;
-    color: var(--gray-500);
-    cursor: pointer;
-    border-radius: var(--radius-md);
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  .sidebar-toggle,
+  .mobile-close-btn {
+    flex: none;
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 36px;
-    height: 36px;
-    position: relative;
-    overflow: hidden;
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    border: none;
+    border-radius: 10px;
+    background: transparent;
+    color: var(--ui-muted);
+    cursor: pointer;
+    transition:
+      background-color var(--ui-dur) var(--ui-ease),
+      color var(--ui-dur) var(--ui-ease);
   }
 
-  .sidebar-toggle:hover {
-    background-color: var(--gray-100);
-    color: var(--gray-700);
-    transform: scale(1.05);
-  }
-
-  .sidebar-toggle:active {
-    transform: scale(0.95);
+  .sidebar-toggle:hover,
+  .mobile-close-btn:hover {
+    background-color: var(--ui-fill);
+    color: var(--ui-ink-2);
   }
 
   .sidebar-toggle svg {
-    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: transform var(--ui-dur) var(--ui-ease);
     transform-origin: center;
   }
 
   .sidebar-toggle.collapsed svg {
     transform: rotate(180deg);
-  }
-
-  .sidebar-toggle::before {
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 0;
-    height: 0;
-    background: var(--primary-100);
-    border-radius: 50%;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    transform: translate(-50%, -50%);
-    z-index: -1;
-  }
-
-  .sidebar-toggle:hover::before {
-    width: 100%;
-    height: 100%;
   }
 
   /* Hamburger Menu Styles */
@@ -193,40 +186,18 @@
     height: 2px;
     background-color: currentColor;
     border-radius: 1px;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    transform-origin: center;
   }
 
-  .sidebar-toggle:hover .hamburger-line {
-    background-color: var(--gray-700);
-  }
+  /* Medium screens: the rail has no room for the toggle next to the logo */
+  @media (min-width: 769px) and (max-width: 1024px) {
+    .sidebar-header {
+      justify-content: center;
+      padding: 18px 10px 14px;
+    }
 
-  .sidebar-toggle:hover .hamburger-line:nth-child(1) {
-    transform: translateY(1px);
-  }
-
-  .sidebar-toggle:hover .hamburger-line:nth-child(3) {
-    transform: translateY(-1px);
-  }
-
-  /* Mobile Close Button */
-  .mobile-close-btn {
-    padding: var(--space-2);
-    border: none;
-    background: none;
-    color: var(--gray-500);
-    cursor: pointer;
-    border-radius: var(--radius-md);
-    transition: all var(--transition-fast);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 40px;
-    height: 40px;
-  }
-
-  .mobile-close-btn:hover {
-    background-color: var(--gray-100);
-    color: var(--gray-700);
+    .logo-text,
+    .sidebar-toggle {
+      display: none;
+    }
   }
 </style>

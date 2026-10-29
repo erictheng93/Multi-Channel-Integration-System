@@ -1,8 +1,11 @@
 <template>
   <div class="nav-item-group">
-    <div
+    <button
+      type="button"
       class="nav-item expandable"
-      :class="{ active: isRouteActive }"
+      :class="{ active: isRouteActive, 'nav-item--collapsed': !showText }"
+      :aria-expanded="expanded"
+      :title="showText ? undefined : label"
       @click="$emit('toggle')"
     >
       <component
@@ -13,14 +16,21 @@
         v-if="showText"
         class="nav-text"
       >{{ label }}</span>
-      <span
+      <svg
         v-if="showText"
         class="expand-icon"
         :class="{ expanded: expanded }"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        aria-hidden="true"
       >
-        &#9654;
-      </span>
-    </div>
+        <path d="m9 18 6-6-6-6" />
+      </svg>
+    </button>
 
     <!-- Submenu -->
     <transition name="submenu">
@@ -73,54 +83,79 @@
 
 <style scoped>
   .nav-item-group {
-    margin-bottom: var(--space-2);
+    margin-bottom: 1px;
   }
 
   .nav-item {
+    position: relative;
     display: flex;
     align-items: center;
-    gap: var(--space-3);
-    padding: var(--space-3) var(--space-4);
-    margin-bottom: var(--space-1);
-    color: var(--gray-600);
-    text-decoration: none;
-    border-radius: var(--radius-lg);
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    gap: 10px;
+    width: 100%;
+    height: 34px;
+    padding: 0 10px;
+    border: none;
+    border-radius: 9px;
+    background: transparent;
+    color: var(--ui-ink-2);
+    font: inherit;
+    font-size: 13.5px;
     font-weight: 500;
-    position: relative;
+    text-align: left;
+    text-decoration: none;
     overflow: hidden;
+    transition:
+      background-color var(--ui-dur) var(--ui-ease),
+      color var(--ui-dur) var(--ui-ease);
   }
 
   .nav-item.expandable {
     cursor: pointer;
-    justify-content: space-between;
+  }
+
+  .nav-item--collapsed {
+    justify-content: center;
+    padding: 0;
   }
 
   .nav-item:hover {
-    background-color: var(--gray-100);
-    color: var(--gray-900);
+    background-color: var(--ui-fill);
   }
 
+  /* A group holds no page of its own, so the active state is quiet: ink + weight, no pill */
   .nav-item.active {
-    background-color: var(--primary-50);
-    color: var(--primary-700);
+    color: var(--ui-ink);
+    font-weight: 600;
   }
 
   .nav-icon {
     flex-shrink: 0;
+    width: 17px;
+    height: 17px;
+    stroke-width: 1.7;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    color: var(--ui-muted);
+    transition: color var(--ui-dur) var(--ui-ease);
+  }
+
+  .nav-item.active .nav-icon {
+    color: var(--ui-accent);
   }
 
   .nav-text {
-    white-space: nowrap;
-    opacity: 1;
-    transition: opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .expand-icon {
-    font-size: 0.75rem;
-    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    color: var(--gray-500);
+    flex-shrink: 0;
+    width: 14px;
+    height: 14px;
+    color: var(--ui-faint);
+    transition: transform var(--ui-dur) var(--ui-ease);
   }
 
   .expand-icon.expanded {
@@ -128,42 +163,41 @@
   }
 
   .submenu {
-    margin-left: var(--space-6);
-    margin-top: var(--space-2);
-    padding-left: var(--space-4);
-    border-left: 2px solid var(--gray-200);
+    display: grid;
+    gap: 1px;
+    padding: 2px 0 4px 37px;
     overflow: hidden;
   }
 
   .submenu-item {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    padding: var(--space-2) var(--space-3);
-    margin-bottom: var(--space-1);
-    border-radius: var(--radius-md);
+    display: block;
+    padding: 6px 10px;
+    border-radius: 8px;
+    color: var(--ui-muted);
+    font-size: 13px;
     text-decoration: none;
-    color: var(--gray-700);
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-    font-size: 0.9rem;
+    transition:
+      background-color var(--ui-dur) var(--ui-ease),
+      color var(--ui-dur) var(--ui-ease);
   }
 
   .submenu-item:hover {
-    background: var(--gray-50);
-    color: var(--gray-900);
-    transform: translateX(2px);
+    background: var(--ui-fill);
+    color: var(--ui-ink-2);
   }
 
   .submenu-item.active {
-    background: var(--primary-100);
-    color: var(--primary-700);
+    background: var(--ui-accent-soft);
+    color: var(--ui-accent);
     font-weight: 600;
   }
 
   /* Submenu Animation */
   .submenu-enter-active,
   .submenu-leave-active {
-    transition: all 0.3s ease;
+    transition:
+      max-height var(--ui-dur) var(--ui-ease),
+      opacity var(--ui-dur) var(--ui-ease);
     max-height: 300px;
   }
 
@@ -171,6 +205,19 @@
   .submenu-leave-to {
     max-height: 0;
     opacity: 0;
-    margin-top: 0;
+  }
+
+  /* Medium screens: the rail shows icons only */
+  @media (min-width: 769px) and (max-width: 1024px) {
+    .nav-text,
+    .expand-icon,
+    .submenu {
+      display: none;
+    }
+
+    .nav-item {
+      justify-content: center;
+      padding: 0;
+    }
   }
 </style>
