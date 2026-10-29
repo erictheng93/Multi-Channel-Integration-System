@@ -236,24 +236,18 @@ const formattedTime = computed(() => {
   background: color-mix(in srgb, var(--ui-fill) 45%, transparent);
 }
 
-/* Unread rows are tinted and carry a dot by the time; urgent ones also carry a red lead bar */
+/* Unread: tinted row, bold title, coloured icon tile and a dot by the time. Read: flat row, grey tile. */
 .notification-unread {
-  background: color-mix(in srgb, var(--ui-accent-soft) 45%, transparent);
+  background: color-mix(in srgb, var(--ui-accent) 8%, var(--ui-surface));
 }
 
 .notification-unread:hover {
-  background: color-mix(in srgb, var(--ui-accent-soft) 70%, transparent);
+  background: color-mix(in srgb, var(--ui-accent) 12%, var(--ui-surface));
 }
 
-.notification-urgent::after {
-  position: absolute;
-  top: 10px;
-  bottom: 10px;
-  left: 0;
-  width: 3px;
-  border-radius: 0 3px 3px 0;
-  background: var(--ui-red);
-  content: '';
+.notification-card:not(.notification-unread) .notification-icon {
+  background: var(--ui-fill);
+  color: var(--ui-muted);
 }
 
 /* Urgent: a solid red icon tile whatever the type */
@@ -405,6 +399,11 @@ const formattedTime = computed(() => {
   margin-top: 8px;
 }
 
+/* Pills sit on a solid surface mix so the tinted unread row cannot dip their text below AA */
+.notification-meta > .ui-pill-red {
+  background: color-mix(in srgb, var(--ui-red) 12%, var(--ui-surface));
+}
+
 .notification-meta > .ui-ch {
   margin-top: 8px;
 }
@@ -425,27 +424,65 @@ const formattedTime = computed(() => {
   opacity: 1;
 }
 
-/* Phone and touch: time hugs the right edge, the actions drop to their own row under the copy */
+/* Phone and touch: a grid. Title and its single trailing control share the first line, the copy
+   follows, and the time sits at the right end of the one meta line. Unread rows offer mark-read,
+   read rows offer delete (one control per row; Delete / Ctrl+M still work from the keyboard). */
 @media (max-width: 768px), (hover: none) {
   .notification-card {
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: 40px minmax(0, 1fr) auto;
+    grid-template-areas:
+      'icon head act'
+      'icon text act'
+      'icon meta meta';
+    gap: 0 14px;
+    align-items: start;
   }
 
+  .notification-icon {
+    grid-area: icon;
+  }
+
+  .notification-content,
   .notification-trail {
     display: contents;
   }
 
+  .notification-header {
+    grid-area: head;
+    align-self: center;
+    min-height: 24px;
+  }
+
+  .notification-text {
+    grid-area: text;
+  }
+
+  .notification-meta {
+    grid-area: meta;
+    align-self: center;
+    justify-self: start;
+  }
+
   .notification-when {
-    order: 2;
+    grid-area: meta;
+    align-self: center;
+    justify-self: end;
   }
 
   .notification-actions {
     position: static;
-    order: 3;
-    flex-basis: 100%;
-    justify-content: flex-end;
-    margin: -12px -12px -14px 0;
+    grid-area: act;
+    margin: -10px -12px -10px 0;
     opacity: 1;
+  }
+
+  .notification-unread .action-btn-danger {
+    display: none;
+  }
+
+  .notification-card:not(.notification-unread) .action-btn:not(.action-btn-danger) {
+    display: none;
   }
 }
 
