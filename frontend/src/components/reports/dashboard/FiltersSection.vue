@@ -1,6 +1,6 @@
 <template>
   <section
-    class="rf"
+    class="rf filter-section"
     aria-label="篩選報表"
   >
     <div class="rf-bar">
