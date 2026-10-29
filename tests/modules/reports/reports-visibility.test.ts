@@ -147,3 +147,10 @@ describe('reports visibility', () => {
     });
   });
 });
+
+describe('reports stats', () => {
+  it('is admin only (it aggregates every team)', async () => {
+    state.payload = { userId: 'agent-1', role: 'agent', allowedTeamIds: [3] };
+    expect((await call('/api/reports/stats')).status).toBe(403);
+  });
+});

@@ -315,6 +315,18 @@ export class ReportManagerService {
             continue;
           }
 
+          // A report the caller cannot see (not theirs, not their team's, not admin) does not exist for
+          // them, whatever the action: regenerate in particular has no permission check of its own.
+          try {
+            await utils.checkDownloadPermission(report, userId);
+          } catch (accessError) {
+            if (accessError instanceof ReportAccessDeniedError) {
+              results.push({ reportId, success: false, error: 'Report not found' });
+              continue;
+            }
+            throw accessError;
+          }
+
           let success = false;
           let downloadUrl: string | undefined;
 
