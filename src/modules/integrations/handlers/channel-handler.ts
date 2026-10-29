@@ -24,6 +24,7 @@ import {
   type ChannelStatistics as ContractChannelStatistics,
 } from '@shared/api-contracts';
 import { contractJson } from '@/utils/api-contract-response';
+import { getChannelOverviews } from '../services/channel-overview-stats-service';
 
 /**
  * Sanitize channel data for API responses — strip encrypted credentials JSON
@@ -33,7 +34,39 @@ function sanitizeChannelForResponse(channel: ChannelIntegration): ContractChanne
     credentials: _credentials,
     ...safe
   } = channel;
-  return safe as unknown as ContractChannelIntegration;
+  // config_metadata is stored as JSON text; the contract (and the UI) expect an object
+  return { ...safe, configMetadata: parseConfigMetadata(channel.configMetadata) } as unknown as ContractChannelIntegration;
+}
+
+function parseConfigMetadata(raw: unknown): Record<string, unknown> | null {
+  if (raw && typeof raw === 'object') return raw as Record<string, unknown>;
+  if (typeof raw !== 'string' || raw === '') return null;
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed as Record<string, unknown> : null;
+  } catch {
+    return null;
+  }
+}
+
+const CHANNEL_NAME_MAX_LENGTH = 60;
+
+/**
+ * Normalise the optional display name (configMetadata.name): trimmed string, at most 60 chars.
+ * Returns an error message when invalid, otherwise the metadata with a cleaned (or removed) name.
+ */
+function normalizeChannelMetadata(
+  metadata: Record<string, unknown> | undefined
+): { metadata: Record<string, unknown> | undefined } | { error: string } {
+  if (!metadata || !('name' in metadata)) return { metadata };
+  const { name, ...rest } = metadata;
+  if (name === null || name === undefined || name === '') return { metadata: rest };
+  if (typeof name !== 'string') return { error: 'Channel name must be a string' };
+  const trimmed = name.trim();
+  if (trimmed.length > CHANNEL_NAME_MAX_LENGTH) {
+    return { error: `Channel name must be at most ${CHANNEL_NAME_MAX_LENGTH} characters` };
+  }
+  return { metadata: trimmed ? { ...rest, name: trimmed } : rest };
 }
 
 function toContractChannelStatistics(stats: ChannelStatistics): ContractChannelStatistics {
@@ -266,13 +299,25 @@ channelHandler.put('/:id', requireIntId(), async (c: Context) => {
 
     const body = await c.req.json() as Partial<ChannelUpdateRequest>;
 
+    const normalizedUpdate = normalizeChannelMetadata(body.configMetadata);
+    if ('error' in normalizedUpdate) {
+      return c.json({ success: false, error: normalizedUpdate.error }, HTTP_STATUS.BAD_REQUEST);
+    }
+    // Merge into the stored metadata so editing the name does not drop other keys (e.g. description)
+    const mergedMetadata = body.configMetadata === undefined
+      ? undefined
+      : { ...(parseConfigMetadata(channel.configMetadata) ?? {}), ...normalizedUpdate.metadata };
+    if (mergedMetadata && body.configMetadata && 'name' in body.configMetadata && !normalizedUpdate.metadata?.name) {
+      delete mergedMetadata.name;
+    }
+
     const request: ChannelUpdateRequest = {
       channelId,
       lineConfig: body.lineConfig,
       facebookConfig: body.facebookConfig,
       whatsappConfig: body.whatsappConfig,
       isActive: body.isActive,
-      configMetadata: body.configMetadata
+      configMetadata: mergedMetadata
     };
 
     const result = await channelService.updateChannel(request);
@@ -377,9 +422,15 @@ channelHandler.get('/', async (c: Context) => {
     const channelService = new ChannelService(c.env as Bindings);
     const channels = await channelService.getChannelsByTeam(teamId, platform);
 
+    const overviews = await getChannelOverviews(c.env as Bindings, channels.map(ch => ch.platform));
+
     return contractJson(c, channelContracts.list, {
       success: true,
-      data: channels.map(sanitizeChannelForResponse),
+      data: channels.map(ch => ({
+        ...sanitizeChannelForResponse(ch),
+        activity: overviews[ch.platform]?.activity ?? null,
+        webhookHealth: overviews[ch.platform]?.webhookHealth
+      })),
       count: channels.length
     });
 
@@ -458,13 +509,18 @@ channelHandler.post('/', async (c: Context) => {
       }
     }
 
+    const normalizedCreate = normalizeChannelMetadata(body.configMetadata);
+    if ('error' in normalizedCreate) {
+      return c.json({ success: false, error: normalizedCreate.error }, HTTP_STATUS.BAD_REQUEST);
+    }
+
     const request: ChannelConfigRequest = {
       platform: body.platform,
       teamId: teamId!, // Use calculated teamId (guaranteed non-null at this point)
       lineConfig: body.lineConfig,
       facebookConfig: body.facebookConfig,
       whatsappConfig: body.whatsappConfig,
-      configMetadata: body.configMetadata
+      configMetadata: normalizedCreate.metadata
     };
 
     const channelService = new ChannelService(c.env as Bindings);
