@@ -75,7 +75,7 @@
         </div>
         <div
           v-if="hoursNote"
-          class="ui-kpi-foot"
+          class="ui-kpi-foot hours-foot"
         >
           {{ hoursNote }}
         </div>
@@ -161,6 +161,15 @@ const hoursNote = computed(() => {
 </script>
 
 <style scoped>
+/* The business-hours caption is a full sentence: let it wrap instead of truncating on phones */
+@media (max-width: 768px) {
+  .hours-foot.ui-kpi-foot {
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+  }
+}
+
 /* Neutralise the legacy global .stat-card (centered flex row, border, hover lift) */
 .stat-card {
   align-items: stretch;
