@@ -12,22 +12,6 @@
     @submit.prevent="handleSave"
   >
     <SettingsGroup title="系統識別">
-      <div class="preview">
-        <div
-          class="preview-mark"
-          aria-hidden="true"
-        >
-          <svg viewBox="0 0 24 24"><path d="M12 3C6.5 3 2 6.6 2 11c0 2.5 1.4 4.7 3.7 6.2L5 21l4.1-2.3c.9.2 1.9.3 2.9.3 5.5 0 10-3.6 10-8s-4.5-8-10-8Z" /></svg>
-        </div>
-        <div class="preview-text">
-          <div class="preview-name">
-            {{ localSettings.systemName || '尚未命名' }}
-          </div>
-          <div class="preview-sub">
-            系統名稱預覽
-          </div>
-        </div>
-      </div>
       <SettingsRow
         label="系統名稱"
         hint="最多 40 字元"
@@ -62,7 +46,7 @@
     <SettingsGroup title="地區與語言">
       <SettingsRow
         label="時區"
-        :hint="`目前時間 ${timezoneNow}`"
+        hint="右側顯示所選時區的目前時間"
         for-id="timezone"
       >
         <select
@@ -88,7 +72,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, watch } from 'vue'
+import { reactive, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { GeneralSettings } from '@/types/system-settings'
 import SettingsGroup from './SettingsGroup.vue'
@@ -143,25 +127,6 @@ watch(
   { deep: true }
 )
 
-/** The clock in the selected zone, read once per render of the selection (no timers). */
-const timezoneNow = computed(() => {
-  try {
-    return new Intl.DateTimeFormat('zh-TW', {
-      timeZone: localSettings.timezone || 'Asia/Taipei',
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false
-    })
-      .format(new Date())
-      .replace(/\//g, '-')
-  } catch {
-    return '—'
-  }
-})
-
 function handleSave() {
   emit('save')
 }
@@ -171,55 +136,5 @@ function handleSave() {
 .general-form {
   display: grid;
   gap: 22px;
-}
-
-.preview {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 18px 22px;
-}
-
-.preview-mark {
-  display: grid;
-  flex: none;
-  place-items: center;
-  width: 44px;
-  height: 44px;
-  border-radius: 13px;
-  background: linear-gradient(160deg, #3d9bff, #0060df);
-}
-
-.preview-mark svg {
-  width: 24px;
-  height: 24px;
-  fill: #fff;
-}
-
-.preview-text {
-  min-width: 0;
-}
-
-.preview-name {
-  overflow: hidden;
-  font: 600 16px var(--ui-font-display);
-  letter-spacing: -0.01em;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.preview-sub {
-  font-size: 13px;
-  color: var(--ui-muted);
-}
-
-.preview + :deep(.srow)::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  right: 22px;
-  left: 22px;
-  height: 0.5px;
-  background: var(--ui-sep);
 }
 </style>

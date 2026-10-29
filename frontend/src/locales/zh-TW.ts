@@ -103,7 +103,7 @@ export default {
       contactEmail: '聯絡信箱',
       timezone: '時區',
       language: '語言',
-      systemNamePlaceholder: 'Multi-Channel Support',
+      systemNamePlaceholder: '例如：多渠道客服整合',
       contactEmailPlaceholder: "admin{'@'}example.com"
     },
 
