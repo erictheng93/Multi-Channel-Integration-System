@@ -51,12 +51,12 @@
           >
             <stop
               offset="0"
-              stop-color="var(--ui-accent)"
+              stop-color="var(--section-hue)"
               stop-opacity=".18"
             />
             <stop
               offset="1"
-              stop-color="var(--ui-accent)"
+              stop-color="var(--section-hue)"
               stop-opacity="0"
             />
           </linearGradient>
@@ -93,7 +93,7 @@
         <path
           :d="currentPath"
           fill="none"
-          stroke="var(--ui-accent)"
+          stroke="var(--section-hue)"
           stroke-width="2.2"
           stroke-linejoin="round"
           stroke-linecap="round"
@@ -105,30 +105,17 @@
           :cy="lastPoint.y"
           r="4.5"
           fill="var(--ui-surface)"
-          stroke="var(--ui-accent)"
+          stroke="var(--section-hue)"
           stroke-width="2.2"
         />
-        <g v-if="lastPoint">
-          <rect
-            class="tip"
-            :x="tipX"
-            :y="tipY"
-            width="80"
-            height="26"
-            rx="8"
-          />
-          <!-- pointer from the callout down to the last point -->
-          <path
-            class="tip"
-            :d="`M${tipPointerX - 5} ${tipY + 25} L${tipPointerX + 5} ${tipY + 25} L${tipPointerX} ${tipY + 32} Z`"
-          />
-          <text
-            :x="tipX + 40"
-            :y="tipY + 17"
-            text-anchor="middle"
-            class="tip-text"
-          >今天 {{ fmt(lastPoint.value) }}</text>
-        </g>
+        <!-- Direct label on the last point (no floating bubble): the number sits beside the dot on a surface halo -->
+        <text
+          v-if="lastPoint"
+          :x="lastPoint.x + 2"
+          :y="lastPoint.y - 30"
+          text-anchor="end"
+          class="end-label"
+        >今天 {{ fmt(lastPoint.value) }}</text>
 
         <!-- Hover/focus targets: native tooltip with the exact day value -->
         <circle
@@ -238,10 +225,6 @@ const areaPath = computed(() => points.value.length === 0
   : `${currentPath.value} L${X1.value} ${Y_BASE.value} L${X0.value} ${Y_BASE.value} Z`)
 
 const lastPoint = computed(() => points.value[points.value.length - 1] ?? null)
-// The callout is anchored to the last point: centred above it, kept inside the plot
-const tipX = computed(() => (lastPoint.value ? Math.min(Math.max(lastPoint.value.x - 40, 0), W.value - 84) : 0))
-const tipY = computed(() => (lastPoint.value ? Math.max(lastPoint.value.y - 46, 2) : 0))
-const tipPointerX = computed(() => (lastPoint.value ? Math.min(Math.max(lastPoint.value.x, tipX.value + 14), tipX.value + 66) : 0))
 
 type Anchor = 'start' | 'middle' | 'end'
 const xLabels = computed(() => {
@@ -295,7 +278,7 @@ const ariaLabel = computed(() =>
   flex-wrap: wrap;
   gap: 6px 24px;
   align-items: center;
-  padding: 0 22px 6px;
+  padding: 18px 22px 6px;
   font-size: 13px;
   color: var(--ui-muted);
 }
@@ -323,7 +306,7 @@ const ariaLabel = computed(() =>
   width: 10px;
   height: 3px;
   border-radius: 2px;
-  background: var(--ui-accent);
+  background: var(--section-hue);
 }
 
 .legend i.prev {
@@ -349,7 +332,7 @@ const ariaLabel = computed(() =>
 
 .chart text {
   fill: var(--ui-muted);
-  font: 500 11px var(--ui-font-ui);
+  font: 500 12px var(--ui-font-ui);
   font-variant-numeric: tabular-nums;
 }
 
@@ -357,19 +340,19 @@ const ariaLabel = computed(() =>
   stroke: var(--ui-sep);
 }
 
-.chart .tip {
-  fill: var(--ui-surface);
-  filter: drop-shadow(0 4px 12px rgb(0 0 0 / 12%));
-}
-
-.chart .tip-text {
+.chart text.end-label {
   fill: var(--ui-ink);
+  font-size: 13px;
   font-weight: 600;
+  paint-order: stroke;
+  stroke: var(--ui-surface);
+  stroke-linejoin: round;
+  stroke-width: 5px;
 }
 
 @media (max-width: 768px) {
   .legend {
-    padding: 0 16px 6px;
+    padding: 14px 16px 6px;
   }
 
   .legend-channels {
