@@ -19,6 +19,7 @@ import { getDisplayContent } from '../utils/message-helpers';
 import { publicConversationColumns } from '../utils/public-columns';
 import { nowISO, nowMs } from '@/utils/timestamp'
 import { readThrough, DASHBOARD_SUMMARY_TTL_SECONDS } from '@/modules/dashboard/services/kv-cache';
+import { RowsReadMeter } from '@/utils/d1-rows-read';
 import { clampWaitingLimit, getWaitingConversations } from '@/modules/dashboard/services/waiting-service';
 import { visibilityScopeKey } from '@/modules/dashboard/services/dashboard-service';
 import { conversationContracts, type ConversationStats } from '@shared/api-contracts/conversations';
@@ -328,7 +329,9 @@ conversationQueriesHandler.get('/waiting', jwtAuth, async (c) => {
       DASHBOARD_SUMMARY_TTL_SECONDS,
       async () => {
         const generatedAt = nowMs();
-        const waiting = await getWaitingConversations(c.env.DB, user, limit, generatedAt);
+        const meter = new RowsReadMeter('conversations.waiting');
+        const waiting = await getWaitingConversations(c.env.DB, user, limit, generatedAt, meter);
+        meter.flush({ scope: visibilityScopeKey(user), limit });
         return { ...waiting, generatedAt: new Date(generatedAt).toISOString() };
       }
     );

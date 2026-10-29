@@ -114,6 +114,9 @@ export const conversations = sqliteTable('conversations', {
   lineReplyToken: text('line_reply_token'),
   lineReplyTokenReceivedAt: integer('line_reply_token_received_at'),
   lastMessageAt: text('last_message_at'),
+  // Earliest unanswered customer message after the last human reply; NULL = not waiting.
+  // Maintained by triggers on messages and healed nightly (Migration 0070).
+  awaitingSince: text('awaiting_since'),
   // DEPRECATED (Migration 0060): read state is now per-agent in
   // conversation_read_states. These two columns are no longer read by the
   // unread queries and are kept only as a revert path.
@@ -135,6 +138,10 @@ export const conversations = sqliteTable('conversations', {
   // LIMIT; without it the planner sorts every visible row in a temp b-tree and
   // the pagination pushdown reads just as much as the old Array.slice() did.
   updatedAtIdx: index('idx_conversations_updated_at').on(table.updatedAt, table.id),
+  // Partial index holding only waiting conversations (Migration 0070)
+  awaitingSinceIdx: index('idx_conversations_awaiting_since')
+    .on(table.awaitingSince, table.id, table.status, table.assignedTeamId, table.deletedAt)
+    .where(sql`${table.awaitingSince} IS NOT NULL`),
 }));
 
 // Conversation read states - 每位客服各自的已讀/未讀狀態 (Migration 0060)
