@@ -59,7 +59,7 @@
               class="ui-kpi-foot"
               :title="`待回覆＝近 ${WAITING_WINDOW_DAYS} 天內，客戶來訊後尚無客服回覆`"
             >
-              客戶來訊後尚無客服回覆
+              近 {{ WAITING_WINDOW_DAYS }} 天內尚無客服回覆
             </div>
           </template>
           <template v-else>
@@ -723,9 +723,9 @@ const greeting = computed(() => {
 // No spaces around full-width punctuation: sentences are joined here, not in the template
 const subtitle = computed(() => {
   const waitPart = waitingCount.value > 0
-    ? `${waitingCount.value} 件待回覆 · 最久等 ${oldestWaitText.value}`
-    : '目前沒有待回覆的客戶'
-  const unreadPart = unreadStore.total > 0 ? ` · 我的未讀 ${unreadStore.total}` : ''
+    ? `${waitingCount.value} 件待回覆 · 最久已等 ${oldestWaitText.value}`
+    : `近 ${WAITING_WINDOW_DAYS} 天內沒有待回覆的客戶`
+  const unreadPart = unreadStore.total > 0 ? ` · 我的未讀 ${unreadStore.total} 件` : ''
   return `${waitPart}${unreadPart}`
 })
 

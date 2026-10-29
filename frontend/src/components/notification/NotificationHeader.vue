@@ -49,13 +49,13 @@ defineEmits<{
   'open-settings': []
 }>()
 
-// One line from /notifications/stats: "3 則未讀（1 則緊急） · 今天 7 則 · 本週 23 則"
+// One line from /notifications/stats: "3 則未讀，其中 1 則為緊急 · 今天 7 則 · 本週 23 則"
 const subtitle = computed(() => {
   const s = props.stats
   if (!s) { return ' ' }
   const urgent = s.byPriority?.urgent?.unread ?? 0
   const lead = s.unread > 0
-    ? `${s.unread} 則未讀${urgent > 0 ? `（${urgent} 則緊急）` : ''}`
+    ? `${s.unread} 則未讀${urgent > 0 ? `，其中 ${urgent} 則為緊急` : ''}`
     : '沒有未讀通知'
   return `${lead} · 今天 ${s.timeRange?.today ?? 0} 則 · 本週 ${s.timeRange?.thisWeek ?? 0} 則`
 })
