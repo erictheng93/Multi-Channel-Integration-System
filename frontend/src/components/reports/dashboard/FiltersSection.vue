@@ -208,6 +208,7 @@ function handleFilterChange(key: keyof ReportListQuery, value: string) {
 
 .filter-group {
   grid-column: span 2;
+  min-width: 0;
 }
 
 .filter-group--date {
@@ -222,6 +223,18 @@ function handleFilterChange(key: keyof ReportListQuery, value: string) {
   display: flex;
   align-items: center;
   gap: 8px;
+  min-width: 0;
+}
+
+/* Native date inputs and selects have a wide intrinsic width; let them shrink with the column */
+.date-filters .filter-date {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.filter-select,
+.search-input {
+  min-width: 0;
 }
 
 .date-separator {
@@ -231,7 +244,8 @@ function handleFilterChange(key: keyof ReportListQuery, value: string) {
 
 @media (max-width: 768px) {
   .filter-controls {
-    grid-template-columns: 1fr;
+    /* minmax(0, …) not 1fr: a bare 1fr column cannot shrink below its widest control */
+    grid-template-columns: minmax(0, 1fr);
     padding: 4px 16px 16px;
   }
 
