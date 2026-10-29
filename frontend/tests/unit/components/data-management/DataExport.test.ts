@@ -75,7 +75,7 @@ describe('DataExport.vue', () => {
 
     it('應該顯示「開始匯出」按鈕', () => {
       wrapper = createWrapper()
-      const btn = wrapper.find('.ui-page-actions .btn-primary')
+      const btn = wrapper.find('.choose-foot .btn-primary')
       expect(btn.exists()).toBe(true)
       expect(btn.text()).toContain('開始匯出')
     })
@@ -86,13 +86,13 @@ describe('DataExport.vue', () => {
   describe('格式說明卡片', () => {
     it('應該渲染四張格式卡片', () => {
       wrapper = createWrapper()
-      const cards = wrapper.findAll('.format-card')
+      const cards = wrapper.findAll('.fmt-row')
       expect(cards.length).toBe(4)
     })
 
     it('應該包含 JSON 格式卡片', () => {
       wrapper = createWrapper()
-      const cards = wrapper.findAll('.format-card')
+      const cards = wrapper.findAll('.fmt-row')
       const jsonCard = cards.find(c => c.text().includes('JSON'))
       expect(jsonCard).toBeTruthy()
       expect(jsonCard!.text()).toContain('結構化')
@@ -100,7 +100,7 @@ describe('DataExport.vue', () => {
 
     it('應該包含 CSV 格式卡片', () => {
       wrapper = createWrapper()
-      const cards = wrapper.findAll('.format-card')
+      const cards = wrapper.findAll('.fmt-row')
       const csvCard = cards.find(c => c.text().includes('CSV'))
       expect(csvCard).toBeTruthy()
       expect(csvCard!.text()).toContain('試算表')
@@ -108,7 +108,7 @@ describe('DataExport.vue', () => {
 
     it('應該包含 TXT 格式卡片', () => {
       wrapper = createWrapper()
-      const cards = wrapper.findAll('.format-card')
+      const cards = wrapper.findAll('.fmt-row')
       const txtCard = cards.find(c => c.text().includes('TXT'))
       expect(txtCard).toBeTruthy()
       expect(txtCard!.text()).toContain('純文字')
@@ -116,7 +116,7 @@ describe('DataExport.vue', () => {
 
     it('應該包含 PDF 格式卡片', () => {
       wrapper = createWrapper()
-      const cards = wrapper.findAll('.format-card')
+      const cards = wrapper.findAll('.fmt-row')
       const pdfCard = cards.find(c => c.text().includes('PDF'))
       expect(pdfCard).toBeTruthy()
       expect(pdfCard!.text()).toContain('可攜式')
@@ -124,7 +124,7 @@ describe('DataExport.vue', () => {
 
     it('每張卡片應該列出適用場景', () => {
       wrapper = createWrapper()
-      const uses = wrapper.findAll('.use')
+      const uses = wrapper.findAll('.fmt-use')
       expect(uses.length).toBe(4)
       expect(uses[0]!.text()).toContain('API 整合')
     })
@@ -135,27 +135,27 @@ describe('DataExport.vue', () => {
   describe('功能說明區', () => {
     it('應該渲染功能說明區標題', () => {
       wrapper = createWrapper()
-      const titles = wrapper.findAll('.section-title')
-      const featureTitle = titles.find(t => t.text().includes('匯出視窗可設定'))
-      expect(featureTitle).toBeTruthy()
+      const titles = wrapper.findAll('.ui-card-title')
+      const stepsTitle = titles.find(t => t.text().includes('接下來'))
+      expect(stepsTitle).toBeTruthy()
     })
 
-    it('應該顯示四個功能項目', () => {
+    it('應該顯示三個步驟', () => {
       wrapper = createWrapper()
-      const features = wrapper.findAll('.feature-item')
+      const features = wrapper.findAll('.step')
       expect(features.length).toBe(3)
     })
 
-    it('應該包含日期範圍篩選功能', () => {
+    it('應該說明日期範圍篩選', () => {
       wrapper = createWrapper()
-      const features = wrapper.findAll('.feature-item')
-      const dateFeature = features.find(f => f.text().includes('日期範圍'))
+      const features = wrapper.findAll('.step')
+      const dateFeature = features.find(f => f.text().includes('日期'))
       expect(dateFeature).toBeTruthy()
     })
 
-    it('應該包含用戶篩選功能', () => {
+    it('應該說明客戶篩選', () => {
       wrapper = createWrapper()
-      const features = wrapper.findAll('.feature-item')
+      const features = wrapper.findAll('.step')
       const userFeature = features.find(f => f.text().includes('客戶'))
       expect(userFeature).toBeTruthy()
     })
@@ -172,7 +172,7 @@ describe('DataExport.vue', () => {
 
     it('點擊「開始匯出」應該打開 ExportDialog', async () => {
       wrapper = createWrapper()
-      const btn = wrapper.find('.ui-page-actions .btn-primary')
+      const btn = wrapper.find('.choose-foot .btn-primary')
       await btn.trigger('click')
       await nextTick()
 
@@ -182,7 +182,7 @@ describe('DataExport.vue', () => {
 
     it('點擊格式卡片只選取格式，按「開始匯出」才開啟並帶入該格式', async () => {
       wrapper = createWrapper()
-      const cards = wrapper.findAll('.format-card')
+      const cards = wrapper.findAll('.fmt-row')
       await cards[1]!.trigger('click')
       await nextTick()
 
@@ -190,7 +190,7 @@ describe('DataExport.vue', () => {
       expect(dialog.props('show')).toBe(false)
       expect(cards[1]!.attributes('aria-checked')).toBe('true')
 
-      await wrapper.find('.ui-page-actions .btn-primary').trigger('click')
+      await wrapper.find('.choose-foot .btn-primary').trigger('click')
       await nextTick()
       expect(dialog.props('show')).toBe(true)
       expect(dialog.props('initialFormat')).toBe('csv')
@@ -200,7 +200,7 @@ describe('DataExport.vue', () => {
       wrapper = createWrapper()
 
       // Open dialog first
-      const btn = wrapper.find('.ui-page-actions .btn-primary')
+      const btn = wrapper.find('.choose-foot .btn-primary')
       await btn.trigger('click')
       await nextTick()
 

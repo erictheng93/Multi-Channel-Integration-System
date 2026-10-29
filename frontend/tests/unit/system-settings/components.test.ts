@@ -41,7 +41,7 @@ describe('System Settings Components', () => {
       expect(wrapper.find('#systemName').exists()).toBe(true)
       expect(wrapper.find('#contactEmail').exists()).toBe(true)
       expect(wrapper.find('#timezone').exists()).toBe(true)
-      expect(wrapper.find('#language').exists()).toBe(true)
+      expect(wrapper.find('.group-note').text()).toContain('繁體中文')
     })
 
     it('should populate fields with settings data', () => {
@@ -71,7 +71,7 @@ describe('System Settings Components', () => {
       expect(updates?.at(-1)?.[0]).toMatchObject({ systemName: 'Renamed' })
     })
 
-    it('should offer only Traditional Chinese as a disabled language', () => {
+    it('should state the language as plain read-only text, not a control', () => {
       const wrapper = mount(GeneralSettingsForm, {
         props: {
           settings: mockSettings,
@@ -79,9 +79,8 @@ describe('System Settings Components', () => {
         }
       })
 
-      const language = wrapper.find<HTMLSelectElement>('#language')
-      expect(language.element.disabled).toBe(true)
-      expect(language.findAll('option')).toHaveLength(1)
+      expect(wrapper.find('#language').exists()).toBe(false)
+      expect(wrapper.text()).toContain('介面語言：繁體中文')
     })
 
     it('should emit save event on form submit', async () => {
