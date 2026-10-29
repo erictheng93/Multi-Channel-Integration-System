@@ -51,16 +51,18 @@
         :class="{ single: links.length === 0 }"
       >
         <article class="ui-card hero">
-          <DiscRing
-            class="hero-disc"
-            tone="accent"
-            :size="230"
-            :weight="1.4"
-            fade="strong"
-            :grain="false"
-          />
-          <div class="code">
-            4<span>0</span>4
+          <div class="code-wrap">
+            <DiscRing
+              class="hero-disc"
+              tone="accent"
+              :size="190"
+              :weight="1.4"
+              fade="strong"
+              :grain="false"
+            />
+            <div class="code">
+              4<span>0</span>4
+            </div>
           </div>
           <p>可能原因：網址輸入有誤、頁面已被移除，或你沒有權限查看。</p>
           <div class="asked ui-well">
@@ -242,13 +244,19 @@ const goBack = () => {
   text-align: center;
 }
 
-.hero > :not(.hero-disc) {
+/* The rings live in the numerals' own box, so they can never reach the sentence below */
+.code-wrap {
   position: relative;
+  display: grid;
+  place-items: center;
+  margin-bottom: 14px;
+  padding: 8px 40px;
 }
 
 .code {
-  font: 700 120px / 0.9 var(--ui-font-display);
-  letter-spacing: -0.06em;
+  position: relative;
+  font: 300 128px / 1 var(--ui-font-display);
+  letter-spacing: -0.05em;
   font-variant-numeric: tabular-nums;
   color: var(--ui-ink);
 }
@@ -291,8 +299,7 @@ const goBack = () => {
 
 .hero-disc {
   position: absolute;
-  /* centred on the numerals, small enough to fade out before the sentence below */
-  top: calc(50% - 62px);
+  top: 50%;
   left: 50%;
   translate: -50% -50%;
   opacity: 0.8;
