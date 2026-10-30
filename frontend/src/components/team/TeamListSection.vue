@@ -428,6 +428,32 @@ function handlePageChange(page: number) {
   gap: 2px;
   padding-bottom: 4px;
 }
+/* desktop: teams are tiles side by side (mark, who runs it, menu, then the faces), not rows with an empty middle */
+@media (min-width: 769px) {
+  .teams-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+    padding-bottom: 8px;
+  }
+  .team-section :deep(.team-card) {
+    grid-template-columns: 56px minmax(0, 1fr) auto;
+    grid-template-areas: 'mark main acts' 'mark avs avs';
+    align-items: start;
+    row-gap: 12px;
+    padding: 18px 18px 18px 20px;
+    background: var(--ui-fill);
+  }
+  .team-section :deep(.team-card:hover) {
+    background: var(--ui-fill-strong);
+  }
+  .team-section :deep(.team-mark) { grid-area: mark; width: 56px; height: 56px; }
+  .team-section :deep(.team-main) { grid-area: main; }
+  .team-section :deep(.avs) { grid-area: avs; padding: 0; }
+  .team-section :deep(.avs .team-avatar) { width: 32px; height: 32px; font-size: 13px; }
+  .team-section :deep(.avs-more) { min-width: 32px; height: 32px; border-radius: 16px; }
+  .team-section :deep(.team-acts) { grid-area: acts; margin: -4px -6px 0 0; }
+  .team-section :deep(.team-acts .go) { display: none; }
+}
 .drag-hint {
   padding: 4px 4px 8px;
   font-size: 13px;

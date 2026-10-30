@@ -68,9 +68,35 @@
             :class="{ none: onlineCount === null }"
             :aria-busy="(loading && !presence.available.value) || undefined"
           >
-            {{ onlineCount === null ? '—' : onlineCount }}<small v-if="onlineCount !== null">位</small>
+            {{ onlineCount === null ? '—' : onlineCount }}<small v-if="onlineCount !== null">/ {{ activeCount }} 位在線</small>
           </div>
-          <p class="tl-meaning">
+          <ul
+            v-if="onlineMembers.length > 0"
+            class="tl-faces"
+            aria-label="在線成員"
+          >
+            <li
+              v-for="m in onlineMembers.slice(0, FACES_SHOWN)"
+              :key="m.id"
+            >
+              <TeamAvatar
+                :name="m.name || m.loginId"
+                :seed="m.id"
+                :src="m.avatar"
+              />
+              <span>{{ (m.name || m.loginId).slice(0, 4) }}</span>
+            </li>
+            <li
+              v-if="onlineMembers.length > FACES_SHOWN"
+              class="tl-more"
+            >
+              +{{ onlineMembers.length - FACES_SHOWN }}
+            </li>
+          </ul>
+          <p
+            v-else
+            class="tl-meaning"
+          >
             {{ onlineMeaning }}
           </p>
         </div>
@@ -89,24 +115,17 @@
                 :style="{ background: teamToneColor(row.id) }"
                 aria-hidden="true"
               />{{ row.name }}</span>
-              <span
-                v-if="row.open !== null"
-                class="tl-team-n"
-              ><b>{{ row.open }}</b><small> 件處理中</small></span>
-              <span
-                v-else
-                class="tl-team-n"
-              ><b>{{ row.online === null ? row.total : row.online }}</b> / {{ row.total }}<small>{{ row.online === null ? ' 位成員' : ' 在線' }}</small></span>
+              <span class="tl-team-n"><b>{{ row.online === null ? row.total : row.online }}</b> / {{ row.total }}<small>{{ row.online === null ? ' 位成員' : ' 在線' }}</small></span>
             </div>
             <span
               class="tl-bar"
               aria-hidden="true"
-            ><i :style="{ background: teamToneColor(row.id), width: (row.open !== null ? row.openWidth : (row.online === null ? 100 : row.percent)) + '%' }" /></span>
+            ><i :style="{ background: teamToneColor(row.id), width: (row.online === null ? 100 : row.percent) + '%' }" /></span>
             <div
               v-if="row.open !== null"
               class="tl-team-sub"
             >
-              {{ row.online === null ? `${row.total} 位成員` : `${row.online} / ${row.total} 在線` }}
+              {{ row.open }} 件處理中
             </div>
           </li>
           <li
@@ -264,6 +283,7 @@ import { teamApi } from '@/api/team'
 import { conversationApi } from '@/api/conversations'
 import type { MemberSortField, TeamSortField } from '@/composables/useListSorting'
 import AppLayout from '@/components/ui/AppLayout.vue'
+import TeamAvatar from '@/components/team/TeamAvatar.vue'
 import RefreshButton from '@/components/ui/RefreshButton.vue'
 import MemberListSection from '@/components/team/MemberListSection.vue'
 import TeamListSection from '@/components/team/TeamListSection.vue'
@@ -309,6 +329,15 @@ const headSummary = computed(() => {
 const onlineCount = computed<number | null>(() =>
   presence.available.value ? members.value.filter(m => presence.onlineIds.value.has(m.id)).length : null
 )
+
+const activeCount = computed(() => members.value.filter(m => m.status !== 'inactive').length)
+
+/** Who is online right now, for the faces under the count */
+const onlineMembers = computed(() =>
+  presence.available.value ? members.value.filter(m => presence.onlineIds.value.has(m.id)) : []
+)
+
+const FACES_SHOWN = 6
 
 const onlineMeaning = computed(() => {
   if (onlineCount.value === null) {
@@ -502,11 +531,40 @@ onUnmounted(() => {
 }
 
 .tl-num small {
-  margin-left: 6px;
-  font-size: 20px;
+  margin-left: 8px;
+  font-size: 18px;
   font-weight: 500;
   letter-spacing: 0;
   color: var(--ui-muted);
+}
+
+.tl-faces {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px 12px;
+  margin: 18px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tl-faces li {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  min-width: 52px;
+  font-size: 13px;
+  color: var(--ui-ink-2);
+}
+
+.tl-faces :deep(.team-avatar) {
+  width: 44px;
+  height: 44px;
+  font-size: 17px;
+}
+
+.tl-more {
+  align-content: center;
+  font-weight: 600;
 }
 
 .tl-meaning {
