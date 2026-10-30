@@ -43,49 +43,70 @@
         </template>
       </UiPageHead>
 
-      <!-- Lead: how much came through in the last 24 h, and how many channels are on and verified -->
-      <RingLead
+      <!-- Lead: how much came through in the last 24 h, and which channel carried it -->
+      <article
         v-if="!isLoading && !loadFailed && channels.length > 0"
-        kicker="近 24 小時訊息"
-        :value="leadVolume.total === null ? '—' : formatCount(leadVolume.total)"
-        :unit="leadVolume.total === null ? '' : '則'"
-        :meaning="leadVolume.meaning"
-        :tone="leadVolume.total === null ? 'none' : ''"
+        class="ui-lead cl"
+        aria-label="近 24 小時訊息量"
       >
-        <template #visual>
-          <LeadMeter
-            summary="近 24 小時各頻道訊息量"
-            :legend="[{ label: '客戶來訊', tone: 'blue' }, { label: '客服發送', tone: 'indigo' }]"
-            :rows="volumeMeter"
-          />
-        </template>
-      </RingLead>
-
-      <!-- Platform Filter -->
-      <div class="toolbar">
-        <div
-          class="ui-seg"
-          role="group"
-          aria-label="依平台篩選"
-        >
-          <button
-            type="button"
-            :aria-pressed="selectedPlatform === null"
-            @click="filterByPlatform(null)"
+        <div class="cl-main">
+          <div class="cl-kicker">
+            近 24 小時訊息
+          </div>
+          <div
+            class="cl-num"
+            :class="{ none: leadVolume.total === null }"
           >
-            全部 <span class="ui-seg-n">{{ channels.length }}</span>
-          </button>
-          <button
-            v-for="p in PLATFORM_FILTERS"
-            :key="p.id"
-            type="button"
-            :aria-pressed="selectedPlatform === p.id"
-            @click="filterByPlatform(p.id)"
+            {{ leadVolume.total === null ? '—' : formatCount(leadVolume.total) }}<small v-if="leadVolume.total !== null">則</small>
+          </div>
+          <p class="cl-meaning">
+            {{ leadVolume.meaning }}
+          </p>
+          <ul
+            v-if="leadVolume.total !== null"
+            class="cl-legend"
+            aria-label="圖例"
           >
-            {{ p.label }} <span class="ui-seg-n">{{ getChannelCount(p.id) }}</span>
-          </button>
+            <li><i class="in" />客戶來訊</li>
+            <li><i class="out" />客服發送</li>
+          </ul>
         </div>
-      </div>
+        <ul
+          v-if="leadRows.length > 0"
+          class="cl-rows"
+          aria-label="各頻道訊息量"
+        >
+          <li
+            v-for="row in leadRows"
+            :key="row.key"
+          >
+            <div class="cl-row-top">
+              <span class="cl-name">{{ row.label }}</span>
+              <span class="cl-total">{{ formatCount(row.total) }}<small> 則</small></span>
+            </div>
+            <div
+              class="cl-bar"
+              aria-hidden="true"
+            >
+              <span
+                class="cl-bar-fill"
+                :style="{ width: row.width }"
+              >
+                <i
+                  class="in"
+                  :style="{ flexGrow: row.inN }"
+                /><i
+                  class="out"
+                  :style="{ flexGrow: row.outN }"
+                />
+              </span>
+            </div>
+            <div class="cl-row-sub">
+              來訊 {{ formatCount(row.inN) }} · 發送 {{ formatCount(row.outN) }}
+            </div>
+          </li>
+        </ul>
+      </article>
 
       <!-- Webhook problems: one place, with the one primary action; the cards stay uniform -->
       <section
@@ -128,6 +149,32 @@
           </button>
         </article>
       </section>
+
+      <!-- Platform Filter -->
+      <div class="toolbar">
+        <div
+          class="ui-seg"
+          role="group"
+          aria-label="依平台篩選"
+        >
+          <button
+            type="button"
+            :aria-pressed="selectedPlatform === null"
+            @click="filterByPlatform(null)"
+          >
+            全部 <span class="ui-seg-n">{{ channels.length }}</span>
+          </button>
+          <button
+            v-for="p in PLATFORM_FILTERS"
+            :key="p.id"
+            type="button"
+            :aria-pressed="selectedPlatform === p.id"
+            @click="filterByPlatform(p.id)"
+          >
+            {{ p.label }} <span class="ui-seg-n">{{ getChannelCount(p.id) }}</span>
+          </button>
+        </div>
+      </div>
 
       <!-- Loading State -->
       <UiEmptyState
@@ -324,24 +371,13 @@
           <div class="pills">
             <span
               class="ui-pill"
-              :class="channel.isActive ? 'ui-pill-green ui-pill-dot' : ''"
-            >{{ channel.isActive ? '啟用中' : '已停用' }}</span>
-            <span
-              class="ui-pill"
               :class="channel.isVerified ? 'ui-pill-green' : 'ui-pill-orange'"
             >{{ channel.isVerified ? '已驗證' : '未驗證' }}</span>
-            <span
-              v-if="channel.webhookHealth && hasWebhookProblem(channel)"
-              class="ui-pill ui-pill-orange ui-pill-dot"
-            >Webhook 需注意</span>
           </div>
 
           <!-- Activity: platform totals, so a disabled channel shows none of it -->
           <div class="activity">
-            <div
-              v-if="channel.isActive"
-              class="stats"
-            >
+            <div class="stats">
               <div class="stat-i">
                 <div class="l">
                   客戶來訊 · 24 小時
@@ -417,8 +453,6 @@
 <script setup lang="ts">
 import UiEmptyState from '@/components/ui/UiEmptyState.vue'
 import UiPageHead from '@/components/ui/UiPageHead.vue'
-import RingLead from '@/components/lead/RingLead.vue'
-import LeadMeter, { type MeterRow } from '@/components/lead/LeadMeter.vue'
 import { computed } from 'vue'
 import AppLayout from '@/components/ui/AppLayout.vue'
 import ChannelConfigDialog from '@/components/channels/ChannelConfigDialog.vue'
@@ -525,16 +559,16 @@ function activityCaption(channel: ChannelIntegration): string {
   return `平台合計 · 最後活動 ${at ? formatLastLogin(at) : '尚無活動'}`
 }
 
-/** Active channels with activity data: the same real 24 h counters the cards show, one pair of bars per channel */
-const volumeMeter = computed<MeterRow[]>(() =>
-  channels.value.filter(c => c.isActive && c.activity).map(c => ({
-    key: String(c.id),
-    label: channelTitle(c),
-    lines: [
-      { value: c.activity?.customerMessages24h ?? 0, tone: 'blue' as const },
-      { value: c.activity?.agentMessages24h ?? 0, tone: 'indigo' as const },
-    ],
-  })))
+/** One row per active channel with activity data: the same real 24 h counters the cards show; bars share one scale */
+const leadRows = computed(() => {
+  const rows = channels.value.filter(c => c.isActive && c.activity).map(c => {
+    const inN = c.activity?.customerMessages24h ?? 0
+    const outN = c.activity?.agentMessages24h ?? 0
+    return { key: String(c.id), label: channelTitle(c), inN, outN, total: inN + outN }
+  })
+  const max = Math.max(1, ...rows.map(r => r.total))
+  return rows.map(r => ({ ...r, width: `${r.total === 0 ? 0 : Math.max(3, Math.round((r.total / max) * 100))}%` }))
+})
 
 /** 24 h totals over the active channels that report activity; null when none does (never a made-up zero) */
 const leadVolume = computed(() => {
@@ -545,18 +579,11 @@ const leadVolume = computed(() => {
   return { total: inN + outN, meaning: `客戶來訊 ${formatCount(inN)} · 客服發送 ${formatCount(outN)}` }
 })
 
+/** The webhook problem has its own alert under the lead, so the head only counts channels */
 const channelSummary = computed(() => {
   const total = channels.value.length
   const active = channels.value.filter(c => c.isActive).length
-  const problem = channels.value.filter(hasWebhookProblem)
-  let text = `${total} 個頻道，${active} 個啟用中`
-  const [first] = problem
-  if (problem.length === 1 && first) {
-    text += `；${channelTitle(first)} 近 24 小時有 webhook 失敗紀錄，建議重新驗證`
-  } else if (problem.length > 1) {
-    text += `；${problem.length} 個頻道近 24 小時有 webhook 失敗紀錄，建議重新驗證`
-  }
-  return `${text}。`
+  return `${total} 個頻道，${active} 個啟用中。`
 })
 
 const selectedPlatformLabel = computed(() =>
@@ -568,6 +595,131 @@ const selectedPlatformLabel = computed(() =>
 .head-ico {
   width: 16px;
   height: 16px;
+}
+
+/* Lead: the total on the left, one labelled stacked bar per channel on the right */
+.cl {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  gap: 24px 48px;
+  align-items: center;
+  padding: 24px 32px;
+}
+.cl-kicker {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--section-ink);
+}
+.cl-num {
+  margin-top: 4px;
+  font: 600 56px / 1.05 var(--ui-font-display);
+  letter-spacing: -0.035em;
+  font-variant-numeric: tabular-nums;
+}
+.cl-num.none {
+  color: var(--ui-muted);
+}
+.cl-num small {
+  margin-left: 6px;
+  font-size: 20px;
+  font-weight: 500;
+  letter-spacing: 0;
+  color: var(--ui-muted);
+}
+.cl-meaning {
+  margin: 6px 0 0;
+  font-size: 15px;
+  color: var(--ui-ink-2);
+}
+.cl-legend {
+  display: flex;
+  gap: 16px;
+  margin: 14px 0 0;
+  padding: 0;
+  font-size: 13px;
+  color: var(--ui-ink-2);
+  list-style: none;
+}
+.cl-legend li {
+  display: inline-flex;
+  gap: 7px;
+  align-items: center;
+}
+.cl-legend i {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+}
+i.in {
+  background: var(--ui-blue);
+}
+i.out {
+  background: var(--ui-indigo);
+}
+.cl-rows {
+  position: relative;
+  display: grid;
+  gap: 20px;
+  margin: 0;
+  padding: 0 0 0 40px;
+  list-style: none;
+}
+.cl-rows::before {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: 0;
+  width: 0.5px;
+  background: var(--ui-sep);
+  content: '';
+}
+.cl-row-top {
+  display: flex;
+  gap: 12px;
+  align-items: baseline;
+  justify-content: space-between;
+}
+.cl-name {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 15px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cl-total {
+  flex: none;
+  font: 600 20px var(--ui-font-display);
+  font-variant-numeric: tabular-nums;
+}
+.cl-total small {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ui-muted);
+}
+.cl-bar {
+  height: 10px;
+  margin-top: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--ui-fill);
+}
+.cl-bar-fill {
+  display: flex;
+  height: 100%;
+  gap: 2px;
+  border-radius: inherit;
+  overflow: hidden;
+}
+.cl-bar-fill i {
+  flex-basis: 0;
+  min-width: 0;
+}
+.cl-row-sub {
+  margin-top: 6px;
+  font-size: 13px;
+  color: var(--ui-muted);
+  font-variant-numeric: tabular-nums;
 }
 
 .toolbar {
@@ -820,11 +972,11 @@ const selectedPlatformLabel = computed(() =>
   color: var(--ui-muted);
   font-variant-numeric: tabular-nums;
 }
-/* a disabled channel has no counters: one quiet line states it is off, under the same hairline */
-.chcard.off .last {
-  margin: 16px 20px 0;
-  padding: 14px 0 16px;
-  box-shadow: inset 0 0.5px 0 var(--ui-sep);
+.chcard.off .stat-i .s {
+  visibility: hidden;
+}
+.chcard.off .stat-i .n {
+  color: var(--ui-muted);
 }
 .chfoot {
   display: flex;
@@ -842,12 +994,43 @@ const selectedPlatformLabel = computed(() =>
   color: var(--ui-ink-2);
 }
 
+@media (max-width: 1024px) {
+  .cl {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 22px 24px;
+  }
+  .cl-rows {
+    padding-left: 0;
+  }
+  .cl-rows::before {
+    display: none;
+  }
+}
 @media (max-width: 1280px) {
   .chgrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 @media (max-width: 768px) {
+  .cl {
+    padding: 20px;
+  }
+  .cl-num {
+    font-size: 44px;
+  }
+  /* phone cards: the ID and the numbers; the free-text description is one tap away in the details */
+  .meta-row:nth-child(2) {
+    display: none;
+  }
+  .chhead {
+    padding-bottom: 8px;
+  }
+  .pills {
+    padding-top: 10px;
+  }
+  .stats {
+    margin-top: 12px;
+  }
   .chgrid {
     grid-template-columns: minmax(0, 1fr);
   }
