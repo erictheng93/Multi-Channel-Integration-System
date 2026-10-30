@@ -615,5 +615,10 @@ function formatTime(iso: string): string {
   .legend {
     gap: 4px 20px;
   }
+
+  /* the rule is one line of fine print: keep it out of the phone header */
+  .quota-rule {
+    display: none;
+  }
 }
 </style>

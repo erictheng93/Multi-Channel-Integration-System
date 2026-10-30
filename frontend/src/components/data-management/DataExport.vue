@@ -1,5 +1,5 @@
 <!-- 匯出對話記錄 - 資料管理子頁面 -->
-<!-- Pick a format here; the existing ExportDialog collects date, customer and agent filters -->
+<!-- Format, scope filters (date, customer, agent) and a live match count on one page; the conversation list keeps its own export dialog -->
 
 <template>
   <div class="ui-page rl-page data-export">
