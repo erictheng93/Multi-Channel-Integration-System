@@ -224,6 +224,7 @@
         :tags="customerTags"
         :message-count="messages.length > 0 ? messages.length : null"
         :has-more="httpMessages.hasMore.value"
+        :messages="messages"
       />
     </div>
 
@@ -261,6 +262,7 @@
               :tags="customerTags"
               :message-count="messages.length > 0 ? messages.length : null"
               :has-more="httpMessages.hasMore.value"
+              :messages="messages"
             />
           </div>
         </div>

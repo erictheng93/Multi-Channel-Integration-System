@@ -6,7 +6,7 @@
       ref="triggerBtnRef"
       class="tag-trigger-btn"
       :class="{ 'has-tags': selectedTags.length > 0 }"
-      :aria-label="selectedTags.length > 0 ? `${buttonLabel || ''}已選 ${selectedTags.length}` : (buttonLabel || '新增標籤')"
+      :aria-label="selectedTags.length > 0 ? `${buttonLabel || ''}，已選 ${selectedTags.length} 個` : (buttonLabel || '新增標籤')"
       @click="togglePanel"
     >
       <svg
@@ -22,7 +22,7 @@
           d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"
         />
       </svg>
-      <span>{{ selectedTags.length > 0 ? `${buttonLabel || ''}已選 ${selectedTags.length}` : (buttonLabel || '新增標籤') }}</span>
+      <span>{{ selectedTags.length > 0 ? `${buttonLabel || ''} ${selectedTags.length}` : (buttonLabel || '新增標籤') }}</span>
     </button>
 
     <!-- Glassmorphism 彈出面板 - 使用 Teleport 傳送到 body -->
@@ -799,10 +799,6 @@ onBeforeUnmount(() => {
     left: 0;
     width: calc(100vw - 2rem);
     max-width: 380px;
-  }
-
-  .tag-trigger-btn span {
-    display: none;
   }
 }
 
