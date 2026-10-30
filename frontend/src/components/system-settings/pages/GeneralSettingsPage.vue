@@ -129,13 +129,19 @@ const advancedRows = computed(() => {
 
 
 
-.label-note {
-  font-weight: 400;
+.lat-list {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
+/* rows share the group's height, so it ends level with the link list beside it */
 .lat-row {
-  padding-top: 7px;
-  padding-bottom: 7px;
+  flex: 1;
+  min-height: 44px;
 }
 
 .lat-dot {

@@ -37,7 +37,8 @@
         <ServiceRings
           summary="系統狀態"
           :rings="rings"
-          :size="168"
+          :size="144"
+          tagged
         />
       </div>
     </article>
@@ -159,7 +160,7 @@ function integrationTile(
   if (lastTest) {
     sub = `${lastTest.status === 'success' ? '測試' : '測試失敗'} ${formatRelativeTime(lastTest.testedAt)}`
     if (lastTest.status === 'success' && lastTest.latencyMs) {
-      sub += ` · ${lastTest.latencyMs} ms`
+      sub += ` · ${lastTest.latencyMs} ms`
     }
   }
   return { key, label, state, sub, tone, ...section(key) }
@@ -240,10 +241,11 @@ const tiles = computed<Tile[]>(() => [
 
 .ov-lead {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 24px 40px;
+  grid-template-columns: auto auto;
+  justify-content: center;
+  gap: 24px 72px;
   align-items: center;
-  padding: 32px 40px;
+  padding: 24px 40px;
 }
 
 .ov-main {
@@ -260,7 +262,7 @@ const tiles = computed<Tile[]>(() => [
 }
 
 .ov-big {
-  font: 600 56px / 1.1 var(--ui-font-display);
+  font: 600 52px / 1.1 var(--ui-font-display);
   letter-spacing: -0.035em;
   color: var(--ui-ink);
 }
@@ -296,7 +298,7 @@ const tiles = computed<Tile[]>(() => [
   position: absolute;
   top: 4px;
   bottom: 4px;
-  left: -20px;
+  left: -36px;
   width: 0.5px;
   background: var(--ui-sep);
   content: '';
@@ -306,11 +308,18 @@ const tiles = computed<Tile[]>(() => [
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 20px 16px;
-  align-items: start;
+  align-items: stretch;
 }
 
+/* both columns end together: the aside group stretches to the height of the link list */
 .ov-col {
+  display: flex;
+  flex-direction: column;
   min-width: 0;
+}
+
+.ov-col > :deep(.ui-group) {
+  flex: 1;
 }
 
 .ov-row {
@@ -402,7 +411,8 @@ const tiles = computed<Tile[]>(() => [
 @media (max-width: 768px) {
   .ov-lead {
     grid-template-columns: minmax(0, 1fr);
-    padding: 22px 20px;
+    justify-content: stretch;
+    padding: 20px;
   }
 
   .ov-big {
