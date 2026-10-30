@@ -133,7 +133,7 @@ const meterWidth = computed(() => {
 .tag-card {
   position: relative;
   display: grid;
-  grid-template-columns: 22px minmax(0, 1fr) minmax(72px, 150px) 96px 100px;
+  grid-template-columns: 22px minmax(0, 1fr) minmax(72px, 150px) 96px 112px;
   grid-template-areas:
     'check chip meter count actions'
     'check desc meter count actions';
@@ -335,7 +335,7 @@ const meterWidth = computed(() => {
 
 .meter {
   grid-area: meter;
-  height: 6px;
+  height: 8px;
   overflow: hidden;
   border-radius: 999px;
   background: var(--ui-fill);
@@ -357,7 +357,7 @@ const meterWidth = computed(() => {
   display: flex;
   justify-content: flex-end;
   gap: 2px;
-  opacity: 0;
+  opacity: 0.55;
   transition: opacity var(--ui-dur) var(--ui-ease);
 }
 
@@ -375,11 +375,11 @@ const meterWidth = computed(() => {
 
 .action-btn {
   display: grid;
-  width: 30px;
-  height: 30px;
+  width: 36px;
+  height: 36px;
   place-items: center;
   border: 0;
-  border-radius: 9px;
+  border-radius: 10px;
   background: transparent;
   color: var(--ui-muted);
   cursor: pointer;
@@ -389,8 +389,8 @@ const meterWidth = computed(() => {
 }
 
 .action-btn svg {
-  width: 15px;
-  height: 15px;
+  width: 18px;
+  height: 18px;
 }
 
 .action-btn:hover {
@@ -406,13 +406,13 @@ const meterWidth = computed(() => {
 /* The detail panel takes the right column on wide screens: drop the usage bar to keep names readable */
 @media (max-width: 1280px) {
   .tag-card {
-    grid-template-columns: 22px minmax(0, 1fr) minmax(72px, 130px) 96px 100px;
+    grid-template-columns: 22px minmax(0, 1fr) minmax(72px, 130px) 96px 112px;
   }
 }
 
 @media (max-width: 1024px) {
   .tag-card {
-    grid-template-columns: 22px minmax(0, 1fr) minmax(60px, 120px) 96px 100px;
+    grid-template-columns: 22px minmax(0, 1fr) minmax(60px, 120px) 96px 112px;
   }
 }
 

@@ -38,7 +38,7 @@
             class="ms"
             :class="tone(item)"
           >
-            <template v-if="item.latencyMs >= 0">{{ item.latencyMs }}<small>ms</small></template>
+            <template v-if="item.latencyMs >= 0">{{ item.latencyMs }}<small> ms</small></template>
             <template v-else>無回應</template>
           </span>
         </div>
@@ -146,7 +146,7 @@ function tone(item: InfrastructureItem): 'ok' | 'mid' | 'bad' {
 }
 
 .ms small {
-  margin-left: 2px;
+  margin-left: 4px;
   font-size: 13px;
   font-weight: 500;
 }

@@ -16,6 +16,8 @@
         class="sd"
         :class="endpoint.status"
         :title="statusText"
+        :aria-label="endpoint.status === 'healthy' ? undefined : statusText"
+        :role="endpoint.status === 'healthy' ? undefined : 'img'"
       />
 
       <span
@@ -43,7 +45,7 @@
         </div>
       </div>
 
-      <span class="m m-p95">{{ endpoint.responseTime }}<small> ms</small></span>
+      <span class="m m-p95">{{ latency.value }}<small>{{ latency.unit }}</small></span>
       <span
         class="m m-rate hide-m"
         :class="successClass"
@@ -91,6 +93,11 @@ const pathSegments = computed(() => {
   const lead = raw.startsWith('/') ? '/' : ''
   const parts = raw.slice(lead.length).split(/(?<=\/)/)
   return parts.map((part, i) => (i === 0 ? lead + part : part))
+})
+
+const latency = computed(() => {
+  const ms = props.endpoint.responseTime
+  return ms >= 1000 ? { value: (ms / 1000).toFixed(2), unit: 's' } : { value: String(Math.round(ms)), unit: 'ms' }
 })
 
 const statusText = computed(() => {
@@ -145,8 +152,9 @@ const successClass = computed(() => {
   background: var(--ui-muted);
 }
 
+/* Only a problem gets a dot; healthy rows stay quiet so status is not encoded three ways */
 .sd.healthy {
-  background: var(--ui-green);
+  background: transparent;
 }
 
 .sd.warning {
@@ -234,6 +242,7 @@ const successClass = computed(() => {
 }
 
 .m small {
+  margin-left: 4px;
   font-size: 13px;
   font-weight: 400;
   color: var(--ui-muted);
