@@ -31,12 +31,18 @@
         :busy="controller.loading.value && !controller.lastUpdated.value"
         :tone="leadTone"
         :meaning="leadMeaning"
-        summary="端點狀態"
-        :rings="endpointRings"
-        :center-value="statusCounts.all > 0 ? `${statusCounts.healthy}/${statusCounts.all}` : undefined"
-        center-label="正常"
-        :size="144"
       >
+        <template
+          v-if="endpointBars.length > 0"
+          #visual
+        >
+          <LeadBars
+            summary="各端點 P95 回應時間"
+            :bars="endpointBars"
+            :height="96"
+            caption="每條柱子是一個端點的 P95 回應時間；顏色是它目前的狀態"
+          />
+        </template>
         <div
           v-if="hasMetrics"
           class="lead-stats"
@@ -122,7 +128,7 @@ import {
 } from '@/components/api-monitor'
 import ApiMetricsSetup from '@/components/api-monitor/ApiMetricsSetup.vue'
 import RingLead from '@/components/lead/RingLead.vue'
-import type { ServiceRing } from '@/components/ui/ServiceRings.vue'
+import LeadBars, { type LeadBar } from '@/components/lead/LeadBars.vue'
 import type { ApiStatus, FilterState } from '@/types/api-monitor'
 
 // Initialize controller
@@ -152,15 +158,29 @@ const leadValue = computed<string | null>(() =>
 )
 const leadTone = computed(() => (leadValue.value ? LEAD_TONE[controller.systemStatus.value] : 'none'))
 
-/** One arc: endpoints currently healthy of all tracked (only when endpoint metrics exist) */
-const endpointRings = computed<ServiceRing[]>(() => {
-  if (!hasMetrics.value || statusCounts.value.all === 0) { return [] }
-  const { healthy, warning, all, error } = statusCounts.value
-  const rings: ServiceRing[] = [{ label: '端點正常', value: healthy, total: all, of: '個端點', hue: 'var(--ui-green)' }]
-  if (warning + error > 0) {
-    rings.push({ label: '需要注意', value: warning + error, total: all, of: '個端點', hue: error > 0 ? 'var(--ui-red)' : 'var(--ui-orange)' })
-  }
-  return rings
+const STATUS_TONE = { healthy: 'good', warning: 'warn', error: 'bad' } as const
+const STATUS_ORDER = { error: 0, warning: 1, healthy: 2 } as const
+
+/** Last path segment, shortened so five endpoints share the row: /api/auth/login -> login, customer-conversations -> conversations */
+const endpointLabel = (path: string): string => {
+  const segment = path.split('/').filter(Boolean).pop() ?? path
+  const word = segment.length > 12 ? (segment.split('-').pop() ?? segment) : segment
+  return word.length > 13 ? `${word.slice(0, 12)}…` : word
+}
+
+/** One bar per tracked endpoint, as tall as its P95, coloured by its state; worst first (only when endpoint metrics exist) */
+const endpointBars = computed<LeadBar[]>(() => {
+  if (!hasMetrics.value) { return [] }
+  return [...controller.endpoints.value]
+    .sort((a, b) => (STATUS_ORDER[a.status] ?? 3) - (STATUS_ORDER[b.status] ?? 3) || b.responseTime - a.responseTime)
+    .slice(0, 6)
+    .map(e => ({
+      key: e.id,
+      label: endpointLabel(e.endpoint),
+      value: e.responseTime,
+      display: `${Math.round(e.responseTime).toLocaleString('en-US')}ms`,
+      tone: STATUS_TONE[e.status] ?? 'muted'
+    }))
 })
 
 /** One line of why: the failing components (the header subtitle carries the endpoint counts) */

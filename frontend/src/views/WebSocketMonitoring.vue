@@ -57,10 +57,19 @@
         :busy="isRefreshing && !metrics"
         :tone="metrics ? '' : 'none'"
         :meaning="metrics ? `${metrics.onlineAgents} 位在線客服，多分頁與裝置各算一條` : ''"
-        summary="連線數"
-        :rings="connectionRings"
-        :size="144"
       >
+        <template
+          v-if="connectionSeries.length >= 2"
+          #visual
+        >
+          <LeadSpark
+            summary="已註冊連線"
+            :values="connectionSeries"
+            unit="條"
+            :start-label="`${rangeLabel}前`"
+            end-label="現在"
+          />
+        </template>
         <span
           v-if="metrics && connectionDelta !== null"
           class="ui-delta lead-delta"
@@ -598,7 +607,7 @@ import { apiClient } from '@/api'
 import { presenceApi, type WsMetricsPointDto, type WsMetricsRange } from '@/api/presence'
 import AppLayout from '@/components/ui/AppLayout.vue'
 import RingLead from '@/components/lead/RingLead.vue'
-import type { ServiceRing } from '@/components/ui/ServiceRings.vue'
+import LeadSpark from '@/components/lead/LeadSpark.vue'
 import { CHART, CHART_COMPACT, RANGE_MS, SPARK, buildSeries, buildSpark, xTicks, yTicks } from '@/utils/ws-metrics-chart'
 import type { ChartGeometry } from '@/utils/ws-metrics-chart'
 
@@ -778,18 +787,9 @@ const phoneChart = computed(() => {
 })
 
 /** Peak and mean over the loaded history (client-side, no extra request) */
-/** One arc: connections now against the highest sample of the chosen range (same series, so they compare) */
-const connectionRings = computed<ServiceRing[]>(() => {
-  const peak = stats.value.peakConnections
-  if (!metrics.value || peak === null || peak <= 0) { return [] }
-  return [{
-    label: `目前連線（${rangeLabel.value}峰值）`,
-    value: metrics.value.activeConnections,
-    total: Math.max(peak, metrics.value.activeConnections),
-    of: '條',
-    hue: 'var(--section-hue)'
-  }]
-})
+/** The registered-connection samples of the chosen range, oldest first; the lead draws them as a line */
+const connectionSeries = computed(() =>
+  history.value.map(p => p.activeConnections).filter(v => Number.isFinite(v)))
 
 const stats = computed(() => {
   const conns = history.value.map(p => p.activeConnections).filter(v => Number.isFinite(v))
@@ -1193,7 +1193,7 @@ svg.chart {
 
 svg.chart text {
   fill: var(--ui-muted);
-  font: 500 11px var(--ui-font-ui);
+  font: 500 12px var(--ui-font-ui);
   font-variant-numeric: tabular-nums;
 }
 
@@ -1255,7 +1255,7 @@ svg.chart .ax-right text {
 
 .axis-note {
   margin: 6px 0 0;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--ui-muted);
 }
 
@@ -1439,7 +1439,7 @@ svg.chart .ax-right text {
 
 @media (max-width: 768px) {
   svg.chart text {
-    font-size: 11px;
+    font-size: 12px;
   }
 }
 </style>
