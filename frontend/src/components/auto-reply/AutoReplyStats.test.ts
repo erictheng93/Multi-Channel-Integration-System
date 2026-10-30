@@ -28,7 +28,7 @@ describe('AutoReplyStats -- lead', () => {
     expect(wrapper.find('.lead-num').text()).toContain('99')
   })
 
-  it('draws a ring per real ratio: active rules and successful replies', () => {
+  it('draws one arc per real ratio: active rules and successful replies', () => {
     const wrapper = mountStats({ activeRules: 5, totalRules: 6, todayReplies: 47, todayFailed: 1 })
     const label = wrapper.find('[role="img"]').attributes('aria-label') ?? ''
     expect(label).toContain('啟用規則 5')

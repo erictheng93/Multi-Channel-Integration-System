@@ -165,7 +165,7 @@ const meterWidth = computed(() => {
   background: color-mix(in srgb, var(--ui-fill) 45%, transparent);
 }
 
-/* Selection reads as a tint, never as a hard ring */
+/* Selection reads as a tint, never as a hard outline */
 .tag-card.tag-active {
   background: color-mix(in srgb, var(--tag-c) 10%, var(--ui-surface));
 }
