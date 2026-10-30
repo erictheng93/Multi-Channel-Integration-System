@@ -82,8 +82,8 @@ describe('System Settings Components', () => {
 
       expect(wrapper.text()).toContain('介面語言')
       const lang = wrapper.find('#language')
-      expect(lang.element.tagName).toBe('SPAN')
-      expect(lang.text()).toBe('繁體中文')
+      expect(lang.element.tagName).toBe('SELECT')
+      expect(lang.text()).toContain('繁體中文')
     })
 
     it('should emit save event on form submit', async () => {
