@@ -1,4 +1,4 @@
-<!-- 報表模板：only templates the backend can generate, plus the custom report entry -->
+<!-- 報表模板：only templates the backend can generate; the chosen one shows the real output of its latest report -->
 
 <template>
   <div class="ui-page report-templates ui-rise">
@@ -23,74 +23,99 @@
       </button>
     </div>
 
-    <template v-else>
-      <!-- Lead: the free-form entry; the ready-made templates follow as a labelled group -->
-      <section class="ui-lead custom-lead">
-        <span
-          class="custom-ico"
-          aria-hidden="true"
+    <div
+      v-else-if="selected"
+      class="tpl-grid"
+    >
+      <section
+        class="tpl-pick"
+        aria-label="選擇模板"
+      >
+        <h2 class="ui-group-label">
+          現成模板
+          <span class="tpl-count">{{ usableTemplates.length }}</span>
+        </h2>
+        <div
+          class="ui-group tpl-list"
+          role="radiogroup"
+          aria-label="現成模板"
         >
+          <TemplateCard
+            v-for="template in usableTemplates"
+            :key="template.name"
+            :template="template"
+            :selected="selected.name === template.name"
+            @select="selected = $event"
+          />
+        </div>
+
+        <router-link
+          to="/reports/generate"
+          class="ui-group custom-row"
+        >
+          <span
+            class="custom-ico"
+            aria-hidden="true"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            ><path d="M12 5v14M5 12h14" /></svg>
+          </span>
+          <span class="custom-main">
+            <b>自訂報表</b>
+            <span>自選類型、時間範圍與格式</span>
+          </span>
           <svg
+            class="custom-chev"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
             stroke-width="2"
             stroke-linecap="round"
             stroke-linejoin="round"
-          ><path d="M12 5v14M5 12h14" /></svg>
-        </span>
-        <div class="custom-main">
-          <h2 class="custom-name">
-            自訂報表
-          </h2>
-          <p class="custom-desc">
-            不套用模板，自行選擇報表類型、時間範圍與輸出格式。
-          </p>
-          <ul
-            class="custom-types"
-            aria-label="可選的報表類型"
-          >
-            <li
-              v-for="option in generatable.types"
-              :key="option.value"
-              class="ui-chip"
-            >
-              {{ option.label }}
-            </li>
-          </ul>
-        </div>
-        <dl class="custom-formats">
-          <dt>輸出格式</dt>
-          <dd>{{ generatable.formats.map(f => f.label).join(' / ') }}</dd>
-        </dl>
-        <router-link
-          to="/reports/generate"
-          class="btn btn-primary custom-go"
-        >
-          前往產生報表
+            aria-hidden="true"
+          ><path d="m9 6 6 6-6 6" /></svg>
         </router-link>
       </section>
 
-      <div
-        v-if="usableTemplates.length > 0"
-        class="catalogue-wrap"
+      <section
+        class="ui-lead tpl-out"
+        :aria-label="`${selected.name}的最近產出`"
       >
-        <h2 class="ui-group-label">
-          現成模板
-          <span class="tpl-count">{{ usableTemplates.length }}</span>
-        </h2>
-        <div class="catalogue">
-          <TemplateCard
-            v-for="template in usableTemplates"
-            :key="template.name"
-            :template="template"
-            :generating="generating"
-            @use="useTemplate"
-            @customize="customizeTemplate"
-          />
-        </div>
-      </div>
-    </template>
+        <header>
+          <h2 class="out-name">
+            {{ selected.name }}
+          </h2>
+          <p class="out-kicker">
+            產出內容預覽
+          </p>
+        </header>
+        <ReportOutputPreview :type="selected.type" />
+        <footer class="out-foot">
+          <button
+            type="button"
+            class="btn btn-secondary"
+            :disabled="generating"
+            @click="customizeTemplate(selected)"
+          >
+            調整後產生
+          </button>
+          <button
+            type="button"
+            class="btn btn-primary"
+            :disabled="generating"
+            @click="useTemplate(selected)"
+          >
+            {{ generating ? '產生中...' : '直接產生' }}
+          </button>
+        </footer>
+      </section>
+    </div>
   </div>
 </template>
 
@@ -98,11 +123,12 @@
 <script setup lang="ts">
 import UiPageHead from '@/components/ui/UiPageHead.vue'
 import UiSectionNav from '@/components/ui/UiSectionNav.vue'
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import type { ReportTemplate } from '@/types/reports';
 import ReportsAPI from '@/api/reports';
 import TemplateCard from './templates/TemplateCard.vue';
+import ReportOutputPreview from './templates/ReportOutputPreview.vue';
 import { DEFAULT_TEMPLATES } from './templates/templateHelpers';
 
 const router = useRouter();
@@ -130,6 +156,12 @@ const generatable = ReportsAPI.getGeneratableOptions();
 const generatableTypes = generatable.types.map(option => option.value);
 const isSupported = (template: ReportTemplate) => generatableTypes.includes(template.type);
 const usableTemplates = computed(() => templates.value.filter(isSupported));
+const selected = ref<ReportTemplate | null>(null);
+watch(usableTemplates, list => {
+  if (!selected.value || !list.includes(selected.value)) {
+    selected.value = list[0] ?? null;
+  }
+}, { immediate: true });
 const templatesSubtitle = computed(() =>
   usableTemplates.value.length === 0 ? '' : `${usableTemplates.value.length} 組可直接使用的模板，或自訂報表`
 );
@@ -175,10 +207,27 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.catalogue {
+.tpl-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  gap: 20px;
+  align-items: start;
+}
+
+.tpl-pick {
+  display: grid;
   gap: 16px;
+  min-width: 0;
+}
+
+.tpl-pick .ui-group-label {
+  margin-bottom: -8px;
+}
+
+.tpl-list {
+  display: grid;
+  gap: 4px;
+  padding: 8px;
 }
 
 .tpl-count {
@@ -194,65 +243,86 @@ onMounted(() => {
   font-variant-numeric: tabular-nums;
 }
 
-.custom-lead {
+.custom-row {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto auto;
-  gap: 24px;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 14px;
   align-items: center;
-  padding: 28px 36px;
+  padding: 14px 18px;
+  color: var(--ui-ink);
+  text-decoration: none;
+  transition: background var(--ui-dur) var(--ui-ease);
+}
+
+.custom-row:hover {
+  background: var(--ui-fill);
+}
+
+.custom-row:focus-visible {
+  outline: 2px solid var(--ui-accent);
+  outline-offset: 2px;
 }
 
 .custom-ico {
   display: grid;
-  width: 56px;
-  height: 56px;
+  width: 40px;
+  height: 40px;
   place-items: center;
-  border-radius: 16px;
-  background: linear-gradient(180deg, color-mix(in srgb, var(--section-hue) 82%, #fff), var(--section-hue));
-  color: #fff;
-}
-
-.custom-ico svg {
-  width: 26px;
-  height: 26px;
-}
-
-.custom-name {
-  margin: 0;
-  font: 700 28px / 1.2 var(--ui-font-display);
-  letter-spacing: -0.025em;
-}
-
-.custom-desc {
-  margin: 4px 0 14px;
-  font-size: 15px;
+  border-radius: 12px;
+  background: var(--ui-fill);
   color: var(--ui-ink-2);
 }
 
-.custom-types {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
+.custom-ico svg {
+  width: 20px;
+  height: 20px;
 }
 
-.custom-formats {
-  margin: 0;
-  padding-left: 24px;
-  border-left: 0.5px solid var(--ui-sep);
+.custom-main {
+  display: grid;
+  gap: 2px;
 }
 
-.custom-formats dt {
+.custom-main b {
+  font: 600 16px / 1.3 var(--ui-font-display);
+}
+
+.custom-main span {
+  font-size: 14px;
+  color: var(--ui-ink-2);
+}
+
+.custom-chev {
+  width: 18px;
+  height: 18px;
+  color: var(--ui-muted);
+}
+
+.tpl-out {
+  display: grid;
+  gap: 18px;
+  padding: 26px 30px 22px;
+}
+
+.out-name {
+  margin: 0;
+  font: 700 26px / 1.2 var(--ui-font-display);
+  letter-spacing: -0.025em;
+}
+
+.out-kicker {
+  margin: 2px 0 0;
   font-size: 13px;
   color: var(--ui-muted);
 }
 
-.custom-formats dd {
-  margin: 2px 0 0;
-  font-size: 15px;
-  font-weight: 600;
+.out-foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+  padding-top: 16px;
+  box-shadow: 0 -0.5px 0 var(--ui-sep);
 }
 
 .error-state {
@@ -264,48 +334,22 @@ onMounted(() => {
 }
 
 @media (max-width: 1024px) {
-  .catalogue {
+  .tpl-grid {
     grid-template-columns: minmax(0, 1fr);
-  }
-
-  .custom-lead {
-    grid-template-columns: auto minmax(0, 1fr);
-  }
-
-  .custom-formats {
-    padding-left: 0;
-    border-left: 0;
-  }
-
-  .custom-formats,
-  .custom-go {
-    grid-column: 1 / -1;
-  }
-
-  .custom-go {
-    justify-content: center;
   }
 }
 
 @media (max-width: 768px) {
-  .catalogue {
-    gap: 12px;
+  .tpl-out {
+    padding: 20px;
   }
 
-  .custom-lead {
-    align-items: start;
-    gap: 16px;
-    padding: 22px 20px;
+  .out-name {
+    font-size: 22px;
   }
 
-  .custom-name {
-    font-size: 24px;
-  }
-
-  .custom-ico {
-    width: 44px;
-    height: 44px;
-    border-radius: 13px;
+  .out-foot .btn {
+    flex: 1;
   }
 }
 </style>
