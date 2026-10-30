@@ -30,6 +30,11 @@
                 />{{ row.name }}
               </span>
               <span class="lat-ms">{{ row.responseTime ?? '—' }}<small v-if="row.responseTime !== undefined"> ms</small></span>
+              <span
+                class="lat-bar"
+                :class="row.status"
+                aria-hidden="true"
+              ><i :style="{ width: barWidth(row.responseTime) }" /></span>
             </li>
           </ul>
           <p
@@ -85,6 +90,13 @@ import SettingsGroup from '@/components/system-settings/SettingsGroup.vue'
 const controller = inject(SETTINGS_CONTROLLER_KEY)
 if (!controller) {
   throw new Error('SystemSettingsController not provided')
+}
+
+const slowest = computed(() => Math.max(1, ...controller.healthCheckResults.value.map(r => r.responseTime ?? 0)))
+
+/** Bars share one scale (the slowest service fills the track), so the strip reads at a glance */
+function barWidth(ms: number | undefined): string {
+  return ms === undefined ? '0%' : `${Math.max(6, Math.round((ms / slowest.value) * 100))}%`
 }
 
 /** Same unit conversions the advanced form uses (ms, seconds -> seconds, minutes, hours) */
@@ -166,10 +178,34 @@ const advancedRows = computed(() => {
   background: var(--ui-red);
 }
 
+.lat-bar {
+  display: block;
+  height: 4px;
+  margin: 8px 0 0 17px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--ui-fill);
+}
+
+.lat-bar i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--ui-green);
+}
+
+.lat-bar.warning i {
+  background: var(--ui-orange);
+}
+
+.lat-bar.critical i {
+  background: var(--ui-red);
+}
+
 .lat-ms {
   display: block;
   margin: 4px 0 0 17px;
-  font: 600 17px var(--ui-font-display);
+  font: 600 22px var(--ui-font-display);
   font-variant-numeric: tabular-nums;
 }
 
