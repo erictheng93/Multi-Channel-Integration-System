@@ -27,14 +27,6 @@
             <div class="identity-name">
               {{ profile.displayName || '—' }}
             </div>
-            <div class="identity-chips">
-              <span class="ui-pill ui-pill-blue">{{ roleLabel }}</span>
-              <span
-                v-for="team in teams"
-                :key="team.id"
-                class="ui-tag ui-tag-sky"
-              >{{ team.name }}</span>
-            </div>
             <div
               class="identity-presence"
               :class="`presence--${connection.tone}`"
@@ -690,12 +682,12 @@ watch(
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 24px 40px;
   align-items: center;
-  padding: 44px 40px;
+  padding: 26px 36px;
 }
 
 .identity {
   display: flex;
-  gap: 24px;
+  gap: 20px;
   align-items: center;
   min-width: 0;
 }
@@ -704,17 +696,17 @@ watch(
   display: grid;
   flex: none;
   place-items: center;
-  width: 112px;
-  height: 112px;
+  width: 84px;
+  height: 84px;
   border-radius: 50%;
   background: linear-gradient(160deg, #5aa8ff, #1d6fe0);
   color: #fff;
-  font: 600 46px var(--ui-font-display);
+  font: 600 34px var(--ui-font-display);
 }
 
 .identity-text {
   display: grid;
-  gap: 10px;
+  gap: 6px;
   min-width: 0;
 }
 
@@ -724,12 +716,6 @@ watch(
   letter-spacing: -0.03em;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.identity-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
 }
 
 .identity-presence {
@@ -860,6 +846,19 @@ watch(
 
 .form-actions {
   justify-content: flex-end;
+  padding-top: 16px;
+  padding-bottom: 18px;
+}
+
+/* placeholders are hints people need to read: secondary ink, not faint */
+.ui-input::placeholder {
+  color: var(--ui-muted);
+  opacity: 1;
+}
+
+.ui-group-foot {
+  margin-top: 8px;
+  color: var(--ui-ink-2);
 }
 
 .form-error {
