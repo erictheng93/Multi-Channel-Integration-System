@@ -225,8 +225,7 @@
       <!-- 結案 / 重新開啟: isolated at the far right -->
       <button
         v-if="conversation"
-        class="btn btn-sm close-toggle-btn"
-        :class="isClosed ? 'btn-secondary' : 'btn-primary'"
+        class="btn btn-secondary close-toggle-btn"
         :disabled="togglingClosed"
         @click="handleToggleClosed"
       >
@@ -741,6 +740,8 @@ defineExpose({
 
 .close-toggle-btn {
   display: inline-flex;
+  min-height: 36px;
+  padding: 0 14px;
   margin-left: 6px;
   align-items: center;
   gap: 6px;

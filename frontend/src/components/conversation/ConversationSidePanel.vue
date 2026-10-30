@@ -253,10 +253,10 @@ const createdAtText = computed(() => {
 
 /* Customer / agent counts: the numerals carry the weight, the labels sit under them */
 .stats {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 14px 24px;
-  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px 12px;
+  margin: 14px 0 0;
 }
 
 .stats > div {
@@ -279,8 +279,12 @@ const createdAtText = computed(() => {
 }
 
 .stats dt {
+  display: flex;
+  gap: 6px;
+  align-items: center;
   font-size: 13px;
-  color: var(--ui-muted);
+  color: var(--ui-ink-2);
+  white-space: nowrap;
 }
 
 .tag-row {
@@ -336,7 +340,7 @@ const createdAtText = computed(() => {
 .split {
   display: flex;
   gap: 3px;
-  height: 8px;
+  height: 10px;
   margin-bottom: 14px;
 }
 
@@ -358,7 +362,6 @@ const createdAtText = computed(() => {
   display: inline-block;
   width: 8px;
   height: 8px;
-  margin-right: 6px;
   border-radius: 50%;
 }
 
