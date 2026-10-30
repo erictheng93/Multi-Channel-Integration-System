@@ -292,7 +292,9 @@ function reasonLabel(reason: BroadcastRecipientErrorReason): string {
 }
 
 .is-inline .detail-modal {
+  display: flex;
   flex: 1;
+  flex-direction: column;
   width: 100%;
   max-height: none;
   overflow: visible;
@@ -379,6 +381,16 @@ function reasonLabel(reason: BroadcastRecipientErrorReason): string {
   font-size: 13px;
   color: var(--ui-muted);
   font-variant-numeric: tabular-nums;
+}
+
+.recipient-section {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
+
+.recipient-section .pagination {
+  margin-top: auto;
 }
 
 .pagination span {

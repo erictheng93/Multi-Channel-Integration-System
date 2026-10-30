@@ -3,24 +3,10 @@
     class="ui-card preview-card"
     aria-labelledby="broadcast-line-preview-title"
   >
-    <div class="ui-card-head">
-      <div>
-        <h2
-          id="broadcast-line-preview-title"
-          class="ui-card-title"
-        >
-          LINE 預覽
-        </h2>
-        <p class="ui-card-sub">
-          <template v-if="hasContent">
-            客戶看到的順序：{{ order }}
-          </template>
-          <template v-else>
-            即時顯示客戶端的樣子
-          </template>
-        </p>
-      </div>
-    </div>
+    <p class="pv-head">
+      <b id="broadcast-line-preview-title">LINE 預覽</b>
+      <span>{{ hasContent ? `客戶看到的順序：${order}` : '即時顯示客戶端的樣子' }}</span>
+    </p>
 
     <div class="phone">
       <div class="phone-head">
@@ -112,7 +98,22 @@ const order = computed(() => {
 .preview-card {
   display: flex;
   flex-direction: column;
-  padding-bottom: 16px;
+  padding: 16px 0;
+}
+
+.pv-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 10px;
+  align-items: baseline;
+  margin: 0 22px 14px;
+  font-size: 13px;
+  color: var(--ui-ink-2);
+}
+
+.pv-head b {
+  font: 600 var(--ui-t-title) / 1.3 var(--ui-font-display);
+  color: var(--ui-ink);
 }
 
 /* A short phone while there is nothing to show, centred in the panel; it grows with real content */
@@ -120,10 +121,11 @@ const order = computed(() => {
   display: flex;
   flex: 0 1 auto;
   flex-direction: column;
-  width: min(100% - 44px, 300px);
+  flex: 1 1 auto;
+  width: min(100% - 44px, 320px);
   min-height: 0;
   max-height: 640px;
-  margin: auto;
+  margin: 0 auto;
   overflow: hidden;
   border-radius: 28px;
   background: var(--ui-surface);
@@ -193,7 +195,7 @@ const order = computed(() => {
   align-content: center;
   justify-items: center;
   gap: 6px;
-  min-height: 190px;
+  min-height: 160px;
   padding: 16px 8px;
   text-align: center;
   color: #3a3a3c;
@@ -248,7 +250,7 @@ const order = computed(() => {
 }
 
 .disclaimer {
-  margin: 10px 22px 0;
+  margin: 12px 22px 0;
   font-size: 13px;
   color: var(--ui-muted);
 }
