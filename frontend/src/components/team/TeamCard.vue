@@ -464,7 +464,7 @@ import { createLogger } from '@/utils/logger'
   grid-template-columns: 52px minmax(0, 1fr) auto auto;
   gap: 14px;
   align-items: center;
-  padding: 18px 20px;
+  padding: 14px 20px;
   cursor: pointer;
 }
 /* an off team stays legible: only the mark loses its colour, text keeps AA contrast */

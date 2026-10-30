@@ -456,7 +456,7 @@ const getRoleText = (role: string) => {
   gap: 8px;
   align-items: center;
   font-size: 13px;
-  color: var(--ui-muted);
+  color: var(--ui-ink-2);
   font-variant-numeric: tabular-nums;
 }
 .macts {

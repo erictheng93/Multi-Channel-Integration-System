@@ -153,7 +153,7 @@ const members = computed(() => {
 }
 
 .ins-row.is-on {
-  background: var(--ui-accent-soft);
+  background: var(--section-hue-soft, var(--ui-accent-soft));
 }
 
 .ins-row.is-static {
@@ -205,8 +205,8 @@ const members = computed(() => {
   display: block;
   height: 100%;
   border-radius: inherit;
-  background: var(--ui-accent);
-  opacity: 0.55;
+  background: var(--section-hue, var(--ui-accent));
+  opacity: 0.6;
 }
 
 .ins-row.is-on .ins-bar i {
