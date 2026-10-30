@@ -87,7 +87,7 @@
             </div>
             <b>全通路客服整合平台</b>
             <p class="m-sub">
-              LINE 與 Messenger 的客戶對話，集中在同一個工作台。
+              LINE 與 Messenger 的<span class="nw">客戶對話</span>，集中在同一個工作台。
             </p>
           </div>
 
@@ -215,6 +215,10 @@
                   <path d="M5 12h14M13 6l6 6-6 6" />
                 </svg>
               </button>
+
+              <p class="help-line">
+                登入遇到問題？請聯絡你的管理員重設密碼。
+              </p>
 
               <div
                 v-if="isDev && $route.query.debug === '1'"
@@ -546,7 +550,7 @@ const handleLogin = async (event?: Event) => {
   z-index: 1;
   font-size: var(--ui-t-cap);
   font-weight: 500;
-  color: rgb(255 255 255 / 0.85);
+  color: rgb(255 255 255 / 0.95);
 }
 
 /* The hero disc sits in the panel's lower right and runs off its outer edge on purpose
@@ -590,7 +594,7 @@ const handleLogin = async (event?: Event) => {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  width: min(520px, 100%);
+  width: min(580px, 100%);
   margin: 0 auto;
   padding: 40px 24px;
 }
@@ -617,7 +621,16 @@ const handleLogin = async (event?: Event) => {
   }
 
   .login-page .auth h2 {
-    font-size: 40px;
+    font-size: 44px;
+  }
+
+  .login-page .auth .ui-input {
+    height: 54px;
+  }
+
+  .login-page .auth .submit-btn {
+    height: 54px;
+    font-size: 16px;
   }
 
   .login-page .lede {
@@ -748,6 +761,17 @@ const handleLogin = async (event?: Event) => {
   background: var(--ui-accent);
   color: #fff;
   opacity: 0.75;
+}
+
+.help-line {
+  margin: 4px 0 0;
+  font-size: 14px;
+  color: var(--ui-ink-2);
+  text-align: center;
+}
+
+.nw {
+  white-space: nowrap;
 }
 
 .debug-info {
