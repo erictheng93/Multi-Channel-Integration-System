@@ -8,14 +8,13 @@
       >
         <template #actions>
           <RefreshButton
-            class="act-compact"
+            class="act-compact act-refresh"
             :loading="loading"
             @refresh="controller.refresh"
           />
           <button
             type="button"
-            class="btn btn-secondary act-compact"
-            aria-label="新增團隊"
+            class="btn btn-secondary"
             :disabled="loading"
             @click="controller.team.openAddTeamModal"
           >
@@ -109,7 +108,11 @@
             :key="row.id"
           >
             <div class="tl-team-top">
-              <span class="tl-team-name">{{ row.name }}</span>
+              <span class="tl-team-name"><i
+                class="tl-dot"
+                :style="{ background: teamToneColor(row.id) }"
+                aria-hidden="true"
+              />{{ row.name }}</span>
               <span
                 v-if="row.open !== null"
                 class="tl-team-n"
@@ -122,7 +125,7 @@
             <span
               class="tl-bar"
               aria-hidden="true"
-            ><i :style="{ width: (row.open !== null ? row.openWidth : (row.online === null ? 100 : row.percent)) + '%' }" /></span>
+            ><i :style="{ background: teamToneColor(row.id), width: (row.open !== null ? row.openWidth : (row.online === null ? 100 : row.percent)) + '%' }" /></span>
             <div
               v-if="row.open !== null"
               class="tl-team-sub"
@@ -175,6 +178,7 @@
       <TeamListSection
         :teams="teams"
         :members="members"
+        :open-by-team="openByTeam"
         :loading="loading"
         :sort-options="teamSorting.sortOptions"
         :sort-state="teamSorting.sortState.value"
@@ -275,6 +279,7 @@
 <script setup lang="ts">
 import UiPageHead from '@/components/ui/UiPageHead.vue'
 import TeamAvatar from '@/components/team/TeamAvatar.vue'
+import { teamToneColor } from '@/utils/team-tone'
 import { onMounted, onUnmounted, computed, ref } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useTeamManagementController } from '@/composables/team-management'
@@ -489,23 +494,10 @@ onUnmounted(() => {
 
 <style scoped>
 /* ==================== Page Layout ==================== */
-/* phone: the two secondary actions shrink to 44px icon buttons so 新增成員 is the one labelled action */
+/* phone: refresh goes (data reloads on entry and live presence keeps it fresh); both remaining actions keep their words */
 @media (max-width: 768px) {
-  .act-compact {
-    flex: none;
-    width: 44px;
-    min-width: 44px;
-    padding: 0;
-  }
-
-  .act-compact .act-txt,
-  .act-compact :deep(.refresh-text) {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip-path: inset(50%);
-    white-space: nowrap;
+  .act-refresh {
+    display: none;
   }
 }
 
@@ -604,6 +596,14 @@ onUnmounted(() => {
   justify-content: space-between;
 }
 
+.tl-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: 8px;
+  border-radius: 50%;
+}
+
 .tl-team-name {
   min-width: 0;
   overflow: hidden;
@@ -642,7 +642,7 @@ onUnmounted(() => {
   display: block;
   height: 100%;
   border-radius: inherit;
-  background: var(--ui-green);
+  background: var(--ui-accent);
   transition: width var(--ui-dur) var(--ui-ease);
 }
 
