@@ -285,15 +285,17 @@ const formattedTime = computed(() => {
 
 /* Unread rows carry a faint section wash so the inbox scans by tint, not only by the dot */
 .notification-unread {
-  background: color-mix(in srgb, var(--ui-accent) 4%, transparent);
+  background: color-mix(in srgb, var(--ui-accent) 7%, transparent);
+  box-shadow: inset 4px 0 0 var(--ui-accent);
 }
 
 .notification-unread:hover {
-  background: color-mix(in srgb, var(--ui-accent) 9%, transparent);
+  background: color-mix(in srgb, var(--ui-accent) 11%, transparent);
 }
 
 /* Unread: coloured icon tile, bold ink title and a dot by the time. Read: grey tile, receding title. No tinted slab (it read as a selected row). */
 .notification-unread .notification-title {
+  font-weight: 700;
   color: var(--ui-ink);
 }
 
@@ -660,13 +662,13 @@ const formattedTime = computed(() => {
     color: var(--ui-accent);
   }
 
-  /* Icon only: a text button on every row made the list read as a toolbar */
+  /* Named actions: icon plus a short word, so a trash can is never the only cue */
   .action-btn:not(.is-confirming) {
-    color: var(--ui-muted);
+    color: var(--ui-ink-2);
   }
 
-  .action-btn:not(.is-confirming) .action-label {
-    display: none;
+  .action-btn:not(.action-btn-danger):not(.is-confirming) {
+    color: var(--ui-accent);
   }
 
   .action-btn:not(.is-confirming):hover {
