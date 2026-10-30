@@ -86,13 +86,13 @@ describe('DataExport.vue', () => {
   describe('格式說明卡片', () => {
     it('應該渲染四張格式卡片', () => {
       wrapper = createWrapper()
-      const cards = wrapper.findAll('.fmt-row')
+      const cards = wrapper.findAll('.xl-tile')
       expect(cards.length).toBe(4)
     })
 
     it('應該包含 JSON 格式卡片', () => {
       wrapper = createWrapper()
-      const cards = wrapper.findAll('.fmt-row')
+      const cards = wrapper.findAll('.xl-tile')
       const jsonCard = cards.find(c => c.text().includes('JSON'))
       expect(jsonCard).toBeTruthy()
       expect(jsonCard!.text()).toContain('結構化')
@@ -100,7 +100,7 @@ describe('DataExport.vue', () => {
 
     it('應該包含 CSV 格式卡片', () => {
       wrapper = createWrapper()
-      const cards = wrapper.findAll('.fmt-row')
+      const cards = wrapper.findAll('.xl-tile')
       const csvCard = cards.find(c => c.text().includes('CSV'))
       expect(csvCard).toBeTruthy()
       expect(csvCard!.text()).toContain('試算表')
@@ -108,7 +108,7 @@ describe('DataExport.vue', () => {
 
     it('應該包含 TXT 格式卡片', () => {
       wrapper = createWrapper()
-      const cards = wrapper.findAll('.fmt-row')
+      const cards = wrapper.findAll('.xl-tile')
       const txtCard = cards.find(c => c.text().includes('TXT'))
       expect(txtCard).toBeTruthy()
       expect(txtCard!.text()).toContain('純文字')
@@ -116,7 +116,7 @@ describe('DataExport.vue', () => {
 
     it('應該包含 PDF 格式卡片', () => {
       wrapper = createWrapper()
-      const cards = wrapper.findAll('.fmt-row')
+      const cards = wrapper.findAll('.xl-tile')
       const pdfCard = cards.find(c => c.text().includes('PDF'))
       expect(pdfCard).toBeTruthy()
       expect(pdfCard!.text()).toContain('可攜式')
@@ -124,7 +124,7 @@ describe('DataExport.vue', () => {
 
     it('每張卡片應該列出適用場景', () => {
       wrapper = createWrapper()
-      const uses = wrapper.findAll('.fmt-use')
+      const uses = wrapper.findAll('.xl-use')
       expect(uses.length).toBe(4)
       expect(uses[0]!.text()).toContain('API 整合')
     })
@@ -161,7 +161,7 @@ describe('DataExport.vue', () => {
 
     it('點擊格式卡片只選取格式，按「開始匯出」才開啟並帶入該格式', async () => {
       wrapper = createWrapper()
-      const cards = wrapper.findAll('.fmt-row')
+      const cards = wrapper.findAll('.xl-tile')
       await cards[1]!.trigger('click')
       await nextTick()
 
