@@ -63,18 +63,36 @@
           <!-- phone only: priority joins the meta line so the row keeps one trailing control -->
           <div class="rule-card__prio-line">
             <span class="rule-card__prio-when">{{ conditionSummary || (rule.conditions.length ? `${rule.conditions.length} 條件` : '不需條件') }}</span>
+            <span
+              v-if="hits"
+              class="rule-card__prio-n"
+            >觸發 {{ hits }} 次</span>
             <span class="rule-card__prio-n">優先 {{ rule.priority }}</span>
           </div>
         </div>
       </div>
 
       <div class="rule-card__right">
-        <!-- Priority and size in one quiet line (the lower the number, the earlier it is tried) -->
+        <!-- How often it fired in the newest logs: the bar is scaled to the busiest rule -->
+        <span
+          v-if="hits !== null && hits !== undefined"
+          class="rule-card__hits"
+          :class="{ 'is-zero': hits === 0 }"
+          :title="`最近 ${hitsWindow} 筆日誌中觸發 ${hits} 次`"
+        >
+          <span
+            class="rule-card__hits-bar"
+            aria-hidden="true"
+          ><i :style="{ width: hitsPct + '%' }" /></span>
+          <b>{{ hits }}</b> 次
+        </span>
+
+        <!-- Priority: the lower the number, the earlier it is tried -->
         <span
           class="rule-card__meta"
-          title="優先序：數字越小越先比對"
+          :title="`優先序：數字越小越先比對；${rule.conditions.length} 個條件、${rule.actions.length} 個動作`"
         >
-          {{ metaText }}
+          優先 {{ rule.priority }}
         </span>
 
         <!-- Expand arrow -->
@@ -124,12 +142,18 @@ import { TRIGGER_TYPE_LABELS, type AutoReplyRule } from '@/api/autoReply'
 import RuleEditor from './RuleEditor.vue'
 import type { RuleFormData } from './RuleEditor.vue'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   rule: AutoReplyRule
   isExpanded: boolean
   formData: RuleFormData
   saving: boolean
-}>()
+  /** Times this rule fired within the newest logs; null = unknown (filtered log view) */
+  hits?: number | null
+  /** Largest hit count among the rules, to scale the bar */
+  hitsMax?: number
+  /** How many log rows the hit counts were taken from */
+  hitsWindow?: number
+}>(), { hits: null, hitsMax: 0, hitsWindow: 50 })
 
 const emit = defineEmits<{
   'toggle-expand': []
@@ -175,8 +199,7 @@ const replyOutcome = computed(() => {
   return ACTION_LABELS[first.actionType] ?? ''
 })
 
-// Priority and size as one quiet line; the lower the number, the earlier the rule is tried
-const metaText = computed(() => `優先 ${props.rule.priority} · ${props.rule.conditions.length} 條件 · ${props.rule.actions.length} 動作`)
+const hitsPct = computed(() => (props.hits && props.hitsMax > 0 ? Math.max(8, Math.round((props.hits / props.hitsMax) * 100)) : 0))
 
 const triggerTypeLabel = computed(() => {
   return TRIGGER_TYPE_LABELS[props.rule.triggerType] || props.rule.triggerType
@@ -380,29 +403,51 @@ const triggerTypeLabel = computed(() => {
 
 /* Meta: one muted line, no pills and no separate edit link: the row itself is the edit affordance */
 .rule-card__meta {
+  padding: 0 10px;
+  border-radius: 999px;
+  background: var(--ui-fill);
   font-size: 13px;
-  color: var(--ui-muted);
+  font-weight: 600;
+  line-height: 24px;
+  color: var(--ui-ink-2);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 
-/* the rule type reads as a colour at the row's left edge; a disabled rule stays neutral */
-.rule-card__header::before {
-  position: absolute;
-  top: 14px;
-  bottom: 14px;
-  left: 8px;
-  width: 3px;
-  border-radius: 3px;
-  background: var(--rule-c, var(--ui-fill-strong));
-  content: '';
+.rule-card__hits {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--ui-muted);
+  white-space: nowrap;
 }
 
-.rule-card:has(.rule-card__trigger-badge--welcome) { --rule-c: var(--ui-green); }
-.rule-card:has(.rule-card__trigger-badge--keyword) { --rule-c: var(--ui-accent); }
-.rule-card:has(.rule-card__trigger-badge--off_hours) { --rule-c: var(--ui-orange); }
-.rule-card:has(.rule-card__trigger-badge--fallback) { --rule-c: var(--ui-p-lavender-ink); }
-.rule-card--off { --rule-c: var(--ui-fill-strong) !important; }
+.rule-card__hits b {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ui-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.rule-card__hits.is-zero b {
+  color: var(--ui-muted);
+}
+
+.rule-card__hits-bar {
+  width: 48px;
+  height: 6px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--ui-fill-strong);
+}
+
+.rule-card__hits-bar i {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--ui-accent);
+}
 
 /* Arrow */
 .rule-card__arrow {
@@ -434,7 +479,8 @@ const triggerTypeLabel = computed(() => {
     padding: 14px 16px;
   }
 
-  .rule-card__meta {
+  .rule-card__meta,
+  .rule-card__hits {
     display: none;
   }
 
@@ -458,13 +504,11 @@ const triggerTypeLabel = computed(() => {
     display: none;
   }
 
+  /* the reply wraps to two lines: it is the content the agent came to read */
   .rule-card__reply {
-    display: block;
+    display: -webkit-box;
     flex: 1 1 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    -webkit-line-clamp: unset;
+    -webkit-line-clamp: 2;
   }
 
   .rule-card__prio-line {

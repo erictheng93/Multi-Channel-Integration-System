@@ -51,6 +51,8 @@ function mountRuleCard(overrides: {
   isExpanded?: boolean
   formData?: RuleFormData
   saving?: boolean
+  hits?: number | null
+  hitsMax?: number
 } = {}) {
   return shallowMount(RuleCard, {
     props: {
@@ -58,6 +60,8 @@ function mountRuleCard(overrides: {
       isExpanded: overrides.isExpanded ?? false,
       formData: overrides.formData ?? defaultFormData,
       saving: overrides.saving ?? false,
+      hits: overrides.hits ?? null,
+      hitsMax: overrides.hitsMax ?? 0,
     },
     global: {
       stubs: {
@@ -87,13 +91,24 @@ describe('RuleCard -- rendering', () => {
     expect(wrapper.find('.rule-card__meta').text()).toContain('優先 50')
   })
 
-  it('renders condition and action counts in meta', () => {
+  it('keeps the condition and action counts in the priority tooltip', () => {
     const rule = makeRule()
     // 1 condition, 2 actions from fixture
     const wrapper = mountRuleCard({ rule })
-    const meta = wrapper.find('.rule-card__meta').text()
-    expect(meta).toContain('1')
-    expect(meta).toContain('2')
+    const title = wrapper.find('.rule-card__meta').attributes('title') ?? ''
+    expect(title).toContain('1 個條件')
+    expect(title).toContain('2 個動作')
+  })
+
+  it('shows how often the rule fired when hit counts are known', () => {
+    const wrapper = mountRuleCard({ rule: makeRule(), hits: 7, hitsMax: 14 })
+    expect(wrapper.find('.rule-card__hits b').text()).toBe('7')
+    expect(wrapper.find('.rule-card__hits-bar i').attributes('style')).toContain('width: 50%')
+  })
+
+  it('shows no hit count while the log view is filtered (hits unknown)', () => {
+    const wrapper = mountRuleCard({ rule: makeRule() })
+    expect(wrapper.find('.rule-card__hits').exists()).toBe(false)
   })
 
   it('applies rule-card--expanded class when expanded', () => {

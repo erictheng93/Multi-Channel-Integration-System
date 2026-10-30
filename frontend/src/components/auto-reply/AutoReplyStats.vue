@@ -15,59 +15,54 @@
           class="ui-delta"
           :class="delta >= 0 ? 'ui-delta-up' : 'ui-delta-down'"
         >{{ deltaText }}</span>
-        比昨天同時段
-      </div>
-
-      <div
-        class="hours-state"
-        :class="noSchedule ? 'is-none' : isBusinessHours ? 'is-open' : 'is-closed'"
-      >
-        <span class="hours-dot" />
-        <strong class="hours-label">{{ noSchedule ? '未設定' : isBusinessHours ? '營業中' : '非營業時間' }}</strong>
-        <span
-          v-if="hoursNote"
-          class="hours-note"
-        >{{ hoursNote }}</span>
-      </div>
-
-      <div
-        v-if="track"
-        class="day-track"
-        role="img"
-        :aria-label="track.label"
-      >
-        <div class="day-bar">
-          <span
-            class="day-open"
-            :style="{ left: track.left + '%', width: track.width + '%' }"
-          />
-          <span
-            class="day-now"
-            :style="{ left: track.now + '%' }"
-          />
-        </div>
-        <div class="day-scale">
-          <span :style="{ left: track.left + '%' }">{{ track.startText }}</span>
-          <span :style="{ left: track.left + track.width + '%' }">{{ track.endText }}</span>
-        </div>
+        比昨天同時段{{ hasCompare ? `的 ${yesterdaySameTime} 則` : '' }}
       </div>
     </div>
 
-    <div
-      v-if="hasFacts"
-      class="lead-side"
-    >
-      <dl class="lead-facts">
+    <div class="lead-side">
+      <div class="hours">
         <div
-          v-if="hasCompare"
-          class="fact"
+          class="hours-state"
+          :class="noSchedule ? 'is-none' : isBusinessHours ? 'is-open' : 'is-closed'"
         >
-          <dt>昨天同時段</dt>
-          <dd>
-            <b>{{ yesterdaySameTime }}<small> 則</small></b>
-            <span class="sub">{{ deltaSub }}</span>
-          </dd>
+          <span class="hours-dot" />
+          <strong class="hours-label">{{ noSchedule ? '未設定' : isBusinessHours ? '營業中' : '非營業時間' }}</strong>
+          <span
+            v-if="hoursNote"
+            class="hours-note"
+          >{{ hoursNote }}</span>
         </div>
+
+        <div
+          v-if="track"
+          class="day-track"
+          role="img"
+          :aria-label="track.label"
+        >
+          <div class="day-now-label">
+            <span :style="{ left: track.now + '%' }">現在 {{ track.nowText }}</span>
+          </div>
+          <div class="day-bar">
+            <span
+              class="day-open"
+              :style="{ left: track.left + '%', width: track.width + '%' }"
+            />
+            <span
+              class="day-now"
+              :style="{ left: track.now + '%' }"
+            />
+          </div>
+          <div class="day-scale">
+            <span :style="{ left: track.left + '%' }">{{ track.startText }}</span>
+            <span :style="{ left: track.left + track.width + '%' }">{{ track.endText }}</span>
+          </div>
+        </div>
+      </div>
+
+      <dl
+        v-if="hasFacts"
+        class="lead-facts"
+      >
         <div
           v-if="totalRules !== undefined && totalRules > 0"
           class="fact"
@@ -131,6 +126,7 @@ const track = computed(() => {
     left: pct(w.start),
     width: pct(w.end) - pct(w.start),
     now: pct(w.now),
+    nowText: pad(w.now),
     startText: pad(w.start),
     endText: pad(w.end),
     label: `今天 ${pad(w.start)} 到 ${pad(w.end)} 營業，現在 ${pad(w.now)}`,
@@ -147,10 +143,6 @@ const deltaText = computed(() => {
 })
 
 const hasCompare = computed(() => props.yesterdaySameTime !== null && props.yesterdaySameTime !== undefined)
-const deltaSub = computed(() => {
-  if (delta.value === 0) { return '與今天持平' }
-  return delta.value > 0 ? `今天多 ${delta.value} 則` : `今天少 ${Math.abs(delta.value)} 則`
-})
 
 const hasFacts = computed(() =>
   (props.totalRules !== undefined && props.totalRules > 0)
@@ -177,14 +169,10 @@ const hoursNote = computed(() => {
 <style scoped>
 .lead {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr);
-  gap: 20px 40px;
+  grid-template-columns: 260px minmax(0, 1fr);
+  gap: 20px 44px;
   align-items: center;
-  padding: 24px 40px;
-}
-
-.lead:not(:has(.lead-side)) {
-  grid-template-columns: minmax(0, 1fr);
+  padding: 26px 40px;
 }
 
 .lead-main {
@@ -227,7 +215,6 @@ const hoursNote = computed(() => {
   flex-wrap: wrap;
   align-items: center;
   gap: 2px 8px;
-  margin-top: 16px;
   font-size: 14px;
 }
 
@@ -267,8 +254,24 @@ const hoursNote = computed(() => {
 
 .day-track {
   width: 100%;
-  max-width: 440px;
-  margin-top: 14px;
+  margin-top: 6px;
+}
+
+/* where "now" sits in the day, written out so the marker needs no guessing */
+.day-now-label {
+  position: relative;
+  height: 20px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ui-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.day-now-label span {
+  position: absolute;
+  bottom: 0;
+  white-space: nowrap;
+  transform: translateX(-50%);
 }
 
 .day-bar {
@@ -301,8 +304,8 @@ const hoursNote = computed(() => {
   position: relative;
   height: 18px;
   margin-top: 6px;
-  font-size: 13px;
-  color: var(--ui-muted);
+  font-size: 14px;
+  color: var(--ui-ink-2);
   font-variant-numeric: tabular-nums;
 }
 
@@ -329,11 +332,18 @@ const hoursNote = computed(() => {
   content: '';
 }
 
+.hours {
+  display: grid;
+  gap: 4px;
+}
+
 .lead-facts {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 20px 24px;
   margin: 0;
+  padding-top: 18px;
+  border-top: 0.5px solid var(--ui-sep);
 }
 
 .fact dt {
@@ -396,6 +406,19 @@ const hoursNote = computed(() => {
 @media (max-width: 768px) {
   .lead-num {
     font-size: 48px;
+  }
+
+  /* the bar below already shows when the day opens and closes; the sentence is for desktop */
+  .hours-note {
+    display: none;
+  }
+
+  .lead {
+    gap: 14px;
+  }
+
+  .lead-facts {
+    padding-top: 14px;
   }
 
   /* three compact facts in one row instead of a stacked comparison */
