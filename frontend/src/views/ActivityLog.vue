@@ -557,6 +557,9 @@ onUnmounted(() => {
     padding: 0 4px 2px;
     overflow-x: auto;
     scrollbar-width: none;
+    /* the strip scrolls: fade the right edge so the cut-off chip reads as "more" */
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 36px), transparent);
+    mask-image: linear-gradient(to right, #000 calc(100% - 36px), transparent);
   }
 
   .al-chip {
