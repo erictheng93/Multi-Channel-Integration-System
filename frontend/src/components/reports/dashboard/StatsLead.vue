@@ -26,64 +26,60 @@
       >
         查看 {{ stats.failedReports }} 份失敗的報表
       </button>
+      <div
+        v-if="stats.totalReports > 0"
+        class="lead-status"
+      >
+        <div
+          class="st-bar"
+          role="img"
+          :aria-label="rows.map(r => `${r.label} ${r.value} 份`).join('，')"
+        >
+          <span
+            v-for="row in rows"
+            :key="row.label"
+            :style="{ flexGrow: row.value, background: row.hue }"
+          />
+        </div>
+        <ul
+          class="st-legend"
+          aria-label="報表狀態"
+        >
+          <li
+            v-for="row in rows"
+            :key="row.label"
+          >
+            <i :style="{ background: row.hue }" />
+            <span class="st-label">{{ row.label }}</span>
+            <b>{{ row.value }}</b>
+          </li>
+        </ul>
+      </div>
     </div>
 
     <div
       v-if="stats.totalReports > 0"
-      class="lead-status"
+      class="week"
+      role="img"
+      :aria-label="`近 7 天產出：${week.map(d => `${d.label} ${d.count} 份`).join('，')}`"
     >
-      <div
-        class="st-bar"
-        role="img"
-        :aria-label="rows.map(r => `${r.label} ${r.value} 份`).join('，')"
-      >
-        <span
-          v-for="row in rows"
-          :key="row.label"
-          :style="{ flexGrow: row.value, background: row.hue }"
-        />
-      </div>
+      <p class="week-h">
+        近 7 天產出 <b>{{ weekTotal }}</b> 份
+      </p>
       <ul
-        class="st-legend"
-        aria-label="報表狀態"
+        class="week-bars"
+        aria-hidden="true"
       >
         <li
-          v-for="row in rows"
-          :key="row.label"
+          v-for="day in week"
+          :key="day.key"
+          :class="{ today: day.today }"
         >
-          <i :style="{ background: row.hue }" />
-          <span class="st-label">{{ row.label }}</span>
-          <b>{{ row.value }}</b>
+          <span class="wb-n">{{ day.count }}</span>
+          <span class="wb-track"><i :style="{ height: day.h }" /></span>
+          <span class="wb-d">{{ day.label }}</span>
         </li>
       </ul>
-      <div
-        class="week"
-        role="img"
-        :aria-label="`近 7 天產出：${week.map(d => `${d.label} ${d.count} 份`).join('，')}`"
-      >
-        <p class="week-h">
-          近 7 天產出 <b>{{ weekTotal }}</b> 份
-        </p>
-        <svg
-          class="spark"
-          viewBox="0 0 280 56"
-          preserveAspectRatio="none"
-          aria-hidden="true"
-        >
-          <path
-            class="spark-area"
-            :d="sparkArea"
-          />
-          <path
-            class="spark-line"
-            :d="sparkLine"
-          />
-        </svg>
-        <div class="week-axis">
-          <span>{{ week[0]?.label }}</span>
-          <span>今天</span>
-        </div>
-      </div>
     </div>
   </article>
 </template>
@@ -133,12 +129,6 @@ const week = computed(() => {
 })
 
 const weekTotal = computed(() => week.value.reduce((sum, d) => sum + d.count, 0))
-const sparkPoints = computed(() => {
-  const max = Math.max(1, ...week.value.map(d => d.count))
-  return week.value.map((d, i) => [Math.round((i / 6) * 280), Math.round(50 - (d.count / max) * 44)] as const)
-})
-const sparkLine = computed(() => sparkPoints.value.map(([x, y], i) => `${i ? 'L' : 'M'}${x} ${y}`).join(' '))
-const sparkArea = computed(() => `${sparkLine.value} L280 56 L0 56 Z`)
 
 const rows = computed(() => {
   const total = Math.max(props.stats.totalReports, 1)
@@ -160,9 +150,9 @@ const rows = computed(() => {
 .lead {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
-  gap: 20px 40px;
+  gap: 24px 56px;
   align-items: center;
-  padding: 24px 40px;
+  padding: 28px 40px;
 }
 
 .lead:not(:has(.lead-status)) {
@@ -207,11 +197,6 @@ const rows = computed(() => {
   color: var(--ui-ink);
 }
 
-.week {
-  display: grid;
-  gap: 6px;
-}
-
 .week-h {
   display: flex;
   gap: 6px;
@@ -227,31 +212,63 @@ const rows = computed(() => {
   color: var(--ui-ink);
 }
 
-.spark {
+.week-bars {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.week-bars li {
+  display: grid;
+  grid-template-rows: auto 96px auto;
+  gap: 6px;
+  justify-items: center;
+}
+
+.wb-n {
+  font: 600 15px var(--ui-font-display);
+  font-variant-numeric: tabular-nums;
+  color: var(--ui-ink-2);
+}
+
+.today .wb-n {
+  color: var(--ui-ink);
+}
+
+.wb-track {
+  display: flex;
+  align-items: flex-end;
+  width: 100%;
+  max-width: 44px;
+  height: 100%;
+  border-radius: 10px;
+  background: var(--ui-fill);
+  overflow: hidden;
+}
+
+.wb-track i {
   display: block;
   width: 100%;
-  height: 56px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--ui-accent) 45%, var(--ui-surface));
 }
 
-.spark-line {
-  fill: none;
-  stroke: var(--ui-accent);
-  stroke-width: 2.5;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  vector-effect: non-scaling-stroke;
+.today .wb-track i {
+  background: var(--ui-accent);
 }
 
-.spark-area {
-  fill: var(--ui-accent-soft);
-}
-
-.week-axis {
-  display: flex;
-  justify-content: space-between;
-  font-size: 12px;
-  color: var(--ui-muted);
+.wb-d {
+  font-size: 13px;
+  color: var(--ui-ink-2);
   font-variant-numeric: tabular-nums;
+}
+
+.today .wb-d {
+  font-weight: 700;
+  color: var(--ui-ink);
 }
 
 .lead-meaning {
@@ -269,17 +286,24 @@ const rows = computed(() => {
 }
 
 .lead-status {
+  display: grid;
+  gap: 12px;
+  width: 100%;
+  margin-top: 20px;
+}
+
+.week {
   position: relative;
   display: grid;
-  gap: 14px;
+  gap: 10px;
   min-width: 0;
 }
 
-.lead-status::before {
+.week::before {
   position: absolute;
   top: 4px;
   bottom: 4px;
-  left: -20px;
+  left: -28px;
   width: 0.5px;
   background: var(--ui-sep);
   content: '';
@@ -344,8 +368,20 @@ const rows = computed(() => {
     font-size: 48px;
   }
 
-  .lead-status::before {
+  .week::before {
     display: none;
+  }
+
+  .week-bars {
+    gap: 6px;
+  }
+
+  .week-bars li {
+    grid-template-rows: auto 64px auto;
+  }
+
+  .lead-status {
+    margin-top: 16px;
   }
 
   .lead-meaning {
