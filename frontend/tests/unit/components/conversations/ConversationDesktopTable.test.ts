@@ -106,10 +106,12 @@ describe('ConversationDesktopTable.vue', () => {
       expect(mountTable([createConversation()]).find('.customer-name').text()).toBe('未知用戶')
     })
 
-    it('should display the platform and how long ago the conversation began in the customer-id line', () => {
-      const wrapper = mountTable([createConversation({ platform: 'facebook', createdAt: new Date(Date.now() - 3 * 864e5) })])
-      expect(wrapper.find('.customer-id').text()).toContain('Messenger')
-      expect(wrapper.find('.customer-id').text()).toContain('3 天前開始')
+    it('should display the platform, and 新對話 only for a conversation under a day old', () => {
+      const old = mountTable([createConversation({ platform: 'facebook', createdAt: new Date(Date.now() - 3 * 864e5) })])
+      expect(old.find('.customer-id').text()).toContain('Messenger')
+      expect(old.find('.customer-id').text()).not.toContain('開始')
+      const fresh = mountTable([createConversation({ createdAt: new Date(Date.now() - 36e5) })])
+      expect(fresh.find('.customer-id').text()).toContain('新對話')
     })
 
     it('should default to LINE when no platform', () => {
