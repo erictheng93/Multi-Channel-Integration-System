@@ -73,18 +73,20 @@
             :style="{ flexGrow: activity.agent }"
           />
         </div>
-        <dl class="kv kv-tight">
+        <dl class="stats">
           <div>
+            <dd>{{ activity.customer }}</dd>
             <dt><i class="dot dot-c" />客戶來訊</dt>
-            <dd>{{ activity.customer }} 則</dd>
           </div>
           <div>
+            <dd>{{ activity.agent }}</dd>
             <dt><i class="dot dot-a" />客服回覆</dt>
-            <dd>{{ activity.agent }} 則</dd>
           </div>
           <div v-if="activity.firstReply">
+            <dd class="stat-text">
+              {{ activity.firstReply }}
+            </dd>
             <dt>首次回覆</dt>
-            <dd>{{ activity.firstReply }}</dd>
           </div>
         </dl>
       </section>
@@ -96,16 +98,12 @@
             <dt>狀態</dt>
             <dd>{{ status.text }}</dd>
           </div>
-          <div>
-            <dt>平台</dt>
-            <dd>{{ platformLabel }}</dd>
-          </div>
           <div v-if="createdAtText">
             <dt>開始時間</dt>
             <dd>{{ createdAtText }}</dd>
           </div>
-          <div v-if="messageCount !== null">
-            <dt>{{ hasMore ? '已載入訊息' : '訊息數' }}</dt>
+          <div v-if="messageCount !== null && hasMore">
+            <dt>已載入訊息</dt>
             <dd>{{ messageCount }} 則</dd>
           </div>
         </dl>
@@ -246,10 +244,43 @@ const createdAtText = computed(() => {
 }
 
 .block h3 {
-  margin: 0 0 10px;
-  font-size: 14px;
+  margin: 0 0 12px;
+  font-size: 13px;
   font-weight: 600;
-  color: var(--ui-ink-2);
+  letter-spacing: 0.02em;
+  color: var(--ui-muted);
+}
+
+/* Customer / agent counts: the numerals carry the weight, the labels sit under them */
+.stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px 24px;
+  margin: 0;
+}
+
+.stats > div {
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 2px;
+}
+
+.stats dd {
+  margin: 0;
+  font: 600 26px / 1.1 var(--ui-font-display);
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  color: var(--ui-ink);
+}
+
+.stats dd.stat-text {
+  font-size: 18px;
+  line-height: 26px;
+}
+
+.stats dt {
+  font-size: 13px;
+  color: var(--ui-muted);
 }
 
 .tag-row {
@@ -316,7 +347,7 @@ const createdAtText = computed(() => {
 }
 
 .split-c {
-  background: #8e8e93;
+  background: var(--ui-faint);
 }
 
 .split-a {
@@ -327,12 +358,12 @@ const createdAtText = computed(() => {
   display: inline-block;
   width: 8px;
   height: 8px;
-  margin-right: 8px;
+  margin-right: 6px;
   border-radius: 50%;
 }
 
 .dot-c {
-  background: #8e8e93;
+  background: var(--ui-faint);
 }
 
 .dot-a {
