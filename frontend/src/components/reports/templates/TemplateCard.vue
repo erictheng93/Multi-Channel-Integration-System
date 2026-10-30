@@ -168,7 +168,6 @@ const contents = computed(() => REPORT_CONTENTS[props.template.type] ?? []);
 .sheet {
   display: flex;
   flex-direction: column;
-  min-height: 300px;
   overflow: hidden;
   border-radius: 16px;
   background: var(--ui-surface-2);
@@ -440,10 +439,6 @@ const contents = computed(() => REPORT_CONTENTS[props.template.type] ?? []);
     grid-column: 1 / -1;
     grid-row: 1;
     justify-self: start;
-  }
-
-  .sheet {
-    min-height: 0;
   }
 
   .tc-list {
