@@ -67,15 +67,11 @@
       <SettingsRow
         label="介面語言"
         hint="目前僅支援繁體中文"
-        for-id="language"
       >
-        <select
+        <span
           id="language"
-          class="ui-select"
-          disabled
-        >
-          <option>繁體中文</option>
-        </select>
+          class="ro-value"
+        >繁體中文</span>
       </SettingsRow>
     </SettingsGroup>
   </form>
@@ -165,6 +161,15 @@ function handleSave() {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 20px 16px;
   align-items: start;
+}
+
+/* read-only value: plain text, so it never reads as a disabled field */
+.ro-value {
+  display: block;
+  padding: 0 4px;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--ui-ink);
 }
 
 @media (max-width: 1024px) {

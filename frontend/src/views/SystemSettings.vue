@@ -72,6 +72,7 @@
           class="settings-actions"
           label="儲存設定"
         >
+          <span class="settings-state">有尚未儲存的變更</span>
           <button
             type="button"
             class="btn btn-secondary"
@@ -168,8 +169,23 @@ onUnmounted(() => controller.cleanup())
 
 @media (min-width: 769px) {
   .settings-actions {
-    max-width: 720px;
+    position: sticky;
+    bottom: 16px;
+    z-index: 4;
+    padding: 10px 14px 10px 20px;
+    border-radius: 18px;
+    background: var(--ui-glass);
+    box-shadow: var(--ui-shadow-raised);
+    backdrop-filter: saturate(180%) blur(20px);
+    -webkit-backdrop-filter: saturate(180%) blur(20px);
   }
+}
+
+.settings-state {
+  margin-right: auto;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ui-orange-ink);
 }
 
 /* Form pages: one readable column instead of a 500px gap between label and control */

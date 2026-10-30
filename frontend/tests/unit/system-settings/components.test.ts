@@ -72,7 +72,7 @@ describe('System Settings Components', () => {
       expect(updates?.at(-1)?.[0]).toMatchObject({ systemName: 'Renamed' })
     })
 
-    it('should show the language as a locked single-option select', () => {
+    it('should show the language as a read-only value', () => {
       const wrapper = mount(GeneralSettingsForm, {
         props: {
           settings: mockSettings,
@@ -82,7 +82,7 @@ describe('System Settings Components', () => {
 
       expect(wrapper.text()).toContain('介面語言')
       const lang = wrapper.find('#language')
-      expect(lang.attributes('disabled')).toBeDefined()
+      expect(lang.element.tagName).toBe('SPAN')
       expect(lang.text()).toBe('繁體中文')
     })
 
