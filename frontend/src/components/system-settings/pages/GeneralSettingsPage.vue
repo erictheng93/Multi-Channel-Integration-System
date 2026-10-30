@@ -100,8 +100,8 @@ const advancedRows = computed(() => {
 
 .adv-list {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px 24px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px 14px;
   margin: 0;
 }
 
@@ -125,6 +125,13 @@ const advancedRows = computed(() => {
 @media (max-width: 1024px) {
   .general {
     grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .adv-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px 24px;
   }
 }
 </style>

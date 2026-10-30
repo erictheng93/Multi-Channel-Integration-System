@@ -32,7 +32,7 @@
           >
             <span class="ins-top">
               <span class="ins-name">{{ row.label }}</span>
-              <span class="ins-n">{{ row.count.toLocaleString('en-US') }}</span>
+              <span class="ins-n">{{ row.count.toLocaleString('en-US') }}<small v-if="row.share"> {{ row.share }}</small></span>
             </span>
             <span
               class="ins-bar"
@@ -55,9 +55,7 @@
           v-for="row in members"
           :key="row.name"
         >
-          <div
-            class="ins-row is-static"
-          >
+          <div class="ins-row is-static is-member">
             <span class="ins-top">
               <span class="ins-name">{{ row.name }}</span>
               <span class="ins-n">{{ row.count.toLocaleString('en-US') }}</span>
@@ -121,13 +119,19 @@ function scaled<T extends { count: number }>(rows: T[]): Array<T & { width: stri
   return rows.map(r => ({ ...r, width: `${Math.max(4, Math.round((r.count / max) * 100))}%` }))
 }
 
+/** Share of the whole period, from the overview's own total (blank when it has none) */
+function totalOf(count: number): string {
+  const total = props.overview?.totalActivities ?? 0
+  return total > 0 ? `${Math.round((count / total) * 100)}%` : ''
+}
+
 const actions = computed(() => {
   const stats = props.overview?.actionStats ?? {}
   const rows = Object.entries(stats)
     .filter(([, count]) => count > 0)
     .sort((a, b) => b[1] - a[1])
     .slice(0, SHOWN)
-    .map(([key, count]) => ({ key, label: getActionLabel(key), count }))
+    .map(([key, count]) => ({ key, label: getActionLabel(key), count, share: totalOf(count) }))
   return scaled(rows)
 })
 
@@ -234,6 +238,20 @@ const members = computed(() => {
   border-radius: inherit;
   background: var(--section-hue, var(--ui-accent));
   opacity: 0.85;
+}
+
+/* members are people, not categories: their own hue so the two lists never read as one */
+.ins-row.is-member .ins-bar i {
+  background: var(--ui-indigo);
+}
+
+.ins-n small {
+  display: inline-block;
+  min-width: 2.6em;
+  margin-left: 8px;
+  font: 500 13px var(--ui-font-ui);
+  text-align: right;
+  color: var(--ui-muted);
 }
 
 .ins-row.is-on .ins-bar i {

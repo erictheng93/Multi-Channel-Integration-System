@@ -78,7 +78,12 @@
           class="ov-state"
           :class="tile.tone"
         >{{ tile.state }}</span>
+        <span
+          v-if="tile.tone === 'red'"
+          class="ov-fix"
+        >重新連線</span>
         <svg
+          v-else
           class="ov-chev"
           viewBox="0 0 24 24"
           fill="none"
@@ -257,7 +262,7 @@ const tiles = computed<Tile[]>(() => [
 }
 
 .ov-big {
-  font: 600 24px / 1.2 var(--ui-font-display);
+  font: 600 18px / 1.2 var(--ui-font-display);
   letter-spacing: -0.02em;
   color: var(--ui-ink);
 }
@@ -333,6 +338,17 @@ const tiles = computed<Tile[]>(() => [
   display: grid;
   flex: 1;
   min-width: 0;
+}
+
+/* a failed channel carries its own next step instead of a quiet chevron */
+.ov-fix {
+  flex: none;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: var(--ui-red-soft);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ui-red-ink);
 }
 
 .ov-chev {
@@ -427,7 +443,7 @@ const tiles = computed<Tile[]>(() => [
   }
 
   .ov-big {
-    font-size: 21px;
+    font-size: 17px;
   }
 
   .ov-list {
@@ -436,6 +452,11 @@ const tiles = computed<Tile[]>(() => [
 
   .ov-sub {
     white-space: normal;
+  }
+
+  /* the fix pill already says it is not connected */
+  .ov-state.red {
+    display: none;
   }
 }
 </style>

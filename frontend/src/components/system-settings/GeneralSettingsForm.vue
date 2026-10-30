@@ -65,19 +65,11 @@
         </select>
       </SettingsRow>
       <SettingsRow
+        class="lang-row"
         label="介面語言"
-        hint="目前僅支援繁體中文"
-        for-id="language"
+        hint="目前僅提供繁體中文"
       >
-        <select
-          id="language"
-          class="ui-select"
-          disabled
-        >
-          <option value="zh-TW">
-            繁體中文
-          </option>
-        </select>
+        <span class="static-value">繁體中文</span>
       </SettingsRow>
     </SettingsGroup>
   </form>
@@ -169,14 +161,31 @@ function handleSave() {
   min-width: 0;
 }
 
-/* fields sit on the soft fill; the 1px boundary stays (WCAG 1.4.11) */
+/* fields sit flat on the white card; the 1px boundary stays (WCAG 1.4.11) */
 .general-form :deep(.ui-input),
 .general-form :deep(.ui-select) {
-  background-color: var(--ui-fill);
+  background-color: var(--ui-surface);
 }
 
-.general-form :deep(.ui-select:disabled) {
-  color: var(--ui-muted);
-  cursor: not-allowed;
+/* a value that cannot change is text, not a greyed-out field */
+.static-value {
+  flex: 1;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--ui-ink);
+  text-align: right;
+}
+
+/* stays one line on a phone: label left, value right */
+@media (max-width: 768px) {
+  .general-form :deep(.lang-row) {
+    flex-direction: row;
+    align-items: center;
+  }
+
+  .general-form :deep(.lang-row .srow-c) {
+    flex: none;
+    width: auto;
+  }
 }
 </style>

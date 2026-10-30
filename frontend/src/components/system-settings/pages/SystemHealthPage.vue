@@ -95,9 +95,20 @@
           class="ui-list"
         >
           <li
+            class="hscale"
+            aria-hidden="true"
+          >
+            <span class="hscale-ruler">
+              <span>0</span>
+              <span>{{ latencyScale / 2 }}</span>
+              <span>{{ latencyScale }} ms</span>
+            </span>
+          </li>
+          <li
             v-for="row in rows"
             :key="row.key"
             class="ui-row is-flush hrow"
+            :class="{ 'is-unchecked': row.label === '未檢查' }"
           >
             <span
               class="hstat"
@@ -116,10 +127,14 @@
                   v-if="row.tone === 'ok'"
                   d="M5 12.5 10 17.5 19 7"
                 />
-                <path
-                  v-else-if="row.tone === 'unknown'"
-                  d="M12 6.5V12l3.5 2"
-                />
+                <template v-else-if="row.tone === 'unknown'">
+                  <circle
+                    cx="12"
+                    cy="12"
+                    r="8.5"
+                  />
+                  <path d="M12 7.5V12l3 2" />
+                </template>
                 <path
                   v-else
                   d="M12 8v5M12 17h.01"
@@ -139,7 +154,7 @@
             </div>
             <span
               class="lat-bar"
-              :class="row.tone"
+              :class="barTone(row)"
               aria-hidden="true"
             ><i
               v-if="row.latencyMs !== null"
@@ -155,8 +170,7 @@
               v-if="row.key === 'lineWebhook' && row.label === '未檢查'"
               type="button"
               class="btn btn-secondary btn-sm hrow-test"
-              :disabled="controller.processing.value"
-              @click="controller.healthCheck(true)"
+              @click="!controller.processing.value && controller.healthCheck(true)"
             >
               立即測試
             </button>
@@ -343,7 +357,7 @@ const heroValue = computed<string | null>(() => {
     return '降級'
   }
   if (mixed.value) {
-    return `${counts.value.healthy} 項正常`
+    return `${counts.value.healthy} / ${rows.value.length} 正常`
   }
   return overallTone.value === 'ok' ? '正常' : null
 })
@@ -351,6 +365,13 @@ const heroValue = computed<string | null>(() => {
 /** Bars share one scale: the slowest measured service fills the track, floored at 100 ms so 12 vs 64 ms is not exaggerated */
 function barWidth(ms: number): string {
   return `${Math.max(4, Math.round((ms / latencyScale.value) * 100))}%`
+}
+
+/** Bar colour is the speed itself: under 100 ms is fine, up to 300 ms is slow, past that is a fault; a failing check is red whatever it measured */
+function barTone(row: Row): string {
+  if (row.tone === 'bad' || (row.latencyMs ?? 0) > 300) { return 'bad' }
+  if (row.tone === 'warn' || (row.latencyMs ?? 0) > 100) { return 'warn' }
+  return row.tone
 }
 
 /** Short name: the part in parentheses when a service has one (資料庫 (D1) -> D1) */
@@ -462,7 +483,7 @@ onMounted(() => {
 }
 
 .hl-big.mixed {
-  font-size: 44px;
+  font-size: 46px;
   color: var(--ui-ink);
 }
 
@@ -613,8 +634,8 @@ onMounted(() => {
 
 .lat-bar {
   display: block;
-  flex: none;
-  width: 240px;
+  flex: 1;
+  min-width: 0;
   height: 10px;
   overflow: hidden;
   border-radius: 999px;
@@ -680,14 +701,14 @@ onMounted(() => {
   min-width: 62px;
 }
 
+/* a footnote under the list, not a grey box inside it */
 .hnote {
   display: flex;
-  gap: 12px;
+  gap: 10px;
   align-items: flex-start;
-  margin: 6px 12px 12px;
-  padding: 14px 16px;
-  background: var(--ui-fill);
-  border-radius: 14px;
+  margin: 4px 22px 0;
+  padding: 14px 0 16px;
+  box-shadow: inset 0 0.5px 0 var(--ui-sep);
 }
 
 .hnote p {
@@ -695,6 +716,59 @@ onMounted(() => {
   font-size: 14px;
   line-height: 1.55;
   color: var(--ui-ink-2);
+}
+
+/* the bars start right after the service name; this row labels their scale */
+.hscale {
+  display: flex;
+  gap: 14px;
+  padding: 10px 22px 0;
+  font-size: 12px;
+  color: var(--ui-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.hscale::before {
+  content: '';
+  flex: 0 0 calc(30px + 14px + 260px);
+}
+
+.hscale-ruler {
+  display: flex;
+  flex: 1;
+  justify-content: space-between;
+  min-width: 0;
+}
+
+.hscale::after {
+  content: '';
+  flex: 0 0 calc(64px + 14px + 62px);
+}
+
+/* the unchecked service is the one that needs a press: tint the whole row and its button */
+.hrow.is-unchecked {
+  margin: 6px 10px 0;
+  padding-right: 12px;
+  padding-left: 12px;
+  border-radius: 16px;
+  background: var(--ui-accent-soft);
+  box-shadow: none;
+}
+
+.hrow.is-unchecked::before,
+.hrow.is-unchecked::after {
+  display: none;
+}
+
+.hrow.is-unchecked .hstat {
+  background: var(--ui-surface);
+  color: var(--ui-accent);
+}
+
+.hrow .hrow-test {
+  background: var(--ui-surface);
+  font-weight: 600;
+  color: var(--ui-accent);
 }
 
 .hnote-ico {
@@ -715,7 +789,19 @@ onMounted(() => {
   white-space: normal;
 }
 
+.hrow .ui-row-main {
+  flex: 0 0 260px;
+}
+
 @media (max-width: 1024px) {
+  .hscale {
+    display: none;
+  }
+
+  .hrow .ui-row-main {
+    flex: 1 1 200px;
+  }
+
   .hl {
     grid-template-columns: minmax(0, 1fr);
     padding: 22px 24px;

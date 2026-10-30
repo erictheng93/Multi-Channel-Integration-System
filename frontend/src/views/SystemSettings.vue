@@ -36,8 +36,8 @@
           <button
             type="button"
             class="btn btn-primary"
-            :disabled="controller.processing.value"
-            @click="controller.healthCheck(true)"
+            :aria-busy="controller.processing.value || undefined"
+            @click="!controller.processing.value && controller.healthCheck(true)"
           >
             <svg
               class="act-ico"
@@ -223,8 +223,19 @@ onUnmounted(() => controller.cleanup())
   }
 }
 
-/* the check button is an action, not a banner: on the phone it keeps its natural width at the row end */
+/* the check button is an action, not a banner: on the phone it sits on the title row at its natural width */
 @media (max-width: 768px) {
+  .system-settings :deep(.ui-page-head) {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      'title actions'
+      'sub sub';
+  }
+
+  .system-settings :deep(.ui-page-actions) {
+    padding-top: 0;
+  }
+
   .system-settings :deep(.ui-page-actions) {
     justify-content: flex-end;
   }

@@ -73,30 +73,6 @@
           <p class="tl-meaning">
             {{ onlineMeaning }}
           </p>
-          <div
-            v-if="onlineMembers.length > 0"
-            class="tl-faces"
-            role="list"
-            aria-label="在線成員"
-          >
-            <span
-              v-for="m in onlineMembers.slice(0, FACES)"
-              :key="m.id"
-              role="listitem"
-              :title="m.name || m.loginId"
-            >
-              <TeamAvatar
-                size="sm"
-                :name="m.name || m.loginId"
-                :seed="m.id"
-                :src="m.avatar"
-              />
-            </span>
-            <span
-              v-if="onlineMembers.length > FACES"
-              class="tl-more"
-            >+{{ onlineMembers.length - FACES }}</span>
-          </div>
         </div>
         <ul
           v-if="teamOnline.length > 0"
@@ -278,7 +254,6 @@
 
 <script setup lang="ts">
 import UiPageHead from '@/components/ui/UiPageHead.vue'
-import TeamAvatar from '@/components/team/TeamAvatar.vue'
 import { teamToneColor } from '@/utils/team-tone'
 import { onMounted, onUnmounted, computed, ref } from 'vue'
 import { useAuthStore } from '@/stores/auth'
@@ -380,13 +355,7 @@ const teamOnline = computed(() => {
     .filter(row => row.total > 0)
 })
 
-const FACES = 7
 const TEAMS_SHOWN = 4
-
-/** Active members who are online right now, for the faces row */
-const onlineMembers = computed(() =>
-  presence.available.value ? members.value.filter(m => m.status !== 'inactive' && presence.onlineIds.value.has(m.id)) : []
-)
 
 // Handle select-page: add page member IDs to selection
 function handleSelectPage(memberIds: string[]) {
@@ -543,30 +512,6 @@ onUnmounted(() => {
 .tl-meaning {
   margin: 6px 0 0;
   font-size: 15px;
-  color: var(--ui-ink-2);
-}
-
-.tl-faces {
-  display: flex;
-  align-items: center;
-  margin-top: 16px;
-}
-
-.tl-faces > span + span {
-  margin-left: -6px;
-}
-
-.tl-more {
-  display: grid;
-  min-width: 28px;
-  height: 28px;
-  padding: 0 6px;
-  place-items: center;
-  border-radius: 14px;
-  background: var(--ui-fill-strong);
-  box-shadow: 0 0 0 2px var(--ui-surface);
-  font-size: 13px;
-  font-weight: 600;
   color: var(--ui-ink-2);
 }
 
