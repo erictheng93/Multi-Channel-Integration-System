@@ -211,7 +211,6 @@
           <button
             type="submit"
             class="btn btn-primary"
-            :class="{ 'is-incomplete': missing.length > 0 }"
             :disabled="sending"
           >
             {{ sending ? '發送中...' : '建立並發送' }}
@@ -735,13 +734,6 @@
   .foot-note b.missing {
     font-weight: 700;
     color: var(--ui-orange-ink);
-  }
-
-  /* Not ready: grey instead of the blue (still pressable; pressing it reports what is missing) */
-  .btn.is-incomplete,
-  .btn.is-incomplete:hover {
-    background: var(--ui-fill-strong);
-    color: var(--ui-ink);
   }
 
   .foot-note b {
