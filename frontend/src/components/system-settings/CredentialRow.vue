@@ -154,16 +154,18 @@ function cancelReplace() {
 }
 
 .cred-last4 {
-  font: 500 15px var(--ui-font-mono);
-  letter-spacing: 0.08em;
+  font: 600 17px var(--ui-font-mono);
+  letter-spacing: 0.06em;
   color: var(--ui-ink);
 }
 
 
 /* a replace action in the accent colour, not a pale grey capsule */
 .cred-replace {
-  background: var(--ui-accent-soft);
-  color: var(--ui-accent);
+  min-height: 40px;
+  background: var(--ui-fill);
+  color: var(--ui-accent-ink, var(--ui-accent));
+  font-weight: 600;
 }
 
 /* the description keeps the whole row width; only the value and its action share a trailing slot */
@@ -173,13 +175,32 @@ function cancelReplace() {
 
 /* phone: label and description on top at full width, value left and 更換 right underneath */
 @media (max-width: 768px) {
+  /* a stored credential is one line: name on the left, last four and 更換 on the right (the hint is for entering a new one) */
+  .is-masked.srow {
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .is-masked :deep(.srow-h) {
+    display: none;
+  }
+
   .is-masked :deep(.srow-c) {
-    width: 100%;
-    justify-content: space-between;
+    flex: none;
+    width: auto;
   }
 
   .cred-state {
-    justify-content: flex-start;
+    flex: none;
+  }
+
+  .cred-last4 {
+    font-size: 15px;
+  }
+
+  .cred-replace {
+    min-height: 44px;
   }
 }
 
