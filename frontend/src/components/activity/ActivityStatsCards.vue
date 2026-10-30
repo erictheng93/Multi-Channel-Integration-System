@@ -31,6 +31,7 @@
           :summary="`${periodLabel}每日活動數`"
           :bars="bars"
           :height="104"
+          :caption="lowNote"
         />
       </template>
     </RingLead>
@@ -90,6 +91,18 @@ const highlights = computed(() => {
   ]
 })
 
+/** Say why a bar is nearly empty: name the quietest day when it is far below the daily average */
+const lowNote = computed(() => {
+  const daily = props.overview?.dailyStats ?? []
+  if (daily.length < 3) { return '' }
+  const average = daily.reduce((sum, d) => sum + d.count, 0) / daily.length
+  const low = daily.reduce((a, b) => (b.count < a.count ? b : a))
+  if (average <= 0 || low.count >= average * 0.4) { return '' }
+  const day = new Date(`${low.date}T00:00:00`)
+  const name = Number.isNaN(day.getTime()) ? low.date : `週${WEEKDAYS[day.getDay()]}`
+  return `${name}僅 ${low.count.toLocaleString('en-US')} 筆，約為日均的 ${Math.round((low.count / average) * 100)}%。`
+})
+
 const meaning = computed(() => {
   const overview = props.overview
   if (!overview) { return '' }
@@ -106,6 +119,15 @@ const meaning = computed(() => {
   display: block;
   margin: 0;
   padding: 0;
+}
+.stats-grid :deep(.lb-slot) {
+  box-shadow: inset 0 -1px 0 var(--ui-sep);
+}
+.stats-grid :deep(.lb-col.has-current:not(.is-current) .lb-bar) {
+  opacity: 0.6;
+}
+.stats-grid :deep(.lb-label) {
+  color: var(--ui-ink-2);
 }
 .highlights {
   display: grid;

@@ -30,7 +30,7 @@
         >{{ formatTime(activity.createdAt) }}</time>
         <span
           v-if="quietStatus"
-          class="timeline-item__status ui-pill"
+          class="timeline-item__status"
           aria-hidden="true"
         >{{ quietStatus }}</span>
       </div>
@@ -54,14 +54,14 @@
       </button>
       <span
         v-else-if="restoreState.kind === 'expired'"
-        class="ui-pill timeline-item__chip"
+        class="timeline-item__chip"
         data-test="restore-expired"
       >
         已過期
       </span>
       <span
         v-else-if="restoreState.kind === 'irreversible'"
-        class="ui-pill timeline-item__chip"
+        class="timeline-item__chip"
         data-test="restore-irreversible"
       >
         不可還原
@@ -317,7 +317,14 @@ onUnmounted(() => {
   gap: 8px;
 }
 
-/* One width for every status chip so 可還原 / 已過期 / 不可還原 line up down the column */
+/* Closed states are plain text, so the only capsule in the column is the one real action (還原) */
+.timeline-item__restore-zone .timeline-item__chip,
+.timeline-item__status {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ui-muted);
+  white-space: nowrap;
+}
 .timeline-item__restore-zone .ui-pill {
   grid-column: 1;
   justify-content: center;
@@ -375,7 +382,7 @@ onUnmounted(() => {
 
 .timeline-item__chip {
   grid-column: 1;
-  justify-content: center;
+  text-align: center;
   width: 100%;
 }
 
@@ -400,14 +407,18 @@ onUnmounted(() => {
 
   /* One trailing control per row, on the title line: the chevron. The quiet status moves up next to the time. */
   .timeline-item__restore-zone {
-    display: contents;
+    grid-area: zone;
+    display: flex;
+    gap: 2px;
+    align-items: center;
+    align-self: start;
+    margin: -10px -12px -10px 0;
   }
 
   .timeline-item__restore-zone .timeline-item__details-toggle {
-    grid-area: zone;
     width: 44px;
     height: 44px;
-    margin: -10px -12px -10px 0;
+    margin: 0;
   }
 
   /* the closed state is a chip on the meta line (same chip as desktop), so the zone shows only 還原 */
@@ -418,14 +429,16 @@ onUnmounted(() => {
   .timeline-item__status {
     display: inline-flex;
   }
+  .timeline-item__status::before {
+    margin-right: 6px;
+    content: '·';
+  }
 
   /* 還原 is the one real action: always on the row, under the description, full touch height */
   .timeline-item__restore-zone .btn {
-    grid-area: rest;
-    justify-self: start;
     width: auto;
     min-height: 40px;
-    margin-top: 10px;
+    margin: 0;
   }
 }
 </style>

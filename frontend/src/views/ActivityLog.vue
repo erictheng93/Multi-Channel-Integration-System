@@ -9,14 +9,16 @@
         <template #actions>
           <button
             class="btn btn-secondary"
+            aria-label="匯出記錄"
             :disabled="loading"
             @click="exportActivities"
           >
             <DownloadIcon :size="16" />
-            <span>匯出記錄</span>
+            <span class="al-lbl">匯出記錄</span>
           </button>
           <button
             class="btn btn-secondary"
+            aria-label="刷新"
             :disabled="loading"
             @click="refreshData"
           >
@@ -24,7 +26,7 @@
               :size="16"
               :spinning="loading"
             />
-            <span>刷新</span>
+            <span class="al-lbl">刷新</span>
           </button>
         </template>
       </UiPageHead>
@@ -35,6 +37,20 @@
         :overview="overview"
         :loading="overviewLoading"
       />
+
+      <!-- Phone and tablet: the rail is a collapsed section above the log instead of being dropped -->
+      <details
+        v-if="showInsights"
+        class="ui-card al-more"
+      >
+        <summary>操作類型與最活躍成員</summary>
+        <ActivityInsights
+          :overview="overview"
+          :active-action="filters.action"
+          :legend="false"
+          @filter-action="onInsightAction"
+        />
+      </details>
 
       <div
         class="al-grid"
@@ -460,6 +476,37 @@ onUnmounted(() => {
   top: 20px;
 }
 
+.al-more {
+  display: none;
+  padding: 0;
+}
+.al-more summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 48px;
+  padding: 0 20px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  list-style: none;
+}
+.al-more summary::-webkit-details-marker {
+  display: none;
+}
+.al-more summary::after {
+  width: 8px;
+  height: 8px;
+  margin-right: 4px;
+  border-right: 2px solid var(--ui-muted);
+  border-bottom: 2px solid var(--ui-muted);
+  transform: rotate(45deg);
+  content: '';
+  transition: transform var(--ui-dur) var(--ui-ease);
+}
+.al-more[open] summary::after {
+  transform: rotate(-135deg);
+}
 @media (max-width: 1024px) {
   .al-grid.has-aside {
     grid-template-columns: minmax(0, 1fr);
@@ -468,11 +515,37 @@ onUnmounted(() => {
   .al-aside {
     display: none;
   }
+
+  .al-more {
+    display: block;
+  }
+}
+
+.al-more :deep(.insights) {
+  padding: 0 12px 12px;
+}
+.al-more :deep(.ins-list) {
+  box-shadow: none;
+  background: var(--ui-fill);
 }
 
 @media (max-width: 768px) {
+  /* the two header actions are icon buttons; the label stays for assistive tech */
+  .ui-page-actions {
+    justify-content: flex-end;
+  }
   .ui-page-actions > .btn {
-    flex: 1;
+    flex: none;
+    width: 44px;
+    min-height: 44px;
+    padding: 0;
+  }
+  .al-lbl {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
   }
 }
 </style>

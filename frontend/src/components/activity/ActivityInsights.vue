@@ -70,21 +70,48 @@
         </li>
       </ul>
     </section>
+    <section
+      v-if="legend && restoreOn"
+      class="ins-block"
+    >
+      <h2 class="ui-group-label">
+        還原狀態說明
+      </h2>
+      <dl class="ui-card ins-legend">
+        <div>
+          <dt>還原</dt>
+          <dd>仍在期限內，可一鍵復原這項操作。</dd>
+        </div>
+        <div>
+          <dt>已過期</dt>
+          <dd>超過可還原期限，記錄保留但不能復原。</dd>
+        </div>
+        <div>
+          <dt>不可還原</dt>
+          <dd>登入、傳送訊息等操作本質上無法復原。</dd>
+        </div>
+      </dl>
+    </section>
   </aside>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { ActivityOverview } from '@/api/activities'
+import { isActivityRestoreEnabled } from '@/config/runtime'
 import { getActionLabel } from './utils'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   overview: ActivityOverview | null
   /** The action currently applied to the log, so its row reads as on */
   activeAction?: string
-}>()
+  /** The status key under the lists */
+  legend?: boolean
+}>(), { activeAction: '', legend: true })
 
 const emit = defineEmits<{ 'filter-action': [action: string] }>()
+
+const restoreOn = isActivityRestoreEnabled()
 
 const SHOWN = 5
 
@@ -191,10 +218,10 @@ const members = computed(() => {
 
 .ins-bar {
   display: block;
-  height: 5px;
+  height: 8px;
   overflow: hidden;
   border-radius: 999px;
-  background: var(--ui-fill);
+  background: var(--ui-fill-strong);
 }
 
 .ins-row:hover .ins-bar {
@@ -206,11 +233,29 @@ const members = computed(() => {
   height: 100%;
   border-radius: inherit;
   background: var(--section-hue, var(--ui-accent));
-  opacity: 0.6;
+  opacity: 0.85;
 }
 
 .ins-row.is-on .ins-bar i {
   opacity: 1;
+}
+
+.ins-legend {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 16px 20px;
+}
+.ins-legend dt {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ui-ink);
+}
+.ins-legend dd {
+  margin: 2px 0 0;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--ui-ink-2);
 }
 
 @media (max-width: 768px) {
