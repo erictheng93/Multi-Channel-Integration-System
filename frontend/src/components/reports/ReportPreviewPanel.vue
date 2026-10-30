@@ -321,6 +321,7 @@ const formatDate = (dateString: string): string => {
 
 .kv-row dd {
   margin: 0;
+  font-size: 15px;
   min-width: 0;
   overflow-wrap: anywhere;
   font-weight: 600;
