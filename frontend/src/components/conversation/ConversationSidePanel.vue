@@ -126,7 +126,7 @@ const createdAtText = computed(() => {
   display: flex;
   flex-direction: column;
   min-height: 0;
-  padding: 32px 22px 24px;
+  padding: 28px 22px 22px;
   overflow-y: auto;
 }
 
@@ -170,7 +170,8 @@ const createdAtText = computed(() => {
 .name {
   max-width: 100%;
   overflow: hidden;
-  font: 600 17px var(--ui-font-display);
+  font: 700 20px var(--ui-font-display);
+  letter-spacing: -0.02em;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -187,9 +188,9 @@ const createdAtText = computed(() => {
 
 .block h3 {
   margin: 0 0 10px;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
-  color: var(--ui-muted);
+  color: var(--ui-ink-2);
 }
 
 .tag-row {
@@ -222,7 +223,7 @@ const createdAtText = computed(() => {
   display: grid;
   gap: 14px;
   margin: 0;
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .kv > div {
