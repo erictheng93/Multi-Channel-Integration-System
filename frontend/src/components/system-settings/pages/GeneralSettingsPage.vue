@@ -76,9 +76,15 @@ const advancedRows = computed(() => {
 .general {
   display: grid;
   grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+  grid-template-rows: auto minmax(0, 1fr);
   gap: 20px;
-  align-items: start;
+  align-items: stretch;
   min-width: 0;
+  min-height: calc(100dvh - 250px);
+}
+
+.general :deep(.general-form) {
+  grid-template-rows: auto minmax(0, 1fr);
 }
 
 .g-head {
@@ -87,27 +93,45 @@ const advancedRows = computed(() => {
 
 .g-side {
   display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
   gap: 20px;
   min-width: 0;
+}
+
+/* the parameters card takes the leftover height so both columns end level */
+.g-side :deep(.settings-group:last-child),
+.general :deep(.general-form .settings-group:last-child) {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
 }
 
 /* read-only values: label over value in a 2x2 grid, no row chrome, so nothing here looks like a field */
 .adv-grid {
   display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
   gap: 16px;
-  padding: 18px 22px;
+  height: 100%;
+  padding: 18px 22px 20px;
 }
 
 .adv-list {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 16px 14px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
   margin: 0;
+}
+
+.adv-item {
+  display: grid;
+  align-content: center;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: var(--ui-fill);
 }
 
 .adv-item dt {
   font-size: 13px;
-  color: var(--ui-muted);
+  color: var(--ui-ink-2);
 }
 
 .adv-edit {
@@ -118,20 +142,21 @@ const advancedRows = computed(() => {
 
 .adv-item dd {
   margin: 4px 0 0;
-  font: 600 17px var(--ui-font-display);
+  font: 600 26px / 1.15 var(--ui-font-display);
   font-variant-numeric: tabular-nums;
 }
 
 @media (max-width: 1024px) {
   .general {
     grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: none;
+    min-height: 0;
   }
 }
 
 @media (max-width: 768px) {
-  .adv-list {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 16px 24px;
+  .adv-item dd {
+    font-size: 22px;
   }
 }
 </style>
