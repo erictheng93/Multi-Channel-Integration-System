@@ -65,6 +65,13 @@
         >
           <template #action>
             <div class="generate-action">
+              <p
+                v-if="!isFormValid"
+                class="generate-need"
+                role="status"
+              >
+                {{ missingHint }}
+              </p>
               <button
                 class="btn btn-primary"
                 :class="{ 'is-incomplete': !isFormValid }"
@@ -156,7 +163,7 @@ const defaultOptions = () => ({
 
 // Reactive state
 const formData = reactive<ReportFormState>({
-  type: props.initialType || null,
+  type: null,
   title: '',
   description: '',
   format: 'json',
@@ -183,8 +190,10 @@ const errors = reactive<Record<string, string>>({});
 const recentReports = ref<ReportBase[]>([]);
 
 // 重置 only appears once there is something to reset
+// Compared with the preselected starting point (type + auto title), not with an empty form
+const baseline = reactive<{ type: ReportType | null; title: string }>({ type: null, title: '' });
 const isDirty = computed(() =>
-  !!formData.type || !!formData.title.trim() || !!formData.description.trim() ||
+  formData.type !== baseline.type || formData.title !== baseline.title || !!formData.description.trim() ||
   formData.format !== 'json' || formData.timeRange !== 'last_30_days' ||
   JSON.stringify(formData.options) !== JSON.stringify(defaultOptions())
 );
@@ -210,13 +219,16 @@ const missingHint = computed(() => {
 });
 
 // Methods
+let autoTitle = '';
 const selectReportType = (type: ReportType) => {
   formData.type = type;
 
   // Auto-fill title based on type
+  // (a title the user typed is kept; one we filled in follows the chosen type)
   const typeLabel = ReportsAPI.formatReportType(type);
-  if (!formData.title) {
-    formData.title = `${typeLabel} - ${new Date().toLocaleDateString('zh-TW')}`;
+  if (!formData.title || formData.title === autoTitle) {
+    autoTitle = `${typeLabel} - ${new Date().toLocaleDateString('zh-TW')}`;
+    formData.title = autoTitle;
   }
 
   // Clear related error
@@ -351,8 +363,8 @@ const generateReport = async () => {
 };
 
 const resetForm = () => {
-  formData.type = null;
-  formData.title = '';
+  formData.type = baseline.type;
+  formData.title = baseline.title;
   formData.description = '';
   formData.format = 'json';
   formData.timeRange = 'last_30_days';
@@ -391,9 +403,14 @@ onMounted(() => {
   loadRecentReports();
 
   // If there's an initial type, auto-select it
-  if (props.initialType) {
-    selectReportType(props.initialType);
+  // A type is always preselected (the first generatable one) so the form starts out ready to generate
+  const first = ReportsAPI.getGeneratableOptions().types[0]?.value;
+  const initial = props.initialType ?? first;
+  if (initial) {
+    selectReportType(initial);
   }
+  baseline.type = formData.type;
+  baseline.title = formData.title;
 });
 </script>
 
@@ -428,6 +445,13 @@ onMounted(() => {
   width: 100%;
 }
 
+.generate-need {
+  margin: 0 0 10px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ui-orange-ink);
+}
+
 @media (max-width: 1280px) {
   .generator-container {
     grid-template-columns: minmax(0, 1fr);
@@ -450,10 +474,14 @@ onMounted(() => {
   color: var(--ui-ink-2);
 }
 
-/* Not valid yet: quieter than the ready state, but still pressable (pressing it names what is missing) */
+/* Not valid yet: a grey fill instead of the blue (clearly "not ready"), but still pressable (pressing it names what is missing) */
 .btn.is-incomplete {
-  background: var(--ui-accent-soft);
-  color: var(--ui-accent);
+  background: var(--ui-fill-strong);
+  color: var(--ui-ink);
+}
+
+.btn.is-incomplete:hover {
+  background: var(--ui-fill-strong);
 }
 
 @media (max-width: 768px) {
