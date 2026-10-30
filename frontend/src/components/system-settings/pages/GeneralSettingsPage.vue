@@ -1,51 +1,12 @@
 <!--
   GeneralSettingsPage.vue
-  The settings home: a live overview strip (each tile links to its section), then the identity form
-  beside a context column (measured service latency, then the read-only parameters in force).
+  The settings home: a slim status lead, then the identity form, then the read-only parameters in force
+  (service latency lives on the health page).
 -->
 
 <template>
   <div class="general">
-    <GeneralSettingsOverview>
-      <template #aside>
-        <h2 class="ui-group-label">
-          服務延遲
-          <span class="label-note">最近一次健康檢查的實測值</span>
-        </h2>
-        <div class="ui-group">
-          <ul
-            v-if="controller.healthCheckResults.value.length > 0"
-            class="lat-list"
-          >
-            <li
-              v-for="row in controller.healthCheckResults.value"
-              :key="row.key"
-              class="lat-cell"
-            >
-              <span class="lat-name">
-                <span
-                  class="lat-dot"
-                  :class="row.status"
-                  aria-hidden="true"
-                />{{ row.name }}
-              </span>
-              <span class="lat-ms">{{ row.responseTime ?? '—' }}<small v-if="row.responseTime !== undefined"> ms</small></span>
-              <span
-                class="lat-bar"
-                :class="row.status"
-                aria-hidden="true"
-              ><i :style="{ width: barWidth(row.responseTime) }" /></span>
-            </li>
-          </ul>
-          <p
-            v-else
-            class="lat-empty"
-          >
-            {{ controller.processing.value ? '正在檢查服務...' : '尚無檢查結果' }}
-          </p>
-        </div>
-      </template>
-    </GeneralSettingsOverview>
+    <GeneralSettingsOverview />
 
     <GeneralSettingsForm
       :settings="controller.settings.general"
@@ -56,26 +17,26 @@
 
     <SettingsGroup
       class="adv-group"
-      title="目前生效的進階參數（唯讀）"
+      title="目前生效的進階參數"
     >
-      <dl class="adv-grid">
-        <div
-          v-for="item in advancedRows"
-          :key="item.label"
-          class="adv-item"
-        >
-          <dt>{{ item.label }}</dt>
-          <dd>{{ item.value }}</dd>
-        </div>
-      </dl>
-      <template #note>
+      <div class="adv-grid">
+        <dl class="adv-list">
+          <div
+            v-for="item in advancedRows"
+            :key="item.label"
+            class="adv-item"
+          >
+            <dt>{{ item.label }}</dt>
+            <dd>{{ item.value }}</dd>
+          </div>
+        </dl>
         <router-link
-          class="ui-link"
+          class="ui-link adv-edit"
           to="/settings/advanced"
         >
-          前往進階設定調整
+          調整進階設定
         </router-link>
-      </template>
+      </div>
     </SettingsGroup>
   </div>
 </template>
@@ -90,13 +51,6 @@ import SettingsGroup from '@/components/system-settings/SettingsGroup.vue'
 const controller = inject(SETTINGS_CONTROLLER_KEY)
 if (!controller) {
   throw new Error('SystemSettingsController not provided')
-}
-
-const slowest = computed(() => Math.max(1, ...controller.healthCheckResults.value.map(r => r.responseTime ?? 0)))
-
-/** Bars share one scale (the slowest service fills the track), so the strip reads at a glance */
-function barWidth(ms: number | undefined): string {
-  return ms === undefined ? '0%' : `${Math.max(6, Math.round((ms / slowest.value) * 100))}%`
 }
 
 /** Same unit conversions the advanced form uses (ms, seconds -> seconds, minutes, hours) */
@@ -121,15 +75,28 @@ const advancedRows = computed(() => {
 /* read-only values: label over value, no row chrome, so nothing here looks like a field */
 .adv-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px 16px;
-  margin: 0;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px 24px;
+  align-items: center;
   padding: 16px 22px;
+}
+
+.adv-list {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px 24px;
+  margin: 0;
 }
 
 .adv-item dt {
   font-size: 13px;
   color: var(--ui-muted);
+}
+
+.adv-edit {
+  justify-self: end;
+  font-size: 14px;
+  font-weight: 600;
 }
 
 .adv-item dd {
@@ -140,101 +107,18 @@ const advancedRows = computed(() => {
 
 
 
-.lat-list {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 12px 16px;
-  margin: 0;
-  padding: 16px 22px;
-  list-style: none;
-}
-
-.lat-name {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--ui-muted);
-}
-
-.lat-dot {
-  flex: none;
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  background: var(--ui-muted);
-}
-
-.lat-dot.healthy {
-  background: var(--ui-green);
-}
-
-.lat-dot.warning {
-  background: var(--ui-orange);
-}
-
-.lat-dot.critical {
-  background: var(--ui-red);
-}
-
-.lat-bar {
-  display: block;
-  height: 4px;
-  margin: 8px 0 0 17px;
-  overflow: hidden;
-  border-radius: 999px;
-  background: var(--ui-fill);
-}
-
-.lat-bar i {
-  display: block;
-  height: 100%;
-  border-radius: inherit;
-  background: var(--ui-green);
-}
-
-.lat-bar.warning i {
-  background: var(--ui-orange);
-}
-
-.lat-bar.critical i {
-  background: var(--ui-red);
-}
-
-.lat-ms {
-  display: block;
-  margin: 4px 0 0 17px;
-  font: 600 22px var(--ui-font-display);
-  font-variant-numeric: tabular-nums;
-}
-
-.lat-ms small {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--ui-muted);
-}
-
-.lat-empty {
-  margin: 0;
-  padding: 4px 22px 18px;
-  font-size: 13px;
-  color: var(--ui-muted);
-}
-
 @media (max-width: 1024px) {
-  .lat-list {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 768px) {
-  .lat-list {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
   .adv-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .adv-list {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  .adv-edit {
+    justify-self: start;
+  }
 }
+
 </style>

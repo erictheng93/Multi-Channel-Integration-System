@@ -2,7 +2,7 @@
   GeneralSettingsOverview.vue
   The settings home lead: system status as Service Rings (services healthy, channels connected) beside the
   overall verdict, then an inset group of four rows (LINE, Facebook, system health, backup), each linking
-  to the section that owns it. The page puts its own context group (service latency) in the #aside slot.
+  to the section that owns it. 
   Every value is read from an endpoint the settings page already uses: the integration `status` /
   `lastTest` from /system/settings, the overall verdict from /health/system (the same plain check the
   health page runs), and the newest automatic backup from /data/backup.
@@ -36,13 +36,19 @@
             健康檢查
           </router-link>
         </p>
-        <router-link
-          v-if="firstDown"
-          class="btn btn-primary ov-cta"
-          :to="firstDown.to"
+        <div
+          v-if="disconnected.length > 0"
+          class="ov-warns"
         >
-          前往設定 {{ firstDown.label }}
-        </router-link>
+          <router-link
+            v-for="c in disconnected"
+            :key="c.key"
+            :to="c.to"
+            class="ui-pill ui-pill-orange ov-warn"
+          >
+            {{ c.name }} 未連線 · 前往設定
+          </router-link>
+        </div>
       </div>
       <ul
         class="ov-list"
@@ -95,10 +101,6 @@
         </li>
       </ul>
     </article>
-
-    <div class="ov-aside">
-      <slot name="aside" />
-    </div>
   </section>
 </template>
 
@@ -222,24 +224,15 @@ const CHANNELS = [
 const disconnected = computed(() => CHANNELS
   .filter(c => controller.settings.integrations[c.key].status !== 'connected'))
 
-const firstDown = computed(() => {
-  const c = disconnected.value[0]
-  return c ? { label: c.name, to: c.to } : null
-})
-
 /**
- * The lead answers "does anything need me?": a service fault first, then a channel that is down, otherwise all clear.
- * The channel names are the headline so the action is not a small chip under a generic verdict.
+ * The lead answers "does anything need me?": a service fault is the headline; a disconnected channel is a warning chip,
+ * not a headline, so a settings page does not open on an error.
  */
 const headline = computed<{ text: string, tone: Tone }>(() => {
   const state = healthTile.value.state
   if (state === '異常') { return { text: '服務異常', tone: 'red' } }
   if (state === '降級') { return { text: '服務降級', tone: 'orange' } }
-  if (disconnected.value.length > 0) {
-    const names = disconnected.value.map(c => c.name).join('、')
-    return { text: `${names} 未連線`, tone: 'ink' as Tone }
-  }
-  if (state === '正常') { return { text: '一切運作正常', tone: 'ink' as Tone } }
+  if (state === '正常') { return { text: '系統運作正常', tone: 'ink' as Tone } }
   return { text: state, tone: 'muted' }
 })
 
@@ -247,7 +240,8 @@ const meaning = computed(() => {
   const rows = controller.healthCheckResults.value.length
   const state = healthTile.value.state
   if (state === '尚未檢查' || state === '檢查中') { return state }
-  return `服務${state}${rows > 0 ? ` · ${rows} 項檢查` : ''} · ${healthTile.value.sub.split(' · ').pop()}`
+  const when = healthTile.value.sub.split(' · ').pop()
+  return state === '正常' && rows > 0 ? `${rows} 項服務皆通過 · ${when}` : `服務${state}${rows > 0 ? ` · ${rows} 項檢查` : ''} · ${when}`
 })
 
 const tiles = computed<Tile[]>(() => [
@@ -313,8 +307,16 @@ const tiles = computed<Tile[]>(() => [
   color: var(--ui-ink-2);
 }
 
-.ov-cta {
+.ov-warns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
   margin-top: 14px;
+}
+
+.ov-warn {
+  min-height: 32px;
+  text-decoration: none;
 }
 
 .ov-dot {
@@ -380,10 +382,6 @@ const tiles = computed<Tile[]>(() => [
   width: 14px;
   height: 14px;
   color: var(--ui-faint);
-}
-
-.ov-aside {
-  min-width: 0;
 }
 
 .ov-row:focus-visible {
