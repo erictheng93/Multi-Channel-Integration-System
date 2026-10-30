@@ -43,7 +43,6 @@ import type { ActivityOverview } from '@/api/activities'
 import { isActivityRestoreEnabled } from '@/config/runtime'
 import RingLead from '@/components/lead/RingLead.vue'
 import LeadBars, { type LeadBar } from '@/components/lead/LeadBars.vue'
-import { getActionLabel } from './utils'
 
 const props = defineProps<{
   overview: ActivityOverview | null
@@ -52,14 +51,6 @@ const props = defineProps<{
 
 /** The restorable count only means something while the restore feature is on. */
 const showRestorable = isActivityRestoreEnabled()
-
-const topAction = computed(() => {
-  if (!props.overview) { return null }
-  const entries = Object.entries(props.overview.actionStats)
-  if (entries.length === 0) { return null }
-  const [name, count] = entries.reduce((a, b) => (b[1] > a[1] ? b : a))
-  return { label: getActionLabel(name), count }
-})
 
 const periodLabel = computed(() => (props.overview ? `近 ${props.overview.period.days} 天` : ''))
 
@@ -83,15 +74,20 @@ const bars = computed<LeadBar[]>(() => {
   })
 })
 
-/** The two named facts the old rings carried, now as plain lines under the number */
+/** Two plain facts the bars do not print: the latest day and the daily average of the period */
 const highlights = computed(() => {
   const overview = props.overview
   if (!overview || overview.totalActivities <= 0) { return [] }
-  const list: { label: string, text: string }[] = []
-  const topUser = overview.topUsers[0]
-  if (topUser) { list.push({ label: '最活躍', text: `${topUser.user_name} · ${topUser.count.toLocaleString('en-US')} 筆` }) }
-  if (topAction.value) { list.push({ label: '最常見', text: `${topAction.value.label} · ${topAction.value.count.toLocaleString('en-US')} 筆` }) }
-  return list
+  const daily = overview.dailyStats
+  if (daily.length === 0) { return [] }
+  const latest = daily[daily.length - 1]
+  const today = new Date()
+  const key = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+  const average = Math.round(daily.reduce((sum, d) => sum + d.count, 0) / daily.length)
+  return [
+    { label: latest?.date === key ? '今天' : '最近一天', text: `${(latest?.count ?? 0).toLocaleString('en-US')} 筆` },
+    { label: '日均', text: `${average.toLocaleString('en-US')} 筆` },
+  ]
 })
 
 const meaning = computed(() => {
@@ -125,7 +121,7 @@ const meaning = computed(() => {
   font-size: 14px;
 }
 .highlights span {
-  min-width: 3.5em;
+  min-width: 4.5em;
   font-size: 13px;
   font-weight: 500;
   color: var(--ui-muted);
