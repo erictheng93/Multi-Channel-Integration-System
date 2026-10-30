@@ -5,7 +5,10 @@
   >
     <template v-if="conversation">
       <div class="who">
-        <div class="avatar">
+        <div
+          class="avatar"
+          :class="`ui-av-${avatarToneOf(customerName)}`"
+        >
           {{ initial }}
           <span
             v-if="platform === 'line' || platform === 'facebook'"
@@ -102,6 +105,14 @@
             <dt>開始時間</dt>
             <dd>{{ createdAtText }}</dd>
           </div>
+          <div v-if="lastInboundText">
+            <dt>客戶最後來訊</dt>
+            <dd>{{ lastInboundText }}</dd>
+          </div>
+          <div v-if="customerSinceText">
+            <dt>客戶建檔</dt>
+            <dd>{{ customerSinceText }}</dd>
+          </div>
           <div v-if="messageCount !== null && hasMore">
             <dt>已載入訊息</dt>
             <dd>{{ messageCount }} 則</dd>
@@ -124,7 +135,7 @@
 import { computed } from 'vue'
 import type { Conversation } from '@/types'
 import type { Tag } from '@/api/tags'
-import { initialOf, platformName, statusOf } from '@/composables/conversation/useConversationRowMeta'
+import { avatarToneOf, initialOf, platformName, relativeTime, statusOf } from '@/composables/conversation/useConversationRowMeta'
 
 const props = defineProps<{
   conversation?: Conversation
@@ -169,6 +180,17 @@ const activity = computed(() => {
   return { customer: customer.length, agent: agent.length, firstReply }
 })
 
+const lastInboundText = computed(() => {
+  const times = (props.messages ?? []).filter(m => m.senderType === 'customer').map(timeOf).filter(Number.isFinite)
+  return times.length > 0 ? relativeTime(Math.max(...times), Date.now()) : ''
+})
+
+const customerSinceText = computed(() => {
+  const created = props.conversation?.customer?.createdAt
+  const d = created ? new Date(created) : null
+  return d && !Number.isNaN(d.getTime()) ? d.toLocaleDateString('zh-TW', { year: 'numeric', month: 'numeric', day: 'numeric' }) : ''
+})
+
 const createdAtText = computed(() => {
   const created = props.conversation?.createdAt
   if (!created) { return '' }
@@ -204,7 +226,6 @@ const createdAtText = computed(() => {
   height: 80px;
   margin-bottom: 10px;
   border-radius: 50%;
-  background: linear-gradient(160deg, #5aa8ff, #1d6fe0);
   color: #fff;
   font: 600 30px var(--ui-font-display);
 }

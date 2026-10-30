@@ -83,8 +83,8 @@ const handleSelect = (reply: QuickReply) => {
   gap: 8px;
   padding: 10px 0 2px;
   overflow-x: auto;
-  -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 40px), transparent);
-  mask-image: linear-gradient(90deg, #000 calc(100% - 40px), transparent);
+  -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 56px), transparent);
+  mask-image: linear-gradient(90deg, #000 calc(100% - 56px), transparent);
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
 }
@@ -144,6 +144,16 @@ const handleSelect = (reply: QuickReply) => {
 
   to {
     opacity: 0;
+  }
+}
+
+/* Wide screens have room: the chips wrap instead of hiding behind a fade */
+@media (min-width: 769px) {
+  .quick-replies {
+    flex-wrap: wrap;
+    overflow: visible;
+    -webkit-mask-image: none;
+    mask-image: none;
   }
 }
 

@@ -461,7 +461,8 @@ const channelRows = computed(() => {
 
 function toggleChannel(key: string) {
   const current = filterComposable.filters.value.platform
-  filterComposable.updateFilter('platform', current === key ? '' : key)
+  const next = key === 'line' || key === 'facebook' ? key : ''
+  filterComposable.updateFilter('platform', current === next ? '' : next)
 }
 
 function toggleTeam(filterId: number) {
@@ -471,8 +472,8 @@ function toggleTeam(filterId: number) {
 // One line (<= 60 chars). With the rail visible (wide screens) the wait numbers live there, so the line carries only
 // what the rail does not; on tablet and phone the rail is hidden and the line keeps them.
 const railVisible = ref(typeof window !== 'undefined' && window.matchMedia?.('(min-width: 1025px)').matches === true)
-let railMql: MediaQueryList | null = null
-const onRailChange = (e: MediaQueryListEvent) => { railVisible.value = e.matches }
+let railMql: ReturnType<typeof window.matchMedia> | null = null
+const onRailChange = (e: { matches: boolean }) => { railVisible.value = e.matches }
 
 const subtitle = computed(() => {
   if (!counts.value) { return '' }
