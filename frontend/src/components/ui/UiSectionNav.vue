@@ -53,20 +53,21 @@
         @keydown.esc="closeMenu(true)"
       >
         <span class="ui-section-pull-label">{{ activeLabel }}</span>
+        <!-- SF Symbols "chevron.up.chevron.down": the iOS pull-down affordance -->
         <svg
           class="ui-section-pull-chev"
           :class="{ 'is-open': menuOpen }"
-          width="14"
-          height="14"
-          viewBox="0 0 24 24"
+          width="12"
+          height="16"
+          viewBox="0 0 12 16"
           fill="none"
           stroke="currentColor"
-          stroke-width="2.4"
+          stroke-width="2"
           stroke-linecap="round"
           stroke-linejoin="round"
           aria-hidden="true"
         >
-          <path d="m6 9 6 6 6-6" />
+          <path d="m2.5 6 3.5-3.5L9.5 6M2.5 10 6 13.5 9.5 10" />
         </svg>
       </button>
       <ul
@@ -85,7 +86,20 @@
             :class="{ 'is-on': isActive(item.path) }"
             @click="closeMenu(false)"
           >
-            {{ item.label }}
+            <span>{{ item.label }}</span>
+            <svg
+              v-if="isActive(item.path)"
+              class="ui-section-pull-check"
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.6"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            ><path d="m5 12.5 4.5 4.5L19 7" /></svg>
           </router-link>
         </li>
       </ul>
@@ -243,21 +257,27 @@ onBeforeUnmount(() => observer?.disconnect())
   }
 
   .ui-section-pull-btn {
-    display: flex;
+    display: inline-flex;
+    gap: 10px;
     align-items: center;
-    justify-content: space-between;
-    width: 100%;
+    max-width: 100%;
     min-height: 44px;
-    padding: 0 14px;
+    padding: 0 16px 0 18px;
     border: 0;
-    border-radius: 12px;
-    background: var(--ui-surface);
-    box-shadow: var(--ui-shadow-pill), inset 0 0 0 1px var(--ui-field-edge);
-    color: var(--ui-ink);
+    border-radius: 999px;
+    background: var(--section-hue-soft, var(--ui-accent-soft));
+    color: var(--section-ink, var(--ui-accent));
     font: inherit;
     font-size: 15px;
     font-weight: 600;
     cursor: pointer;
+    transition:
+      background var(--ui-dur) var(--ui-ease),
+      transform 120ms var(--ui-ease);
+  }
+
+  .ui-section-pull-btn:active {
+    transform: scale(0.97);
   }
 
   .ui-section-pull-btn:focus-visible,
@@ -267,42 +287,70 @@ onBeforeUnmount(() => observer?.disconnect())
   }
 
   .ui-section-pull-chev {
-    color: var(--ui-ink-2);
+    flex: none;
     transition: transform 200ms ease-out;
   }
 
   .ui-section-pull-chev.is-open {
-    transform: rotate(180deg);
+    transform: scale(1.12);
   }
 
+  /* The menu is a frosted popover anchored under the button, like a UIKit pull-down menu */
   .ui-section-pull-menu {
     position: absolute;
     z-index: 30;
-    top: calc(100% + 6px);
+    top: calc(100% + 8px);
     left: 0;
-    right: 0;
+    width: min(280px, 100%);
     margin: 0;
-    padding: 6px;
+    padding: 6px 0;
     list-style: none;
-    border-radius: 14px;
-    background: var(--ui-surface);
-    box-shadow: 0 12px 32px rgb(0 0 0 / 0.16), inset 0 0 0 1px var(--ui-sep);
+    border-radius: 16px;
+    background: var(--ui-glass);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+    backdrop-filter: blur(24px) saturate(180%);
+    box-shadow: 0 16px 40px rgb(0 0 0 / 0.18), 0 0 0 0.5px var(--ui-sep);
+    transform-origin: 24px 0;
+    animation: ui-section-pull-in 180ms var(--ui-ease);
+  }
+
+  .ui-section-pull-menu li + li {
+    box-shadow: inset 0 0.5px 0 var(--ui-sep);
+    margin: 0 16px;
   }
 
   .ui-section-pull-menu a {
     display: flex;
     align-items: center;
-    min-height: 44px;
-    padding: 0 12px;
-    border-radius: 9px;
+    justify-content: space-between;
+    min-height: 46px;
+    margin: 0 -16px;
+    padding: 0 16px;
     color: var(--ui-ink);
-    font-size: 15px;
+    font-size: 16px;
     text-decoration: none;
   }
 
   .ui-section-pull-menu a.is-on {
-    background: var(--ui-sel-bg);
+    color: var(--section-ink, var(--ui-accent));
     font-weight: 600;
+  }
+
+  .ui-section-pull-check {
+    flex: none;
+  }
+}
+
+@keyframes ui-section-pull-in {
+  from {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ui-section-pull-menu {
+    animation: none;
   }
 }
 </style>
