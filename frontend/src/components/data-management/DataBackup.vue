@@ -5,7 +5,7 @@
       subtitle="整個資料庫備份在雲端儲存（Cloudflare R2），可隨時下載備份檔。"
     />
 
-    <!-- Lead: the newest automatic backup, the 30-day coverage ring and the one primary action -->
+    <!-- Lead: the newest automatic backup, the 30-day coverage arc and the one primary action -->
     <RingLead
       kicker="最近自動備份"
       :value="leadValue"
@@ -624,7 +624,7 @@ const storageLine = computed(() =>
     ? `儲存 ${formatBytes(summary.value.size)} · ${summary.value.total.toLocaleString()} 份備份`
     : '')
 
-/** One ring: days of the last 30 (or the daily retention) that have at least one backup */
+/** One arc: days of the last 30 (or the daily retention) that have at least one backup */
 const coverageDays = computed(() => ({
   have: strip.value.filter(cell => cell.count > 0).length,
   total: strip.value.length

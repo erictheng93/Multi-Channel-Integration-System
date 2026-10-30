@@ -778,7 +778,7 @@ const phoneChart = computed(() => {
 })
 
 /** Peak and mean over the loaded history (client-side, no extra request) */
-/** One ring: connections now against the highest sample of the chosen range (same series, so they compare) */
+/** One arc: connections now against the highest sample of the chosen range (same series, so they compare) */
 const connectionRings = computed<ServiceRing[]>(() => {
   const peak = stats.value.peakConnections
   if (!metrics.value || peak === null || peak <= 0) { return [] }

@@ -352,7 +352,7 @@ const heroValue = computed<string | null>(() => {
 
 const leadToneName = computed(() => ({ ok: 'good', warn: 'warn', bad: 'bad', unknown: 'none' } as const)[overallTone.value])
 
-/** One ring: services healthy of all listed (an unchecked LINE webhook leaves the ring open, which is the honest picture) */
+/** One arc: services healthy of all listed (an unchecked LINE webhook leaves the arc open, which is the honest picture) */
 const healthRings = computed<ServiceRing[]>(() => {
   if (rows.value.every(row => row.tone === 'unknown')) { return [] }
   return [{
