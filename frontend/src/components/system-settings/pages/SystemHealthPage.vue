@@ -12,12 +12,19 @@
       :busy="controller.processing.value && !controller.healthOverall.value"
       :tone="leadToneName"
       :meaning="heroSubtitle"
-      summary="服務狀態"
-      :rings="healthRings"
-      :center-value="`${counts.healthy}/${rows.length}`"
-      center-label="服務正常"
-      :size="144"
     >
+      <template
+        v-if="healthBars.length > 0"
+        #visual
+      >
+        <LeadBars
+          summary="各服務回應時間"
+          :bars="healthBars"
+          :max="latencyScale"
+          :height="96"
+          caption="回應時間，單位毫秒；顏色為檢查結果"
+        />
+      </template>
       <ul
         v-if="rows.length > 0"
         class="hero-counts"
@@ -105,17 +112,6 @@
               </div>
             </div>
             <div class="lat">
-              <span
-                v-if="row.latencyMs !== null"
-                class="lat-track"
-                aria-hidden="true"
-              >
-                <span
-                  class="lat-bar"
-                  :class="row.tone"
-                  :style="{ width: `${barPct(row.latencyMs)}%` }"
-                />
-              </span>
               <span
                 class="lat-n"
                 :class="row.tone"
@@ -209,7 +205,7 @@
 
 <script setup lang="ts">
 import RingLead from '@/components/lead/RingLead.vue'
-import type { ServiceRing } from '@/components/ui/ServiceRings.vue'
+import LeadBars, { type LeadBar } from '@/components/lead/LeadBars.vue'
 import UiEmptyState from '@/components/ui/UiEmptyState.vue'
 import { computed, inject, onMounted } from 'vue'
 import { SETTINGS_CONTROLLER_KEY } from '@/types/system-settings'
@@ -321,10 +317,9 @@ const counts = computed(() => ({
   unchecked: rows.value.filter(row => row.tone === 'unknown').length
 }))
 
-/** Bar length inside each row: relative to the slowest measured service, floored at 100 ms so 12 ms vs 64 ms is not exaggerated */
+/** Bar scale: the slowest measured service, floored at 100 ms so 12 ms vs 64 ms is not exaggerated */
 const latencyScale = computed(() =>
   Math.max(100, ...rows.value.map(row => row.latencyMs ?? 0)))
-const barPct = (ms: number): number => Math.max(3, Math.round((ms / latencyScale.value) * 100))
 
 const overallTone = computed<'ok' | 'warn' | 'bad' | 'unknown'>(() => {
   if (counts.value.critical > 0) {
@@ -352,16 +347,21 @@ const heroValue = computed<string | null>(() => {
 
 const leadToneName = computed(() => ({ ok: 'good', warn: 'warn', bad: 'bad', unknown: 'none' } as const)[overallTone.value])
 
-/** One arc: services healthy of all listed (an unchecked LINE webhook leaves the arc open, which is the honest picture) */
-const healthRings = computed<ServiceRing[]>(() => {
+const BAR_TONE = { ok: 'good', warn: 'warn', bad: 'bad', unknown: 'muted' } as const
+
+/** Short bar label: the part in parentheses when a service has one (資料庫 (D1) -> D1) */
+const shortName = (name: string): string => /\(([^)]+)\)\s*$/.exec(name)?.[1] ?? name
+
+/** One bar per listed service, as tall as its measured latency; an unchecked one is a dash, not a made-up zero */
+const healthBars = computed<LeadBar[]>(() => {
   if (rows.value.every(row => row.tone === 'unknown')) { return [] }
-  return [{
-    label: '服務正常',
-    value: counts.value.healthy,
-    total: rows.value.length,
-    of: '項服務',
-    hue: overallTone.value === 'bad' ? 'var(--ui-red)' : (overallTone.value === 'warn' ? 'var(--ui-orange)' : 'var(--ui-green)')
-  }]
+  return rows.value.map(row => ({
+    key: row.key,
+    label: shortName(row.name),
+    value: row.latencyMs ?? 0,
+    display: row.latencyMs !== null ? `${row.latencyMs.toLocaleString('en-US')}ms` : '—',
+    tone: BAR_TONE[row.tone]
+  }))
 })
 
 const heroSubtitle = computed(() => {
@@ -369,9 +369,11 @@ const heroSubtitle = computed(() => {
     return '正在取得各項服務的狀態。'
   }
   const attention = rows.value.filter(row => row.tone === 'warn' || row.tone === 'bad')
+  const unchecked = rows.value.filter(row => row.tone === 'unknown')
+  const pending = unchecked.length > 0 ? `，${unchecked.map(row => row.name).join('、')} 尚未檢查` : ''
   const summary = attention.length > 0
     ? `${attention.map(row => row.name).join('、')} 需要注意。`
-    : `${counts.value.healthy} 項服務運作正常。`
+    : `${counts.value.healthy} 項服務運作正常${pending}。`
   const checked = controller.healthCheckedAt.value
   const when = checked ? formatChecked(checked) : ''
   return when ? `${summary}${when} 檢查。` : summary
@@ -417,30 +419,6 @@ onMounted(() => {
   display: grid;
   gap: 22px;
   min-width: 0;
-}
-
-.lat-track {
-  display: block;
-  width: 140px;
-  height: 6px;
-  overflow: hidden;
-  border-radius: 999px;
-  background: var(--ui-fill);
-}
-
-.lat-bar {
-  display: block;
-  height: 100%;
-  border-radius: 999px;
-  background: var(--ui-green);
-}
-
-.lat-bar.warn {
-  background: var(--ui-orange);
-}
-
-.lat-bar.bad {
-  background: var(--ui-red);
 }
 
 /* LINE webhook is its own on-demand state, not one more row of the always-on checks */
@@ -587,11 +565,6 @@ onMounted(() => {
 @media (max-width: 768px) {
   .lat-n {
     width: auto;
-  }
-
-  /* the number already says it; the bar would squeeze the row's own text on a phone */
-  .lat-track {
-    display: none;
   }
 
   .wh {

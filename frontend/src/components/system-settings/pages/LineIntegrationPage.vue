@@ -13,9 +13,6 @@
       :value="statusLabel"
       :tone="statusTone"
       :meaning="testMeta"
-      summary="LINE 連線概況"
-      :rings="rings"
-      :size="144"
     >
       <p
         v-if="lastTest && lastTest.status === 'error' && lastTest.message"
@@ -23,6 +20,9 @@
       >
         {{ lastTest.message }}
       </p>
+      <template #visual>
+        <SettingsLineQuota bare />
+      </template>
       <template #actions>
         <button
           type="button"
@@ -47,7 +47,6 @@
       />
     </div>
     <div class="col col-b">
-      <SettingsLineQuota @snapshot="quotaItems = $event" />
       <aside
         class="item-webhook"
         aria-label="Webhook 設定"
@@ -65,22 +64,18 @@
 </template>
 
 <script setup lang="ts">
-import { computed, inject, ref } from 'vue'
+import { computed, inject } from 'vue'
 import { SETTINGS_CONTROLLER_KEY } from '@/types/system-settings'
 import { LineIntegrationForm } from '@/components/system-settings'
 import LineDangerZone from '@/components/system-settings/LineDangerZone.vue'
 import LineSetupGuide from '@/components/system-settings/LineSetupGuide.vue'
 import SettingsLineQuota from '@/components/system-settings/SettingsLineQuota.vue'
 import RingLead from '@/components/lead/RingLead.vue'
-import type { ServiceRing } from '@/components/ui/ServiceRings.vue'
-import type { LineQuotaChannel } from '@/api/broadcasts'
 
 const controller = inject(SETTINGS_CONTROLLER_KEY)
 if (!controller) {
   throw new Error('SystemSettingsController not provided')
 }
-
-const quotaItems = ref<LineQuotaChannel[]>([])
 
 const line = computed(() => controller.settings.integrations.line)
 const lastTest = computed(() => line.value.lastTest)
@@ -124,33 +119,6 @@ const testMeta = computed(() => {
   return `${result} ${formatTestedAt(test.testedAt)} · 回應 ${test.latencyMs.toLocaleString()} ms`
 })
 
-/** Rings: credentials saved of the three Messaging API fields, and this month's sent against the plan limit */
-const rings = computed<ServiceRing[]>(() => {
-  const list: ServiceRing[] = []
-  const limited = quotaItems.value.filter(c => c.limited && c.limit !== null && c.used !== null)
-  if (limited.length > 0) {
-    const used = limited.reduce((sum, c) => sum + (c.used ?? 0), 0)
-    const limit = limited.reduce((sum, c) => sum + (c.limit ?? 0), 0)
-    const pct = limit > 0 ? used / limit : 0
-    list.push({
-      label: '本月已發送',
-      value: used,
-      total: limit,
-      of: '則額度',
-      hue: pct >= 0.9 ? 'var(--ui-red)' : (pct >= 0.7 ? 'var(--ui-orange)' : 'var(--section-hue)')
-    })
-  }
-  if (credentialFields.value.length > 0) {
-    list.push({
-      label: '憑證已設定',
-      value: credentialFields.value.filter(f => f.configured).length,
-      total: credentialFields.value.length,
-      of: '項',
-      hue: 'var(--ui-green)'
-    })
-  }
-  return list
-})
 </script>
 
 <style scoped>
@@ -177,7 +145,6 @@ const rings = computed<ServiceRing[]>(() => {
 }
 
 .item-webhook {
-  grid-column: 1 / -1;
   min-width: 0;
 }
 

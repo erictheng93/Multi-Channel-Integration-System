@@ -6,11 +6,17 @@
 -->
 
 <template>
-  <section aria-label="LINE 訊息額度">
-    <h2 class="ui-group-label">
+  <section
+    aria-label="LINE 訊息額度"
+    :class="{ 'is-bare': bare }"
+  >
+    <h2
+      v-if="!bare"
+      class="ui-group-label"
+    >
       LINE 訊息額度
     </h2>
-    <div class="ui-group">
+    <div :class="bare ? 'bare-box' : 'ui-group'">
       <div class="ui-card-head">
         <div>
           <h3 class="ui-card-title">
@@ -100,7 +106,10 @@
         </li>
       </ul>
     </div>
-    <p class="ui-group-foot">
+    <p
+      v-if="!bare"
+      class="ui-group-foot"
+    >
       額度依 LINE 官方帳號方案計算。
     </p>
   </section>
@@ -116,6 +125,10 @@ import {
   type LineQuotaSnapshot
 } from '@/api/broadcasts'
 
+defineProps<{
+  /** Rendered inside a lead card: no group chrome, no label, no footnote */
+  bare?: boolean
+}>()
 const emit = defineEmits<{ snapshot: [items: LineQuotaChannel[]] }>()
 
 const { showError, showSuccess } = useToast()
@@ -204,6 +217,35 @@ function formatTime(iso: string): string {
 </script>
 
 <style scoped>
+.is-bare :deep(.ui-card-head) {
+  padding: 0 0 14px;
+}
+
+.is-bare .state {
+  padding: 12px 0;
+  text-align: left;
+}
+
+.is-bare .quota {
+  padding: 0;
+}
+
+.is-bare .quota-name {
+  font-size: 14px;
+}
+
+.is-bare .quota-big {
+  font-size: 40px;
+}
+
+.is-bare .quota-big small {
+  font-size: 17px;
+}
+
+.is-bare .qbar {
+  height: 12px;
+}
+
 .state {
   padding: 20px 22px 28px;
   text-align: center;

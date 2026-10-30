@@ -21,39 +21,32 @@
           class="ov-big"
           :class="healthTile.tone"
         >
-          {{ healthTile.state }}
+          {{ verdict }}
         </div>
         <div class="ov-meaning">
           {{ healthTile.sub }}
         </div>
-        <div
-          v-if="backupTile.tone === 'green'"
-          class="ov-meaning"
+        <p
+          class="ov-channels"
+          :class="channelTone"
         >
-          最近自動備份 {{ backupTile.state }}
-        </div>
+          <span
+            class="ov-dot"
+            aria-hidden="true"
+          />{{ channelLine }}
+        </p>
       </div>
-      <div class="ov-rings">
-        <ServiceRings
-          summary="系統狀態"
-          :rings="rings"
-          :size="144"
-          tagged
-        />
-      </div>
-    </article>
-
-    <div class="ov-grid">
-      <div class="ov-col">
-        <h2 class="ui-group-label">
-          連線與備份
-        </h2>
-        <div class="ui-group ov-group">
+      <ul
+        class="ov-list"
+        aria-label="連線與備份狀態"
+      >
+        <li
+          v-for="tile in tiles"
+          :key="tile.key"
+        >
           <router-link
-            v-for="tile in tiles"
-            :key="tile.key"
             :to="tile.to"
-            class="ui-row is-nav ov-row"
+            class="ov-row"
           >
             <span
               class="ov-ico"
@@ -72,7 +65,7 @@
               />
               <!-- eslint-enable vue/no-v-html -->
             </span>
-            <span class="ui-row-main">
+            <span class="ov-text">
               <span class="ov-label">{{ tile.label }}</span>
               <span class="ov-sub">{{ tile.sub }}</span>
             </span>
@@ -80,19 +73,29 @@
               class="ov-state"
               :class="tile.tone"
             >{{ tile.state }}</span>
+            <svg
+              class="ov-chev"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.4"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            ><path d="m9 6 6 6-6 6" /></svg>
           </router-link>
-        </div>
-      </div>
-      <div class="ov-col">
-        <slot name="aside" />
-      </div>
+        </li>
+      </ul>
+    </article>
+
+    <div class="ov-aside">
+      <slot name="aside" />
     </div>
   </section>
 </template>
 
 <script setup lang="ts">
 import { computed, inject, onMounted, ref } from 'vue'
-import ServiceRings, { type ServiceRing } from '@/components/ui/ServiceRings.vue'
 import { SETTINGS_CONTROLLER_KEY } from '@/types/system-settings'
 import type { IntegrationLastTest, IntegrationStatus } from '@/types/system-settings'
 import { SETTINGS_SECTIONS } from './settings-pages'
@@ -202,29 +205,23 @@ const backupTile = computed<Tile>(() => {
   }
 })
 
-// Service Rings of the system: healthy services of those checked, connected channels of the two integrations
-const rings = computed<ServiceRing[]>(() => {
-  const rows = controller.healthCheckResults.value
-  const list: ServiceRing[] = []
-  if (rows.length > 0) {
-    list.push({
-      label: '服務正常',
-      value: rows.filter(r => r.status === 'healthy').length,
-      total: rows.length,
-      of: '項服務',
-      hue: 'var(--ui-green)',
-    })
-  }
-  const channels = [controller.settings.integrations.line.status, controller.settings.integrations.facebook.status]
-  list.push({
-    label: '頻道已連線',
-    value: channels.filter(status => status === 'connected').length,
-    total: channels.length,
-    of: '個頻道',
-    hue: 'var(--section-hue)',
-  })
-  return list
+const CHANNEL_NAMES = { line: 'LINE', facebook: 'Facebook' } as const
+
+/** The lead must not say 正常 beside a channel that is down: services and channels are stated side by side */
+const verdict = computed(() => {
+  const state = healthTile.value.state
+  return state === '正常' || state === '降級' || state === '異常' ? `服務${state}` : state
 })
+
+const disconnected = computed(() => (['line', 'facebook'] as const)
+  .filter(key => controller.settings.integrations[key].status !== 'connected')
+  .map(key => CHANNEL_NAMES[key]))
+
+const channelLine = computed(() => disconnected.value.length === 0
+  ? '2 個頻道皆已連線'
+  : `${disconnected.value.length} 個頻道未連線 · ${disconnected.value.join('、')}`)
+
+const channelTone = computed(() => disconnected.value.length === 0 ? 'green' : 'orange')
 
 const tiles = computed<Tile[]>(() => [
   integrationTile('line', 'LINE 官方帳號', controller.settings.integrations.line.status, controller.settings.integrations.line.lastTest),
@@ -243,11 +240,10 @@ const tiles = computed<Tile[]>(() => [
 
 .ov-lead {
   display: grid;
-  grid-template-columns: auto auto;
-  justify-content: center;
-  gap: 24px 72px;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  gap: 24px 48px;
   align-items: center;
-  padding: 24px 40px;
+  padding: 24px 32px;
 }
 
 .ov-main {
@@ -290,43 +286,82 @@ const tiles = computed<Tile[]>(() => [
   color: var(--ui-ink-2);
 }
 
-.ov-rings {
-  position: relative;
-  display: flex;
-  justify-content: center;
+.ov-channels {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  margin: 8px 0 0;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 600;
 }
 
-.ov-rings::before {
+.ov-channels.green {
+  background: var(--ui-green-soft);
+  color: var(--ui-green-ink);
+}
+
+.ov-channels.orange {
+  background: var(--ui-orange-soft);
+  color: var(--ui-orange-ink);
+}
+
+.ov-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentcolor;
+}
+
+/* the status list lives inside the lead: hairline on its left, rows separated by inset hairlines */
+.ov-list {
+  position: relative;
+  display: grid;
+  margin: 0;
+  padding: 0 0 0 32px;
+  list-style: none;
+}
+
+.ov-list::before {
   position: absolute;
   top: 4px;
   bottom: 4px;
-  left: -36px;
+  left: 0;
   width: 0.5px;
   background: var(--ui-sep);
   content: '';
 }
 
-.ov-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 20px 16px;
-  align-items: stretch;
-}
-
-/* both columns end together: the aside group stretches to the height of the link list */
-.ov-col {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-
-.ov-col > :deep(.ui-group) {
-  flex: 1;
+.ov-list li + li {
+  box-shadow: inset 0 0.5px 0 var(--ui-sep);
 }
 
 .ov-row {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  min-height: 64px;
+  padding: 8px 0;
   color: inherit;
   text-decoration: none;
+}
+
+.ov-text {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+}
+
+.ov-chev {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  color: var(--ui-faint);
+}
+
+.ov-aside {
+  min-width: 0;
 }
 
 .ov-row:focus-visible {
@@ -405,28 +440,27 @@ const tiles = computed<Tile[]>(() => [
 }
 
 @media (max-width: 1024px) {
-  .ov-grid {
+  .ov-lead {
     grid-template-columns: minmax(0, 1fr);
+    padding: 22px 24px;
+  }
+
+  .ov-list {
+    padding-left: 0;
+  }
+
+  .ov-list::before {
+    display: none;
   }
 }
 
 @media (max-width: 768px) {
   .ov-lead {
-    grid-template-columns: minmax(0, 1fr);
-    justify-content: stretch;
     padding: 20px;
   }
 
   .ov-big {
     font-size: 44px;
-  }
-
-  .ov-rings {
-    justify-content: flex-start;
-  }
-
-  .ov-rings::before {
-    display: none;
   }
 
   .ov-sub {

@@ -15,20 +15,19 @@
         <div class="ui-group">
           <ul
             v-if="controller.healthCheckResults.value.length > 0"
-            class="ui-list lat-list"
+            class="lat-list"
           >
             <li
               v-for="row in controller.healthCheckResults.value"
               :key="row.key"
-              class="ui-row is-flush lat-row"
+              class="lat-cell"
             >
-              <span
-                class="lat-dot"
-                :class="row.status"
-                aria-hidden="true"
-              />
-              <span class="ui-row-main">
-                <span class="ui-row-title">{{ row.name }}</span>
+              <span class="lat-name">
+                <span
+                  class="lat-dot"
+                  :class="row.status"
+                  aria-hidden="true"
+                />{{ row.name }}
               </span>
               <span class="lat-ms">{{ row.responseTime ?? '—' }}<small v-if="row.responseTime !== undefined"> ms</small></span>
             </li>
@@ -130,18 +129,21 @@ const advancedRows = computed(() => {
 
 
 .lat-list {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px 16px;
   margin: 0;
-  padding: 0;
+  padding: 16px 22px;
   list-style: none;
 }
 
-/* rows share the group's height, so it ends level with the link list beside it */
-.lat-row {
-  flex: 1;
-  min-height: 44px;
+.lat-name {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ui-muted);
 }
 
 .lat-dot {
@@ -165,7 +167,9 @@ const advancedRows = computed(() => {
 }
 
 .lat-ms {
-  font: 600 14px var(--ui-font-display);
+  display: block;
+  margin: 4px 0 0 17px;
+  font: 600 17px var(--ui-font-display);
   font-variant-numeric: tabular-nums;
 }
 
@@ -182,7 +186,17 @@ const advancedRows = computed(() => {
   color: var(--ui-muted);
 }
 
+@media (max-width: 1024px) {
+  .lat-list {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
 @media (max-width: 768px) {
+  .lat-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .adv-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
