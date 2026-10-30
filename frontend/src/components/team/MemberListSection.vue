@@ -504,11 +504,11 @@ function handleSelectPage() {
 
 <style scoped>
 .member-section {
-  --member-cols: minmax(220px, 1.2fr) minmax(220px, 1.6fr) 150px 40px;
+  --member-cols: minmax(220px, 1.3fr) minmax(280px, 1fr) 140px 40px;
   padding-bottom: 6px;
 }
 .member-section:has(.selection-mode) {
-  --member-cols: 24px minmax(220px, 1.2fr) minmax(220px, 1.6fr) 150px 40px;
+  --member-cols: 24px minmax(220px, 1.3fr) minmax(280px, 1fr) 140px 40px;
 }
 
 .legend {
