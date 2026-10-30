@@ -75,7 +75,7 @@
               >從未回覆</span>
             </template>
             <span
-              v-else-if="replyStateOf(conversation, now).state === 'waiting'"
+              v-else-if="replyStateOf(conversation, now).state === 'waiting' && isHotWait(conversation, now)"
               class="ui-pill ui-pill-orange"
               :title="WAITING_HINT"
             >{{ replyStateOf(conversation, now).text }}</span>
@@ -108,6 +108,7 @@ import {
   WAITING_HINT,
   freeReplySeconds,
   initialOf,
+  isHotWait,
   STALE_HINT,
   replyStateOf,
   relativeTime,
@@ -312,7 +313,7 @@ const getLastMessageText = (conversation: Conversation) => {
 }
 
 .last-message.from-agent {
-  color: var(--ui-muted);
+  color: var(--ui-ink-2);
 }
 
 .card-pills {
@@ -345,6 +346,26 @@ const getLastMessageText = (conversation: Conversation) => {
 
 .state-text.state-replied::before {
   background: var(--ui-green);
+}
+
+.state-text.state-waiting {
+  color: var(--ui-orange-ink);
+}
+
+.state-text.state-waiting::before {
+  background: var(--ui-orange);
+}
+
+/* Unread: the same gutter dot as the desktop list */
+.conversation-card.has-unread::after {
+  position: absolute;
+  top: 24px;
+  left: 4px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--section-hue);
+  content: '';
 }
 
 .team-text:not(.unassigned) {

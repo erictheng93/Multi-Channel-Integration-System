@@ -133,6 +133,8 @@
           <span class="stat-label">未讀</span>
         </div>
 
+        <span class="trigger-filter-label">篩選</span>
+
         <!-- Expand chevron -->
         <svg
           class="trigger-chevron"
@@ -754,10 +756,17 @@ function clearAll() {
   color: var(--ui-accent);
 }
 
+.trigger-filter-label {
+  display: none;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ui-ink-2);
+}
+
 .trigger-chevron {
   width: 16px;
   height: 16px;
-  color: var(--ui-faint);
+  color: var(--ui-muted);
   transition: transform var(--ui-dur) var(--ui-ease);
 }
 
@@ -1052,6 +1061,10 @@ function clearAll() {
 @media (max-width: 480px) {
   .trigger-stats {
     display: none;
+  }
+
+  .trigger-filter-label {
+    display: inline;
   }
 }
 </style>

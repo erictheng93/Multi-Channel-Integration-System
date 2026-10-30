@@ -21,7 +21,7 @@
       :class="{ 'has-select': selectionMode }"
       aria-hidden="true"
     >
-      <span>客戶</span>
+      <span class="col-customer">客戶</span>
       <span>最後訊息</span>
       <span>狀態</span>
       <span>負責人</span>
@@ -122,11 +122,6 @@
               class="state-text"
               :class="`state-${replyStateOf(conversation, now).state}`"
             >{{ replyStateOf(conversation, now).text }}</span>
-            <span
-              v-if="freeReplySeconds(conversation, now) !== null"
-              class="free-pill"
-              title="Reply API 免費回覆時間"
-            >免費回覆 {{ freeReplySeconds(conversation, now) }} 秒</span>
           </div>
         </div>
         <div class="owner-cell">
@@ -144,6 +139,11 @@
           :title="formatFull(getUpdatedAt(conversation))"
         >
           <span class="time-text">{{ relativeTime(getUpdatedAt(conversation), now) }}</span>
+          <span
+            v-if="freeReplySeconds(conversation, now) !== null"
+            class="free-pill"
+            title="Reply API 免費回覆時間"
+          >免費回覆 {{ freeReplySeconds(conversation, now) }} 秒</span>
         </div>
       </li>
     </TransitionGroup>
@@ -264,7 +264,7 @@ const getLastMessageText = (conversation: Conversation) => {
 
 <style scoped>
 .desktop-table {
-  --conv-cols: minmax(180px, 0.9fr) minmax(0, 1.3fr) 120px 96px 84px;
+  --conv-cols: minmax(190px, 0.9fr) minmax(0, 1.3fr) 124px 96px 104px;
   display: block;
 }
 
@@ -283,6 +283,10 @@ const getLastMessageText = (conversation: Conversation) => {
 
 .col-head.has-select {
   padding-left: 68px;
+}
+
+.col-head .col-customer {
+  padding-left: 58px;
 }
 
 .col-head .col-end {
@@ -499,8 +503,9 @@ const getLastMessageText = (conversation: Conversation) => {
   color: var(--ui-ink);
 }
 
+/* an answered row reads like the others: same ink, only unread rows go heavier */
 .last-message.from-agent {
-  color: var(--ui-muted);
+  color: var(--ui-ink-2);
 }
 
 .status-cell,
@@ -518,7 +523,7 @@ const getLastMessageText = (conversation: Conversation) => {
 .waited {
   font-size: 13px;
   font-variant-numeric: tabular-nums;
-  color: var(--ui-orange-ink);
+  color: var(--ui-muted);
 }
 
 .status-line .ui-pill-orange {
