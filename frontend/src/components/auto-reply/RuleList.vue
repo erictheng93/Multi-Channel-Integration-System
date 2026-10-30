@@ -1,6 +1,6 @@
 <template>
   <div class="rule-list">
-    <!-- Toolbar -->
+    <!-- Toolbar: the add button lives in the page header -->
     <div class="rule-list__toolbar">
       <div class="rule-list__filters">
         <input
@@ -29,13 +29,6 @@
           </option>
         </select>
       </div>
-      <button
-        class="btn btn-primary"
-        type="button"
-        @click="emit('start-create')"
-      >
-        ＋ 新增規則
-      </button>
     </div>
 
     <!-- New rule editor -->
@@ -189,24 +182,19 @@ const emit = defineEmits<{
 
 .rule-list__toolbar {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 14px;
 }
 
 .rule-list__filters {
   display: flex;
-  flex: 0 1 auto;
-  flex-wrap: nowrap;
+  flex: 1 1 auto;
   align-items: center;
   gap: 10px;
   min-width: 0;
 }
 
 .rule-list__search {
-  flex: 0 1 300px;
-  min-width: 180px;
+  flex: 1 1 auto;
+  min-width: 0;
   height: 40px;
   border-radius: 999px;
   background: var(--ui-surface);
@@ -240,23 +228,11 @@ const emit = defineEmits<{
 }
 
 @media (max-width: 768px) {
-  /* Phone: search on its own line, then type select and the add button share one */
-  .rule-list__filters {
-    display: contents;
-  }
-
-  .rule-list__search {
-    flex: 1 1 100%;
-    max-width: none;
-  }
-
+  /* Phone: the search takes the row, the type filter sits beside it as a compact chip */
   .rule-list__filter-select {
-    flex: 1 1 0;
-    min-width: 0;
-  }
-
-  .rule-list__toolbar > .btn {
     flex: none;
+    width: 128px;
+    min-width: 0;
   }
 }
 
