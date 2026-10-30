@@ -117,7 +117,7 @@
             >
               通知偏好
             </h2>
-            <div class="ui-group">
+            <div class="ui-group notify-card">
               <div
                 class="ui-row"
                 data-testid="device-notify"
@@ -127,20 +127,25 @@
                 </div>
                 <span
                   class="ui-pill ui-pill-dot"
-                  :class="devicePerm.tone === 'on' ? 'ui-pill-green' : 'ui-pill-orange'"
+                  :class="devicePerm.tone === 'on' ? 'ui-pill-green' : 'ui-pill-red'"
                 >{{ devicePerm.label }}</span>
               </div>
-              <RouterLink
-                class="ui-row is-nav row-link"
-                :to="{ path: '/notifications', query: { settings: '1' } }"
-              >
-                <div class="ui-row-main row-label-strong">
-                  開啟通知設定
-                </div>
-              </RouterLink>
               <p class="notify-hint">
                 {{ devicePerm.hint }}
               </p>
+              <div class="notify-actions">
+                <RouterLink
+                  class="btn btn-secondary"
+                  :to="{ path: '/notifications', query: { settings: '1' } }"
+                >
+                  開啟通知設定
+                  <svg
+                    class="ico"
+                    viewBox="0 0 24 24"
+                    aria-hidden="true"
+                  ><path d="m9 6 6 6-6 6" /></svg>
+                </RouterLink>
+              </div>
             </div>
           </section>
         </div>
@@ -233,7 +238,28 @@
             >
               修改密碼
             </h2>
+            <button
+              v-if="isPhone"
+              type="button"
+              class="ui-group pw-disclose"
+              :aria-expanded="pwOpen"
+              aria-controls="pw-form"
+              @click="pwOpen = !pwOpen"
+            >
+              <span class="pw-disclose-text">
+                <span class="row-label-strong">更新登入密碼</span>
+                <span class="session-sub">修改後會自動登出，需用新密碼重新登入</span>
+              </span>
+              <svg
+                class="ico pw-chev"
+                :class="{ 'is-open': pwOpen }"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              ><path d="m6 9 6 6 6-6" /></svg>
+            </button>
             <form
+              v-show="!isPhone || pwOpen"
+              id="pw-form"
               class="ui-group"
               @submit.prevent="onChangePassword"
             >
@@ -382,6 +408,9 @@
               </div>
 
               <div class="ui-row form-actions">
+                <p class="form-actions-note">
+                  修改後會自動登出，需用新密碼重新登入。
+                </p>
                 <button
                   type="submit"
                   class="btn btn-primary"
@@ -391,9 +420,6 @@
                 </button>
               </div>
             </form>
-            <p class="ui-group-foot">
-              修改後會自動登出，需用新密碼重新登入。
-            </p>
           </section>
 
           <!-- 登入階段 -->
@@ -434,7 +460,7 @@
 
 <script setup lang="ts">
 import UiPageHead from '@/components/ui/UiPageHead.vue'
-import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppLayout from '@/components/ui/AppLayout.vue'
 import { useAuthStore } from '@/stores/auth'
@@ -658,6 +684,7 @@ function validatePassword(): boolean {
 async function onChangePassword(): Promise<void> {
   // The button stays enabled: pressing it explains what is missing and jumps to the first problem
   if (!validatePassword()) {
+    pwOpen.value = true
     const first = passwordErrors.currentPassword ? 'current-password' : passwordErrors.newPassword ? 'new-password' : 'confirm-password'
     await nextTick()
     document.getElementById(first)?.focus()
@@ -712,8 +739,20 @@ function extractErrorMessage(error: unknown): string {
 }
 
 // ============== Lifecycle ==============
+// Phone: the password block is a disclosure (opened by default only when the URL asks for #security)
+const isPhone = ref(false)
+const pwOpen = ref(false)
+let phoneMq: globalThis.MediaQueryList | null = null
+const onPhoneMq = (): void => { isPhone.value = !!phoneMq?.matches }
+
 onMounted(() => {
   loadProfileFromStore()
+  if (typeof window.matchMedia === 'function') {
+    phoneMq = window.matchMedia('(max-width: 768px)')
+    onPhoneMq()
+    phoneMq.addEventListener('change', onPhoneMq)
+  }
+  if (route.hash === '#security') { pwOpen.value = true }
 
   // 支援 /profile#security 自動捲動到安全性卡片
   if (route.hash === '#security') {
@@ -723,6 +762,8 @@ onMounted(() => {
     })
   }
 })
+
+onBeforeUnmount(() => { phoneMq?.removeEventListener('change', onPhoneMq) })
 
 // 若 authStore.currentAgent 後續才載入完成 (例如 sessionRestore)，同步更新
 watch(
@@ -765,7 +806,7 @@ watch(
 .identity-lead {
   display: grid;
   gap: 22px;
-  padding: 28px 28px 26px;
+  padding: 32px 28px 30px;
 }
 
 .identity {
@@ -941,7 +982,8 @@ watch(
 }
 
 .form-actions {
-  justify-content: flex-end;
+  gap: 16px;
+  justify-content: space-between;
   padding-right: 20px;
   padding-left: 20px;
   padding-top: 16px;
@@ -1058,11 +1100,95 @@ watch(
 .notify-hint {
   text-wrap: pretty;
   margin: 0;
-  padding: 14px var(--row-pad-x) 18px;
+  padding: 14px var(--row-pad-x) 16px;
   font-size: 14px;
   line-height: 20px;
   color: var(--ui-ink-2);
   box-shadow: inset 0 0.5px 0 var(--ui-sep);
+}
+
+/* the last card of the left column takes up spare height, its button anchored at the bottom */
+.o-notify {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
+
+.notify-card {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
+
+.notify-actions {
+  display: flex;
+  margin-top: auto;
+  padding: 0 var(--row-pad-x) 18px;
+}
+
+.notify-actions .btn {
+  gap: 4px;
+  text-decoration: none;
+}
+
+/* the password heading shows only on desktop; on phone the disclosure row carries the name */
+.pw-disclose {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-height: 56px;
+  padding: 12px 20px;
+  border: 0;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.pw-disclose:focus-visible {
+  outline: 2px solid var(--ui-accent);
+  outline-offset: 2px;
+}
+
+.pw-disclose-text {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.pw-chev {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  color: var(--ui-muted);
+  transition: transform var(--ui-dur) var(--ui-ease);
+}
+
+.pw-chev.is-open {
+  transform: rotate(180deg);
+}
+
+.pw-disclose + form {
+  margin-top: 8px;
+}
+
+.form-actions-note {
+  margin: 0;
+  max-width: 36ch;
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--ui-ink-2);
+}
+
+/* fields sit white on the white card; the 1px boundary does the separating */
+.profile-page .ui-input {
+  background: var(--ui-surface);
+}
+
+.session-card .btn {
+  color: var(--ui-red-ink);
 }
 
 /* 儲存 only exists while the name is changed; its slot slides open so the input never jumps */
@@ -1113,17 +1239,6 @@ watch(
   margin-top: 2px;
   font-size: 13px;
   color: var(--ui-muted);
-}
-
-/* the last card of each column absorbs spare height so both columns end on one line */
-.profile-col > section:last-child {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-}
-
-.profile-col > section:last-child > .ui-group {
-  flex: 1;
 }
 
 @media (max-width: 1024px) {
@@ -1196,11 +1311,17 @@ watch(
     padding-top: 0;
   }
 
-  .form-actions .btn-primary {
-    flex: 1;
+  .form-actions {
+    flex-direction: column-reverse;
+    align-items: stretch;
   }
 
-  .profile-col > section:last-child {
+  .form-actions-note {
+    max-width: none;
+  }
+
+  .o-notify,
+  .notify-card {
     display: block;
   }
 }
