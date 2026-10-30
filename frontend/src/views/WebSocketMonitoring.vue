@@ -49,72 +49,47 @@
         {{ error }}
       </div>
 
-      <!-- Lead: registered connections now, with the range's own peaks beside it -->
-      <RingLead
-        kicker="已註冊連線"
-        :value="metrics ? metrics.registeredConnections : '—'"
-        :unit="metrics ? '條' : ''"
-        :busy="isRefreshing && !metrics"
-        :tone="metrics ? '' : 'none'"
-        :meaning="metrics ? `${metrics.onlineAgents} 位在線客服，多分頁與裝置各算一條` : ''"
-      >
-        <template
-          v-if="metrics"
-          #visual
-        >
-          <div class="hero-facts-wrap">
-            <p class="hero-cap">
-              近 {{ rangeLabel }}
-            </p>
-            <dl class="hero-facts">
-              <div>
-                <dt>連線峰值</dt>
-                <dd>{{ stats.peakConnections ?? '—' }}</dd>
-              </div>
-              <div>
-                <dt>平均連線</dt>
-                <dd>{{ stats.avgConnections ?? '—' }}</dd>
-              </div>
-              <div>
-                <dt>事件峰值 / 秒</dt>
-                <dd>{{ stats.peakEvents === null ? '—' : fmt(stats.peakEvents, 2) }}</dd>
-              </div>
-              <div>
-                <dt>延遲峰值</dt>
-                <dd>{{ stats.peakLatency === null ? '—' : fmt(stats.peakLatency, 0) }}<small v-if="stats.peakLatency !== null">ms</small></dd>
-              </div>
-            </dl>
-          </div>
-        </template>
-        <div
-          v-if="metrics"
-          class="lead-chips"
-        >
-          <span
-            v-if="service"
-            class="ui-pill ui-pill-dot"
-            :class="service.pill"
-          >{{ service.label }}</span>
-          <span
-            v-if="connectionDelta !== null"
-            class="ui-delta"
-            :class="connectionDelta >= 0 ? 'ui-delta-up' : 'ui-delta-down'"
-          >{{ connectionDelta > 0 ? '+' : '' }}{{ connectionDelta }} 比上次刷新</span>
-        </div>
-      </RingLead>
-
+      <!-- Lead: the registered connections now, and the trend that explains them, in one object -->
       <section class="bento">
-        <!-- 連線趨勢 -->
-        <section class="s8">
-          <h2 class="ui-group-label">
-            連線趨勢
-            <span class="label-note">每 5 分鐘取樣一次</span>
-          </h2>
-          <div class="ui-group chart-card">
+        <article class="ui-lead board s12">
+          <div class="board-main">
+            <div class="board-kicker">
+              已註冊連線
+            </div>
+            <div
+              class="board-num"
+              :class="{ 'is-none': !metrics }"
+            >
+              {{ metrics ? metrics.registeredConnections : '—' }}<small v-if="metrics">條</small>
+            </div>
+            <p
+              v-if="metrics"
+              class="board-meaning"
+            >
+              {{ metrics.onlineAgents }} 位在線客服，多分頁與裝置各算一條
+            </p>
+            <div
+              v-if="metrics"
+              class="lead-chips"
+            >
+              <span
+                v-if="service"
+                class="ui-pill ui-pill-dot"
+                :class="service.pill"
+              >{{ service.label }}</span>
+              <span
+                v-if="connectionDelta !== null"
+                class="ui-delta"
+                :class="connectionDelta >= 0 ? 'ui-delta-up' : 'ui-delta-down'"
+              >{{ connectionDelta > 0 ? '+' : '' }}{{ connectionDelta }} 比上次刷新</span>
+            </div>
+          </div>
+          <div class="board-chart">
             <div class="card-head">
-              <p class="cur">
-                <b>{{ chart.lastConnections ?? '—' }}</b>
-                <span>條 · 最新取樣</span>
+              <p class="range-facts">
+                <span class="rf-title">連線趨勢</span>
+                <span v-if="stats.peakConnections !== null">近 {{ rangeLabel }}峰值 <b>{{ stats.peakConnections }}</b></span>
+                <span v-if="stats.avgConnections !== null">平均 <b>{{ stats.avgConnections }}</b></span>
               </p>
               <div
                 class="ui-seg"
@@ -153,12 +128,12 @@
               </div>
             </div>
           </div>
-        </section>
+        </article>
 
         <!-- 即時指標 -->
         <section
           aria-label="即時指標"
-          class="s4 rates"
+          class="s12 rates"
         >
           <h2 class="ui-group-label">
             即時指標
@@ -290,6 +265,10 @@
                   class="sw"
                   style="--c: var(--ui-teal)"
                 />出<b>{{ chart.lastOut === null ? '—' : fmt(chart.lastOut, 2) }}</b></span>
+                <span
+                  v-if="stats.peakEvents !== null"
+                  class="peak"
+                >峰值 <b>{{ fmt(stats.peakEvents, 2) }}</b> / 秒</span>
               </p>
             </div>
             <div class="chart-wrap">
@@ -315,7 +294,7 @@
                 v-if="hasEvents"
                 class="axis-note"
               >
-                缺漏的取樣不連線，也不會畫成 0。
+                缺漏的取樣不連線，也不畫成 0。
               </p>
             </div>
           </div>
@@ -332,6 +311,10 @@
               <p class="cur">
                 <b>{{ chart.lastLatency === null ? '—' : fmt(chart.lastLatency, 0) }}</b>
                 <span>ms · 最新取樣</span>
+                <span
+                  v-if="stats.peakLatency !== null"
+                  class="peak"
+                >峰值 <b>{{ fmt(stats.peakLatency, 0) }}</b> ms</span>
               </p>
             </div>
             <div class="chart-wrap">
@@ -358,7 +341,7 @@
                 v-if="hasLatency"
                 class="axis-note"
               >
-                虛線是門檻：低於 100 ms 為優秀，超過 500 ms 需改進。
+                虛線為門檻：100 ms 優秀、500 ms 需改進。
               </p>
             </div>
           </div>
@@ -427,7 +410,6 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { apiClient } from '@/api'
 import { presenceApi, type WsMetricsPointDto, type WsMetricsRange } from '@/api/presence'
 import AppLayout from '@/components/ui/AppLayout.vue'
-import RingLead from '@/components/lead/RingLead.vue'
 import WsLineChart, { type WsChartSeries } from '@/components/websocket/WsLineChart.vue'
 import { RANGE_MS } from '@/utils/ws-metrics-chart'
 import type { ChartGeometry } from '@/utils/ws-metrics-chart'
@@ -483,7 +465,7 @@ const historyError = ref<string | null>(null)
 const historyNow = ref(Date.now())
 
 /** Chart geometry: the wide trend card, the two half-width cards, and one phone size for all three */
-const CONN_WIDE: ChartGeometry = { width: 720, height: 250, left: 40, right: 704, top: 14, bottom: 208 }
+const CONN_WIDE: ChartGeometry = { width: 800, height: 236, left: 40, right: 786, top: 14, bottom: 194 }
 const HALF_WIDE: ChartGeometry = { width: 520, height: 230, left: 40, right: 508, top: 14, bottom: 188 }
 const PHONE_GEOM: ChartGeometry = { width: 330, height: 190, left: 32, right: 322, top: 12, bottom: 152 }
 const PHONE_QUERY = '(max-width: 768px)'
@@ -499,14 +481,14 @@ const eventsOf = (p: WsMetricsPointDto): number | null =>
   p.eventsInPerS === null || p.eventsOutPerS === null ? null : p.eventsInPerS + p.eventsOutPerS
 
 const CONN_SERIES: WsChartSeries[] = [
-  { key: 'conn', color: 'var(--ui-accent)', pick: p => p.activeConnections, area: true }
+  { key: 'conn', color: 'var(--ui-accent)', pick: p => p.activeConnections, area: true, label: '連線', unit: '條' }
 ]
 const EVENT_SERIES: WsChartSeries[] = [
-  { key: 'in', color: 'var(--ui-indigo)', pick: p => p.eventsInPerS },
-  { key: 'out', color: 'var(--ui-teal)', pick: p => p.eventsOutPerS }
+  { key: 'in', color: 'var(--ui-indigo)', pick: p => p.eventsInPerS, area: true, label: '入', digits: 2, unit: '/秒' },
+  { key: 'out', color: 'var(--ui-teal)', pick: p => p.eventsOutPerS, area: true, label: '出', digits: 2, unit: '/秒' }
 ]
 const LATENCY_SERIES: WsChartSeries[] = [
-  { key: 'lat', color: 'var(--ui-accent)', pick: p => p.avgProcessingMs, area: true }
+  { key: 'lat', color: 'var(--ui-accent)', pick: p => p.avgProcessingMs, area: true, label: '延遲', unit: 'ms' }
 ]
 /** The same thresholds the live row uses (under 100 ms is excellent, over 500 ms needs work) */
 const LATENCY_REFS = [{ value: 100, label: '優秀 100 ms' }, { value: 500, label: '需改進 500 ms' }]
@@ -827,37 +809,111 @@ function formatTime(timestamp: number) {
   color: var(--ui-muted);
 }
 
-/* The lead's measurements: a 2 x 2 grid, ink because they are measurements, not states */
-.hero-cap {
-  margin: 0 0 10px;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--ui-muted);
-}
-
-.hero-facts {
+/* The board: the number now on the left, the trend that explains it on the right */
+.board {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px 32px;
-  margin: 0;
+  grid-template-columns: 280px minmax(0, 1fr);
+  gap: 20px 36px;
+  align-items: center;
+  padding: 24px 28px 14px;
 }
 
-.hero-facts dt {
-  font-size: 13px;
+.board-main {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
+}
+
+.board-kicker {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--section-ink);
+}
+
+.board-num {
+  margin-top: 4px;
+  font: 600 72px / 1 var(--ui-font-display);
+  letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
+  color: var(--ui-ink);
+}
+
+.board-num.is-none {
+  color: var(--ui-faint);
+}
+
+.board-num small {
+  margin-left: 6px;
+  font-size: 22px;
+  font-weight: 500;
+  letter-spacing: 0;
   color: var(--ui-muted);
 }
 
-.hero-facts dd {
-  margin: 4px 0 0;
-  font: 600 32px / 1.1 var(--ui-font-display);
+.board-meaning {
+  margin: 8px 0 0;
+  font-size: 15px;
+  line-height: 1.45;
+  color: var(--ui-ink-2);
+  text-wrap: pretty;
+}
+
+.board-chart {
+  position: relative;
+  min-width: 0;
+  padding-left: 32px;
+}
+
+.board-chart::before {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: 0;
+  width: 0.5px;
+  background: var(--ui-sep);
+  content: '';
+}
+
+.board-chart .card-head,
+.board-chart .chart-wrap {
+  padding-right: 0;
+  padding-left: 0;
+}
+
+.board-chart .card-head {
+  padding-top: 0;
+}
+
+.range-facts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 18px;
+  margin: 0;
+  font-size: 14px;
+  color: var(--ui-muted);
+}
+
+.range-facts b,
+.peak b {
+  font: 600 22px / 1 var(--ui-font-display);
   letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
+  color: var(--ui-ink);
 }
 
-.hero-facts dd small {
-  margin-left: 4px;
-  font: 500 14px var(--ui-font-ui);
-  letter-spacing: 0;
+.range-facts .rf-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ui-ink);
+}
+
+.peak {
+  margin-left: 6px;
+  padding-left: 18px;
+  border-left: 0.5px solid var(--ui-sep);
+  font-size: 13px;
   color: var(--ui-muted);
 }
 
@@ -899,6 +955,10 @@ function formatTime(timestamp: number) {
 
 .s12 {
   grid-column: span 12;
+}
+
+.s12 + .s12,
+.s12 + .s6 {
   margin-top: 12px;
 }
 
@@ -976,10 +1036,17 @@ function formatTime(timestamp: number) {
 
 /* A rate row: icon, name with its verdict, the number */
 .rates-card {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   flex: 1;
-  flex-direction: column;
-  justify-content: space-evenly;
+}
+
+.rates-card > .kpi-row::before {
+  display: none;
+}
+
+.rates-card > .kpi-row + .kpi-row {
+  border-left: 0.5px solid var(--ui-sep);
 }
 
 .kpi-row {
@@ -1115,28 +1182,43 @@ function formatTime(timestamp: number) {
     grid-column: span 12;
   }
 
-  .s4 {
-    margin-top: 12px;
-  }
 }
 
 @media (max-width: 1024px) {
-  .hero-facts {
-    gap: 14px 24px;
+  .board {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 22px 24px 14px;
+  }
+
+  .board-chart {
+    padding: 16px 0 0;
+  }
+
+  .board-chart::before {
+    top: 0;
+    right: 0;
+    bottom: auto;
+    left: 0;
+    width: auto;
+    height: 0.5px;
+  }
+
+  .rates-card {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .rates-card > .kpi-row + .kpi-row {
+    border-top: 0.5px solid var(--ui-sep);
+    border-left: 0;
   }
 }
 
 @media (max-width: 768px) {
-  /* Phone: the live rates come before the history, and the charts are short */
+  /* Phone: same order as the desktop (board, rates, events, latency) */
   .s6,
   .s4,
   .s8 {
     margin-top: 16px;
-  }
-
-  .s4.rates {
-    order: -1;
-    margin-top: 0;
   }
 
   .kpi-row {
@@ -1148,8 +1230,22 @@ function formatTime(timestamp: number) {
     row-gap: 4px;
   }
 
-  .hero-facts dd {
-    font-size: 28px;
+  .board {
+    padding: 20px 16px 8px;
+  }
+
+  .board-num {
+    font-size: 56px;
+  }
+
+  .peak {
+    margin-left: 0;
+    padding-left: 0;
+    border-left: 0;
+  }
+
+  .board-chart .card-head .ui-seg {
+    width: 100%;
   }
 
   .card-head {
