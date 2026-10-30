@@ -28,26 +28,34 @@
       </button>
     </div>
 
-    <div
+    <ul
       v-if="stats.totalReports > 0"
-      class="lead-rings"
+      class="lead-status"
+      aria-label="報表狀態"
     >
-      <ServiceRings
-        summary="報表狀態"
-        :rings="rings"
-        :size="168"
-      />
-    </div>
+      <li
+        v-for="row in rows"
+        :key="row.label"
+      >
+        <span class="st-label">{{ row.label }}</span>
+        <span
+          class="st-track"
+          aria-hidden="true"
+        ><i
+          :style="{ width: row.width, background: row.hue }"
+        /></span>
+        <b>{{ row.value }}<small> 份</small></b>
+      </li>
+    </ul>
   </article>
 </template>
 
 <script setup lang="ts">
 /**
- * StatsLead: the page's lead object. The month figure is the headline; the rings are the
- * completed / processing / failed share of all reports, taken from the same summary.
+ * StatsLead: the page's lead object. The month figure is the headline; the bars are the
+ * completed / processing / failed count as one bar each, taken from the same summary.
  */
 import { computed } from 'vue'
-import ServiceRings, { type ServiceRing } from '@/components/ui/ServiceRings.vue'
 import type { DashboardStats } from '@/types/reports'
 
 const props = defineProps<{
@@ -66,11 +74,20 @@ const completionRate = computed(() => {
   return Math.round((props.stats.completedReports / props.stats.totalReports) * 100)
 })
 
-const rings = computed<ServiceRing[]>(() => [
-  { label: '已完成', value: props.stats.completedReports, total: props.stats.totalReports, of: '份', hue: 'var(--ui-green)' },
-  { label: '處理中', value: props.stats.pendingReports, total: props.stats.totalReports, of: '份', hue: 'var(--ui-orange)' },
-  { label: '失敗', value: props.stats.failedReports, total: props.stats.totalReports, of: '份', hue: 'var(--ui-red)' },
-])
+const rows = computed(() => {
+  const total = Math.max(props.stats.totalReports, 1)
+  const row = (label: string, value: number, hue: string) => ({
+    label,
+    value,
+    hue,
+    width: value > 0 ? `${Math.max(4, Math.round((value / total) * 100))}%` : '0%',
+  })
+  return [
+    row('已完成', props.stats.completedReports, 'var(--ui-green)'),
+    row('處理中', props.stats.pendingReports, 'var(--ui-orange)'),
+    row('失敗', props.stats.failedReports, 'var(--ui-red)'),
+  ]
+})
 </script>
 
 <style scoped>
@@ -82,7 +99,7 @@ const rings = computed<ServiceRing[]>(() => [
   padding: 24px 40px;
 }
 
-.lead:not(:has(.lead-rings)) {
+.lead:not(:has(.lead-status)) {
   grid-template-columns: minmax(0, 1fr);
 }
 
@@ -133,15 +150,16 @@ const rings = computed<ServiceRing[]>(() => [
   font-size: 14px;
 }
 
-.lead-rings {
+.lead-status {
   position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 0;
+  display: grid;
+  gap: 18px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
-.lead-rings::before {
+.lead-status::before {
   position: absolute;
   top: 4px;
   bottom: 4px;
@@ -149,6 +167,44 @@ const rings = computed<ServiceRing[]>(() => [
   width: 0.5px;
   background: var(--ui-sep);
   content: '';
+}
+
+.lead-status li {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr) 72px;
+  gap: 16px;
+  align-items: center;
+}
+
+.st-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--ui-ink-2);
+}
+
+.st-track {
+  height: 12px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--ui-fill);
+}
+
+.st-track i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+}
+
+.lead-status b {
+  font: 600 22px var(--ui-font-display);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.lead-status b small {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ui-muted);
 }
 
 @media (max-width: 768px) {
@@ -161,11 +217,7 @@ const rings = computed<ServiceRing[]>(() => [
     font-size: 48px;
   }
 
-  .lead-rings {
-    justify-content: flex-start;
-  }
-
-  .lead-rings::before {
+  .lead-status::before {
     display: none;
   }
 }

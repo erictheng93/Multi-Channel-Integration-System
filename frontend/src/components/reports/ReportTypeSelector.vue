@@ -72,10 +72,10 @@ const selectedLabel = computed(
   height: 26px;
   place-items: center;
   border-radius: 50%;
-  background: var(--ui-fill);
+  background: var(--section-hue-soft);
   font-size: 13px;
   font-weight: 700;
-  color: var(--ui-muted);
+  color: var(--section-ink);
 }
 
 .step-n.done {
