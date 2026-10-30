@@ -10,23 +10,29 @@
       unit="筆"
       :meaning="meaning"
       :busy="loading || overview === null"
-      summary="活動分布"
-      :rings="rings"
-      :size="144"
     >
-      <span
-        v-if="bars.length > 0 && !loading"
-        class="bars"
-        role="img"
-        :aria-label="barsLabel"
+      <ul
+        v-if="highlights.length > 0 && !loading"
+        class="highlights"
       >
-        <i
-          v-for="bar in bars"
-          :key="bar.date"
-          :class="{ hi: bar.hi }"
-          :style="{ height: bar.height }"
+        <li
+          v-for="item in highlights"
+          :key="item.label"
+        >
+          <span>{{ item.label }}</span>
+          <b>{{ item.text }}</b>
+        </li>
+      </ul>
+      <template
+        v-if="bars.length > 0 && !loading"
+        #visual
+      >
+        <LeadBars
+          :summary="`${periodLabel}每日活動數`"
+          :bars="bars"
+          :height="104"
         />
-      </span>
+      </template>
     </RingLead>
   </div>
 </template>
@@ -36,7 +42,7 @@ import { computed } from 'vue'
 import type { ActivityOverview } from '@/api/activities'
 import { isActivityRestoreEnabled } from '@/config/runtime'
 import RingLead from '@/components/lead/RingLead.vue'
-import type { ServiceRing } from '@/components/ui/ServiceRings.vue'
+import LeadBars, { type LeadBar } from '@/components/lead/LeadBars.vue'
 import { getActionLabel } from './utils'
 
 const props = defineProps<{
@@ -57,36 +63,34 @@ const topAction = computed(() => {
 
 const periodLabel = computed(() => (props.overview ? `近 ${props.overview.period.days} 天` : ''))
 
-const BAR_MAX_PX = 26
-const bars = computed(() => {
+const WEEKDAYS = ['日', '一', '二', '三', '四', '五', '六'] as const
+
+/** One bar per day of the period; the busiest day is the subject, the rest sit back */
+const bars = computed<LeadBar[]>(() => {
   const daily = props.overview?.dailyStats ?? []
   const max = Math.max(0, ...daily.map(d => d.count))
   if (max === 0) { return [] }
-  return daily.map(d => ({
-    date: d.date,
-    hi: d.count === max,
-    height: `${Math.max(3, Math.round((d.count / max) * BAR_MAX_PX))}px`
-  }))
+  return daily.map((d) => {
+    const day = new Date(`${d.date}T00:00:00`)
+    const weekday = Number.isNaN(day.getTime()) ? '' : `週${WEEKDAYS[day.getDay()]}`
+    return {
+      key: d.date,
+      label: weekday || d.date.slice(5).replace('-', '/'),
+      value: d.count,
+      display: d.count.toLocaleString('en-US'),
+      current: d.count === max
+    }
+  })
 })
 
-const barsLabel = computed(() => {
-  const daily = props.overview?.dailyStats ?? []
-  const peak = daily.reduce((a, b) => (b.count > a.count ? b : a), { date: '', count: 0 })
-  return `${periodLabel.value}每日活動數，${peak.date.slice(5).replace('-', '/')} 最多 ${peak.count} 筆`
-})
-
-const rings = computed<ServiceRing[]>(() => {
+/** The two named facts the old rings carried, now as plain lines under the number */
+const highlights = computed(() => {
   const overview = props.overview
-  const total = overview?.totalActivities ?? 0
-  if (!overview || total <= 0) { return [] }
-  const list: ServiceRing[] = []
+  if (!overview || overview.totalActivities <= 0) { return [] }
+  const list: { label: string, text: string }[] = []
   const topUser = overview.topUsers[0]
-  if (topUser) {
-    list.push({ label: `最活躍：${topUser.user_name}`, value: topUser.count, total, of: '筆', hue: 'var(--section-hue)' })
-  }
-  if (topAction.value) {
-    list.push({ label: `最常見：${topAction.value.label}`, value: topAction.value.count, total, of: '筆', hue: 'var(--ui-blue)' })
-  }
+  if (topUser) { list.push({ label: '最活躍', text: `${topUser.user_name} · ${topUser.count.toLocaleString('en-US')} 筆` }) }
+  if (topAction.value) { list.push({ label: '最常見', text: `${topAction.value.label} · ${topAction.value.count.toLocaleString('en-US')} 筆` }) }
   return list
 })
 
@@ -107,21 +111,27 @@ const meaning = computed(() => {
   margin: 0;
   padding: 0;
 }
-.bars {
+.highlights {
+  display: grid;
+  gap: 6px;
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.highlights li {
   display: flex;
-  align-items: flex-end;
-  gap: 3px;
-  width: 140px;
-  height: 28px;
-  margin-top: 14px;
+  gap: 10px;
+  align-items: baseline;
+  font-size: 14px;
 }
-.bars i {
-  flex: 1;
-  min-height: 3px;
-  border-radius: 2px 2px 0 0;
-  background: color-mix(in srgb, var(--section-hue) 30%, transparent);
+.highlights span {
+  min-width: 3.5em;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ui-muted);
 }
-.bars i.hi {
-  background: var(--section-hue);
+.highlights b {
+  font-weight: 600;
+  color: var(--ui-ink);
 }
 </style>
