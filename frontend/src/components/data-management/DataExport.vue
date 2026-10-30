@@ -8,13 +8,17 @@
       :subtitle="`選擇檔案格式後開始匯出，單次最多 ${EXPORT_LIMIT.toLocaleString()} 筆。`"
     />
 
-    <!-- Lead: the one task. The chosen format and the single action -->
-    <RingLead
-      kicker="匯出格式"
-      :value="selectedName"
-      :meaning="`${selectedTagline}，單次最多 ${EXPORT_LIMIT.toLocaleString()} 筆`"
-    >
-      <template #actions>
+    <!-- Lead: the task is the choice. Four formats are the lead itself, the chosen one is previewed, one action -->
+    <article class="ui-lead xl">
+      <div class="xl-head">
+        <div>
+          <div class="xl-kicker">
+            匯出格式
+          </div>
+          <p class="xl-meaning">
+            <b>{{ selectedName }}</b> · {{ selectedTagline }}，單次最多 {{ EXPORT_LIMIT.toLocaleString() }} 筆
+          </p>
+        </div>
         <button
           type="button"
           class="btn btn-primary lead-cta"
@@ -23,58 +27,48 @@
           <DownloadIcon :size="16" />
           開始匯出 {{ selectedName }}
         </button>
-      </template>
-    </RingLead>
-
-    <section class="export-grid">
-      <div class="choose">
-        <h2 class="ui-group-label">
-          檔案格式
-        </h2>
-        <div
-          class="ui-group fmt-list"
-          role="radiogroup"
-          aria-label="匯出格式"
-        >
-          <button
-            v-for="format in formats"
-            :key="format.id"
-            type="button"
-            class="ui-row is-flush fmt-row"
-            :class="{ 'is-selected': selectedFormat === format.id }"
-            role="radio"
-            :aria-checked="selectedFormat === format.id"
-            @click="selectFormat(format.id)"
-          >
-            <span
-              class="fmt-ico"
-              :class="format.tone"
-              aria-hidden="true"
-            >{{ format.icon }}</span>
-            <span class="fmt-text">
-              <b>{{ format.name }}<small>{{ format.tagline }}</small></b>
-              <span class="fmt-use">{{ format.usecases.join('、') }}</span>
-              <code class="fmt-preview">{{ format.preview }}</code>
-            </span>
-            <i
-              class="radio"
-              aria-hidden="true"
-            />
-          </button>
-        </div>
-        <p class="ui-group-foot">
-          選好格式後，在匯出視窗再設定日期、客戶與客服人員的篩選。未設定篩選時匯出全部記錄，最多 {{ EXPORT_LIMIT.toLocaleString() }} 筆，超出部分會被截斷。
-        </p>
       </div>
-
-      <aside
-        class="scope"
-        aria-label="匯出內容"
+      <div
+        class="xl-tiles"
+        role="radiogroup"
+        aria-label="匯出格式"
       >
-        <h2 class="ui-group-label">
-          {{ selectedName }} 檔案會包含
-        </h2>
-        <div class="ui-group scope-body">
+        <button
+          v-for="format in formats"
+          :key="format.id"
+          type="button"
+          class="xl-tile"
+          :class="{ 'is-selected': selectedFormat === format.id }"
+          role="radio"
+          :aria-checked="selectedFormat === format.id"
+          @click="selectFormat(format.id)"
+        >
+          <span
+            class="fmt-ico"
+            :class="format.tone"
+            aria-hidden="true"
+          >{{ format.icon }}</span>
+          <i
+            class="radio"
+            aria-hidden="true"
+          />
+          <b class="xl-name">{{ format.name }}</b>
+          <span class="xl-tag">{{ format.tagline }}</span>
+          <span class="xl-use">{{ format.usecases.join('、') }}</span>
+        </button>
+      </div>
+      <code class="xl-preview">{{ selectedPreview }}</code>
+    </article>
+
+    <section
+      class="scope"
+      aria-label="匯出內容"
+    >
+      <h2 class="ui-group-label">
+        {{ selectedName }} 檔案會包含
+      </h2>
+      <div class="ui-group scope-body">
+        <div class="scope-col">
           <h3 class="scope-h">
             欄位
           </h3>
@@ -86,7 +80,8 @@
               {{ item }}
             </li>
           </ul>
-
+        </div>
+        <div class="scope-col">
           <h3 class="scope-h">
             範圍
           </h3>
@@ -95,6 +90,8 @@
             <li>不含已收回的訊息</li>
             <li>依時間由新到舊，最多 {{ EXPORT_LIMIT.toLocaleString() }} 筆</li>
           </ul>
+        </div>
+        <div class="scope-col">
           <h3 class="scope-h">
             匯出前可篩選
           </h3>
@@ -107,7 +104,10 @@
             </li>
           </ul>
         </div>
-      </aside>
+      </div>
+      <p class="ui-group-foot">
+        選好格式後，在匯出視窗再設定日期、客戶與客服人員的篩選。未設定篩選時匯出全部記錄，最多 {{ EXPORT_LIMIT.toLocaleString() }} 筆，超出部分會被截斷。
+      </p>
     </section>
 
     <UiActionBar
@@ -135,7 +135,6 @@
 
 <script setup lang="ts">
 import UiPageHead from '@/components/ui/UiPageHead.vue'
-import RingLead from '@/components/lead/RingLead.vue'
 import { computed, ref } from 'vue'
 import UiActionBar from '@/components/ui/UiActionBar.vue'
 import { DownloadIcon } from '@/components/icons'
@@ -200,6 +199,7 @@ const filterOptions = [
 
 const selectedFields = computed(() => formats.find(f => f.id === selectedFormat.value)?.fields ?? [])
 const selectedTagline = computed(() => formats.find(f => f.id === selectedFormat.value)?.tagline ?? '')
+const selectedPreview = computed(() => formats.find(f => f.id === selectedFormat.value)?.preview ?? '')
 const selectedName = computed(() => formats.find(f => f.id === selectedFormat.value)?.name ?? '')
 
 function openExportDialog() {
@@ -212,39 +212,149 @@ function selectFormat(format: FormatId) {
 </script>
 
 <style scoped>
-.export-grid {
+.xl {
   display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 20px;
-  align-items: start;
+  gap: 18px;
+  padding: 24px 28px;
 }
 
-.choose,
+.xl-head {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.xl-kicker {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--section-ink);
+}
+
+.xl-meaning {
+  margin: 4px 0 0;
+  font-size: 15px;
+  color: var(--ui-ink-2);
+}
+
+.xl-meaning b {
+  font-weight: 600;
+  color: var(--ui-ink);
+}
+
+.xl-tiles {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.xl-tile {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-areas:
+    'ico radio'
+    'name name'
+    'tag tag'
+    'use use';
+  gap: 2px 0;
+  align-content: start;
+  min-height: 148px;
+  padding: 16px;
+  border: 0;
+  border-radius: var(--ui-r-inner);
+  background: var(--ui-surface-2);
+  box-shadow: inset 0 0 0 1px var(--ui-sep);
+  color: var(--ui-ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background var(--ui-dur) var(--ui-ease),
+    box-shadow var(--ui-dur) var(--ui-ease);
+}
+
+.xl-tile:hover {
+  background: var(--ui-fill);
+}
+
+.xl-tile.is-selected {
+  background: var(--ui-sel-tint);
+  box-shadow: inset 0 0 0 2px var(--ui-accent);
+}
+
+.xl-tile:focus-visible {
+  outline: 2px solid var(--ui-accent);
+  outline-offset: 2px;
+}
+
+.xl-tile .fmt-ico {
+  grid-area: ico;
+  margin-bottom: 12px;
+}
+
+.xl-tile .radio {
+  grid-area: radio;
+  justify-self: end;
+}
+
+.xl-name {
+  grid-area: name;
+  font: 600 24px / 1.15 var(--ui-font-display);
+  letter-spacing: -0.02em;
+}
+
+.xl-tag {
+  grid-area: tag;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--ui-ink-2);
+}
+
+.xl-use {
+  grid-area: use;
+  margin-top: 6px;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--ui-muted);
+}
+
+.xl-preview {
+  display: block;
+  padding: 12px 16px;
+  overflow: hidden;
+  border-radius: 12px;
+  background: var(--ui-surface-2);
+  font: 13px / 1.45 var(--ui-font-mono);
+  color: var(--ui-ink-2);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .scope {
   min-width: 0;
 }
 
 .scope-body {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 18px 20px 20px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px 32px;
+  padding: 20px 24px 22px;
+}
+
+.scope-col {
+  min-width: 0;
 }
 
 .scope-h {
-  margin: 12px 0 4px;
-  font-size: 13px;
+  margin: 0 0 10px;
+  font-size: 14px;
   font-weight: 600;
-  color: var(--ui-ink-2);
-}
-
-.scope-h:first-child {
-  margin-top: 0;
+  color: var(--ui-ink);
 }
 
 .scope-list {
   display: grid;
-  gap: 6px;
+  gap: 8px;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -253,10 +363,10 @@ function selectFormat(format: FormatId) {
 .scope-list li {
   position: relative;
   padding-left: 14px;
-  font-size: 13.5px;
+  font-size: 14px;
   line-height: 1.45;
   text-wrap: pretty;
-  color: var(--ui-ink);
+  color: var(--ui-ink-2);
 }
 
 .scope-list li::before {
@@ -266,42 +376,15 @@ function selectFormat(format: FormatId) {
   width: 5px;
   height: 5px;
   border-radius: 50%;
-  background: var(--ui-faint);
+  background: var(--section-hue);
   content: '';
 }
 
 .scope-filters li b {
   display: block;
-  font-size: 13.5px;
+  font-size: 14px;
   font-weight: 600;
-}
-
-.scope-filters li {
-  font-size: 13px;
-  color: var(--ui-muted);
-}
-
-/* One group of four selectable rows (iOS Settings style) */
-.fmt-row {
-  width: 100%;
-  min-height: 72px;
-  padding: 14px 18px;
-  border: 0;
-  background: transparent;
-  font: inherit;
-  color: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-
-.fmt-row.is-selected {
-  background: var(--ui-sel-tint);
-  box-shadow: none;
-}
-
-.fmt-row:focus-visible {
-  outline: 2px solid var(--ui-accent);
-  outline-offset: -2px;
+  color: var(--ui-ink);
 }
 
 .fmt-ico {
@@ -334,49 +417,12 @@ function selectFormat(format: FormatId) {
   color: var(--ui-red-ink);
 }
 
-.fmt-text {
-  display: grid;
-  min-width: 0;
-  flex: 1;
-  gap: 2px;
-}
-
-.fmt-text b {
-  font: 600 15px / 1.3 var(--ui-font-display);
-  letter-spacing: -0.01em;
-}
-
-.fmt-text b small {
-  margin-left: 8px;
-  font: 500 13px var(--ui-font-ui);
-  letter-spacing: 0;
-  color: var(--ui-muted);
-}
-
-.fmt-use {
-  overflow: hidden;
-  font-size: 13px;
-  color: var(--ui-muted);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.fmt-preview {
-  display: block;
-  margin-top: 4px;
-  overflow: hidden;
-  font: 12px / 1.45 var(--ui-font-mono);
-  color: var(--ui-ink-2);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .radio {
   flex: none;
   width: 20px;
   height: 20px;
   border-radius: 50%;
-  box-shadow: inset 0 0 0 1.5px var(--ui-faint);
+  box-shadow: inset 0 0 0 1.5px var(--ui-field-edge);
   transition: box-shadow var(--ui-dur) var(--ui-ease);
 }
 
@@ -389,17 +435,21 @@ function selectFormat(format: FormatId) {
   display: none;
 }
 
-@media (min-width: 769px) {
-  .fmt-row {
-    min-height: 92px;
+@media (max-width: 1024px) {
+  .xl-tiles {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .export-grid {
-    grid-template-columns: minmax(0, 1fr) 340px;
+  .scope-body {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
 @media (max-width: 768px) {
+  .xl {
+    padding: 20px;
+  }
+
   .lead-cta {
     display: none;
   }
@@ -408,7 +458,12 @@ function selectFormat(format: FormatId) {
     display: flex;
   }
 
-  .fmt-preview {
+  .xl-tile {
+    min-height: 0;
+    padding: 14px;
+  }
+
+  .xl-preview {
     display: none;
   }
 

@@ -922,7 +922,7 @@ onMounted(load)
   display: block;
   width: 100%;
   border-radius: 6px 6px 0 0;
-  background: color-mix(in srgb, var(--ui-green) 70%, var(--ui-surface));
+  background: var(--ui-green);
   transition: background var(--ui-dur) var(--ui-ease);
 }
 
@@ -941,7 +941,8 @@ onMounted(load)
 }
 
 .num {
-  font-size: 11.5px;
+  font-size: 13px;
+  font-weight: 500;
   font-variant-numeric: tabular-nums;
 }
 
@@ -1144,7 +1145,7 @@ onMounted(load)
 }
 
 .day-sum {
-  font-size: 12.5px;
+  font-size: 13px;
   color: var(--ui-muted);
   font-variant-numeric: tabular-nums;
 }
@@ -1195,7 +1196,7 @@ onMounted(load)
 }
 
 .brow-stat small {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--ui-muted);
 }
 
@@ -1233,8 +1234,8 @@ onMounted(load)
 
   .strip {
     grid-auto-flow: row;
-    grid-template-columns: repeat(10, minmax(0, 1fr));
-    gap: 8px 4px;
+    grid-template-columns: repeat(15, minmax(0, 1fr));
+    gap: 10px 3px;
     padding: 16px 16px 18px;
   }
 
