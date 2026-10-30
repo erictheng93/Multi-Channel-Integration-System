@@ -38,6 +38,25 @@
         :loading="overviewLoading"
       />
 
+      <!-- Phone: the biggest operation types as one-tap filter chips, always visible -->
+      <div
+        v-if="showInsights && topActions.length > 0"
+        class="al-chips"
+        role="group"
+        aria-label="依操作類型篩選"
+      >
+        <button
+          v-for="a in topActions"
+          :key="a.key"
+          type="button"
+          class="al-chip"
+          :aria-pressed="filters.action === a.key"
+          @click="onInsightAction(filters.action === a.key ? '' : a.key)"
+        >
+          {{ a.label }} <b>{{ a.count.toLocaleString('en-US') }}</b>
+        </button>
+      </div>
+
       <!-- Phone and tablet: the rail is a collapsed section above the log instead of being dropped -->
       <details
         v-if="showInsights"
@@ -140,6 +159,7 @@ import ActivityFilterPills from '@/components/activity/ActivityFilterPills.vue'
 import ActivityTimeline from '@/components/activity/ActivityTimeline.vue'
 import ActivityPagination from '@/components/activity/ActivityPagination.vue'
 import ActivityEmptyState from '@/components/activity/ActivityEmptyState.vue'
+import { getActionLabel } from '@/components/activity/utils'
 import { DownloadIcon, RefreshIcon } from '@/components/icons'
 
 interface User {
@@ -187,6 +207,13 @@ const activitySubscriptionId = ref<string | null>(null)
 // --- Computed ---
 const isAdmin = computed(() => authStore.currentAgent?.role === ROLES.ADMIN)
 const showInsights = computed(() => isAdmin.value && !!overview.value && (Object.keys(overview.value.actionStats).length > 0 || overview.value.topUsers.length > 0))
+const topActions = computed(() =>
+  Object.entries(overview.value?.actionStats ?? {})
+    .filter(([, count]) => count > 0)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([key, count]) => ({ key, label: getActionLabel(key), count }))
+)
 const currentPage = computed(() => pagination.value?.page || 1)
 
 /** Page header sentence from loaded data only (overview for admins, list total otherwise). */
@@ -480,6 +507,9 @@ onUnmounted(() => {
   display: none;
   padding: 0;
 }
+.al-chips {
+  display: none;
+}
 .al-more summary {
   display: flex;
   align-items: center;
@@ -519,6 +549,39 @@ onUnmounted(() => {
   .al-more {
     display: block;
   }
+
+  .al-chips {
+    display: flex;
+    gap: 8px;
+    margin: 0 -4px;
+    padding: 0 4px 2px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .al-chip {
+    flex: none;
+    min-height: 44px;
+    padding: 0 16px;
+    border: 0;
+    border-radius: 999px;
+    background: var(--ui-surface);
+    box-shadow: var(--ui-shadow-pill);
+    font: 500 14px var(--ui-font-ui);
+    color: var(--ui-ink);
+    cursor: pointer;
+  }
+
+  .al-chip b {
+    margin-left: 4px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .al-chip[aria-pressed='true'] {
+    background: var(--section-hue-soft, var(--ui-accent-soft));
+    font-weight: 600;
+    box-shadow: inset 0 0 0 1.5px var(--section-ink, var(--ui-accent));
+  }
 }
 
 .al-more :deep(.insights) {
@@ -536,16 +599,7 @@ onUnmounted(() => {
   }
   .ui-page-actions > .btn {
     flex: none;
-    width: 44px;
     min-height: 44px;
-    padding: 0;
-  }
-  .al-lbl {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip-path: inset(50%);
   }
 }
 </style>

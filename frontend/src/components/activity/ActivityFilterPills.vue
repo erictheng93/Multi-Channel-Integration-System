@@ -25,6 +25,7 @@
           class="filter-toggle__n"
         >{{ activeCount }}</span>
       </button>
+      <span class="filter-now">{{ PERIOD_LABEL[dateRange] ?? '' }}</span>
       <span
         v-if="summary"
         class="filter-total filter-total--bar"
@@ -340,6 +341,7 @@ const hasActiveFilters = computed(() => {
 
 /** Phone: the four selects fold behind one 篩選 button; the badge counts the filters in force */
 const open = ref(false)
+const PERIOD_LABEL: Record<string, string> = { today: '今天', week: '最近一週', month: '最近一個月', custom: '自訂區間' }
 const activeCount = computed(() =>
   [props.filters.userId, props.filters.action, props.filters.resourceType].filter(v => v !== '').length
   + (props.dateRange !== 'week' ? 1 : 0)
@@ -488,6 +490,12 @@ function onCustomEndChange(event: Event) {
   font-size: 12px;
   font-weight: 600;
   color: #fff;
+}
+
+.filter-now {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ui-ink);
 }
 
 @media (max-width: 768px) {
