@@ -54,6 +54,41 @@
         </div>
       </section>
 
+      <section
+        v-if="activity"
+        class="block"
+      >
+        <h3>往來</h3>
+        <div
+          class="split"
+          role="img"
+          :aria-label="`客戶 ${activity.customer} 則，客服 ${activity.agent} 則`"
+        >
+          <span
+            class="split-c"
+            :style="{ flexGrow: activity.customer }"
+          />
+          <span
+            class="split-a"
+            :style="{ flexGrow: activity.agent }"
+          />
+        </div>
+        <dl class="kv kv-tight">
+          <div>
+            <dt><i class="dot dot-c" />客戶來訊</dt>
+            <dd>{{ activity.customer }} 則</dd>
+          </div>
+          <div>
+            <dt><i class="dot dot-a" />客服回覆</dt>
+            <dd>{{ activity.agent }} 則</dd>
+          </div>
+          <div v-if="activity.firstReply">
+            <dt>首次回覆</dt>
+            <dd>{{ activity.firstReply }}</dd>
+          </div>
+        </dl>
+      </section>
+
       <section class="block">
         <h3>對話</h3>
         <dl class="kv">
@@ -100,6 +135,8 @@ const props = defineProps<{
   messageCount: number | null
   /** More history exists on the server, so messageCount is only what is loaded */
   hasMore: boolean
+  /** Loaded messages, used for the customer/agent split and the first-reply time */
+  messages?: ReadonlyArray<{ senderType?: string; createdAt?: string | number | Date; timestamp?: number | Date }>
 }>()
 
 const customerName = computed(() => props.conversation?.customer?.name || props.conversation?.user?.name || '未知用戶')
@@ -111,6 +148,28 @@ const platformLabel = computed(() => {
 })
 const customerId = computed(() => props.conversation?.customer?.id ?? props.conversation?.userId ?? '')
 const status = computed(() => props.conversation ? statusOf(props.conversation) : { text: '', tone: 'pending' as const })
+
+const timeOf = (m: { createdAt?: string | number | Date; timestamp?: number | Date }): number => {
+  const raw = m.timestamp ?? m.createdAt
+  const t = raw === undefined ? NaN : new Date(raw).getTime()
+  return Number.isFinite(t) ? t : NaN
+}
+
+// Client-side tally over the messages already loaded (a partial history is labelled by the caller via hasMore)
+const activity = computed(() => {
+  const list = props.messages ?? []
+  const customer = list.filter(m => m.senderType === 'customer')
+  const agent = list.filter(m => m.senderType === 'agent')
+  if (customer.length + agent.length === 0) { return null }
+  let firstReply = ''
+  const firstCustomer = customer.map(timeOf).filter(Number.isFinite).sort((a, b) => a - b)[0]
+  const firstAgent = agent.map(timeOf).filter(t => Number.isFinite(t) && t >= (firstCustomer ?? 0)).sort((a, b) => a - b)[0]
+  if (firstCustomer !== undefined && firstAgent !== undefined && !props.hasMore) {
+    const minutes = Math.max(1, Math.round((firstAgent - firstCustomer) / 60000))
+    firstReply = minutes >= 60 ? `${Math.floor(minutes / 60)} 小時 ${minutes % 60} 分` : `${minutes} 分鐘`
+  }
+  return { customer: customer.length, agent: agent.length, firstReply }
+})
 
 const createdAtText = computed(() => {
   const created = props.conversation?.createdAt
@@ -241,6 +300,47 @@ const createdAtText = computed(() => {
   font-weight: 500;
   text-align: right;
   font-variant-numeric: tabular-nums;
+}
+
+.split {
+  display: flex;
+  gap: 3px;
+  height: 8px;
+  margin-bottom: 14px;
+}
+
+.split span {
+  min-width: 6px;
+  flex-basis: 0;
+  border-radius: 999px;
+}
+
+.split-c {
+  background: #8e8e93;
+}
+
+.split-a {
+  background: var(--section-hue, var(--ui-accent));
+}
+
+.dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 8px;
+  border-radius: 50%;
+}
+
+.dot-c {
+  background: #8e8e93;
+}
+
+.dot-a {
+  background: var(--section-hue, var(--ui-accent));
+}
+
+.kv-tight {
+  gap: 10px;
 }
 
 .skeleton {

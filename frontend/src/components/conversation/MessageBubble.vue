@@ -9,6 +9,7 @@
       'message-image': actualMessageType === 'image' && !isRecalledMessage,
       'message-file': actualMessageType === 'file',
       'message-recalled': isRecalledMessage,
+      'is-group-end': showMeta,
     }"
     @contextmenu="handleRightClick"
     @mouseenter="showActions = true"

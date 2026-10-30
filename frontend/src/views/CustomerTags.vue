@@ -23,7 +23,10 @@
       />
 
       <!-- Stats Overview -->
-      <TagsStats :stats="stats" />
+      <TagsStats
+        :stats="stats"
+        :tags="allTags"
+      />
 
       <!-- Toolbar -->
       <TagsToolbar

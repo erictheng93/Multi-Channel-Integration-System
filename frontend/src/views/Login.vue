@@ -134,6 +134,7 @@
                     class="ui-input"
                     :type="showPassword ? 'text' : 'password'"
                     autocomplete="current-password"
+                    placeholder="輸入你的密碼"
                     required
                     :disabled="loading"
                     :aria-invalid="!!passwordError"
@@ -535,16 +536,19 @@ const handleLogin = async (event?: Event) => {
    (the panel clips it); a mask fades it before it reaches the copy. */
 .zone {
   position: absolute;
-  right: -240px;
-  bottom: -200px;
-  width: 760px;
-  height: 760px;
+  top: 50%;
+  right: -300px;
+  width: 860px;
+  height: 860px;
+  transform: translateY(-46%);
   pointer-events: none;
   -webkit-mask-image: linear-gradient(to left, #000 0%, #000 55%, transparent 92%);
   mask-image: linear-gradient(to left, #000 0%, #000 55%, transparent 92%);
 }
 
 .wheel {
+  --ui-disc-weight: 1.7;
+
   width: 100%;
   height: 100%;
 }
@@ -563,14 +567,14 @@ const handleLogin = async (event?: Event) => {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  width: min(480px, 100%);
+  width: min(520px, 100%);
   margin: 0 auto;
   padding: 40px 24px;
 }
 
 .auth {
   width: 100%;
-  padding: 40px 36px 34px;
+  padding: 48px 44px 42px;
   border-radius: var(--ui-r-lead);
   background: var(--ui-surface);
   box-shadow: var(--ui-shadow-raised);
@@ -605,9 +609,9 @@ const handleLogin = async (event?: Event) => {
 }
 
 .auth .ui-input {
-  height: 46px;
+  height: 50px;
   border-radius: 14px;
-  font-size: 15px;
+  font-size: 16px;
 }
 
 .pw {

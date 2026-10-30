@@ -232,7 +232,7 @@ onUnmounted(() => {
 
 .day-label {
   margin: 0;
-  padding: 16px 22px 6px;
+  padding: 16px 24px 6px;
   font-size: 14px;
   font-weight: 600;
   color: var(--ui-ink-2);

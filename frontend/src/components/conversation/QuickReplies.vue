@@ -114,8 +114,8 @@ const handleSelect = (reply: QuickReply) => {
   padding: 0 14px;
   border: 0;
   border-radius: 999px;
-  background: var(--ui-fill);
-  color: var(--ui-ink-2);
+  background: var(--ui-accent-soft);
+  color: var(--ui-accent);
   font-size: 13px;
   font-weight: 500;
   white-space: nowrap;
@@ -124,13 +124,13 @@ const handleSelect = (reply: QuickReply) => {
 }
 
 .quick-reply-btn:hover:not(:disabled) {
-  background: var(--ui-fill-strong);
+  background: color-mix(in srgb, var(--ui-accent) 16%, var(--ui-surface));
 }
 
 .quick-reply-more {
   background: transparent;
   box-shadow: inset 0 0 0 1px var(--ui-sep);
-  color: var(--ui-muted);
+  color: var(--ui-ink-2);
 }
 
 .quick-reply-btn:disabled {

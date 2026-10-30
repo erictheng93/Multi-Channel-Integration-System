@@ -627,6 +627,18 @@ function formatDate(dateStr: string): string {
     border-radius: var(--ui-r-card) var(--ui-r-card) 0 0;
     padding-bottom: env(safe-area-inset-bottom);
   }
+
+  /* Grabber: reads as a bottom sheet that can be dismissed */
+  .modal-container::before {
+    display: block;
+    flex: none;
+    width: 36px;
+    height: 5px;
+    margin: 8px auto 0;
+    border-radius: 999px;
+    background: var(--ui-fill-strong);
+    content: '';
+  }
   .pagination-btn {
     height: 44px;
   }

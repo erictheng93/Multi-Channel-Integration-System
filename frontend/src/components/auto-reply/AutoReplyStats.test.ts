@@ -28,18 +28,17 @@ describe('AutoReplyStats -- lead', () => {
     expect(wrapper.find('.lead-num').text()).toContain('99')
   })
 
-  it('draws one arc per real ratio: active rules and successful replies', () => {
+  it('shows the real ratios as small bars: active rules and successful replies', () => {
     const wrapper = mountStats({ activeRules: 5, totalRules: 6, todayReplies: 47, todayFailed: 1 })
-    const label = wrapper.find('[role="img"]').attributes('aria-label') ?? ''
-    expect(label).toContain('啟用規則 5')
-    expect(label).toContain('共 6')
-    expect(label).toContain('今日回覆成功 47')
-    expect(label).toContain('共 48')
+    const labels = wrapper.findAll('[role="img"]').map((n) => n.attributes('aria-label') ?? '').join('|')
+    expect(labels).toContain('啟用 5 條，共 6 條')
+    expect(labels).toContain('成功 47 則，失敗 1 則')
   })
 
-  it('omits rings that have no data behind them', () => {
+  it('omits the result bar when nothing was attempted', () => {
     const wrapper = mountStats({ successRate: null })
-    expect(wrapper.find('[role="img"]').exists()).toBe(false)
+    const labels = wrapper.findAll('[role="img"]').map((n) => n.attributes('aria-label') ?? '').join('|')
+    expect(labels).not.toContain('成功')
   })
 })
 

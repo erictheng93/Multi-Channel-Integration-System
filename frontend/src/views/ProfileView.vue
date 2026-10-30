@@ -184,6 +184,42 @@
               {{ devicePerm.hint }}
             </p>
           </section>
+
+          <!-- 我的團隊：from /auth/me teams[] + teamRoles -->
+          <section
+            v-if="teamRows.length > 0"
+            aria-labelledby="teams-title"
+            data-testid="my-teams"
+          >
+            <h2
+              id="teams-title"
+              class="ui-group-label"
+            >
+              我的團隊
+            </h2>
+            <div class="ui-group">
+              <div
+                v-for="row in teamRows"
+                :key="row.id"
+                class="ui-row"
+              >
+                <span
+                  class="team-mark"
+                  aria-hidden="true"
+                  :style="{ background: teamMarkBackground(row.id), color: teamMarkInk(row.id) }"
+                >{{ row.name.charAt(0) }}</span>
+                <div class="ui-row-main row-label-strong">
+                  {{ row.name }}
+                </div>
+                <div class="ui-row-value">
+                  {{ row.role }}
+                </div>
+              </div>
+            </div>
+            <p class="ui-group-foot">
+              團隊與角色由管理員指派。
+            </p>
+          </section>
         </div>
 
         <div class="profile-col">
@@ -370,6 +406,7 @@ import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppLayout from '@/components/ui/AppLayout.vue'
 import { useAuthStore } from '@/stores/auth'
+import { teamMarkBackground, teamMarkInk, teamRoleText } from '@/utils/team-tone'
 import { useWebSocketStore } from '@/stores/websocket'
 import { useConnectionStatus } from '@/composables/useConnectionStatus'
 import { useToast } from '@/composables/useToast'
@@ -394,14 +431,18 @@ const initial = computed(() => (profile.displayName.trim().charAt(0) || '?').toU
 const identitySub = computed(() => connection.value.label)
 
 // Email, role and teams are admin-managed: one read-only line instead of three locked fields
-const adminItems = computed(() => {
-  const parts = [
-    { label: '電子郵件', value: profile.email || '—' },
-    { label: '角色', value: roleLabel.value },
-  ]
-  if (teams.value.length > 0) { parts.push({ label: '團隊', value: teams.value.map((t) => t.name).join('、') }) }
-  return parts
-})
+const adminItems = computed(() => [
+  { label: '電子郵件', value: profile.email || '—' },
+  { label: '角色', value: roleLabel.value },
+])
+
+// One row per team with my role in it (admins without a team role show 管理員)
+const teamRows = computed(() =>
+  teams.value.map((t) => {
+    const role = authStore.currentAgent?.teamRoles?.[t.id]
+    return { id: t.id, name: t.name, role: role ? teamRoleText(role) : roleLabel.value }
+  }),
+)
 
 // 這台裝置的桌面通知權限（瀏覽器 Notification.permission，只讀）
 const devicePerm = computed(() => {
@@ -682,7 +723,7 @@ watch(
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 24px 40px;
   align-items: center;
-  padding: 26px 36px;
+  padding: 34px 44px;
 }
 
 .identity {
@@ -696,12 +737,12 @@ watch(
   display: grid;
   flex: none;
   place-items: center;
-  width: 84px;
-  height: 84px;
+  width: 96px;
+  height: 96px;
   border-radius: 50%;
   background: linear-gradient(160deg, #5aa8ff, #1d6fe0);
   color: #fff;
-  font: 600 34px var(--ui-font-display);
+  font: 600 38px var(--ui-font-display);
 }
 
 .identity-text {
@@ -819,6 +860,16 @@ watch(
   flex: 1;
   gap: 6px;
   min-width: 0;
+}
+
+.team-mark {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  font: 600 15px var(--ui-font-display);
 }
 
 .row-label-strong {
