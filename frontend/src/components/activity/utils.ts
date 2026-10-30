@@ -12,6 +12,10 @@ import {
   UserPlusIcon,
   UserIcon,
   FileIcon,
+  TagIcon,
+  TrashIcon,
+  ClockIcon,
+  SendIcon,
 } from '@/components/icons'
 
 // ─── groupActivitiesByDate ────────────────────────────────────────────────────
@@ -168,13 +172,43 @@ const ACTION_ICON_MAP: Record<string, ActionIconStyle> = {
   'broadcast_create': {
     bgClass: 'bg-[var(--ui-green-soft)]',
     colorClass: 'text-[var(--ui-green-ink)]',
-    icon: ChatIcon,
+    icon: SendIcon,
   },
   'broadcast_send': {
     bgClass: 'bg-[var(--ui-green-soft)]',
     colorClass: 'text-[var(--ui-green-ink)]',
-    icon: ChatIcon,
+    icon: SendIcon,
   },
+  'conversation_unassign': {
+    bgClass: 'bg-[var(--ui-orange-soft)]',
+    colorClass: 'text-[var(--ui-orange-ink)]',
+    icon: UsersIcon,
+  },
+  'conversation_bulk_assign': {
+    bgClass: 'bg-[var(--ui-orange-soft)]',
+    colorClass: 'text-[var(--ui-orange-ink)]',
+    icon: UsersIcon,
+  },
+  'message_forward': {
+    bgClass: 'bg-[var(--ui-green-soft)]',
+    colorClass: 'text-[var(--ui-green-ink)]',
+    icon: ForwardIcon,
+  },
+  'tag_create': { bgClass: 'bg-[var(--ui-indigo-soft)]', colorClass: 'text-[var(--ui-indigo-ink)]', icon: TagIcon },
+  'tag_update': { bgClass: 'bg-[var(--ui-indigo-soft)]', colorClass: 'text-[var(--ui-indigo-ink)]', icon: TagIcon },
+  'tag_assign': { bgClass: 'bg-[var(--ui-indigo-soft)]', colorClass: 'text-[var(--ui-indigo-ink)]', icon: TagIcon },
+  'tag_unassign': { bgClass: 'bg-[var(--ui-indigo-soft)]', colorClass: 'text-[var(--ui-indigo-ink)]', icon: TagIcon },
+  'tag_delete': { bgClass: 'bg-[var(--ui-red-soft)]', colorClass: 'text-[var(--ui-red-ink)]', icon: TrashIcon },
+  'member_add': { bgClass: 'bg-[var(--ui-teal-soft)]', colorClass: 'text-[var(--ui-teal)]', icon: UserPlusIcon },
+  'member_remove': { bgClass: 'bg-[var(--ui-teal-soft)]', colorClass: 'text-[var(--ui-teal)]', icon: UserPlusIcon },
+  'team_member_update': { bgClass: 'bg-[var(--ui-teal-soft)]', colorClass: 'text-[var(--ui-teal)]', icon: UserPlusIcon },
+  'team_member_remove': { bgClass: 'bg-[var(--ui-teal-soft)]', colorClass: 'text-[var(--ui-teal)]', icon: UserPlusIcon },
+  'customer_create': { bgClass: 'bg-[var(--ui-accent-soft)]', colorClass: 'text-[var(--ui-accent)]', icon: UserIcon },
+  'customer_update': { bgClass: 'bg-[var(--ui-accent-soft)]', colorClass: 'text-[var(--ui-accent)]', icon: UserIcon },
+  'customer_followed': { bgClass: 'bg-[var(--ui-accent-soft)]', colorClass: 'text-[var(--ui-accent)]', icon: UserIcon },
+  'customer_unfollowed': { bgClass: 'bg-[var(--ui-accent-soft)]', colorClass: 'text-[var(--ui-accent)]', icon: UserIcon },
+  'delayed_message_schedule': { bgClass: 'bg-[var(--ui-green-soft)]', colorClass: 'text-[var(--ui-green-ink)]', icon: ClockIcon },
+  'delayed_message_cancel': { bgClass: 'bg-[var(--ui-green-soft)]', colorClass: 'text-[var(--ui-green-ink)]', icon: ClockIcon },
 }
 
 const DEFAULT_ICON_STYLE: ActionIconStyle = {

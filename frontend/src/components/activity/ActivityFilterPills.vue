@@ -223,9 +223,8 @@
       </select>
 
       <button
-        type="button"
+        v-if="hasActiveFilters"
         class="btn btn-ghost btn-sm filter-reset"
-        :disabled="!hasActiveFilters"
         @click="$emit('clear')"
       >
         重設

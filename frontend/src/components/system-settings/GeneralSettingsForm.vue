@@ -67,8 +67,15 @@
       <SettingsRow
         label="介面語言"
         hint="目前僅支援繁體中文"
+        for-id="language"
       >
-        <span class="lang-value">繁體中文</span>
+        <select
+          id="language"
+          class="ui-select"
+          disabled
+        >
+          <option>繁體中文</option>
+        </select>
       </SettingsRow>
     </SettingsGroup>
   </form>
@@ -160,20 +167,9 @@ function handleSave() {
   align-items: start;
 }
 
-.lang-value {
-  width: 100%;
-  font-size: 15px;
-  color: var(--ui-muted);
-  text-align: right;
-}
-
 @media (max-width: 1024px) {
   .general-form {
     grid-template-columns: minmax(0, 1fr);
-  }
-
-  .lang-value {
-    text-align: left;
   }
 }
 </style>

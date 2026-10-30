@@ -68,24 +68,24 @@ describe('ActivityFilterPills', () => {
     expect(wrapper.emitted('apply')).toBeTruthy()
   })
 
-  it('enables reset when a filter is active (non-default)', () => {
+  it('offers reset when a filter is active (non-default)', () => {
     const wrapper = mountPills({
       filters: { userId: 'u1', action: '', resourceType: '' },
     })
     expect(wrapper.find('.filter-reset').attributes('disabled')).toBeUndefined()
   })
 
-  it('enables reset when date range is non-default', () => {
+  it('offers reset when date range is non-default', () => {
     const wrapper = mountPills({ dateRange: 'today' })
     expect(wrapper.find('.filter-reset').attributes('disabled')).toBeUndefined()
   })
 
-  it('disables reset when all filters are default', () => {
+  it('offers no reset when all filters are default', () => {
     const wrapper = mountPills({
       filters: defaultFilters(),
       dateRange: 'week',
     })
-    expect(wrapper.find('.filter-reset').attributes('disabled')).toBeDefined()
+    expect(wrapper.find('.filter-reset').exists()).toBe(false)
   })
 
   it('emits clear when reset is clicked', async () => {

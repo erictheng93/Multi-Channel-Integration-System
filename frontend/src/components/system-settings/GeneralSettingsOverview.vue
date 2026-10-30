@@ -19,22 +19,30 @@
         </div>
         <div
           class="ov-big"
-          :class="healthTile.tone"
+          :class="headline.tone"
         >
-          {{ verdict }}
+          {{ headline.text }}
         </div>
-        <div class="ov-meaning">
-          {{ healthTile.sub }}
-        </div>
-        <p
-          class="ov-channels"
-          :class="channelTone"
-        >
+        <p class="ov-meaning">
           <span
             class="ov-dot"
+            :class="healthTile.tone"
             aria-hidden="true"
-          />{{ channelLine }}
+          />{{ meaning }}
+          <router-link
+            class="ui-link"
+            :to="healthTile.to"
+          >
+            健康檢查
+          </router-link>
         </p>
+        <router-link
+          v-if="firstDown"
+          class="btn btn-primary ov-cta"
+          :to="firstDown.to"
+        >
+          前往設定 {{ firstDown.label }}
+        </router-link>
       </div>
       <ul
         class="ov-list"
@@ -110,7 +118,7 @@ function formatRelativeTime(iso: string): string {
 
 const NBSP = ' '
 
-type Tone = 'green' | 'orange' | 'red' | 'muted'
+type Tone = 'green' | 'orange' | 'red' | 'muted' | 'ink'
 
 interface Tile {
   key: string
@@ -205,28 +213,46 @@ const backupTile = computed<Tile>(() => {
   }
 })
 
-const CHANNEL_NAMES = { line: 'LINE', facebook: 'Facebook' } as const
 
-/** The lead must not say 正常 beside a channel that is down: services and channels are stated side by side */
-const verdict = computed(() => {
-  const state = healthTile.value.state
-  return state === '正常' || state === '降級' || state === '異常' ? `服務${state}` : state
+const CHANNELS = [
+  { key: 'line', name: 'LINE', to: section('line').to },
+  { key: 'facebook', name: 'Facebook', to: section('facebook').to },
+] as const
+
+const disconnected = computed(() => CHANNELS
+  .filter(c => controller.settings.integrations[c.key].status !== 'connected'))
+
+const firstDown = computed(() => {
+  const c = disconnected.value[0]
+  return c ? { label: c.name, to: c.to } : null
 })
 
-const disconnected = computed(() => (['line', 'facebook'] as const)
-  .filter(key => controller.settings.integrations[key].status !== 'connected')
-  .map(key => CHANNEL_NAMES[key]))
+/**
+ * The lead answers "does anything need me?": a service fault first, then a channel that is down, otherwise all clear.
+ * The channel names are the headline so the action is not a small chip under a generic verdict.
+ */
+const headline = computed<{ text: string, tone: Tone }>(() => {
+  const state = healthTile.value.state
+  if (state === '異常') { return { text: '服務異常', tone: 'red' } }
+  if (state === '降級') { return { text: '服務降級', tone: 'orange' } }
+  if (disconnected.value.length > 0) {
+    const names = disconnected.value.map(c => c.name).join('、')
+    return { text: `${names} 未連線`, tone: 'ink' as Tone }
+  }
+  if (state === '正常') { return { text: '一切運作正常', tone: 'ink' as Tone } }
+  return { text: state, tone: 'muted' }
+})
 
-const channelLine = computed(() => disconnected.value.length === 0
-  ? '2 個頻道皆已連線'
-  : `${disconnected.value.length} 個頻道未連線 · ${disconnected.value.join('、')}`)
-
-const channelTone = computed(() => disconnected.value.length === 0 ? 'green' : 'orange')
+const meaning = computed(() => {
+  const rows = controller.healthCheckResults.value.length
+  const state = healthTile.value.state
+  if (state === '尚未檢查' || state === '檢查中') { return state }
+  return `服務${state}${rows > 0 ? ` · ${rows} 項檢查` : ''} · ${healthTile.value.sub.split(' · ').pop()}`
+})
 
 const tiles = computed<Tile[]>(() => [
   integrationTile('line', 'LINE 官方帳號', controller.settings.integrations.line.status, controller.settings.integrations.line.lastTest),
   integrationTile('facebook', 'Facebook', controller.settings.integrations.facebook.status, controller.settings.integrations.facebook.lastTest),
-  healthTile.value,
   backupTile.value,
 ])
 </script>
@@ -260,13 +286,9 @@ const tiles = computed<Tile[]>(() => [
 }
 
 .ov-big {
-  font: 600 52px / 1.1 var(--ui-font-display);
-  letter-spacing: -0.035em;
+  font: 600 40px / 1.15 var(--ui-font-display);
+  letter-spacing: -0.03em;
   color: var(--ui-ink);
-}
-
-.ov-big.green {
-  color: var(--ui-green-ink);
 }
 
 .ov-big.orange {
@@ -282,36 +304,36 @@ const tiles = computed<Tile[]>(() => [
 }
 
 .ov-meaning {
-  font-size: 15px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  align-items: center;
+  margin: 6px 0 0;
+  font-size: 14px;
   color: var(--ui-ink-2);
 }
 
-.ov-channels {
-  display: inline-flex;
-  gap: 8px;
-  align-items: center;
-  margin: 8px 0 0;
-  padding: 6px 12px;
-  border-radius: 999px;
-  font-size: 14px;
-  font-weight: 600;
-}
-
-.ov-channels.green {
-  background: var(--ui-green-soft);
-  color: var(--ui-green-ink);
-}
-
-.ov-channels.orange {
-  background: var(--ui-orange-soft);
-  color: var(--ui-orange-ink);
+.ov-cta {
+  margin-top: 14px;
 }
 
 .ov-dot {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: currentcolor;
+  background: var(--ui-muted);
+}
+
+.ov-dot.green {
+  background: var(--ui-green);
+}
+
+.ov-dot.orange {
+  background: var(--ui-orange);
+}
+
+.ov-dot.red {
+  background: var(--ui-red);
 }
 
 /* the status list lives inside the lead: hairline on its left, rows separated by inset hairlines */
@@ -460,7 +482,7 @@ const tiles = computed<Tile[]>(() => [
   }
 
   .ov-big {
-    font-size: 44px;
+    font-size: 32px;
   }
 
   .ov-sub {
