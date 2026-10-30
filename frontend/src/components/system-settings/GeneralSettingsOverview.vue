@@ -105,6 +105,8 @@ function formatRelativeTime(iso: string): string {
   return Date.now() - new Date(iso).getTime() < 10_000 ? '剛剛' : relative(iso)
 }
 
+const NBSP = ' '
+
 type Tone = 'green' | 'orange' | 'red' | 'muted'
 
 interface Tile {
@@ -160,7 +162,7 @@ function integrationTile(
   if (lastTest) {
     sub = `${lastTest.status === 'success' ? '測試' : '測試失敗'} ${formatRelativeTime(lastTest.testedAt)}`
     if (lastTest.status === 'success' && lastTest.latencyMs) {
-      sub += ` · ${lastTest.latencyMs} ms`
+      sub += ` · ${lastTest.latencyMs}${NBSP}ms`
     }
   }
   return { key, label, state, sub, tone, ...section(key) }
