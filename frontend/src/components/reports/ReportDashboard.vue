@@ -1,5 +1,5 @@
 <template>
-  <div class="ui-page report-dashboard">
+  <div class="ui-page report-dashboard ui-rise">
     <!-- 頁面標題和快速動作 -->
     <DashboardHeader
       :loading="loading"
@@ -8,41 +8,12 @@
       @create-report="handleCreateReport"
     />
 
-    <!-- 統計區域：本月報表為唯一的主指標，其餘為狀態分佈 -->
-    <section class="overview-top">
-      <article
-        class="ui-card ui-kpi lead-card"
-        role="group"
-        aria-label="本月報表"
-        :aria-busy="!loaded || undefined"
-      >
-        <div class="ui-kpi-top">
-          <span class="ui-kpi-ico ico-lead"><svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            aria-hidden="true"
-          ><path d="M8 3v3M16 3v3M4 9h16M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Z" /></svg></span>
-          本月報表
-        </div>
-        <div
-          class="ui-kpi-value"
-          :class="{ 'is-dim': loaded && stats.thisMonthGenerated === 0 }"
-        >
-          {{ loaded ? stats.thisMonthGenerated.toLocaleString('en-US') : '—' }}
-        </div>
-        <div class="ui-kpi-foot">
-          <span>本月已產生的報表數</span>
-        </div>
-      </article>
-      <StatsGrid
-        :stats="stats"
-        @show-failed-reports="showFailedReports"
-      />
-    </section>
+    <!-- Lead: this month's reports + rings of completed / processing / failed -->
+    <StatsLead
+      :stats="stats"
+      :loaded="loaded"
+      @show-failed-reports="showFailedReports"
+    />
 
     <!-- 主要內容區域 -->
     <div class="main-content">
@@ -147,7 +118,7 @@ import type { PopularType } from './dashboard/PopularTypesWidget.vue'
 
 // 导入子组件
 import DashboardHeader from './dashboard/DashboardHeader.vue'
-import StatsGrid from './dashboard/StatsGrid.vue'
+import StatsLead from './dashboard/StatsLead.vue'
 import FiltersSection from './dashboard/FiltersSection.vue'
 import ReportsSection from './dashboard/ReportsSection.vue'
 import PaginationControls from '@/components/ui/PaginationControls.vue'
@@ -323,32 +294,6 @@ function handleFilterByType(type: string) {
 
 <style scoped>
 
-/* One row of five identical KPI cards: the month figure is the first of them */
-.overview-top {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 16px;
-}
-
-.overview-top :deep(.ui-kpi-grid) {
-  display: contents;
-}
-
-.lead-card {
-  gap: 10px;
-  padding: 18px 20px 16px;
-  box-shadow: var(--ui-shadow-card);
-}
-
-.ico-lead {
-  background: var(--ui-indigo-soft);
-  color: var(--ui-indigo);
-}
-
-.ui-kpi-value.is-dim {
-  color: var(--ui-muted);
-}
-
 .main-content {
   display: grid;
   grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
@@ -388,22 +333,6 @@ function handleFilterByType(type: string) {
 
   .content-right :deep(.widget-wrapper:last-child) {
     max-height: none;
-  }
-}
-
-@media (max-width: 1024px) {
-  .overview-top {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .lead-card {
-    grid-column: 1 / -1;
-  }
-}
-
-@media (max-width: 768px) {
-  .overview-top {
-    gap: 12px;
   }
 }
 </style>
