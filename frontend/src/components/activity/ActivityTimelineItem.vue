@@ -322,8 +322,20 @@ onUnmounted(() => {
 .timeline-item__status {
   font-size: 13px;
   font-weight: 500;
-  color: var(--ui-muted);
+  color: var(--ui-ink-2);
   white-space: nowrap;
+}
+/* the closed state is a quiet grey capsule of the same size as the action, so the column reads as one rhythm */
+.timeline-item__restore-zone .timeline-item__chip {
+  padding: 6px 0;
+  border-radius: 999px;
+  background: var(--ui-fill);
+}
+/* the one real action is the accent one */
+.timeline-item__restore-zone .btn {
+  background: var(--ui-accent-soft);
+  font-weight: 600;
+  color: var(--ui-accent);
 }
 .timeline-item__restore-zone .ui-pill {
   grid-column: 1;
@@ -357,7 +369,7 @@ onUnmounted(() => {
   border: 0;
   border-radius: 50%;
   background: none;
-  color: var(--ui-muted);
+  color: var(--ui-ink-2);
   cursor: pointer;
   transition: background var(--ui-dur) var(--ui-ease);
 }

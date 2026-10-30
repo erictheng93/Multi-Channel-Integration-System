@@ -124,7 +124,7 @@ const meaning = computed(() => {
   box-shadow: inset 0 -1px 0 var(--ui-sep);
 }
 .stats-grid :deep(.lb-col.has-current:not(.is-current) .lb-bar) {
-  opacity: 0.6;
+  opacity: 0.82;
 }
 .stats-grid :deep(.lb-label) {
   color: var(--ui-ink-2);
