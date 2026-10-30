@@ -843,11 +843,11 @@ defineExpose({
   gap: 5px;
   margin-bottom: 8px;
   padding: 0 10px;
-  height: 22px;
+  height: 24px;
   border-radius: 9999px;
   background: var(--ui-green-soft);
   color: var(--ui-green-ink);
-  font-size: 11.5px;
+  font-size: 13px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
@@ -1042,8 +1042,8 @@ defineExpose({
 @media (max-width: 768px) {
   /* Phone: the chat fills the screen edge to edge (cancels .page-content padding 16px) */
   .detail-layout {
-    height: calc(100vh - 60px - env(safe-area-inset-top) - 32px);
-    height: calc(100dvh - 60px - env(safe-area-inset-top) - 32px);
+    height: calc(100vh - 60px - env(safe-area-inset-top));
+    height: calc(100dvh - 60px - env(safe-area-inset-top));
     margin: -16px;
     gap: 0;
   }

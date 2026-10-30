@@ -20,7 +20,7 @@
         :aria-expanded="expanded"
         @click="expanded = !expanded"
       >
-        {{ expanded ? '收合' : `更多 ${replies.length - MAX_VISIBLE}` }}
+        {{ expanded ? '收合' : `還有 ${replies.length - MAX_VISIBLE} 則` }}
       </button>
     </div>
   </Transition>
@@ -165,23 +165,6 @@ const handleSelect = (reply: QuickReply) => {
 
   to {
     opacity: 0;
-  }
-}
-
-/* Phone: chips wrap onto a second row instead of clipping at the edge */
-@media (max-width: 768px) {
-  .quick-replies {
-    flex-wrap: wrap;
-    overflow: visible;
-    -webkit-mask-image: none;
-    mask-image: none;
-  }
-
-  .quick-reply-btn {
-    flex: 0 1 auto;
-    max-width: 100%;
-    overflow: hidden;
-    text-overflow: ellipsis;
   }
 }
 
