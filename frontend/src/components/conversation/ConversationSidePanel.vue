@@ -61,7 +61,7 @@
         v-if="activity"
         class="block"
       >
-        <h3>往來</h3>
+        <h3>往來<small>共 {{ activity.customer + activity.agent }} 則</small></h3>
         <div
           class="split"
           role="img"
@@ -85,7 +85,10 @@
             <dd>{{ activity.agent }}</dd>
             <dt><i class="dot dot-a" />客服回覆</dt>
           </div>
-          <div v-if="activity.firstReply">
+          <div
+            v-if="activity.firstReply"
+            class="stat-wide"
+          >
             <dd class="stat-text">
               {{ activity.firstReply }}
             </dd>
@@ -205,7 +208,7 @@ const createdAtText = computed(() => {
   display: flex;
   flex-direction: column;
   min-height: 0;
-  padding: 28px 22px 22px;
+  padding: 26px 18px 18px;
   overflow-y: auto;
 }
 
@@ -214,7 +217,7 @@ const createdAtText = computed(() => {
   flex-direction: column;
   align-items: center;
   gap: 4px;
-  padding-bottom: 18px;
+  padding-bottom: 8px;
   text-align: center;
 }
 
@@ -260,24 +263,35 @@ const createdAtText = computed(() => {
 }
 
 .block {
-  padding: 20px 0;
-  box-shadow: inset 0 0.5px 0 var(--ui-sep);
+  margin-top: 10px;
+  padding: 14px 16px 16px;
+  border-radius: var(--ui-r-inner);
+  background: var(--ui-canvas);
 }
 
 .block h3 {
-  margin: 0 0 12px;
-  font-size: 13px;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin: 0 0 10px;
+  font-size: 14px;
   font-weight: 600;
-  letter-spacing: 0.02em;
+  color: var(--ui-ink);
+}
+
+.block h3 small {
+  font-size: 13px;
+  font-weight: 500;
   color: var(--ui-muted);
+  font-variant-numeric: tabular-nums;
 }
 
 /* Customer / agent counts: the numerals carry the weight, the labels sit under them */
 .stats {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px 12px;
-  margin: 14px 0 0;
+  margin: 12px 0 0;
 }
 
 .stats > div {
@@ -288,10 +302,19 @@ const createdAtText = computed(() => {
 
 .stats dd {
   margin: 0;
-  font: 600 26px / 1.1 var(--ui-font-display);
+  font: 600 30px / 1.1 var(--ui-font-display);
   letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
   color: var(--ui-ink);
+}
+
+.stats .stat-wide {
+  grid-column: 1 / -1;
+  flex-direction: row-reverse;
+  align-items: baseline;
+  justify-content: space-between;
+  padding-top: 12px;
+  box-shadow: inset 0 0.5px 0 var(--ui-sep);
 }
 
 .stats dd.stat-text {
@@ -318,13 +341,13 @@ const createdAtText = computed(() => {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  height: 24px;
-  padding: 0 10px;
+  height: 28px;
+  padding: 0 12px;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--tag, var(--ui-muted)) 14%, var(--ui-surface));
-  color: var(--ui-ink-2);
+  background: color-mix(in srgb, var(--tag, var(--ui-muted)) 16%, var(--ui-surface));
+  color: var(--ui-ink);
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .tag i {
@@ -336,7 +359,7 @@ const createdAtText = computed(() => {
 
 .kv {
   display: grid;
-  gap: 14px;
+  gap: 12px;
   margin: 0;
   font-size: 14px;
 }
@@ -362,7 +385,7 @@ const createdAtText = computed(() => {
   display: flex;
   gap: 3px;
   height: 10px;
-  margin-bottom: 14px;
+  margin-bottom: 4px;
 }
 
 .split span {

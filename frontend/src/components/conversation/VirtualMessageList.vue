@@ -544,11 +544,6 @@ defineExpose({
   position: sticky;
   top: 0;
   z-index: 5;
-  background: linear-gradient(to bottom,
-    rgba(250, 251, 252, 0.95) 0%,
-    rgba(250, 251, 252, 0.8) 50%,
-    transparent 100%);
-  backdrop-filter: blur(8px);
 }
 
 /* Spacious Message Item Container */

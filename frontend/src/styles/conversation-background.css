@@ -94,10 +94,7 @@
   border-top: 1px solid rgba(0, 0, 0, 0.06) !important;
 
   /* 精致的阴影 */
-  box-shadow:
-    0 -8px 32px rgba(0, 0, 0, 0.04),
-    0 -2px 8px rgba(0, 0, 0, 0.02),
-    0 -1px 0 rgba(255, 255, 255, 0.8) !important;
+  box-shadow: none !important;
 }
 
 /* 输入区域在暗色模式下也保持固定 */

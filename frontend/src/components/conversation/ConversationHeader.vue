@@ -864,13 +864,42 @@ defineExpose({
 
 @media (max-width: 768px) {
   .conversation-header {
+    gap: 6px;
     padding: 10px 12px;
   }
 
+  /* Two bands: identity + the two icon tools on top, the labelled actions (assign, tags, close) below */
   .header-actions {
-    width: 100%;
-    flex-wrap: nowrap;
-    justify-content: flex-start;
+    display: contents;
+  }
+
+  .header-left {
+    flex: 0 0 calc(100% - 104px);
+  }
+
+  .header-actions .info-btn {
+    order: 2;
+  }
+
+  .more-wrapper {
+    order: 3;
+  }
+
+  .assign-action-wrapper {
+    order: 4;
+  }
+
+  .tag-selector-wrapper {
+    order: 5;
+  }
+
+  .close-toggle-btn {
+    order: 6;
+    margin-left: auto;
+  }
+
+  .actions-spacer {
+    display: none;
   }
 
   .assign-action-btn {

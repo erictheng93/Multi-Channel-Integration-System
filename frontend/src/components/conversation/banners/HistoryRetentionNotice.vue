@@ -41,7 +41,7 @@
     <span
       class="hrn-text"
       :title="`LINE 僅保留近 6 個月記錄，${boundaryLabel} 前的訊息已無法顯示`"
-    >LINE 僅保留近 6 個月記錄<span class="hrn-more">，{{ boundaryLabel }} 前的訊息已無法顯示</span></span>
+    >LINE 僅保留近 6 個月記錄</span>
     <button
       type="button"
       class="hrn-close"
@@ -123,8 +123,8 @@ onBeforeUnmount(() => {
   gap: 8px;
   width: fit-content;
   max-width: calc(100% - 32px);
-  margin: 10px auto 0;
-  padding: 4px 4px 4px 12px;
+  margin: 8px auto 0;
+  padding: 2px 2px 2px 12px;
   border-radius: 18px;
   background: var(--ui-accent-soft);
   color: var(--ui-ink);
@@ -169,15 +169,11 @@ onBeforeUnmount(() => {
   }
 }
 
-/* Phone: the headline only, one line (the boundary date sits in the title) */
+/* Phone: tighter margins; the boundary date sits in the title at every width */
 @media (max-width: 768px) {
   .history-retention-notice {
     max-width: calc(100% - 24px);
     margin-top: 8px;
-  }
-
-  .hrn-more {
-    display: none;
   }
 }
 
