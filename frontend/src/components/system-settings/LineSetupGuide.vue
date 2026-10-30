@@ -53,7 +53,14 @@ async function copy(): Promise<void> {
 </script>
 
 <style scoped>
+.guide {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
+
 .guide-card {
+  flex: 1;
   padding: 18px 20px;
 }
 
@@ -83,7 +90,7 @@ async function copy(): Promise<void> {
   flex: 1;
   min-width: 0;
   padding-top: 4px;
-  font: 12.5px / 1.5 var(--ui-font-mono);
+  font: 12px / 1.5 var(--ui-font-mono);
   color: var(--ui-ink-2);
   overflow-wrap: anywhere;
 }
@@ -104,6 +111,18 @@ async function copy(): Promise<void> {
   gap: 10px;
   align-items: center;
   counter-increment: step;
+}
+
+@media (max-width: 768px) {
+  .url-box {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .url-box .btn {
+    width: 100%;
+    min-height: 44px;
+  }
 }
 
 .steps li::before {
