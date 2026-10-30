@@ -59,7 +59,10 @@
           >
         </label>
         <div class="customer-info">
-          <div class="avatar">
+          <div
+            class="avatar"
+            :class="`ui-av-${avatarToneOf(getCustomerName(conversation))}`"
+          >
             {{ initialOf(getCustomerName(conversation)) }}
             <span
               v-if="platformOf(conversation) === 'line' || platformOf(conversation) === 'facebook'"
@@ -162,6 +165,7 @@ import {
   WAITING_HINT,
   freeReplySeconds,
   initialOf,
+  avatarToneOf,
   STALE_HINT,
   replyStateOf,
   platformName,
@@ -264,7 +268,7 @@ const getLastMessageText = (conversation: Conversation) => {
 
 <style scoped>
 .desktop-table {
-  --conv-cols: minmax(190px, 0.9fr) minmax(0, 1.3fr) 124px 96px 104px;
+  --conv-cols: minmax(176px, 0.8fr) minmax(0, 1.5fr) 132px 92px 112px;
   display: block;
 }
 
@@ -355,17 +359,13 @@ const getLastMessageText = (conversation: Conversation) => {
   box-shadow: var(--ui-sel-ring);
 }
 
-/* Unread: a section-hue dot in the gutter (Mail style) plus a heavier message line */
-.conversation-row.has-unread::after {
-  position: absolute;
-  top: 50%;
-  left: 11px;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--section-hue);
-  transform: translateY(-50%);
-  content: '';
+/* Unread: a faint section wash plus a heavier message line and the count badge (no gutter dot floating outside the row) */
+.conversation-row.has-unread {
+  background: color-mix(in srgb, var(--section-hue) 4%, var(--ui-surface));
+}
+
+.conversation-row.has-unread:hover {
+  background: color-mix(in srgb, var(--section-hue) 8%, var(--ui-surface));
 }
 
 .select-all {
@@ -423,7 +423,6 @@ const getLastMessageText = (conversation: Conversation) => {
   width: 44px;
   height: 44px;
   border-radius: 50%;
-  background: linear-gradient(160deg, #b9b6f5, #6e6bd8);
   color: #fff;
   font: 600 16px var(--ui-font-display);
 }

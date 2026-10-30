@@ -161,7 +161,20 @@
                   />
 
                   <p class="list-foot">
-                    {{ LEGEND_TEXT }}
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      aria-hidden="true"
+                    ><circle
+                      cx="12"
+                      cy="12"
+                      r="9"
+                    /><path d="M12 11v5M12 8h.01" /></svg>
+                    <span>{{ LEGEND_TEXT }}</span>
                   </p>
                 </div>
               </div>
@@ -244,7 +257,33 @@
                 </button>
               </div>
             </section>
-  
+
+            <section
+              v-if="channelRows.length > 1 || !!filterComposable.filters.value.platform"
+              aria-labelledby="rail-channel-title"
+            >
+              <h2
+                id="rail-channel-title"
+                class="ui-group-label"
+              >
+                目前列表依渠道
+              </h2>
+              <div class="ui-group">
+                <button
+                  v-for="row in channelRows"
+                  :key="row.key"
+                  type="button"
+                  class="ui-row rail-row"
+                  :class="{ 'is-selected': filterComposable.filters.value.platform === row.key }"
+                  :aria-pressed="filterComposable.filters.value.platform === row.key"
+                  @click="toggleChannel(row.key)"
+                >
+                  <span class="ui-row-main rail-name">{{ row.name }}</span>
+                  <span class="rail-total">{{ row.n }}</span>
+                </button>
+              </div>
+            </section>
+
             <section
               v-if="myUnread.length > 0"
               aria-labelledby="rail-unread-title"
@@ -407,15 +446,41 @@ const myUnread = computed(() => displayedConversations.value
   .slice(0, 5)
   .map(c => ({ id: c.id, name: c.customer?.name || c.user?.name || '未知用戶', count: unreadOf(c) })))
 
+// Rail: the loaded list by channel (one-tap filter, same way the team rows work)
+const channelRows = computed(() => {
+  const tally = new Map<string, number>()
+  for (const c of displayedConversations.value) {
+    const key = c.platform || c.user?.platform || 'line'
+    tally.set(key, (tally.get(key) ?? 0) + 1)
+  }
+  const names: Record<string, string> = { line: 'LINE', facebook: 'Messenger' }
+  return [...tally.entries()]
+    .map(([key, n]) => ({ key, name: names[key] ?? key, n }))
+    .sort((a, b) => b.n - a.n)
+})
+
+function toggleChannel(key: string) {
+  const current = filterComposable.filters.value.platform
+  filterComposable.updateFilter('platform', current === key ? '' : key)
+}
+
 function toggleTeam(filterId: number) {
   filterComposable.updateFilter('teamId', filterComposable.filters.value.teamId === filterId ? undefined : filterId)
 }
 
-// One line (<= 60 chars); the 未讀 / 待回覆 definitions live in the table header tooltip
+// One line (<= 60 chars). With the rail visible (wide screens) the wait numbers live there, so the line carries only
+// what the rail does not; on tablet and phone the rail is hidden and the line keeps them.
+const railVisible = ref(typeof window !== 'undefined' && window.matchMedia?.('(min-width: 1025px)').matches === true)
+let railMql: MediaQueryList | null = null
+const onRailChange = (e: MediaQueryListEvent) => { railVisible.value = e.matches }
+
 const subtitle = computed(() => {
   if (!counts.value) { return '' }
-  const parts = [`${counts.value.open} 件處理中`, `${waitingTotal.value} 件待回覆`]
-  if (oldestWaitText.value) { parts.push(`最久等 ${oldestWaitText.value}`) }
+  const parts = [`${counts.value.open} 件處理中`]
+  if (!railVisible.value) {
+    parts.push(`${waitingTotal.value} 件待回覆`)
+    if (oldestWaitText.value) { parts.push(`最久等 ${oldestWaitText.value}`) }
+  }
   if (unreadStore.total > 0) { parts.push(`我的未讀 ${unreadStore.total}`) }
   return parts.join(' · ')
 })
@@ -738,6 +803,11 @@ const measureScopeTabs = () => {
 }
 let scopeTabsObserver: globalThis.ResizeObserver | null = null
 onMounted(() => {
+  if (typeof window.matchMedia === 'function') {
+    railMql = window.matchMedia('(min-width: 1025px)')
+    railVisible.value = railMql.matches
+    railMql.addEventListener('change', onRailChange)
+  }
   measureScopeTabs()
   if (scopeTabsEl.value && typeof window.ResizeObserver !== 'undefined') {
     scopeTabsObserver = new window.ResizeObserver(measureScopeTabs)
@@ -748,6 +818,7 @@ watch(() => visibleTabs.value.length, () => { void nextTick(measureScopeTabs) })
 
 // 清理实时同步资源
 onUnmounted(() => {
+  railMql?.removeEventListener('change', onRailChange)
   scopeTabsObserver?.disconnect()
   frontendLogger.debug('[ConversationsTable] Component unmounting, cleaning up...')
   if (refillTimer) { clearTimeout(refillTimer) }
@@ -999,12 +1070,24 @@ onUnmounted(() => {
 }
 
 .list-foot {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
   margin: 0;
   padding: 12px 22px 14px;
   font-size: 13px;
+  line-height: 1.5;
   color: var(--ui-muted);
-  text-align: center;
+  text-align: left;
   box-shadow: inset 0 0.5px 0 var(--ui-sep);
+}
+
+
+.list-foot svg {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  margin-top: 2px;
 }
 
 /* Selection toggle (layout only; button look comes from global .btn) */

@@ -121,9 +121,8 @@
           class="trigger-stats"
           title="目前列表顯示的對話數"
         >
-          <span class="stat-label">顯示</span>
           <span class="stat-num">{{ totalConversations }}</span>
-          <span class="stat-label">件</span>
+          <span class="stat-label">件對話</span>
         </div>
         <div
           v-if="unreadCount > 0"
