@@ -1014,9 +1014,9 @@ defineExpose({
     grid-template-columns: minmax(0, 1fr) 296px;
     gap: 0;
     overflow: hidden;
-    border-radius: var(--ui-r-card);
+    border-radius: var(--ui-r-lead);
     background: var(--ui-surface);
-    box-shadow: var(--ui-shadow-card);
+    box-shadow: var(--ui-shadow-raised);
   }
 
   .detail-layout > .conversation-detail,
