@@ -39,14 +39,7 @@
                   <div class="identity-name">
                     {{ profile.displayName || '—' }}
                   </div>
-                  <div
-                    class="identity-presence"
-                    :class="`presence--${connection.tone}`"
-                  >
-                    <span
-                      class="presence-dot"
-                      aria-hidden="true"
-                    />
+                  <div class="identity-sub">
                     {{ identitySub }}
                   </div>
                 </div>
@@ -71,14 +64,6 @@
                   由管理員管理
                 </div>
                 <dl class="admin-list">
-                  <div class="admin-item">
-                    <dt class="admin-label">
-                      電子郵件
-                    </dt>
-                    <dd class="admin-value">
-                      {{ profile.email || '—' }}
-                    </dd>
-                  </div>
                   <div class="admin-item">
                     <dt class="admin-label">
                       角色
@@ -238,27 +223,7 @@
             >
               修改密碼
             </h2>
-            <button
-              v-if="isPhone"
-              type="button"
-              class="ui-group pw-disclose"
-              :aria-expanded="pwOpen"
-              aria-controls="pw-form"
-              @click="pwOpen = !pwOpen"
-            >
-              <span class="pw-disclose-text">
-                <span class="row-label-strong">更新登入密碼</span>
-                <span class="session-sub">修改後會自動登出，需用新密碼重新登入</span>
-              </span>
-              <svg
-                class="ico pw-chev"
-                :class="{ 'is-open': pwOpen }"
-                viewBox="0 0 24 24"
-                aria-hidden="true"
-              ><path d="m6 9 6 6 6-6" /></svg>
-            </button>
             <form
-              v-show="!isPhone || pwOpen"
               id="pw-form"
               class="ui-group"
               @submit.prevent="onChangePassword"
@@ -408,9 +373,6 @@
               </div>
 
               <div class="ui-row form-actions">
-                <p class="form-actions-note">
-                  修改後會自動登出，需用新密碼重新登入。
-                </p>
                 <button
                   type="submit"
                   class="btn btn-primary"
@@ -418,6 +380,9 @@
                 >
                   {{ passwordSaving ? '修改中…' : '修改密碼' }}
                 </button>
+                <p class="form-actions-note">
+                  修改後會自動登出，需用新密碼重新登入。
+                </p>
               </div>
             </form>
           </section>
@@ -445,7 +410,7 @@
               </div>
               <button
                 type="button"
-                class="btn btn-secondary"
+                class="btn btn-danger"
                 @click="onSignOut"
               >
                 登出
@@ -460,13 +425,11 @@
 
 <script setup lang="ts">
 import UiPageHead from '@/components/ui/UiPageHead.vue'
-import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppLayout from '@/components/ui/AppLayout.vue'
 import { useAuthStore } from '@/stores/auth'
 import { teamRoleText } from '@/utils/team-tone'
-import { useWebSocketStore } from '@/stores/websocket'
-import { useConnectionStatus } from '@/composables/useConnectionStatus'
 import { useToast } from '@/composables/useToast'
 import { apiClient } from '@/api/base'
 import { authApi } from '@/api/auth'
@@ -481,12 +444,11 @@ const authStore = useAuthStore()
 const { showSuccess, showError } = useToast()
 
 // ============== 基本資料 ==============
-// Presence = own websocket state; teams from /auth/me teams[]
-const connection = useConnectionStatus(useWebSocketStore())
+// Teams from /auth/me teams[]
 const teams = computed(() => authStore.currentAgent?.teams ?? [])
 const initial = computed(() => (profile.displayName.trim().charAt(0) || '?').toUpperCase())
-// Avatar caption = presence only; the team lives in the one admin-managed summary line
-const identitySub = computed(() => connection.value.label)
+// Avatar caption = the sign-in email (a person's profile is not a connection status); role and team sit below
+const identitySub = computed(() => profile.email || '—')
 
 // One row per team with my role in it (admins without a team role show 管理員)
 const teamRows = computed(() =>
@@ -684,7 +646,6 @@ function validatePassword(): boolean {
 async function onChangePassword(): Promise<void> {
   // The button stays enabled: pressing it explains what is missing and jumps to the first problem
   if (!validatePassword()) {
-    pwOpen.value = true
     const first = passwordErrors.currentPassword ? 'current-password' : passwordErrors.newPassword ? 'new-password' : 'confirm-password'
     await nextTick()
     document.getElementById(first)?.focus()
@@ -739,20 +700,8 @@ function extractErrorMessage(error: unknown): string {
 }
 
 // ============== Lifecycle ==============
-// Phone: the password block is a disclosure (opened by default only when the URL asks for #security)
-const isPhone = ref(false)
-const pwOpen = ref(false)
-let phoneMq: globalThis.MediaQueryList | null = null
-const onPhoneMq = (): void => { isPhone.value = !!phoneMq?.matches }
-
 onMounted(() => {
   loadProfileFromStore()
-  if (typeof window.matchMedia === 'function') {
-    phoneMq = window.matchMedia('(max-width: 768px)')
-    onPhoneMq()
-    phoneMq.addEventListener('change', onPhoneMq)
-  }
-  if (route.hash === '#security') { pwOpen.value = true }
 
   // 支援 /profile#security 自動捲動到安全性卡片
   if (route.hash === '#security') {
@@ -762,8 +711,6 @@ onMounted(() => {
     })
   }
 })
-
-onBeforeUnmount(() => { phoneMq?.removeEventListener('change', onPhoneMq) })
 
 // 若 authStore.currentAgent 後續才載入完成 (例如 sessionRestore)，同步更新
 watch(
@@ -802,8 +749,25 @@ watch(
   min-width: 0;
 }
 
+/* the identity card takes the spare height so both columns end on the same line */
+.o-id {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
+
+.o-id .identity-lead {
+  flex: 1;
+  grid-template-rows: 1fr auto;
+}
+
+.o-id .identity {
+  align-self: center;
+}
+
 /* ---- lead: identity (the one elevated object) ---- */
 .identity-lead {
+  box-shadow: var(--ui-shadow-card);
   display: grid;
   gap: 22px;
   padding: 32px 28px 30px;
@@ -820,12 +784,12 @@ watch(
   display: grid;
   flex: none;
   place-items: center;
-  width: 80px;
-  height: 80px;
+  width: 92px;
+  height: 92px;
   border-radius: 50%;
   background: linear-gradient(160deg, #5aa8ff, #1d6fe0);
   color: #fff;
-  font: 600 32px var(--ui-font-display);
+  font: 600 36px var(--ui-font-display);
 }
 
 .identity-text {
@@ -842,30 +806,12 @@ watch(
   white-space: nowrap;
 }
 
-.identity-presence {
-  display: inline-flex;
-  gap: 8px;
-  align-items: center;
+.identity-sub {
+  overflow: hidden;
   font-size: 14px;
   color: var(--ui-muted);
-}
-
-.presence-dot {
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  background: var(--ui-faint);
-}
-
-.presence--online .presence-dot,
-.presence--success .presence-dot,
-.presence--good .presence-dot {
-  background: var(--ui-green);
-}
-
-.presence--warning .presence-dot,
-.presence--connecting .presence-dot {
-  background: var(--ui-orange);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* admin-managed facts: a quiet definition list under a hairline */
@@ -983,7 +929,8 @@ watch(
 
 .form-actions {
   gap: 16px;
-  justify-content: space-between;
+  justify-content: flex-start;
+  flex-direction: row;
   padding-right: 20px;
   padding-left: 20px;
   padding-top: 16px;
@@ -1100,78 +1047,22 @@ watch(
 .notify-hint {
   text-wrap: pretty;
   margin: 0;
-  padding: 14px var(--row-pad-x) 16px;
+  padding: 14px var(--row-pad-x) 14px;
   font-size: 14px;
   line-height: 20px;
   color: var(--ui-ink-2);
   box-shadow: inset 0 0.5px 0 var(--ui-sep);
 }
 
-/* the last card of the left column takes up spare height, its button anchored at the bottom */
-.o-notify {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-}
-
-.notify-card {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-}
-
+/* the notification card keeps its natural height: hint and button sit together, no stretched gap */
 .notify-actions {
   display: flex;
-  margin-top: auto;
   padding: 0 var(--row-pad-x) 18px;
 }
 
 .notify-actions .btn {
   gap: 4px;
   text-decoration: none;
-}
-
-/* the password heading shows only on desktop; on phone the disclosure row carries the name */
-.pw-disclose {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  justify-content: space-between;
-  width: 100%;
-  min-height: 56px;
-  padding: 12px 20px;
-  border: 0;
-  color: inherit;
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-
-.pw-disclose:focus-visible {
-  outline: 2px solid var(--ui-accent);
-  outline-offset: 2px;
-}
-
-.pw-disclose-text {
-  display: grid;
-  gap: 2px;
-  min-width: 0;
-}
-
-.pw-chev {
-  flex: none;
-  width: 20px;
-  height: 20px;
-  color: var(--ui-muted);
-  transition: transform var(--ui-dur) var(--ui-ease);
-}
-
-.pw-chev.is-open {
-  transform: rotate(180deg);
-}
-
-.pw-disclose + form {
-  margin-top: 8px;
 }
 
 .form-actions-note {
@@ -1185,10 +1076,6 @@ watch(
 /* fields sit white on the white card; the 1px boundary does the separating */
 .profile-page .ui-input {
   background: var(--ui-surface);
-}
-
-.session-card .btn {
-  color: var(--ui-red-ink);
 }
 
 /* 儲存 only exists while the name is changed; its slot slides open so the input never jumps */
@@ -1249,6 +1136,10 @@ watch(
 
 /* Phone: one column in the order a person acts in: who I am, my name, my password, then the rest */
 @media (max-width: 768px) {
+  .o-id {
+    display: block;
+  }
+
   .profile-cols {
     display: flex;
     flex-direction: column;
@@ -1312,17 +1203,17 @@ watch(
   }
 
   .form-actions {
-    flex-direction: column-reverse;
+    flex-direction: column;
     align-items: stretch;
+  }
+
+  .profile-page {
+    padding-bottom: 28px;
   }
 
   .form-actions-note {
     max-width: none;
   }
 
-  .o-notify,
-  .notify-card {
-    display: block;
-  }
 }
 </style>
