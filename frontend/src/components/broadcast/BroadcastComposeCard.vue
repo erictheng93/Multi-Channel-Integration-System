@@ -722,18 +722,14 @@
     color: var(--ui-ink-2);
   }
 
+  /* An unmet requirement is a plain hint, not a warning: the button keeps its colour and validates on press */
   .need {
-    display: inline-block;
-    padding: 6px 14px;
-    border-radius: 999px;
-    background: var(--ui-orange-soft);
-    font-weight: 600;
-    color: var(--ui-orange-ink);
+    color: var(--ui-ink-2);
   }
 
   .foot-note b.missing {
-    font-weight: 700;
-    color: var(--ui-orange-ink);
+    font-weight: 600;
+    color: var(--ui-ink);
   }
 
   .foot-note b {
@@ -753,6 +749,9 @@
     }
     .image-grid {
       gap: 8px;
+    }
+    .foot-note {
+      flex: 1 0 100%;
     }
     .actions {
       width: 100%;

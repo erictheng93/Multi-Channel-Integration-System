@@ -155,7 +155,9 @@
         <div
           role="columnheader"
           class="header-cell actions-cell"
-        />
+        >
+          操作
+        </div>
       </div>
       <ReportRow
         v-for="report in reports"
@@ -330,11 +332,33 @@ defineEmits<{
   flex-wrap: wrap;
 }
 
+/* One row of capsule controls at one height and one size */
+.section-controls {
+  gap: 8px;
+}
+
+.section-controls > .btn,
+.sort-select,
+.view-toggle {
+  height: 36px;
+  border-radius: 999px;
+  font-size: 14px;
+}
+
 .sort-select {
   width: auto;
-  height: 34px;
-  border-radius: 10px;
-  font-size: 13px;
+  padding: 0 32px 0 16px;
+}
+
+.view-toggle {
+  align-items: center;
+  padding: 2px;
+}
+
+.view-toggle > button {
+  height: 32px;
+  border-radius: 999px;
+  font-size: 14px;
 }
 
 .section-footer {
@@ -365,10 +389,27 @@ defineEmits<{
 .header-cell {
   font-size: 13px;
   font-weight: 600;
-  color: var(--ui-muted);
+  color: var(--ui-ink-2);
 }
 
 @media (max-width: 768px) {
+  /* Export, sort and view mode share one line */
+  .section-controls {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .section-controls > .btn {
+    padding: 0 14px;
+  }
+
+  .sort-select {
+    width: 100%;
+    padding-left: 12px;
+  }
+
   .list-header {
     display: none;
   }

@@ -65,7 +65,7 @@
             aria-hidden="true"
           ><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20.5l1.4-4.6A8 8 0 1 1 21 12Z" /></svg>
           <b>還沒有內容</b>
-          <span>左側輸入文字或加入圖片，客戶收到的樣子會即時出現在這裡。文字在前，圖片依序在後。</span>
+          <span>輸入文字或加入圖片，客戶收到的樣子會即時出現在這裡。</span>
         </div>
       </div>
     </div>
@@ -115,14 +115,15 @@ const order = computed(() => {
   padding-bottom: 16px;
 }
 
+/* A short phone while there is nothing to show, centred in the panel; it grows with real content */
 .phone {
   display: flex;
-  flex: 1 1 auto;
+  flex: 0 1 auto;
   flex-direction: column;
   width: min(100% - 44px, 300px);
   min-height: 0;
   max-height: 640px;
-  margin: 0 auto;
+  margin: auto;
   overflow: hidden;
   border-radius: 28px;
   background: var(--ui-surface);
@@ -192,9 +193,10 @@ const order = computed(() => {
   align-content: center;
   justify-items: center;
   gap: 6px;
-  padding: 20px 8px 24px;
+  min-height: 190px;
+  padding: 16px 8px;
   text-align: center;
-  color: #4c4c50;
+  color: #3a3a3c;
 }
 
 .chat-empty-ico {
@@ -237,6 +239,12 @@ const order = computed(() => {
   border-radius: 4px 18px 18px 18px;
   background: #fff;
   object-fit: cover;
+}
+
+@media (max-width: 768px) {
+  .chat-empty {
+    min-height: 112px;
+  }
 }
 
 .disclaimer {

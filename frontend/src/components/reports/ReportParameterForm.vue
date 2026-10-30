@@ -413,9 +413,17 @@ const updateOption = (key: string, value: unknown) => {
   width: 100%;
 }
 
+.range-seg {
+  gap: 4px;
+  padding: 4px;
+}
+
 .range-seg > button {
   flex: 1 1 0;
   justify-content: center;
+  height: 40px;
+  font-size: 14px;
+  font-weight: 600;
 }
 
 .more-ranges {
@@ -450,15 +458,10 @@ const updateOption = (key: string, value: unknown) => {
   color: #fff;
 }
 
+/* A satisfied step turns brand blue and keeps its number: a tick means finished work, and nothing is finished before the report exists */
 .step-n.done {
   background: var(--ui-accent);
-  font-size: 0;
   color: #fff;
-}
-
-.step-n.done::after {
-  font-size: 13px;
-  content: '\2713';
 }
 
 .step-body {
@@ -515,14 +518,14 @@ const updateOption = (key: string, value: unknown) => {
 
 .adv-toggle {
   display: flex;
-  width: 100%;
+  width: calc(100% - 44px);
+  margin: 4px 22px 22px;
   align-items: center;
   gap: 12px;
-  padding: 16px 22px;
+  padding: 14px 16px;
   border: 0;
-  border-radius: 0 0 var(--ui-r-group) var(--ui-r-group);
-  box-shadow: 0 -0.5px 0 var(--ui-sep);
-  background: none;
+  border-radius: var(--ui-r-inner);
+  background: var(--ui-fill);
   color: inherit;
   font: inherit;
   text-align: left;
@@ -616,7 +619,9 @@ const updateOption = (key: string, value: unknown) => {
 
 @media (max-width: 768px) {
   .adv-toggle {
-    padding: 16px;
+    width: calc(100% - 32px);
+    margin: 4px 16px 16px;
+    padding: 14px;
   }
 
   .step-body,
@@ -636,6 +641,11 @@ const updateOption = (key: string, value: unknown) => {
   .format-options {
     padding-right: 16px;
     padding-left: 16px;
+  }
+
+  /* Two formats sit side by side: a shorter phone form */
+  .format-options :deep(.choice-group) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 

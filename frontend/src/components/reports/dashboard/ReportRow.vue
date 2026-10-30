@@ -298,13 +298,13 @@ const canDelete = computed(() => {
 }
 
 .time-text {
-  font-size: 13px;
+  font-size: 14px;
   font-variant-numeric: tabular-nums;
 }
 
 .expiry-text {
   font-size: 13px;
-  color: var(--ui-muted);
+  color: var(--ui-ink-2);
 }
 
 .tag-line {
