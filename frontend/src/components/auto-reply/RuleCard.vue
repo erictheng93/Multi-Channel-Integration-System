@@ -62,7 +62,9 @@
           </div>
           <!-- phone only: priority joins the meta line so the row keeps one trailing control -->
           <div class="rule-card__prio-line">
-            優先序 {{ rule.priority }} · {{ rule.conditions.length }} 條件 · {{ rule.actions.length }} 動作
+            <span class="meta-pill">優先 {{ rule.priority }}</span>
+            <span class="meta-pill">{{ rule.conditions.length }} 條件</span>
+            <span class="meta-pill">{{ rule.actions.length }} 動作</span>
           </div>
         </div>
       </div>
@@ -73,8 +75,11 @@
           class="rule-card__meta"
           title="優先序：數字越小越先比對"
         >
-          優先 {{ rule.priority }} · {{ rule.conditions.length }} 條件 · {{ rule.actions.length }} 動作
+          <span class="meta-pill">優先 {{ rule.priority }}</span>
+          <span class="meta-pill">{{ rule.conditions.length }} 條件</span>
+          <span class="meta-pill">{{ rule.actions.length }} 動作</span>
         </span>
+        <span class="rule-card__edit">編輯</span>
 
         <!-- Expand arrow -->
         <span
@@ -200,6 +205,7 @@ const triggerTypeLabel = computed(() => {
 
 /* Header */
 .rule-card__header {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -373,14 +379,47 @@ const triggerTypeLabel = computed(() => {
   display: none;
 }
 
-/* Meta text */
+/* Meta: three small pills, ink on a neutral fill (AA), never grey run-on text */
 .rule-card__meta {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--ui-muted);
-  font-variant-numeric: tabular-nums;
+  display: inline-flex;
+  gap: 6px;
   white-space: nowrap;
 }
+
+.meta-pill {
+  padding: 0 9px;
+  border-radius: 999px;
+  background: var(--ui-fill);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 24px;
+  color: var(--ui-ink-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.rule-card__edit {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ui-ink-2);
+}
+
+/* the rule type reads as a colour at the row's left edge; a disabled rule stays neutral */
+.rule-card__header::before {
+  position: absolute;
+  top: 14px;
+  bottom: 14px;
+  left: 8px;
+  width: 3px;
+  border-radius: 3px;
+  background: var(--rule-c, var(--ui-fill-strong));
+  content: '';
+}
+
+.rule-card:has(.rule-card__trigger-badge--welcome) { --rule-c: var(--ui-green); }
+.rule-card:has(.rule-card__trigger-badge--keyword) { --rule-c: var(--ui-accent); }
+.rule-card:has(.rule-card__trigger-badge--off_hours) { --rule-c: var(--ui-orange); }
+.rule-card:has(.rule-card__trigger-badge--fallback) { --rule-c: var(--ui-p-lavender-ink); }
+.rule-card--off { --rule-c: var(--ui-fill-strong) !important; }
 
 /* Arrow */
 .rule-card__arrow {
@@ -411,7 +450,8 @@ const triggerTypeLabel = computed(() => {
     padding: 14px 16px;
   }
 
-  .rule-card__meta {
+  .rule-card__meta,
+  .rule-card__edit {
     display: none;
   }
 
@@ -442,11 +482,9 @@ const triggerTypeLabel = computed(() => {
   }
 
   .rule-card__prio-line {
-    display: block;
-    margin-top: 4px;
-    font-size: 13px;
-    color: var(--ui-muted);
-    font-variant-numeric: tabular-nums;
+    display: flex;
+    gap: 6px;
+    margin-top: 8px;
   }
 
   /* the full reply stays readable on a phone: no clamp */

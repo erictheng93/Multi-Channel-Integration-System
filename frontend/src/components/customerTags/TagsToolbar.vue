@@ -93,6 +93,7 @@ function handleClear() {
 .search-box {
   position: relative;
   flex: 1 1 260px;
+  max-width: 420px;
 }
 
 .search-icon {
