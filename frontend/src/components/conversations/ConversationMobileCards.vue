@@ -66,10 +66,10 @@
             </template>{{ getLastMessageText(conversation) }}
           </div>
           <div class="card-pills">
-            <!-- Pills only for exceptions (waiting / stale); quiet text for everything else -->
+            <!-- One treatment for every state: the same dot-and-text pill -->
             <template v-if="replyStateOf(conversation, now).state === 'stale'">
               <span
-                class="ui-pill"
+                class="ui-pill ui-pill-dot"
                 :title="STALE_HINT"
               >{{ replyStateOf(conversation, now).text }}</span>
               <span
@@ -78,14 +78,10 @@
               >從未回覆</span>
             </template>
             <span
-              v-else-if="replyStateOf(conversation, now).state === 'waiting' && isHotWait(conversation, now)"
-              class="ui-pill ui-pill-orange"
-              :title="WAITING_HINT"
-            >{{ replyStateOf(conversation, now).text }}</span>
-            <span
               v-else
-              class="state-text"
-              :class="`state-${replyStateOf(conversation, now).state}`"
+              class="ui-pill ui-pill-dot state-text"
+              :class="[pillTone(replyStateOf(conversation, now).state), `state-${replyStateOf(conversation, now).state}`]"
+              :title="replyStateOf(conversation, now).state === 'waiting' ? WAITING_HINT : undefined"
             >{{ replyStateOf(conversation, now).text }}</span>
             <span
               v-if="conversation.assignedTeam?.name"
@@ -112,7 +108,6 @@ import {
   freeReplySeconds,
   initialOf,
   avatarToneOf,
-  isHotWait,
   STALE_HINT,
   replyStateOf,
   relativeTime,
@@ -135,6 +130,9 @@ const emit = defineEmits<{
 }>()
 
 const { now } = useRowClock(toRef(props, 'conversations'))
+
+const pillTone = (state: string): string =>
+  state === 'waiting' ? 'ui-pill-orange' : state === 'replied' ? 'ui-pill-green' : ''
 
 // 選取模式下，點擊整張卡片切換選取而非導覽
 const handleCardClick = (id: string) => {
@@ -327,36 +325,9 @@ const getLastMessageText = (conversation: Conversation) => {
   margin-top: 6px;
 }
 
-.state-text,
 .team-text {
   font-size: 13px;
   color: var(--ui-muted);
-}
-
-.state-text {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.state-text::before {
-  content: '';
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--ui-faint);
-}
-
-.state-text.state-replied::before {
-  background: var(--ui-green);
-}
-
-.state-text.state-waiting {
-  color: var(--ui-orange-ink);
-}
-
-.state-text.state-waiting::before {
-  background: var(--ui-orange);
 }
 
 /* Unread: the same faint wash as the desktop list */

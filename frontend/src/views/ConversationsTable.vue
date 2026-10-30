@@ -253,6 +253,10 @@
                   @click="toggleTeam(row.filterId)"
                 >
                   <span class="ui-row-main rail-name">{{ row.name }}</span>
+                  <span
+                    class="rail-bar"
+                    aria-hidden="true"
+                  ><i :style="{ width: `${row.share}%` }" /></span>
                   <span class="rail-total">{{ row.open }}</span>
                 </button>
               </div>
@@ -279,6 +283,10 @@
                   @click="toggleChannel(row.key)"
                 >
                   <span class="ui-row-main rail-name">{{ row.name }}</span>
+                  <span
+                    class="rail-bar"
+                    aria-hidden="true"
+                  ><i :style="{ width: `${row.share}%` }" /></span>
                   <span class="rail-total">{{ row.n }}</span>
                 </button>
               </div>
@@ -431,14 +439,19 @@ const teamNameById = computed(() => new Map(
 ))
 
 // Rail: open conversations per team (a row filters the list; the unassigned pool filters teamId 0)
-const teamRows = computed(() => (counts.value?.byTeam ?? [])
-  .filter(t => t.open > 0)
-  .map(t => ({
+// share = the row's size against the largest row, drawn as a small bar so the rail reads at a glance
+const shareOf = (n: number, max: number): number => Math.max(4, Math.round((n / Math.max(1, max)) * 100))
+const teamRows = computed(() => {
+  const open = (counts.value?.byTeam ?? []).filter(t => t.open > 0)
+  const max = Math.max(1, ...open.map(t => t.open))
+  return open.map(t => ({
     key: String(t.teamId ?? 'none'),
     filterId: t.teamId === null ? 0 : t.teamId,
     name: t.teamId === null ? '未指派' : (teamNameById.value.get(t.teamId) ?? `團隊 ${t.teamId}`),
-    open: t.open
-  })))
+    open: t.open,
+    share: shareOf(t.open, max)
+  }))
+})
 // Rail: the unread conversations of the loaded page, oldest unread first
 const myUnread = computed(() => displayedConversations.value
   .filter(c => unreadOf(c) > 0)
@@ -454,8 +467,9 @@ const channelRows = computed(() => {
     tally.set(key, (tally.get(key) ?? 0) + 1)
   }
   const names: Record<string, string> = { line: 'LINE', facebook: 'Messenger' }
+  const max = Math.max(1, ...tally.values())
   return [...tally.entries()]
-    .map(([key, n]) => ({ key, name: names[key] ?? key, n }))
+    .map(([key, n]) => ({ key, name: names[key] ?? key, n, share: shareOf(n, max) }))
     .sort((a, b) => b.n - a.n)
 })
 
@@ -482,7 +496,8 @@ const subtitle = computed(() => {
     parts.push(`${waitingTotal.value} 件待回覆`)
     if (oldestWaitText.value) { parts.push(`最久等 ${oldestWaitText.value}`) }
   }
-  if (unreadStore.total > 0) { parts.push(`我的未讀 ${unreadStore.total}`) }
+  // Phone: three facts at most (the unread count already rides the nav badge and the bell)
+  if (unreadStore.total > 0 && railVisible.value) { parts.push(`我的未讀 ${unreadStore.total}`) }
   return parts.join(' · ')
 })
 
@@ -914,6 +929,31 @@ onUnmounted(() => {
 .rail-row:focus-visible {
   outline: 2px solid var(--ui-accent);
   outline-offset: -2px;
+}
+
+.rail-row:hover {
+  background: var(--ui-fill);
+}
+
+.rail-bar {
+  flex: none;
+  width: 56px;
+  height: 6px;
+  margin-right: 12px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--ui-fill);
+}
+
+.rail-bar i {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--ui-faint);
+}
+
+.rail-row.is-selected .rail-bar i {
+  background: var(--ui-accent);
 }
 
 .rail-badge {
