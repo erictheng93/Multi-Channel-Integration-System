@@ -62,6 +62,19 @@
           <p class="cl-meaning">
             {{ leadVolume.meaning }}
           </p>
+          <div
+            v-if="leadVolume.total !== null && leadVolume.total > 0"
+            class="cl-split"
+            aria-hidden="true"
+          >
+            <i
+              class="in"
+              :style="{ flexGrow: leadVolume.inN }"
+            /><i
+              class="out"
+              :style="{ flexGrow: leadVolume.outN }"
+            />
+          </div>
           <ul
             v-if="leadVolume.total !== null"
             class="cl-legend"
@@ -387,7 +400,10 @@
 
           <!-- Activity: platform totals, so a disabled channel shows none of it -->
           <div class="activity">
-            <div class="stats">
+            <div
+              v-if="channel.isActive"
+              class="stats"
+            >
               <div class="stat-i">
                 <div class="l">
                   客戶來訊 · 24 小時
@@ -411,7 +427,10 @@
                 </div>
               </div>
             </div>
-            <div class="last">
+            <div
+              class="last"
+              :class="{ 'is-off-note': !channel.isActive }"
+            >
               {{ activityCaption(channel) }}
             </div>
           </div>
@@ -590,10 +609,10 @@ const leadRows = computed(() => {
 /** 24 h totals over the active channels that report activity; null when none does (never a made-up zero) */
 const leadVolume = computed(() => {
   const rows = channels.value.filter(c => c.isActive && c.activity)
-  if (rows.length === 0) { return { total: null, meaning: '沒有啟用中的頻道提供訊息量' } }
+  if (rows.length === 0) { return { total: null, inN: 0, outN: 0, meaning: '沒有啟用中的頻道提供訊息量' } }
   const inN = rows.reduce((sum, c) => sum + (c.activity?.customerMessages24h ?? 0), 0)
   const outN = rows.reduce((sum, c) => sum + (c.activity?.agentMessages24h ?? 0), 0)
-  return { total: inN + outN, meaning: `客戶來訊 ${formatCount(inN)} · 客服發送 ${formatCount(outN)}` }
+  return { total: inN + outN, inN, outN, meaning: `客戶來訊 ${formatCount(inN)} · 客服發送 ${formatCount(outN)}` }
 })
 
 /** The webhook problem has its own alert under the lead, so the head only counts channels */
@@ -722,7 +741,19 @@ i.out {
   background: var(--ui-fill);
 }
 .cl-bar.off {
-  background: repeating-linear-gradient(90deg, var(--ui-fill) 0 6px, transparent 6px 10px);
+  background: var(--ui-fill);
+}
+.cl-split {
+  display: flex;
+  gap: 2px;
+  height: 12px;
+  margin-top: 16px;
+  overflow: hidden;
+  border-radius: 999px;
+}
+.cl-split i {
+  flex-basis: 0;
+  min-width: 0;
 }
 .cl-bar-fill {
   display: flex;
@@ -763,13 +794,9 @@ i.out {
   gap: 14px;
   align-items: center;
   padding: 16px 20px;
-  background: color-mix(in srgb, var(--ui-orange-soft) 70%, var(--ui-surface));
-  box-shadow: inset 4px 0 0 var(--ui-orange), var(--ui-shadow-card, none);
 }
 .alert-row .btn {
   min-height: 40px;
-  background: var(--ui-surface);
-  color: var(--ui-ink);
 }
 .alert-ico {
   display: grid;
@@ -778,8 +805,8 @@ i.out {
   width: 38px;
   height: 38px;
   border-radius: 12px;
-  background: var(--ui-orange-ink);
-  color: #fff;
+  background: var(--ui-orange-soft);
+  color: var(--ui-orange-ink);
 }
 .alert-ico svg {
   width: 19px;
@@ -791,9 +818,11 @@ i.out {
 }
 .alert-title {
   font: 600 16px / 1.3 var(--ui-font-display);
-  color: var(--ui-orange-ink);
+  color: var(--ui-ink);
 }
 .alert-tag {
+  font-weight: 600;
+  color: var(--ui-orange-ink);
   white-space: nowrap;
 }
 .alert-text {
@@ -966,9 +995,13 @@ i.out {
 }
 .chverify {
   min-height: 40px;
-  padding-inline: 18px;
-  background: var(--ui-accent-soft);
+  padding-inline: 14px;
+  background: transparent;
+  font-weight: 600;
   color: var(--ui-accent);
+}
+.chverify:hover {
+  background: var(--ui-accent-soft);
 }
 .activity {
   min-width: 0;
@@ -1019,6 +1052,15 @@ i.out {
   font-size: 13px;
   color: var(--ui-muted);
   font-variant-numeric: tabular-nums;
+}
+.last.is-off-note {
+  margin: 16px 20px 0;
+  padding: 16px;
+  border-radius: 14px;
+  background: var(--ui-fill);
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--ui-ink-2);
 }
 .chcard.off .stat-i .s {
   visibility: hidden;
