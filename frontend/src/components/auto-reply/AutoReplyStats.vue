@@ -29,6 +29,28 @@
           class="hours-note"
         >{{ hoursNote }}</span>
       </div>
+
+      <div
+        v-if="track"
+        class="day-track"
+        role="img"
+        :aria-label="track.label"
+      >
+        <div class="day-bar">
+          <span
+            class="day-open"
+            :style="{ left: track.left + '%', width: track.width + '%' }"
+          />
+          <span
+            class="day-now"
+            :style="{ left: track.now + '%' }"
+          />
+        </div>
+        <div class="day-scale">
+          <span :style="{ left: track.left + '%' }">{{ track.startText }}</span>
+          <span :style="{ left: track.left + track.width + '%' }">{{ track.endText }}</span>
+        </div>
+      </div>
     </div>
 
     <div
@@ -96,7 +118,24 @@ const props = defineProps<{
   /** Replies sent yesterday up to the same time of day; null when unknown */
   yesterdaySameTime?: number | null
   businessHours?: AutoReplyBusinessHours | null
+  /** Today's saved opening window and the current time, minutes since midnight in the team's timezone */
+  todayWindow?: { start: number; end: number; now: number } | null
 }>()
+
+const pad = (n: number) => `${String(Math.floor(n / 60)).padStart(2, '0')  }:${  String(n % 60).padStart(2, '0')}`
+const track = computed(() => {
+  const w = props.todayWindow
+  if (!w || w.end <= w.start) { return null }
+  const pct = (m: number) => Math.min(100, Math.max(0, (m / 1440) * 100))
+  return {
+    left: pct(w.start),
+    width: pct(w.end) - pct(w.start),
+    now: pct(w.now),
+    startText: pad(w.start),
+    endText: pad(w.end),
+    label: `今天 ${pad(w.start)} 到 ${pad(w.end)} 營業，現在 ${pad(w.now)}`,
+  }
+})
 
 // No schedule saved yet: neither open nor closed is true, so say so
 const noSchedule = computed(() => !!props.businessHours && !props.businessHours.hasSchedule)
@@ -226,6 +265,53 @@ const hoursNote = computed(() => {
   color: var(--ui-red-ink);
 }
 
+.day-track {
+  width: 100%;
+  max-width: 440px;
+  margin-top: 14px;
+}
+
+.day-bar {
+  position: relative;
+  height: 10px;
+  border-radius: 999px;
+  background: var(--ui-fill-strong);
+}
+
+.day-open {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-radius: 999px;
+  background: var(--ui-green);
+}
+
+.day-now {
+  position: absolute;
+  top: -4px;
+  bottom: -4px;
+  width: 3px;
+  margin-left: -1.5px;
+  border-radius: 2px;
+  background: var(--ui-ink);
+  box-shadow: 0 0 0 2px var(--ui-surface);
+}
+
+.day-scale {
+  position: relative;
+  height: 18px;
+  margin-top: 6px;
+  font-size: 13px;
+  color: var(--ui-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.day-scale span {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+}
+
 .lead-side {
   position: relative;
   display: grid;
@@ -286,8 +372,8 @@ const hoursNote = computed(() => {
 
 .pips i {
   flex: 1;
-  height: 8px;
-  max-width: 14px;
+  height: 10px;
+  max-width: 18px;
   border-radius: 999px;
   background: var(--ui-fill-strong);
 }
@@ -331,8 +417,8 @@ const hoursNote = computed(() => {
   }
 
   .pips i {
-    max-width: 9px;
-    height: 6px;
+    max-width: 11px;
+    height: 8px;
   }
 }
 </style>
