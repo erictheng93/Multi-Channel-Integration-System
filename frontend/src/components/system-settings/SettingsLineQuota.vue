@@ -81,20 +81,32 @@
           </div>
           <template v-if="channel.limited && channel.limit !== null && channel.used !== null">
             <div
-              class="qbar"
-              role="progressbar"
-              aria-valuemin="0"
-              :aria-valuemax="channel.limit"
-              :aria-valuenow="Math.min(channel.used, channel.limit)"
-              :aria-label="`${channel.label} 已使用 ${percent(channel)}%`"
+              class="qbar-wrap"
+              :class="{ 'has-reserve': reserveAt(channel) !== null }"
             >
-              <i
-                :class="tone(channel)"
-                :style="{ width: `${percent(channel)}%` }"
+              <span
+                v-if="reserveAt(channel) !== null"
+                class="qtick"
+                aria-hidden="true"
+                :style="{ left: `${reserveAt(channel)}%` }"
               />
+              <div
+                class="qbar"
+                role="progressbar"
+                aria-valuemin="0"
+                :aria-valuemax="channel.limit"
+                :aria-valuenow="Math.min(channel.used, channel.limit)"
+                :aria-label="`${channel.label} 已使用 ${percent(channel)}%`"
+              >
+                <i
+                  :class="tone(channel)"
+                  :style="{ width: `${percent(channel)}%` }"
+                />
+              </div>
             </div>
             <div class="qscale">
-              <span>0</span><span>{{ channel.limit.toLocaleString() }}</span>
+              <span :class="`q-${tone(channel)}`">已用 {{ percent(channel) }}%{{ tone(channel) === 'danger' ? ' · 即將用完' : tone(channel) === 'warn' ? ' · 額度偏緊' : '' }}</span>
+              <span v-if="channel.reserve !== null && channel.usableRemaining !== null">保留 {{ channel.reserve.toLocaleString() }} 則給客服回覆，群發最多再 {{ channel.usableRemaining.toLocaleString() }} 則</span>
             </div>
           </template>
           <p
@@ -187,6 +199,14 @@ function percent(channel: LineQuotaChannel): number {
     return 0
   }
   return Math.min(Math.round((channel.used / channel.limit) * 100), 100)
+}
+
+/** Where the broadcast ceiling sits on the bar: everything past it is kept back for support replies */
+function reserveAt(channel: LineQuotaChannel): number | null {
+  if (!channel.limit || channel.reserve === null || channel.reserve <= 0 || channel.reserve >= channel.limit) {
+    return null
+  }
+  return Math.round(((channel.limit - channel.reserve) / channel.limit) * 100)
 }
 
 function tone(channel: LineQuotaChannel): 'ok' | 'warn' | 'danger' {
@@ -328,8 +348,41 @@ function formatTime(iso: string): string {
   background: var(--ui-red);
 }
 
+.qbar-wrap {
+  position: relative;
+  margin: 14px 0 8px;
+}
+
+.qbar-wrap .qbar {
+  margin: 0;
+}
+
+/* the reserve line: a hairline across the track at the broadcast ceiling */
+.qtick {
+  position: absolute;
+  top: -4px;
+  bottom: -4px;
+  z-index: 1;
+  width: 2px;
+  margin-left: -1px;
+  border-radius: 1px;
+  background: var(--ui-ink-2);
+}
+
+.q-warn {
+  color: var(--ui-orange-ink);
+  font-weight: 600;
+}
+
+.q-danger {
+  color: var(--ui-red-ink);
+  font-weight: 600;
+}
+
 .qscale {
   display: flex;
+  flex-wrap: wrap;
+  gap: 2px 16px;
   justify-content: space-between;
   font-size: 13px;
   color: var(--ui-muted);
