@@ -695,8 +695,17 @@ defineExpose({
 
 /* Status as a filled pill (no outline) */
 .customer-badges :deep(.status-badge) {
+  gap: 6px;
+  padding: 5px 11px;
   border-color: transparent;
-  font-weight: 500;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.customer-badges :deep(.status-indicator) {
+  width: 7px;
+  height: 7px;
+  background: currentColor !important;
 }
 
 .customer-badges :deep(.status-open),

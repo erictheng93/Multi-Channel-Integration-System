@@ -95,7 +95,10 @@ const handleSelect = (reply: QuickReply) => {
 
 .quick-reply-btn {
   flex: 0 0 auto;
+  max-width: 260px;
   min-height: 32px;
+  overflow: hidden;
+  text-overflow: ellipsis;
   padding: 0 14px;
   border: 0;
   border-radius: 999px;
@@ -144,6 +147,19 @@ const handleSelect = (reply: QuickReply) => {
 
   to {
     opacity: 0;
+  }
+}
+
+/* Wide screens: every chip is visible and wraps onto a second row instead of being cut off at the edge */
+@media (min-width: 769px) {
+  .quick-replies {
+    flex-wrap: wrap;
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+
+  .quick-reply-btn {
+    max-width: 100%;
   }
 }
 

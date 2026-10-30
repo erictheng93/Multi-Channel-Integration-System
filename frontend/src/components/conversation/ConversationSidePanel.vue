@@ -26,9 +26,38 @@
         </div>
       </div>
 
+      <!-- At a glance: the four numbers an agent asks for first, each shown once -->
+      <dl
+        v-if="activity"
+        class="glance"
+        :aria-label="`往來 共 ${activity.customer + activity.agent} 則`"
+      >
+        <div>
+          <dd>{{ activity.customer }}</dd>
+          <dt>客戶來訊</dt>
+        </div>
+        <div>
+          <dd>{{ activity.agent }}</dd>
+          <dt>客服回覆</dt>
+        </div>
+        <div v-if="activity.firstReply">
+          <dd class="glance-text">
+            {{ activity.firstReply }}
+          </dd>
+          <dt>首次回覆</dt>
+        </div>
+        <div v-if="lastInboundText">
+          <dd class="glance-text">
+            {{ lastInboundText }}
+          </dd>
+          <dt>客戶最後來訊</dt>
+        </div>
+      </dl>
+
       <section class="block">
-        <h3>指派</h3>
+        <h3>歸屬</h3>
         <div class="assign-row">
+          <span class="kv-k">負責團隊</span>
           <span
             v-if="conversation.assignedTeam?.name"
             class="ui-pill ui-pill-blue"
@@ -38,14 +67,10 @@
             class="ui-pill ui-pill-orange"
           >未指派</span>
         </div>
-      </section>
-
-      <section
-        v-if="tags.length > 0"
-        class="block"
-      >
-        <h3>客戶標籤</h3>
-        <div class="tag-row">
+        <div
+          v-if="tags.length > 0"
+          class="tag-row"
+        >
           <span
             v-for="tag in tags"
             :key="tag.id"
@@ -55,46 +80,6 @@
             <i />{{ tag.name }}
           </span>
         </div>
-      </section>
-
-      <section
-        v-if="activity"
-        class="block"
-      >
-        <h3>往來<small>共 {{ activity.customer + activity.agent }} 則</small></h3>
-        <div
-          class="split"
-          role="img"
-          :aria-label="`客戶 ${activity.customer} 則，客服 ${activity.agent} 則`"
-        >
-          <span
-            class="split-c"
-            :style="{ flexGrow: activity.customer }"
-          />
-          <span
-            class="split-a"
-            :style="{ flexGrow: activity.agent }"
-          />
-        </div>
-        <dl class="stats">
-          <div>
-            <dd>{{ activity.customer }}</dd>
-            <dt><i class="dot dot-c" />客戶來訊</dt>
-          </div>
-          <div>
-            <dd>{{ activity.agent }}</dd>
-            <dt><i class="dot dot-a" />客服回覆</dt>
-          </div>
-          <div
-            v-if="activity.firstReply"
-            class="stat-wide"
-          >
-            <dd class="stat-text">
-              {{ activity.firstReply }}
-            </dd>
-            <dt>首次回覆</dt>
-          </div>
-        </dl>
       </section>
 
       <section class="block">
@@ -107,10 +92,6 @@
           <div v-if="createdAtText">
             <dt>開始時間</dt>
             <dd>{{ createdAtText }}</dd>
-          </div>
-          <div v-if="lastInboundText">
-            <dt>客戶最後來訊</dt>
-            <dd>{{ lastInboundText }}</dd>
           </div>
           <div v-if="customerSinceText">
             <dt>客戶建檔</dt>
@@ -208,7 +189,7 @@ const createdAtText = computed(() => {
   display: flex;
   flex-direction: column;
   min-height: 0;
-  padding: 26px 18px 18px;
+  padding: 22px 16px 16px;
   overflow-y: auto;
 }
 
@@ -225,12 +206,12 @@ const createdAtText = computed(() => {
   position: relative;
   display: grid;
   place-items: center;
-  width: 80px;
-  height: 80px;
-  margin-bottom: 10px;
+  width: 72px;
+  height: 72px;
+  margin-bottom: 8px;
   border-radius: 50%;
   color: #fff;
-  font: 600 30px var(--ui-font-display);
+  font: 600 28px var(--ui-font-display);
 }
 
 .avatar .ch {
@@ -274,9 +255,10 @@ const createdAtText = computed(() => {
   align-items: baseline;
   justify-content: space-between;
   margin: 0 0 10px;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--ui-ink);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--ui-ink-2);
 }
 
 .block h3 small {
@@ -286,49 +268,62 @@ const createdAtText = computed(() => {
   font-variant-numeric: tabular-nums;
 }
 
-/* Customer / agent counts: the numerals carry the weight, the labels sit under them */
-.stats {
+/* At a glance: a 2x2 bento of the numbers, the numerals carry the weight */
+.glance {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px 12px;
+  gap: 8px;
   margin: 12px 0 0;
 }
 
-.stats > div {
+.glance > div {
   display: flex;
   flex-direction: column-reverse;
   gap: 2px;
+  justify-content: flex-end;
+  min-width: 0;
+  padding: 12px 14px;
+  border-radius: var(--ui-r-inner);
+  background: var(--ui-canvas);
 }
 
-.stats dd {
+.glance dd {
   margin: 0;
-  font: 600 30px / 1.1 var(--ui-font-display);
+  font: 700 28px / 1.1 var(--ui-font-display);
   letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
   color: var(--ui-ink);
 }
 
-.stats .stat-wide {
-  grid-column: 1 / -1;
-  flex-direction: row-reverse;
-  align-items: baseline;
+.glance dd.glance-text {
+  font-size: 18px;
+  line-height: 30px;
+  white-space: nowrap;
+}
+
+.glance dt {
+  font-size: 13px;
+  color: var(--ui-ink-2);
+  white-space: nowrap;
+}
+
+.assign-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
   justify-content: space-between;
+  margin-bottom: 2px;
+}
+
+.assign-row + .tag-row {
+  margin-top: 12px;
   padding-top: 12px;
   box-shadow: inset 0 0.5px 0 var(--ui-sep);
 }
 
-.stats dd.stat-text {
-  font-size: 18px;
-  line-height: 26px;
-}
-
-.stats dt {
-  display: flex;
-  gap: 6px;
-  align-items: center;
-  font-size: 13px;
+.kv-k {
+  font-size: 14px;
   color: var(--ui-ink-2);
-  white-space: nowrap;
 }
 
 .tag-row {
@@ -371,7 +366,7 @@ const createdAtText = computed(() => {
 }
 
 .kv dt {
-  color: var(--ui-muted);
+  color: var(--ui-ink-2);
 }
 
 .kv dd {
@@ -379,42 +374,6 @@ const createdAtText = computed(() => {
   font-weight: 500;
   text-align: right;
   font-variant-numeric: tabular-nums;
-}
-
-.split {
-  display: flex;
-  gap: 3px;
-  height: 10px;
-  margin-bottom: 4px;
-}
-
-.split span {
-  min-width: 6px;
-  flex-basis: 0;
-  border-radius: 999px;
-}
-
-.split-c {
-  background: var(--ui-faint);
-}
-
-.split-a {
-  background: var(--section-hue, var(--ui-accent));
-}
-
-.dot {
-  display: inline-block;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-}
-
-.dot-c {
-  background: var(--ui-faint);
-}
-
-.dot-a {
-  background: var(--section-hue, var(--ui-accent));
 }
 
 .kv-tight {
