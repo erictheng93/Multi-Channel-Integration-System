@@ -119,41 +119,6 @@
           class="notif-rail"
           aria-label="通知概況"
         >
-          <section aria-labelledby="rail-prio">
-            <h2
-              id="rail-prio"
-              class="ui-group-label"
-            >
-              依優先級
-            </h2>
-            <div class="ui-group">
-              <button
-                v-for="row in priorityRows"
-                :key="row.value"
-                type="button"
-                class="ui-row rail-row"
-                :class="{ 'is-selected': filters.selectedPriority.value === row.value }"
-                :aria-pressed="filters.selectedPriority.value === row.value"
-                @click="togglePriority(row.value)"
-              >
-                <span
-                  class="rail-dot"
-                  :class="`is-${row.value}`"
-                  aria-hidden="true"
-                />
-                <span class="ui-row-main rail-name">{{ row.label }}</span>
-                <span
-                  v-if="row.unread > 0"
-                  class="rail-unread"
-                >{{ row.unread }} 未讀</span>
-                <span class="rail-total">{{ row.total }}</span>
-              </button>
-            </div>
-            <p class="ui-group-foot">
-              點一下即可只看該優先級。
-            </p>
-          </section>
-
           <section
             v-if="typeRows.length > 0"
             aria-labelledby="rail-type"
@@ -178,10 +143,14 @@
                 <span
                   v-if="row.unread > 0"
                   class="rail-unread"
-                >{{ row.unread }} 未讀</span>
+                  :aria-label="`${row.unread} 則未讀`"
+                >{{ row.unread }}</span>
                 <span class="rail-total">{{ row.total }}</span>
               </button>
             </div>
+            <p class="ui-group-foot">
+              藍色數字是未讀，灰色是全部。點一下只看該類型。
+            </p>
           </section>
 
           <section aria-labelledby="rail-time">
@@ -257,21 +226,6 @@ const {
 
 // ==================== Rail ====================
 
-const PRIORITY_ROWS = [
-  { value: 'urgent', label: '緊急' },
-  { value: 'high', label: '高' },
-  { value: 'normal', label: '一般' },
-  { value: 'low', label: '低' }
-] as const
-
-const priorityRows = computed(() =>
-  PRIORITY_ROWS.map((row) => ({
-    ...row,
-    total: stats.value?.byPriority?.[row.value]?.total ?? 0,
-    unread: stats.value?.byPriority?.[row.value]?.unread ?? 0
-  })).filter((row) => row.total > 0)
-)
-
 const typeRows = computed(() =>
   filters.notificationTypes
     .map((t) => ({
@@ -285,11 +239,6 @@ const typeRows = computed(() =>
 
 function toggleType(value: string): void {
   filters.selectedType.value = (filters.selectedType.value === value ? '' : value) as typeof filters.selectedType.value
-  filters.applyFilters()
-}
-
-function togglePriority(value: string): void {
-  filters.selectedPriority.value = (filters.selectedPriority.value === value ? '' : value) as typeof filters.selectedPriority.value
   filters.applyFilters()
 }
 
@@ -386,38 +335,22 @@ onUnmounted(() => {
   min-height: 44px;
 }
 
-.rail-dot {
-  flex: none;
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: var(--ui-faint);
-}
-
-.rail-dot.is-urgent {
-  background: var(--ui-red);
-}
-
-.rail-dot.is-high {
-  background: var(--ui-orange);
-}
-
-.rail-dot.is-normal {
-  background: var(--ui-blue);
-}
-
 .rail-name {
   font-size: 15px;
   font-weight: 500;
 }
 
 .rail-unread {
-  padding: 2px 9px;
+  display: inline-grid;
+  place-items: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 7px;
   border-radius: 999px;
-  background: var(--ui-accent-soft);
-  color: var(--ui-accent);
-  font-size: 13px;
-  font-weight: 600;
+  background: var(--section-ink, var(--ui-accent));
+  color: #fff;
+  font: 600 12px var(--ui-font-display);
+  font-variant-numeric: tabular-nums;
 }
 
 .rail-total {

@@ -134,13 +134,6 @@ defineEmits<{
   box-shadow: inset 0 -0.5px 0 var(--ui-sep);
 }
 
-/* The overview rail (> 1024px) filters by priority, so the select only shows where the rail is hidden */
-@media (min-width: 1025px) {
-  .filter-priority {
-    display: none;
-  }
-}
-
 .filter-tabs + .filter-select {
   margin-left: auto;
 }
