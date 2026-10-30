@@ -64,7 +64,7 @@
           v-model.trim="content"
           class="ui-textarea"
           maxlength="2000"
-          rows="6"
+          rows="5"
           placeholder="輸入文字（選填，可只發圖片）"
         />
         <span class="ui-hint hint-split"><span>LINE 單則文字上限 2,000 字</span><span class="num">{{ content.length }} / 2000</span></span>
@@ -189,7 +189,7 @@
             將發送給 <b>{{ currentPreview.sendable }}</b> 位 LINE 客戶，送出時會凍結名單。
           </template>
           <template v-else-if="missing.length">
-            還需要：<b class="missing">{{ missing.join('、') }}</b>
+            <span class="need">還需要：<b class="missing">{{ missing.join('、') }}</b></span>
           </template>
           <template v-else-if="imagesBusy">
             圖片上傳完成後即可發送。
@@ -211,6 +211,7 @@
           <button
             type="submit"
             class="btn btn-primary"
+            :class="{ 'is-incomplete': missing.length > 0 }"
             :disabled="sending"
           >
             {{ sending ? '發送中...' : '建立並發送' }}
@@ -532,7 +533,7 @@
   }
 
   .ui-textarea {
-    min-height: 150px;
+    min-height: 120px;
   }
 
   .image-grid {
@@ -722,9 +723,25 @@
     color: var(--ui-ink-2);
   }
 
+  .need {
+    display: inline-block;
+    padding: 6px 14px;
+    border-radius: 999px;
+    background: var(--ui-orange-soft);
+    font-weight: 600;
+    color: var(--ui-orange-ink);
+  }
+
   .foot-note b.missing {
     font-weight: 700;
     color: var(--ui-orange-ink);
+  }
+
+  /* Not ready: grey instead of the blue (still pressable; pressing it reports what is missing) */
+  .btn.is-incomplete,
+  .btn.is-incomplete:hover {
+    background: var(--ui-fill-strong);
+    color: var(--ui-ink);
   }
 
   .foot-note b {

@@ -534,7 +534,8 @@ function formatTime(iso: string): string {
 
 .stat dd {
   margin: 0;
-  font: 600 16px var(--ui-font-display);
+  font: 600 14px var(--ui-font-ui);
+  color: var(--ui-ink-2);
   letter-spacing: -0.01em;
   font-variant-numeric: tabular-nums;
 }
