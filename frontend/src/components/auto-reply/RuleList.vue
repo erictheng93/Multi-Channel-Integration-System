@@ -28,14 +28,29 @@
     <div class="ui-group rule-list__items">
       <div class="rule-list__toolbar">
         <div class="rule-list__filters">
-          <input
-            class="ui-input rule-list__search"
-            aria-label="搜尋規則"
-            type="text"
-            placeholder="搜尋規則"
-            :value="searchQuery"
-            @input="emit('update:searchQuery', ($event.target as HTMLInputElement).value)"
-          >
+          <div class="rule-list__search-wrap">
+            <svg
+              class="rule-list__search-ico"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              aria-hidden="true"
+            ><circle
+              cx="11"
+              cy="11"
+              r="7"
+            /><path d="m20 20-3.5-3.5" /></svg>
+            <input
+              class="ui-input rule-list__search"
+              aria-label="搜尋規則"
+              type="text"
+              placeholder="搜尋規則"
+              :value="searchQuery"
+              @input="emit('update:searchQuery', ($event.target as HTMLInputElement).value)"
+            >
+          </div>
           <select
             class="ui-select rule-list__filter-select"
             aria-label="規則類型"
@@ -54,7 +69,7 @@
             </option>
           </select>
         </div>
-        <span class="rule-list__count">{{ rules.length }} 條規則</span>
+        <span class="rule-list__count">{{ rules.length }} 條規則<template v-if="hits">，觸發次數取自最近 {{ hitsWindow ?? 50 }} 筆日誌</template></span>
       </div>
 
       <RuleCard
@@ -64,6 +79,9 @@
         :is-expanded="expandedRuleId === rule.id"
         :form-data="formData"
         :saving="saving"
+        :hits="hits ? (hits[rule.id] ?? 0) : null"
+        :hits-max="hitsMax"
+        :hits-window="hitsWindow"
         @toggle-expand="emit('expand-rule', rule)"
         @toggle-active="emit('toggle-active', rule)"
         @save="emit('save')"
@@ -110,13 +128,17 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
 import UiEmptyState from '@/components/ui/UiEmptyState.vue'
 import { TRIGGER_TYPE_OPTIONS, type AutoReplyRule } from '@/api/autoReply'
 import RuleEditor from './RuleEditor.vue'
 import type { RuleFormData } from './RuleEditor.vue'
 import RuleCard from './RuleCard.vue'
 
-defineProps<{
+const props = defineProps<{
+  /** Fires per rule id in the newest logs; null while the log view is filtered */
+  hits?: Record<number, number> | null
+  hitsWindow?: number
   rules: AutoReplyRule[]
   expandedRuleId: number | null
   isCreating: boolean
@@ -142,6 +164,9 @@ const emit = defineEmits<{
   'update-action-content': [index: number, content: string]
   'update-field': [field: string, value: unknown]
 }>()
+
+const hitsMax = computed(() => Math.max(0, ...Object.values(props.hits ?? {})))
+
 </script>
 
 <style scoped>
@@ -176,10 +201,26 @@ const emit = defineEmits<{
   min-width: 0;
 }
 
-.rule-list__search {
+.rule-list__search-wrap {
+  position: relative;
   flex: 1 1 auto;
   min-width: 0;
+}
+
+.rule-list__search-ico {
+  position: absolute;
+  top: 50%;
+  left: 13px;
+  width: 16px;
+  height: 16px;
+  color: var(--ui-muted);
+  pointer-events: none;
+  transform: translateY(-50%);
+}
+
+.rule-list__search {
   height: 36px;
+  padding-left: 36px;
   border-radius: 999px;
 }
 
