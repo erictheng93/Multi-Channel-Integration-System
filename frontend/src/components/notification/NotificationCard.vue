@@ -67,17 +67,15 @@
           aria-label="優先級: 高"
         >高優先</span>
         <span
-          v-else-if="notification.priority === 'low'"
-          class="ui-pill"
-          role="status"
-          aria-label="優先級: 低"
-        >低優先</span>
-        <span
           v-if="platform"
-          class="ui-ch"
-          :class="platform === 'line' ? 'ui-ch-line' : 'ui-ch-fb'"
-          :title="platform === 'line' ? 'LINE' : 'Messenger'"
-        ><svg viewBox="0 0 24 24"><path d="M12 3C6.5 3 2 6.6 2 11c0 2.5 1.4 4.7 3.7 6.2L5 21l4.1-2.3c.9.2 1.9.3 2.9.3 5.5 0 10-3.6 10-8s-4.5-8-10-8Z" /></svg></span>
+          class="ch-tag"
+        >
+          <span
+            class="ui-ch"
+            :class="platform === 'line' ? 'ui-ch-line' : 'ui-ch-fb'"
+            aria-hidden="true"
+          ><svg viewBox="0 0 24 24"><path d="M12 3C6.5 3 2 6.6 2 11c0 2.5 1.4 4.7 3.7 6.2L5 21l4.1-2.3c.9.2 1.9.3 2.9.3 5.5 0 10-3.6 10-8s-4.5-8-10-8Z" /></svg></span>{{ platform === 'line' ? 'LINE' : 'Messenger' }}
+        </span>
       </div>
     </div>
 
@@ -264,9 +262,9 @@ const formattedTime = computed(() => {
   display: flex;
   gap: 14px;
   align-items: flex-start;
-  margin: 2px 10px;
-  padding: 14px 14px;
-  border-radius: 16px;
+  margin: 0;
+  padding: 14px 24px;
+  border-radius: 0;
   cursor: pointer;
   transition: background-color var(--ui-dur) var(--ui-ease);
 }
@@ -274,8 +272,8 @@ const formattedTime = computed(() => {
 .notification-card + .notification-card::before {
   position: absolute;
   top: 0;
-  right: 14px;
-  left: 68px;
+  right: 24px;
+  left: 78px;
   height: 0.5px;
   background: var(--ui-sep);
   content: '';
@@ -300,8 +298,7 @@ const formattedTime = computed(() => {
 }
 
 .notification-card:not(.notification-unread) .notification-icon {
-  background: var(--ui-fill);
-  color: var(--ui-muted);
+  opacity: 0.62;
 }
 
 /* Urgent: the same pastel tile language, in red, whatever the type (the pill says why) */
@@ -458,8 +455,14 @@ const formattedTime = computed(() => {
   background: color-mix(in srgb, var(--ui-red) 12%, var(--ui-surface));
 }
 
-.notification-meta > .ui-ch {
+.notification-meta > .ch-tag {
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
   margin-top: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ui-muted);
 }
 
 /* The inline time belongs to the phone layout; desktop keeps it in the trailing column */
@@ -558,7 +561,7 @@ const formattedTime = computed(() => {
   }
 
   .notification-meta > .ui-pill,
-  .notification-meta > .ui-ch {
+  .notification-meta > .ch-tag {
     margin-top: 8px;
   }
 
@@ -566,7 +569,7 @@ const formattedTime = computed(() => {
     position: static;
     grid-area: act;
     align-self: center;
-    margin: -8px -10px -8px 0;
+    margin: -8px -12px -8px 0;
     opacity: 1;
   }
 
@@ -617,13 +620,12 @@ const formattedTime = computed(() => {
 
 @media (max-width: 768px) {
   .notification-card {
-    margin: 2px 6px;
-    padding: 14px 10px;
+    padding: 14px 16px;
   }
 
   .notification-card + .notification-card::before {
-    right: 10px;
-    left: 64px;
+    right: 16px;
+    left: 70px;
   }
 
   /* The title wraps (two lines at most) instead of cutting the customer name off */
@@ -655,7 +657,20 @@ const formattedTime = computed(() => {
   }
 
   .action-btn:not(.action-btn-danger) {
-    color: var(--section-ink, var(--ui-accent));
+    color: var(--ui-accent);
+  }
+
+  /* Icon only: a text button on every row made the list read as a toolbar */
+  .action-btn:not(.is-confirming) {
+    color: var(--ui-muted);
+  }
+
+  .action-btn:not(.is-confirming) .action-label {
+    display: none;
+  }
+
+  .action-btn:not(.is-confirming):hover {
+    color: var(--ui-ink);
   }
 
   .action-btn svg {

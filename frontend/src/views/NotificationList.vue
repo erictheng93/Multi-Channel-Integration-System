@@ -96,7 +96,7 @@
                 class="load-more-section"
               >
                 <button
-                  class="btn btn-secondary"
+                  class="btn btn-ghost"
                   :disabled="loadingMore"
                   @click="actions.handleLoadMore"
                 >
@@ -142,9 +142,9 @@
               >
                 <span class="ui-row-main rail-name">{{ row.label }}</span>
                 <span
-                  v-if="row.unread > 0"
-                  class="rail-unread"
-                >{{ row.unread }} 未讀</span>
+                  class="rail-bar"
+                  aria-hidden="true"
+                ><i :style="{ width: `${row.share}%` }" /></span>
                 <span class="rail-total">{{ row.total }}</span>
               </button>
             </div>
@@ -172,10 +172,9 @@
               >
                 <span class="ui-row-main rail-name">{{ row.label }}</span>
                 <span
-                  v-if="row.unread > 0"
-                  class="rail-unread"
-                  :class="{ 'is-urgent': row.value === 'urgent' }"
-                >{{ row.unread }} 未讀</span>
+                  class="rail-bar"
+                  aria-hidden="true"
+                ><i :style="{ width: `${row.share}%` }" /></span>
                 <span class="rail-total">{{ row.total }}</span>
               </button>
             </div>
@@ -254,25 +253,31 @@ const {
 
 // ==================== Rail ====================
 
+// Each row carries its share of the largest row so the rail reads as a small bar chart, not a number list
+function withShare<T extends { total: number }>(rows: T[]): Array<T & { share: number }> {
+  const max = Math.max(1, ...rows.map((r) => r.total))
+  return rows.map((r) => ({ ...r, share: Math.max(4, Math.round((r.total / max) * 100)) }))
+}
+
 const typeRows = computed(() =>
-  filters.notificationTypes
+  withShare(filters.notificationTypes
     .map((t) => ({
       ...t,
       total: stats.value?.byType?.[t.value as keyof NonNullable<typeof stats.value>['byType']]?.total ?? 0,
       unread: stats.value?.byType?.[t.value as keyof NonNullable<typeof stats.value>['byType']]?.unread ?? 0
     }))
     .filter((row) => row.total > 0)
-    .sort((a, b) => b.total - a.total)
+    .sort((a, b) => b.total - a.total))
 )
 
 const priorityRows = computed(() =>
-  filters.priorities
+  withShare(filters.priorities
     .map((p) => ({
       ...p,
       total: stats.value?.byPriority?.[p.value as 'low' | 'normal' | 'high' | 'urgent']?.total ?? 0,
       unread: stats.value?.byPriority?.[p.value as 'low' | 'normal' | 'high' | 'urgent']?.unread ?? 0
     }))
-    .filter((row) => row.total > 0)
+    .filter((row) => row.total > 0))
 )
 
 function togglePriority(value: string): void {
@@ -385,21 +390,25 @@ onUnmounted(() => {
   font-weight: 500;
 }
 
-.rail-unread {
-  display: inline-grid;
-  place-items: center;
-  height: 22px;
-  padding: 0 9px;
+.rail-bar {
+  flex: none;
+  width: 64px;
+  height: 6px;
+  margin-right: 12px;
+  overflow: hidden;
   border-radius: 999px;
-  background: var(--section-ink, var(--ui-accent));
-  color: #fff;
-  font: 600 12px var(--ui-font-display);
-  white-space: nowrap;
-  font-variant-numeric: tabular-nums;
+  background: var(--ui-fill);
 }
 
-.rail-unread.is-urgent {
-  background: var(--ui-red-ink);
+.rail-bar i {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--ui-faint);
+}
+
+.rail-row.is-selected .rail-bar i {
+  background: var(--ui-accent);
 }
 
 .rail-total {
