@@ -38,14 +38,7 @@
       <span
         v-if="contents.length"
         class="tpl-has"
-        aria-label="報表會包含"
-      >
-        <span
-          v-for="item in contents"
-          :key="item.label"
-          class="tpl-chip"
-        >{{ item.label }}</span>
-      </span>
+      >包含 {{ contents.map(item => item.label).join('、') }}</span>
     </span>
     <i
       class="radio"
@@ -84,7 +77,7 @@ const meta = computed(() => {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   gap: 14px;
-  align-items: start;
+  align-items: center;
   width: 100%;
   padding: 16px 18px;
   border: 0;
@@ -117,18 +110,13 @@ const meta = computed(() => {
   height: 40px;
   place-items: center;
   border-radius: 12px;
-  background: var(--section-hue-soft);
-  color: var(--section-ink);
+  background: var(--ui-fill);
+  color: var(--ui-ink-2);
 }
 
-.tpl-ico.conversation_summary {
+.is-on .tpl-ico {
   background: var(--ui-accent-soft);
   color: var(--ui-accent);
-}
-
-.tpl-ico.agent_performance {
-  background: var(--ui-green-soft);
-  color: var(--ui-green-ink);
 }
 
 .tpl-ico svg {
@@ -158,34 +146,23 @@ const meta = computed(() => {
 }
 
 .tpl-has {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 8px;
-}
-
-.tpl-chip {
-  padding: 2px 10px;
-  border-radius: 999px;
-  background: var(--ui-fill);
+  margin-top: 6px;
   font-size: 13px;
+  line-height: 1.45;
   color: var(--ui-ink-2);
-}
-
-.is-on .tpl-chip {
-  background: var(--ui-surface);
 }
 
 @media (max-width: 768px) {
   .tpl-has {
-    display: none;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 }
 
 .radio {
   width: 20px;
   height: 20px;
-  margin-top: 2px;
   border-radius: 50%;
   box-shadow: inset 0 0 0 1.5px var(--ui-field-edge);
   transition: box-shadow var(--ui-dur) var(--ui-ease);
