@@ -245,34 +245,33 @@
               </div>
             </section>
   
-            <section aria-labelledby="rail-legend-title">
+            <section
+              v-if="myUnread.length > 0"
+              aria-labelledby="rail-unread-title"
+            >
               <h2
-                id="rail-legend-title"
+                id="rail-unread-title"
                 class="ui-group-label"
+                :title="UNREAD_HINT"
               >
-                列表怎麼看
+                我的未讀
+                <span class="label-note">{{ unreadStore.total }} 件 ・ 你尚未開啟</span>
               </h2>
-              <dl class="ui-card rail-legend">
-                <div>
-                  <dt>
-                    <span
-                      class="legend-dot"
-                      aria-hidden="true"
-                    />未讀
-                  </dt>
-                  <dd>你尚未開啟的客戶來訊</dd>
-                </div>
-                <div>
-                  <dt><span class="ui-pill ui-pill-orange">待回覆</span></dt>
-                  <dd>近 7 天內，客戶來訊後尚無客服回覆</dd>
-                </div>
-                <div>
-                  <dt class="legend-free">
-                    免費回覆
-                  </dt>
-                  <dd>客戶來訊 50 秒內，用回覆 API 送出不佔推播額度</dd>
-                </div>
-              </dl>
+              <div class="ui-group">
+                <button
+                  v-for="item in myUnread"
+                  :key="item.id"
+                  type="button"
+                  class="ui-row rail-row"
+                  @click="goToConversation(item.id)"
+                >
+                  <span class="ui-row-main rail-name">{{ item.name }}</span>
+                  <span
+                    class="rail-badge"
+                    :aria-label="`未讀 ${item.count} 則`"
+                  >{{ item.count }}</span>
+                </button>
+              </div>
             </section>
           </aside>
         </div>
@@ -338,7 +337,7 @@ import { useConfirmDialog } from '@/composables/useConfirmDialog'
 import { conversationApi } from '@/api/conversations'
 import { useUnreadStore } from '@/stores/unread'
 import { formatWaitText } from '@/composables/dashboard/useDashboardOverview'
-import { LEGEND_TEXT } from '@/composables/conversation/useConversationRowMeta'
+import { LEGEND_TEXT, UNREAD_HINT, unreadOf } from '@/composables/conversation/useConversationRowMeta'
 import { WAITING_WINDOW_DAYS, type ConversationStats } from '@shared/api-contracts'
 import { tagCacheService } from '@/services/tagCacheService'
 import type { ConversationFilters as ConversationFiltersType } from '@/types'
@@ -401,6 +400,13 @@ const teamRows = computed(() => (counts.value?.byTeam ?? [])
     name: t.teamId === null ? '未指派' : (teamNameById.value.get(t.teamId) ?? `團隊 ${t.teamId}`),
     open: t.open
   })))
+// Rail: the unread conversations of the loaded page, oldest unread first
+const myUnread = computed(() => displayedConversations.value
+  .filter(c => unreadOf(c) > 0)
+  .sort((a, b) => Date.parse(a.oldestUnreadAt ?? '') - Date.parse(b.oldestUnreadAt ?? ''))
+  .slice(0, 5)
+  .map(c => ({ id: c.id, name: c.customer?.name || c.user?.name || '未知用戶', count: unreadOf(c) })))
+
 function toggleTeam(filterId: number) {
   filterComposable.updateFilter('teamId', filterComposable.filters.value.teamId === filterId ? undefined : filterId)
 }
@@ -838,42 +844,17 @@ onUnmounted(() => {
   outline-offset: -2px;
 }
 
-.rail-legend {
-  display: grid;
-  gap: 14px;
-  margin: 0;
-  padding: 18px 20px;
-}
-
-.rail-legend > div {
-  display: grid;
-  gap: 4px;
-}
-
-.rail-legend dt {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  font-size: 14px;
-  font-weight: 600;
-}
-
-.rail-legend dd {
-  margin: 0;
-  font-size: 13px;
-  line-height: 1.5;
-  color: var(--ui-muted);
-}
-
-.legend-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--section-hue);
-}
-
-.legend-free {
-  color: var(--ui-green-ink);
+.rail-badge {
+  display: inline-grid;
+  place-items: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: var(--section-ink);
+  color: #fff;
+  font: 600 12px var(--ui-font-display);
+  font-variant-numeric: tabular-nums;
 }
 
 @media (min-width: 1025px) {
@@ -882,10 +863,6 @@ onUnmounted(() => {
     top: calc(var(--ui-topbar-h) + 20px);
   }
 
-  /* the rail's legend card replaces the footer line */
-  .list-foot {
-    display: none;
-  }
 }
 
 .rail-name {
