@@ -268,13 +268,3 @@ const sideRings = computed(() => hasRings.value || !!slots.rings)
 }
 </style>
 
-<style>
-/* A page that wears a RingLead also gets readable group labels (the foundation's 13px muted label
-   was the most criticised detail of the pilot). Local to pages that opt in with .rl-page. */
-.ui-page.rl-page .ui-group-label,
-.ui-page:has(.rl) .ui-group-label {
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--ui-ink-2);
-}
-</style>
