@@ -342,7 +342,7 @@ function formatTime(iso: string): string {
 
 <style scoped>
 .quota-lead {
-  padding: 20px 28px 22px;
+  padding: 18px 28px 20px;
 }
 
 .quota-head {
@@ -354,7 +354,7 @@ function formatTime(iso: string): string {
 
 .quota-title {
   margin: 0;
-  font-size: 15px;
+  font-size: 17px;
   font-weight: 600;
   color: var(--ui-ink);
 }
@@ -419,8 +419,8 @@ function formatTime(iso: string): string {
 
 .lead-num {
   margin-top: 2px;
-  font: 600 52px / 1.05 var(--ui-font-display);
-  letter-spacing: -0.035em;
+  font: 600 40px / 1.05 var(--ui-font-display);
+  letter-spacing: -0.03em;
   font-variant-numeric: tabular-nums;
   color: var(--ui-ink);
 }
@@ -475,7 +475,7 @@ function formatTime(iso: string): string {
 
 .bar {
   display: flex;
-  height: 12px;
+  height: 14px;
   overflow: hidden;
   border-radius: 999px;
   background: var(--ui-fill-strong);

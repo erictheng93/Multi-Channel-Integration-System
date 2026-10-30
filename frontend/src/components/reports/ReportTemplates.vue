@@ -354,6 +354,32 @@ onMounted(() => {
   flex: 1;
 }
 
+.out-head {
+  display: none;
+}
+
+.tpl-out :deep(.rop-title) {
+  font-size: 22px;
+  letter-spacing: -0.02em;
+}
+
+.tpl-out :deep(.rop) {
+  align-content: center;
+  gap: 28px;
+}
+
+.tpl-out :deep(.rop-split) {
+  height: 18px;
+}
+
+.tpl-out :deep(.rop-kpi dd) {
+  font-size: 52px;
+}
+
+.tpl-out :deep(.rop-from) {
+  color: var(--ui-ink-2);
+}
+
 .out-name {
   margin: 0;
   font: 700 26px / 1.2 var(--ui-font-display);
@@ -403,9 +429,21 @@ onMounted(() => {
   .tpl-grid {
     grid-template-columns: minmax(0, 1fr);
   }
+
+  .out-head {
+    display: block;
+  }
 }
 
 @media (max-width: 768px) {
+  .tpl-out :deep(.rop) {
+    gap: 18px;
+  }
+
+  .tpl-out :deep(.rop-kpi dd) {
+    font-size: 30px;
+  }
+
   .tpl-out {
     padding: 20px;
   }

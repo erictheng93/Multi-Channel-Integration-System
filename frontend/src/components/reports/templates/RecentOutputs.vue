@@ -12,9 +12,18 @@
         to="/reports/dashboard"
         class="ui-link"
       >
-        全部報表
+        全部報表 &rsaquo;
       </router-link>
     </h2>
+    <div
+      class="ui-group ro-head"
+      aria-hidden="true"
+    >
+      <span>報表</span>
+      <span>類型</span>
+      <span>狀態</span>
+      <span class="ro-r">產出時間</span>
+    </div>
     <ul class="ui-group ro-list">
       <li
         v-for="item in items"
@@ -24,10 +33,8 @@
           :to="`/reports/${item.id}`"
           class="ro-row"
         >
-          <span class="ro-main">
-            <span class="ro-title">{{ item.title }}</span>
-            <span class="ro-type">{{ typeLabel(item.type) }} ・ {{ item.format.toUpperCase() }}</span>
-          </span>
+          <span class="ro-title">{{ item.title }}</span>
+          <span class="ro-type">{{ typeLabel(item.type) }} ・ {{ item.format.toUpperCase() }}</span>
           <span
             class="ui-pill ro-pill"
             :class="statusClass(item.status)"
@@ -65,21 +72,42 @@ onMounted(async () => {
 </script>
 
 <style scoped>
+.ro-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 220px 110px 110px;
+  gap: 16px;
+  margin-bottom: -8px;
+  padding: 10px 28px;
+  background: transparent;
+  box-shadow: none;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ui-ink-2);
+}
+
+.ro :deep(.ui-link) {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+
 .ro-list {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0 8px;
   margin: 0;
-  padding: 4px 8px;
+  padding: 4px 16px;
   list-style: none;
+}
+
+.ro-list li + li {
+  box-shadow: 0 -0.5px 0 var(--ui-sep);
 }
 
 .ro-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 72px 96px;
+  grid-template-columns: minmax(0, 1fr) 220px 110px 110px;
   gap: 16px;
   align-items: center;
-  min-height: 60px;
+  min-height: 52px;
   padding: 8px 12px;
   border-radius: var(--ui-r-inner);
   color: var(--ui-ink);
@@ -97,10 +125,8 @@ onMounted(async () => {
   outline-offset: -2px;
 }
 
-.ro-main {
-  display: grid;
-  gap: 2px;
-  min-width: 0;
+.ro-r {
+  text-align: right;
 }
 
 .ro-pill {
@@ -115,21 +141,15 @@ onMounted(async () => {
 }
 
 .ro-type {
-  font-size: 13px;
-  color: var(--ui-muted);
+  font-size: 14px;
+  color: var(--ui-ink-2);
 }
 
 .ro-when {
-  font-size: 13px;
-  color: var(--ui-muted);
+  font-size: 14px;
+  color: var(--ui-ink-2);
   text-align: right;
   font-variant-numeric: tabular-nums;
-}
-
-@media (max-width: 1024px) {
-  .ro-list {
-    grid-template-columns: minmax(0, 1fr);
-  }
 }
 
 @media (max-width: 768px) {
