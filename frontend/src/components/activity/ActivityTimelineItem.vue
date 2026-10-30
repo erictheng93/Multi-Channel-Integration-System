@@ -43,11 +43,6 @@
       />
     </div>
     <div class="timeline-item__restore-zone">
-      <span
-        v-if="restoreState.kind === 'eligible'"
-        class="ui-pill ui-pill-green"
-        data-test="restore-eligible"
-      >可還原</span>
       <button
         v-if="restoreState.kind === 'eligible'"
         class="btn btn-secondary btn-sm"
@@ -317,7 +312,7 @@ onUnmounted(() => {
 
 .timeline-item__restore-zone {
   display: grid;
-  grid-template-columns: 84px 56px 28px;
+  grid-template-columns: 76px 56px 28px;
   align-items: center;
   align-self: center;
   gap: 8px;
@@ -333,6 +328,8 @@ onUnmounted(() => {
 .timeline-item__restore-zone .btn {
   grid-column: 2;
 }
+
+/* the button is the whole offer: no chip repeating "可還原" beside it */
 
 .timeline-item__restore-zone .timeline-item__details-toggle {
   grid-column: 3;

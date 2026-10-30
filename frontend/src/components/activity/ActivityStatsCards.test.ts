@@ -40,13 +40,13 @@ describe('ActivityStatsCards', () => {
     expect(wrapper.find('.rl-num').text()).toContain('1,284')
   })
 
-  it('names the top member and the top action as plain lines against the total', () => {
-    const wrapper = mountCards({ overview: makeOverview(), loading: false })
+  it('states the latest day and the daily average as plain lines', () => {
+    const wrapper = mountCards({ overview: makeOverview({ dailyStats: [{ date: '2026-03-19', count: 20 }, { date: '2026-03-20', count: 50 }] }), loading: false })
     const text = wrapper.find('.highlights').text()
-    expect(text).toContain('Alice')
-    expect(text).toContain('40 筆')
-    expect(text).toContain('訊息發送')
+    expect(text).toContain('最近一天')
     expect(text).toContain('50 筆')
+    expect(text).toContain('日均')
+    expect(text).toContain('35 筆')
     expect(wrapper.findAll('.highlights li')).toHaveLength(2)
   })
 
@@ -62,8 +62,8 @@ describe('ActivityStatsCards', () => {
     restore.enabled = true
   })
 
-  it('names no top member or action when there was no activity', () => {
-    const wrapper = mountCards({ overview: makeOverview({ totalActivities: 0, topUsers: [], actionStats: {} }), loading: false })
+  it('states no daily facts when there was no activity', () => {
+    const wrapper = mountCards({ overview: makeOverview({ totalActivities: 0, dailyStats: [] }), loading: false })
     expect(wrapper.find('.highlights').exists()).toBe(false)
   })
 
