@@ -7,14 +7,32 @@
     <div class="ui-page not-found-page">
       <section class="nf">
         <div class="code-wrap">
-          <DiscRing
-            class="hero-disc"
-            tone="accent"
-            :size="190"
-            :weight="1.4"
-            fade="strong"
-            :grain="false"
-          />
+          <!-- Lost signal: three rings pinging out from the zero. Decoration, so hidden from assistive tech -->
+          <svg
+            class="hero-rings"
+            viewBox="0 0 320 320"
+            aria-hidden="true"
+            focusable="false"
+          >
+            <circle
+              class="nf-ring r3"
+              cx="160"
+              cy="160"
+              r="150"
+            />
+            <circle
+              class="nf-ring r2"
+              cx="160"
+              cy="160"
+              r="112"
+            />
+            <circle
+              class="nf-ring r1"
+              cx="160"
+              cy="160"
+              r="76"
+            />
+          </svg>
           <div class="code">
             4<span>0</span>4
           </div>
@@ -108,7 +126,6 @@
 </template>
 
 <script setup lang="ts">
-import DiscRing from '@/components/ui/DiscRing.vue'
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
@@ -134,7 +151,7 @@ const QUICK_LINKS: QuickLink[] = [
   {
     to: '/conversations',
     title: '對話',
-    text: 'LINE 與 Messenger 客戶訊息',
+    text: 'LINE 與 Messenger 訊息',
     tone: 'blue',
     icon: '<path d="M21 12a8 8 0 0 1-11.6 7.1L4 20.5l1.4-4.6A8 8 0 1 1 21 12Z"/>'
   },
@@ -237,15 +254,56 @@ const goBack = () => {
   color: var(--ui-accent);
 }
 
-.hero-disc {
+.hero-rings {
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 320px !important;
-  height: 320px !important;
+  width: 320px;
+  height: 320px;
   translate: -50% -50%;
-  opacity: 0.8;
+  overflow: visible;
   pointer-events: none;
+}
+
+.nf-ring {
+  fill: none;
+  stroke: var(--ui-blue);
+  stroke-width: 2;
+  transform-origin: 160px 160px;
+}
+
+.nf-ring.r1 {
+  opacity: 0.5;
+}
+
+.nf-ring.r2 {
+  opacity: 0.32;
+}
+
+.nf-ring.r3 {
+  opacity: 0.18;
+}
+
+/* The signal goes out once on arrival and settles; nothing loops */
+@media (prefers-reduced-motion: no-preference) {
+  .nf-ring {
+    animation: nf-ping 900ms var(--ui-ease) both;
+  }
+
+  .nf-ring.r2 {
+    animation-delay: 120ms;
+  }
+
+  .nf-ring.r3 {
+    animation-delay: 240ms;
+  }
+}
+
+@keyframes nf-ping {
+  from {
+    opacity: 0;
+    transform: scale(0.7);
+  }
 }
 
 .nf-title {
@@ -394,9 +452,9 @@ const goBack = () => {
     padding: 8px 40px;
   }
 
-  .hero-disc {
-    width: 200px !important;
-    height: 200px !important;
+  .hero-rings {
+    width: 220px;
+    height: 220px;
   }
 
   .asked {
