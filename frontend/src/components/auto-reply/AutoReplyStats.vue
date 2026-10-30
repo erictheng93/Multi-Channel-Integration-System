@@ -35,38 +35,17 @@
       v-if="hasFacts"
       class="lead-side"
     >
-      <div
-        v-if="hasCompare"
-        class="cmp"
-      >
-        <p class="cmp-cap">
-          與昨天同時段相比
-        </p>
-        <div
-          class="cmp-rows"
-          role="img"
-          :aria-label="`今天 ${todayReplies} 則，昨天同時段 ${yesterdaySameTime} 則`"
-        >
-          <div class="cmp-row">
-            <span class="cmp-name">今天</span>
-            <span class="cmp-track"><i
-              class="is-today"
-              :style="{ width: todayWidth }"
-            /></span>
-            <b>{{ todayReplies }}<small> 則</small></b>
-          </div>
-          <div class="cmp-row">
-            <span class="cmp-name">昨天</span>
-            <span class="cmp-track"><i
-              class="is-prev"
-              :style="{ width: prevWidth }"
-            /></span>
-            <b>{{ yesterdaySameTime }}<small> 則</small></b>
-          </div>
-        </div>
-      </div>
-
       <dl class="lead-facts">
+        <div
+          v-if="hasCompare"
+          class="fact"
+        >
+          <dt>昨天同時段</dt>
+          <dd>
+            <b>{{ yesterdaySameTime }}<small> 則</small></b>
+            <span class="sub">{{ deltaSub }}</span>
+          </dd>
+        </div>
         <div
           v-if="totalRules !== undefined && totalRules > 0"
           class="fact"
@@ -129,9 +108,10 @@ const deltaText = computed(() => {
 })
 
 const hasCompare = computed(() => props.yesterdaySameTime !== null && props.yesterdaySameTime !== undefined)
-const barMax = computed(() => Math.max(1, props.todayReplies, props.yesterdaySameTime ?? 0))
-const todayWidth = computed(() => `${Math.max(2, Math.round((props.todayReplies / barMax.value) * 100))}%`)
-const prevWidth = computed(() => `${Math.max(2, Math.round(((props.yesterdaySameTime ?? 0) / barMax.value) * 100))}%`)
+const deltaSub = computed(() => {
+  if (delta.value === 0) { return '與今天持平' }
+  return delta.value > 0 ? `今天多 ${delta.value} 則` : `今天少 ${Math.abs(delta.value)} 則`
+})
 
 const hasFacts = computed(() =>
   (props.totalRules !== undefined && props.totalRules > 0)
@@ -158,7 +138,7 @@ const hoursNote = computed(() => {
 <style scoped>
 .lead {
   display: grid;
-  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr);
   gap: 20px 40px;
   align-items: center;
   padding: 24px 40px;
@@ -263,66 +243,9 @@ const hoursNote = computed(() => {
   content: '';
 }
 
-.cmp-cap {
-  margin: 0 0 10px;
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--ui-muted);
-}
-
-.cmp-rows {
-  display: grid;
-  gap: 10px;
-}
-
-.cmp-row {
-  display: grid;
-  grid-template-columns: 32px minmax(0, 1fr) 64px;
-  gap: 12px;
-  align-items: center;
-}
-
-.cmp-name {
-  font-size: 14px;
-  color: var(--ui-ink-2);
-}
-
-.cmp-track {
-  display: block;
-  height: 10px;
-  border-radius: 999px;
-  background: var(--ui-fill);
-  overflow: hidden;
-}
-
-.cmp-track i {
-  display: block;
-  height: 100%;
-  border-radius: 999px;
-}
-
-.cmp-track .is-today {
-  background: var(--section-hue);
-}
-
-.cmp-track .is-prev {
-  background: var(--ui-faint);
-}
-
-.cmp-row b {
-  font: 600 20px / 1 var(--ui-font-display);
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-}
-
-.cmp-row b small {
-  font: 500 13px var(--ui-font-ui);
-  color: var(--ui-muted);
-}
-
 .lead-facts {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 20px 24px;
   margin: 0;
 }
@@ -387,6 +310,29 @@ const hoursNote = computed(() => {
 @media (max-width: 768px) {
   .lead-num {
     font-size: 48px;
+  }
+
+  /* three compact facts in one row instead of a stacked comparison */
+  .lead-facts {
+    gap: 14px 12px;
+  }
+
+  .fact b {
+    font-size: 24px;
+  }
+
+  .fact dt {
+    font-size: 13px;
+    white-space: nowrap;
+  }
+
+  .sub {
+    font-size: 13px;
+  }
+
+  .pips i {
+    max-width: 9px;
+    height: 6px;
   }
 }
 </style>
