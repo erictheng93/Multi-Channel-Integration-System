@@ -162,8 +162,10 @@ const STATUS_TONE = { healthy: 'good', warning: 'warn', error: 'bad' } as const
 const STATUS_ORDER = { error: 0, warning: 1, healthy: 2 } as const
 
 /** Last path segment, shortened so five endpoints share the row: /api/auth/login -> login, customer-conversations -> conversations */
+const LABEL_OVERRIDES: Record<string, string> = { 'customer-conversations': 'convos' }
 const endpointLabel = (path: string): string => {
   const segment = path.split('/').filter(Boolean).pop() ?? path
+  if (LABEL_OVERRIDES[segment]) { return LABEL_OVERRIDES[segment] }
   const word = segment.length > 12 ? (segment.split('-').pop() ?? segment) : segment
   return word.length > 9 ? `${word.slice(0, 8)}…` : word
 }
@@ -178,7 +180,7 @@ const endpointBars = computed<LeadBar[]>(() => {
       key: e.id,
       label: endpointLabel(e.endpoint),
       value: e.responseTime,
-      display: `${Math.round(e.responseTime).toLocaleString('en-US')}ms`,
+      display: e.responseTime >= 1000 ? `${(e.responseTime / 1000).toFixed(2)} s` : `${Math.round(e.responseTime)} ms`,
       tone: STATUS_TONE[e.status] ?? 'muted'
     }))
 })

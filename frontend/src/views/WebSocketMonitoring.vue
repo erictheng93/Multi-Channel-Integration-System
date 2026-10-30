@@ -59,16 +59,28 @@
         :meaning="metrics ? `${metrics.onlineAgents} 位在線客服，多分頁與裝置各算一條` : ''"
       >
         <template
-          v-if="connectionSeries.length >= 2"
+          v-if="metrics"
           #visual
         >
-          <LeadSpark
-            summary="已註冊連線"
-            :values="connectionSeries"
-            unit="條"
-            :start-label="`${rangeLabel}前`"
-            end-label="現在"
-          />
+          <div class="hero-facts-wrap">
+            <p class="hero-cap">
+              近 {{ rangeLabel }}
+            </p>
+            <dl class="hero-facts">
+              <div>
+                <dt>連線峰值</dt>
+                <dd>{{ stats.peakConnections ?? '—' }}</dd>
+              </div>
+              <div>
+                <dt>平均連線</dt>
+                <dd>{{ stats.avgConnections ?? '—' }}</dd>
+              </div>
+              <div>
+                <dt>事件峰值 / 秒</dt>
+                <dd>{{ stats.peakEvents === null ? '—' : fmt(stats.peakEvents, 2) }}</dd>
+              </div>
+            </dl>
+          </div>
         </template>
         <span
           v-if="metrics && connectionDelta !== null"
@@ -76,184 +88,6 @@
           :class="connectionDelta >= 0 ? 'ui-delta-up' : 'ui-delta-down'"
         >{{ connectionDelta > 0 ? '+' : '' }}{{ connectionDelta }} 比上次刷新</span>
       </RingLead>
-
-      <!-- Rates: one grouped row each, with its own trend -->
-      <section aria-label="即時指標">
-        <h2 class="ui-group-label">
-          即時指標
-          <span class="label-note">每 {{ POLL_SECONDS }} 秒更新，走勢為{{ rangeLabel }}</span>
-        </h2>
-        <div class="ui-group">
-          <div class="ui-row is-flush kpi-row">
-            <span
-              class="ui-kpi-ico green"
-              aria-hidden="true"
-            >
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              ><path d="M7 4v16M7 20l-3-3M7 20l3-3M17 20V4M17 4l-3 3M17 4l3 3" /></svg>
-            </span>
-            <div class="kpi-main">
-              <div class="kpi-label">
-                事件 / 秒
-              </div>
-              <div class="ui-kpi-foot">
-                <template v-if="eventsTotal === null">
-                  {{ metrics ? RESAMPLE_HINT : '' }}
-                </template>
-                <template v-else>
-                  入 <b>{{ fmt(eventsIn, 2) }}</b> / 出 <b>{{ fmt(eventsOut, 2) }}</b>
-                </template>
-              </div>
-            </div>
-            <div class="kpi-value">
-              {{ eventsTotal === null ? '—' : fmt(eventsTotal, 2) }}
-            </div>
-            <svg
-              v-if="sparks.events.line"
-              class="spark is-accent"
-              :viewBox="`0 0 ${SPARK.width} ${SPARK.height}`"
-              preserveAspectRatio="none"
-              role="img"
-              :aria-label="`事件 / 秒，${rangeLabel}走勢`"
-            >
-              <path
-                :d="sparks.events.area"
-                class="spark-area"
-              />
-              <path
-                :d="sparks.events.line"
-                class="spark-line"
-              />
-            </svg>
-            <span
-              v-else
-              class="spark-gap"
-            />
-          </div>
-
-          <div class="ui-row is-flush kpi-row">
-            <span
-              class="ui-kpi-ico orange"
-              aria-hidden="true"
-            >
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              ><circle
-                cx="12"
-                cy="12"
-                r="9"
-              /><path d="M12 7v5l3 2" /></svg>
-            </span>
-            <div class="kpi-main">
-              <div class="kpi-label">
-                平均處理延遲
-              </div>
-              <div class="ui-kpi-foot">
-                <template v-if="metrics && !latencyKnown">
-                  {{ RESAMPLE_HINT }}
-                </template>
-                <template v-else-if="metrics">
-                  <span
-                    class="ui-pill ui-pill-dot"
-                    :class="latency.pill"
-                  >{{ latency.label }}</span><span class="foot-hint">{{ latency.hint }}</span>
-                </template>
-              </div>
-            </div>
-            <div class="kpi-value">
-              {{ latencyKnown ? fmt(metrics?.averageLatency, 0) : '—' }}<small v-if="latencyKnown">ms</small>
-            </div>
-            <svg
-              v-if="sparks.latency.line"
-              class="spark is-orange"
-              :viewBox="`0 0 ${SPARK.width} ${SPARK.height}`"
-              preserveAspectRatio="none"
-              role="img"
-              :aria-label="`平均處理延遲，${rangeLabel}走勢`"
-            >
-              <path
-                :d="sparks.latency.area"
-                class="spark-area"
-              />
-              <path
-                :d="sparks.latency.line"
-                class="spark-line"
-              />
-            </svg>
-            <span
-              v-else
-              class="spark-gap"
-            />
-          </div>
-
-          <div class="ui-row is-flush kpi-row">
-            <span
-              class="ui-kpi-ico red"
-              aria-hidden="true"
-            >
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              ><path d="M12 3 2 20h20Z" /><path d="M12 10v4M12 17h.01" /></svg>
-            </span>
-            <div class="kpi-main">
-              <div class="kpi-label">
-                錯誤率
-              </div>
-              <div class="ui-kpi-foot">
-                <template v-if="errorRate === null">
-                  {{ metrics ? RESAMPLE_HINT : '' }}
-                </template>
-                <template v-else>
-                  <span
-                    class="ui-pill ui-pill-dot"
-                    :class="errorStatus.pill"
-                  >{{ errorStatus.label }}</span><span class="foot-hint">{{ errorStatus.hint }}</span>
-                </template>
-              </div>
-            </div>
-            <div class="kpi-value">
-              {{ errorRate === null ? '—' : (errorRate * 100).toFixed(2) }}<small v-if="errorRate !== null">%</small>
-            </div>
-            <svg
-              v-if="sparks.error.line"
-              class="spark is-red"
-              :viewBox="`0 0 ${SPARK.width} ${SPARK.height}`"
-              preserveAspectRatio="none"
-              role="img"
-              :aria-label="`錯誤率，${rangeLabel}走勢`"
-            >
-              <path
-                :d="sparks.error.area"
-                class="spark-area"
-              />
-              <path
-                :d="sparks.error.line"
-                class="spark-line"
-              />
-            </svg>
-            <span
-              v-else
-              class="spark-gap"
-            />
-          </div>
-        </div>
-      </section>
 
       <section class="bento">
         <!-- 歷史趨勢 -->
@@ -498,47 +332,121 @@
           </div>
         </section>
 
-        <!-- 即時概況 -->
-        <section class="s4">
+        <!-- 即時指標 -->
+        <!-- Rates: one grouped row each (the trend lives in the chart beside it) -->
+        <section
+          aria-label="即時指標"
+          class="s4 rates"
+        >
           <h2 class="ui-group-label">
-            即時概況
-            <span class="label-note">來自 MessageBroadcaster</span>
+            即時指標
+            <span class="label-note">每 {{ POLL_SECONDS }} 秒更新</span>
           </h2>
-          <div class="ui-group facts-card">
-            <div
-              v-if="metrics"
-              class="facts"
-            >
-              <div class="fact">
-                <span>在線客服</span><b>{{ metrics.onlineAgents }}</b>
+          <div class="ui-group rates-card">
+            <div class="ui-row is-flush kpi-row">
+              <span
+                class="ui-kpi-ico green"
+                aria-hidden="true"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                ><path d="M7 4v16M7 20l-3-3M7 20l3-3M17 20V4M17 4l-3 3M17 4l3 3" /></svg>
+              </span>
+              <div class="kpi-main">
+                <div class="kpi-label">
+                  事件 / 秒
+                </div>
+                <div class="ui-kpi-foot">
+                  <template v-if="eventsTotal === null">
+                    {{ metrics ? RESAMPLE_HINT : '' }}
+                  </template>
+                  <template v-else>
+                    入 <b>{{ fmt(eventsIn, 2) }}</b> / 出 <b>{{ fmt(eventsOut, 2) }}</b>
+                  </template>
+                </div>
               </div>
-              <div class="fact">
-                <span>已註冊連線</span><b>{{ metrics.registeredConnections }}</b>
+              <div class="kpi-value">
+                {{ eventsTotal === null ? '—' : fmt(eventsTotal, 2) }}
               </div>
-              <div class="fact">
-                <span>取樣視窗</span><b>{{ sampled ? `${metrics.windowSeconds} 秒` : '—' }}</b>
-              </div>
-              <h3 class="fact-group">
-                {{ rangeLabel }}內
-              </h3>
-              <div class="fact">
-                <span>連線峰值</span><b>{{ stats.peakConnections ?? '—' }}</b>
-              </div>
-              <div class="fact">
-                <span>平均連線</span><b>{{ stats.avgConnections ?? '—' }}</b>
-              </div>
-              <div class="fact">
-                <span>事件峰值 / 秒</span><b>{{ stats.peakEvents === null ? '—' : fmt(stats.peakEvents, 2) }}</b>
-              </div>
-              <p class="fact-note">
-                連線數為已註冊的連線（客服連線加對話房間），不代表每一條都有即時 socket。
-              </p>
             </div>
-            <div
-              v-else
-              class="ui-empty"
-            >
-              <p>{{ isRefreshing ? '載入中...' : '尚無資料' }}</p>
+
+            <div class="ui-row is-flush kpi-row">
+              <span
+                class="ui-kpi-ico orange"
+                aria-hidden="true"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                ><circle
+                  cx="12"
+                  cy="12"
+                  r="9"
+                /><path d="M12 7v5l3 2" /></svg>
+              </span>
+              <div class="kpi-main">
+                <div class="kpi-label">
+                  平均處理延遲
+                </div>
+                <div class="ui-kpi-foot">
+                  <template v-if="metrics && !latencyKnown">
+                    {{ RESAMPLE_HINT }}
+                  </template>
+                  <template v-else-if="metrics">
+                    <span
+                      class="ui-pill ui-pill-dot"
+                      :class="latency.pill"
+                    >{{ latency.label }}</span><span class="foot-hint">{{ latency.hint }}</span>
+                  </template>
+                </div>
+              </div>
+              <div class="kpi-value">
+                {{ latencyKnown ? fmt(metrics?.averageLatency, 0) : '—' }}<small v-if="latencyKnown">ms</small>
+              </div>
+            </div>
+
+            <div class="ui-row is-flush kpi-row">
+              <span
+                class="ui-kpi-ico red"
+                aria-hidden="true"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                ><path d="M12 3 2 20h20Z" /><path d="M12 10v4M12 17h.01" /></svg>
+              </span>
+              <div class="kpi-main">
+                <div class="kpi-label">
+                  錯誤率
+                </div>
+                <div class="ui-kpi-foot">
+                  <template v-if="errorRate === null">
+                    {{ metrics ? RESAMPLE_HINT : '' }}
+                  </template>
+                  <template v-else>
+                    <span
+                      class="ui-pill ui-pill-dot"
+                      :class="errorStatus.pill"
+                    >{{ errorStatus.label }}</span><span class="foot-hint">{{ errorStatus.hint }}</span>
+                  </template>
+                </div>
+              </div>
+              <div class="kpi-value">
+                {{ errorRate === null ? '—' : (errorRate * 100).toFixed(2) }}<small v-if="errorRate !== null">%</small>
+              </div>
             </div>
           </div>
         </section>
@@ -607,8 +515,7 @@ import { apiClient } from '@/api'
 import { presenceApi, type WsMetricsPointDto, type WsMetricsRange } from '@/api/presence'
 import AppLayout from '@/components/ui/AppLayout.vue'
 import RingLead from '@/components/lead/RingLead.vue'
-import LeadSpark from '@/components/lead/LeadSpark.vue'
-import { CHART, CHART_COMPACT, RANGE_MS, SPARK, buildSeries, buildSpark, xTicks, yTicks } from '@/utils/ws-metrics-chart'
+import { CHART, CHART_COMPACT, RANGE_MS, buildSeries, xTicks, yTicks } from '@/utils/ws-metrics-chart'
 import type { ChartGeometry } from '@/utils/ws-metrics-chart'
 
 interface Metrics {
@@ -756,7 +663,7 @@ const chart = computed(() => {
   }
 })
 
-/** The same window the main chart draws, shared by the KPI sparklines and the phone events chart */
+/** The same window the main chart draws, shared by the main chart and the phone events chart */
 const histWindow = computed(() => {
   const points = history.value
   const to = points.length > 0 ? (points[points.length - 1]?.ts ?? historyNow.value) : historyNow.value
@@ -765,16 +672,6 @@ const histWindow = computed(() => {
 
 const eventsOf = (p: WsMetricsPointDto): number | null =>
   p.eventsInPerS === null || p.eventsOutPerS === null ? null : p.eventsInPerS + p.eventsOutPerS
-
-/** Shape of each KPI over the selected range, from the same history samples as the main chart */
-const sparks = computed(() => {
-  const { from, to } = histWindow.value
-  return {
-    events: buildSpark(history.value, eventsOf, from, to),
-    latency: buildSpark(history.value, p => p.avgProcessingMs, from, to),
-    error: buildSpark(history.value, p => (p.errorRate === null ? null : p.errorRate * 100), from, to)
-  }
-})
 
 const phoneChart = computed(() => {
   const { from, to } = histWindow.value
@@ -787,10 +684,6 @@ const phoneChart = computed(() => {
 })
 
 /** Peak and mean over the loaded history (client-side, no extra request) */
-/** The registered-connection samples of the chosen range, oldest first; the lead draws them as a line */
-const connectionSeries = computed(() =>
-  history.value.map(p => p.activeConnections).filter(v => Number.isFinite(v)))
-
 const stats = computed(() => {
   const conns = history.value.map(p => p.activeConnections).filter(v => Number.isFinite(v))
   const evts = history.value.map(eventsOf).filter((v): v is number => v !== null && Number.isFinite(v))
@@ -1035,18 +928,14 @@ function formatTime(timestamp: number) {
 .s4 > .ui-group-label {
   margin-top: 16px;
 }
-
-.facts-card {
-  height: calc(100% - 44px);
-}
-
 /* A rate row: icon, name with its verdict, the number, then the trend */
 .kpi-row {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto 220px;
-  gap: 16px;
-  padding-top: 16px;
-  padding-bottom: 16px;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: center;
+  padding-top: 18px;
+  padding-bottom: 18px;
 }
 
 .kpi-label {
@@ -1071,9 +960,47 @@ function formatTime(timestamp: number) {
   color: var(--ui-muted);
 }
 
-.kpi-row .spark {
-  height: 36px;
+.rates {
+  display: flex;
+  flex-direction: column;
+}
+
+.rates > .ui-group-label {
   margin-top: 0;
+}
+
+.rates-card {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+}
+
+/* The three figures beside the lead number: ink, because they are measurements, not states */
+.hero-facts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px 32px;
+  margin: 0;
+}
+
+.hero-cap {
+  margin: 0 0 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ui-muted);
+}
+
+.hero-facts dt {
+  font-size: 13px;
+  color: var(--ui-muted);
+}
+
+.hero-facts dd {
+  margin: 4px 0 0;
+  font: 600 32px / 1.1 var(--ui-font-display);
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
 }
 
 .error-message {
@@ -1090,18 +1017,18 @@ function formatTime(timestamp: number) {
 }
 
 .ui-kpi-ico.green {
-  background: var(--ui-green-soft);
-  color: var(--ui-green-ink);
+  background: var(--ui-fill);
+  color: var(--ui-ink-2);
 }
 
 .ui-kpi-ico.orange {
-  background: var(--ui-orange-soft);
-  color: var(--ui-orange-ink);
+  background: var(--ui-fill);
+  color: var(--ui-ink-2);
 }
 
 .ui-kpi-ico.red {
-  background: var(--ui-red-soft);
-  color: var(--ui-red-ink);
+  background: var(--ui-fill);
+  color: var(--ui-ink-2);
 }
 
 .ui-kpi-foot b {
@@ -1209,93 +1136,14 @@ svg.chart .ax-left text {
 svg.chart .ax-right text {
   fill: var(--ui-indigo);
 }
-
-/* KPI sparkline: pinned to the card floor, so a taller card grows a chart instead of an empty strip */
-.spark {
-  display: block;
-  width: 100%;
-  height: 40px;
-  margin-top: auto;
-  overflow: visible;
-}
-
-.spark-line {
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 2;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  vector-effect: non-scaling-stroke;
-}
-
-.spark-area {
-  fill: currentColor;
-  opacity: 0.1;
-}
-
-.spark.is-accent {
-  color: var(--ui-accent);
-}
-
-.spark.is-orange {
-  color: var(--ui-orange);
-}
-
-.spark.is-red {
-  color: var(--ui-red);
-}
-
-.fact-group {
-  margin: 14px 0 0;
-  padding-bottom: 2px;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--ui-muted);
-}
-
 .axis-note {
   margin: 6px 0 0;
   font-size: 13px;
   color: var(--ui-muted);
 }
-
-.facts {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  padding: 0 22px 20px;
-}
-
 .foot-hint {
   white-space: nowrap;
 }
-
-.fact {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 10px 0;
-  font-size: 13.5px;
-  box-shadow: inset 0 -0.5px 0 var(--ui-sep);
-}
-
-.fact span {
-  color: var(--ui-muted);
-}
-
-.fact b {
-  font-variant-numeric: tabular-nums;
-}
-
-.fact-note {
-  margin: auto 0 0;
-  padding-top: 12px;
-  font-size: 13px;
-  line-height: 1.55;
-  color: var(--ui-muted);
-}
-
 .alerts {
   padding-bottom: 8px;
 }
@@ -1382,14 +1230,13 @@ svg.chart .ax-right text {
 }
 
 @media (max-width: 768px) {
-  .kpi-row {
-    grid-template-columns: auto minmax(0, 1fr) auto;
-    gap: 12px;
+  /* Phone: the live rates come before the history */
+  .rates {
+    order: -1;
   }
 
-  .kpi-row .spark,
-  .kpi-row .spark-gap {
-    grid-column: 1 / -1;
+  .kpi-row {
+    gap: 12px;
   }
 
   .s4 > .ui-group-label {
@@ -1399,11 +1246,6 @@ svg.chart .ax-right text {
   .label-row .label-note {
     display: none;
   }
-
-  .facts-card {
-    height: auto;
-  }
-
   .ui-kpi-foot {
     flex-wrap: wrap;
     row-gap: 4px;
@@ -1411,11 +1253,6 @@ svg.chart .ax-right text {
 
   .legend,
   .chart-wrap,
-  .facts {
-    padding-right: 16px;
-    padding-left: 16px;
-  }
-
   .al {
     padding: 14px 16px;
   }
