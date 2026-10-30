@@ -83,15 +83,38 @@
           </template>
           <!-- 最近活動：由報表列表的真實狀態推導 -->
           <template
-            v-if="recentActivities.length > 0"
+            v-if="attention.length > 0"
             #recent-activity
           >
-            <RecentActivityWidget
-              :activities="recentActivities"
-              :get-status-icon="getStatusIcon"
-              :format-relative-time="formatRelativeTime"
-              @view-report="handleViewReport"
-            />
+            <section
+              class="attn"
+              aria-label="需要留意"
+            >
+              <h3 class="attn-h">
+                需要留意
+              </h3>
+              <ul>
+                <li
+                  v-for="item in attention"
+                  :key="item.id"
+                >
+                  <button
+                    type="button"
+                    class="attn-row"
+                    @click="handleViewReport(item.id)"
+                  >
+                    <i
+                      class="attn-dot"
+                      :class="item.tone"
+                    />
+                    <span class="attn-main">
+                      <b>{{ item.title }}</b>
+                      <span>{{ item.note }}</span>
+                    </span>
+                  </button>
+                </li>
+              </ul>
+            </section>
           </template>
         </SidebarWidgets>
       </div>
@@ -124,7 +147,6 @@ import ReportsSection from './dashboard/ReportsSection.vue'
 import PaginationControls from '@/components/ui/PaginationControls.vue'
 import SidebarWidgets from './dashboard/SidebarWidgets.vue'
 import PopularTypesWidget from './dashboard/PopularTypesWidget.vue'
-import RecentActivityWidget, { type RecentActivity } from './dashboard/RecentActivityWidget.vue'
 import ConfirmDialog from '@/components/ui/ConfirmDialog.vue'
 
 // Emits
@@ -218,21 +240,22 @@ const reportToDelete = ref<ReportBase | null>(null)
 // The lead metric stays a skeleton until the first list response has arrived
 const loaded = computed(() => !loading.value || reports.value.length > 0 || stats.totalReports > 0)
 
-// Feed derived from the loaded report rows (newest first); the status is the row's own
-const recentActivities = computed<RecentActivity[]>(() =>
-  reports.value
-    .filter(report => report.status === 'completed' || report.status === 'generating' || report.status === 'failed')
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-    .slice(0, 8)
-    .map(report => ({
-      id: report.id,
-      reportId: report.id,
-      title: report.title,
-      typeLabel: getReportTypeLabel(report.type),
-      status: report.status === 'completed' || report.status === 'failed' ? report.status : 'generating',
-      time: report.createdAt
-    }))
-)
+// What needs a look, derived from the loaded rows: failures, work in progress, downloads about to expire
+const attention = computed(() => {
+  const soon = Date.now() + 3 * 864e5
+  const items: Array<{ id: string; title: string; note: string; tone: 'red' | 'orange' | 'grey'; rank: number }> = []
+  for (const report of reports.value) {
+    const when = formatRelativeTime(report.createdAt)
+    if (report.status === 'failed') {
+      items.push({ id: report.id, title: report.title, note: `產生失敗 ・ ${when}`, tone: 'red', rank: 0 })
+    } else if (report.status === 'generating' || report.status === 'pending') {
+      items.push({ id: report.id, title: report.title, note: `生成中 ・ ${when}開始`, tone: 'orange', rank: 1 })
+    } else if (report.status === 'completed' && report.expiresAt && new Date(report.expiresAt).getTime() < soon) {
+      items.push({ id: report.id, title: report.title, note: `下載連結即將到期 ・ ${new Date(report.expiresAt).getMonth() + 1}/${new Date(report.expiresAt).getDate()}`, tone: 'grey', rank: 2 })
+    }
+  }
+  return items.sort((x, y) => x.rank - y.rank).slice(0, 5)
+})
 
 const popularTypes = computed<PopularType[]>(() =>
   stats.popularTypes.map(item => ({
@@ -298,7 +321,7 @@ function handleFilterByType(type: string) {
   display: grid;
   grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
   gap: 16px;
-  align-items: stretch;
+  align-items: start;
 }
 
 .content-left {
@@ -308,22 +331,85 @@ function handleFilterByType(type: string) {
   min-width: 0;
 }
 
-/* Both columns end on the same line; the last widget absorbs the difference (capped for long lists) */
+/* The right column is shorter than the list: it stays in view while the list scrolls */
 .content-right {
+  position: sticky;
+  top: 16px;
   display: flex;
   flex-direction: column;
 }
 
-.content-right :deep(.sidebar-widgets),
 .content-right :deep(.widgets-container) {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
+  display: grid;
+  gap: 16px;
 }
 
-.content-right :deep(.widget-wrapper:last-child) {
-  flex: 1;
-  max-height: 720px;
+.attn {
+  padding: 18px 20px 12px;
+}
+
+.attn-h {
+  margin: 0 0 6px;
+  font: 600 17px / 1.3 var(--ui-font-display);
+}
+
+.attn ul {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.attn-row {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.attn li + li .attn-row {
+  box-shadow: 0 -0.5px 0 var(--ui-sep);
+}
+
+.attn-dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  margin-top: 7px;
+  border-radius: 50%;
+  background: var(--ui-faint);
+}
+
+.attn-dot.red {
+  background: var(--ui-red);
+}
+
+.attn-dot.orange {
+  background: var(--ui-orange);
+}
+
+.attn-main {
+  display: grid;
+  min-width: 0;
+}
+
+.attn-main b {
+  font-size: 14px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.attn-main span {
+  font-size: 13px;
+  color: var(--ui-muted);
 }
 
 @media (max-width: 1280px) {
@@ -331,8 +417,8 @@ function handleFilterByType(type: string) {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .content-right :deep(.widget-wrapper:last-child) {
-    max-height: none;
+  .content-right {
+    position: static;
   }
 }
 </style>
