@@ -82,7 +82,7 @@
         <span
           class="m-last"
           :title="lastLoginTitle"
-        ><template v-if="member.status !== 'active'">{{ getStatusText(member.status) }}・</template>最後登入 {{ lastLogin }}</span>
+        ><template v-if="phoneTeams">{{ phoneTeams }}・</template><template v-if="member.status !== 'active'">{{ getStatusText(member.status) }}・</template>最後登入 {{ lastLogin }}</span>
       </div>
     </div>
 
@@ -296,6 +296,12 @@ const sortedTeams = computed(() => {
   return list.sort((a, b) => Number(b.isPrimary) - Number(a.isPrimary))
 })
 const MAX_TEAMS = 2
+/** Phone rows carry the teams in the meta line (the chips column is gone there) */
+const phoneTeams = computed(() => {
+  const names = (props.member.teams ?? []).map(t => t.teamName).filter(Boolean)
+  return names.length > 0 ? names.join('、') : (props.member.primaryTeamName ?? '')
+})
+
 const visibleTeams = computed(() => sortedTeams.value.slice(0, MAX_TEAMS))
 const hiddenTeamCount = computed(() => Math.max(0, sortedTeams.value.length - MAX_TEAMS))
 

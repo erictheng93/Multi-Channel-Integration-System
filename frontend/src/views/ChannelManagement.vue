@@ -130,48 +130,6 @@
         </ul>
       </article>
 
-      <!-- Webhook problems: one place, with the one primary action; the cards stay uniform -->
-      <section
-        v-if="!isLoading && !loadFailed && problemChannels.length > 0"
-        class="alerts"
-        aria-label="Webhook 需注意"
-      >
-        <article
-          v-for="channel in problemChannels"
-          :key="channel.id"
-          class="ui-card alert-row"
-        >
-          <span
-            class="alert-ico"
-            aria-hidden="true"
-          >
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            ><path d="M12 3 2 20h20Z" /><path d="M12 10v4M12 17h.01" /></svg>
-          </span>
-          <div class="alert-main">
-            <div class="alert-title">
-              {{ channelTitle(channel) }}<span class="alert-tag"> · Webhook 需注意</span>
-            </div>
-            <div class="alert-text">
-              {{ webhookProblems(channel).join(' ') }}
-            </div>
-          </div>
-          <button
-            type="button"
-            class="btn btn-secondary btn-sm"
-            @click="verifyChannel(channel)"
-          >
-            重新驗證
-          </button>
-        </article>
-      </section>
-
       <!-- Platform Filter -->
       <div class="toolbar">
         <div
@@ -293,8 +251,16 @@
               ><path d="M12 3C6.5 3 2 6.6 2 11c0 2.5 1.4 4.7 3.7 6.2L5 21l4.1-2.3c.9.2 1.9.3 2.9.3 5.5 0 10-3.6 10-8s-4.5-8-10-8Z" /></svg>
             </div>
             <div class="chname">
-              <b>{{ channelTitle(channel) }}</b>
+              <b>{{ channelHeading(channel) }}</b>
               <span>{{ PLATFORM_KIND[channel.platform] }}</span>
+              <button
+                v-if="isUnnamed(channel)"
+                type="button"
+                class="name-it"
+                @click.stop="editChannel(channel)"
+              >
+                命名此頻道
+              </button>
             </div>
             <div class="chtools">
               <button
@@ -373,6 +339,48 @@
                 </button>
               </div>
             </div>
+          </div>
+
+          <div
+            v-if="problemIds.has(channel.id)"
+            class="chwarn"
+            role="alert"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            ><path d="M12 3 2 20h20Z" /><path d="M12 10v4M12 17h.01" /></svg>
+            <b class="chwarn-title">Webhook 需注意</b>
+            <button
+              type="button"
+              class="btn btn-secondary btn-sm"
+              @click="verifyChannel(channel)"
+            >
+              重新驗證
+            </button>
+            <span class="chwarn-text">{{ webhookProblems(channel).join(' ') }}</span>
+          </div>
+
+          <div
+            v-else-if="channel.isActive"
+            class="chwarn is-ok"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            ><path d="M5 12.5 10 17.5 19 7" /></svg>
+            <b class="chwarn-title">Webhook 無異常</b>
+            <span class="chwarn-text">近 24 小時沒有處理失敗或簽章被拒的紀錄。</span>
           </div>
 
           <div class="pills">
@@ -534,10 +542,22 @@ const PLATFORM_FILTERS: Array<{ id: ChannelPlatform; label: string }> = [
 const visiblePlatformFilters = computed(() =>
   PLATFORM_FILTERS.filter(p => getChannelCount(p.id) > 0 || selectedPlatform.value === p.id))
 
+const problemIds = computed(() => new Set(problemChannels.value.map(c => c.id)))
+
 /** Optional display name lives in configMetadata.name; fall back to the platform. */
 function channelTitle(channel: ChannelIntegration): string {
   const name = channel.configMetadata?.name
   return typeof name === 'string' && name.trim() ? name.trim() : `${PLATFORM_KIND[channel.platform]}（未命名）`
+}
+
+function isUnnamed(channel: ChannelIntegration): boolean {
+  const name = channel.configMetadata?.name
+  return !(typeof name === 'string' && name.trim())
+}
+
+/** Card heading: the display name, or the plain platform name when none was given (a prompt offers to name it) */
+function channelHeading(channel: ChannelIntegration): string {
+  return isUnnamed(channel) ? PLATFORM_KIND[channel.platform] : channelTitle(channel)
 }
 
 function channelDescription(channel: ChannelIntegration): string {
@@ -785,51 +805,51 @@ i.out {
   scrollbar-width: none;
 }
 
-.alerts {
+/* The webhook warning lives on the card it concerns */
+.chwarn {
   display: grid;
-  gap: 12px;
-}
-.alert-row {
-  display: flex;
-  gap: 14px;
+  grid-template-columns: 20px minmax(0, 1fr) auto;
+  gap: 6px 10px;
   align-items: center;
-  padding: 16px 20px;
-}
-.alert-row .btn {
-  min-height: 40px;
-}
-.alert-ico {
-  display: grid;
-  flex: none;
-  place-items: center;
-  width: 38px;
-  height: 38px;
-  border-radius: 12px;
+  margin: 4px 20px 0;
+  padding: 10px 10px 12px 14px;
+  border-radius: 14px;
   background: var(--ui-orange-soft);
   color: var(--ui-orange-ink);
 }
-.alert-ico svg {
-  width: 19px;
-  height: 19px;
+.chwarn > svg {
+  width: 20px;
+  height: 20px;
 }
-.alert-main {
-  flex: 1;
-  min-width: 0;
+.chwarn-title {
+  font: 600 15px / 1.3 var(--ui-font-display);
 }
-.alert-title {
-  font: 600 16px / 1.3 var(--ui-font-display);
+.chwarn-text {
+  grid-column: 1 / -1;
+  padding-right: 4px;
+  font-size: 13.5px;
+  line-height: 1.45;
   color: var(--ui-ink);
 }
-.alert-tag {
-  font-weight: 600;
-  color: var(--ui-orange-ink);
-  white-space: nowrap;
+.chwarn.is-ok {
+  grid-template-columns: 20px minmax(0, 1fr);
+  background: var(--ui-green-soft);
+  color: var(--ui-green-ink);
 }
-.alert-text {
+.chwarn .btn {
+  min-height: 36px;
+  background: var(--ui-surface);
+}
+.name-it {
+  display: block;
   margin-top: 2px;
-  font-size: 14.5px;
-  line-height: 1.5;
-  color: var(--ui-ink);
+  padding: 0;
+  border: 0;
+  background: none;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ui-accent-ink, var(--ui-accent));
+  cursor: pointer;
 }
 
 /* Every card has the same parts in the same order, so rows line up without any grid trickery */
@@ -1144,23 +1164,10 @@ i.out {
   .chgrid {
     grid-template-columns: minmax(0, 1fr);
   }
-  .alert-row {
-    flex-wrap: wrap;
-    padding: 14px 16px;
+  .chwarn {
+    margin: 4px 16px 0;
   }
-  .alert-ico {
-    width: 32px;
-    height: 32px;
-    border-radius: 10px;
-  }
-  .alert-title {
-    font-size: 15px;
-  }
-  .alert-main {
-    flex-basis: calc(100% - 48px);
-  }
-  .alert-row .btn {
-    width: 100%;
+  .chwarn .btn {
     min-height: 44px;
   }
 }
