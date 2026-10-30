@@ -74,8 +74,7 @@
               </p>
               <button
                 class="btn btn-primary"
-                :class="{ 'is-incomplete': !isFormValid }"
-                type="button"
+                        type="button"
                 :disabled="isGenerating"
                 @click="generateReport"
               >
@@ -100,7 +99,6 @@
       </p>
       <button
         class="btn btn-primary"
-        :class="{ 'is-incomplete': !isFormValid }"
         type="button"
         :disabled="isGenerating"
         @click="generateReport"
@@ -472,16 +470,6 @@ onMounted(() => {
   font-size: 14px;
   font-weight: 500;
   color: var(--ui-ink-2);
-}
-
-/* Not valid yet: a grey fill instead of the blue (clearly "not ready"), but still pressable (pressing it names what is missing) */
-.btn.is-incomplete {
-  background: var(--ui-fill-strong);
-  color: var(--ui-ink);
-}
-
-.btn.is-incomplete:hover {
-  background: var(--ui-fill-strong);
 }
 
 @media (max-width: 768px) {
