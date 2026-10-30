@@ -8,12 +8,14 @@
       >
         <template #actions>
           <RefreshButton
+            class="act-compact"
             :loading="loading"
             @refresh="controller.refresh"
           />
           <button
             type="button"
-            class="btn btn-secondary"
+            class="btn btn-secondary act-compact"
+            aria-label="新增團隊"
             :disabled="loading"
             @click="controller.team.openAddTeamModal"
           >
@@ -26,7 +28,7 @@
               stroke-linecap="round"
               stroke-linejoin="round"
               aria-hidden="true"
-            ><path d="M12 5v14M5 12h14" /></svg>新增團隊
+            ><path d="M12 5v14M5 12h14" /></svg><span class="act-txt">新增團隊</span>
           </button>
           <button
             type="button"
@@ -108,12 +110,25 @@
           >
             <div class="tl-team-top">
               <span class="tl-team-name">{{ row.name }}</span>
-              <span class="tl-team-n"><b>{{ row.online === null ? row.total : row.online }}</b> / {{ row.total }}<small>{{ row.online === null ? ' 位成員' : ' 在線' }}</small></span>
+              <span
+                v-if="row.open !== null"
+                class="tl-team-n"
+              ><b>{{ row.open }}</b><small> 件處理中</small></span>
+              <span
+                v-else
+                class="tl-team-n"
+              ><b>{{ row.online === null ? row.total : row.online }}</b> / {{ row.total }}<small>{{ row.online === null ? ' 位成員' : ' 在線' }}</small></span>
             </div>
             <span
               class="tl-bar"
               aria-hidden="true"
-            ><i :style="{ width: (row.online === null ? 100 : row.percent) + '%' }" /></span>
+            ><i :style="{ width: (row.open !== null ? row.openWidth : (row.online === null ? 100 : row.percent)) + '%' }" /></span>
+            <div
+              v-if="row.open !== null"
+              class="tl-team-sub"
+            >
+              {{ row.online === null ? `${row.total} 位成員` : `${row.online} / ${row.total} 在線` }}
+            </div>
           </li>
           <li
             v-if="teamOnline.length > TEAMS_SHOWN"
@@ -260,12 +275,13 @@
 <script setup lang="ts">
 import UiPageHead from '@/components/ui/UiPageHead.vue'
 import TeamAvatar from '@/components/team/TeamAvatar.vue'
-import { onMounted, onUnmounted, computed } from 'vue'
+import { onMounted, onUnmounted, computed, ref } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useTeamManagementController } from '@/composables/team-management'
 import { useTeamPresence } from '@/composables/team-management/useTeamPresence'
 import { useToast } from '@/composables/useToast'
 import { teamApi } from '@/api/team'
+import { conversationApi } from '@/api/conversations'
 import type { MemberSortField, TeamSortField } from '@/composables/useListSorting'
 import AppLayout from '@/components/ui/AppLayout.vue'
 import RefreshButton from '@/components/ui/RefreshButton.vue'
@@ -322,9 +338,25 @@ const onlineMeaning = computed(() => {
   return `共 ${active} 位啟用中的成員`
 })
 
+/** Open conversations per team (GET /conversations/stats byTeam); null until known, never a made-up zero */
+const openByTeam = ref<Map<number, number> | null>(null)
+
+async function loadOpenByTeam() {
+  try {
+    const res = await conversationApi.getStats()
+    if (res.success && res.data?.byTeam) {
+      openByTeam.value = new Map(res.data.byTeam.flatMap(t => (t.teamId === null ? [] : [[t.teamId, t.open] as const])))
+    }
+  } catch {
+    openByTeam.value = null
+  }
+}
+
 /** Online / total per team, from the loaded members only */
-const teamOnline = computed(() =>
-  teams.value
+const teamOnline = computed(() => {
+  const open = openByTeam.value
+  const maxOpen = open ? Math.max(1, ...open.values()) : 1
+  return teams.value
     .map((team) => {
       const people = members.value.filter(
         m => m.status !== 'inactive' && (m.primaryTeamId === team.id || (m.teams ?? []).some(t => t.teamId === team.id))
@@ -335,11 +367,13 @@ const teamOnline = computed(() =>
         name: team.name,
         total: people.length,
         online,
-        percent: online === null || people.length === 0 ? 0 : Math.round((online / people.length) * 100)
+        percent: online === null || people.length === 0 ? 0 : Math.round((online / people.length) * 100),
+        open: open ? (open.get(team.id) ?? 0) : null,
+        openWidth: open ? Math.max((open.get(team.id) ?? 0) === 0 ? 0 : 4, Math.round(((open.get(team.id) ?? 0) / maxOpen) * 100)) : 0
       }
     })
     .filter(row => row.total > 0)
-)
+})
 
 const FACES = 7
 const TEAMS_SHOWN = 4
@@ -444,6 +478,7 @@ const handleBulkEditSaved = (payload: BulkEditSavedPayload) => {
 
 onMounted(async () => {
   presence.start()
+  void loadOpenByTeam()
   await controller.initialize()
 })
 
@@ -454,6 +489,26 @@ onUnmounted(() => {
 
 <style scoped>
 /* ==================== Page Layout ==================== */
+/* phone: the two secondary actions shrink to 44px icon buttons so 新增成員 is the one labelled action */
+@media (max-width: 768px) {
+  .act-compact {
+    flex: none;
+    width: 44px;
+    min-width: 44px;
+    padding: 0;
+  }
+
+  .act-compact .act-txt,
+  .act-compact :deep(.refresh-text) {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+
 .head-ico {
   width: 16px;
   height: 16px;
@@ -589,6 +644,13 @@ onUnmounted(() => {
   border-radius: inherit;
   background: var(--ui-green);
   transition: width var(--ui-dur) var(--ui-ease);
+}
+
+.tl-team-sub {
+  margin-top: 6px;
+  font-size: 13px;
+  color: var(--ui-muted);
+  font-variant-numeric: tabular-nums;
 }
 
 .tl-rest {

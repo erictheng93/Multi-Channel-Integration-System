@@ -406,7 +406,7 @@ function handlePageChange(page: number) {
 .teams-list {
   display: grid;
   gap: 2px;
-  padding-bottom: 8px;
+  padding-bottom: 4px;
 }
 .drag-hint {
   padding: 4px 4px 8px;
