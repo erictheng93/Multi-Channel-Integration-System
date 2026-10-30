@@ -718,12 +718,12 @@
 
   .foot-note {
     margin: 0;
-    font-size: 13px;
-    color: var(--ui-muted);
+    font-size: 14px;
+    color: var(--ui-ink-2);
   }
 
   .foot-note b.missing {
-    font-weight: 600;
+    font-weight: 700;
     color: var(--ui-orange-ink);
   }
 

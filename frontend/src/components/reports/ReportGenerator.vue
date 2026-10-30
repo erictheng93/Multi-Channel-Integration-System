@@ -67,6 +67,7 @@
             <div class="generate-action">
               <button
                 class="btn btn-primary"
+                :class="{ 'is-incomplete': !isFormValid }"
                 type="button"
                 :disabled="isGenerating"
                 @click="generateReport"
@@ -92,6 +93,7 @@
       </p>
       <button
         class="btn btn-primary"
+        :class="{ 'is-incomplete': !isFormValid }"
         type="button"
         :disabled="isGenerating"
         @click="generateReport"
@@ -374,7 +376,7 @@ const loadRecentReports = async () => {
   try {
     const response = await ReportsAPI.listReports({
       page: 1,
-      pageSize: 5,
+      pageSize: 20,
       sortBy: 'createdAt',
       sortOrder: 'desc'
     });
@@ -443,8 +445,15 @@ onMounted(() => {
 .generate-hint {
   flex: 1;
   margin: 0;
-  font-size: 13px;
-  color: var(--ui-muted);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--ui-ink-2);
+}
+
+/* Not valid yet: quieter than the ready state, but still pressable (pressing it names what is missing) */
+.btn.is-incomplete {
+  background: var(--ui-accent-soft);
+  color: var(--ui-accent);
 }
 
 @media (max-width: 768px) {

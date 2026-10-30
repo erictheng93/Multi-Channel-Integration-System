@@ -27,13 +27,13 @@
         <!-- One panel for audience + LINE preview. Desktop: always open, same height as the form.
              Phone: an accordion after the form, shown once there is input to preview. -->
         <details
-          v-show="!isPhone || hasInput"
           class="ui-card side-panel"
           :open="!isPhone || phoneOpen"
           @toggle="onPanelToggle"
         >
           <summary class="side-summary">
             <span>受眾與 LINE 預覽</span>
+            <span class="side-note">{{ hasInput ? '即時預覽' : '輸入內容後顯示' }}</span>
             <svg
               class="side-chevron"
               viewBox="0 0 24 24"
@@ -228,7 +228,14 @@ async function fetchCurrentRecipients() {
 .side-panel {
   display: flex;
   flex-direction: column;
-  align-self: stretch;
+  align-self: start;
+}
+
+.side-note {
+  margin-left: auto;
+  margin-right: 10px;
+  font: 400 13px var(--ui-font-ui);
+  color: var(--ui-muted);
 }
 
 /* The browser wraps open <details> content in a slot; make it a flex column so the preview can fill the panel */
