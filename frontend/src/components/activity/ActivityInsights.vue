@@ -77,7 +77,9 @@
       </h2>
       <dl class="ui-card ins-legend">
         <div>
-          <dt>還原</dt>
+          <dt class="lg-on">
+            還原
+          </dt>
           <dd>仍在期限內，可一鍵復原這項操作。</dd>
         </div>
         <div>
@@ -161,9 +163,9 @@ const members = computed(() => {
 
 .ins-row {
   display: grid;
-  gap: 8px;
+  gap: 9px;
   width: 100%;
-  padding: 10px 12px;
+  padding: 14px 12px;
   border: 0;
   border-radius: var(--ui-r-inner);
   background: none;
@@ -260,17 +262,25 @@ const members = computed(() => {
 
 .ins-legend {
   display: grid;
-  gap: 12px;
+  gap: 20px;
   margin: 0;
-  padding: 16px 20px;
+  padding: 22px 20px 24px;
 }
 .ins-legend dt {
-  font-size: 14px;
+  display: inline-block;
+  padding: 3px 12px;
+  border-radius: 999px;
+  background: var(--ui-fill);
+  font-size: 13px;
   font-weight: 600;
-  color: var(--ui-ink);
+  color: var(--ui-ink-2);
+}
+.ins-legend dt.lg-on {
+  background: var(--ui-accent-soft);
+  color: var(--ui-accent-ink, var(--ui-accent));
 }
 .ins-legend dd {
-  margin: 2px 0 0;
+  margin: 6px 0 0;
   font-size: 13.5px;
   line-height: 1.5;
   color: var(--ui-ink-2);
