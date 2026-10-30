@@ -143,19 +143,13 @@
           role="columnheader"
           class="header-cell"
         >
-          格式
+          檔案
         </div>
         <div
           role="columnheader"
           class="header-cell"
         >
           建立時間
-        </div>
-        <div
-          role="columnheader"
-          class="header-cell size-cell"
-        >
-          大小
         </div>
         <div
           role="columnheader"
@@ -357,7 +351,7 @@ defineEmits<{
 
 .list-header {
   display: grid;
-  grid-template-columns: minmax(0, 2.4fr) 110px 70px minmax(100px, 1fr) 80px 76px;
+  grid-template-columns: minmax(0, 2.4fr) 110px 100px minmax(110px, 1fr) 76px;
   gap: 12px;
   padding: 10px 22px;
   box-shadow: inset 0 -0.5px 0 var(--ui-sep);
@@ -367,10 +361,6 @@ defineEmits<{
   font-size: 13px;
   font-weight: 600;
   color: var(--ui-muted);
-}
-
-.header-cell.size-cell {
-  text-align: left;
 }
 
 @media (max-width: 768px) {

@@ -42,27 +42,21 @@
       class="row-cell format-cell"
     >
       <span class="format-text">{{ formatLabel }}</span>
+      <span
+        v-if="report.fileSize"
+        class="size-text"
+      >{{ formattedSize }}</span>
     </div>
 
     <div
       role="cell"
       class="row-cell time-cell"
     >
-      <span class="time-text"><span class="format-inline">{{ formatLabel }} · </span>{{ formattedTime }}</span>
+      <span class="time-text"><span class="format-inline">{{ formatLabel }}{{ report.fileSize ? ` ${formattedSize}` : '' }} · </span>{{ formattedTime }}</span>
       <span
         v-if="expiryText"
         class="expiry-text"
       >{{ expiryText }}</span>
-    </div>
-
-    <div
-      role="cell"
-      class="row-cell size-cell"
-    >
-      <span
-        class="size-text"
-        :class="{ 'is-empty': !report.fileSize }"
-      >{{ formattedSize }}</span>
     </div>
 
     <div
@@ -237,7 +231,7 @@ const canDelete = computed(() => {
 .report-row {
   position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 2.4fr) 110px 70px minmax(100px, 1fr) 80px 76px;
+  grid-template-columns: minmax(0, 2.4fr) 110px 100px minmax(110px, 1fr) 76px;
   align-items: center;
   gap: 12px;
   padding: 14px 22px;
@@ -321,8 +315,9 @@ const canDelete = computed(() => {
   color: var(--ui-muted);
 }
 
-.size-cell {
-  text-align: left;
+.format-cell {
+  display: grid;
+  gap: 2px;
 }
 
 .row-actions {
@@ -388,8 +383,7 @@ const canDelete = computed(() => {
     color: var(--ui-ink-2);
   }
 
-  .format-cell,
-  .size-cell {
+  .format-cell {
     display: none;
   }
 

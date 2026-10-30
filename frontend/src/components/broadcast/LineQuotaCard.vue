@@ -12,7 +12,7 @@
           LINE 訊息額度
         </h2>
         <p class="quota-sub">
-          {{ updatedText }}
+          {{ updatedText }}<span class="quota-rule">額度每月重置，以收件人計，每位每則算 1</span>
         </p>
       </div>
       <button
@@ -57,16 +57,12 @@
           :class="{ 'has-lead': hasLead(channel) }"
         >
           <div class="channel-main">
-            <div
-              v-if="!hasLead(channel)"
-              class="channel-name"
-            >
-              {{ channel.label }}
+            <div class="lead-kicker">
+              {{ channel.label }}<template v-if="hasLead(channel)">
+                <span class="kicker-sep"> ・ </span>可用於群發
+              </template>
             </div>
             <template v-if="hasLead(channel)">
-              <div class="lead-kicker">
-                {{ channel.label }}<span class="kicker-sep"> ・ </span>可用於群發
-              </div>
               <div
                 class="lead-num"
                 :class="{ 'is-short': isShort(channel) }"
@@ -77,89 +73,96 @@
                 {{ leadMeaning(channel) }}
               </div>
             </template>
-
-            <div class="big-row">
-              <template v-if="!hasLead(channel)">
-                <span
-                  v-if="channel.used === null || !channel.limited || channel.limit === null"
-                  class="figures"
-                >{{ figuresText(channel) }}</span>
-                <template v-else>
-                  <span class="big">{{ channel.used.toLocaleString() }}</span>
-                  <span class="of figures">{{ ` / ${channel.limit.toLocaleString()}` }}</span>
-                  <span class="unit">則本月</span>
-                </template>
+            <div
+              v-else
+              class="big-row"
+            >
+              <span
+                v-if="channel.used === null || !channel.limited || channel.limit === null"
+                class="figures"
+              >{{ figuresText(channel) }}</span>
+              <template v-else>
+                <span class="big">{{ channel.used.toLocaleString() }}</span>
+                <span class="of figures">{{ ` / ${channel.limit.toLocaleString()}` }}</span>
+                <span class="unit">則本月</span>
               </template>
-              <span class="rule">LINE 額度每月重置，以收件人計，每位每則算 1</span>
             </div>
-
-            <template v-if="channel.limited && channel.limit !== null && channel.used !== null">
-              <div
-                class="bar"
-                role="progressbar"
-                aria-valuemin="0"
-                :aria-valuemax="channel.limit"
-                :aria-valuenow="Math.min(channel.used, channel.limit)"
-                :aria-label="`${channel.label} 已使用 ${percent(channel)}%`"
-              >
-                <span
-                  class="bar-fill"
-                  :class="tone(channel)"
-                  :style="{ width: `${percent(channel)}%` }"
-                />
-                <span
-                  v-if="pendingPercent(channel) > 0"
-                  class="bar-pending"
-                  :style="{ width: `${pendingPercent(channel)}%` }"
-                />
-                <span
-                  v-if="reservePercent(channel) > 0"
-                  class="bar-reserve"
-                  :style="{ width: `${reservePercent(channel)}%` }"
-                />
-              </div>
-
-              <dl
-                v-if="pendingFor(channel) > 0"
-                class="stats"
-              >
-                <div class="stat">
-                  <dt><i class="dot pend" />本次預計消耗</dt>
-                  <dd>{{ pendingFor(channel) > 0 ? pendingFor(channel).toLocaleString() : '—' }}</dd>
-                </div>
-                <div
-                  class="stat"
-                  :class="{ 'is-short': isShort(channel) }"
-                >
-                  <dt><i class="dot free" />發送後可用</dt>
-                  <dd>{{ afterSend(channel) === null ? '不限' : Math.max(afterSend(channel) ?? 0, 0).toLocaleString() }}</dd>
-                </div>
-              </dl>
-              <p
-                v-if="isShort(channel) || !hasLead(channel) || (channel.usableRemaining ?? 1) <= 0"
-                class="remain"
-                :class="{ 'is-short': isShort(channel) }"
-              >
-                {{ remainText(channel) }}
-              </p>
-            </template>
           </div>
 
           <div
-            v-if="hasLead(channel)"
-            class="channel-rings"
+            v-if="channel.limited && channel.limit !== null && channel.used !== null"
+            class="meter"
           >
-            <ServiceRings
-              :summary="`${channel.label} 本月額度`"
-              :rings="ringsFor(channel)"
-              :size="164"
-            />
+            <div
+              class="bar"
+              role="progressbar"
+              aria-valuemin="0"
+              :aria-valuemax="channel.limit"
+              :aria-valuenow="Math.min(channel.used, channel.limit)"
+              :aria-label="`${channel.label} 已使用 ${percent(channel)}%`"
+            >
+              <span
+                class="bar-fill"
+                :class="tone(channel)"
+                :style="{ width: `${percent(channel)}%` }"
+              />
+              <span
+                v-if="pendingPercent(channel) > 0"
+                class="bar-pending"
+                :style="{ width: `${pendingPercent(channel)}%` }"
+              />
+              <span
+                v-if="reservePercent(channel) > 0"
+                class="bar-reserve"
+                :style="{ width: `${reservePercent(channel)}%` }"
+              />
+            </div>
+            <dl class="legend">
+              <div class="stat">
+                <dt>
+                  <i
+                    class="dot used"
+                    :class="tone(channel)"
+                  />已使用
+                </dt>
+                <dd>{{ channel.used.toLocaleString() }}<small> / {{ channel.limit.toLocaleString() }} 則</small></dd>
+              </div>
+              <div
+                v-if="channel.reserve"
+                class="stat"
+              >
+                <dt><i class="dot rsv" />保留給客服回覆</dt>
+                <dd>{{ channel.reserve.toLocaleString() }}</dd>
+              </div>
+              <div
+                v-if="pendingFor(channel) > 0"
+                class="stat"
+              >
+                <dt><i class="dot pend" />本次預計消耗</dt>
+                <dd>{{ pendingFor(channel).toLocaleString() }}</dd>
+              </div>
+              <div
+                v-if="pendingFor(channel) > 0"
+                class="stat"
+                :class="{ 'is-short': isShort(channel) }"
+              >
+                <dt><i class="dot free" />發送後可用</dt>
+                <dd>{{ afterSend(channel) === null ? '不限' : Math.max(afterSend(channel) ?? 0, 0).toLocaleString() }}</dd>
+              </div>
+            </dl>
+            <p
+              v-if="isShort(channel) || !hasLead(channel) || (channel.usableRemaining ?? 1) <= 0"
+              class="remain"
+              :class="{ 'is-short': isShort(channel) }"
+            >
+              {{ remainText(channel) }}
+            </p>
           </div>
         </div>
 
         <p
           v-if="channel.error"
-          class="warn"
+          class="q-warn"
         >
           本次查詢失敗（{{ channel.error }}），顯示的是上次成功的數據。
         </p>
@@ -170,7 +173,6 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import ServiceRings, { type ServiceRing } from '@/components/ui/ServiceRings.vue'
 import { useToast } from '@/composables/useToast'
 import {
   getLineQuota,
@@ -245,29 +247,6 @@ function leadValue(channel: LineQuotaChannel): string {
     return '不限'
   }
   return Math.max(channel.usableRemaining, 0).toLocaleString()
-}
-
-/**
- * The quota as real shares of the monthly limit: already used and kept back for agent replies
- * (the still-usable remainder is the lead number, so it is not drawn and counted twice). Only a channel with a cap and a reading gets rings.
- */
-function ringsFor(channel: LineQuotaChannel): ServiceRing[] {
-  if (!channel.limit || channel.used === null) {
-    return []
-  }
-  const level = tone(channel)
-  const rings: ServiceRing[] = []
-  rings.push({
-    label: '已使用',
-    value: channel.used,
-    total: channel.limit,
-    of: '則',
-    hue: level === 'danger' ? 'var(--ui-red)' : level === 'warn' ? 'var(--ui-orange)' : 'var(--ui-blue)'
-  })
-  if (channel.reserve) {
-    rings.push({ label: '保留給客服回覆', value: channel.reserve, total: channel.limit, of: '則', hue: 'var(--ui-indigo)' })
-  }
-  return rings
 }
 
 function leadMeaning(channel: LineQuotaChannel): string {
@@ -363,7 +342,7 @@ function formatTime(iso: string): string {
 
 <style scoped>
 .quota-lead {
-  padding: 24px 36px 26px;
+  padding: 20px 28px 22px;
 }
 
 .quota-head {
@@ -377,7 +356,7 @@ function formatTime(iso: string): string {
   margin: 0;
   font-size: 15px;
   font-weight: 600;
-  color: var(--section-ink);
+  color: var(--ui-ink);
 }
 
 .quota-sub {
@@ -386,8 +365,12 @@ function formatTime(iso: string): string {
   color: var(--ui-muted);
 }
 
+.quota-rule {
+  display: block;
+}
+
 .state {
-  padding: 18px 0 4px;
+  padding: 14px 0 4px;
   font-size: 14px;
   color: var(--ui-muted);
 }
@@ -399,19 +382,24 @@ function formatTime(iso: string): string {
 }
 
 .channel {
-  margin-top: 14px;
+  margin-top: 10px;
 }
 
 .channel + .channel {
-  margin-top: 20px;
-  padding-top: 18px;
+  margin-top: 16px;
+  padding-top: 16px;
   border-top: 0.5px solid var(--ui-sep);
 }
 
-.channel-body.has-lead {
+.channel-body {
   display: grid;
-  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
-  gap: 24px 44px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 14px;
+}
+
+.channel-body.has-lead {
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 16px 56px;
   align-items: center;
 }
 
@@ -419,22 +407,19 @@ function formatTime(iso: string): string {
   min-width: 0;
 }
 
-.channel-name {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--ui-muted);
-}
-
 .lead-kicker {
-  margin-top: 0;
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--ui-ink-2);
 }
 
+.kicker-sep {
+  color: var(--ui-muted);
+}
+
 .lead-num {
   margin-top: 2px;
-  font: 600 56px / 1.05 var(--ui-font-display);
+  font: 600 52px / 1.05 var(--ui-font-display);
   letter-spacing: -0.035em;
   font-variant-numeric: tabular-nums;
   color: var(--ui-ink);
@@ -446,38 +431,16 @@ function formatTime(iso: string): string {
 
 .lead-num small {
   margin-left: 6px;
-  font-size: 22px;
+  font-size: 20px;
   font-weight: 500;
   letter-spacing: 0;
   color: var(--ui-muted);
 }
 
-.kicker-sep {
-  color: var(--ui-faint);
-}
-
 .lead-meaning {
-  margin-top: 4px;
-  font-size: 15px;
+  margin-top: 2px;
+  font-size: 14px;
   color: var(--ui-ink-2);
-}
-
-.channel-rings {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 0;
-}
-
-.channel-rings::before {
-  position: absolute;
-  top: 4px;
-  bottom: 4px;
-  left: -22px;
-  width: 0.5px;
-  background: var(--ui-sep);
-  content: '';
 }
 
 .big-row {
@@ -485,15 +448,11 @@ function formatTime(iso: string): string {
   flex-wrap: wrap;
   align-items: baseline;
   gap: 2px 8px;
-  margin: 18px 0 8px;
-}
-
-.has-lead .big-row {
-  margin-top: 16px;
+  margin-top: 6px;
 }
 
 .big {
-  font: 600 20px / 1.2 var(--ui-font-display);
+  font: 600 22px / 1.2 var(--ui-font-display);
   letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
 }
@@ -510,15 +469,13 @@ function formatTime(iso: string): string {
   font-variant-numeric: tabular-nums;
 }
 
-.rule {
-  flex-basis: 100%;
-  font-size: 13px;
-  color: var(--ui-muted);
+.meter {
+  min-width: 0;
 }
 
 .bar {
   display: flex;
-  height: 8px;
+  height: 12px;
   overflow: hidden;
   border-radius: 999px;
   background: var(--ui-fill-strong);
@@ -554,17 +511,17 @@ function formatTime(iso: string): string {
   background: var(--ui-indigo);
 }
 
-.stats {
+.legend {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px 32px;
-  margin: 14px 0 0;
+  gap: 6px 28px;
+  margin: 12px 0 0;
 }
 
 .stat {
   display: flex;
   align-items: baseline;
-  gap: 10px;
+  gap: 8px;
 }
 
 .stat dt {
@@ -572,14 +529,20 @@ function formatTime(iso: string): string {
   align-items: center;
   gap: 6px;
   font-size: 13px;
-  color: var(--ui-muted);
+  color: var(--ui-ink-2);
 }
 
 .stat dd {
   margin: 0;
-  font: 600 17px var(--ui-font-display);
+  font: 600 16px var(--ui-font-display);
   letter-spacing: -0.01em;
   font-variant-numeric: tabular-nums;
+}
+
+.stat dd small {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--ui-muted);
 }
 
 .stat.is-short dd {
@@ -590,6 +553,22 @@ function formatTime(iso: string): string {
   width: 8px;
   height: 8px;
   border-radius: 50%;
+}
+
+.dot.used {
+  background: var(--ui-blue);
+}
+
+.dot.used.warn {
+  background: var(--ui-orange);
+}
+
+.dot.used.danger {
+  background: var(--ui-red);
+}
+
+.dot.rsv {
+  background: var(--ui-indigo);
 }
 
 .dot.pend {
@@ -611,7 +590,7 @@ function formatTime(iso: string): string {
   color: var(--ui-orange-ink);
 }
 
-.warn {
+.q-warn {
   margin: 10px 0 0;
   font-size: 13px;
   color: var(--ui-orange-ink);
@@ -620,25 +599,21 @@ function formatTime(iso: string): string {
 @media (max-width: 1024px) {
   .channel-body.has-lead {
     grid-template-columns: minmax(0, 1fr);
-    gap: 20px;
-  }
-
-  .channel-rings {
-    justify-content: flex-start;
-  }
-
-  .channel-rings::before {
-    display: none;
+    gap: 14px;
   }
 }
 
 @media (max-width: 768px) {
   .quota-lead {
-    padding: 20px;
+    padding: 18px 20px;
   }
 
   .lead-num {
-    font-size: 48px;
+    font-size: 44px;
+  }
+
+  .legend {
+    gap: 4px 20px;
   }
 }
 </style>
