@@ -6,52 +6,71 @@
 
 <template>
   <div class="health-stack">
-    <RingLead
-      kicker="整體狀態"
-      :value="heroValue ?? '—'"
-      :busy="controller.processing.value && !controller.healthOverall.value"
-      :tone="leadToneName"
-      :meaning="heroSubtitle"
+    <article
+      class="ui-lead hl"
+      aria-label="整體狀態"
     >
-      <template
-        v-if="healthBars.length > 0"
-        #visual
+      <div class="hl-main">
+        <div class="hl-kicker">
+          整體狀態
+        </div>
+        <div
+          class="hl-big"
+          :class="overallTone"
+          :aria-busy="(controller.processing.value && !controller.healthOverall.value) || undefined"
+        >
+          {{ heroValue ?? '—' }}
+        </div>
+        <p class="hl-meaning">
+          {{ heroSubtitle }}
+        </p>
+        <ul
+          v-if="rows.length > 0"
+          class="hero-counts"
+          aria-label="服務狀態統計"
+        >
+          <li :class="{ zero: counts.healthy === 0 }">
+            <span class="dot g" />{{ counts.healthy }} 正常
+          </li>
+          <li :class="{ zero: counts.warning === 0 }">
+            <span class="dot o" />{{ counts.warning }} 警告
+          </li>
+          <li :class="{ zero: counts.critical === 0 }">
+            <span class="dot r" />{{ counts.critical }} 異常
+          </li>
+          <li v-if="counts.unchecked > 0">
+            <span class="dot u" />{{ counts.unchecked }} 未檢查
+          </li>
+        </ul>
+      </div>
+      <dl
+        v-if="latencyFacts.length > 0"
+        class="hl-facts"
       >
-        <LeadBars
-          summary="各服務回應時間"
-          :bars="healthBars"
-          :max="latencyScale"
-          :height="96"
-          caption="回應時間，單位毫秒；顏色為檢查結果"
-        />
-      </template>
-      <ul
-        v-if="rows.length > 0"
-        class="hero-counts"
-        aria-label="服務狀態統計"
-      >
-        <li :class="{ zero: counts.healthy === 0 }">
-          <span class="dot g" />{{ counts.healthy }} 正常
-        </li>
-        <li :class="{ zero: counts.warning === 0 }">
-          <span class="dot o" />{{ counts.warning }} 警告
-        </li>
-        <li :class="{ zero: counts.critical === 0 }">
-          <span class="dot r" />{{ counts.critical }} 異常
-        </li>
-        <li v-if="counts.unchecked > 0">
-          <span class="dot u" />{{ counts.unchecked }} 未檢查
-        </li>
-      </ul>
-    </RingLead>
+        <div
+          v-for="fact in latencyFacts"
+          :key="fact.label"
+          class="hl-fact"
+        >
+          <dt>{{ fact.label }}</dt>
+          <dd class="hl-fact-v">
+            {{ fact.value }}<small v-if="fact.unit">{{ fact.unit }}</small>
+          </dd>
+          <dd class="hl-fact-sub">
+            {{ fact.sub }}
+          </dd>
+        </div>
+      </dl>
+    </article>
 
     <section aria-label="服務檢查">
       <h2 class="ui-group-label">
         服務檢查
+        <span class="label-note">回應時間共用同一把尺，最長的服務填滿</span>
       </h2>
       <div class="ui-group">
         <UiEmptyState
-          v-if="serviceRows.length === 0"
+          v-if="rows.length === 0"
           :title="controller.processing.value ? '檢查中...' : '尚無檢查結果'"
           :description="controller.processing.value ? '正在逐項檢查服務。' : '按右上角「立即檢查」開始。'"
         >
@@ -72,7 +91,7 @@
           class="ui-list"
         >
           <li
-            v-for="row in serviceRows"
+            v-for="row in rows"
             :key="row.key"
             class="ui-row is-flush hrow"
           >
@@ -95,7 +114,7 @@
                 />
                 <path
                   v-else-if="row.tone === 'unknown'"
-                  d="M5 12h14"
+                  d="M12 6.5V12l3.5 2"
                 />
                 <path
                   v-else
@@ -111,92 +130,40 @@
                 {{ row.sub }}
               </div>
             </div>
-            <div class="lat">
-              <span
-                class="lat-n"
-                :class="row.tone"
-              >
-                <template v-if="row.latencyMs !== null">{{ row.latencyMs.toLocaleString() }}<small>ms</small></template>
-                <template v-else>—</template>
-              </span>
-            </div>
+            <span
+              class="lat-bar"
+              :class="row.tone"
+              aria-hidden="true"
+            ><i
+              v-if="row.latencyMs !== null"
+              :style="{ width: barWidth(row.latencyMs) }"
+            /></span>
+            <span
+              class="lat-n"
+              :class="row.tone"
+            >
+              <template v-if="row.latencyMs !== null">{{ row.latencyMs.toLocaleString() }}<small>ms</small></template>
+            </span>
             <span
               class="ui-pill ui-pill-dot"
               :class="pillClass(row.tone)"
             >{{ row.label }}</span>
+            <button
+              v-if="row.key === 'lineWebhook' && row.label === '未檢查'"
+              type="button"
+              class="btn btn-secondary btn-sm"
+              :disabled="controller.processing.value"
+              @click="controller.healthCheck(true)"
+            >
+              立即測試
+            </button>
           </li>
         </ul>
       </div>
-    </section>
-
-    <section
-      v-if="webhookRow"
-      aria-label="LINE webhook"
-    >
-      <h2 class="ui-group-label">
-        LINE webhook
-      </h2>
-      <div class="ui-group">
-        <div
-          class="hrow wh"
-          :class="`is-${webhookRow.tone}`"
-        >
-          <span
-            class="hstat"
-            :class="webhookRow.tone"
-            aria-hidden="true"
-          >
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2.2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            >
-              <path
-                v-if="webhookRow.tone === 'ok'"
-                d="M5 12.5 10 17.5 19 7"
-              />
-              <path
-                v-else-if="webhookRow.tone === 'unknown'"
-                d="M12 6.5V12l3.5 2"
-              />
-              <path
-                v-else
-                d="M12 8v5M12 17h.01"
-              />
-            </svg>
-          </span>
-          <div class="ui-row-main">
-            <div class="ui-row-title">
-              {{ webhookRow.name }}
-            </div>
-            <div class="ui-row-sub">
-              {{ webhookRow.sub }}
-            </div>
-          </div>
-          <span
-            v-if="webhookRow.latencyMs !== null"
-            class="lat-n"
-            :class="webhookRow.tone"
-          >{{ webhookRow.latencyMs.toLocaleString() }}<small>ms</small></span>
-          <span
-            class="ui-pill ui-pill-dot"
-            :class="pillClass(webhookRow.tone)"
-          >{{ webhookRow.label }}</span>
-          <button
-            v-if="webhookRow.tone === 'unknown'"
-            type="button"
-            class="btn btn-secondary btn-sm"
-            :disabled="controller.processing.value"
-            @click="controller.healthCheck(true)"
-          >
-            立即測試
-          </button>
-        </div>
-      </div>
-      <p class="ui-group-foot">
+      <p
+        v-if="rows.length > 0"
+        class="ui-group-foot"
+      >
         LINE webhook 只在按「立即檢查」時測試；若持續失敗，請到 LINE Developers 主控台對 Webhook URL 按「Verify」。
       </p>
     </section>
@@ -204,8 +171,6 @@
 </template>
 
 <script setup lang="ts">
-import RingLead from '@/components/lead/RingLead.vue'
-import LeadBars, { type LeadBar } from '@/components/lead/LeadBars.vue'
 import UiEmptyState from '@/components/ui/UiEmptyState.vue'
 import { computed, inject, onMounted } from 'vue'
 import { SETTINGS_CONTROLLER_KEY } from '@/types/system-settings'
@@ -345,23 +310,26 @@ const heroValue = computed<string | null>(() => {
   return overallTone.value === 'ok' ? '正常' : null
 })
 
-const leadToneName = computed(() => ({ ok: 'good', warn: 'warn', bad: 'bad', unknown: 'none' } as const)[overallTone.value])
+/** Bars share one scale: the slowest measured service fills the track, floored at 100 ms so 12 vs 64 ms is not exaggerated */
+function barWidth(ms: number): string {
+  return `${Math.max(4, Math.round((ms / latencyScale.value) * 100))}%`
+}
 
-const BAR_TONE = { ok: 'good', warn: 'warn', bad: 'bad', unknown: 'muted' } as const
-
-/** Short bar label: the part in parentheses when a service has one (資料庫 (D1) -> D1) */
+/** Short name: the part in parentheses when a service has one (資料庫 (D1) -> D1) */
 const shortName = (name: string): string => /\(([^)]+)\)\s*$/.exec(name)?.[1] ?? name
 
-/** One bar per listed service, as tall as its measured latency; an unchecked one is a dash, not a made-up zero */
-const healthBars = computed<LeadBar[]>(() => {
-  if (rows.value.every(row => row.tone === 'unknown')) { return [] }
-  return rows.value.map(row => ({
-    key: row.key,
-    label: shortName(row.name),
-    value: row.latencyMs ?? 0,
-    display: row.latencyMs !== null ? `${row.latencyMs.toLocaleString('en-US')}ms` : '—',
-    tone: BAR_TONE[row.tone]
-  }))
+/** Three facts the list below does not already say: the mean, the slowest service and when it was checked */
+const latencyFacts = computed(() => {
+  const measured = serviceRows.value.filter(row => row.latencyMs !== null)
+  if (measured.length === 0) { return [] }
+  const mean = Math.round(measured.reduce((sum, row) => sum + (row.latencyMs ?? 0), 0) / measured.length)
+  const slow = measured.reduce((a, b) => ((b.latencyMs ?? 0) > (a.latencyMs ?? 0) ? b : a))
+  const checked = controller.healthCheckedAt.value
+  return [
+    { label: '平均回應', value: String(mean), unit: ' ms', sub: `${measured.length} 項服務` },
+    { label: '最慢服務', value: String(slow.latencyMs), unit: ' ms', sub: shortName(slow.name) },
+    ...(checked ? [{ label: '最近檢查', value: formatChecked(checked).replace('今天 ', ''), unit: '', sub: '今天' }] : []),
+  ]
 })
 
 const heroSubtitle = computed(() => {
@@ -374,9 +342,7 @@ const heroSubtitle = computed(() => {
   const summary = attention.length > 0
     ? `${attention.map(row => row.name).join('、')} 需要注意。`
     : `${counts.value.healthy} 項服務運作正常${pending}。`
-  const checked = controller.healthCheckedAt.value
-  const when = checked ? formatChecked(checked) : ''
-  return when ? `${summary}${when} 檢查。` : summary
+  return summary
 })
 
 function formatChecked(iso: string): string {
@@ -421,20 +387,91 @@ onMounted(() => {
   min-width: 0;
 }
 
-/* LINE webhook is its own on-demand state, not one more row of the always-on checks */
-.wh {
-  display: flex;
+.hl {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+  gap: 24px 48px;
   align-items: center;
+  padding: 24px 32px;
 }
 
-.wh .ui-pill {
-  width: auto;
-  min-width: 62px;
+.hl-kicker {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--section-ink);
 }
 
-.wh.is-unknown .hstat {
-  background: var(--ui-accent-soft);
-  color: var(--ui-accent);
+.hl-big {
+  margin-top: 2px;
+  font: 600 52px / 1.1 var(--ui-font-display);
+  letter-spacing: -0.035em;
+  color: var(--ui-ink);
+}
+
+.hl-big.ok {
+  color: var(--ui-green-ink);
+}
+
+.hl-big.warn {
+  color: var(--ui-orange-ink);
+}
+
+.hl-big.bad {
+  color: var(--ui-red-ink);
+}
+
+.hl-big.unknown {
+  color: var(--ui-muted);
+}
+
+.hl-meaning {
+  margin: 4px 0 0;
+  font-size: 15px;
+  color: var(--ui-ink-2);
+}
+
+/* three facts the list does not say, split by hairlines like the dashboard KPI strip */
+.hl-facts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: 0;
+}
+
+.hl-fact {
+  display: grid;
+  gap: 2px;
+  align-content: start;
+  padding: 4px 20px;
+  box-shadow: inset 0.5px 0 0 var(--ui-sep);
+}
+
+.hl-fact:first-child {
+  padding-left: 0;
+  box-shadow: none;
+}
+
+.hl-fact dt {
+  font-size: 13px;
+  color: var(--ui-muted);
+}
+
+.hl-fact-v {
+  margin: 0;
+  font: 600 32px / 1.15 var(--ui-font-display);
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.hl-fact-v small {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--ui-muted);
+}
+
+.hl-fact-sub {
+  margin: 0;
+  font-size: 13px;
+  color: var(--ui-muted);
 }
 
 .hero-counts {
@@ -524,11 +561,33 @@ onMounted(() => {
   color: var(--ui-red-ink);
 }
 
-.lat {
-  display: flex;
+.lat-bar {
+  display: block;
   flex: none;
-  align-items: center;
-  gap: 12px;
+  width: 160px;
+  height: 6px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--ui-fill);
+}
+
+.lat-bar:empty {
+  background: transparent;
+}
+
+.lat-bar i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--ui-green);
+}
+
+.lat-bar.warn i {
+  background: var(--ui-orange);
+}
+
+.lat-bar.bad i {
+  background: var(--ui-red);
 }
 
 .lat-n {
@@ -562,13 +621,44 @@ onMounted(() => {
   white-space: normal;
 }
 
+@media (max-width: 1024px) {
+  .hl {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 22px 24px;
+  }
+
+  .hl-fact {
+    padding: 4px 16px;
+  }
+}
+
 @media (max-width: 768px) {
+  .hl {
+    padding: 20px;
+  }
+
+  .hl-big {
+    font-size: 40px;
+  }
+
+  .hl-fact-v {
+    font-size: 24px;
+  }
+
+  .lat-bar {
+    display: none;
+  }
+
   .lat-n {
     width: auto;
   }
 
-  .wh {
+  .hrow {
     flex-wrap: wrap;
+  }
+
+  .hrow .ui-row-main {
+    flex-basis: 150px;
   }
 
   .hrow {
