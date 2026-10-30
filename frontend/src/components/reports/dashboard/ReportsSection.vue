@@ -57,6 +57,13 @@
     </div>
 
     <div
+      v-if="$slots.toolbar"
+      class="section-toolbar"
+    >
+      <slot name="toolbar" />
+    </div>
+
+    <div
       v-if="loading"
       class="state-box loading-state"
     >
@@ -316,9 +323,13 @@ defineEmits<{
 </script>
 
 <style scoped>
+/* visible: the filter popover opens inside the card and must not be clipped by a short list */
 .reports-section {
-  overflow: hidden;
   padding-bottom: 6px;
+}
+
+.section-toolbar {
+  padding: 2px 22px 14px;
 }
 
 .section-controls {
@@ -351,7 +362,7 @@ defineEmits<{
 
 .list-header {
   display: grid;
-  grid-template-columns: minmax(0, 2.4fr) 110px 100px minmax(110px, 1fr) 76px;
+  grid-template-columns: minmax(0, 2.4fr) 110px 100px minmax(110px, 1fr) 84px;
   gap: 12px;
   padding: 10px 22px;
   box-shadow: inset 0 -0.5px 0 var(--ui-sep);
@@ -370,6 +381,10 @@ defineEmits<{
 
   .reports-grid {
     padding: 4px 16px 16px;
+  }
+
+  .section-toolbar {
+    padding: 2px 16px 12px;
   }
 }
 </style>

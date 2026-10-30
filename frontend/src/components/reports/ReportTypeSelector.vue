@@ -62,12 +62,22 @@
           <span class="type-name">{{ option.label }}</span>
           <span class="type-desc">{{ option.description }}</span>
         </span>
-        <i
+        <span
           class="radio"
           aria-hidden="true"
-        />
+        >
+          <svg
+            v-if="selectedType === option.value"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="3.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          ><path d="m5 12 5 5 9-10" /></svg>
+        </span>
         <ul
-          v-if="selectedType === option.value && contentsOf(option.value).length"
+          v-if="contentsOf(option.value).length"
           class="type-has"
           :aria-label="`${option.label}會包含`"
         >
@@ -167,7 +177,7 @@ function onKey(event: KeyboardEvent, index: number) {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
-  align-items: start;
+  align-items: stretch;
   padding: 4px 22px 20px;
 }
 
@@ -175,7 +185,7 @@ function onKey(event: KeyboardEvent, index: number) {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   gap: 4px 12px;
-  align-items: start;
+  align-items: center;
   min-width: 0;
   padding: 14px;
   border: 0;
@@ -196,7 +206,7 @@ function onKey(event: KeyboardEvent, index: number) {
 }
 
 .type-tile.selected {
-  background: color-mix(in srgb, var(--ui-accent-soft) 60%, var(--ui-surface));
+  background: var(--ui-sel-tint);
   box-shadow: var(--ui-sel-ring);
 }
 
@@ -216,8 +226,8 @@ function onKey(event: KeyboardEvent, index: number) {
 }
 
 .selected .type-ico {
-  background: var(--ui-accent-soft);
-  color: var(--ui-accent);
+  background: var(--ui-accent);
+  color: #fff;
 }
 
 .type-ico svg {
@@ -242,15 +252,22 @@ function onKey(event: KeyboardEvent, index: number) {
 }
 
 .radio {
-  width: 18px;
-  height: 18px;
-  margin-top: 2px;
+  display: grid;
+  width: 22px;
+  height: 22px;
+  place-items: center;
   border-radius: 50%;
-  box-shadow: inset 0 0 0 1.5px var(--ui-muted);
+  box-shadow: inset 0 0 0 1.5px var(--ui-field-edge);
+  color: #fff;
+}
+
+.radio svg {
+  width: 13px;
+  height: 13px;
 }
 
 .selected .radio {
-  background: radial-gradient(circle, #fff 0 30%, var(--ui-accent) 32%);
+  background: var(--ui-accent);
   box-shadow: none;
 }
 
@@ -268,9 +285,13 @@ function onKey(event: KeyboardEvent, index: number) {
 .type-has li {
   padding: 2px 10px;
   border-radius: 999px;
-  background: var(--ui-surface);
+  background: var(--ui-fill);
   font-size: 13px;
   color: var(--ui-ink-2);
+}
+
+.selected .type-has li {
+  background: var(--ui-surface);
 }
 
 .error-message {
@@ -295,12 +316,16 @@ function onKey(event: KeyboardEvent, index: number) {
     padding: 12px;
   }
 
-  .type-desc {
+  .type-has {
     display: none;
   }
 
-  .type-tile:not(.selected) .type-info {
-    align-self: center;
+  .type-tile:not(.selected) .type-has {
+    display: none;
+  }
+
+  .selected .type-has {
+    display: flex;
   }
 }
 </style>

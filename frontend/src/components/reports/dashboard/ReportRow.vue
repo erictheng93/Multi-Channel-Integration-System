@@ -52,7 +52,7 @@
       role="cell"
       class="row-cell time-cell"
     >
-      <span class="time-text"><span class="format-inline">{{ formatLabel }}{{ report.fileSize ? ` ${formattedSize}` : '' }} · </span>{{ formattedTime }}</span>
+      <span class="time-text"><span class="format-inline">{{ typeLabel }} · </span><span class="format-inline">{{ formatLabel }}<span class="size-inline">{{ report.fileSize ? ` ${formattedSize}` : '' }}</span> · </span>{{ formattedTime }}</span>
       <span
         v-if="expiryText"
         class="expiry-text"
@@ -231,7 +231,7 @@ const canDelete = computed(() => {
 .report-row {
   position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 2.4fr) 110px 100px minmax(110px, 1fr) 76px;
+  grid-template-columns: minmax(0, 2.4fr) 110px 100px minmax(110px, 1fr) 84px;
   align-items: center;
   gap: 12px;
   padding: 14px 22px;
@@ -328,13 +328,13 @@ const canDelete = computed(() => {
 
 .action-btn {
   display: grid;
-  width: 32px;
-  height: 32px;
+  width: 38px;
+  height: 38px;
   place-items: center;
   border: 0;
-  border-radius: 9px;
+  border-radius: 10px;
   background: transparent;
-  color: var(--ui-muted);
+  color: var(--ui-ink-2);
   cursor: pointer;
   transition:
     background var(--ui-dur) var(--ui-ease),
@@ -342,8 +342,8 @@ const canDelete = computed(() => {
 }
 
 .action-btn svg {
-  width: 16px;
-  height: 16px;
+  width: 19px;
+  height: 19px;
 }
 
 .action-btn:hover:not(:disabled) {
@@ -357,7 +357,7 @@ const canDelete = computed(() => {
 }
 
 .action-btn:disabled {
-  opacity: 0.35;
+  opacity: 0.4;
   cursor: not-allowed;
 }
 
@@ -377,14 +377,23 @@ const canDelete = computed(() => {
     grid-row: 1;
   }
 
+  .size-inline {
+    display: none;
+  }
+
   .format-inline {
     display: inline;
     font-weight: 600;
     color: var(--ui-ink-2);
   }
 
-  .format-cell {
+  .format-cell,
+  .report-type-badge {
     display: none;
+  }
+
+  .title-cell {
+    gap: 2px;
   }
 
   .time-cell {

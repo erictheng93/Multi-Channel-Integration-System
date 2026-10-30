@@ -11,26 +11,26 @@
     <!-- Lead: this month's reports + rings of completed / processing / failed -->
     <StatsLead
       :stats="stats"
+      :reports="reports"
       :loaded="loaded"
       @show-failed-reports="showFailedReports"
     />
+
+    <!-- Phone: what needs a look comes before the long list (the rail is below it) -->
+    <div
+      v-if="attention.length > 0"
+      class="ui-card attn-top"
+    >
+      <AttentionList
+        :items="attention"
+        @open="handleViewReport"
+      />
+    </div>
 
     <!-- 主要內容區域 -->
     <div class="main-content">
       <!-- 左側：篩選和報表列表 -->
       <div class="content-left">
-        <!-- 篩選控制面板 -->
-        <FiltersSection
-          :filters="filters"
-          :search-query="searchQuery"
-          :has-active-filters="hasActiveFilters"
-          :grouped-report-types="groupedReportTypes"
-          :get-report-type-icon="getReportTypeIcon"
-          @update:filters="applyFilters"
-          @update:search-query="debounceSearch"
-          @reset-filters="resetFilters"
-        />
-
         <!-- 報表列表容器 -->
         <ReportsSection
           :reports="reports"
@@ -57,6 +57,18 @@
           @update:sort-order="sortOrder = $event"
           @export-all="exportAllReports"
         >
+          <template #toolbar>
+            <FiltersSection
+              :filters="filters"
+              :search-query="searchQuery"
+              :has-active-filters="hasActiveFilters"
+              :grouped-report-types="groupedReportTypes"
+              :get-report-type-icon="getReportTypeIcon"
+              @update:filters="applyFilters"
+              @update:search-query="debounceSearch"
+              @reset-filters="resetFilters"
+            />
+          </template>
           <template
             v-if="pagination.totalPages > 1"
             #footer
@@ -81,41 +93,18 @@
               @filter-by-type="handleFilterByType"
             />
           </template>
-          <!-- 最近活動：由報表列表的真實狀態推導 -->
+          <!-- 需要留意：由報表列表的真實狀態推導（手機版移到列表上方） -->
           <template
             v-if="attention.length > 0"
-            #recent-activity
+            #quick-actions
           >
-            <section
-              class="attn"
-              aria-label="需要留意"
-            >
-              <h3 class="attn-h">
-                需要留意
-              </h3>
-              <ul>
-                <li
-                  v-for="item in attention"
-                  :key="item.id"
-                >
-                  <button
-                    type="button"
-                    class="attn-row"
-                    @click="handleViewReport(item.id)"
-                  >
-                    <i
-                      class="attn-dot"
-                      :class="item.tone"
-                    />
-                    <span class="attn-main">
-                      <b>{{ item.title }}</b>
-                      <span>{{ item.note }}</span>
-                    </span>
-                  </button>
-                </li>
-              </ul>
-            </section>
+            <AttentionList
+              class="rail-attn"
+              :items="attention"
+              @open="handleViewReport"
+            />
           </template>
+          <StorageWidget :reports="reports" />
         </SidebarWidgets>
       </div>
     </div>
@@ -147,6 +136,8 @@ import ReportsSection from './dashboard/ReportsSection.vue'
 import PaginationControls from '@/components/ui/PaginationControls.vue'
 import SidebarWidgets from './dashboard/SidebarWidgets.vue'
 import PopularTypesWidget from './dashboard/PopularTypesWidget.vue'
+import AttentionList from './dashboard/AttentionList.vue'
+import StorageWidget from './dashboard/StorageWidget.vue'
 import ConfirmDialog from '@/components/ui/ConfirmDialog.vue'
 
 // Emits
@@ -271,10 +262,10 @@ const popularTypes = computed<PopularType[]>(() =>
  */
 const subtitle = computed(() => {
   if (stats.totalReports === 0) { return '' }
-  const parts = [`已產生 ${stats.totalReports} 份報表`]
-  if (stats.failedReports > 0) { parts.push(`其中 ${stats.failedReports} 份失敗`) }
-  if (stats.pendingReports > 0) { parts.push(`${stats.pendingReports} 份正在處理`) }
-  return `${parts.join('，')}。`
+  const parts: string[] = []
+  if (stats.failedReports > 0) { parts.push(`${stats.failedReports} 份失敗需要處理`) }
+  if (stats.pendingReports > 0) { parts.push(`${stats.pendingReports} 份正在產生`) }
+  return parts.length > 0 ? `${parts.join('，')}。` : '所有報表都已完成。'
 })
 
 // ========================================
@@ -344,72 +335,8 @@ function handleFilterByType(type: string) {
   gap: 16px;
 }
 
-.attn {
-  padding: 18px 20px 12px;
-}
-
-.attn-h {
-  margin: 0 0 6px;
-  font: 600 17px / 1.3 var(--ui-font-display);
-}
-
-.attn ul {
-  display: grid;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.attn-row {
-  display: flex;
-  gap: 12px;
-  align-items: flex-start;
-  width: 100%;
-  min-height: 44px;
-  padding: 10px 0;
-  border: 0;
-  background: none;
-  color: inherit;
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-
-.attn li + li .attn-row {
-  box-shadow: 0 -0.5px 0 var(--ui-sep);
-}
-
-.attn-dot {
-  flex: none;
-  width: 8px;
-  height: 8px;
-  margin-top: 7px;
-  border-radius: 50%;
-  background: var(--ui-faint);
-}
-
-.attn-dot.red {
-  background: var(--ui-red);
-}
-
-.attn-dot.orange {
-  background: var(--ui-orange);
-}
-
-.attn-main {
-  display: grid;
-  min-width: 0;
-}
-
-.attn-main b {
-  font-size: 14px;
-  font-weight: 600;
-  overflow-wrap: anywhere;
-}
-
-.attn-main span {
-  font-size: 13px;
-  color: var(--ui-muted);
+.attn-top {
+  display: none;
 }
 
 @media (max-width: 1280px) {
@@ -419,6 +346,18 @@ function handleFilterByType(type: string) {
 
   .content-right {
     position: static;
+  }
+}
+
+@media (max-width: 768px) {
+  .attn-top {
+    display: block;
+  }
+
+  /* the phone shows this block above the list instead */
+  .content-right :deep(.widget-wrapper:has(.rail-attn)),
+  .content-right :deep(.widget-wrapper:has(.stor)) {
+    display: none;
   }
 }
 </style>

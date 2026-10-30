@@ -322,7 +322,7 @@ function formatDate(value: string | null): string {
 
 .result-bar {
   display: flex;
-  height: 6px;
+  height: 8px;
   margin-top: 6px;
   overflow: hidden;
   border-radius: 999px;
@@ -352,7 +352,7 @@ function formatDate(value: string | null): string {
   gap: 2px 12px;
   margin-top: 6px;
   font-size: 13px;
-  color: var(--ui-muted);
+  color: var(--ui-ink-2);
   font-variant-numeric: tabular-nums;
 }
 
@@ -428,21 +428,15 @@ function formatDate(value: string | null): string {
   }
 
   .col-result {
-    grid-column: 1 / -1;
+    grid-column: 1;
     grid-row: 2;
   }
 
-  /* The whole row is the tap target; the button stays for keyboard and screen readers */
+  /* the visible way into the recipient detail (the whole row is also tappable) */
   .ui-table tbody td.col-act {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip: rect(0 0 0 0);
-  }
-
-  .ui-table tbody tr {
-    position: relative;
+    grid-column: 2;
+    grid-row: 2;
+    align-self: end;
   }
 }
 </style>

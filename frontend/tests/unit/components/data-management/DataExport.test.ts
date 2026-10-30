@@ -13,23 +13,20 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import type { VueWrapper } from '@vue/test-utils'
 import { mount } from '@vue/test-utils'
-import { nextTick } from 'vue'
 import DataExport from '@/components/data-management/DataExport.vue'
 
-// Mock ExportDialog to avoid deep component tree
-vi.mock('@/components/conversation/ExportDialog.vue', () => ({
-  default: {
-    name: 'ExportDialog',
-    props: {
-      show: Boolean,
-      conversationId: String,
-      conversationTitle: String,
-      initialFormat: String
-    },
-    emits: ['close', 'update:show'],
-    template: '<div class="mock-export-dialog" v-if="show"><button class="close-btn" @click="$emit(\'close\')">Close</button></div>'
-  }
+const exportMessages = vi.hoisted(() => vi.fn())
+const getExportCount = vi.hoisted(() => vi.fn())
+
+vi.mock('@/api/export', () => ({
+  exportMessages,
+  getExportCount,
+  fetchExportData: vi.fn(),
+  getExportCustomers: vi.fn().mockResolvedValue({ success: true, data: [{ id: 7, displayName: '林志明', platform: 'line', platformUserId: 'U1' }] }),
+  getExportAgents: vi.fn().mockResolvedValue({ success: true, data: [{ id: 'a1', displayName: '陳怡君', role: 'admin' }] })
 }))
+vi.mock('@/composables/useToast', () => ({ useToast: () => ({ showSuccess: vi.fn(), showError: vi.fn() }) }))
+vi.mock('@/services/pdfExportService', () => ({ generatePdfExport: vi.fn() }))
 
 describe('DataExport.vue', () => {
   let wrapper: VueWrapper | null = null
@@ -130,72 +127,46 @@ describe('DataExport.vue', () => {
     })
   })
 
-  // ==================== 功能說明和使用提示 ====================
+  // ==================== 匯出範圍與動作 ====================
 
-  describe('功能說明區', () => {
-    it('以一行說明取代三步驟面板，並說明篩選在匯出視窗設定', () => {
-      wrapper = createWrapper()
-      expect(wrapper.find('.step').exists()).toBe(false)
-      expect(wrapper.text()).toContain('匯出時可篩選')
-    })
-  })
-
-  // ==================== ExportDialog 互動 ====================
-
-  describe('ExportDialog 互動', () => {
-    it('初始狀態不應該顯示 ExportDialog', () => {
-      wrapper = createWrapper()
-      const dialog = wrapper.findComponent({ name: 'ExportDialog' })
-      expect(dialog.props('show')).toBe(false)
+  describe('匯出範圍', () => {
+    beforeEach(() => {
+      vi.useFakeTimers()
+      exportMessages.mockReset()
+      getExportCount.mockReset()
+      getExportCount.mockResolvedValue({ success: true, data: { count: 842, limit: 5000, willBeTruncated: false } })
+      exportMessages.mockResolvedValue({ success: true, data: new Blob(['x']) })
+      Object.assign(window.URL, { createObjectURL: vi.fn(() => 'blob:x'), revokeObjectURL: vi.fn() })
     })
 
-    it('點擊「開始匯出」應該打開 ExportDialog', async () => {
-      wrapper = createWrapper()
-      const btn = wrapper.find('.lead-cta')
-      await btn.trigger('click')
-      await nextTick()
-
-      const dialog = wrapper.findComponent({ name: 'ExportDialog' })
-      expect(dialog.props('show')).toBe(true)
+    afterEach(() => {
+      vi.useRealTimers()
     })
 
-    it('點擊格式卡片只選取格式，按「開始匯出」才開啟並帶入該格式', async () => {
+    it('提供日期、客戶、客服三個真正的篩選控制項', async () => {
       wrapper = createWrapper()
-      const cards = wrapper.findAll('.ex-row')
-      await cards[1]!.trigger('click')
-      await nextTick()
+      await vi.runAllTimersAsync()
+      expect(wrapper.find('#ex-from').exists()).toBe(true)
+      expect(wrapper.find('#ex-to').exists()).toBe(true)
+      expect(wrapper.find('#ex-customer').text()).toContain('林志明')
+      expect(wrapper.find('#ex-agent').text()).toContain('陳怡君')
+    })
 
-      const dialog = wrapper.findComponent({ name: 'ExportDialog' })
-      expect(dialog.props('show')).toBe(false)
-      expect(cards[1]!.attributes('aria-checked')).toBe('true')
+    it('顯示符合條件的筆數', async () => {
+      wrapper = createWrapper()
+      await vi.runAllTimersAsync()
+      expect(wrapper.find('.foot-count').text()).toContain('842')
+    })
 
+    it('按下開始匯出時帶入選取的格式與篩選', async () => {
+      wrapper = createWrapper()
+      await vi.runAllTimersAsync()
+      await wrapper.findAll('.ex-row')[1]!.trigger('click')
+      await wrapper.find('#ex-customer').setValue('7')
       await wrapper.find('.lead-cta').trigger('click')
-      await nextTick()
-      expect(dialog.props('show')).toBe(true)
-      expect(dialog.props('initialFormat')).toBe('csv')
-    })
-
-    it('ExportDialog close 事件應該關閉對話框', async () => {
-      wrapper = createWrapper()
-
-      // Open dialog first
-      const btn = wrapper.find('.lead-cta')
-      await btn.trigger('click')
-      await nextTick()
-
-      // Trigger close
-      const dialog = wrapper.findComponent({ name: 'ExportDialog' })
-      dialog.vm.$emit('close')
-      await nextTick()
-
-      expect(dialog.props('show')).toBe(false)
-    })
-
-    it('不應該傳遞 conversationId（全域匯出模式）', () => {
-      wrapper = createWrapper()
-      const dialog = wrapper.findComponent({ name: 'ExportDialog' })
-      // No conversationId prop should be passed
-      expect(dialog.props('conversationId')).toBeUndefined()
+      await vi.runAllTimersAsync()
+      expect(exportMessages).toHaveBeenCalledTimes(1)
+      expect(exportMessages.mock.calls[0]![0]).toMatchObject({ format: 'csv', customerId: '7' })
     })
   })
 })

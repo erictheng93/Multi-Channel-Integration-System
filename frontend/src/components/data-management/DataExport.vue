@@ -1,62 +1,149 @@
 <!-- 匯出對話記錄 - 資料管理子頁面 -->
-<!-- Pick a format here; the existing ExportDialog collects date, customer and agent filters -->
+<!-- Format, scope filters (date, customer, agent) and a live match count on one page; the conversation list keeps its own export dialog -->
 
 <template>
   <div class="ui-page rl-page data-export">
     <UiPageHead
       title="匯出對話"
-      :subtitle="`選擇檔案格式後開始匯出，單次最多 ${EXPORT_LIMIT.toLocaleString()} 筆。`"
+      :subtitle="`選擇格式與範圍後匯出，單次最多 ${EXPORT_LIMIT.toLocaleString()} 筆。`"
     />
 
     <div class="ex-grid">
-      <section
-        class="ex-pick"
-        aria-label="選擇格式"
-      >
-        <h2 class="ui-group-label">
-          檔案格式
-        </h2>
-        <div
-          class="ui-group ex-list"
-          role="radiogroup"
-          aria-label="匯出格式"
+      <div class="ex-left">
+        <section
+          class="ex-pick"
+          aria-label="選擇格式"
         >
-          <button
-            v-for="format in formats"
-            :key="format.id"
-            type="button"
-            class="ex-row"
-            :class="{ 'is-on': selectedFormat === format.id }"
-            role="radio"
-            :aria-checked="selectedFormat === format.id"
-            @click="selectFormat(format.id)"
+          <h2 class="ui-group-label">
+            檔案格式
+          </h2>
+          <div
+            class="ui-group ex-list"
+            role="radiogroup"
+            aria-label="匯出格式"
           >
-            <span
-              class="fmt-ico"
-              :class="format.tone"
-              aria-hidden="true"
-            >{{ format.icon }}</span>
-            <span class="ex-main">
-              <b class="ex-name">{{ format.name }}<span class="ex-tag">{{ format.tagline }}</span></b>
-              <span class="ex-use">{{ format.usecases.join('、') }}</span>
-            </span>
-            <i
-              class="radio"
-              aria-hidden="true"
-            />
-          </button>
-        </div>
-      </section>
+            <button
+              v-for="format in formats"
+              :key="format.id"
+              type="button"
+              class="ex-row"
+              :class="{ 'is-on': selectedFormat === format.id }"
+              role="radio"
+              :aria-checked="selectedFormat === format.id"
+              @click="selectFormat(format.id)"
+            >
+              <span
+                class="fmt-ico"
+                :class="format.tone"
+                aria-hidden="true"
+              >{{ format.icon }}</span>
+              <span class="ex-main">
+                <b class="ex-name">{{ format.name }}<span class="ex-tag">{{ format.tagline }}</span></b>
+                <span class="ex-use">{{ format.usecases.join('、') }}</span>
+              </span>
+              <i
+                class="radio"
+                aria-hidden="true"
+              />
+            </button>
+          </div>
+        </section>
+
+        <form
+          class="ui-card ex-scope"
+          aria-label="匯出範圍"
+          @submit.prevent="runExport"
+        >
+          <div class="ui-card-head">
+            <div>
+              <h2 class="ui-card-title">
+                匯出範圍
+              </h2>
+              <p class="ui-card-sub">
+                不選就是全部，下方筆數會即時更新
+              </p>
+            </div>
+          </div>
+          <div class="scope-grid">
+            <div class="ui-field">
+              <label for="ex-from">起始日期</label>
+              <input
+                id="ex-from"
+                v-model="filters.dateFrom"
+                type="date"
+                class="ui-input"
+                :max="filters.dateTo || undefined"
+              >
+            </div>
+            <div class="ui-field">
+              <label for="ex-to">結束日期</label>
+              <input
+                id="ex-to"
+                v-model="filters.dateTo"
+                type="date"
+                class="ui-input"
+                :min="filters.dateFrom || undefined"
+              >
+            </div>
+            <div class="ui-field">
+              <label for="ex-customer">客戶</label>
+              <select
+                id="ex-customer"
+                v-model="filters.customerId"
+                class="ui-select"
+              >
+                <option value="">
+                  全部客戶
+                </option>
+                <option
+                  v-for="customer in customers"
+                  :key="customer.id"
+                  :value="String(customer.id)"
+                >
+                  {{ customer.displayName || '未知用戶' }}
+                </option>
+              </select>
+            </div>
+            <div class="ui-field">
+              <label for="ex-agent">客服人員</label>
+              <select
+                id="ex-agent"
+                v-model="filters.agentId"
+                class="ui-select"
+              >
+                <option value="">
+                  全部客服
+                </option>
+                <option
+                  v-for="agent in agents"
+                  :key="agent.id"
+                  :value="agent.id"
+                >
+                  {{ agent.displayName || '未知客服' }}
+                </option>
+              </select>
+            </div>
+          </div>
+        </form>
+      </div>
 
       <section
         class="ui-lead ex-sheet"
-        :aria-label="`${selectedName} 檔案內容`"
+        :aria-label="`${selectedName} 匯出設定`"
       >
         <header class="sheet-bar">
-          <span class="sheet-file">{{ selectedName }} 檔案內容</span>
+          <div>
+            <h2 class="sheet-file">
+              {{ selectedName }} 檔案內容
+            </h2>
+            <p class="sheet-name">
+              {{ fileName }}
+            </p>
+          </div>
           <span class="sheet-unit">{{ selectedUnit }}</span>
         </header>
 
+        <code class="sheet-shape">{{ shape }}</code>
         <dl class="sheet-rows">
           <div
             v-for="row in selectedRows"
@@ -72,38 +159,41 @@
           </div>
         </dl>
 
-        <div class="sheet-scope">
-          <div class="scope-fact">
-            <span>單次上限</span>
-            <b>{{ EXPORT_LIMIT.toLocaleString() }} 筆</b>
+        <dl class="sheet-facts">
+          <div>
+            <dt>單次上限</dt>
+            <dd>{{ EXPORT_LIMIT.toLocaleString() }} 筆</dd>
           </div>
-          <div class="scope-fact">
-            <span>範圍</span>
-            <b>你有權限查看的對話</b>
+          <div>
+            <dt>範圍</dt>
+            <dd>你有權限查看的對話</dd>
           </div>
-          <div class="scope-fact">
-            <span>排除</span>
-            <b>已收回的訊息</b>
+          <div>
+            <dt>排除</dt>
+            <dd>已收回的訊息</dd>
           </div>
-        </div>
+        </dl>
 
         <div class="sheet-foot">
-          <p class="foot-filters">
-            <span>匯出時可篩選</span>
-            <span
-              v-for="f in filterOptions"
-              :key="f.name"
-              class="ui-chip"
-              :title="f.hint"
-            >{{ f.name }}</span>
+          <p
+            class="foot-count"
+            role="status"
+          >
+            <template v-if="count === null">
+              正在計算符合條件的筆數…
+            </template>
+            <template v-else>
+              符合條件 <b>{{ count.count.toLocaleString() }}</b> 筆<span v-if="count.willBeTruncated">，超過上限，超出部分將被截斷</span>
+            </template>
           </p>
           <button
             type="button"
             class="btn btn-primary lead-cta"
-            @click="openExportDialog"
+            :aria-busy="exporting"
+            @click="runExport"
           >
             <DownloadIcon :size="16" />
-            開始匯出 {{ selectedName }}
+            {{ exporting ? '匯出中…' : `開始匯出 ${selectedName}` }}
           </button>
         </div>
       </section>
@@ -113,38 +203,49 @@
       class="export-actions"
       label="匯出"
     >
+      <p
+        class="bar-count"
+        role="status"
+      >
+        {{ count === null ? '計算筆數中…' : `${count.count.toLocaleString()} 筆` }}
+      </p>
       <button
         type="button"
         class="btn btn-primary"
-        @click="openExportDialog"
+        :aria-busy="exporting"
+        @click="runExport"
       >
         <DownloadIcon :size="16" />
-        開始匯出 {{ selectedName }}
+        {{ exporting ? '匯出中…' : `開始匯出 ${selectedName}` }}
       </button>
     </UiActionBar>
-
-    <!-- ExportDialog Modal (reuse existing component) -->
-    <ExportDialog
-      :show="showExportDialog"
-      :initial-format="selectedFormat"
-      @close="showExportDialog = false"
-    />
   </div>
 </template>
 
 <script setup lang="ts">
 import UiPageHead from '@/components/ui/UiPageHead.vue'
-import { computed, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import UiActionBar from '@/components/ui/UiActionBar.vue'
 import { DownloadIcon } from '@/components/icons'
-import ExportDialog from '@/components/conversation/ExportDialog.vue'
+import { useToast } from '@/composables/useToast'
+import {
+  exportMessages,
+  fetchExportData,
+  getExportAgents,
+  getExportCount,
+  getExportCustomers,
+  type ExportAgentOption,
+  type ExportCountResult,
+  type ExportCustomerOption,
+  type ExportFilters
+} from '@/api/export'
+import { generatePdfExport } from '@/services/pdfExportService'
 
 type FormatId = 'json' | 'csv' | 'txt' | 'pdf'
 
 /** Server-side cap per export (see the backend export handler); the dialog warns about it too. */
 const EXPORT_LIMIT = 5000
 
-const showExportDialog = ref(false)
 const selectedFormat = ref<FormatId>('json')
 
 type Row = { key?: string; note: string }
@@ -156,6 +257,7 @@ const formats: Array<{
   icon: string
   tone: string
   unit: string
+  shape: string
   usecases: string[]
   rows: Row[]
 }> = [
@@ -166,6 +268,7 @@ const formats: Array<{
     icon: '{ }',
     tone: 'blue',
     unit: '一則訊息一筆物件',
+    shape: '{ "exportInfo": {…}, "messages": [ {…}, {…} ] }',
     usecases: ['API 整合', '資料分析', '系統備份'],
     rows: [
       { key: 'id', note: '訊息編號' },
@@ -186,6 +289,7 @@ const formats: Array<{
     icon: 'CSV',
     tone: 'green',
     unit: '一則訊息一列',
+    shape: 'Message ID,Conversation ID,Sender Type,Sender Name,Content,…',
     usecases: ['Excel 報表', '統計分析', '團隊共享'],
     rows: [
       { key: 'Message ID', note: '訊息編號' },
@@ -203,6 +307,7 @@ const formats: Array<{
     icon: 'TXT',
     tone: 'lavender',
     unit: '一則訊息一行',
+    shape: '[時間] 寄件者: 內容',
     usecases: ['直接閱讀', '品質審查', '列印備份'],
     rows: [
       { key: '[時間] 寄件者: 內容', note: '每則訊息一行' },
@@ -217,6 +322,7 @@ const formats: Array<{
     icon: 'PDF',
     tone: 'red',
     unit: '依對話分組排版',
+    shape: '標題 → 匯出資訊 → 篩選條件 → 依對話分組的訊息',
     usecases: ['列印報告', '正式存檔', '對外分享'],
     rows: [
       { note: '標題與匯出資訊' },
@@ -227,23 +333,103 @@ const formats: Array<{
   }
 ]
 
-const filterOptions = [
-  { name: '日期範圍', hint: '只匯出起訖日期之間的訊息' },
-  { name: '客戶', hint: '只匯出指定客戶的對話' },
-  { name: '客服人員', hint: '只匯出指定客服發送的訊息' }
-]
-
 const current = computed(() => formats.find(f => f.id === selectedFormat.value) ?? formats[0])
 const selectedRows = computed(() => current.value?.rows ?? [])
 const selectedUnit = computed(() => current.value?.unit ?? '')
 const selectedName = computed(() => current.value?.name ?? '')
-
-function openExportDialog() {
-  showExportDialog.value = true
-}
+const shape = computed(() => current.value?.shape ?? '')
+const fileName = computed(() => `chat_export_${new Date().toISOString().slice(0, 10)}.${selectedFormat.value}`)
 
 function selectFormat(format: FormatId) {
   selectedFormat.value = format
+}
+
+// --- scope filters (the same ones the conversation list export offers) ---
+const filters = reactive({ dateFrom: '', dateTo: '', customerId: '', agentId: '' })
+const customers = ref<ExportCustomerOption[]>([])
+const agents = ref<ExportAgentOption[]>([])
+const count = ref<ExportCountResult | null>(null)
+const exporting = ref(false)
+const { showSuccess, showError } = useToast()
+
+/** Date inputs are whole days: the range runs from 00:00 of the first day to the end of the last (local time) */
+function buildFilters(): ExportFilters {
+  return {
+    format: selectedFormat.value,
+    dateFrom: filters.dateFrom ? new Date(`${filters.dateFrom}T00:00:00`).toISOString() : undefined,
+    dateTo: filters.dateTo ? new Date(`${filters.dateTo}T23:59:59.999`).toISOString() : undefined,
+    customerId: filters.customerId || undefined,
+    agentId: filters.agentId || undefined
+  }
+}
+
+let countTimer: ReturnType<typeof setTimeout> | undefined
+let countToken = 0
+function refreshCount() {
+  clearTimeout(countTimer)
+  count.value = null
+  const mine = ++countToken
+  countTimer = setTimeout(async () => {
+    try {
+      const result = await getExportCount(buildFilters())
+      if (mine === countToken && result.success && result.data) { count.value = result.data }
+    } catch {
+      /* the count is a hint; the export itself still works */
+    }
+  }, 250)
+}
+watch(filters, refreshCount)
+
+onMounted(async () => {
+  refreshCount()
+  try {
+    const result = await getExportCustomers()
+    customers.value = result.success && result.data ? result.data : []
+  } catch { customers.value = [] }
+  try {
+    const result = await getExportAgents()
+    agents.value = result.success && result.data ? result.data : []
+  } catch { agents.value = [] }
+})
+
+async function runExport() {
+  if (exporting.value) { return }
+  if (filters.dateFrom && filters.dateTo && filters.dateFrom > filters.dateTo) {
+    showError('日期範圍不正確', '結束日期不能早於起始日期')
+    return
+  }
+  exporting.value = true
+  try {
+    let blob: Blob
+    if (selectedFormat.value === 'pdf') {
+      const data = await fetchExportData(buildFilters())
+      if (!data.success || !data.data) {
+        showError('匯出失敗', data.error || '無法取得匯出資料')
+        return
+      }
+      blob = await generatePdfExport(data.data, { title: '對話記錄匯出報告' })
+    } else {
+      const result = await exportMessages(buildFilters())
+      if (!result.success || !result.data) {
+        showError('匯出失敗', result.error || '無法匯出對話記錄')
+        return
+      }
+      blob = result.data
+    }
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = fileName.value
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    window.URL.revokeObjectURL(url)
+    showSuccess('匯出成功', '對話記錄已開始下載')
+  } catch {
+    showError('匯出失敗', '匯出過程中發生錯誤，請稍後再試')
+  } finally {
+    exporting.value = false
+  }
 }
 </script>
 
@@ -253,6 +439,12 @@ function selectFormat(format: FormatId) {
   grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
   gap: 20px;
   align-items: start;
+}
+
+.ex-left {
+  display: grid;
+  gap: 20px;
+  min-width: 0;
 }
 
 .ex-pick {
@@ -328,42 +520,69 @@ function selectFormat(format: FormatId) {
 
 .sheet-bar {
   display: flex;
+  flex-wrap: wrap;
   gap: 12px;
   justify-content: space-between;
-  padding: 20px 28px 14px;
+  padding: 22px 28px 14px;
 }
 
 .sheet-file {
+  margin: 0;
   font: 700 22px / 1.2 var(--ui-font-display);
   letter-spacing: -0.02em;
 }
 
-.sheet-unit {
-  align-self: center;
-  font-size: 13px;
+.sheet-name {
+  margin: 2px 0 0;
+  font: 500 13px var(--ui-font-mono);
   color: var(--ui-muted);
+}
+
+.sheet-unit {
+  align-self: start;
+  padding: 4px 12px;
+  white-space: nowrap;
+  border-radius: 999px;
+  background: var(--ui-fill);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ui-ink-2);
+}
+
+.sheet-shape {
+  display: block;
+  margin: 0 28px 8px;
+  padding: 12px 18px;
+  overflow-wrap: anywhere;
+  border-radius: var(--ui-r-inner);
+  background: var(--ui-surface-2);
+  font: 500 13px / 1.5 var(--ui-font-mono);
+  color: var(--ui-ink);
 }
 
 .sheet-rows {
   display: grid;
   margin: 0 28px;
-  padding: 4px 0;
-  border-radius: var(--ui-r-inner);
-  background: var(--ui-surface-2);
+  padding: 2px 0;
 }
 
 .sheet-row {
   display: grid;
-  grid-template-columns: minmax(120px, 190px) minmax(0, 1fr);
+  grid-template-columns: 170px minmax(0, 1fr);
   gap: 16px;
-  padding: 6px 18px;
+  padding: 7px 18px;
   font-size: 14px;
+  box-shadow: 0 -0.5px 0 var(--ui-sep);
+}
+
+.sheet-row:first-child {
+  box-shadow: none;
 }
 
 .sheet-row dt {
   min-width: 0;
   overflow-wrap: anywhere;
-  font: 600 13px / 1.5 var(--ui-font-mono);
+  font: 600 13px / 1.6 var(--ui-font-mono);
   color: var(--ui-ink);
 }
 
@@ -377,24 +596,32 @@ function selectFormat(format: FormatId) {
   color: var(--ui-ink-2);
 }
 
-.sheet-scope {
+.ex-scope {
+  padding-bottom: 22px;
+}
+
+.scope-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 16px;
+  padding: 4px 22px 0;
+}
+
+.sheet-facts {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px 24px;
-  padding: 20px 28px 4px;
+  margin: 0;
+  padding: 18px 28px 20px;
 }
 
-.scope-fact {
-  display: grid;
-  gap: 2px;
-}
-
-.scope-fact span {
+.sheet-facts dt {
   font-size: 13px;
   color: var(--ui-muted);
 }
 
-.scope-fact b {
+.sheet-facts dd {
+  margin: 2px 0 0;
   font-size: 14px;
   font-weight: 600;
 }
@@ -405,19 +632,20 @@ function selectFormat(format: FormatId) {
   gap: 12px 20px;
   align-items: center;
   justify-content: space-between;
-  margin-top: 18px;
   padding: 16px 28px 20px;
-  box-shadow: 0 -0.5px 0 var(--ui-sep);
+  background: var(--ui-surface-2);
 }
 
-.foot-filters {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  align-items: center;
+.foot-count {
   margin: 0;
-  font-size: 13px;
+  font-size: 14px;
   color: var(--ui-ink-2);
+}
+
+.foot-count b {
+  font: 700 22px var(--ui-font-display);
+  color: var(--ui-ink);
+  font-variant-numeric: tabular-nums;
 }
 
 .fmt-ico {
@@ -468,18 +696,29 @@ function selectFormat(format: FormatId) {
   display: none;
 }
 
+.bar-count {
+  flex: 1;
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ui-ink-2);
+}
+
 @media (max-width: 1024px) {
   .ex-grid {
     grid-template-columns: minmax(0, 1fr);
   }
+
+  .ex-left {
+    display: contents;
+  }
+
+  .ex-sheet {
+    order: 1;
+  }
 }
 
 @media (max-width: 768px) {
-  .lead-cta,
-  .foot-filters {
-    display: none;
-  }
-
   .sheet-foot {
     display: none;
   }
@@ -488,31 +727,36 @@ function selectFormat(format: FormatId) {
     padding: 18px 20px 12px;
   }
 
+  .sheet-shape {
+    margin: 0 20px 8px;
+  }
+
   .sheet-rows {
     margin: 0 20px;
   }
 
   .sheet-row {
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: 124px minmax(0, 1fr);
     gap: 12px;
-    padding: 6px 14px;
+    padding: 7px 14px;
   }
 
-  .sheet-row dd {
-    text-align: right;
+  .sheet-row dt {
+    font-size: 12px;
   }
 
-  .sheet-row dd.is-wide {
-    text-align: left;
+  .scope-grid {
+    padding: 4px 16px 0;
   }
 
-  .sheet-scope {
+  .sheet-facts {
     grid-template-columns: minmax(0, 1fr);
     gap: 8px;
     padding: 16px 20px 20px;
   }
 
-  .scope-fact {
+  .sheet-facts > div {
+    display: grid;
     grid-template-columns: 80px minmax(0, 1fr);
     align-items: baseline;
   }
@@ -521,13 +765,5 @@ function selectFormat(format: FormatId) {
     display: flex;
   }
 
-  /* Short page: the bar rides the bottom of the viewport rather than floating under the cards */
-  .data-export {
-    min-height: calc(100dvh - 120px);
-  }
-
-  .export-actions {
-    margin-top: auto;
-  }
 }
 </style>
