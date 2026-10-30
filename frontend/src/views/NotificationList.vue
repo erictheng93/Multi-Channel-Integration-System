@@ -21,95 +21,193 @@
         @open-settings="showSettings = true"
       />
 
-      <!-- Filters Section -->
-      <NotificationFilters
-        v-model:selected-type="filters.selectedType.value"
-        v-model:selected-priority="filters.selectedPriority.value"
-        v-model:selected-read-status="filters.selectedReadStatus.value"
-        :has-active-filters="filters.hasActiveFilters.value"
-        :notification-types="filters.notificationTypes"
-        :priorities="filters.priorities"
-        :counts="stats ? { total: stats.total, unread: stats.unread } : null"
-        @apply-filters="filters.applyFilters"
-        @clear-filters="filters.clearFilters"
-      />
+      <div class="notif-grid">
+        <div class="notif-main ui-card">
+          <NotificationFilters
+            v-model:selected-type="filters.selectedType.value"
+            v-model:selected-priority="filters.selectedPriority.value"
+            v-model:selected-read-status="filters.selectedReadStatus.value"
+            :has-active-filters="filters.hasActiveFilters.value"
+            :notification-types="filters.notificationTypes"
+            :priorities="filters.priorities"
+            :counts="stats ? { total: stats.total, unread: stats.unread } : null"
+            @apply-filters="filters.applyFilters"
+            @clear-filters="filters.clearFilters"
+          />
 
-      <!-- Notifications List -->
-      <section
-        class="notifications-section ui-card"
-        role="region"
-        aria-label="通知列表"
-        aria-live="polite"
-        :aria-busy="loading"
-      >
-        <!-- Loading State -->
-        <div
-          v-if="loading && notifications.length === 0"
-          class="loading-state"
-          role="status"
-          aria-live="polite"
-        >
-          <LoadingSpinner size="lg" />
-          <p>載入通知中...</p>
-        </div>
-
-        <!-- Empty State -->
-        <NotificationEmptyState
-          v-else-if="notifications.length === 0"
-          :has-active-filters="filters.hasActiveFilters.value"
-          @clear-filters="filters.clearFilters"
-        />
-
-        <!-- Notifications grouped by day (Asia/Taipei) -->
-        <div
-          v-else
-          class="notifications-list"
-        >
-          <div
-            v-for="group in groups"
-            :key="group.key"
-            class="day-group"
+          <!-- Notifications List -->
+          <section
+            class="notifications-section"
+            role="region"
+            aria-label="通知列表"
+            aria-live="polite"
+            :aria-busy="loading"
           >
-            <h2 class="day-label">
-              {{ group.label }}
-            </h2>
-            <TransitionGroup name="notification-list">
-              <NotificationCard
-                v-for="item in group.items"
-                :key="item.notification.id"
-                :notification="item.notification"
-                :index="item.index"
-                :is-focused="keyboard.focusedNotificationIndex.value === item.index"
-                @click="actions.handleNotificationClick"
-                @mark-read="actions.handleMarkRead"
-                @delete="actions.handleDelete"
-                @set-ref="keyboard.setNotificationRef"
-              />
-            </TransitionGroup>
-          </div>
-
-          <!-- Load More -->
-          <div
-            v-if="canLoadMore"
-            class="load-more-section"
-          >
-            <button
-              class="btn btn-secondary btn-sm"
-              :disabled="loadingMore"
-              @click="actions.handleLoadMore"
+            <!-- Loading State -->
+            <div
+              v-if="loading && notifications.length === 0"
+              class="loading-state"
+              role="status"
+              aria-live="polite"
             >
-              <LoadingSpinner
-                v-if="loadingMore"
-                size="sm"
-              />
-              <span v-else>載入更多</span>
-            </button>
-            <p class="load-more-info">
-              已顯示 {{ notifications.length }} / {{ pagination.total }} 則通知
-            </p>
-          </div>
+              <LoadingSpinner size="lg" />
+              <p>載入通知中...</p>
+            </div>
+
+            <!-- Empty State -->
+            <NotificationEmptyState
+              v-else-if="notifications.length === 0"
+              :has-active-filters="filters.hasActiveFilters.value"
+              @clear-filters="filters.clearFilters"
+            />
+
+            <!-- Notifications grouped by day (Asia/Taipei) -->
+            <div
+              v-else
+              class="notifications-list"
+            >
+              <div
+                v-for="group in groups"
+                :key="group.key"
+                class="day-group"
+              >
+                <h2 class="day-label">
+                  {{ group.label }}
+                </h2>
+                <TransitionGroup name="notification-list">
+                  <NotificationCard
+                    v-for="item in group.items"
+                    :key="item.notification.id"
+                    :notification="item.notification"
+                    :index="item.index"
+                    :is-focused="keyboard.focusedNotificationIndex.value === item.index"
+                    @click="actions.handleNotificationClick"
+                    @mark-read="actions.handleMarkRead"
+                    @delete="actions.handleDelete"
+                    @set-ref="keyboard.setNotificationRef"
+                  />
+                </TransitionGroup>
+              </div>
+
+              <!-- Load More -->
+              <div
+                v-if="canLoadMore"
+                class="load-more-section"
+              >
+                <button
+                  class="btn btn-secondary btn-sm"
+                  :disabled="loadingMore"
+                  @click="actions.handleLoadMore"
+                >
+                  <LoadingSpinner
+                    v-if="loadingMore"
+                    size="sm"
+                  />
+                  <span v-else>載入更多</span>
+                </button>
+                <p class="load-more-info">
+                  已顯示 {{ notifications.length }} / {{ pagination.total }} 則通知
+                </p>
+              </div>
+            </div>
+          </section>
         </div>
-      </section>
+
+        <!-- Rail (wide screens): what is in the inbox, by priority and by period. Real counts from /notifications/stats. -->
+        <aside
+          v-if="stats"
+          class="notif-rail"
+          aria-label="通知概況"
+        >
+          <section aria-labelledby="rail-prio">
+            <h2
+              id="rail-prio"
+              class="ui-group-label"
+            >
+              依優先級
+            </h2>
+            <div class="ui-group">
+              <button
+                v-for="row in priorityRows"
+                :key="row.value"
+                type="button"
+                class="ui-row rail-row"
+                :class="{ 'is-selected': filters.selectedPriority.value === row.value }"
+                :aria-pressed="filters.selectedPriority.value === row.value"
+                @click="togglePriority(row.value)"
+              >
+                <span
+                  class="rail-dot"
+                  :class="`is-${row.value}`"
+                  aria-hidden="true"
+                />
+                <span class="ui-row-main rail-name">{{ row.label }}</span>
+                <span
+                  v-if="row.unread > 0"
+                  class="rail-unread"
+                >{{ row.unread }} 未讀</span>
+                <span class="rail-total">{{ row.total }}</span>
+              </button>
+            </div>
+            <p class="ui-group-foot">
+              點一下即可只看該優先級。
+            </p>
+          </section>
+
+          <section
+            v-if="typeRows.length > 0"
+            aria-labelledby="rail-type"
+          >
+            <h2
+              id="rail-type"
+              class="ui-group-label"
+            >
+              依類型
+            </h2>
+            <div class="ui-group">
+              <button
+                v-for="row in typeRows"
+                :key="row.value"
+                type="button"
+                class="ui-row rail-row rail-row-sm"
+                :class="{ 'is-selected': filters.selectedType.value === row.value }"
+                :aria-pressed="filters.selectedType.value === row.value"
+                @click="toggleType(row.value)"
+              >
+                <span class="ui-row-main rail-name">{{ row.label }}</span>
+                <span
+                  v-if="row.unread > 0"
+                  class="rail-unread"
+                >{{ row.unread }} 未讀</span>
+                <span class="rail-total">{{ row.total }}</span>
+              </button>
+            </div>
+          </section>
+
+          <section aria-labelledby="rail-time">
+            <h2
+              id="rail-time"
+              class="ui-group-label"
+            >
+              收到的通知
+            </h2>
+            <dl class="ui-card rail-time">
+              <div>
+                <dt>今天</dt>
+                <dd>{{ stats.timeRange?.today ?? 0 }}</dd>
+              </div>
+              <div>
+                <dt>本週</dt>
+                <dd>{{ stats.timeRange?.thisWeek ?? 0 }}</dd>
+              </div>
+              <div>
+                <dt>本月</dt>
+                <dd>{{ stats.timeRange?.thisMonth ?? 0 }}</dd>
+              </div>
+            </dl>
+          </section>
+        </aside>
+      </div>
 
       <!-- Settings Modal -->
       <NotificationSettingsModal
@@ -156,6 +254,44 @@ const {
   settings,
   keyboard
 } = controller
+
+// ==================== Rail ====================
+
+const PRIORITY_ROWS = [
+  { value: 'urgent', label: '緊急' },
+  { value: 'high', label: '高' },
+  { value: 'normal', label: '一般' },
+  { value: 'low', label: '低' }
+] as const
+
+const priorityRows = computed(() =>
+  PRIORITY_ROWS.map((row) => ({
+    ...row,
+    total: stats.value?.byPriority?.[row.value]?.total ?? 0,
+    unread: stats.value?.byPriority?.[row.value]?.unread ?? 0
+  })).filter((row) => row.total > 0)
+)
+
+const typeRows = computed(() =>
+  filters.notificationTypes
+    .map((t) => ({
+      ...t,
+      total: stats.value?.byType?.[t.value as keyof NonNullable<typeof stats.value>['byType']]?.total ?? 0,
+      unread: stats.value?.byType?.[t.value as keyof NonNullable<typeof stats.value>['byType']]?.unread ?? 0
+    }))
+    .filter((row) => row.total > 0)
+    .sort((a, b) => b.total - a.total)
+)
+
+function toggleType(value: string): void {
+  filters.selectedType.value = (filters.selectedType.value === value ? '' : value) as typeof filters.selectedType.value
+  filters.applyFilters()
+}
+
+function togglePriority(value: string): void {
+  filters.selectedPriority.value = (filters.selectedPriority.value === value ? '' : value) as typeof filters.selectedPriority.value
+  filters.applyFilters()
+}
 
 // ==================== Day grouping ====================
 
@@ -207,9 +343,134 @@ onUnmounted(() => {
 
 <style scoped>
 
+/* Inbox (left) + overview rail (right, wide screens only) */
+.notif-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 20px;
+  align-items: start;
+}
+
+.notif-main {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.notif-rail .ui-group {
+  --row-inset: 18px;
+}
+
+.notif-rail {
+  display: grid;
+  gap: 20px;
+  min-width: 0;
+}
+
+.rail-row {
+  width: 100%;
+  min-height: 52px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.rail-row:focus-visible {
+  outline: 2px solid var(--ui-accent);
+  outline-offset: -2px;
+}
+
+.rail-row-sm {
+  min-height: 44px;
+}
+
+.rail-dot {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--ui-faint);
+}
+
+.rail-dot.is-urgent {
+  background: var(--ui-red);
+}
+
+.rail-dot.is-high {
+  background: var(--ui-orange);
+}
+
+.rail-dot.is-normal {
+  background: var(--ui-blue);
+}
+
+.rail-name {
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.rail-unread {
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: var(--ui-accent-soft);
+  color: var(--ui-accent);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.rail-total {
+  min-width: 2ch;
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ui-ink-2);
+  text-align: right;
+}
+
+.rail-time {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: 0;
+  padding: 18px 8px;
+}
+
+.rail-time > div {
+  display: grid;
+  gap: 4px;
+  padding: 0 14px;
+}
+
+.rail-time > div + div {
+  box-shadow: inset 0.5px 0 0 var(--ui-sep);
+}
+
+.rail-time dt {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ui-muted);
+}
+
+.rail-time dd {
+  margin: 0;
+  font: 600 28px / 1.1 var(--ui-font-display);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  color: var(--ui-ink);
+}
+
 .notifications-section {
   min-height: 240px;
-  overflow: hidden;
+}
+
+@media (max-width: 1024px) {
+  .notif-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .notif-rail {
+    display: none;
+  }
 }
 
 .loading-state {
