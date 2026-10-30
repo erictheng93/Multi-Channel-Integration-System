@@ -2,35 +2,42 @@
   <aside class="preview-section">
     <section class="ui-lead preview-card">
       <div class="lead-head">
-        <h3 class="lead-title">
+        <p class="lead-kicker">
           即將產生
+        </p>
+        <h3
+          class="lead-title"
+          :class="{ 'is-empty': !reportType }"
+        >
+          {{ reportType ? reportTypeLabel : '尚未選擇類型' }}
         </h3>
-        <p class="lead-sub">
-          依目前設定，必填項目填完即可產生
+        <p
+          class="lead-sub"
+          :class="{ 'is-empty': !title.trim() }"
+        >
+          {{ title.trim() || '尚未輸入標題' }}
         </p>
       </div>
-      <p
-        v-if="missing.length > 0"
+
+      <ul
         class="need"
-        role="status"
+        aria-label="必填項目"
       >
-        還需要：{{ missing.join('、') }}
-      </p>
+        <li :class="{ done: !!reportType }">
+          <span
+            class="tick"
+            aria-hidden="true"
+          />報表類型
+        </li>
+        <li :class="{ done: !!title.trim() }">
+          <span
+            class="tick"
+            aria-hidden="true"
+          />報表標題
+        </li>
+      </ul>
+
       <dl class="kv">
-        <div
-          v-if="reportType"
-          class="kv-row"
-        >
-          <dt>報表類型</dt>
-          <dd>{{ reportTypeLabel }}</dd>
-        </div>
-        <div
-          v-if="title.trim()"
-          class="kv-row"
-        >
-          <dt>標題</dt>
-          <dd>{{ title }}</dd>
-        </div>
         <div
           v-if="timeRange"
           class="kv-row"
@@ -54,6 +61,23 @@
           <dd>{{ options.maxRecords.toLocaleString('en-US') }}</dd>
         </div>
       </dl>
+
+      <div
+        v-if="includes.length"
+        class="inc"
+      >
+        <h4 class="inc-h">
+          報表會包含
+        </h4>
+        <ul class="inc-list">
+          <li
+            v-for="item in includes"
+            :key="item.label"
+          >
+            {{ item.label }}
+          </li>
+        </ul>
+      </div>
       <slot name="action" />
     </section>
 
@@ -120,6 +144,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import ReportsAPI from '@/api/reports';
+import { REPORT_CONTENTS } from './templates/templateHelpers';
 import type {
   ReportType,
   ReportFormat,
@@ -145,13 +170,8 @@ defineEmits<{
   'view-report': [reportId: string];
 }>();
 
-// What the primary action still needs; shown as one line instead of a column of empty rows
-const missing = computed(() => [
-  !props.reportType && '報表類型',
-  !props.title.trim() && '標題'
-].filter((item): item is string => !!item));
-
-// Required fields done / required: the same two the "還需要" line names
+// What the report will contain: the generator's own field labels for the chosen type
+const includes = computed(() => (props.reportType ? REPORT_CONTENTS[props.reportType] ?? [] : []));
 
 const contentLabel = computed(() => {
   const o = props.options;
@@ -203,67 +223,101 @@ const formatDate = (dateString: string): string => {
 }
 
 .preview-card {
-  padding: 22px 0 0;
+  padding: 24px 0 0;
 }
 
 .lead-head {
-  padding: 0 24px 12px;
+  padding: 0 24px 14px;
 }
 
-.lead-title {
+.lead-kicker {
   margin: 0;
-  font: 700 20px / 1.2 var(--ui-font-display);
-  letter-spacing: -0.02em;
-}
-
-.lead-sub {
-  margin: 2px 0 0;
   font-size: 13px;
+  font-weight: 600;
   color: var(--ui-muted);
 }
 
-.need {
-  margin: 0 22px 4px;
-  padding: 10px 14px;
-  border-radius: var(--ui-r-inner);
-  background: var(--ui-surface-2);
-  box-shadow: inset 0 0 0 1px var(--ui-sep);
-  font-size: 13.5px;
-  font-weight: 600;
-  color: var(--ui-ink);
+.lead-title {
+  margin: 2px 0 0;
+  font: 700 24px / 1.2 var(--ui-font-display);
+  letter-spacing: -0.025em;
 }
 
-.need::before {
-  display: inline-block;
-  width: 8px;
-  height: 8px;
-  margin-right: 8px;
+.lead-title.is-empty,
+.lead-sub.is-empty {
+  color: var(--ui-muted);
+}
+
+.lead-title.is-empty {
+  font-weight: 600;
+}
+
+.lead-sub {
+  margin: 4px 0 0;
+  overflow-wrap: anywhere;
+  font-size: 14px;
+  color: var(--ui-ink-2);
+}
+
+.need {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  margin: 0;
+  padding: 0 24px 14px;
+  list-style: none;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ui-ink-2);
+}
+
+.need li {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.tick {
+  display: grid;
+  width: 16px;
+  height: 16px;
+  place-items: center;
   border-radius: 50%;
-  background: var(--ui-orange);
+  box-shadow: inset 0 0 0 1.5px var(--ui-muted);
+}
+
+.need .done .tick {
+  background: var(--ui-green);
+  box-shadow: none;
+}
+
+.need .done .tick::after {
+  width: 8px;
+  height: 4px;
+  margin-top: -2px;
+  border-bottom: 2px solid #fff;
+  border-left: 2px solid #fff;
+  transform: rotate(-45deg);
   content: '';
 }
 
 .kv {
   margin: 0;
-  padding: 0 22px;
+  padding: 0 24px;
 }
 
 .kv-row {
   display: flex;
   justify-content: space-between;
   gap: 16px;
-  padding: 12px 0;
-  font-size: 13.5px;
-  box-shadow: 0 0.5px 0 var(--ui-sep);
-}
-
-.kv-row:last-child {
-  box-shadow: none;
+  padding: 11px 0;
+  font-size: 14px;
+  box-shadow: 0 -0.5px 0 var(--ui-sep);
 }
 
 .kv-row dt {
   flex: none;
-  color: var(--ui-muted);
+  color: var(--ui-ink-2);
 }
 
 .kv-row dd {
@@ -274,9 +328,33 @@ const formatDate = (dateString: string): string => {
   text-align: right;
 }
 
-.kv-row dd.is-empty {
-  font-weight: 400;
-  color: var(--ui-muted);
+.inc {
+  padding: 12px 24px 4px;
+  box-shadow: 0 -0.5px 0 var(--ui-sep);
+}
+
+.inc-h {
+  margin: 0 0 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ui-ink-2);
+}
+
+.inc-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.inc-list li {
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--ui-fill);
+  font-size: 13px;
+  color: var(--ui-ink-2);
 }
 
 .progress-content {
@@ -384,5 +462,11 @@ const formatDate = (dateString: string): string => {
 .recent-meta {
   font-size: 13px;
   color: var(--ui-muted);
+}
+
+@media (max-width: 768px) {
+  .recent-list li:nth-child(n + 4) {
+    display: none;
+  }
 }
 </style>
