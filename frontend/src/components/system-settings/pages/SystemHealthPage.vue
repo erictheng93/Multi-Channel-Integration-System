@@ -24,7 +24,18 @@
         <span
           v-if="mixed"
           class="ui-pill ui-pill-orange hl-badge"
-        >{{ counts.unchecked }} 項未檢查</span>
+        >{{ counts.unchecked }} 項待檢查</span>
+        <ul
+          v-if="rows.length > 0"
+          class="hl-seg"
+          aria-hidden="true"
+        >
+          <li
+            v-for="row in rows"
+            :key="row.key"
+            :class="row.tone"
+          />
+        </ul>
         <p class="hl-meaning">
           {{ heroSubtitle }}
         </p>
@@ -99,9 +110,9 @@
             aria-hidden="true"
           >
             <span class="hscale-ruler">
-              <span>0</span>
-              <span>{{ latencyScale / 2 }}</span>
-              <span>{{ latencyScale }} ms</span>
+              <span class="t0">0</span>
+              <span class="t1">{{ latencyScale / 2 }}</span>
+              <span class="t2">{{ latencyScale }} ms</span>
             </span>
           </li>
           <li
@@ -169,7 +180,7 @@
             <button
               v-if="row.key === 'lineWebhook' && row.label === '未檢查'"
               type="button"
-              class="btn btn-secondary btn-sm hrow-test"
+              class="btn btn-primary btn-sm hrow-test"
               @click="!controller.processing.value && controller.healthCheck(true)"
             >
               立即測試
@@ -357,7 +368,7 @@ const heroValue = computed<string | null>(() => {
     return '降級'
   }
   if (mixed.value) {
-    return `${counts.value.healthy} / ${rows.value.length} 正常`
+    return `${counts.value.healthy} 項正常`
   }
   return overallTone.value === 'ok' ? '正常' : null
 })
@@ -485,6 +496,36 @@ onMounted(() => {
 .hl-big.mixed {
   font-size: 46px;
   color: var(--ui-ink);
+}
+
+/* one segment per service: the whole system as a strip you read at a glance */
+.hl-seg {
+  display: flex;
+  gap: 5px;
+  max-width: 340px;
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.hl-seg li {
+  flex: 1;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--ui-green);
+}
+
+.hl-seg li.warn {
+  background: var(--ui-orange);
+}
+
+.hl-seg li.bad {
+  background: var(--ui-red);
+}
+
+.hl-seg li.unknown {
+  background: none;
+  box-shadow: inset 0 0 0 1.5px var(--ui-orange);
 }
 
 .hl-badge {
@@ -636,7 +677,7 @@ onMounted(() => {
   display: block;
   flex: 1;
   min-width: 0;
-  height: 10px;
+  height: 12px;
   overflow: hidden;
   border-radius: 999px;
   /* ruler: faint ticks at each quarter of the scale */
@@ -734,10 +775,29 @@ onMounted(() => {
 }
 
 .hscale-ruler {
-  display: flex;
+  position: relative;
   flex: 1;
-  justify-content: space-between;
+  height: 16px;
   min-width: 0;
+}
+
+.hscale-ruler span {
+  position: absolute;
+  top: 0;
+  white-space: nowrap;
+}
+
+.hscale-ruler .t0 {
+  left: 0;
+}
+
+.hscale-ruler .t1 {
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.hscale-ruler .t2 {
+  right: 0;
 }
 
 .hscale::after {
@@ -745,30 +805,19 @@ onMounted(() => {
   flex: 0 0 calc(64px + 14px + 62px);
 }
 
-/* the unchecked service is the one that needs a press: tint the whole row and its button */
-.hrow.is-unchecked {
-  margin: 6px 10px 0;
-  padding-right: 12px;
-  padding-left: 12px;
-  border-radius: 16px;
-  background: var(--ui-accent-soft);
-  box-shadow: none;
-}
-
-.hrow.is-unchecked::before,
-.hrow.is-unchecked::after {
-  display: none;
-}
-
+/* the unchecked service keeps the grid: a dashed empty track and a filled button say "needs a press" */
 .hrow.is-unchecked .hstat {
-  background: var(--ui-surface);
+  background: var(--ui-accent-soft);
   color: var(--ui-accent);
+}
+
+.hrow.is-unchecked .lat-bar:empty {
+  background: none;
+  box-shadow: inset 0 0 0 1.5px var(--ui-fill-strong);
 }
 
 .hrow .hrow-test {
-  background: var(--ui-surface);
   font-weight: 600;
-  color: var(--ui-accent);
 }
 
 .hnote-ico {
