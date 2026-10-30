@@ -36,49 +36,63 @@
         :loading="overviewLoading"
       />
 
-      <!-- Filter Pills -->
-      <ActivityFilterPills
-        :filters="filters"
-        :date-range="dateRange"
-        :custom-date-range="customDateRange"
-        :users="users"
-        :summary="rangeSummary"
-        @update:filters="onFiltersUpdate"
-        @update:date-range="dateRange = $event"
-        @update:custom-date-range="Object.assign(customDateRange, $event)"
-        @clear="clearFilters"
-        @apply="applyFilters"
-      />
+      <div
+        class="al-grid"
+        :class="{ 'has-aside': showInsights }"
+      >
+        <div class="al-main">
+          <!-- Filter Pills -->
+          <ActivityFilterPills
+            :filters="filters"
+            :date-range="dateRange"
+            :custom-date-range="customDateRange"
+            :users="users"
+            :summary="rangeSummary"
+            @update:filters="onFiltersUpdate"
+            @update:date-range="dateRange = $event"
+            @update:custom-date-range="Object.assign(customDateRange, $event)"
+            @clear="clearFilters"
+            @apply="applyFilters"
+          />
 
-      <!-- Loading State -->
-      <ActivityEmptyState
-        v-if="loading"
-        variant="loading"
-      />
+          <!-- Loading State -->
+          <ActivityEmptyState
+            v-if="loading"
+            variant="loading"
+          />
 
-      <!-- Timeline -->
-      <ActivityTimeline
-        v-else-if="activities.length > 0"
-        :activities="activities"
-        @restored="onActivityRestored"
-      />
+          <!-- Timeline -->
+          <ActivityTimeline
+            v-else-if="activities.length > 0"
+            :activities="activities"
+            @restored="onActivityRestored"
+          />
 
-      <!-- Empty State -->
-      <ActivityEmptyState
-        v-else
-        variant="empty"
-      />
+          <!-- Empty State -->
+          <ActivityEmptyState
+            v-else
+            variant="empty"
+          />
 
-      <!-- Pagination (only when we have activities) -->
-      <ActivityPagination
-        v-if="!loading && activities.length > 0"
-        :current-page="currentPage"
-        :total-pages="totalPages"
-        :total-records="totalRecords"
-        :loading="loading"
-        class="activity-log__pagination"
-        @page-change="loadPage"
-      />
+          <!-- Pagination (only when we have activities) -->
+          <ActivityPagination
+            v-if="!loading && activities.length > 0"
+            :current-page="currentPage"
+            :total-pages="totalPages"
+            :total-records="totalRecords"
+            :loading="loading"
+            class="activity-log__pagination"
+            @page-change="loadPage"
+          />
+        </div>
+        <ActivityInsights
+          v-if="showInsights"
+          class="al-aside"
+          :overview="overview"
+          :active-action="filters.action"
+          @filter-action="onInsightAction"
+        />
+      </div>
 
       <!-- Error Toast -->
       <div
@@ -104,6 +118,7 @@ import { useWebSocketStore } from '@/stores/websocket'
 import type { WebSocketMessage } from '@/services/websocketClient'
 
 import AppLayout from '@/components/ui/AppLayout.vue'
+import ActivityInsights from '@/components/activity/ActivityInsights.vue'
 import ActivityStatsCards from '@/components/activity/ActivityStatsCards.vue'
 import ActivityFilterPills from '@/components/activity/ActivityFilterPills.vue'
 import ActivityTimeline from '@/components/activity/ActivityTimeline.vue'
@@ -155,6 +170,7 @@ const activitySubscriptionId = ref<string | null>(null)
 
 // --- Computed ---
 const isAdmin = computed(() => authStore.currentAgent?.role === ROLES.ADMIN)
+const showInsights = computed(() => isAdmin.value && !!overview.value && (Object.keys(overview.value.actionStats).length > 0 || overview.value.topUsers.length > 0))
 const currentPage = computed(() => pagination.value?.page || 1)
 
 /** Page header sentence from loaded data only (overview for admins, list total otherwise). */
@@ -315,6 +331,11 @@ const onFiltersUpdate = (updated: typeof filters) => {
   Object.assign(filters, updated)
 }
 
+const onInsightAction = (action: string) => {
+  filters.action = action
+  applyFilters()
+}
+
 const applyFilters = () => {
   pagination.value.page = 1
   loadActivities(1)
@@ -414,6 +435,39 @@ onUnmounted(() => {
   background: var(--ui-red-soft);
   font-size: 14px;
   color: var(--ui-red-ink);
+}
+
+/* The log beside a rail of what the period was made of; the rail sits level with the filters */
+.al-grid {
+  display: grid;
+  gap: 20px;
+  align-items: start;
+  min-width: 0;
+}
+
+.al-grid.has-aside {
+  grid-template-columns: minmax(0, 1fr) 300px;
+}
+
+.al-main {
+  display: grid;
+  gap: 20px;
+  min-width: 0;
+}
+
+.al-aside {
+  position: sticky;
+  top: 20px;
+}
+
+@media (max-width: 1024px) {
+  .al-grid.has-aside {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .al-aside {
+    display: none;
+  }
 }
 
 @media (max-width: 768px) {

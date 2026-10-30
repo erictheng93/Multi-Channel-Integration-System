@@ -9,11 +9,15 @@
   <div class="line-page">
     <RingLead
       class="lead"
-      kicker="LINE 官方帳號"
+      kicker="連線狀態"
       :value="statusLabel"
-      :tone="statusTone"
       :meaning="testMeta"
     >
+      <span
+        v-if="lastTest"
+        class="ui-pill ui-pill-dot lead-pill"
+        :class="lastTest.status === 'success' ? 'ui-pill-green' : 'ui-pill-red'"
+      >{{ lastTest.status === 'success' ? '測試成功' : '測試失敗' }}</span>
       <p
         v-if="lastTest && lastTest.status === 'error' && lastTest.message"
         class="lead-error"
@@ -92,11 +96,6 @@ const statusLabel = computed(() => {
   return line.value.status === 'error' ? '連線異常' : '未連線'
 })
 
-const statusTone = computed(() => {
-  if (line.value.status === 'connected') { return 'good' }
-  return line.value.status === 'error' ? 'bad' : 'none'
-})
-
 const TAIPEI = 'Asia/Taipei'
 
 function dayKey(date: Date): string {
@@ -115,8 +114,7 @@ function formatTestedAt(iso: string): string {
 const testMeta = computed(() => {
   const test = lastTest.value
   if (!test) { return '尚未測試連線' }
-  const result = test.status === 'success' ? '上次測試' : '上次測試失敗'
-  return `${result} ${formatTestedAt(test.testedAt)} · 回應 ${test.latencyMs.toLocaleString()} ms`
+  return `${formatTestedAt(test.testedAt)} · 回應 ${test.latencyMs.toLocaleString()} ms`
 })
 
 </script>
@@ -132,6 +130,10 @@ const testMeta = computed(() => {
 
 .lead {
   grid-column: 1 / -1;
+}
+
+.lead-pill {
+  margin-top: 12px;
 }
 
 .lead-error {

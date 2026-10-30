@@ -37,6 +37,10 @@ vi.mock('@/components/icons', () => ({
   CogIcon: { template: '<svg />', props: ['size'] },
   UserPlusIcon: { template: '<svg />', props: ['size'] },
   UserIcon: { template: '<svg />', props: ['size'] },
+  TagIcon: { template: '<svg />', props: ['size'] },
+  TrashIcon: { template: '<svg />', props: ['size'] },
+  ClockIcon: { template: '<svg />', props: ['size'] },
+  SendIcon: { template: '<svg />', props: ['size'] },
   FileIcon: { template: '<svg />', props: ['size'] },
   DownloadIcon: { template: '<svg />', props: ['size'] },
 }))

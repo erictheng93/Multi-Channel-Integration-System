@@ -72,7 +72,7 @@ describe('System Settings Components', () => {
       expect(updates?.at(-1)?.[0]).toMatchObject({ systemName: 'Renamed' })
     })
 
-    it('should state the language as plain read-only text, not a control', () => {
+    it('should show the language as a locked single-option select', () => {
       const wrapper = mount(GeneralSettingsForm, {
         props: {
           settings: mockSettings,
@@ -80,9 +80,10 @@ describe('System Settings Components', () => {
         }
       })
 
-      expect(wrapper.find('#language').exists()).toBe(false)
       expect(wrapper.text()).toContain('介面語言')
-      expect(wrapper.find('.lang-value').text()).toBe('繁體中文')
+      const lang = wrapper.find('#language')
+      expect(lang.attributes('disabled')).toBeDefined()
+      expect(lang.text()).toBe('繁體中文')
     })
 
     it('should emit save event on form submit', async () => {
@@ -135,11 +136,10 @@ describe('System Settings Components', () => {
         }
       })
 
-      // A stored value is a state pill plus the last four characters, never an input
+      // A stored value is the last four characters (the row tile carries the state), never an input
       expect(wrapper.find('#lineChannelSecret').exists()).toBe(false)
       const states = wrapper.findAll('.cred-state')
       expect(states).toHaveLength(3)
-      expect(states[1]?.text()).toContain('已設定')
       expect(states[1]?.text()).toContain('••••1234')
     })
 
