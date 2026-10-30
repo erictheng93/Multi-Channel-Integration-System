@@ -73,6 +73,7 @@
               >
                 <h2 class="day-label">
                   {{ group.label }}
+                  <span class="day-count">{{ group.items.length }} 則</span>
                 </h2>
                 <TransitionGroup name="notification-list">
                   <NotificationCard
@@ -95,7 +96,7 @@
                 class="load-more-section"
               >
                 <button
-                  class="btn btn-secondary btn-sm"
+                  class="btn btn-secondary"
                   :disabled="loadingMore"
                   @click="actions.handleLoadMore"
                 >
@@ -143,14 +144,41 @@
                 <span
                   v-if="row.unread > 0"
                   class="rail-unread"
-                  :aria-label="`${row.unread} 則未讀`"
-                >{{ row.unread }}</span>
+                >{{ row.unread }} 未讀</span>
                 <span class="rail-total">{{ row.total }}</span>
               </button>
             </div>
-            <p class="ui-group-foot">
-              藍色數字是未讀，灰色是全部。點一下只看該類型。
-            </p>
+          </section>
+
+          <section
+            v-if="priorityRows.length > 0"
+            aria-labelledby="rail-priority"
+          >
+            <h2
+              id="rail-priority"
+              class="ui-group-label"
+            >
+              依優先級
+            </h2>
+            <div class="ui-group">
+              <button
+                v-for="row in priorityRows"
+                :key="row.value"
+                type="button"
+                class="ui-row rail-row rail-row-sm"
+                :class="{ 'is-selected': filters.selectedPriority.value === row.value }"
+                :aria-pressed="filters.selectedPriority.value === row.value"
+                @click="togglePriority(row.value)"
+              >
+                <span class="ui-row-main rail-name">{{ row.label }}</span>
+                <span
+                  v-if="row.unread > 0"
+                  class="rail-unread"
+                  :class="{ 'is-urgent': row.value === 'urgent' }"
+                >{{ row.unread }} 未讀</span>
+                <span class="rail-total">{{ row.total }}</span>
+              </button>
+            </div>
           </section>
 
           <section aria-labelledby="rail-time">
@@ -237,6 +265,21 @@ const typeRows = computed(() =>
     .sort((a, b) => b.total - a.total)
 )
 
+const priorityRows = computed(() =>
+  filters.priorities
+    .map((p) => ({
+      ...p,
+      total: stats.value?.byPriority?.[p.value as 'low' | 'normal' | 'high' | 'urgent']?.total ?? 0,
+      unread: stats.value?.byPriority?.[p.value as 'low' | 'normal' | 'high' | 'urgent']?.unread ?? 0
+    }))
+    .filter((row) => row.total > 0)
+)
+
+function togglePriority(value: string): void {
+  filters.selectedPriority.value = (filters.selectedPriority.value === value ? '' : value) as typeof filters.selectedPriority.value
+  filters.applyFilters()
+}
+
 function toggleType(value: string): void {
   filters.selectedType.value = (filters.selectedType.value === value ? '' : value) as typeof filters.selectedType.value
   filters.applyFilters()
@@ -310,6 +353,8 @@ onUnmounted(() => {
 }
 
 .notif-rail {
+  position: sticky;
+  top: 16px;
   display: grid;
   gap: 20px;
   min-width: 0;
@@ -343,14 +388,18 @@ onUnmounted(() => {
 .rail-unread {
   display: inline-grid;
   place-items: center;
-  min-width: 22px;
   height: 22px;
-  padding: 0 7px;
+  padding: 0 9px;
   border-radius: 999px;
   background: var(--section-ink, var(--ui-accent));
   color: #fff;
   font: 600 12px var(--ui-font-display);
+  white-space: nowrap;
   font-variant-numeric: tabular-nums;
+}
+
+.rail-unread.is-urgent {
+  background: var(--ui-red-ink);
 }
 
 .rail-total {
@@ -425,11 +474,20 @@ onUnmounted(() => {
 }
 
 .day-label {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
   margin: 0;
-  padding: 16px 24px 6px;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--ui-ink-2);
+  padding: 18px 24px 6px;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ui-ink);
+}
+
+.day-count {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ui-muted);
 }
 
 /* A footer strip, not a lone pill in an empty card: the count on the left, the action on the right */
