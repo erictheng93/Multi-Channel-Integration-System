@@ -6,91 +6,129 @@
   >
     <div class="ui-page not-found-page">
       <section class="nf">
-        <div class="code-wrap">
-          <!-- The zero is a lost signal: a ring with a quiet echo inside. Decoration; the number is read as 404 -->
-          <div
-            class="code"
-            role="img"
-            aria-label="404"
-          >
-            <span aria-hidden="true">4</span>
-            <svg
-              class="zero"
-              viewBox="0 0 100 124"
-              aria-hidden="true"
-              focusable="false"
+        <div class="nf-lead ui-lead">
+          <div class="code-wrap">
+            <!-- The zero is a lost signal: a ring with a quiet echo inside. Decoration; the number is read as 404 -->
+            <div
+              class="code"
+              role="img"
+              aria-label="404"
             >
-              <ellipse
-                class="nf-ring r3"
-                cx="50"
-                cy="62"
-                rx="42"
-                ry="56"
-              />
-              <ellipse
-                class="nf-ring r2"
-                cx="50"
-                cy="62"
-                rx="24"
-                ry="33"
-              />
-              <circle
-                class="nf-dot"
-                cx="50"
-                cy="62"
-                r="7"
-              />
-            </svg>
-            <span aria-hidden="true">4</span>
+              <span aria-hidden="true">4</span>
+              <svg
+                class="zero"
+                viewBox="0 0 100 124"
+                aria-hidden="true"
+                focusable="false"
+              >
+                <ellipse
+                  class="nf-ring r3"
+                  cx="50"
+                  cy="62"
+                  rx="42"
+                  ry="56"
+                />
+                <ellipse
+                  class="nf-ring r2"
+                  cx="50"
+                  cy="62"
+                  rx="24"
+                  ry="33"
+                />
+                <circle
+                  class="nf-dot"
+                  cx="50"
+                  cy="62"
+                  r="7"
+                />
+              </svg>
+              <span aria-hidden="true">4</span>
+            </div>
           </div>
-        </div>
-        <h1 class="nf-title">
-          找不到這個頁面
-        </h1>
-        <p class="nf-reason">
-          可能原因：網址輸入有誤、頁面已被移除，或你沒有權限查看。
-        </p>
-        <div class="asked ui-well">
-          <span class="k">你開啟的網址</span>
-          <span
-            class="mono"
-            :title="route.fullPath"
-          >{{ route.fullPath }}</span>
-          <button
-            type="button"
-            class="copy"
-            :aria-label="copied ? '已複製網址' : '複製網址'"
-            @click="copyUrl"
-          >
-            <svg
-              v-if="!copied"
-              class="ico"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              aria-hidden="true"
-            ><rect
-              x="9"
-              y="9"
-              width="11"
-              height="11"
-              rx="2.5"
-            /><path d="M5 15V6.5A2.5 2.5 0 0 1 7.5 4H15" /></svg>
-            <svg
-              v-else
-              class="ico"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2.4"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              aria-hidden="true"
-            ><path d="m5 12.5 4.5 4.5L19 7" /></svg>
-          </button>
+          <h1 class="nf-title">
+            找不到這個頁面
+          </h1>
+          <p class="nf-reason">
+            可能原因：網址輸入有誤、頁面已被移除，或你沒有權限查看。
+          </p>
+          <div class="asked ui-well">
+            <span class="k">你開啟的網址</span>
+            <span
+              class="mono"
+              :title="route.fullPath"
+            >{{ route.fullPath }}</span>
+            <button
+              type="button"
+              class="copy"
+              :aria-label="copied ? '已複製網址' : '複製網址'"
+              @click="copyUrl"
+            >
+              <svg
+                v-if="!copied"
+                class="ico"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              ><rect
+                x="9"
+                y="9"
+                width="11"
+                height="11"
+                rx="2.5"
+              /><path d="M5 15V6.5A2.5 2.5 0 0 1 7.5 4H15" /></svg>
+              <svg
+                v-else
+                class="ico"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.4"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              ><path d="m5 12.5 4.5 4.5L19 7" /></svg>
+            </button>
+          </div>
+
+          <div class="nf-actions">
+            <button
+              type="button"
+              class="btn btn-secondary"
+              @click="goBack"
+            >
+              <svg
+                class="ico"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              ><path d="M19 12H5M11 6l-6 6 6 6" /></svg>
+              返回上頁
+            </button>
+            <router-link
+              :to="homePath"
+              class="btn btn-primary"
+            >
+              <svg
+                class="ico"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              ><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1Z" /></svg>
+              {{ isAuthenticated ? '回到儀表板' : '前往登入' }}
+            </router-link>
+          </div>
         </div>
 
         <div
@@ -140,42 +178,9 @@
               ><path d="m9 6 6 6-6 6" /></svg>
             </router-link>
           </div>
-        </div>
-
-        <div class="nf-actions">
-          <button
-            type="button"
-            class="btn btn-secondary"
-            @click="goBack"
-          >
-            <svg
-              class="ico"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              aria-hidden="true"
-            ><path d="M19 12H5M11 6l-6 6 6 6" /></svg>
-            返回上頁
-          </button>
-          <router-link
-            :to="homePath"
-            class="btn btn-primary"
-          >
-            <svg
-              class="ico"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              aria-hidden="true"
-            ><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1Z" /></svg>
-            {{ isAuthenticated ? '回到儀表板' : '前往登入' }}
-          </router-link>
+          <p class="list-note">
+            看不到想找的頁面？可能是你的帳號沒有權限，請聯絡管理員開通。
+          </p>
         </div>
       </section>
     </div>
@@ -295,13 +300,35 @@ const goBack = () => {
 }
 
 .nf {
+  display: grid;
+  gap: 20px;
+  align-items: center;
+  justify-items: center;
+  width: 100%;
+  max-width: 460px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+/* The lead object: the message and the way out in one white card */
+.nf-lead {
   display: flex;
   flex-direction: column;
   align-items: center;
   width: 100%;
-  max-width: 760px;
-  margin: 0 auto;
-  text-align: center;
+  padding: 28px 28px 28px;
+}
+
+/* Wide screens: the message card and the shortcut list sit side by side as one composed bento */
+@media (min-width: 1025px) {
+  .nf {
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+    max-width: 980px;
+  }
+
+  .nf-lead {
+    padding: 40px 40px 36px;
+  }
 }
 
 .code-wrap {
@@ -319,7 +346,7 @@ const goBack = () => {
   align-items: center;
   font: 500 132px / 1 var(--ui-font-display);
   letter-spacing: -0.05em;
-  color: var(--ui-ink);
+  color: var(--ui-ink-2);
 }
 
 /* The zero is drawn, sized in the numerals' own em so it follows the font size at every width */
@@ -381,11 +408,11 @@ const goBack = () => {
   display: flex;
   gap: 10px;
   align-items: center;
-  width: min(100%, 460px);
+  width: 100%;
   margin-top: 20px;
   padding: 12px 14px;
   font-size: 14px;
-  background: var(--ui-surface);
+  background: var(--ui-surface-2);
 }
 
 .asked .k {
@@ -432,9 +459,16 @@ const goBack = () => {
 
 /* Shortcuts: one inset-grouped list (iOS Settings), a row per destination */
 .list-wrap {
-  width: min(100%, 460px);
-  margin-top: 28px;
+  width: 100%;
   text-align: left;
+}
+
+.list-note {
+  margin: 12px 0 0;
+  padding: 0 16px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--ui-ink-2);
 }
 
 .list-label {
@@ -542,7 +576,7 @@ const goBack = () => {
 .nf-actions {
   display: flex;
   gap: 10px;
-  width: min(100%, 460px);
+  width: 100%;
   margin-top: 20px;
 }
 
