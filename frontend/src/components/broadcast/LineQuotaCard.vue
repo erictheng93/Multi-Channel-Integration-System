@@ -79,14 +79,16 @@
             </template>
 
             <div class="big-row">
-              <span
-                v-if="channel.used === null || !channel.limited || channel.limit === null"
-                class="figures"
-              >{{ figuresText(channel) }}</span>
-              <template v-else>
-                <span class="big">{{ channel.used.toLocaleString() }}</span>
-                <span class="of figures">{{ ` / ${channel.limit.toLocaleString()}` }}</span>
-                <span class="unit">則本月</span>
+              <template v-if="!hasLead(channel)">
+                <span
+                  v-if="channel.used === null || !channel.limited || channel.limit === null"
+                  class="figures"
+                >{{ figuresText(channel) }}</span>
+                <template v-else>
+                  <span class="big">{{ channel.used.toLocaleString() }}</span>
+                  <span class="of figures">{{ ` / ${channel.limit.toLocaleString()}` }}</span>
+                  <span class="unit">則本月</span>
+                </template>
               </template>
               <span class="rule">LINE 額度每月重置，以收件人計，每位每則算 1</span>
             </div>
@@ -117,7 +119,10 @@
                 />
               </div>
 
-              <dl class="stats">
+              <dl
+                v-if="pendingFor(channel) > 0"
+                class="stats"
+              >
                 <div class="stat">
                   <dt><i class="dot pend" />本次預計消耗</dt>
                   <dd>{{ pendingFor(channel) > 0 ? pendingFor(channel).toLocaleString() : '—' }}</dd>
@@ -131,6 +136,7 @@
                 </div>
               </dl>
               <p
+                v-if="isShort(channel) || !hasLead(channel) || (channel.usableRemaining ?? 1) <= 0"
                 class="remain"
                 :class="{ 'is-short': isShort(channel) }"
               >
@@ -242,8 +248,8 @@ function leadValue(channel: LineQuotaChannel): string {
 }
 
 /**
- * The quota as real shares of the monthly limit: still usable for broadcasts, already used,
- * kept back for agent replies. Only a channel with a cap and a reading gets rings.
+ * The quota as real shares of the monthly limit: already used and kept back for agent replies
+ * (the still-usable remainder is the lead number, so it is not drawn and counted twice). Only a channel with a cap and a reading gets rings.
  */
 function ringsFor(channel: LineQuotaChannel): ServiceRing[] {
   if (!channel.limit || channel.used === null) {
@@ -251,9 +257,6 @@ function ringsFor(channel: LineQuotaChannel): ServiceRing[] {
   }
   const level = tone(channel)
   const rings: ServiceRing[] = []
-  if (channel.usableRemaining !== null) {
-    rings.push({ label: '可用於群發', value: Math.max(channel.usableRemaining, 0), total: channel.limit, of: '則', hue: 'var(--ui-green)' })
-  }
   rings.push({
     label: '已使用',
     value: channel.used,

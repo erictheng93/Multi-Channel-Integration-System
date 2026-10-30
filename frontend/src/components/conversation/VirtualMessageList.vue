@@ -540,7 +540,7 @@ defineExpose({
 .date-separator-item {
   display: flex;
   justify-content: center;
-  padding: 1.25rem 0;
+  padding: 0.5rem 0;
   position: sticky;
   top: 0;
   z-index: 5;

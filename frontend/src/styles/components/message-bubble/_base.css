@@ -35,6 +35,15 @@
   position: relative;
 }
 
+/* The last bubble of a run carries the tail: the corner nearest its sender is tightened (iMessage grouping) */
+.message-incoming.is-group-end .message-content {
+  border-bottom-left-radius: 6px;
+}
+
+.message-outgoing.is-group-end .message-content {
+  border-bottom-right-radius: 6px;
+}
+
 .message-outgoing .message-content {
   background: var(--ui-accent);
   color: #fff;

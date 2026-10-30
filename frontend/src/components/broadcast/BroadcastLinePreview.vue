@@ -50,12 +50,22 @@
             :alt="`預覽圖片 ${index + 1}`"
           >
         </div>
-        <p
+        <div
           v-else
-          class="bubble bubble-empty"
+          class="thread skeleton"
+          aria-label="尚未輸入內容，下列為示意"
+          role="img"
         >
-          輸入文字或加入圖片後，會在這裡預覽
-        </p>
+          <div class="bubble sk-bubble">
+            <i style="width: 100%" />
+            <i style="width: 78%" />
+            <i style="width: 46%" />
+          </div>
+          <div class="pic sk-pic" />
+          <p class="sk-note">
+            輸入文字或加入圖片後，這裡會換成客戶實際看到的訊息
+          </p>
+        </div>
       </div>
     </div>
     <p class="disclaimer">
@@ -106,7 +116,7 @@ const order = computed(() => {
 
 .phone {
   display: flex;
-  flex: 1;
+  flex: none;
   flex-direction: column;
   width: min(100% - 44px, 300px);
   min-height: 300px;
@@ -175,12 +185,45 @@ const order = computed(() => {
   justify-items: start;
 }
 
-.bubble-empty {
-  margin: 0;
-  max-width: 78%;
-  border: 1.5px dashed rgba(60, 60, 67, 0.4);
-  background: transparent;
-  color: var(--ui-ink-2);
+/* Skeleton of the message the form will produce: a text bubble and a picture, shimmering softly */
+.sk-bubble {
+  display: grid;
+  gap: 8px;
+  width: 78%;
+  padding: 14px 16px;
+}
+
+.sk-bubble i {
+  display: block;
+  height: 9px;
+  border-radius: 999px;
+  background: #d9dee8;
+}
+
+.sk-pic {
+  background: #d9dee8;
+  opacity: 0.8;
+}
+
+.sk-note {
+  max-width: 88%;
+  margin: 10px 0 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #4c4c50;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .sk-bubble i,
+  .sk-pic {
+    animation: sk-pulse 1.8s ease-in-out infinite;
+  }
+}
+
+@keyframes sk-pulse {
+  50% {
+    opacity: 0.55;
+  }
 }
 
 .bubble {

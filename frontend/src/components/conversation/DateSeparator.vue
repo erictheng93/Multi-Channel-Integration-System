@@ -45,17 +45,20 @@ const formattedDate = computed(() => {
 </script>
 
 <style scoped>
-/* Quiet centered date label (no hard pill) */
+/* A small capsule that reads as a chapter break, not a floating word */
 .date-separator {
   display: flex;
   justify-content: center;
-  margin: 20px 0 12px;
+  margin: 12px 0 4px;
 }
 
 .date-label {
+  padding: 3px 12px;
+  border-radius: 999px;
+  background: var(--ui-fill);
   font-size: 13px;
-  font-weight: 600;
-  color: var(--ui-muted);
+  font-weight: 500;
+  color: var(--ui-ink-2);
   white-space: nowrap;
 }
 </style>

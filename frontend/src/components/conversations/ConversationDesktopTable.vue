@@ -117,6 +117,11 @@
               class="state-text"
               :class="`state-${replyStateOf(conversation, now).state}`"
             >{{ replyStateOf(conversation, now).text }}</span>
+            <span
+              v-if="freeReplySeconds(conversation, now) !== null"
+              class="free-pill"
+              title="Reply API 免費回覆時間"
+            >免費回覆 {{ freeReplySeconds(conversation, now) }} 秒</span>
           </div>
         </div>
         <div class="owner-cell">
@@ -134,11 +139,6 @@
           :title="formatFull(getUpdatedAt(conversation))"
         >
           <span class="time-text">{{ relativeTime(getUpdatedAt(conversation), now) }}</span>
-          <span
-            v-if="freeReplySeconds(conversation, now) !== null"
-            class="free-pill"
-            title="Reply API 免費回覆時間"
-          >免費回覆 {{ freeReplySeconds(conversation, now) }} 秒</span>
         </div>
       </li>
     </TransitionGroup>
@@ -225,12 +225,12 @@ const getCustomerName = (conversation: Conversation) => {
 const platformOf = (conversation: Conversation): string =>
   conversation.platform || conversation.user?.platform || 'line'
 
-// Secondary identity line: the channel plus when the conversation began (real createdAt)
+// Secondary identity line: the channel, plus "new" only for a conversation that began in the last day
+// (an age repeated on every row of a busy list is noise, so older ones stay quiet).
 const sinceText = (conversation: Conversation): string => {
   const created = conversation.createdAt
   if (!created) { return '' }
-  const text = relativeTime(created, now.value)
-  return text ? ` · ${text}開始` : ''
+  return now.value - new Date(created).getTime() < 864e5 ? ' · 新對話' : ''
 }
 
 const getUpdatedAt = (conversation: Conversation) => {
@@ -252,7 +252,7 @@ const getLastMessageText = (conversation: Conversation) => {
 
 <style scoped>
 .desktop-table {
-  --conv-cols: minmax(200px, 0.9fr) minmax(0, 1.3fr) 104px 104px 132px;
+  --conv-cols: minmax(200px, 0.9fr) minmax(0, 1.3fr) 136px 104px 96px;
   display: block;
 }
 
@@ -509,8 +509,9 @@ const getLastMessageText = (conversation: Conversation) => {
 
 .status-line {
   display: flex;
-  gap: 4px;
-  align-items: center;
+  flex-direction: column;
+  gap: 3px;
+  align-items: flex-start;
 }
 
 /* Quiet states: a dot and plain text instead of a pill on every row */
@@ -544,11 +545,8 @@ const getLastMessageText = (conversation: Conversation) => {
 
 /* Free-reply countdown is time-critical: a green capsule under the timestamp */
 .free-pill {
-  padding: 1px 8px;
-  border-radius: 999px;
-  background: var(--ui-green-soft);
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 500;
   font-variant-numeric: tabular-nums;
   color: var(--ui-green-ink);
 }

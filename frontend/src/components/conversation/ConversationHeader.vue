@@ -870,8 +870,12 @@ defineExpose({
   }
 
   .assign-action-btn {
-    max-width: 170px;
+    max-width: 128px;
+    gap: 6px;
+    padding-right: 8px;
+    padding-left: 8px;
   }
+
 
   .assign-panel-dropdown {
     left: 50%;
