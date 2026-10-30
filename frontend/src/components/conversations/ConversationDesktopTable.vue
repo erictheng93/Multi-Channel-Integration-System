@@ -113,12 +113,17 @@
             <span
               v-else
               class="ui-pill ui-pill-dot state-text"
-              :class="[pillTone(replyStateOf(conversation, now).state), `state-${replyStateOf(conversation, now).state}`]"
+              :class="[pillTone(replyStateOf(conversation, now).state, conversation), `state-${replyStateOf(conversation, now).state}`]"
               :title="replyStateOf(conversation, now).state === 'waiting' ? WAITING_HINT : undefined"
             >{{ replyStateOf(conversation, now).text }}<span
               v-if="replyStateOf(conversation, now).state === 'waiting' && waitedText(conversation)"
               class="waited"
             >{{ waitedText(conversation) }}</span></span>
+            <span
+              v-if="freeReplySeconds(conversation, now) !== null"
+              class="free-pill"
+              title="Reply API 免費回覆時間"
+            >免費回覆 {{ freeReplySeconds(conversation, now) }} 秒</span>
           </div>
         </div>
         <div class="owner-cell">
@@ -136,11 +141,6 @@
           :title="formatFull(getUpdatedAt(conversation))"
         >
           <span class="time-text">{{ relativeTime(getUpdatedAt(conversation), now) }}</span>
-          <span
-            v-if="freeReplySeconds(conversation, now) !== null"
-            class="free-pill"
-            title="Reply API 免費回覆時間"
-          >免費回覆 {{ freeReplySeconds(conversation, now) }} 秒</span>
         </div>
       </li>
     </TransitionGroup>
@@ -243,8 +243,14 @@ const waitedText = (conversation: Conversation): string => {
   return Number.isNaN(since) ? '' : formatWaitText(Math.max(0, (now.value - since) / 1000))
 }
 
-const pillTone = (state: string): string =>
-  state === 'waiting' ? 'ui-pill-orange' : state === 'replied' ? 'ui-pill-green' : ''
+// Urgency escalates the colour: orange while it is a normal wait, red once a customer has waited over 30 minutes
+const URGENT_WAIT_SECONDS = 1800
+const pillTone = (state: string, conversation: Conversation): string => {
+  if (state === 'replied') { return 'ui-pill-green' }
+  if (state !== 'waiting') { return '' }
+  const since = conversation.awaitingSince ? Date.parse(conversation.awaitingSince) : NaN
+  return !Number.isNaN(since) && (now.value - since) / 1000 >= URGENT_WAIT_SECONDS ? 'ui-pill-red' : 'ui-pill-orange'
+}
 
 const getUpdatedAt = (conversation: Conversation) => {
   const legacyConversation = withLegacyFields(conversation)
@@ -265,7 +271,7 @@ const getLastMessageText = (conversation: Conversation) => {
 
 <style scoped>
 .desktop-table {
-  --conv-cols: minmax(176px, 0.8fr) minmax(0, 1.4fr) 168px 92px 112px;
+  --conv-cols: minmax(176px, 0.8fr) minmax(0, 1.4fr) 176px 92px 84px;
   display: block;
 }
 
@@ -277,9 +283,10 @@ const getLastMessageText = (conversation: Conversation) => {
   padding: 10px 20px 8px 28px;
   box-shadow: inset 0 -0.5px 0 var(--ui-sep);
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 700;
   line-height: 18px;
-  color: var(--ui-muted);
+  letter-spacing: 0.02em;
+  color: var(--ui-ink-2);
 }
 
 .col-head.has-select {
@@ -358,11 +365,27 @@ const getLastMessageText = (conversation: Conversation) => {
 
 /* Unread: a faint section wash plus a heavier message line and the count badge (no gutter dot floating outside the row) */
 .conversation-row.has-unread {
-  background: color-mix(in srgb, var(--section-hue) 4%, var(--ui-surface));
+  background: color-mix(in srgb, var(--section-hue) 7%, var(--ui-surface));
+}
+
+/* the accent bar is the unread marker you can scan down the list */
+.conversation-row.has-unread::after {
+  position: absolute;
+  top: 8px;
+  bottom: 8px;
+  left: 0;
+  width: 4px;
+  border-radius: 0 4px 4px 0;
+  background: var(--section-ink);
+  content: '';
+}
+
+.conversation-row.has-unread .customer-name-text {
+  font-weight: 700;
 }
 
 .conversation-row.has-unread:hover {
-  background: color-mix(in srgb, var(--section-hue) 8%, var(--ui-surface));
+  background: color-mix(in srgb, var(--section-hue) 11%, var(--ui-surface));
 }
 
 .select-all {
@@ -532,7 +555,8 @@ const getLastMessageText = (conversation: Conversation) => {
   content: '';
 }
 
-.status-line .ui-pill-orange {
+.status-line .ui-pill-orange,
+.status-line .ui-pill-red {
   font-weight: 600;
 }
 
@@ -555,7 +579,7 @@ const getLastMessageText = (conversation: Conversation) => {
 /* Free-reply countdown is time-critical: a green capsule under the timestamp */
 .free-pill {
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
   color: var(--ui-green-ink);
 }

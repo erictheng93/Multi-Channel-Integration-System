@@ -187,139 +187,156 @@
             class="conv-rail"
             aria-label="佇列概況"
           >
-            <section
-              class="ui-card rail-wait"
-              aria-labelledby="rail-wait-title"
-            >
-              <h2
-                id="rail-wait-title"
-                class="rail-label"
+            <div class="ui-card rail-card">
+              <section
+                class="rail-wait"
+                aria-labelledby="rail-wait-title"
               >
-                待回覆
-              </h2>
-              <p class="rail-num">
-                <span class="ui-num">{{ waitingTotal }}</span><small>件</small>
-              </p>
-              <p
-                v-if="waitingTop"
-                class="rail-meta"
-              >
-                最久等 <strong :class="{ 'is-hot': oldestWaitHot }">{{ oldestWaitText }}</strong> ・ {{ waitingTop.customerName }}
-              </p>
-              <p
-                v-else
-                class="rail-meta"
-              >
-                目前沒有等待回覆的客戶
-              </p>
-              <div class="rail-actions">
-                <button
+                <h2
+                  id="rail-wait-title"
+                  class="rail-label"
+                >
+                  待回覆
+                </h2>
+                <p class="rail-num">
+                  <span class="ui-num">{{ waitingTotal }}</span><small>件</small>
+                </p>
+                <p
                   v-if="waitingTop"
-                  type="button"
-                  class="btn btn-primary btn-sm"
-                  @click="goToConversation(waitingTop.conversationId)"
+                  class="rail-meta"
                 >
-                  先處理最久的
-                </button>
-                <button
-                  v-if="staleCount > 0 && scope !== 'stale'"
-                  type="button"
-                  class="btn btn-secondary btn-sm"
-                  @click="selectView('stale')"
+                  最久等 <strong :class="{ 'is-hot': oldestWaitHot }">{{ oldestWaitText }}</strong><template v-if="queueRows.length <= 1">
+                    ・ {{ waitingTop.customerName }}
+                  </template>
+                </p>
+                <p
+                  v-else
+                  class="rail-meta"
                 >
-                  逾期 {{ staleCount }} 件
-                </button>
-              </div>
-            </section>
+                  目前沒有等待回覆的客戶
+                </p>
+                <p
+                  v-if="unreadStore.total > 0"
+                  class="rail-meta"
+                  :title="UNREAD_HINT"
+                >
+                  我的未讀 <strong>{{ unreadStore.total }}</strong> 件，列表中以色條標示
+                </p>
+                <div class="rail-actions">
+                  <button
+                    v-if="waitingTop"
+                    type="button"
+                    class="btn btn-primary btn-sm"
+                    @click="goToConversation(waitingTop.conversationId)"
+                  >
+                    先處理最久的
+                  </button>
+                  <button
+                    v-if="staleCount > 0 && scope !== 'stale'"
+                    type="button"
+                    class="btn btn-secondary btn-sm"
+                    @click="selectView('stale')"
+                  >
+                    逾期 {{ staleCount }} 件
+                  </button>
+                </div>
+              </section>
 
-            <section
-              v-if="teamRows.length > 0"
-              aria-labelledby="rail-team-title"
-            >
-              <h2
-                id="rail-team-title"
-                class="ui-group-label"
+              <section
+                v-if="queueRows.length > 1"
+                class="rail-sec"
+                aria-labelledby="rail-queue-title"
               >
-                處理中依團隊
-              </h2>
-              <div class="ui-group">
+                <h2
+                  id="rail-queue-title"
+                  class="rail-label"
+                >
+                  等待最久
+                </h2>
                 <button
-                  v-for="row in teamRows"
+                  v-for="q in queueRows"
+                  :key="q.id"
+                  type="button"
+                  class="rail-row"
+                  @click="goToConversation(q.id)"
+                >
+                  <span class="rail-name">{{ q.name }}</span>
+                  <span
+                    class="rail-total"
+                    :class="{ 'is-hot': q.hot }"
+                  >{{ q.text }}</span>
+                </button>
+              </section>
+
+              <section
+                v-if="teamRows.length > 0"
+                class="rail-sec"
+                aria-labelledby="rail-team-title"
+              >
+                <h2
+                  id="rail-team-title"
+                  class="rail-label"
+                >
+                  處理中依團隊
+                </h2>
+                <div class="rail-split">
+                  <div
+                    class="rail-stack"
+                    aria-hidden="true"
+                  >
+                    <i
+                      v-for="(row, i) in teamRows"
+                      :key="row.key"
+                      :class="`seg-${i % 4}`"
+                      :style="{ flexGrow: row.open }"
+                    />
+                  </div>
+                </div>
+                <button
+                  v-for="(row, i) in teamRows"
                   :key="row.key"
                   type="button"
-                  class="ui-row rail-row"
+                  class="rail-row"
                   :class="{ 'is-selected': filterComposable.filters.value.teamId === row.filterId }"
                   :aria-pressed="filterComposable.filters.value.teamId === row.filterId"
                   @click="toggleTeam(row.filterId)"
                 >
-                  <span class="ui-row-main rail-name">{{ row.name }}</span>
                   <span
-                    class="rail-bar"
+                    class="rail-key"
+                    :class="`seg-${i % 4}`"
                     aria-hidden="true"
-                  ><i :style="{ width: `${row.share}%` }" /></span>
+                  />
+                  <span class="rail-name">{{ row.name }}</span>
                   <span class="rail-total">{{ row.open }}</span>
                 </button>
-              </div>
-            </section>
+              </section>
 
-            <section
-              v-if="channelRows.length > 1 || !!filterComposable.filters.value.platform"
-              aria-labelledby="rail-channel-title"
-            >
-              <h2
-                id="rail-channel-title"
-                class="ui-group-label"
+              <section
+                v-if="channelRows.length > 1 || !!filterComposable.filters.value.platform"
+                class="rail-sec"
+                aria-labelledby="rail-channel-title"
               >
-                目前列表依渠道
-              </h2>
-              <div class="ui-group">
-                <button
-                  v-for="row in channelRows"
-                  :key="row.key"
-                  type="button"
-                  class="ui-row rail-row"
-                  :class="{ 'is-selected': filterComposable.filters.value.platform === row.key }"
-                  :aria-pressed="filterComposable.filters.value.platform === row.key"
-                  @click="toggleChannel(row.key)"
+                <h2
+                  id="rail-channel-title"
+                  class="rail-label"
                 >
-                  <span class="ui-row-main rail-name">{{ row.name }}</span>
-                  <span
-                    class="rail-bar"
-                    aria-hidden="true"
-                  ><i :style="{ width: `${row.share}%` }" /></span>
-                  <span class="rail-total">{{ row.n }}</span>
-                </button>
-              </div>
-            </section>
-
-            <section
-              v-if="myUnread.length > 0"
-              aria-labelledby="rail-unread-title"
-            >
-              <h2
-                id="rail-unread-title"
-                class="ui-group-label"
-                :title="UNREAD_HINT"
-              >
-                我的未讀
-                <span class="label-note">{{ unreadStore.total }} 件 ・ 你尚未開啟</span>
-              </h2>
-              <div class="ui-group">
-                <button
-                  v-for="item in myUnread"
-                  :key="item.id"
-                  type="button"
-                  class="ui-row rail-row"
-                  @click="goToConversation(item.id)"
-                >
-                  <span class="ui-row-main rail-name">{{ item.name }}</span>
-                  <span
-                    class="rail-badge"
-                    :aria-label="`未讀 ${item.count} 則`"
-                  >{{ item.count }}</span>
-                </button>
-              </div>
-            </section>
+                  目前列表依渠道
+                </h2>
+                <div class="rail-chips">
+                  <button
+                    v-for="row in channelRows"
+                    :key="row.key"
+                    type="button"
+                    class="rail-chip"
+                    :class="{ 'is-selected': filterComposable.filters.value.platform === row.key }"
+                    :aria-pressed="filterComposable.filters.value.platform === row.key"
+                    @click="toggleChannel(row.key)"
+                  >
+                    {{ row.name }}<b>{{ row.n }}</b>
+                  </button>
+                </div>
+              </section>
+            </div>
           </aside>
         </div>
 
@@ -384,7 +401,7 @@ import { useConfirmDialog } from '@/composables/useConfirmDialog'
 import { conversationApi } from '@/api/conversations'
 import { useUnreadStore } from '@/stores/unread'
 import { formatWaitText } from '@/composables/dashboard/useDashboardOverview'
-import { LEGEND_TEXT, UNREAD_HINT, unreadOf } from '@/composables/conversation/useConversationRowMeta'
+import { LEGEND_TEXT, UNREAD_HINT } from '@/composables/conversation/useConversationRowMeta'
 import { WAITING_WINDOW_DAYS, type ConversationStats } from '@shared/api-contracts'
 import { tagCacheService } from '@/services/tagCacheService'
 import type { ConversationFilters as ConversationFiltersType } from '@/types'
@@ -409,12 +426,14 @@ const waitingTotal = ref(0)
 const waitingSince = ref<string | null>(null)
 const staleCount = ref(0)
 const waitingTop = ref<{ conversationId: string; customerName: string } | null>(null)
+// the longest-waiting customers, longest first (the queue the lead number counts)
+const waitingQueue = ref<{ id: string; name: string; since: string }[]>([])
 const clock = ref(Date.now())
 let clockTimer: ReturnType<typeof setInterval> | null = null
 
 async function loadCounts() {
   try {
-    const [statsRes, waitingRes] = await Promise.all([conversationApi.getStats(), conversationApi.getWaiting(1)])
+    const [statsRes, waitingRes] = await Promise.all([conversationApi.getStats(), conversationApi.getWaiting(4)])
     if (statsRes.success && statsRes.data) { counts.value = statsRes.data }
     if (waitingRes.success && waitingRes.data) {
       waitingTotal.value = waitingRes.data.total
@@ -422,6 +441,7 @@ async function loadCounts() {
       staleCount.value = waitingRes.data.stale?.count ?? 0
       const top = waitingRes.data.items[0]
       waitingTop.value = top ? { conversationId: top.conversationId, customerName: top.customerName ?? '客戶' } : null
+      waitingQueue.value = waitingRes.data.items.slice(0, 4).map(i => ({ id: i.conversationId, name: i.customerName ?? '客戶', since: i.waitingSince }))
     }
   } catch (err) {
     console.warn('Failed to load conversation counts:', err)
@@ -430,6 +450,11 @@ async function loadCounts() {
 
 const oldestWaitText = computed(() =>
   waitingSince.value ? formatWaitText(Math.max(0, (clock.value - Date.parse(waitingSince.value)) / 1000)) : '')
+
+const queueRows = computed(() => waitingQueue.value.map(q => {
+  const secs = Math.max(0, (clock.value - Date.parse(q.since)) / 1000)
+  return { ...q, text: formatWaitText(secs), hot: secs >= 1800 }
+}))
 
 const oldestWaitHot = computed(() => waitingSince.value !== null && clock.value - Date.parse(waitingSince.value) >= 30 * 60 * 1000)
 
@@ -452,13 +477,6 @@ const teamRows = computed(() => {
     share: shareOf(t.open, max)
   }))
 })
-// Rail: the unread conversations of the loaded page, oldest unread first
-const myUnread = computed(() => displayedConversations.value
-  .filter(c => unreadOf(c) > 0)
-  .sort((a, b) => Date.parse(a.oldestUnreadAt ?? '') - Date.parse(b.oldestUnreadAt ?? ''))
-  .slice(0, 5)
-  .map(c => ({ id: c.id, name: c.customer?.name || c.user?.name || '未知用戶', count: unreadOf(c) })))
-
 // Rail: the loaded list by channel (one-tap filter, same way the team rows work)
 const channelRows = computed(() => {
   const tally = new Map<string, number>()
@@ -862,14 +880,104 @@ onUnmounted(() => {
   min-width: 0;
 }
 
-.conv-rail .ui-group {
-  --row-inset: 18px;
+.rail-card {
+  display: grid;
+  gap: 0;
+  overflow: hidden;
+  box-shadow: var(--ui-shadow-card);
 }
 
 .rail-wait {
   display: grid;
   gap: 6px;
-  padding: 20px 22px;
+  padding: 20px 22px 22px;
+}
+
+.rail-sec {
+  display: grid;
+  gap: 6px;
+  padding: 16px 12px 14px;
+  box-shadow: inset 0 0.5px 0 var(--ui-sep);
+}
+
+.rail-sec > .rail-label,
+.rail-sec > .rail-split {
+  padding-inline: 10px;
+}
+
+.rail-split {
+  margin-bottom: 4px;
+}
+
+/* team share: one stacked bar, each team keeps its colour in the legend rows below */
+.rail-stack {
+  display: flex;
+  gap: 3px;
+  height: 10px;
+}
+
+.rail-stack i {
+  flex-basis: 0;
+  min-width: 6px;
+  border-radius: 999px;
+}
+
+.seg-0 {
+  background: var(--ui-accent);
+}
+
+.seg-1 {
+  background: var(--ui-teal);
+}
+
+.seg-2 {
+  background: var(--ui-orange);
+}
+
+.seg-3 {
+  background: var(--ui-indigo);
+}
+
+.rail-key {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.rail-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 2px 10px 4px;
+}
+
+.rail-chip {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  min-height: 36px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--ui-fill);
+  color: var(--ui-ink);
+  font: 600 14px var(--ui-font-display);
+  cursor: pointer;
+}
+
+.rail-chip b {
+  font-variant-numeric: tabular-nums;
+  color: var(--ui-ink-2);
+}
+
+.rail-chip.is-selected {
+  background: var(--ui-accent);
+  color: #fff;
+}
+
+.rail-chip.is-selected b {
+  color: #fff;
 }
 
 .rail-label {
@@ -916,9 +1024,14 @@ onUnmounted(() => {
 }
 
 .rail-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
   width: 100%;
-  min-height: 48px;
+  min-height: 44px;
+  padding: 0 10px;
   border: 0;
+  border-radius: 12px;
   background: transparent;
   color: inherit;
   font: inherit;
@@ -926,7 +1039,8 @@ onUnmounted(() => {
   cursor: pointer;
 }
 
-.rail-row:focus-visible {
+.rail-row:focus-visible,
+.rail-chip:focus-visible {
   outline: 2px solid var(--ui-accent);
   outline-offset: -2px;
 }
@@ -935,38 +1049,9 @@ onUnmounted(() => {
   background: var(--ui-fill);
 }
 
-.rail-bar {
-  flex: none;
-  width: 56px;
-  height: 6px;
-  margin-right: 12px;
-  overflow: hidden;
-  border-radius: 999px;
-  background: var(--ui-fill);
-}
-
-.rail-bar i {
-  display: block;
-  height: 100%;
-  border-radius: 999px;
-  background: var(--ui-faint);
-}
-
-.rail-row.is-selected .rail-bar i {
-  background: var(--ui-accent);
-}
-
-.rail-badge {
-  display: inline-grid;
-  place-items: center;
-  min-width: 22px;
-  height: 22px;
-  padding: 0 7px;
-  border-radius: 999px;
-  background: var(--section-ink);
-  color: #fff;
-  font: 600 12px var(--ui-font-display);
-  font-variant-numeric: tabular-nums;
+.rail-row.is-selected {
+  background: var(--ui-sel-tint);
+  box-shadow: var(--ui-sel-ring);
 }
 
 @media (min-width: 1025px) {
@@ -978,14 +1063,21 @@ onUnmounted(() => {
 }
 
 .rail-name {
+  flex: 1;
+  min-width: 0;
   font-size: 15px;
   font-weight: 500;
 }
 
+.rail-total.is-hot {
+  color: var(--ui-red-ink);
+}
+
 .rail-total {
   font-size: 15px;
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
-  color: var(--ui-ink-2);
+  color: var(--ui-ink);
 }
 
 @media (max-width: 1024px) {
@@ -1182,6 +1274,35 @@ onUnmounted(() => {
 }
 
 @media (max-width: 768px) {
+  /* The head actions share the title row: 選取 stays a word, 重新整理 becomes an icon (still named for screen readers) */
+  .conversations :deep(.ui-page-head) {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      'title actions'
+      'sub sub';
+  }
+
+  .conversations :deep(.ui-page-actions) {
+    flex-wrap: nowrap;
+    gap: 8px;
+    padding-top: 0;
+  }
+
+  .conversations :deep(.refresh-btn) {
+    width: 44px;
+    min-width: 44px;
+    padding: 0;
+  }
+
+  .conversations :deep(.refresh-text) {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+  }
+
   .filter-card {
     padding: 12px;
   }
