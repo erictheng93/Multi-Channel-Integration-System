@@ -12,7 +12,34 @@
             :disabled="loading"
             @click="refresh"
           >
+            <svg
+              class="btn-ico"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            ><path d="M21 12a9 9 0 0 1-15.5 6.2L3 16M3 12a9 9 0 0 1 15.5-6.2L21 8M21 3v5h-5M3 21v-5h5" /></svg>
             重新整理
+          </button>
+          <button
+            v-if="!loading && activeTab === 'rules'"
+            class="btn btn-primary"
+            type="button"
+            @click="ruleEditor.startCreate()"
+          >
+            <svg
+              class="btn-ico"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.4"
+              stroke-linecap="round"
+              aria-hidden="true"
+            ><path d="M12 5v14M5 12h14" /></svg>
+            新增規則
           </button>
         </template>
       </UiPageHead>
@@ -247,6 +274,11 @@ onUnmounted(() => cleanup())
 </script>
 
 <style scoped>
+.btn-ico {
+  width: 15px;
+  height: 15px;
+  flex: none;
+}
 
 .loading-container {
   display: flex;
