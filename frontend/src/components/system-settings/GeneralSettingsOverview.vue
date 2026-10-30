@@ -13,12 +13,14 @@
     class="ov-strip ui-lead"
     aria-label="系統概覽"
   >
-    <span
-      class="ov-dot"
-      :class="healthTile.tone"
-      aria-hidden="true"
-    />
-    <div class="ov-strip-text">
+    <div class="ov-lead">
+      <div class="ov-kicker">
+        <span
+          class="ov-dot"
+          :class="healthTile.tone"
+          aria-hidden="true"
+        />系統狀態
+      </div>
       <div
         class="ov-big"
         :class="headline.tone"
@@ -27,14 +29,29 @@
       </div>
       <p class="ov-meaning">
         {{ meaning }}
+        <router-link
+          class="ui-link ov-strip-link"
+          :to="healthTile.to"
+        >
+          健康檢查
+        </router-link>
       </p>
     </div>
-    <router-link
-      class="ui-link ov-strip-link"
-      :to="healthTile.to"
+    <ul
+      v-if="serviceChips.length > 0"
+      class="ov-svcs"
+      aria-label="各項服務回應時間"
     >
-      健康檢查
-    </router-link>
+      <li
+        v-for="svc in serviceChips"
+        :key="svc.key"
+        class="ov-svc"
+        :class="svc.tone"
+      >
+        <span class="ov-svc-n">{{ svc.ms }}<small>ms</small></span>
+        <span class="ov-svc-l">{{ svc.name }}</span>
+      </li>
+    </ul>
   </section>
 
   <ul
@@ -236,6 +253,17 @@ const meaning = computed(() => {
   return state === '正常' && rows > 0 ? `${rows} 項服務皆通過 · ${when}` : `服務${state}${rows > 0 ? ` · ${rows} 項檢查` : ''} · ${when}`
 })
 
+/** Short service name (the part in parentheses when there is one) with its measured latency */
+const serviceChips = computed(() =>
+  controller.healthCheckResults.value
+    .filter(r => typeof r.responseTime === 'number')
+    .map(r => ({
+      key: r.key,
+      name: /\(([^)]+)\)\s*$/.exec(r.name)?.[1] ?? r.name,
+      ms: r.responseTime as number,
+      tone: r.status === 'healthy' ? 'ok' : (r.status === 'warning' ? 'warn' : 'bad'),
+    })))
+
 const tiles = computed<Tile[]>(() => [
   integrationTile('line', 'LINE 官方帳號', controller.settings.integrations.line.status, controller.settings.integrations.line.lastTest),
   integrationTile('facebook', 'Facebook', controller.settings.integrations.facebook.status, controller.settings.integrations.facebook.lastTest),
@@ -244,26 +272,28 @@ const tiles = computed<Tile[]>(() => [
 </script>
 
 <style scoped>
-/* head: one slim status line, not a hero */
+/* head: the answer to "does anything need me?" in type, with the measured services beside it */
 .ov-strip {
-  display: flex;
-  gap: 14px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 20px 40px;
   align-items: center;
-  padding: 18px 28px;
+  padding: 24px 32px;
 }
 
-.ov-strip-text {
+.ov-kicker {
   display: flex;
-  flex: 1;
-  flex-wrap: wrap;
-  gap: 2px 16px;
-  align-items: baseline;
-  min-width: 0;
+  gap: 10px;
+  align-items: center;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ui-ink-2);
 }
 
 .ov-big {
-  font: 600 18px / 1.2 var(--ui-font-display);
-  letter-spacing: -0.02em;
+  margin-top: 6px;
+  font: 700 34px / 1.15 var(--ui-font-display);
+  letter-spacing: -0.03em;
   color: var(--ui-ink);
 }
 
@@ -280,15 +310,61 @@ const tiles = computed<Tile[]>(() => [
 }
 
 .ov-meaning {
-  margin: 0;
+  margin: 6px 0 0;
   font-size: 14px;
   color: var(--ui-ink-2);
 }
 
 .ov-strip-link {
-  flex: none;
+  margin-left: 10px;
   font-size: 14px;
   font-weight: 600;
+}
+
+.ov-svcs {
+  display: grid;
+  grid-template-columns: repeat(5, auto);
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ov-svc {
+  display: grid;
+  gap: 2px;
+  padding: 2px 22px;
+  box-shadow: inset 0.5px 0 0 var(--ui-sep);
+}
+
+.ov-svc:first-child {
+  box-shadow: none;
+}
+
+.ov-svc-n {
+  font: 600 26px / 1.1 var(--ui-font-display);
+  font-variant-numeric: tabular-nums;
+  color: var(--ui-ink);
+}
+
+.ov-svc-n small {
+  margin-left: 2px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ui-muted);
+}
+
+.ov-svc.warn .ov-svc-n {
+  color: var(--ui-orange-ink);
+}
+
+.ov-svc.bad .ov-svc-n {
+  color: var(--ui-red-ink);
+}
+
+.ov-svc-l {
+  font-size: 13px;
+  color: var(--ui-muted);
 }
 
 .ov-dot {
@@ -437,13 +513,41 @@ const tiles = computed<Tile[]>(() => [
   color: var(--ui-muted);
 }
 
+@media (max-width: 1024px) {
+  .ov-strip {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ov-svc:first-child {
+    padding-left: 0;
+  }
+}
+
 @media (max-width: 768px) {
   .ov-strip {
-    padding: 16px 18px;
+    padding: 18px;
   }
 
   .ov-big {
-    font-size: 17px;
+    font-size: 26px;
+  }
+
+  .ov-svcs {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px 0;
+  }
+
+  .ov-svc {
+    padding: 0 12px;
+  }
+
+  .ov-svc:nth-child(3n + 1) {
+    padding-left: 0;
+    box-shadow: none;
+  }
+
+  .ov-svc-n {
+    font-size: 21px;
   }
 
   .ov-list {

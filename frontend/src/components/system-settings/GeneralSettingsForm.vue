@@ -46,7 +46,7 @@
     <SettingsGroup title="地區與語言">
       <SettingsRow
         label="時區"
-        :hint="clockHint"
+        hint="用於顯示時間與報表日期"
         for-id="timezone"
       >
         <select
@@ -71,6 +71,17 @@
       >
         <span class="static-value">繁體中文</span>
       </SettingsRow>
+      <div
+        class="clock-tile"
+        role="img"
+        :aria-label="`${zoneName} 目前時間 ${clock.time}`"
+      >
+        <span class="clock-time">{{ clock.time }}</span>
+        <span class="clock-meta">
+          <span class="clock-day">{{ clock.day }}</span>
+          <span class="clock-zone">{{ zoneName }}</span>
+        </span>
+      </div>
     </SettingsGroup>
   </form>
 </template>
@@ -131,22 +142,21 @@ watch(
   { deep: true }
 )
 
-/** Live hint: the current time in the chosen zone, read once per selection (no ticking timer) */
-const clockHint = computed(() => {
+/** The chosen zone's wall time as a tile (read once per selection, no ticking timer) */
+const clock = computed(() => {
+  const timeZone = localSettings.timezone || 'Asia/Taipei'
   try {
-    const at = new Intl.DateTimeFormat('zh-TW', {
-      timeZone: localSettings.timezone || 'Asia/Taipei',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false
-    }).format(new Date())
-    return `所選時區的目前時間：${at}`
+    const now = new Date()
+    return {
+      time: new Intl.DateTimeFormat('zh-TW', { timeZone, hour: '2-digit', minute: '2-digit', hour12: false }).format(now),
+      day: new Intl.DateTimeFormat('zh-TW', { timeZone, month: 'long', day: 'numeric', weekday: 'long' }).format(now),
+    }
   } catch {
-    return '用於顯示時間與報表日期'
+    return { time: '--:--', day: '' }
   }
 })
+
+const zoneName = computed(() => TIMEZONES.find(z => z.value === localSettings.timezone)?.label ?? localSettings.timezone)
 
 function handleSave() {
   emit('save')
@@ -157,7 +167,7 @@ function handleSave() {
 .general-form {
   display: grid;
   gap: 20px;
-  align-items: start;
+  align-items: stretch;
   min-width: 0;
 }
 
@@ -165,6 +175,57 @@ function handleSave() {
 .general-form :deep(.ui-input),
 .general-form :deep(.ui-select) {
   background-color: var(--ui-surface);
+}
+
+/* the last card holds a real clock in the chosen zone and takes the leftover height */
+.general-form :deep(.settings-group:last-child .ui-card) {
+  display: flex;
+  flex-direction: column;
+}
+
+.clock-tile {
+  display: flex;
+  flex: 1;
+  gap: 18px;
+  align-items: center;
+  min-height: 84px;
+  margin: 4px 22px 20px;
+  padding: 14px 20px;
+  border-radius: 14px;
+  background: var(--ui-fill);
+}
+
+.clock-time {
+  font: 700 40px / 1 var(--ui-font-display);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.03em;
+  color: var(--ui-ink);
+}
+
+.clock-meta {
+  display: grid;
+  gap: 2px;
+}
+
+.clock-day {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ui-ink);
+}
+
+.clock-zone {
+  font-size: 13px;
+  color: var(--ui-ink-2);
+}
+
+@media (max-width: 768px) {
+  .clock-tile {
+    margin: 4px 16px 16px;
+  }
+
+  .clock-time {
+    font-size: 32px;
+  }
 }
 
 /* a value that cannot change is text, not a greyed-out field */
