@@ -31,22 +31,83 @@
       </div>
     </div>
 
-    <div
-      v-if="rings.length > 0"
-      class="lead-rings"
+    <dl
+      v-if="hasFacts"
+      class="lead-facts"
     >
-      <ServiceRings
-        summary="自動回覆概況"
-        :rings="rings"
-        :size="148"
-      />
-    </div>
+      <div
+        v-if="totalRules !== undefined && totalRules > 0"
+        class="fact"
+      >
+        <dt>啟用規則</dt>
+        <dd>
+          <span
+            class="pips"
+            role="img"
+            :aria-label="`啟用 ${activeRules} 條，共 ${totalRules} 條`"
+          >
+            <i
+              v-for="n in Math.min(totalRules, 12)"
+              :key="n"
+              :class="{ on: n <= activeRules }"
+            />
+          </span>
+          <b>{{ activeRules }}<small> / {{ totalRules }} 條</small></b>
+        </dd>
+      </div>
+      <div
+        v-if="yesterdaySameTime !== null && yesterdaySameTime !== undefined"
+        class="fact"
+      >
+        <dt>今天 對比 昨天同時段</dt>
+        <dd>
+          <span
+            class="duo"
+            role="img"
+            :aria-label="`今天 ${todayReplies} 則，昨天同時段 ${yesterdaySameTime} 則`"
+          >
+            <i
+              class="today"
+              :style="{ width: duoWidth(todayReplies) }"
+            />
+            <i
+              class="before"
+              :style="{ width: duoWidth(yesterdaySameTime) }"
+            />
+          </span>
+          <b>{{ yesterdaySameTime }}<small> 則昨天</small></b>
+        </dd>
+      </div>
+      <div
+        v-if="successRate !== null && successRate !== undefined"
+        class="fact"
+      >
+        <dt>回覆結果</dt>
+        <dd>
+          <span
+            class="result"
+            role="img"
+            :aria-label="`成功 ${todayReplies} 則，失敗 ${todayFailed ?? 0} 則`"
+          >
+            <i
+              class="ok"
+              :style="{ flexGrow: todayReplies }"
+            />
+            <i
+              v-if="(todayFailed ?? 0) > 0"
+              class="bad"
+              :style="{ flexGrow: todayFailed }"
+            />
+          </span>
+          <b>{{ successRate }}<small>% 成功</small></b>
+        </dd>
+      </div>
+    </dl>
   </article>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import ServiceRings, { type ServiceRing } from '@/components/ui/ServiceRings.vue'
 import type { AutoReplyBusinessHours } from '@/api/autoReply'
 
 const props = defineProps<{
@@ -71,18 +132,17 @@ const deltaText = computed(() => {
   return `${delta.value > 0 ? '+' : '-'}${Math.abs(delta.value)}`
 })
 
-// Two real ratios: rules switched on / all rules, and replies that succeeded / attempted today
-const rings = computed<ServiceRing[]>(() => {
-  const list: ServiceRing[] = []
-  if (props.totalRules !== undefined && props.totalRules > 0) {
-    list.push({ label: '啟用規則', value: props.activeRules, total: props.totalRules, of: '條規則', hue: 'var(--section-hue)' })
-  }
-  if (props.successRate !== null && props.successRate !== undefined) {
-    const failed = props.todayFailed ?? 0
-    list.push({ label: '今日回覆成功', value: props.todayReplies, total: props.todayReplies + failed, of: '則', hue: 'var(--ui-green)' })
-  }
-  return list
-})
+const hasFacts = computed(() =>
+  (props.totalRules !== undefined && props.totalRules > 0)
+  || (props.yesterdaySameTime !== null && props.yesterdaySameTime !== undefined)
+  || (props.successRate !== null && props.successRate !== undefined),
+)
+
+// Both bars share one scale so today and yesterday are comparable at a glance
+function duoWidth(value: number): string {
+  const max = Math.max(props.todayReplies, props.yesterdaySameTime ?? 0, 1)
+  return `${Math.max(3, Math.round((value / max) * 100))}%`
+}
 
 const DAY_LABELS = ['週日', '週一', '週二', '週三', '週四', '週五', '週六']
 
@@ -109,7 +169,7 @@ const hoursNote = computed(() => {
   padding: 24px 40px;
 }
 
-.lead:not(:has(.lead-rings)) {
+.lead:not(:has(.lead-facts)) {
   grid-template-columns: minmax(0, 1fr);
 }
 
@@ -191,15 +251,15 @@ const hoursNote = computed(() => {
   color: var(--ui-red-ink);
 }
 
-.lead-rings {
+.lead-facts {
   position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: grid;
+  gap: 20px;
   min-width: 0;
+  margin: 0;
 }
 
-.lead-rings::before {
+.lead-facts::before {
   position: absolute;
   top: 4px;
   bottom: 4px;
@@ -209,17 +269,100 @@ const hoursNote = computed(() => {
   content: '';
 }
 
+.fact dt {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--ui-ink-2);
+}
+
+.fact dd {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  justify-content: space-between;
+  margin: 8px 0 0;
+}
+
+.fact b {
+  flex: none;
+  min-width: 92px;
+  font-size: 20px;
+  font-weight: 600;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.fact b small {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ui-muted);
+}
+
+.pips {
+  display: flex;
+  flex: 1;
+  gap: 4px;
+}
+
+.pips i {
+  flex: 1;
+  height: 10px;
+  border-radius: 999px;
+  background: var(--ui-fill-strong);
+}
+
+.pips i.on {
+  background: var(--section-hue);
+}
+
+.duo {
+  display: grid;
+  flex: 1;
+  gap: 4px;
+}
+
+.duo i {
+  display: block;
+  height: 8px;
+  border-radius: 999px;
+}
+
+.duo .today {
+  background: var(--section-hue);
+}
+
+.duo .before {
+  background: #8e8e93;
+}
+
+.result {
+  display: flex;
+  flex: 1;
+  gap: 3px;
+  height: 10px;
+}
+
+.result i {
+  flex-basis: 0;
+  min-width: 6px;
+  border-radius: 999px;
+}
+
+.result .ok {
+  background: var(--ui-green);
+}
+
+.result .bad {
+  background: var(--ui-red);
+}
+
 @media (max-width: 1024px) {
   .lead {
     grid-template-columns: minmax(0, 1fr);
     padding: 22px 20px;
   }
 
-  .lead-rings {
-    justify-content: flex-start;
-  }
-
-  .lead-rings::before {
+  .lead-facts::before {
     display: none;
   }
 }

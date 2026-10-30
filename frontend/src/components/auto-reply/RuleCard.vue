@@ -287,8 +287,9 @@ const triggerTypeLabel = computed(() => {
 }
 
 .rule-card__priority-label {
-  font-size: 12.5px;
-  color: var(--ui-muted);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ui-ink-2);
 }
 
 /* Toggle switch (same spec as .ui-switch) */
@@ -407,7 +408,8 @@ const triggerTypeLabel = computed(() => {
 /* Meta text */
 .rule-card__meta {
   font-size: 13px;
-  color: var(--ui-muted);
+  font-weight: 500;
+  color: var(--ui-ink-2);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
