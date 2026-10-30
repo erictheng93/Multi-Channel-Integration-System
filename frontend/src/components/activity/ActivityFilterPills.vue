@@ -3,7 +3,38 @@
     class="ui-card filter-pills"
     aria-label="篩選"
   >
-    <div class="filter-pills__selects">
+    <div class="filter-pills__bar">
+      <button
+        type="button"
+        class="btn btn-secondary btn-sm filter-toggle"
+        :aria-expanded="open"
+        aria-controls="activity-filters"
+        @click="open = !open"
+      >
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        ><path d="M4 6h16M7 12h10M10 18h4" /></svg>
+        篩選<span
+          v-if="activeCount > 0"
+          class="filter-toggle__n"
+        >{{ activeCount }}</span>
+      </button>
+      <span
+        v-if="summary"
+        class="filter-total filter-total--bar"
+      >{{ summary }}</span>
+    </div>
+    <div
+      id="activity-filters"
+      class="filter-pills__selects"
+      :class="{ 'is-open': open }"
+    >
       <select
         class="filter-select"
         :class="{ 'filter-select--active': filters.userId !== '' }"
@@ -255,14 +286,14 @@
 
       <span
         v-if="summary"
-        class="filter-total"
+        class="filter-total filter-total--inline"
       >{{ summary }}</span>
     </div>
   </section>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 
 interface Filters {
   userId: string
@@ -307,6 +338,13 @@ const hasActiveFilters = computed(() => {
   )
 })
 
+/** Phone: the four selects fold behind one 篩選 button; the badge counts the filters in force */
+const open = ref(false)
+const activeCount = computed(() =>
+  [props.filters.userId, props.filters.action, props.filters.resourceType].filter(v => v !== '').length
+  + (props.dateRange !== 'week' ? 1 : 0)
+)
+
 function onUserChange(event: Event) {
   const value = (event.target as HTMLSelectElement).value
   emit('update:filters', { ...props.filters, userId: value })
@@ -345,6 +383,10 @@ function onCustomEndChange(event: Event) {
 <style scoped>
 .filter-pills {
   padding: 12px 14px;
+}
+
+.filter-pills__bar {
+  display: none;
 }
 
 .filter-pills__selects {
@@ -429,7 +471,46 @@ function onCustomEndChange(event: Event) {
   margin-left: 0;
 }
 
+.filter-toggle svg {
+  width: 16px;
+  height: 16px;
+}
+
+.filter-toggle__n {
+  display: inline-grid;
+  place-items: center;
+  min-width: 20px;
+  height: 20px;
+  margin-left: 6px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--ui-accent);
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+}
+
 @media (max-width: 768px) {
+  .filter-pills__bar {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .filter-pills__selects {
+    display: none;
+    margin-top: 12px;
+  }
+
+  .filter-pills__selects.is-open {
+    display: flex;
+  }
+
+  .filter-total--inline {
+    display: none;
+  }
+
   .filter-select {
     flex: 1 1 calc(50% - 5px);
     min-width: 0;

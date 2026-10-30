@@ -87,6 +87,17 @@ function onNext() {
 @media (max-width: 768px) {
   .pagination__info {
     flex-basis: 100%;
+    text-align: center;
+  }
+
+  .pagination__buttons {
+    flex: 1;
+  }
+
+  .pagination__btn {
+    flex: 1;
+    justify-content: center;
+    min-height: 44px;
   }
 }
 </style>
