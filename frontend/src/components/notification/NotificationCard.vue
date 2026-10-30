@@ -43,6 +43,17 @@
         class="notification-meta"
       >
         <span class="sr-only">{{ typeLabel }}</span>
+        <span class="meta-when">
+          <span
+            v-if="!notification.isRead"
+            class="notification-dot"
+            aria-hidden="true"
+          />
+          <time
+            class="notification-time"
+            :datetime="notification.createdAt"
+          >{{ formattedTime }}</time>
+        </span>
         <span
           v-if="notification.priority === 'urgent'"
           class="ui-pill ui-pill-red"
@@ -95,12 +106,20 @@
         </button>
         <button
           class="action-btn action-btn-danger"
+          :class="{ 'is-confirming': confirmingDelete }"
           type="button"
-          :aria-label="`刪除 ${notification.title}`"
-          title="刪除 (Delete)"
-          @click="$emit('delete', notification.id)"
+          :aria-label="confirmingDelete ? `再按一次刪除 ${notification.title}` : `刪除 ${notification.title}`"
+          :title="confirmingDelete ? '再按一次確認刪除' : '刪除 (Delete)'"
+          @click="onDeleteClick"
         >
-          <TrashIcon aria-hidden="true" />
+          <span
+            v-if="confirmingDelete"
+            class="confirm-text"
+          >刪除？</span>
+          <TrashIcon
+            v-else
+            aria-hidden="true"
+          />
         </button>
       </div>
     </div>
@@ -108,7 +127,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onBeforeUnmount, ref } from 'vue'
 import type { Notification, NotificationType } from '@/stores/notifications'
 import {
   CheckIcon,
@@ -128,7 +147,7 @@ const props = defineProps<{
   isFocused: boolean
 }>()
 
-defineEmits<{
+const emit = defineEmits<{
   click: [notification: Notification]
   'mark-read': [id: string]
   delete: [id: string]
@@ -151,6 +170,21 @@ const iconMap: Record<NotificationType, typeof MessageIcon> = {
   // eslint-disable-next-line camelcase
   new_conversation: MessageIcon
 }
+
+// Delete is two taps: the first turns the button into a red 刪除？ for 3 s, the second deletes
+const confirmingDelete = ref(false)
+let confirmTimer: ReturnType<typeof setTimeout> | null = null
+function onDeleteClick(): void {
+  if (confirmingDelete.value) {
+    if (confirmTimer) { clearTimeout(confirmTimer) }
+    confirmingDelete.value = false
+    emit('delete', props.notification.id)
+    return
+  }
+  confirmingDelete.value = true
+  confirmTimer = setTimeout(() => { confirmingDelete.value = false }, 3000)
+}
+onBeforeUnmount(() => { if (confirmTimer) { clearTimeout(confirmTimer) } })
 
 const icon = computed(() => iconMap[props.notification.type] || BellIcon)
 const iconClass = computed(() => `icon-${props.notification.type}`)
@@ -388,7 +422,7 @@ const formattedTime = computed(() => {
   align-items: center;
 }
 
-.notification-meta:not(:has(> :not(.sr-only))) {
+.notification-meta:not(:has(> :not(.sr-only, .meta-when))) {
   display: none;
 }
 
@@ -404,6 +438,25 @@ const formattedTime = computed(() => {
 
 .notification-meta > .ui-ch {
   margin-top: 8px;
+}
+
+/* The inline time belongs to the phone layout; desktop keeps it in the trailing column */
+.meta-when {
+  display: none;
+}
+
+.action-btn-danger.is-confirming {
+  width: auto;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: var(--ui-red-soft);
+  color: var(--ui-red-ink);
+}
+
+.confirm-text {
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
 }
 
 /* Row actions live under the time in the trailing column and appear on hover or focus */
@@ -463,9 +516,24 @@ const formattedTime = computed(() => {
   }
 
   .notification-when {
-    grid-area: meta;
-    align-self: center;
-    justify-self: end;
+    display: none;
+  }
+
+  .notification-card .notification-meta,
+  .notification-card .notification-meta:not(:has(> :not(.sr-only, .meta-when))) {
+    display: flex;
+  }
+
+  .meta-when {
+    display: inline-flex;
+    gap: 8px;
+    align-items: center;
+    margin-top: 8px;
+  }
+
+  .notification-meta > .ui-pill,
+  .notification-meta > .ui-ch {
+    margin-top: 8px;
   }
 
   .notification-actions {
