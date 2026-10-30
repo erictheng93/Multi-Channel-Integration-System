@@ -17,6 +17,22 @@
       <h2 class="ui-group-label">
         {{ isSearching ? '搜尋結果' : '全部標籤' }}
         <span class="count">{{ tags.length }}</span>
+        <span
+          class="ui-seg sort-seg"
+          role="group"
+          aria-label="排序"
+        >
+          <button
+            type="button"
+            :aria-pressed="sort === 'default'"
+            @click="sort = 'default'"
+          >預設</button>
+          <button
+            type="button"
+            :aria-pressed="sort === 'count'"
+            @click="sort = 'count'"
+          >對話數</button>
+        </span>
       </h2>
       <div class="ui-group tags-grid">
         <TagCard
@@ -47,7 +63,7 @@
 
 <script setup lang="ts">
 import UiEmptyState from '@/components/ui/UiEmptyState.vue'
-import { computed, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { TagIcon } from '@/components/icons'
 import TagCard from './TagCard.vue'
 import PaginationControls from '@/components/ui/PaginationControls.vue'
@@ -76,8 +92,16 @@ const maxCount = computed(() => props.tags.reduce((m, t) => Math.max(m, t.conver
 // Pagination
 const pagination = usePagination({ limit: PAGE_SIZE, total: props.tags.length })
 
+const sort = ref<'default' | 'count'>('default')
+
+const sortedTags = computed(() =>
+  sort.value === 'count'
+    ? [...props.tags].sort((a, b) => (b.conversationCount || 0) - (a.conversationCount || 0))
+    : props.tags
+)
+
 const paginatedTags = computed(() => {
-  return pagination.paginateData(props.tags)
+  return pagination.paginateData(sortedTags.value)
 })
 
 const paginationInfo = computed(() => ({
@@ -108,6 +132,10 @@ watch(
   display: flex;
   flex-direction: column;
   padding: 6px 0;
+}
+
+.sort-seg {
+  margin: -7px 0 -7px auto;
 }
 
 .ui-group-label .count {

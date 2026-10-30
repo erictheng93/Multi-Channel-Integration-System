@@ -8,8 +8,22 @@
         {{ stats.totalConversations.toLocaleString('en-US') }}<small>個</small>
       </div>
       <div class="lead-meaning">
-        共 {{ stats.totalTags }} 個標籤；同一對話可套用多個標籤
+        同一對話可套用多個標籤
       </div>
+      <dl class="lead-facts">
+        <div>
+          <dt>標籤數</dt>
+          <dd>{{ stats.totalTags }}</dd>
+        </div>
+        <div>
+          <dt>最常用</dt>
+          <dd>{{ parts[0]?.name ?? '-' }}</dd>
+        </div>
+        <div v-if="unusedCount > 0">
+          <dt>尚未套用</dt>
+          <dd>{{ unusedCount }}</dd>
+        </div>
+      </dl>
     </div>
 
     <div
@@ -50,12 +64,6 @@
           <b>{{ rest.count }}</b>
         </li>
       </ul>
-      <p
-        v-if="unusedCount > 0"
-        class="mix-note"
-      >
-        另有 {{ unusedCount }} 個標籤尚未套用
-      </p>
     </div>
   </article>
 </template>
@@ -101,7 +109,26 @@ const coverage = computed(() => {
 
 <style scoped>
 .mix-rest {
-  background: var(--ui-fill-strong);
+  background: var(--ui-muted);
+  opacity: 0.55;
+}
+
+.lead-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 32px;
+  margin: 22px 0 0;
+}
+
+.lead-facts dt {
+  font-size: 13px;
+  color: var(--ui-muted);
+}
+
+.lead-facts dd {
+  margin: 2px 0 0;
+  font: 600 18px / 1.2 var(--ui-font-display);
+  font-variant-numeric: tabular-nums;
 }
 
 .lead {
@@ -229,12 +256,6 @@ const coverage = computed(() => {
   font-variant-numeric: tabular-nums;
 }
 
-.mix-note {
-  margin: 12px 0 0;
-  font-size: 13px;
-  color: var(--ui-muted);
-}
-
 @media (max-width: 768px) {
   .lead {
     grid-template-columns: minmax(0, 1fr);
@@ -247,6 +268,10 @@ const coverage = computed(() => {
 
   .lead-mix::before {
     display: none;
+  }
+
+  .lead-facts {
+    margin-top: 14px;
   }
 }
 </style>
