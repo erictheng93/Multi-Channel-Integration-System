@@ -80,7 +80,7 @@
             <!-- Answered rows go quiet (a check and text); only rows that still need a reply carry a coloured pill -->
             <span
               v-else-if="replyStateOf(conversation, now).state === 'replied'"
-              class="replied-text"
+              class="replied-text state-text"
             ><svg
               viewBox="0 0 24 24"
               aria-hidden="true"
@@ -88,12 +88,9 @@
             <span
               v-else
               class="ui-pill ui-pill-dot state-text"
-              :class="[pillTone(replyStateOf(conversation, now).state, conversation), `state-${replyStateOf(conversation, now).state}`]"
+              :class="[pillTone(replyStateOf(conversation, now).state), `state-${replyStateOf(conversation, now).state}`]"
               :title="replyStateOf(conversation, now).state === 'waiting' ? WAITING_HINT : undefined"
-            >{{ replyStateOf(conversation, now).text }}<span
-              v-if="replyStateOf(conversation, now).state === 'waiting' && waitedText(conversation)"
-              class="waited"
-            >{{ waitedText(conversation) }}</span></span>
+            >{{ replyStateOf(conversation, now).text }}</span>
             <span
               v-if="conversation.assignedTeam?.name"
               class="team-text"
@@ -112,7 +109,6 @@
 <script setup lang="ts">
 import { toRef } from 'vue'
 import type { Conversation } from '@/types'
-import { formatWaitText } from '@/composables/dashboard/useDashboardOverview'
 import { convertEmojiForConversationList } from '@/utils/layered-emoji-processor'
 import {
   UNREAD_HINT,
@@ -143,21 +139,8 @@ const emit = defineEmits<{
 
 const { now } = useRowClock(toRef(props, 'conversations'))
 
-// Same urgency rule as the desktop table: red once a customer has waited over 30 minutes
-const URGENT_WAIT_SECONDS = 1800
-const waitSeconds = (conversation: Conversation): number | null => {
-  const since = conversation.awaitingSince ? Date.parse(conversation.awaitingSince) : NaN
-  return Number.isNaN(since) ? null : Math.max(0, (now.value - since) / 1000)
-}
-const waitedText = (conversation: Conversation): string => {
-  const secs = waitSeconds(conversation)
-  return secs === null ? '' : formatWaitText(secs)
-}
-const pillTone = (state: string, conversation: Conversation): string => {
-  if (state === 'replied') { return 'ui-pill-green' }
-  if (state !== 'waiting') { return '' }
-  return (waitSeconds(conversation) ?? 0) >= URGENT_WAIT_SECONDS ? 'ui-pill-red' : 'ui-pill-orange'
-}
+const pillTone = (state: string): string =>
+  state === 'waiting' ? 'ui-pill-orange' : state === 'replied' ? 'ui-pill-green' : ''
 
 // 選取模式下，點擊整張卡片切換選取而非導覽
 const handleCardClick = (id: string) => {
@@ -378,14 +361,6 @@ const getLastMessageText = (conversation: Conversation) => {
   stroke-width: 2.4;
   stroke-linecap: round;
   stroke-linejoin: round;
-}
-
-.waited {
-  margin-left: 6px;
-  padding-left: 6px;
-  border-left: 1px solid color-mix(in srgb, currentColor 35%, transparent);
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
 }
 
 .team-text:not(.unassigned) {
