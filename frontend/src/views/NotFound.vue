@@ -56,6 +56,41 @@
             class="mono"
             :title="route.fullPath"
           >{{ route.fullPath }}</span>
+          <button
+            type="button"
+            class="copy"
+            :aria-label="copied ? '已複製網址' : '複製網址'"
+            @click="copyUrl"
+          >
+            <svg
+              v-if="!copied"
+              class="ico"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            ><rect
+              x="9"
+              y="9"
+              width="11"
+              height="11"
+              rx="2.5"
+            /><path d="M5 15V6.5A2.5 2.5 0 0 1 7.5 4H15" /></svg>
+            <svg
+              v-else
+              class="ico"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.4"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            ><path d="m5 12.5 4.5 4.5L19 7" /></svg>
+          </button>
         </div>
 
         <div
@@ -148,7 +183,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import AppLayout from '@/components/ui/AppLayout.vue'
@@ -178,24 +213,25 @@ const QUICK_LINKS: QuickLink[] = [
     icon: '<path d="M21 12a8 8 0 0 1-11.6 7.1L4 20.5l1.4-4.6A8 8 0 1 1 21 12Z"/>'
   },
   {
-    to: '/notifications',
-    title: '通知',
-    text: '指派、提及與系統提醒',
-    tone: 'blue',
-    icon: '<path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/>'
-  },
-  {
     to: '/tags',
     title: '客戶標籤',
     text: '分類與客戶經營',
-    tone: 'blue',
+    tone: 'orange',
     icon: '<path d="M12.6 2.6A2 2 0 0 0 11.2 2H4a2 2 0 0 0-2 2v7.2a2 2 0 0 0 .6 1.4l8.7 8.7a2.4 2.4 0 0 0 3.4 0l6.6-6.6a2.4 2.4 0 0 0 0-3.4Z"/><circle cx="7.5" cy="7.5" r="1.2"/>'
+  },
+  {
+    to: '/team',
+    title: '團隊成員',
+    text: '成員、角色與團隊',
+    tone: 'green',
+    icon: '<circle cx="9" cy="8" r="3.2"/><path d="M3 20c.4-3.4 2.8-5.2 6-5.2s5.6 1.8 6 5.2"/><path d="M16 5.2a3.2 3.2 0 0 1 0 5.6M18 14.9c1.8.6 2.8 2.3 3 5.1"/>',
+    adminOnly: true
   },
   {
     to: '/settings',
     title: '系統設定',
     text: '整合、備份與健康檢查',
-    tone: 'blue',
+    tone: 'indigo',
     icon: '<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M2 12h3M19 12h3M4.9 19.1 7 17M17 7l2.1-2.1"/>',
     adminOnly: true
   }
@@ -207,6 +243,18 @@ const links = computed(() =>
 )
 
 const homePath = computed(() => (isAuthenticated.value ? '/dashboard' : '/login'))
+
+// Copy the address that was asked for (handy for a bug report); the icon confirms for 1.6 s
+const copied = ref(false)
+const copyUrl = async () => {
+  try {
+    await navigator.clipboard.writeText(`${window.location.origin}${route.fullPath}`)
+    copied.value = true
+    window.setTimeout(() => { copied.value = false }, 1600)
+  } catch {
+    copied.value = false
+  }
+}
 
 const goBack = () => {
   if (window.history.length > 1) {
@@ -259,15 +307,18 @@ const goBack = () => {
 .code-wrap {
   display: grid;
   place-items: center;
-  padding: 8px 0;
+  padding: 8px 56px;
+  border-radius: 999px;
+  /* a quiet wash of the section blue behind the numeral gives the page a centre of gravity */
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--ui-blue) 9%, transparent), transparent);
 }
 
 .code {
   display: flex;
   gap: 0.04em;
   align-items: center;
-  font: 300 168px / 1 var(--ui-font-display);
-  letter-spacing: -0.06em;
+  font: 500 132px / 1 var(--ui-font-display);
+  letter-spacing: -0.05em;
   color: var(--ui-ink);
 }
 
@@ -286,7 +337,7 @@ const goBack = () => {
 }
 
 .nf-ring.r3 {
-  stroke-width: 12;
+  stroke-width: 9;
 }
 
 .nf-ring.r2 {
@@ -313,7 +364,7 @@ const goBack = () => {
 }
 
 .nf-title {
-  margin: 18px 0 0;
+  margin: 22px 0 0;
   font: 700 34px/1.2 var(--ui-font-display);
   letter-spacing: -0.035em;
 }
@@ -342,9 +393,36 @@ const goBack = () => {
   color: var(--ui-ink-2);
 }
 
+.copy {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  margin: -6px -6px -6px 0;
+  padding: 0;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--ui-ink-2);
+  cursor: pointer;
+  transition: background var(--ui-dur) var(--ui-ease);
+}
+
+.copy:hover {
+  background: var(--ui-fill);
+}
+
+.copy:focus-visible {
+  outline: 2px solid var(--ui-accent);
+  outline-offset: 1px;
+}
+
 .asked .mono {
+  flex: 1;
   min-width: 0;
   overflow: hidden;
+  text-align: left;
   font-family: var(--ui-font-mono);
   font-weight: 500;
   color: var(--ui-ink);
@@ -434,7 +512,19 @@ const goBack = () => {
 }
 
 .go-ico.blue {
-  background: var(--ui-blue);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--ui-blue) 82%, #fff), var(--ui-blue));
+}
+
+.go-ico.orange {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--ui-orange) 82%, #fff), var(--ui-orange));
+}
+
+.go-ico.green {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--ui-green) 82%, #fff), var(--ui-green));
+}
+
+.go-ico.indigo {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--ui-indigo) 82%, #fff), var(--ui-indigo));
 }
 
 .go b {
@@ -463,7 +553,7 @@ const goBack = () => {
 
 @media (max-width: 480px) {
   .code {
-    font-size: 104px;
+    font-size: 96px;
   }
 
   .asked {
