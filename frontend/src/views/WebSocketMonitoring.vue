@@ -1,6 +1,6 @@
 <template>
   <AppLayout>
-    <div class="ui-page websocket-monitoring">
+    <div class="ui-page rl-page websocket-monitoring">
       <UiPageHead
         title="即時連線監控"
         :subtitle="subtitle"
@@ -49,56 +49,65 @@
         {{ error }}
       </div>
 
-      <!-- 即時指標：已註冊連線是主指標，其餘三項並列 -->
-      <section class="top">
-        <article class="ui-card lead-card">
-          <UiLeadMetric
-            label="已註冊連線"
-            :value="metrics ? metrics.registeredConnections : null"
-            unit="條"
-            :loading="isRefreshing && !metrics"
-            :meaning="metrics ? `${metrics.onlineAgents} 位在線客服，多分頁與裝置各算一條` : ''"
-          >
+      <!-- Lead: registered connections now against this range's peak -->
+      <RingLead
+        kicker="已註冊連線"
+        :value="metrics ? metrics.registeredConnections : '—'"
+        :unit="metrics ? '條' : ''"
+        :busy="isRefreshing && !metrics"
+        :tone="metrics ? '' : 'none'"
+        :meaning="metrics ? `${metrics.onlineAgents} 位在線客服，多分頁與裝置各算一條` : ''"
+        summary="連線數"
+        :rings="connectionRings"
+        :size="144"
+      >
+        <span
+          v-if="metrics && connectionDelta !== null"
+          class="ui-delta lead-delta"
+          :class="connectionDelta >= 0 ? 'ui-delta-up' : 'ui-delta-down'"
+        >{{ connectionDelta > 0 ? '+' : '' }}{{ connectionDelta }} 比上次刷新</span>
+      </RingLead>
+
+      <!-- Rates: one grouped row each, with its own trend -->
+      <section aria-label="即時指標">
+        <h2 class="ui-group-label">
+          即時指標
+          <span class="label-note">每 {{ POLL_SECONDS }} 秒更新，走勢為{{ rangeLabel }}</span>
+        </h2>
+        <div class="ui-group">
+          <div class="ui-row is-flush kpi-row">
             <span
-              v-if="metrics && connectionDelta !== null"
-              class="ui-delta lead-delta"
-              :class="connectionDelta >= 0 ? 'ui-delta-up' : 'ui-delta-down'"
-            >{{ connectionDelta > 0 ? '+' : '' }}{{ connectionDelta }} 比上次刷新</span>
-          </UiLeadMetric>
-        </article>
-        <div class="kpis">
-          <article class="ui-card ui-kpi">
-            <div class="ui-kpi-top">
-              <span
-                class="ui-kpi-ico green"
-                aria-hidden="true"
-              >
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                ><path d="M7 4v16M7 20l-3-3M7 20l3-3M17 20V4M17 4l-3 3M17 4l3 3" /></svg>
-              </span>
-              事件 / 秒
+              class="ui-kpi-ico green"
+              aria-hidden="true"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              ><path d="M7 4v16M7 20l-3-3M7 20l3-3M17 20V4M17 4l-3 3M17 4l3 3" /></svg>
+            </span>
+            <div class="kpi-main">
+              <div class="kpi-label">
+                事件 / 秒
+              </div>
+              <div class="ui-kpi-foot">
+                <template v-if="eventsTotal === null">
+                  {{ metrics ? RESAMPLE_HINT : '' }}
+                </template>
+                <template v-else>
+                  入 <b>{{ fmt(eventsIn, 2) }}</b> / 出 <b>{{ fmt(eventsOut, 2) }}</b>
+                </template>
+              </div>
             </div>
-            <div class="ui-kpi-value">
+            <div class="kpi-value">
               {{ eventsTotal === null ? '—' : fmt(eventsTotal, 2) }}
-            </div>
-            <div class="ui-kpi-foot">
-              <template v-if="eventsTotal === null">
-                {{ metrics ? RESAMPLE_HINT : '' }}
-              </template>
-              <template v-else>
-                入 <b>{{ fmt(eventsIn, 2) }}</b> / 出 <b>{{ fmt(eventsOut, 2) }}</b>
-              </template>
             </div>
             <svg
               v-if="sparks.events.line"
-              class="spark"
-              :class="'is-accent'"
+              class="spark is-accent"
               :viewBox="`0 0 ${SPARK.width} ${SPARK.height}`"
               preserveAspectRatio="none"
               role="img"
@@ -113,47 +122,52 @@
                 class="spark-line"
               />
             </svg>
-          </article>
+            <span
+              v-else
+              class="spark-gap"
+            />
+          </div>
 
-          <article class="ui-card ui-kpi">
-            <div class="ui-kpi-top">
-              <span
-                class="ui-kpi-ico orange"
-                aria-hidden="true"
-              >
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                ><circle
-                  cx="12"
-                  cy="12"
-                  r="9"
-                /><path d="M12 7v5l3 2" /></svg>
-              </span>
-              平均處理延遲
+          <div class="ui-row is-flush kpi-row">
+            <span
+              class="ui-kpi-ico orange"
+              aria-hidden="true"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              ><circle
+                cx="12"
+                cy="12"
+                r="9"
+              /><path d="M12 7v5l3 2" /></svg>
+            </span>
+            <div class="kpi-main">
+              <div class="kpi-label">
+                平均處理延遲
+              </div>
+              <div class="ui-kpi-foot">
+                <template v-if="metrics && !latencyKnown">
+                  {{ RESAMPLE_HINT }}
+                </template>
+                <template v-else-if="metrics">
+                  <span
+                    class="ui-pill ui-pill-dot"
+                    :class="latency.pill"
+                  >{{ latency.label }}</span><span class="foot-hint">{{ latency.hint }}</span>
+                </template>
+              </div>
             </div>
-            <div class="ui-kpi-value">
+            <div class="kpi-value">
               {{ latencyKnown ? fmt(metrics?.averageLatency, 0) : '—' }}<small v-if="latencyKnown">ms</small>
-            </div>
-            <div class="ui-kpi-foot">
-              <template v-if="metrics && !latencyKnown">
-                {{ RESAMPLE_HINT }}
-              </template>
-              <template v-else-if="metrics">
-                <span
-                  class="ui-pill ui-pill-dot"
-                  :class="latency.pill"
-                >{{ latency.label }}</span><span class="foot-hint">{{ latency.hint }}</span>
-              </template>
             </div>
             <svg
               v-if="sparks.latency.line"
-              class="spark"
-              :class="'is-orange'"
+              class="spark is-orange"
               :viewBox="`0 0 ${SPARK.width} ${SPARK.height}`"
               preserveAspectRatio="none"
               role="img"
@@ -168,43 +182,48 @@
                 class="spark-line"
               />
             </svg>
-          </article>
+            <span
+              v-else
+              class="spark-gap"
+            />
+          </div>
 
-          <article class="ui-card ui-kpi">
-            <div class="ui-kpi-top">
-              <span
-                class="ui-kpi-ico red"
-                aria-hidden="true"
-              >
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                ><path d="M12 3 2 20h20Z" /><path d="M12 10v4M12 17h.01" /></svg>
-              </span>
-              錯誤率
+          <div class="ui-row is-flush kpi-row">
+            <span
+              class="ui-kpi-ico red"
+              aria-hidden="true"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              ><path d="M12 3 2 20h20Z" /><path d="M12 10v4M12 17h.01" /></svg>
+            </span>
+            <div class="kpi-main">
+              <div class="kpi-label">
+                錯誤率
+              </div>
+              <div class="ui-kpi-foot">
+                <template v-if="errorRate === null">
+                  {{ metrics ? RESAMPLE_HINT : '' }}
+                </template>
+                <template v-else>
+                  <span
+                    class="ui-pill ui-pill-dot"
+                    :class="errorStatus.pill"
+                  >{{ errorStatus.label }}</span><span class="foot-hint">{{ errorStatus.hint }}</span>
+                </template>
+              </div>
             </div>
-            <div class="ui-kpi-value">
+            <div class="kpi-value">
               {{ errorRate === null ? '—' : (errorRate * 100).toFixed(2) }}<small v-if="errorRate !== null">%</small>
-            </div>
-            <div class="ui-kpi-foot">
-              <template v-if="errorRate === null">
-                {{ metrics ? RESAMPLE_HINT : '' }}
-              </template>
-              <template v-else>
-                <span
-                  class="ui-pill ui-pill-dot"
-                  :class="errorStatus.pill"
-                >{{ errorStatus.label }}</span><span class="foot-hint">{{ errorStatus.hint }}</span>
-              </template>
             </div>
             <svg
               v-if="sparks.error.line"
-              class="spark"
-              :class="'is-red'"
+              class="spark is-red"
               :viewBox="`0 0 ${SPARK.width} ${SPARK.height}`"
               preserveAspectRatio="none"
               role="img"
@@ -219,216 +238,117 @@
                 class="spark-line"
               />
             </svg>
-          </article>
+            <span
+              v-else
+              class="spark-gap"
+            />
+          </div>
         </div>
       </section>
 
       <section class="bento">
         <!-- 歷史趨勢 -->
-        <article class="ui-card s8">
-          <div class="ui-card-head">
-            <div>
-              <h2 class="ui-card-title">
-                歷史趨勢
-              </h2>
-              <div class="ui-card-sub">
-                已註冊連線與每秒事件量（每 5 分鐘取樣一次）
-              </div>
-            </div>
-            <div class="ui-card-end">
-              <div
-                class="ui-seg"
-                role="group"
-                aria-label="時間範圍"
-              >
-                <button
-                  v-for="option in RANGE_OPTIONS"
-                  :key="option.value"
-                  type="button"
-                  :aria-pressed="period === option.value"
-                  @click="changePeriod(option.value)"
-                >
-                  {{ option.label }}
-                </button>
-              </div>
-            </div>
-          </div>
-          <div class="legend">
-            <span><i class="swatch-area" />已註冊連線<b
-              v-if="chart.lastConnections !== null"
-              class="is-conn"
-            >{{ chart.lastConnections }}</b></span><span><i class="swatch-line" />事件 / 秒<b
-              v-if="chart.lastEvents !== null"
-              class="is-evt"
-            >{{ fmt(chart.lastEvents, 2) }}</b></span>
-          </div>
-          <div class="chart-wrap">
-            <svg
-              v-if="chart.connections.count > 0"
-              class="chart"
-              :viewBox="`0 0 ${geom.width} ${geom.height}`"
-              role="img"
-              :aria-label="`${rangeLabel}已註冊連線與每秒事件趨勢`"
-            >
-              <g class="g">
-                <line
-                  v-for="tick in chart.yLeft"
-                  :key="`g${tick.pos}`"
-                  :x1="geom.left"
-                  :x2="geom.right"
-                  :y1="tick.pos"
-                  :y2="tick.pos"
-                />
-              </g>
-              <g
-                text-anchor="end"
-                class="ax-left"
-              >
-                <text
-                  v-for="tick in chart.yLeft"
-                  :key="`l${tick.pos}`"
-                  :x="geom.left - 8"
-                  :y="tick.pos + 4"
-                >{{ tick.label }}</text>
-              </g>
-              <g
-                v-if="!phone"
-                text-anchor="start"
-                class="ax-right"
-              >
-                <text
-                  v-for="tick in chart.yRight"
-                  :key="`r${tick.pos}`"
-                  :x="geom.right + 8"
-                  :y="tick.pos + 4"
-                >{{ tick.label }}</text>
-              </g>
-              <g text-anchor="middle">
-                <text
-                  v-for="tick in chart.x"
-                  :key="`x${tick.pos}`"
-                  :x="tick.pos"
-                  :y="geom.bottom + 24"
-                >{{ tick.label }}</text>
-              </g>
-              <path
-                v-for="(d, i) in chart.connections.areas"
-                :key="`a${i}`"
-                :d="d"
-                fill="var(--ui-accent)"
-                opacity="0.1"
-              />
-              <path
-                v-for="(d, i) in chart.connections.lines"
-                :key="`c${i}`"
-                :d="d"
-                fill="none"
-                stroke="var(--ui-accent)"
-                stroke-width="2.4"
-                stroke-linejoin="round"
-                stroke-linecap="round"
-              />
-              <path
-                v-for="(d, i) in phoneEvents"
-                :key="`e${i}`"
-                :d="d"
-                fill="none"
-                stroke="var(--ui-indigo)"
-                stroke-width="2.2"
-                stroke-linejoin="round"
-                stroke-linecap="round"
-              />
-              <circle
-                v-for="(dot, i) in chart.connections.dots"
-                :key="`cd${i}`"
-                :cx="dot.x"
-                :cy="dot.y"
-                r="2.6"
-                fill="var(--ui-accent)"
-              />
-              <circle
-                v-for="(dot, i) in phoneEventDots"
-                :key="`ed${i}`"
-                :cx="dot.x"
-                :cy="dot.y"
-                r="2.4"
-                fill="var(--ui-indigo)"
-              />
-              <circle
-                v-if="chart.connections.last"
-                :cx="chart.connections.last.x"
-                :cy="chart.connections.last.y"
-                r="4"
-                fill="var(--ui-accent)"
-              />
-              <circle
-                v-if="chart.events.last && !phone"
-                :cx="chart.events.last.x"
-                :cy="chart.events.last.y"
-                r="4"
-                fill="var(--ui-indigo)"
-                stroke="var(--ui-surface)"
-                stroke-width="1.5"
-              />
-            </svg>
+        <section class="s8">
+          <div class="label-row">
+            <h2 class="ui-group-label">
+              歷史趨勢
+              <span class="label-note">已註冊連線與每秒事件量（每 5 分鐘取樣一次）</span>
+            </h2>
             <div
-              v-else
-              class="ui-empty"
+              class="ui-seg"
+              role="group"
+              aria-label="時間範圍"
             >
-              <h3>{{ historyLoading ? '載入中...' : historyError ? '無法載入歷史資料' : '這段時間還沒有取樣資料' }}</h3>
-              <p>{{ historyError || '系統每 5 分鐘記錄一次連線快照，累積後會顯示在這裡。' }}</p>
+              <button
+                v-for="option in RANGE_OPTIONS"
+                :key="option.value"
+                type="button"
+                :aria-pressed="period === option.value"
+                @click="changePeriod(option.value)"
+              >
+                {{ option.label }}
+              </button>
             </div>
-            <!-- Phone: one axis cannot carry both series, so events get their own small chart on the same time range -->
-            <template v-if="phone && chart.connections.count > 0">
-              <div class="legend legend-second">
-                <span><i class="swatch-line" />事件 / 秒<b
-                  v-if="chart.lastEvents !== null"
-                  class="is-evt"
-                >{{ fmt(chart.lastEvents, 2) }}</b></span>
-              </div>
+          </div>
+          <div class="ui-group chart-card">
+            <div class="legend">
+              <span><i class="swatch-area" />已註冊連線<b
+                v-if="chart.lastConnections !== null"
+                class="is-conn"
+              >{{ chart.lastConnections }}</b></span><span><i class="swatch-line" />事件 / 秒<b
+                v-if="chart.lastEvents !== null"
+                class="is-evt"
+              >{{ fmt(chart.lastEvents, 2) }}</b></span>
+            </div>
+            <div class="chart-wrap">
               <svg
-                v-if="phoneChart.events.count > 0"
+                v-if="chart.connections.count > 0"
                 class="chart"
-                :viewBox="`0 0 ${PHONE_EVENTS.width} ${PHONE_EVENTS.height}`"
+                :viewBox="`0 0 ${geom.width} ${geom.height}`"
                 role="img"
-                :aria-label="`${rangeLabel}每秒事件趨勢`"
+                :aria-label="`${rangeLabel}已註冊連線與每秒事件趨勢`"
               >
                 <g class="g">
                   <line
-                    v-for="tick in phoneChart.yEvents"
-                    :key="`pg${tick.pos}`"
-                    :x1="PHONE_EVENTS.left"
-                    :x2="PHONE_EVENTS.right"
+                    v-for="tick in chart.yLeft"
+                    :key="`g${tick.pos}`"
+                    :x1="geom.left"
+                    :x2="geom.right"
                     :y1="tick.pos"
                     :y2="tick.pos"
                   />
                 </g>
-                <g text-anchor="end">
+                <g
+                  text-anchor="end"
+                  class="ax-left"
+                >
                   <text
-                    v-for="tick in phoneChart.yEvents"
-                    :key="`pl${tick.pos}`"
-                    :x="PHONE_EVENTS.left - 8"
+                    v-for="tick in chart.yLeft"
+                    :key="`l${tick.pos}`"
+                    :x="geom.left - 8"
+                    :y="tick.pos + 4"
+                  >{{ tick.label }}</text>
+                </g>
+                <g
+                  v-if="!phone"
+                  text-anchor="start"
+                  class="ax-right"
+                >
+                  <text
+                    v-for="tick in chart.yRight"
+                    :key="`r${tick.pos}`"
+                    :x="geom.right + 8"
                     :y="tick.pos + 4"
                   >{{ tick.label }}</text>
                 </g>
                 <g text-anchor="middle">
                   <text
-                    v-for="tick in phoneChart.x"
-                    :key="`px${tick.pos}`"
+                    v-for="tick in chart.x"
+                    :key="`x${tick.pos}`"
                     :x="tick.pos"
-                    :y="PHONE_EVENTS.bottom + 22"
+                    :y="geom.bottom + 24"
                   >{{ tick.label }}</text>
                 </g>
                 <path
-                  v-for="(d, i) in phoneChart.events.areas"
-                  :key="`pa${i}`"
+                  v-for="(d, i) in chart.connections.areas"
+                  :key="`a${i}`"
                   :d="d"
-                  fill="var(--ui-indigo)"
+                  fill="var(--ui-accent)"
                   opacity="0.1"
                 />
                 <path
-                  v-for="(d, i) in phoneChart.events.lines"
-                  :key="`pe${i}`"
+                  v-for="(d, i) in chart.connections.lines"
+                  :key="`c${i}`"
+                  :d="d"
+                  fill="none"
+                  stroke="var(--ui-accent)"
+                  stroke-width="2.4"
+                  stroke-linejoin="round"
+                  stroke-linecap="round"
+                />
+                <path
+                  v-for="(d, i) in phoneEvents"
+                  :key="`e${i}`"
                   :d="d"
                   fill="none"
                   stroke="var(--ui-indigo)"
@@ -437,104 +357,193 @@
                   stroke-linecap="round"
                 />
                 <circle
-                  v-for="(dot, i) in phoneChart.events.dots"
-                  :key="`pd${i}`"
+                  v-for="(dot, i) in chart.connections.dots"
+                  :key="`cd${i}`"
+                  :cx="dot.x"
+                  :cy="dot.y"
+                  r="2.6"
+                  fill="var(--ui-accent)"
+                />
+                <circle
+                  v-for="(dot, i) in phoneEventDots"
+                  :key="`ed${i}`"
                   :cx="dot.x"
                   :cy="dot.y"
                   r="2.4"
                   fill="var(--ui-indigo)"
                 />
                 <circle
-                  v-if="phoneChart.events.last"
-                  :cx="phoneChart.events.last.x"
-                  :cy="phoneChart.events.last.y"
+                  v-if="chart.connections.last"
+                  :cx="chart.connections.last.x"
+                  :cy="chart.connections.last.y"
+                  r="4"
+                  fill="var(--ui-accent)"
+                />
+                <circle
+                  v-if="chart.events.last && !phone"
+                  :cx="chart.events.last.x"
+                  :cy="chart.events.last.y"
                   r="4"
                   fill="var(--ui-indigo)"
                   stroke="var(--ui-surface)"
                   stroke-width="1.5"
                 />
               </svg>
-              <p
+              <div
                 v-else
+                class="ui-empty"
+              >
+                <h3>{{ historyLoading ? '載入中...' : historyError ? '無法載入歷史資料' : '這段時間還沒有取樣資料' }}</h3>
+                <p>{{ historyError || '系統每 5 分鐘記錄一次連線快照，累積後會顯示在這裡。' }}</p>
+              </div>
+              <!-- Phone: one axis cannot carry both series, so events get their own small chart on the same time range -->
+              <template v-if="phone && chart.connections.count > 0">
+                <div class="legend legend-second">
+                  <span><i class="swatch-line" />事件 / 秒<b
+                    v-if="chart.lastEvents !== null"
+                    class="is-evt"
+                  >{{ fmt(chart.lastEvents, 2) }}</b></span>
+                </div>
+                <svg
+                  v-if="phoneChart.events.count > 0"
+                  class="chart"
+                  :viewBox="`0 0 ${PHONE_EVENTS.width} ${PHONE_EVENTS.height}`"
+                  role="img"
+                  :aria-label="`${rangeLabel}每秒事件趨勢`"
+                >
+                  <g class="g">
+                    <line
+                      v-for="tick in phoneChart.yEvents"
+                      :key="`pg${tick.pos}`"
+                      :x1="PHONE_EVENTS.left"
+                      :x2="PHONE_EVENTS.right"
+                      :y1="tick.pos"
+                      :y2="tick.pos"
+                    />
+                  </g>
+                  <g text-anchor="end">
+                    <text
+                      v-for="tick in phoneChart.yEvents"
+                      :key="`pl${tick.pos}`"
+                      :x="PHONE_EVENTS.left - 8"
+                      :y="tick.pos + 4"
+                    >{{ tick.label }}</text>
+                  </g>
+                  <g text-anchor="middle">
+                    <text
+                      v-for="tick in phoneChart.x"
+                      :key="`px${tick.pos}`"
+                      :x="tick.pos"
+                      :y="PHONE_EVENTS.bottom + 22"
+                    >{{ tick.label }}</text>
+                  </g>
+                  <path
+                    v-for="(d, i) in phoneChart.events.areas"
+                    :key="`pa${i}`"
+                    :d="d"
+                    fill="var(--ui-indigo)"
+                    opacity="0.1"
+                  />
+                  <path
+                    v-for="(d, i) in phoneChart.events.lines"
+                    :key="`pe${i}`"
+                    :d="d"
+                    fill="none"
+                    stroke="var(--ui-indigo)"
+                    stroke-width="2.2"
+                    stroke-linejoin="round"
+                    stroke-linecap="round"
+                  />
+                  <circle
+                    v-for="(dot, i) in phoneChart.events.dots"
+                    :key="`pd${i}`"
+                    :cx="dot.x"
+                    :cy="dot.y"
+                    r="2.4"
+                    fill="var(--ui-indigo)"
+                  />
+                  <circle
+                    v-if="phoneChart.events.last"
+                    :cx="phoneChart.events.last.x"
+                    :cy="phoneChart.events.last.y"
+                    r="4"
+                    fill="var(--ui-indigo)"
+                    stroke="var(--ui-surface)"
+                    stroke-width="1.5"
+                  />
+                </svg>
+                <p
+                  v-else
+                  class="axis-note"
+                >
+                  這段時間沒有事件取樣資料。
+                </p>
+              </template>
+              <p
+                v-if="chart.connections.count > 0"
                 class="axis-note"
               >
-                這段時間沒有事件取樣資料。
+                {{ phone ? '事件資料缺漏的時段（例如服務重啟後的第一次取樣）不連線。' : '藍色左軸：連線數；紫色右軸：事件 / 秒。事件資料缺漏的時段（例如服務重啟後的第一次取樣）不連線。' }}
               </p>
-            </template>
-            <p
-              v-if="chart.connections.count > 0"
-              class="axis-note"
-            >
-              {{ phone ? '事件資料缺漏的時段（例如服務重啟後的第一次取樣）不連線。' : '藍色左軸：連線數；紫色右軸：事件 / 秒。事件資料缺漏的時段（例如服務重啟後的第一次取樣）不連線。' }}
-            </p>
+            </div>
           </div>
-        </article>
+        </section>
 
         <!-- 即時概況 -->
-        <article class="ui-card s4">
-          <div class="ui-card-head">
-            <div>
-              <h2 class="ui-card-title">
-                即時概況
-              </h2>
-              <div class="ui-card-sub">
-                來自 MessageBroadcaster
+        <section class="s4">
+          <h2 class="ui-group-label">
+            即時概況
+            <span class="label-note">來自 MessageBroadcaster</span>
+          </h2>
+          <div class="ui-group facts-card">
+            <div
+              v-if="metrics"
+              class="facts"
+            >
+              <div class="fact">
+                <span>在線客服</span><b>{{ metrics.onlineAgents }}</b>
               </div>
+              <div class="fact">
+                <span>已註冊連線</span><b>{{ metrics.registeredConnections }}</b>
+              </div>
+              <div class="fact">
+                <span>取樣視窗</span><b>{{ sampled ? `${metrics.windowSeconds} 秒` : '—' }}</b>
+              </div>
+              <h3 class="fact-group">
+                {{ rangeLabel }}內
+              </h3>
+              <div class="fact">
+                <span>連線峰值</span><b>{{ stats.peakConnections ?? '—' }}</b>
+              </div>
+              <div class="fact">
+                <span>平均連線</span><b>{{ stats.avgConnections ?? '—' }}</b>
+              </div>
+              <div class="fact">
+                <span>事件峰值 / 秒</span><b>{{ stats.peakEvents === null ? '—' : fmt(stats.peakEvents, 2) }}</b>
+              </div>
+              <p class="fact-note">
+                連線數為已註冊的連線（客服連線加對話房間），不代表每一條都有即時 socket。
+              </p>
+            </div>
+            <div
+              v-else
+              class="ui-empty"
+            >
+              <p>{{ isRefreshing ? '載入中...' : '尚無資料' }}</p>
             </div>
           </div>
-          <div
-            v-if="metrics"
-            class="facts"
-          >
-            <div class="fact">
-              <span>在線客服</span><b>{{ metrics.onlineAgents }}</b>
-            </div>
-            <div class="fact">
-              <span>已註冊連線</span><b>{{ metrics.registeredConnections }}</b>
-            </div>
-            <div class="fact">
-              <span>取樣視窗</span><b>{{ sampled ? `${metrics.windowSeconds} 秒` : '—' }}</b>
-            </div>
-            <h3 class="fact-group">
-              {{ rangeLabel }}內
-            </h3>
-            <div class="fact">
-              <span>連線峰值</span><b>{{ stats.peakConnections ?? '—' }}</b>
-            </div>
-            <div class="fact">
-              <span>平均連線</span><b>{{ stats.avgConnections ?? '—' }}</b>
-            </div>
-            <div class="fact">
-              <span>事件峰值 / 秒</span><b>{{ stats.peakEvents === null ? '—' : fmt(stats.peakEvents, 2) }}</b>
-            </div>
-            <p class="fact-note">
-              連線數為已註冊的連線（客服連線加對話房間），不代表每一條都有即時 socket。
-            </p>
-          </div>
-          <div
-            v-else
-            class="ui-empty"
-          >
-            <p>{{ isRefreshing ? '載入中...' : '尚無資料' }}</p>
-          </div>
-        </article>
+        </section>
 
         <!-- 告警 -->
-        <article
+        <section
           v-if="alerts.length > 0"
-          class="ui-card s12"
+          class="s12"
         >
-          <div class="ui-card-head">
-            <div>
-              <h2 class="ui-card-title">
-                系統告警
-              </h2>
-              <div class="ui-card-sub">
-                {{ alerts.length }} 則待處理
-              </div>
-            </div>
-          </div>
-          <div class="alerts">
+          <h2 class="ui-group-label">
+            系統告警
+            <span class="label-note">{{ alerts.length }} 則待處理</span>
+          </h2>
+          <div class="ui-group alerts">
             <div
               v-for="alert in alerts"
               :key="alert.id"
@@ -576,7 +585,7 @@
               </button>
             </div>
           </div>
-        </article>
+        </section>
       </section>
     </div>
   </AppLayout>
@@ -588,7 +597,8 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { apiClient } from '@/api'
 import { presenceApi, type WsMetricsPointDto, type WsMetricsRange } from '@/api/presence'
 import AppLayout from '@/components/ui/AppLayout.vue'
-import UiLeadMetric from '@/components/ui/UiLeadMetric.vue'
+import RingLead from '@/components/lead/RingLead.vue'
+import type { ServiceRing } from '@/components/ui/ServiceRings.vue'
 import { CHART, CHART_COMPACT, RANGE_MS, SPARK, buildSeries, buildSpark, xTicks, yTicks } from '@/utils/ws-metrics-chart'
 import type { ChartGeometry } from '@/utils/ws-metrics-chart'
 
@@ -768,6 +778,19 @@ const phoneChart = computed(() => {
 })
 
 /** Peak and mean over the loaded history (client-side, no extra request) */
+/** One ring: connections now against the highest sample of the chosen range (same series, so they compare) */
+const connectionRings = computed<ServiceRing[]>(() => {
+  const peak = stats.value.peakConnections
+  if (!metrics.value || peak === null || peak <= 0) { return [] }
+  return [{
+    label: `目前連線（${rangeLabel.value}峰值）`,
+    value: metrics.value.activeConnections,
+    total: Math.max(peak, metrics.value.activeConnections),
+    of: '條',
+    hue: 'var(--section-hue)'
+  }]
+})
+
 const stats = computed(() => {
   const conns = history.value.map(p => p.activeConnections).filter(v => Number.isFinite(v))
   const evts = history.value.map(eventsOf).filter((v): v is number => v !== null && Number.isFinite(v))
@@ -980,34 +1003,77 @@ function formatTime(timestamp: number) {
   }
 }
 
-.top {
-  display: grid;
-  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
-  gap: 16px;
-}
-
-.lead-card {
-  overflow: hidden;
-}
-
-/* the lead card takes the KPI row's height (never the other way round): no min-height pushes the tiles taller */
-.lead-card :deep(.ui-lead) {
-  min-height: 0;
-}
-
-.lead-card :deep(.ui-lead-meaning) {
-  max-width: min(100%, 300px);
-}
-
 .lead-delta {
   align-self: flex-start;
   margin-top: 10px;
 }
 
-.kpis {
+.label-note {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--ui-muted);
+}
+
+.label-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  align-items: flex-end;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.label-row .ui-group-label {
+  margin: 0;
+  white-space: nowrap;
+}
+
+.chart-card {
+  padding-top: 16px;
+}
+
+.s4 > .ui-group-label {
+  margin-top: 16px;
+}
+
+.facts-card {
+  height: calc(100% - 44px);
+}
+
+/* A rate row: icon, name with its verdict, the number, then the trend */
+.kpi-row {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: auto minmax(0, 1fr) auto 220px;
   gap: 16px;
+  padding-top: 16px;
+  padding-bottom: 16px;
+}
+
+.kpi-label {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.kpi-main .ui-kpi-foot {
+  margin-top: 2px;
+}
+
+.kpi-value {
+  font: 600 28px / 1 var(--ui-font-display);
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.kpi-value small {
+  margin-left: 4px;
+  font: 500 14px var(--ui-font-ui);
+  letter-spacing: 0;
+  color: var(--ui-muted);
+}
+
+.kpi-row .spark {
+  height: 36px;
+  margin-top: 0;
 }
 
 .error-message {
@@ -1308,12 +1374,6 @@ svg.chart .ax-right text {
   height: 14px;
 }
 
-@media (max-width: 1024px) {
-  .top {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
-
 @media (max-width: 1280px) {
   .s8,
   .s4 {
@@ -1322,14 +1382,26 @@ svg.chart .ax-right text {
 }
 
 @media (max-width: 768px) {
-  .kpis {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .kpi-row {
+    grid-template-columns: auto minmax(0, 1fr) auto;
     gap: 12px;
   }
 
-  /* three tiles: the first spans the row, the other two pair up (no orphan) */
-  .kpis > :first-child {
-    grid-column: span 2;
+  .kpi-row .spark,
+  .kpi-row .spark-gap {
+    grid-column: 1 / -1;
+  }
+
+  .s4 > .ui-group-label {
+    margin-top: 0;
+  }
+
+  .label-row .label-note {
+    display: none;
+  }
+
+  .facts-card {
+    height: auto;
   }
 
   .ui-kpi-foot {
