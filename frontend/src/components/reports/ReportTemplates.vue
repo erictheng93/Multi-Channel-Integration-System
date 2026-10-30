@@ -89,14 +89,18 @@
         :aria-label="`${selected.name}的最近產出`"
       >
         <header class="out-head">
-          <div>
-            <p class="out-kicker">
-              目前選擇的模板
-            </p>
-            <h2 class="out-name">
-              {{ selected.name }}
-            </h2>
-          </div>
+          <h2 class="out-name">
+            {{ selected.name }}
+          </h2>
+          <p class="out-desc">
+            {{ selected.description }}
+          </p>
+        </header>
+        <ReportOutputPreview :type="selected.type" />
+        <footer class="out-foot">
+          <p class="out-hint">
+            新報表：近 30 天 ・ JSON
+          </p>
           <div class="out-actions">
             <button
               type="button"
@@ -115,10 +119,11 @@
               {{ generating ? '產生中...' : '直接產生' }}
             </button>
           </div>
-        </header>
-        <ReportOutputPreview :type="selected.type" />
+        </footer>
       </section>
     </div>
+
+    <RecentOutputs v-if="selected" />
 
     <UiActionBar
       v-if="selected"
@@ -156,6 +161,7 @@ import type { ReportTemplate } from '@/types/reports';
 import ReportsAPI from '@/api/reports';
 import TemplateCard from './templates/TemplateCard.vue';
 import ReportOutputPreview from './templates/ReportOutputPreview.vue';
+import RecentOutputs from './templates/RecentOutputs.vue';
 import { DEFAULT_TEMPLATES } from './templates/templateHelpers';
 
 const router = useRouter();
@@ -249,11 +255,12 @@ onMounted(() => {
   display: grid;
   grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
   gap: 20px;
-  align-items: start;
+  align-items: stretch;
 }
 
 .tpl-pick {
   display: grid;
+  align-self: start;
   gap: 16px;
   min-width: 0;
 }
@@ -337,9 +344,14 @@ onMounted(() => {
 }
 
 .tpl-out {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 18px;
-  padding: 26px 30px 22px;
+  padding: 26px 30px 24px;
+}
+
+.tpl-out > :deep(.rop) {
+  flex: 1;
 }
 
 .out-name {
@@ -348,18 +360,25 @@ onMounted(() => {
   letter-spacing: -0.025em;
 }
 
-.out-head {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px 16px;
-  align-items: flex-start;
-  justify-content: space-between;
+.out-desc {
+  margin: 4px 0 0;
+  font-size: 14px;
+  color: var(--ui-ink-2);
 }
 
-.out-kicker {
-  margin: 0 0 2px;
+.out-foot {
+  display: flex;
+  gap: 12px 16px;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 18px;
+  box-shadow: 0 -0.5px 0 var(--ui-sep);
+}
+
+.out-hint {
+  margin: 0;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: var(--ui-w-mid);
   color: var(--ui-muted);
 }
 
@@ -395,7 +414,7 @@ onMounted(() => {
     font-size: 22px;
   }
 
-  .out-actions {
+  .out-foot {
     display: none;
   }
 

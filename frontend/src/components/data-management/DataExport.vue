@@ -65,7 +65,37 @@
             </div>
           </div>
           <div class="scope-grid">
-            <div class="ui-field">
+            <div class="ui-field scope-period">
+              <span
+                id="ex-period-label"
+                class="field-label"
+              >期間</span>
+              <div
+                class="ui-seg period-seg"
+                role="group"
+                aria-labelledby="ex-period-label"
+              >
+                <button
+                  v-for="option in periods"
+                  :key="option.id"
+                  type="button"
+                  :aria-pressed="period === option.id"
+                  @click="pickPeriod(option.id)"
+                >
+                  {{ option.label }}
+                </button>
+              </div>
+              <p
+                v-if="period !== 'custom'"
+                class="period-note"
+              >
+                {{ periodNote }}
+              </p>
+            </div>
+            <div
+              v-show="period === 'custom'"
+              class="ui-field"
+            >
               <label for="ex-from">起始日期</label>
               <input
                 id="ex-from"
@@ -75,7 +105,10 @@
                 :max="filters.dateTo || undefined"
               >
             </div>
-            <div class="ui-field">
+            <div
+              v-show="period === 'custom'"
+              class="ui-field"
+            >
               <label for="ex-to">結束日期</label>
               <input
                 id="ex-to"
@@ -127,64 +160,52 @@
         </form>
       </div>
 
-      <section
-        class="ui-lead ex-sheet"
-        :aria-label="`${selectedName} 匯出設定`"
-      >
-        <header class="sheet-bar">
-          <div>
-            <h2 class="sheet-file">
-              {{ selectedName }} 檔案內容
-            </h2>
-            <p class="sheet-name">
-              {{ fileName }}
-            </p>
-          </div>
-          <span class="sheet-unit">{{ selectedUnit }}</span>
-        </header>
-
-        <code class="sheet-shape">{{ shape }}</code>
-        <dl class="sheet-rows">
+      <div class="ex-right">
+        <section
+          class="ui-card ex-result"
+          :class="{ 'is-over': willTruncate }"
+          aria-label="匯出筆數"
+        >
           <div
-            v-for="row in selectedRows"
-            :key="row.note"
-            class="sheet-row"
-          >
-            <dt v-if="row.key">
-              {{ row.key }}
-            </dt>
-            <dd :class="{ 'is-wide': !row.key }">
-              {{ row.note }}
-            </dd>
-          </div>
-        </dl>
-
-        <dl class="sheet-facts">
-          <div>
-            <dt>單次上限</dt>
-            <dd>{{ EXPORT_LIMIT.toLocaleString() }} 筆</dd>
-          </div>
-          <div>
-            <dt>範圍</dt>
-            <dd>你有權限查看的對話</dd>
-          </div>
-          <div>
-            <dt>排除</dt>
-            <dd>已收回的訊息</dd>
-          </div>
-        </dl>
-
-        <div class="sheet-foot">
-          <p
-            class="foot-count"
+            class="res-count foot-count"
             role="status"
           >
             <template v-if="count === null">
-              正在計算符合條件的筆數…
+              <p class="res-label">
+                將匯出
+              </p>
+              <p class="res-wait">
+                正在計算符合條件的筆數…
+              </p>
             </template>
             <template v-else>
-              符合條件 <b>{{ count.count.toLocaleString() }}</b> 筆<span v-if="count.willBeTruncated">，超過上限，超出部分將被截斷</span>
+              <p class="res-label">
+                {{ willTruncate ? '本次只會匯出' : '將匯出' }}
+                <span
+                  v-if="willTruncate"
+                  class="ui-pill ui-pill-orange"
+                >超過上限</span>
+              </p>
+              <p class="res-num">
+                {{ exportCount.toLocaleString() }}<span> 筆</span>
+              </p>
+              <div
+                v-if="willTruncate"
+                class="res-warn"
+              >
+                <b>符合條件共 {{ count.count.toLocaleString() }} 筆，其餘 {{ (count.count - EXPORT_LIMIT).toLocaleString() }} 筆不會匯出</b>
+                <span>縮小期間或指定客戶，就能完整匯出。</span>
+              </div>
+              <p
+                v-else
+                class="res-ok"
+              >
+                符合目前條件的全部對話訊息
+              </p>
             </template>
+          </div>
+          <p class="res-scope">
+            僅含你有權限查看的對話，已收回的訊息不匯出。
           </p>
           <button
             type="button"
@@ -195,8 +216,41 @@
             <DownloadIcon :size="16" />
             {{ exporting ? '匯出中…' : `開始匯出 ${selectedName}` }}
           </button>
-        </div>
-      </section>
+        </section>
+
+        <section
+          class="ui-lead ex-sheet"
+          :aria-label="`${selectedName} 匯出設定`"
+        >
+          <header class="sheet-bar">
+            <div>
+              <h2 class="sheet-file">
+                {{ selectedName }} 檔案內容
+              </h2>
+              <p class="sheet-name">
+                {{ fileName }}
+              </p>
+            </div>
+            <span class="sheet-unit">{{ selectedUnit }}</span>
+          </header>
+
+          <code class="sheet-shape">{{ shape }}</code>
+          <dl class="sheet-rows">
+            <div
+              v-for="row in selectedRows"
+              :key="row.note"
+              class="sheet-row"
+            >
+              <dt v-if="row.key">
+                {{ row.key }}
+              </dt>
+              <dd :class="{ 'is-wide': !row.key }">
+                {{ row.note }}
+              </dd>
+            </div>
+          </dl>
+        </section>
+      </div>
     </div>
 
     <UiActionBar
@@ -205,9 +259,10 @@
     >
       <p
         class="bar-count"
+        :class="{ 'is-over': willTruncate }"
         role="status"
       >
-        {{ count === null ? '計算筆數中…' : `${count.count.toLocaleString()} 筆` }}
+        {{ barCount }}
       </p>
       <button
         type="button"
@@ -350,6 +405,50 @@ const customers = ref<ExportCustomerOption[]>([])
 const agents = ref<ExportAgentOption[]>([])
 const count = ref<ExportCountResult | null>(null)
 const exporting = ref(false)
+const willTruncate = computed(() => !!count.value?.willBeTruncated)
+/** What the file will really hold: the match count, capped at the server limit */
+const exportCount = computed(() => Math.min(count.value?.count ?? 0, EXPORT_LIMIT))
+const barCount = computed(() => {
+  if (count.value === null) { return '計算筆數中…' }
+  return willTruncate.value
+    ? `${EXPORT_LIMIT.toLocaleString()} 筆，超過上限`
+    : `${count.value.count.toLocaleString()} 筆`
+})
+
+// Period presets set the two dates; the raw date inputs only show for 自訂
+type PeriodId = 'all' | 'd7' | 'd30' | 'custom'
+const periods: Array<{ id: PeriodId; label: string }> = [
+  { id: 'all', label: '全部' },
+  { id: 'd7', label: '近 7 天' },
+  { id: 'd30', label: '近 30 天' },
+  { id: 'custom', label: '自訂' }
+]
+const period = ref<PeriodId>('all')
+const pad = (n: number) => String(n).padStart(2, '0')
+const ymd = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+const mdLabel = (d: Date) => `${d.getMonth() + 1}/${d.getDate()}`
+const spanDays = (id: PeriodId) => (id === 'd7' ? 6 : id === 'd30' ? 29 : -1)
+const periodNote = computed(() => {
+  const days = spanDays(period.value)
+  if (days < 0) { return '不限日期，匯出所有符合的訊息' }
+  const from = new Date()
+  from.setDate(from.getDate() - days)
+  return `${mdLabel(from)} 至 ${mdLabel(new Date())}（含今天）`
+})
+function pickPeriod(id: PeriodId) {
+  period.value = id
+  if (id === 'custom') { return }
+  const days = spanDays(id)
+  if (days < 0) {
+    filters.dateFrom = ''
+    filters.dateTo = ''
+    return
+  }
+  const from = new Date()
+  from.setDate(from.getDate() - days)
+  filters.dateFrom = ymd(from)
+  filters.dateTo = ymd(new Date())
+}
 const { showSuccess, showError } = useToast()
 
 /** Date inputs are whole days: the range runs from 00:00 of the first day to the end of the last (local time) */
@@ -463,7 +562,7 @@ async function runExport() {
   gap: 14px;
   align-items: center;
   width: 100%;
-  padding: 14px 16px;
+  padding: 17px 16px;
   border: 0;
   border-radius: var(--ui-r-inner);
   background: transparent;
@@ -563,7 +662,7 @@ async function runExport() {
 .sheet-rows {
   display: grid;
   margin: 0 28px;
-  padding: 2px 0;
+  padding: 2px 0 24px;
 }
 
 .sheet-row {
@@ -607,45 +706,97 @@ async function runExport() {
   padding: 4px 22px 0;
 }
 
-.sheet-facts {
+.ex-right {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px 24px;
+  gap: 20px;
+  min-width: 0;
+}
+
+.ex-result {
+  display: grid;
+  gap: 16px;
+  padding: 22px 28px 24px;
+}
+
+
+.res-count > p {
   margin: 0;
-  padding: 18px 28px 20px;
 }
 
-.sheet-facts dt {
-  font-size: 13px;
-  color: var(--ui-muted);
-}
-
-.sheet-facts dd {
-  margin: 2px 0 0;
+.res-label {
+  display: flex;
+  gap: 10px;
+  align-items: center;
   font-size: 14px;
   font-weight: 600;
+  color: var(--ui-ink-2);
 }
 
-.sheet-foot {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px 20px;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16px 28px 20px;
-  background: var(--ui-surface-2);
+.res-num {
+  font: 700 44px / 1.1 var(--ui-font-display);
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+  color: var(--ui-ink);
 }
 
-.foot-count {
-  margin: 0;
+.res-num span {
+  margin-left: 4px;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+.res-wait,
+.res-ok {
+  margin-top: 4px;
   font-size: 14px;
   color: var(--ui-ink-2);
 }
 
-.foot-count b {
-  font: 700 22px var(--ui-font-display);
-  color: var(--ui-ink);
-  font-variant-numeric: tabular-nums;
+.res-warn {
+  display: grid;
+  gap: 2px;
+  margin-top: 12px;
+  padding: 12px 16px;
+  border-radius: var(--ui-r-inner);
+  background: var(--ui-orange-soft);
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--ui-orange-ink);
+}
+
+.res-warn b {
+  font-weight: 600;
+}
+
+.res-scope {
+  margin: -4px 0 0;
+  font-size: 13px;
+  color: var(--ui-ink-2);
+}
+
+.lead-cta {
+  width: 100%;
+}
+
+.period-seg {
+  display: flex;
+  width: 100%;
+}
+
+.period-seg > button {
+  flex: 1 1 0;
+  justify-content: center;
+}
+
+.scope-period {
+  grid-column: 1 / -1;
+}
+
+.period-note {
+  margin: 8px 0 0;
+  font-size: 13px;
+  color: var(--ui-ink-2);
 }
 
 .fmt-ico {
@@ -696,6 +847,10 @@ async function runExport() {
   display: none;
 }
 
+.bar-count.is-over {
+  color: var(--ui-orange-ink);
+}
+
 .bar-count {
   flex: 1;
   margin: 0;
@@ -709,18 +864,39 @@ async function runExport() {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .ex-left {
+  .ex-left,
+  .ex-right {
     display: contents;
   }
 
-  .ex-sheet {
+  .ex-pick {
+    order: 0;
+  }
+
+  .ex-scope {
     order: 1;
+  }
+
+  .ex-result {
+    order: 2;
+  }
+
+  .ex-sheet {
+    order: 3;
   }
 }
 
 @media (max-width: 768px) {
-  .sheet-foot {
+  .ex-result .lead-cta {
     display: none;
+  }
+
+  .ex-result {
+    padding: 18px 20px 20px;
+  }
+
+  .res-num {
+    font-size: 36px;
   }
 
   .sheet-bar {
@@ -733,6 +909,7 @@ async function runExport() {
 
   .sheet-rows {
     margin: 0 20px;
+    padding-bottom: 18px;
   }
 
   .sheet-row {
@@ -749,19 +926,7 @@ async function runExport() {
     padding: 4px 16px 0;
   }
 
-  .sheet-facts {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 8px;
-    padding: 16px 20px 20px;
-  }
-
-  .sheet-facts > div {
-    display: grid;
-    grid-template-columns: 80px minmax(0, 1fr);
-    align-items: baseline;
-  }
-
-  .export-actions {
+      .export-actions {
     display: flex;
   }
 

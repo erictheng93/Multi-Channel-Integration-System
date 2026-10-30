@@ -89,7 +89,7 @@
                     class="ui-pill ui-pill-blue mixed-pill"
                   >圖文</span>
                 </strong>
-                <small>{{ broadcast.content || '（僅圖片）' }}</small>
+                <small>{{ formatDate(broadcast.sentAt || broadcast.createdAt) }} ・ {{ broadcast.content || '（僅圖片）' }}</small>
               </td>
               <td class="col-status">
                 <span
@@ -97,10 +97,15 @@
                   :class="statusClass(broadcast.status)"
                   :data-status="broadcast.status"
                 >{{ statusLabel(broadcast.status) }}</span>
-                <small class="when">{{ formatDate(broadcast.sentAt || broadcast.createdAt) }}</small>
               </td>
               <td class="col-result">
                 <template v-if="broadcast.totalRecipients > 0">
+                  <small class="result-text">
+                    <span class="r-total">{{ broadcast.totalRecipients }} 人</span>
+                    <span>成功 <b>{{ broadcast.sentCount }}</b></span>
+                    <span v-if="broadcast.failedCount > 0">失敗 <b class="is-bad">{{ broadcast.failedCount }}</b></span>
+                    <span v-if="broadcast.skippedCount > 0">略過 <b>{{ broadcast.skippedCount }}</b></span>
+                  </small>
                   <div
                     class="result-bar"
                     aria-hidden="true"
@@ -118,12 +123,6 @@
                       :style="{ width: share(broadcast.skippedCount, broadcast) }"
                     />
                   </div>
-                  <small class="result-text">
-                    <span class="r-total">{{ broadcast.totalRecipients }} 人</span>
-                    <span>成功 <b>{{ broadcast.sentCount }}</b></span>
-                    <span>失敗 <b :class="{ 'is-bad': broadcast.failedCount > 0 }">{{ broadcast.failedCount }}</b></span>
-                    <span>略過 <b>{{ broadcast.skippedCount }}</b></span>
-                  </small>
                 </template>
                 <small
                   v-else
@@ -137,7 +136,17 @@
                   :aria-label="`${broadcast.title} 收件人明細`"
                   @click.stop="$emit('select', broadcast.id)"
                 >
-                  明細
+                  <svg
+                    viewBox="0 0 24 24"
+                    width="16"
+                    height="16"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    aria-hidden="true"
+                  ><path d="m9 6 6 6-6 6" /></svg>
                 </button>
               </td>
             </tr>
@@ -267,10 +276,10 @@ function formatDate(value: string | null): string {
   cursor: pointer;
 }
 
-.th-title { width: 38%; }
-.th-status { width: 20%; }
-.th-result { width: 31%; }
-.th-act { width: 11%; }
+.th-title { width: 36%; }
+.th-status { width: 15%; }
+.th-result { width: 41%; }
+.th-act { width: 8%; }
 
 .ui-table tbody tr.is-selected {
   background: var(--ui-sel-tint);
@@ -322,8 +331,8 @@ function formatDate(value: string | null): string {
 
 .result-bar {
   display: flex;
-  height: 8px;
-  margin-top: 6px;
+  height: 6px;
+  margin-top: 8px;
   overflow: hidden;
   border-radius: 999px;
   background: var(--ui-fill);
@@ -349,8 +358,8 @@ function formatDate(value: string | null): string {
 .result-text {
   display: flex;
   flex-wrap: wrap;
-  gap: 2px 12px;
-  margin-top: 6px;
+  gap: 2px 10px;
+  margin-top: 0;
   font-size: 13px;
   color: var(--ui-ink-2);
   font-variant-numeric: tabular-nums;
