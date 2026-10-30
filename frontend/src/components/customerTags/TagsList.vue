@@ -29,7 +29,6 @@
           @select="$emit('select-tag', tag.id)"
           @edit="$emit('edit-tag', tag)"
           @delete="$emit('delete-tag', tag)"
-          @view-stats="$emit('view-stats', tag)"
           @view-conversations="$emit('view-conversations', tag)"
         />
       </div>
@@ -67,7 +66,6 @@ defineEmits<{
   'select-tag': [id: number]
   'edit-tag': [tag: Tag]
   'delete-tag': [tag: Tag]
-  'view-stats': [tag: Tag]
   'view-conversations': [tag: Tag]
 }>()
 

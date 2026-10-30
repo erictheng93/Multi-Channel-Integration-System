@@ -82,10 +82,9 @@ describe('RuleCard -- rendering', () => {
     expect(wrapper.find('.rule-card__trigger-badge').text()).toBe('關鍵字')
   })
 
-  it('renders priority as a numeric badge with an accessible name', () => {
+  it('renders priority in the quiet meta line', () => {
     const wrapper = mountRuleCard({ rule: makeRule({ priority: 50 }) })
-    expect(wrapper.find('.rule-card__priority-badge').text()).toBe('50')
-    expect(wrapper.find('.rule-card__priority-badge').attributes('aria-label')).toBe('優先序 50')
+    expect(wrapper.find('.rule-card__meta').text()).toContain('優先 50')
   })
 
   it('renders condition and action counts in meta', () => {

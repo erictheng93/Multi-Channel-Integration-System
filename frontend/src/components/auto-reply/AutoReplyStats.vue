@@ -31,51 +31,74 @@
       </div>
     </div>
 
-    <dl
+    <div
       v-if="hasFacts"
-      class="lead-facts"
+      class="lead-side"
     >
       <div
-        v-if="totalRules !== undefined && totalRules > 0"
-        class="fact"
+        v-if="hasCompare"
+        class="cmp"
       >
-        <dt>啟用規則</dt>
-        <dd>
-          <b>{{ activeRules }}<small> / {{ totalRules }} 條</small></b>
-          <span
-            class="pips"
-            role="img"
-            :aria-label="`啟用 ${activeRules} 條，共 ${totalRules} 條`"
-          >
-            <i
-              v-for="n in Math.min(totalRules, 12)"
-              :key="n"
-              :class="{ on: n <= activeRules }"
-            />
-          </span>
-        </dd>
+        <p class="cmp-cap">
+          與昨天同時段相比
+        </p>
+        <div
+          class="cmp-rows"
+          role="img"
+          :aria-label="`今天 ${todayReplies} 則，昨天同時段 ${yesterdaySameTime} 則`"
+        >
+          <div class="cmp-row">
+            <span class="cmp-name">今天</span>
+            <span class="cmp-track"><i
+              class="is-today"
+              :style="{ width: todayWidth }"
+            /></span>
+            <b>{{ todayReplies }}<small> 則</small></b>
+          </div>
+          <div class="cmp-row">
+            <span class="cmp-name">昨天</span>
+            <span class="cmp-track"><i
+              class="is-prev"
+              :style="{ width: prevWidth }"
+            /></span>
+            <b>{{ yesterdaySameTime }}<small> 則</small></b>
+          </div>
+        </div>
       </div>
-      <div
-        v-if="yesterdaySameTime !== null && yesterdaySameTime !== undefined"
-        class="fact"
-      >
-        <dt>昨天同時段</dt>
-        <dd>
-          <b>{{ yesterdaySameTime }}<small> 則</small></b>
-          <span class="sub">今天 {{ todayReplies }} 則</span>
-        </dd>
-      </div>
-      <div
-        v-if="successRate !== null && successRate !== undefined"
-        class="fact"
-      >
-        <dt>回覆成功率</dt>
-        <dd>
-          <b>{{ successRate }}<small>%</small></b>
-          <span class="sub">{{ (todayFailed ?? 0) > 0 ? `${todayFailed} 則失敗` : '沒有失敗' }}</span>
-        </dd>
-      </div>
-    </dl>
+
+      <dl class="lead-facts">
+        <div
+          v-if="totalRules !== undefined && totalRules > 0"
+          class="fact"
+        >
+          <dt>啟用規則</dt>
+          <dd>
+            <b>{{ activeRules }}<small> / {{ totalRules }} 條</small></b>
+            <span
+              class="pips"
+              role="img"
+              :aria-label="`啟用 ${activeRules} 條，共 ${totalRules} 條`"
+            >
+              <i
+                v-for="n in Math.min(totalRules, 12)"
+                :key="n"
+                :class="{ on: n <= activeRules }"
+              />
+            </span>
+          </dd>
+        </div>
+        <div
+          v-if="successRate !== null && successRate !== undefined"
+          class="fact"
+        >
+          <dt>回覆成功率</dt>
+          <dd>
+            <b>{{ successRate }}<small>%</small></b>
+            <span class="sub">{{ (todayFailed ?? 0) > 0 ? `${todayFailed} 則失敗` : '沒有失敗' }}</span>
+          </dd>
+        </div>
+      </dl>
+    </div>
   </article>
 </template>
 
@@ -105,6 +128,11 @@ const deltaText = computed(() => {
   return `${delta.value > 0 ? '+' : '-'}${Math.abs(delta.value)}`
 })
 
+const hasCompare = computed(() => props.yesterdaySameTime !== null && props.yesterdaySameTime !== undefined)
+const barMax = computed(() => Math.max(1, props.todayReplies, props.yesterdaySameTime ?? 0))
+const todayWidth = computed(() => `${Math.max(2, Math.round((props.todayReplies / barMax.value) * 100))}%`)
+const prevWidth = computed(() => `${Math.max(2, Math.round(((props.yesterdaySameTime ?? 0) / barMax.value) * 100))}%`)
+
 const hasFacts = computed(() =>
   (props.totalRules !== undefined && props.totalRules > 0)
   || (props.yesterdaySameTime !== null && props.yesterdaySameTime !== undefined)
@@ -130,13 +158,13 @@ const hoursNote = computed(() => {
 <style scoped>
 .lead {
   display: grid;
-  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
   gap: 20px 40px;
   align-items: center;
   padding: 24px 40px;
 }
 
-.lead:not(:has(.lead-facts)) {
+.lead:not(:has(.lead-side)) {
   grid-template-columns: minmax(0, 1fr);
 }
 
@@ -218,16 +246,14 @@ const hoursNote = computed(() => {
   color: var(--ui-red-ink);
 }
 
-.lead-facts {
+.lead-side {
   position: relative;
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 20px 24px;
+  gap: 22px;
   min-width: 0;
-  margin: 0;
 }
 
-.lead-facts::before {
+.lead-side::before {
   position: absolute;
   top: 4px;
   bottom: 4px;
@@ -235,6 +261,70 @@ const hoursNote = computed(() => {
   width: 0.5px;
   background: var(--ui-sep);
   content: '';
+}
+
+.cmp-cap {
+  margin: 0 0 10px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--ui-muted);
+}
+
+.cmp-rows {
+  display: grid;
+  gap: 10px;
+}
+
+.cmp-row {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) 64px;
+  gap: 12px;
+  align-items: center;
+}
+
+.cmp-name {
+  font-size: 14px;
+  color: var(--ui-ink-2);
+}
+
+.cmp-track {
+  display: block;
+  height: 10px;
+  border-radius: 999px;
+  background: var(--ui-fill);
+  overflow: hidden;
+}
+
+.cmp-track i {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+}
+
+.cmp-track .is-today {
+  background: var(--section-hue);
+}
+
+.cmp-track .is-prev {
+  background: var(--ui-faint);
+}
+
+.cmp-row b {
+  font: 600 20px / 1 var(--ui-font-display);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.cmp-row b small {
+  font: 500 13px var(--ui-font-ui);
+  color: var(--ui-muted);
+}
+
+.lead-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px 24px;
+  margin: 0;
 }
 
 .fact dt {
@@ -289,7 +379,7 @@ const hoursNote = computed(() => {
     padding: 22px 20px;
   }
 
-  .lead-facts::before {
+  .lead-side::before {
     display: none;
   }
 }

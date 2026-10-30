@@ -199,18 +199,6 @@ describe('TagsList', () => {
       expect(wrapper.emitted('delete-tag')![0]).toEqual([tags[2]])
     })
 
-    it('bubbles view-stats event from TagCard', async () => {
-      const tags = makeTags(2)
-      const wrapper = factory({ tags })
-      const tagCard = wrapper.findAllComponents({ name: 'TagCard' })[0]
-
-      await tagCard.vm.$emit('view-stats')
-      await wrapper.vm.$nextTick()
-
-      expect(wrapper.emitted('view-stats')).toBeTruthy()
-      expect(wrapper.emitted('view-stats')![0]).toEqual([tags[0]])
-    })
-
     it('bubbles view-conversations event from TagCard', async () => {
       const tags = makeTags(2)
       const wrapper = factory({ tags })
