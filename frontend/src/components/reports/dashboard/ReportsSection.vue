@@ -150,12 +150,6 @@
           role="columnheader"
           class="header-cell"
         >
-          檔案
-        </div>
-        <div
-          role="columnheader"
-          class="header-cell"
-        >
           建立時間
         </div>
         <div
@@ -362,7 +356,7 @@ defineEmits<{
 
 .list-header {
   display: grid;
-  grid-template-columns: minmax(0, 2.4fr) 110px 100px minmax(110px, 1fr) 84px;
+  grid-template-columns: minmax(0, 2.6fr) 110px minmax(120px, 1fr) 84px;
   gap: 12px;
   padding: 10px 22px;
   box-shadow: inset 0 -0.5px 0 var(--ui-sep);
