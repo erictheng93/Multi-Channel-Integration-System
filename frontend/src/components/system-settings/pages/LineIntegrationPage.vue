@@ -7,37 +7,69 @@
 
 <template>
   <div class="line-page">
-    <RingLead
-      class="lead"
-      kicker="連線狀態"
-      :value="statusLabel"
-      :meaning="testMeta"
+    <article
+      class="ui-lead hero"
+      aria-label="LINE 連線與額度"
     >
-      <span
-        v-if="lastTest"
-        class="ui-pill ui-pill-dot lead-pill"
-        :class="lastTest.status === 'success' ? 'ui-pill-green' : 'ui-pill-red'"
-      >{{ lastTest.status === 'success' ? '測試成功' : '測試失敗' }}</span>
-      <p
-        v-if="lastTest && lastTest.status === 'error' && lastTest.message"
-        class="lead-error"
-      >
-        {{ lastTest.message }}
-      </p>
-      <template #visual>
-        <SettingsLineQuota bare />
-      </template>
-      <template #actions>
-        <button
-          type="button"
-          class="btn btn-secondary"
-          :disabled="controller.testing.value || controller.saving.value"
-          @click="controller.testLineIntegration"
+      <div class="hero-col hero-conn">
+        <div class="hero-head">
+          <div>
+            <h2 class="hero-title">
+              連線狀態
+            </h2>
+            <div class="hero-sub">
+              LINE Messaging API
+            </div>
+          </div>
+          <button
+            type="button"
+            class="btn btn-secondary btn-sm"
+            :disabled="controller.testing.value || controller.saving.value"
+            @click="controller.testLineIntegration"
+          >
+            {{ controller.testing.value ? '測試中...' : '測試連線' }}
+          </button>
+        </div>
+        <div class="hero-bigrow">
+          <div class="hero-big">
+            {{ statusLabel }}
+          </div>
+          <span
+            v-if="lastTest"
+            class="ui-pill ui-pill-dot"
+            :class="lastTest.status === 'success' ? 'ui-pill-green' : 'ui-pill-red'"
+          >{{ lastTest.status === 'success' ? '測試成功' : '測試失敗' }}</span>
+        </div>
+        <dl
+          v-if="lastTest"
+          class="hero-stats"
         >
-          {{ controller.testing.value ? '測試中...' : '測試連線' }}
-        </button>
-      </template>
-    </RingLead>
+          <div>
+            <dt>最近測試</dt>
+            <dd>{{ formatTestedAt(lastTest.testedAt) }}</dd>
+          </div>
+          <div>
+            <dt>回應時間</dt>
+            <dd>{{ lastTest.latencyMs.toLocaleString() }} ms</dd>
+          </div>
+        </dl>
+        <p
+          v-else
+          class="hero-sub hero-none"
+        >
+          {{ testMeta }}
+        </p>
+        <p
+          v-if="lastTest && lastTest.status === 'error' && lastTest.message"
+          class="lead-error"
+        >
+          {{ lastTest.message }}
+        </p>
+      </div>
+      <div class="hero-col hero-quota">
+        <SettingsLineQuota bare />
+      </div>
+    </article>
 
     <div class="col col-a">
       <LineIntegrationForm
@@ -74,7 +106,6 @@ import { LineIntegrationForm } from '@/components/system-settings'
 import LineDangerZone from '@/components/system-settings/LineDangerZone.vue'
 import LineSetupGuide from '@/components/system-settings/LineSetupGuide.vue'
 import SettingsLineQuota from '@/components/system-settings/SettingsLineQuota.vue'
-import RingLead from '@/components/lead/RingLead.vue'
 
 const controller = inject(SETTINGS_CONTROLLER_KEY)
 if (!controller) {
@@ -122,18 +153,92 @@ const testMeta = computed(() => {
 <style scoped>
 .line-page {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 420px);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 460px);
   gap: 22px;
-  align-items: start;
+  align-items: stretch;
   min-width: 0;
 }
 
-.lead {
+.hero {
+  display: grid;
   grid-column: 1 / -1;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  gap: 24px 0;
+  padding: 24px 0;
 }
 
-.lead-pill {
-  margin-top: 12px;
+.hero-col {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 0 32px;
+}
+
+.hero-quota {
+  border-left: 0.5px solid var(--ui-sep);
+}
+
+/* both columns open with the same header row (title + sub on the left, one small action on the right) */
+.hero-head {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding-bottom: 14px;
+}
+
+.hero-title {
+  margin: 0;
+  font: 600 17px / 1.3 var(--ui-font-display);
+  letter-spacing: -0.01em;
+}
+
+.hero-sub {
+  margin-top: 2px;
+  font-size: 13px;
+  color: var(--ui-muted);
+}
+
+.hero-bigrow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  align-items: center;
+}
+
+.hero-big {
+  font: 600 40px / 1 var(--ui-font-display);
+  letter-spacing: -0.03em;
+  color: var(--ui-ink);
+}
+
+.hero-stats {
+  display: flex;
+  gap: 28px;
+  margin: 18px 0 0;
+}
+
+.hero-stats dt {
+  font-size: 13px;
+  color: var(--ui-muted);
+}
+
+.hero-stats dd {
+  margin: 2px 0 0;
+  font: 600 17px var(--ui-font-display);
+  font-variant-numeric: tabular-nums;
+}
+
+.hero-none {
+  margin-top: 14px;
+}
+
+.hero-foot {
+  margin-top: 14px;
+}
+
+.hero-foot:empty {
+  display: none;
 }
 
 .lead-error {
@@ -146,7 +251,10 @@ const testMeta = computed(() => {
   display: contents;
 }
 
-.item-webhook {
+.item-webhook,
+.item-cred {
+  display: flex;
+  flex-direction: column;
   min-width: 0;
 }
 
@@ -157,6 +265,23 @@ const testMeta = computed(() => {
 @media (max-width: 1024px) {
   .line-page {
     grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .hero {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 20px 0;
+  }
+
+  .hero-col {
+    padding: 0 20px;
+  }
+
+  .hero-quota {
+    padding-top: 20px;
+    border-top: 0.5px solid var(--ui-sep);
+    border-left: 0;
   }
 }
 </style>

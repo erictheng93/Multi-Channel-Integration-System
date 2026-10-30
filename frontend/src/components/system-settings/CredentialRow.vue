@@ -38,7 +38,7 @@
       </div>
       <button
         type="button"
-        class="btn btn-secondary"
+        class="btn btn-secondary cred-replace"
         :disabled="disabled"
         @click="startReplace"
       >
@@ -160,21 +160,26 @@ function cancelReplace() {
 }
 
 
-/* phone: the stored value and 更換 stay on the label's line instead of wrapping under it */
-@media (max-width: 768px) {
-  .is-masked.srow {
-    flex-direction: row;
-    gap: 12px;
-    align-items: center;
-  }
+/* a replace action in the accent colour, not a pale grey capsule */
+.cred-replace {
+  background: var(--ui-accent-soft);
+  color: var(--ui-accent);
+}
 
+/* the description keeps the whole row width; only the value and its action share a trailing slot */
+.is-masked :deep(.srow-c) {
+  width: auto;
+}
+
+/* phone: label and description on top at full width, value left and 更換 right underneath */
+@media (max-width: 768px) {
   .is-masked :deep(.srow-c) {
-    flex: none;
-    width: auto;
+    width: 100%;
+    justify-content: space-between;
   }
 
   .cred-state {
-    flex: none;
+    justify-content: flex-start;
   }
 }
 
