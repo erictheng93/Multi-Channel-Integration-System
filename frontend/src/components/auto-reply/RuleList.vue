@@ -197,16 +197,16 @@ const emit = defineEmits<{
 
 .rule-list__filters {
   display: flex;
-  flex: 1;
-  flex-wrap: wrap;
+  flex: 0 1 auto;
+  flex-wrap: nowrap;
   align-items: center;
   gap: 10px;
   min-width: 0;
 }
 
 .rule-list__search {
-  flex: 1 1 220px;
-  max-width: 340px;
+  flex: 0 1 300px;
+  min-width: 180px;
   height: 40px;
   border-radius: 999px;
   background: var(--ui-surface);
@@ -240,14 +240,23 @@ const emit = defineEmits<{
 }
 
 @media (max-width: 768px) {
-  .rule-list__search,
-  .rule-list__filter-select {
+  /* Phone: search on its own line, then type select and the add button share one */
+  .rule-list__filters {
+    display: contents;
+  }
+
+  .rule-list__search {
     flex: 1 1 100%;
     max-width: none;
   }
 
+  .rule-list__filter-select {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
   .rule-list__toolbar > .btn {
-    width: 100%;
+    flex: none;
   }
 }
 
