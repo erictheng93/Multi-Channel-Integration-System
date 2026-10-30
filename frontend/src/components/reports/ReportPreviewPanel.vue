@@ -15,45 +15,9 @@
           class="lead-sub"
           :class="{ 'is-empty': !title.trim() }"
         >
-          {{ title.trim() || '填完下方兩項就能產生' }}
+          {{ title.trim() || '填寫標題後即可產生' }}
         </p>
       </div>
-
-      <ul
-        class="need"
-        aria-label="必填項目"
-      >
-        <li :class="{ done: !!reportType }">
-          <svg
-            v-if="reportType"
-            class="need-ok"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="3"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            aria-hidden="true"
-          ><path d="m5 12 5 5 9-10" /></svg>
-          <span class="need-name">報表類型</span>
-          <span class="need-state">{{ reportType ? '已選擇' : '尚未選擇' }}</span>
-        </li>
-        <li :class="{ done: !!title.trim() }">
-          <svg
-            v-if="title.trim()"
-            class="need-ok"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="3"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            aria-hidden="true"
-          ><path d="m5 12 5 5 9-10" /></svg>
-          <span class="need-name">報表標題</span>
-          <span class="need-state">{{ title.trim() ? '已填寫' : '尚未填寫' }}</span>
-        </li>
-      </ul>
 
       <dl class="kv">
         <div
@@ -81,21 +45,13 @@
       </dl>
 
       <div
-        v-if="includes.length"
-        class="inc"
+        v-if="reportType"
+        class="sample"
       >
-        <p class="inc-label">
-          報表包含
-        </p>
-        <ul class="inc-list">
-          <li
-            v-for="item in includes"
-            :key="item.label"
-            class="ui-chip"
-          >
-            {{ item.label }}
-          </li>
-        </ul>
+        <ReportOutputPreview
+          :type="reportType"
+          compact
+        />
       </div>
 
       <slot name="action" />
@@ -164,7 +120,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import ReportsAPI from '@/api/reports';
-import { REPORT_CONTENTS } from './templates/templateHelpers';
+import ReportOutputPreview from './templates/ReportOutputPreview.vue';
 import type {
   ReportType,
   ReportFormat,
@@ -193,10 +149,8 @@ defineEmits<{
 // Same type as the one being set up (the list is long on the dashboard already); all types until one is chosen
 const shownRecent = computed(() => {
   const same = props.reportType ? props.recentReports.filter(item => item.type === props.reportType) : props.recentReports
-  return same.slice(0, 5)
+  return same.slice(0, 4)
 });
-
-const includes = computed(() => (props.reportType ? REPORT_CONTENTS[props.reportType] ?? [] : []));
 
 const contentLabel = computed(() => {
   const o = props.options;
@@ -284,43 +238,6 @@ const formatDate = (dateString: string): string => {
   color: var(--ui-ink-2);
 }
 
-.need {
-  display: grid;
-  margin: 0;
-  padding: 0 24px 6px;
-  list-style: none;
-  font-size: 14px;
-}
-
-.need li {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  min-height: 32px;
-  color: var(--ui-ink-2);
-}
-
-.need-name {
-  font-weight: 600;
-}
-
-.need-state {
-  margin-left: auto;
-  font-size: 13px;
-  color: var(--ui-muted);
-}
-
-.need-ok {
-  flex: none;
-  width: 16px;
-  height: 16px;
-  color: var(--ui-green-ink);
-}
-
-.need .done .need-state {
-  color: var(--ui-green-ink);
-}
-
 .kv {
   margin: 0;
   padding: 0 24px;
@@ -349,24 +266,9 @@ const formatDate = (dateString: string): string => {
   text-align: right;
 }
 
-.inc {
-  padding: 14px 24px 4px;
+.sample {
+  padding: 16px 24px 4px;
   box-shadow: 0 -0.5px 0 var(--ui-sep);
-}
-
-.inc-label {
-  margin: 0 0 8px;
-  font-size: 14px;
-  color: var(--ui-ink-2);
-}
-
-.inc-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
 }
 
 .progress-content {

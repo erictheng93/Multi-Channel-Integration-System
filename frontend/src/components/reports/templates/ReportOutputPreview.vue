@@ -3,6 +3,7 @@
 <template>
   <div
     class="rop"
+    :class="{ compact }"
     :aria-busy="loading"
   >
     <div
@@ -40,7 +41,7 @@
 
     <template v-else>
       <div class="rop-meta">
-        <span class="rop-from">最近一份產出</span>
+        <span class="rop-from">{{ compact ? '上一份同類報表' : '此模板上次產出' }} ・ {{ ago }}</span>
         <router-link
           :to="`/reports/${latest.id}`"
           class="rop-title"
@@ -51,40 +52,44 @@
       </div>
 
       <div
-        v-if="split.length"
-        class="rop-split"
-        role="img"
-        :aria-label="split.map(part => `${part.label} ${part.value}`).join('，')"
+        v-if="lead"
+        class="rop-lead"
       >
-        <span
-          v-for="part in split"
-          :key="part.label"
-          :class="part.tone"
-          :style="{ flexGrow: part.value }"
-        />
-      </div>
-
-      <dl
-        v-if="kpis.length"
-        class="rop-kpis"
-      >
-        <div
-          v-for="metric in kpis"
-          :key="metric.label"
-          class="rop-kpi"
-        >
-          <dt>
-            <i
-              v-if="metric.tone"
-              class="rop-dot"
-              :class="metric.tone"
-            />{{ metric.label }}
-          </dt>
-          <dd>
-            {{ metric.value.toLocaleString('en-US') }}<small v-if="share(metric)">{{ share(metric) }}</small>
-          </dd>
+        <div class="rop-big">
+          <span class="rop-big-label">{{ lead.label }}</span>
+          <b class="rop-big-num">{{ lead.value.toLocaleString('en-US') }}</b>
         </div>
-      </dl>
+        <div
+          v-if="split.length"
+          class="rop-shares"
+        >
+          <div
+            class="rop-split"
+            role="img"
+            :aria-label="split.map(part => `${part.label} ${part.value}`).join('，')"
+          >
+            <span
+              v-for="part in split"
+              :key="part.label"
+              :class="part.tone"
+              :style="{ flexGrow: part.value }"
+            />
+          </div>
+          <ul class="rop-legend">
+            <li
+              v-for="metric in kpis.slice(1)"
+              :key="metric.label"
+            >
+              <i
+                class="rop-dot"
+                :class="metric.tone"
+              />{{ metric.label }}
+              <b>{{ metric.value.toLocaleString('en-US') }}</b>
+              <small v-if="share(metric)">{{ share(metric) }}</small>
+            </li>
+          </ul>
+        </div>
+      </div>
 
       <table
         v-if="rows.length"
@@ -134,8 +139,34 @@
         這份報表目前沒有可顯示的統計值，請開啟完整報表查看。
       </p>
 
+      <section
+        v-if="earlier.length && !compact"
+        class="rop-hist"
+        aria-label="更早的產出"
+      >
+        <h3 class="rop-cap">
+          更早的產出
+        </h3>
+        <ul>
+          <li
+            v-for="item in earlier"
+            :key="item.id"
+          >
+            <router-link
+              :to="`/reports/${item.id}`"
+              class="rop-hrow"
+            >
+              <span class="rop-hname">{{ item.title }}</span>
+              <span class="rop-hmeta">{{ item.format.toUpperCase() }} ・ {{ relative(item.completedAt ?? item.createdAt) }}</span>
+              <span
+                class="ui-pill"
+                :class="statusClass(item.status)"
+              >{{ statusText[item.status] ?? item.status }}</span>
+            </router-link>
+          </li>
+        </ul>
+      </section>
     </template>
-
   </div>
 </template>
 
@@ -145,11 +176,11 @@ import ReportsAPI from '@/api/reports'
 import type { ReportBase, ReportType } from '@/types/reports'
 import { REPORT_CONTENTS } from './templateHelpers'
 
-const props = defineProps<{ type: ReportType }>()
+const props = defineProps<{ type: ReportType; compact?: boolean }>()
 const emit = defineEmits<{ resolved: [report: ReportBase | null] }>()
 
 type Row = { name: string; cells: number[] }
-type Loaded = { report: ReportBase | null; content: Record<string, unknown> | null; failed: boolean }
+type Loaded = { report: ReportBase | null; content: Record<string, unknown> | null; failed: boolean; recent: ReportBase[] }
 
 const cache = new Map<ReportType, Loaded>()
 const state = ref<Loaded | null>(null)
@@ -170,17 +201,17 @@ async function load(type: ReportType) {
     return
   }
   loading.value = true
-  let result: Loaded = { report: null, content: null, failed: false }
+  let result: Loaded = { report: null, content: null, failed: false, recent: [] }
   try {
     const list = await ReportsAPI.listReports({ type, page: 1, pageSize: 6, sortBy: 'createdAt', sortOrder: 'desc' })
     const recent = list.reports.filter(item => item.type === type)
     const report = recent.find(item => item.status === 'completed' && item.format === 'json') ?? null
-    result = { report, content: null, failed: false }
+    result = { report, content: null, failed: false, recent }
     if (report && report.format === 'json') {
       result.content = await ReportsAPI.getReportJsonContent(report.id)
     }
   } catch {
-    result = { report: result.report, content: null, failed: true }
+    result = { report: result.report, content: null, failed: true, recent: result.recent }
   }
   if (mine !== token) { return }
   cache.set(type, result)
@@ -193,6 +224,9 @@ watch(() => props.type, type => { void load(type) }, { immediate: true })
 
 const latest = computed(() => state.value?.report ?? null)
 const failed = computed(() => !!state.value?.failed)
+const earlier = computed(() => (state.value?.recent ?? []).filter(item => item.id !== latest.value?.id).slice(0, 3))
+const statusText: Record<string, string> = { completed: '已完成', generating: '生成中', pending: '待處理', failed: '失敗', expired: '已過期' }
+const statusClass = (status: string) => ({ completed: 'ui-pill-green', generating: 'ui-pill-blue', pending: 'ui-pill-blue', failed: 'ui-pill-red' }[status] ?? '')
 const fields = computed(() => REPORT_CONTENTS[props.type] ?? [])
 
 /** The report file is { reportInfo, data }; data's shape depends on the type */
@@ -224,6 +258,8 @@ const metrics = computed<Array<{ label: string; value: number; tone?: Tone }>>((
   }
   return []
 })
+
+const lead = computed(() => metrics.value[0] ?? null)
 
 /** The same numbers as the tiles, drawn as shares of the total: the tiles act as the legend */
 const split = computed(() => {
@@ -289,13 +325,13 @@ function relative(iso: string): string {
   return mins < 1 ? '剛剛' : mins < 60 ? `${mins} 分鐘前` : mins < 1440 ? `${Math.floor(mins / 60)} 小時前` : `${Math.floor(mins / 1440)} 天前`
 }
 
+const ago = computed(() => (latest.value ? relative(latest.value.completedAt ?? latest.value.createdAt) : ''))
 const metaLine = computed(() => {
   const r = latest.value
   if (!r) { return '' }
-  const ago = relative(r.completedAt ?? r.createdAt)
   const size = r.fileSize ? ` ・ ${ReportsAPI.formatFileSize(r.fileSize)}` : ''
   const span = period.value ? ` ・ 統計 ${period.value}` : ''
-  return `${ago}產生 ・ ${r.format.toUpperCase()}${size}${span}`
+  return `${r.format.toUpperCase()}${size}${span}`
 })
 </script>
 
@@ -367,11 +403,98 @@ const metaLine = computed(() => {
   color: var(--ui-muted);
 }
 
-.rop-kpis {
+.rop-lead {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(84px, 1fr));
-  gap: 8px 24px;
+  gap: 18px;
+}
+
+.rop-big {
+  display: grid;
+  gap: 2px;
+}
+
+.rop-big-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ui-ink-2);
+}
+
+.rop-big-num {
+  font: 700 72px / 1 var(--ui-font-display);
+  letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
+}
+
+.rop-shares {
+  display: grid;
+  gap: 12px;
+}
+
+.rop-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 28px;
   margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 14px;
+  color: var(--ui-ink-2);
+}
+
+.rop-legend b {
+  margin-left: 4px;
+  font: 600 18px / 1 var(--ui-font-display);
+  color: var(--ui-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.rop-legend small {
+  margin-left: 4px;
+  font-size: 13px;
+  color: var(--ui-muted);
+}
+
+.rop-hist {
+  display: grid;
+  gap: 4px;
+}
+
+.rop-hist ul {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rop-hist li + li {
+  box-shadow: 0 -0.5px 0 var(--ui-sep);
+}
+
+.rop-hrow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 14px;
+  align-items: center;
+  min-height: 48px;
+  color: var(--ui-ink);
+  font-size: 14px;
+  text-decoration: none;
+}
+
+.rop-hname {
+  overflow: hidden;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rop-hrow:hover .rop-hname {
+  color: var(--ui-accent);
+}
+
+.rop-hmeta {
+  color: var(--ui-ink-2);
+  font-variant-numeric: tabular-nums;
 }
 
 .rop-split {
@@ -410,29 +533,6 @@ const metaLine = computed(() => {
   border-radius: 50%;
 }
 
-.rop-kpi {
-  min-width: 0;
-}
-
-.rop-kpi dt {
-  font-size: 13px;
-  color: var(--ui-ink-2);
-}
-
-.rop-kpi dd small {
-  margin-left: 6px;
-  font: 600 13px / 1 var(--ui-font-ui);
-  letter-spacing: 0;
-  color: var(--ui-muted);
-}
-
-.rop-kpi dd {
-  margin: 2px 0 0;
-  font: 600 var(--ui-t-kpi) / 1.05 var(--ui-font-display);
-  letter-spacing: -0.03em;
-  font-variant-numeric: tabular-nums;
-}
-
 .rop-table {
   width: 100%;
   border-collapse: collapse;
@@ -440,6 +540,7 @@ const metaLine = computed(() => {
 }
 
 .rop-cap {
+  margin: 0;
   padding: 0 0 6px;
   text-align: left;
   font-size: 13px;
@@ -472,14 +573,58 @@ const metaLine = computed(() => {
   font-variant-numeric: tabular-nums;
 }
 
+.rop.compact {
+  gap: 14px;
+}
+
+.compact .rop-title {
+  font-size: 15px;
+}
+
+.compact .rop-big {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+}
+
+.compact .rop-big-num {
+  order: -1;
+  font-size: 44px;
+}
+
+.compact .rop-split {
+  height: 10px;
+}
+
+.compact .rop-legend {
+  gap: 4px 18px;
+  font-size: 13px;
+}
+
+.compact .rop-legend b {
+  font-size: 15px;
+}
+
+.compact .rop-state,
+.compact .rop-empty {
+  padding: 0;
+}
+
+.compact .rop-empty b {
+  font-size: 16px;
+}
+
 @media (max-width: 768px) {
-  .rop-kpis {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 14px 24px;
+  .rop-big-num {
+    font-size: 56px;
   }
 
-  .rop-kpi dd {
-    font-size: 28px;
+  .rop-hrow {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .rop-hmeta {
+    display: none;
   }
 }
 </style>

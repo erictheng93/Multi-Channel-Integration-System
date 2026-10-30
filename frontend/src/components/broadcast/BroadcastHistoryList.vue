@@ -63,9 +63,6 @@
               <th class="th-title">
                 活動
               </th>
-              <th class="th-status">
-                狀態
-              </th>
               <th class="th-result">
                 結果
               </th>
@@ -89,14 +86,15 @@
                     class="ui-pill ui-pill-blue mixed-pill"
                   >圖文</span>
                 </strong>
-                <small>{{ formatDate(broadcast.sentAt || broadcast.createdAt) }} ・ {{ broadcast.content || '（僅圖片）' }}</small>
-              </td>
-              <td class="col-status">
-                <span
-                  class="ui-pill ui-pill-dot status-pill"
-                  :class="statusClass(broadcast.status)"
-                  :data-status="broadcast.status"
-                >{{ statusLabel(broadcast.status) }}</span>
+                <span class="meta-line">
+                  <span
+                    class="ui-pill ui-pill-dot status-pill"
+                    :class="statusClass(broadcast.status)"
+                    :data-status="broadcast.status"
+                  >{{ statusLabel(broadcast.status) }}</span>
+                  <time>{{ formatDate(broadcast.sentAt || broadcast.createdAt) }}</time>
+                  <span class="snippet">{{ broadcast.content || '（僅圖片）' }}</span>
+                </span>
               </td>
               <td class="col-result">
                 <template v-if="broadcast.totalRecipients > 0">
@@ -276,10 +274,9 @@ function formatDate(value: string | null): string {
   cursor: pointer;
 }
 
-.th-title { width: 36%; }
-.th-status { width: 15%; }
-.th-result { width: 41%; }
-.th-act { width: 8%; }
+.th-title { width: auto; }
+.th-result { width: 244px; }
+.th-act { width: 52px; }
 
 .ui-table tbody tr.is-selected {
   background: var(--ui-sel-tint);
@@ -300,22 +297,29 @@ function formatDate(value: string | null): string {
   overflow-wrap: anywhere;
 }
 
-/* The date stays on its line; the message text wraps (two lines at most) instead of being cut to "…" */
-.col-title small {
-  display: -webkit-box;
-  max-width: 100%;
-  margin-top: 2px;
-  overflow: hidden;
+.meta-line {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-top: 6px;
   font-size: 13px;
-  line-height: 1.45;
   color: var(--ui-ink-2);
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
-  overflow-wrap: anywhere;
+  font-variant-numeric: tabular-nums;
 }
 
-.col-status {
+.meta-line time {
+  flex: none;
+}
+
+.status-pill {
+  flex: none;
+}
+
+/* One line of the message, cut with an ellipsis: every record is the same height */
+.meta-line .snippet {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
@@ -416,6 +420,7 @@ function formatDate(value: string | null): string {
   .ui-table tbody tr {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
     gap: 8px 12px;
     padding: 14px 16px;
     box-shadow: 0 -0.5px 0 var(--ui-sep);
@@ -427,20 +432,13 @@ function formatDate(value: string | null): string {
     box-shadow: none;
   }
 
-  .col-title {
-    grid-column: 1;
-    grid-row: 1;
-  }
-
-  .col-status {
-    grid-column: 2;
-    grid-row: 1;
-    text-align: right;
-  }
-
   .col-result {
     grid-column: 1;
     grid-row: 2;
+  }
+
+  .col-title {
+    grid-column: 1 / -1;
   }
 
   /* the visible way into the recipient detail (the whole row is also tappable) */
