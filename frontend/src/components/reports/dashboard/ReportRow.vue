@@ -19,10 +19,13 @@
       >
         {{ truncatedDescription }}
       </p>
-      <span
-        class="ui-tag report-type-badge"
-        :class="typeBadgeClass"
-      >{{ typeLabel }}</span>
+      <div class="tag-line">
+        <span
+          class="ui-tag report-type-badge"
+          :class="typeBadgeClass"
+        >{{ typeLabel }}</span>
+        <span class="file-line format-cell">{{ formatLabel }}<template v-if="report.fileSize"> ・ {{ formattedSize }}</template></span>
+      </div>
     </div>
 
     <div
@@ -35,17 +38,6 @@
       >
         {{ statusLabel }}
       </span>
-    </div>
-
-    <div
-      role="cell"
-      class="row-cell format-cell"
-    >
-      <span class="format-text">{{ formatLabel }}</span>
-      <span
-        v-if="report.fileSize"
-        class="size-text"
-      >{{ formattedSize }}</span>
     </div>
 
     <div
@@ -231,7 +223,7 @@ const canDelete = computed(() => {
 .report-row {
   position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 2.4fr) 110px 100px minmax(110px, 1fr) 84px;
+  grid-template-columns: minmax(0, 2.6fr) 110px minmax(120px, 1fr) 84px;
   align-items: center;
   gap: 12px;
   padding: 14px 22px;
@@ -315,9 +307,18 @@ const canDelete = computed(() => {
   color: var(--ui-muted);
 }
 
-.format-cell {
-  display: grid;
-  gap: 2px;
+.tag-line {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  min-width: 0;
+}
+
+.file-line {
+  font-size: 13px;
+  color: var(--ui-ink-2);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .row-actions {
@@ -387,8 +388,7 @@ const canDelete = computed(() => {
     color: var(--ui-ink-2);
   }
 
-  .format-cell,
-  .report-type-badge {
+  .tag-line {
     display: none;
   }
 

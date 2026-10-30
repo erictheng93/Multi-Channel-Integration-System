@@ -136,8 +136,8 @@ import ReportsSection from './dashboard/ReportsSection.vue'
 import PaginationControls from '@/components/ui/PaginationControls.vue'
 import SidebarWidgets from './dashboard/SidebarWidgets.vue'
 import PopularTypesWidget from './dashboard/PopularTypesWidget.vue'
-import AttentionList from './dashboard/AttentionList.vue'
 import StorageWidget from './dashboard/StorageWidget.vue'
+import AttentionList from './dashboard/AttentionList.vue'
 import ConfirmDialog from '@/components/ui/ConfirmDialog.vue'
 
 // Emits
@@ -323,6 +323,10 @@ function handleFilterByType(type: string) {
 }
 
 /* The right column is shorter than the list: it stays in view while the list scrolls */
+.content-right :deep(.ui-card-title) {
+  font-size: 17px;
+}
+
 .content-right {
   position: sticky;
   top: 16px;
