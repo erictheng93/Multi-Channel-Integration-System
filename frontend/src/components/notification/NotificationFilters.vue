@@ -1,6 +1,6 @@
 <template>
   <section
-    class="filters-section ui-card"
+    class="filters-section"
     role="search"
     aria-label="通知篩選選項"
   >
@@ -71,7 +71,7 @@
     <!-- Priority Filter -->
     <select
       :value="selectedPriority"
-      class="ui-select filter-select"
+      class="ui-select filter-select filter-priority"
       aria-label="通知優先級"
       @change="$emit('update:selectedPriority', ($event.target as HTMLSelectElement).value); $emit('apply-filters')"
     >
@@ -131,6 +131,14 @@ defineEmits<{
   gap: 10px 12px;
   align-items: center;
   padding: 14px 18px;
+  box-shadow: inset 0 -0.5px 0 var(--ui-sep);
+}
+
+/* The overview rail (> 1024px) filters by priority, so the select only shows where the rail is hidden */
+@media (min-width: 1025px) {
+  .filter-priority {
+    display: none;
+  }
 }
 
 .filter-tabs + .filter-select {

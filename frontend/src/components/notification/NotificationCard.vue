@@ -238,13 +238,9 @@ const formattedTime = computed(() => {
   background: color-mix(in srgb, var(--ui-fill) 45%, transparent);
 }
 
-/* Unread: tinted row, bold title, coloured icon tile and a dot by the time. Read: flat row, grey tile. */
-.notification-unread {
-  background: color-mix(in srgb, var(--section-hue) 7%, var(--ui-surface));
-}
-
-.notification-unread:hover {
-  background: color-mix(in srgb, var(--section-hue) 11%, var(--ui-surface));
+/* Unread: coloured icon tile, bold ink title and a dot by the time. Read: grey tile, receding title. No tinted slab (it read as a selected row). */
+.notification-unread .notification-title {
+  color: var(--ui-ink);
 }
 
 .notification-card:not(.notification-unread) .notification-icon {
@@ -256,12 +252,6 @@ const formattedTime = computed(() => {
 .notification-urgent .notification-icon {
   background: var(--ui-red-soft);
   color: var(--ui-red-ink);
-}
-
-/* An inset rounded row has no hairline against it: hide the separator on either side of an unread row */
-.notification-unread::before,
-.notification-unread + .notification-card::before {
-  opacity: 0;
 }
 
 .notification-card:focus-visible,
@@ -347,7 +337,7 @@ const formattedTime = computed(() => {
   flex: 1;
   margin: 0;
   overflow: hidden;
-  font-size: 14.5px;
+  font-size: 15px;
   font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -385,7 +375,7 @@ const formattedTime = computed(() => {
 
 .notification-text {
   margin: 2px 0 0;
-  font-size: 13.5px;
+  font-size: 14px;
   line-height: 1.5;
   color: var(--ui-ink-2);
   word-break: break-word;
