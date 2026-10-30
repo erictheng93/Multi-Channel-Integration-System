@@ -464,7 +464,7 @@ const phoneExpanded = ref(false)
 let phoneQuery: ReturnType<typeof window.matchMedia> | null = null
 function syncPhone() { isPhone.value = phoneQuery?.matches ?? false }
 onMounted(() => {
-  if (typeof window.matchMedia !== 'function') return
+  if (typeof window.matchMedia !== 'function') {return}
   phoneQuery = window.matchMedia(`(max-width: ${BREAKPOINTS.md}px)`)
   syncPhone()
   phoneQuery.addEventListener('change', syncPhone)

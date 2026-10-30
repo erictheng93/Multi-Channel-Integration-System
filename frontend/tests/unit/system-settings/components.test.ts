@@ -81,9 +81,9 @@ describe('System Settings Components', () => {
       })
 
       expect(wrapper.text()).toContain('介面語言')
-      const lang = wrapper.find('#language')
-      expect(lang.element.tagName).toBe('SELECT')
-      expect(lang.text()).toContain('繁體中文')
+      // a value that cannot change is plain text, not a disabled field
+      expect(wrapper.find('#language').exists()).toBe(false)
+      expect(wrapper.find('.static-value').text()).toBe('繁體中文')
     })
 
     it('should emit save event on form submit', async () => {
