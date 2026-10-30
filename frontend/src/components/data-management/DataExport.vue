@@ -8,107 +8,106 @@
       :subtitle="`選擇檔案格式後開始匯出，單次最多 ${EXPORT_LIMIT.toLocaleString()} 筆。`"
     />
 
-    <!-- Lead: the task is the choice. Four formats are the lead itself, the chosen one is previewed, one action -->
-    <article class="ui-lead xl">
-      <div class="xl-head">
-        <div>
-          <div class="xl-kicker">
-            匯出格式
-          </div>
-          <p class="xl-meaning">
-            <b>{{ selectedName }}</b> · {{ selectedTagline }}，單次最多 {{ EXPORT_LIMIT.toLocaleString() }} 筆
-          </p>
-        </div>
-        <button
-          type="button"
-          class="btn btn-primary lead-cta"
-          @click="openExportDialog"
-        >
-          <DownloadIcon :size="16" />
-          開始匯出 {{ selectedName }}
-        </button>
-      </div>
-      <div
-        class="xl-tiles"
-        role="radiogroup"
-        aria-label="匯出格式"
+    <div class="ex-grid">
+      <section
+        class="ex-pick"
+        aria-label="選擇格式"
       >
-        <button
-          v-for="format in formats"
-          :key="format.id"
-          type="button"
-          class="xl-tile"
-          :class="{ 'is-selected': selectedFormat === format.id }"
-          role="radio"
-          :aria-checked="selectedFormat === format.id"
-          @click="selectFormat(format.id)"
+        <h2 class="ui-group-label">
+          檔案格式
+        </h2>
+        <div
+          class="ui-group ex-list"
+          role="radiogroup"
+          aria-label="匯出格式"
         >
-          <span
-            class="fmt-ico"
-            :class="format.tone"
-            aria-hidden="true"
-          >{{ format.icon }}</span>
-          <i
-            class="radio"
-            aria-hidden="true"
-          />
-          <b class="xl-name">{{ format.name }}</b>
-          <span class="xl-tag">{{ format.tagline }}</span>
-          <span class="xl-use">{{ format.usecases.join('、') }}</span>
-        </button>
-      </div>
-      <code class="xl-preview">{{ selectedPreview }}</code>
-    </article>
+          <button
+            v-for="format in formats"
+            :key="format.id"
+            type="button"
+            class="ex-row"
+            :class="{ 'is-on': selectedFormat === format.id }"
+            role="radio"
+            :aria-checked="selectedFormat === format.id"
+            @click="selectFormat(format.id)"
+          >
+            <span
+              class="fmt-ico"
+              :class="format.tone"
+              aria-hidden="true"
+            >{{ format.icon }}</span>
+            <span class="ex-main">
+              <b class="ex-name">{{ format.name }}<span class="ex-tag">{{ format.tagline }}</span></b>
+              <span class="ex-use">{{ format.usecases.join('、') }}</span>
+            </span>
+            <i
+              class="radio"
+              aria-hidden="true"
+            />
+          </button>
+        </div>
+      </section>
 
-    <section
-      class="scope"
-      aria-label="匯出內容"
-    >
-      <h2 class="ui-group-label">
-        {{ selectedName }} 檔案會包含
-      </h2>
-      <div class="ui-group scope-body">
-        <div class="scope-col">
-          <h3 class="scope-h">
-            欄位
-          </h3>
-          <ul class="scope-list">
-            <li
-              v-for="item in selectedFields"
-              :key="item"
-            >
-              {{ item }}
-            </li>
-          </ul>
+      <section
+        class="ui-lead ex-sheet"
+        :aria-label="`${selectedName} 檔案內容`"
+      >
+        <header class="sheet-bar">
+          <span class="sheet-file">{{ selectedName }} 檔案內容</span>
+          <span class="sheet-unit">{{ selectedUnit }}</span>
+        </header>
+
+        <dl class="sheet-rows">
+          <div
+            v-for="row in selectedRows"
+            :key="row.note"
+            class="sheet-row"
+          >
+            <dt v-if="row.key">
+              {{ row.key }}
+            </dt>
+            <dd :class="{ 'is-wide': !row.key }">
+              {{ row.note }}
+            </dd>
+          </div>
+        </dl>
+
+        <div class="sheet-scope">
+          <div class="scope-fact">
+            <span>單次上限</span>
+            <b>{{ EXPORT_LIMIT.toLocaleString() }} 筆</b>
+          </div>
+          <div class="scope-fact">
+            <span>範圍</span>
+            <b>你有權限查看的對話</b>
+          </div>
+          <div class="scope-fact">
+            <span>排除</span>
+            <b>已收回的訊息</b>
+          </div>
         </div>
-        <div class="scope-col">
-          <h3 class="scope-h">
-            範圍
-          </h3>
-          <ul class="scope-list">
-            <li>你有權限查看的對話中的訊息</li>
-            <li>不含已收回的訊息</li>
-            <li>依時間由新到舊，最多 {{ EXPORT_LIMIT.toLocaleString() }} 筆</li>
-          </ul>
-        </div>
-        <div class="scope-col">
-          <h3 class="scope-h">
-            匯出前可篩選
-          </h3>
-          <ul class="scope-list scope-filters">
-            <li
+
+        <div class="sheet-foot">
+          <p class="foot-filters">
+            <span>匯出時可篩選</span>
+            <span
               v-for="f in filterOptions"
               :key="f.name"
-            >
-              <b>{{ f.name }}</b>{{ f.hint }}
-            </li>
-          </ul>
+              class="ui-chip"
+              :title="f.hint"
+            >{{ f.name }}</span>
+          </p>
+          <button
+            type="button"
+            class="btn btn-primary lead-cta"
+            @click="openExportDialog"
+          >
+            <DownloadIcon :size="16" />
+            開始匯出 {{ selectedName }}
+          </button>
         </div>
-      </div>
-      <p class="ui-group-foot">
-        選好格式後，在匯出視窗再設定日期、客戶與客服人員的篩選。未設定篩選時匯出全部記錄，最多 {{ EXPORT_LIMIT.toLocaleString() }} 筆，超出部分會被截斷。
-      </p>
-    </section>
+      </section>
+    </div>
 
     <UiActionBar
       class="export-actions"
@@ -148,46 +147,83 @@ const EXPORT_LIMIT = 5000
 const showExportDialog = ref(false)
 const selectedFormat = ref<FormatId>('json')
 
-const formats = [
+type Row = { key?: string; note: string }
+
+const formats: Array<{
+  id: FormatId
+  name: string
+  tagline: string
+  icon: string
+  tone: string
+  unit: string
+  usecases: string[]
+  rows: Row[]
+}> = [
   {
-    id: 'json' as const,
+    id: 'json',
     name: 'JSON',
     tagline: '結構化資料',
     icon: '{ }',
     tone: 'blue',
-    fields: ['訊息編號、對話編號', '寄件者類型與名稱', '訊息內容與類型', '傳送時間、傳送狀態、建立時間', '附加資料（metadata）', '匯出資訊：時間、匯出者、篩選條件'],
+    unit: '一則訊息一筆物件',
     usecases: ['API 整合', '資料分析', '系統備份'],
-    preview: '{ id, conversationId, senderType, senderName, content, messageType, sentAt }'
+    rows: [
+      { key: 'id', note: '訊息編號' },
+      { key: 'conversationId', note: '對話編號' },
+      { key: 'senderType', note: '寄件者類型' },
+      { key: 'senderName', note: '寄件者名稱' },
+      { key: 'content', note: '訊息內容' },
+      { key: 'messageType', note: '訊息類型' },
+      { key: 'sentAt', note: '傳送時間' },
+      { note: '傳送狀態、建立時間、附加資料（metadata）' },
+      { note: '檔頭另含匯出資訊：時間、匯出者、篩選條件' }
+    ]
   },
   {
-    id: 'csv' as const,
+    id: 'csv',
     name: 'CSV',
     tagline: '試算表格式',
     icon: 'CSV',
     tone: 'green',
-    fields: ['訊息編號、對話編號', '寄件者類型與名稱', '訊息內容與類型', '傳送時間、傳送狀態、建立時間'],
+    unit: '一則訊息一列',
     usecases: ['Excel 報表', '統計分析', '團隊共享'],
-    preview: 'Message ID, Conversation ID, Sender Type, Sender Name, Content'
+    rows: [
+      { key: 'Message ID', note: '訊息編號' },
+      { key: 'Conversation ID', note: '對話編號' },
+      { key: 'Sender Type', note: '寄件者類型' },
+      { key: 'Sender Name', note: '寄件者名稱' },
+      { key: 'Content', note: '訊息內容' },
+      { note: '訊息類型、傳送時間、傳送狀態、建立時間' }
+    ]
   },
   {
-    id: 'txt' as const,
+    id: 'txt',
     name: 'TXT',
     tagline: '純文字聊天記錄',
     icon: 'TXT',
     tone: 'lavender',
-    fields: ['檔頭：匯出時間、總筆數、使用的篩選條件', '依對話分組，組內依時間由舊到新', '每則一行：[時間] 寄件者: 內容'],
+    unit: '一則訊息一行',
     usecases: ['直接閱讀', '品質審查', '列印備份'],
-    preview: '[時間] 寄件者: 內容'
+    rows: [
+      { key: '[時間] 寄件者: 內容', note: '每則訊息一行' },
+      { note: '檔頭：匯出時間、總筆數、使用的篩選條件' },
+      { note: '依對話分組，組內依時間由舊到新' }
+    ]
   },
   {
-    id: 'pdf' as const,
+    id: 'pdf',
     name: 'PDF',
     tagline: '可攜式報告',
     icon: 'PDF',
     tone: 'red',
-    fields: ['在瀏覽器內依 JSON 資料排版產生', '標題與匯出資訊、使用的篩選條件', '依對話分組的訊息內容'],
+    unit: '依對話分組排版',
     usecases: ['列印報告', '正式存檔', '對外分享'],
-    preview: '標題 · 匯出資訊 · 依對話分組的訊息'
+    rows: [
+      { note: '標題與匯出資訊' },
+      { note: '使用的篩選條件' },
+      { note: '依對話分組的訊息內容' },
+      { note: '在瀏覽器內依 JSON 資料排版產生' }
+    ]
   }
 ]
 
@@ -197,10 +233,10 @@ const filterOptions = [
   { name: '客服人員', hint: '只匯出指定客服發送的訊息' }
 ]
 
-const selectedFields = computed(() => formats.find(f => f.id === selectedFormat.value)?.fields ?? [])
-const selectedTagline = computed(() => formats.find(f => f.id === selectedFormat.value)?.tagline ?? '')
-const selectedPreview = computed(() => formats.find(f => f.id === selectedFormat.value)?.preview ?? '')
-const selectedName = computed(() => formats.find(f => f.id === selectedFormat.value)?.name ?? '')
+const current = computed(() => formats.find(f => f.id === selectedFormat.value) ?? formats[0])
+const selectedRows = computed(() => current.value?.rows ?? [])
+const selectedUnit = computed(() => current.value?.unit ?? '')
+const selectedName = computed(() => current.value?.name ?? '')
 
 function openExportDialog() {
   showExportDialog.value = true
@@ -212,187 +248,184 @@ function selectFormat(format: FormatId) {
 </script>
 
 <style scoped>
-.xl {
+.ex-grid {
   display: grid;
-  gap: 18px;
-  padding: 24px 28px;
-}
-
-.xl-head {
-  display: flex;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
   gap: 20px;
-  align-items: flex-start;
-  justify-content: space-between;
+  align-items: start;
 }
 
-.xl-kicker {
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--section-ink);
+.ex-pick {
+  min-width: 0;
 }
 
-.xl-meaning {
-  margin: 4px 0 0;
-  font-size: 15px;
-  color: var(--ui-ink-2);
-}
-
-.xl-meaning b {
-  font-weight: 600;
-  color: var(--ui-ink);
-}
-
-.xl-tiles {
+.ex-list {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
+  gap: 4px;
+  padding: 8px;
 }
 
-.xl-tile {
+.ex-row {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  grid-template-areas:
-    'ico radio'
-    'name name'
-    'tag tag'
-    'use use';
-  gap: 2px 0;
-  align-content: start;
-  min-height: 148px;
-  padding: 16px;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: center;
+  width: 100%;
+  padding: 14px 16px;
   border: 0;
   border-radius: var(--ui-r-inner);
-  background: var(--ui-surface-2);
-  box-shadow: inset 0 0 0 1px var(--ui-sep);
+  background: transparent;
   color: var(--ui-ink);
   font: inherit;
   text-align: left;
   cursor: pointer;
-  transition:
-    background var(--ui-dur) var(--ui-ease),
-    box-shadow var(--ui-dur) var(--ui-ease);
+  transition: background var(--ui-dur) var(--ui-ease);
 }
 
-.xl-tile:hover {
+.ex-row:hover {
   background: var(--ui-fill);
 }
 
-.xl-tile.is-selected {
+.ex-row.is-on {
   background: var(--ui-sel-tint);
   box-shadow: inset 0 0 0 2px var(--ui-accent);
 }
 
-.xl-tile:focus-visible {
+.ex-row:focus-visible {
   outline: 2px solid var(--ui-accent);
   outline-offset: 2px;
 }
 
-.xl-tile .fmt-ico {
-  grid-area: ico;
-  margin-bottom: 12px;
+.ex-main {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
 }
 
-.xl-tile .radio {
-  grid-area: radio;
-  justify-self: end;
-}
-
-.xl-name {
-  grid-area: name;
-  font: 600 24px / 1.15 var(--ui-font-display);
+.ex-name {
+  font: 600 20px / 1.2 var(--ui-font-display);
   letter-spacing: -0.02em;
 }
 
-.xl-tag {
-  grid-area: tag;
-  font-size: 14px;
-  font-weight: 500;
+.ex-tag {
+  margin-left: 10px;
+  font: 500 14px var(--ui-font-ui);
+  letter-spacing: 0;
   color: var(--ui-ink-2);
 }
 
-.xl-use {
-  grid-area: use;
-  margin-top: 6px;
+.ex-use {
   font-size: 13px;
-  line-height: 1.4;
   color: var(--ui-muted);
 }
 
-.xl-preview {
-  display: block;
-  padding: 12px 16px;
+.ex-sheet {
+  display: grid;
+  gap: 0;
+  padding: 0;
   overflow: hidden;
-  border-radius: 12px;
+}
+
+.sheet-bar {
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  padding: 20px 28px 14px;
+}
+
+.sheet-file {
+  font: 700 22px / 1.2 var(--ui-font-display);
+  letter-spacing: -0.02em;
+}
+
+.sheet-unit {
+  align-self: center;
+  font-size: 13px;
+  color: var(--ui-muted);
+}
+
+.sheet-rows {
+  display: grid;
+  margin: 0 28px;
+  padding: 4px 0;
+  border-radius: var(--ui-r-inner);
   background: var(--ui-surface-2);
-  font: 13px / 1.45 var(--ui-font-mono);
-  color: var(--ui-ink-2);
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
-.scope {
+.sheet-row {
+  display: grid;
+  grid-template-columns: minmax(120px, 190px) minmax(0, 1fr);
+  gap: 16px;
+  padding: 6px 18px;
+  font-size: 14px;
+}
+
+.sheet-row dt {
   min-width: 0;
+  overflow-wrap: anywhere;
+  font: 600 13px / 1.5 var(--ui-font-mono);
+  color: var(--ui-ink);
 }
 
-.scope-body {
+.sheet-row dd.is-wide {
+  grid-column: 1 / -1;
+  color: var(--ui-muted);
+}
+
+.sheet-row dd {
+  margin: 0;
+  color: var(--ui-ink-2);
+}
+
+.sheet-scope {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 20px 32px;
-  padding: 20px 24px 22px;
+  gap: 12px 24px;
+  padding: 20px 28px 4px;
 }
 
-.scope-col {
-  min-width: 0;
-}
-
-.scope-h {
-  margin: 0 0 10px;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--ui-ink);
-}
-
-.scope-list {
+.scope-fact {
   display: grid;
-  gap: 8px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
+  gap: 2px;
 }
 
-.scope-list li {
-  position: relative;
-  padding-left: 14px;
-  font-size: 14px;
-  line-height: 1.45;
-  text-wrap: pretty;
-  color: var(--ui-ink-2);
+.scope-fact span {
+  font-size: 13px;
+  color: var(--ui-muted);
 }
 
-.scope-list li::before {
-  position: absolute;
-  top: 0.6em;
-  left: 0;
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: var(--section-hue);
-  content: '';
-}
-
-.scope-filters li b {
-  display: block;
+.scope-fact b {
   font-size: 14px;
   font-weight: 600;
-  color: var(--ui-ink);
+}
+
+.sheet-foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 20px;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 18px;
+  padding: 16px 28px 20px;
+  box-shadow: 0 -0.5px 0 var(--ui-sep);
+}
+
+.foot-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin: 0;
+  font-size: 13px;
+  color: var(--ui-ink-2);
 }
 
 .fmt-ico {
   display: grid;
   flex: none;
   place-items: center;
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   border-radius: 12px;
   font: 600 12px var(--ui-font-mono);
 }
@@ -426,45 +459,66 @@ function selectFormat(format: FormatId) {
   transition: box-shadow var(--ui-dur) var(--ui-ease);
 }
 
-.is-selected .radio {
+.is-on .radio {
   box-shadow: inset 0 0 0 6px var(--ui-accent);
 }
 
-/* The lead carries the CTA on larger screens; phones get the sticky action bar */
+/* The sheet carries the CTA on larger screens; phones get the sticky action bar */
 .export-actions {
   display: none;
 }
 
 @media (max-width: 1024px) {
-  .xl-tiles {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .scope-body {
+  .ex-grid {
     grid-template-columns: minmax(0, 1fr);
   }
 }
 
 @media (max-width: 768px) {
-  .xl {
-    padding: 20px;
+  .lead-cta,
+  .foot-filters {
+    display: none;
   }
 
-  .lead-cta {
+  .sheet-foot {
     display: none;
+  }
+
+  .sheet-bar {
+    padding: 18px 20px 12px;
+  }
+
+  .sheet-rows {
+    margin: 0 20px;
+  }
+
+  .sheet-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 12px;
+    padding: 6px 14px;
+  }
+
+  .sheet-row dd {
+    text-align: right;
+  }
+
+  .sheet-row dd.is-wide {
+    text-align: left;
+  }
+
+  .sheet-scope {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+    padding: 16px 20px 20px;
+  }
+
+  .scope-fact {
+    grid-template-columns: 80px minmax(0, 1fr);
+    align-items: baseline;
   }
 
   .export-actions {
     display: flex;
-  }
-
-  .xl-tile {
-    min-height: 0;
-    padding: 14px;
-  }
-
-  .xl-preview {
-    display: none;
   }
 
   /* Short page: the bar rides the bottom of the viewport rather than floating under the cards */
