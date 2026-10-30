@@ -199,6 +199,12 @@ watch(() => route?.path, () => { menuOpen.value = false })
 </script>
 
 <style scoped>
+.ui-page-head:has(.ui-page-switch-menu) {
+  /* the open menu must paint above the cards that follow (they animate into their own stacking contexts) */
+  position: relative;
+  z-index: 40;
+}
+
 .ui-page-switch {
   position: relative;
   min-width: 0;
@@ -253,9 +259,7 @@ watch(() => route?.path, () => { menuOpen.value = false })
   padding: 6px 0;
   list-style: none;
   border-radius: 16px;
-  background: var(--ui-glass);
-  -webkit-backdrop-filter: blur(24px) saturate(180%);
-  backdrop-filter: blur(24px) saturate(180%);
+  background: var(--ui-surface);
   box-shadow: 0 16px 40px rgb(0 0 0 / 0.18), 0 0 0 0.5px var(--ui-sep);
   transform-origin: 24px 0;
   animation: ui-page-switch-in 180ms var(--ui-ease);
@@ -263,9 +267,12 @@ watch(() => route?.path, () => { menuOpen.value = false })
   letter-spacing: 0;
 }
 
+.ui-page-switch-menu li {
+  margin: 0 16px;
+}
+
 .ui-page-switch-menu li + li {
   box-shadow: inset 0 0.5px 0 var(--ui-sep);
-  margin: 0 16px;
 }
 
 .ui-page-switch-menu a {
