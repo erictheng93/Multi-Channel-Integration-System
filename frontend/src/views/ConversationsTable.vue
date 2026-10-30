@@ -337,7 +337,6 @@ import { useToast } from '@/composables/useToast'
 import { useConfirmDialog } from '@/composables/useConfirmDialog'
 import { conversationApi } from '@/api/conversations'
 import { useUnreadStore } from '@/stores/unread'
-import { useAuthStore } from '@/stores/auth'
 import { formatWaitText } from '@/composables/dashboard/useDashboardOverview'
 import { LEGEND_TEXT } from '@/composables/conversation/useConversationRowMeta'
 import { WAITING_WINDOW_DAYS, type ConversationStats } from '@shared/api-contracts'
@@ -388,14 +387,18 @@ const oldestWaitText = computed(() =>
 
 const oldestWaitHot = computed(() => waitingSince.value !== null && clock.value - Date.parse(waitingSince.value) >= 30 * 60 * 1000)
 
+// Team names come from the conversations already loaded (their assignedTeam)
+const teamNameById = computed(() => new Map(
+  conversations.value.flatMap(c => (c.assignedTeam?.id && c.assignedTeam.name ? [[c.assignedTeam.id, c.assignedTeam.name] as const] : []))
+))
+
 // Rail: open conversations per team (a row filters the list; the unassigned pool filters teamId 0)
-const authStore = useAuthStore()
 const teamRows = computed(() => (counts.value?.byTeam ?? [])
   .filter(t => t.open > 0)
   .map(t => ({
     key: String(t.teamId ?? 'none'),
     filterId: t.teamId === null ? 0 : t.teamId,
-    name: t.teamId === null ? '未指派' : (authStore.currentAgent?.teams?.find(x => x.id === t.teamId)?.name ?? `團隊 ${t.teamId}`),
+    name: t.teamId === null ? '未指派' : (teamNameById.value.get(t.teamId) ?? `團隊 ${t.teamId}`),
     open: t.open
   })))
 function toggleTeam(filterId: number) {

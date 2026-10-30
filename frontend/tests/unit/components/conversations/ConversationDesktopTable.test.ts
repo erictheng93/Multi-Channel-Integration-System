@@ -173,7 +173,7 @@ describe('ConversationDesktopTable.vue', () => {
 
     it('shows 待回覆 for a wait inside the 7-day window', () => {
       const wrapper = mountTable([createConversation({ lastMessage: lastMessage('customer'), awaitingSince: daysAgo(6) })])
-      expect(wrapper.find('.status-line').text()).toBe('待回覆')
+      expect(wrapper.find('.status-line .ui-pill').text()).toBe('待回覆')
     })
 
     it('shows a stale wait as 已等 N 天 (not 待回覆), with 從未回覆 only when no human ever replied', () => {
