@@ -5,22 +5,13 @@
       class="quick-replies"
     >
       <button
-        v-for="reply in visibleReplies"
+        v-for="reply in replies"
         :key="reply.id"
         class="quick-reply-btn"
         :disabled="disabled"
         @click="handleSelect(reply)"
       >
         {{ reply.text }}
-      </button>
-      <button
-        v-if="replies.length > MAX_VISIBLE"
-        type="button"
-        class="quick-reply-btn quick-reply-more"
-        :aria-expanded="expanded"
-        @click="expanded = !expanded"
-      >
-        {{ expanded ? '收合' : `還有 ${replies.length - MAX_VISIBLE} 則` }}
       </button>
     </div>
   </Transition>
@@ -41,8 +32,6 @@
  * />
  * ```
  */
-
-import { computed, ref } from 'vue'
 
 export interface QuickReply {
   /** 唯一标识 */
@@ -68,15 +57,11 @@ interface Props {
   disabled?: boolean
 }
 
-const props = withDefaults(defineProps<Props>(), {
+withDefaults(defineProps<Props>(), {
   disabled: false,
 })
 
 const emit = defineEmits<Emits>()
-// At most three suggestions are shown; the rest sit behind 更多 so the row never needs a scroll to find the end
-const MAX_VISIBLE = 3
-const expanded = ref(false)
-const visibleReplies = computed(() => (expanded.value ? props.replies : props.replies.slice(0, MAX_VISIBLE)))
 
 interface Emits {
   /**
@@ -92,14 +77,14 @@ const handleSelect = (reply: QuickReply) => {
 </script>
 
 <style scoped>
-/* Quick replies: one swipeable row of capsule chips */
+/* Quick replies: one swipeable row of capsule chips; the soft fade at the right edge says there is more */
 .quick-replies {
   display: flex;
   gap: 8px;
   padding: 10px 0 2px;
   overflow-x: auto;
-  -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 24px), transparent);
-  mask-image: linear-gradient(90deg, #000 calc(100% - 24px), transparent);
+  -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 40px), transparent);
+  mask-image: linear-gradient(90deg, #000 calc(100% - 40px), transparent);
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
 }
@@ -125,12 +110,6 @@ const handleSelect = (reply: QuickReply) => {
 
 .quick-reply-btn:hover:not(:disabled) {
   background: color-mix(in srgb, var(--ui-accent) 16%, var(--ui-surface));
-}
-
-.quick-reply-more {
-  background: transparent;
-  box-shadow: inset 0 0 0 1px var(--ui-sep);
-  color: var(--ui-ink-2);
 }
 
 .quick-reply-btn:disabled {

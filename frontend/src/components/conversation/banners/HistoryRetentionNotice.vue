@@ -1,6 +1,6 @@
 <template>
   <div
-    v-if="visible"
+    v-if="visible && !dismissed"
     class="history-retention-notice"
     :class="{ 'is-keyboard-open': keyboardOpen }"
     role="note"
@@ -39,8 +39,25 @@
       </svg>
     </span>
     <span class="hrn-text">
-      LINE 官方帳號僅保留近 6 個月的聊天記錄，{{ boundaryLabel }} 之前的歷史訊息已無法顯示。
+      LINE 僅保留近 6 個月記錄，{{ boundaryLabel }} 前的訊息已無法顯示
     </span>
+    <button
+      type="button"
+      class="hrn-close"
+      aria-label="關閉提示"
+      @click="dismiss"
+    >
+      <svg
+        width="14"
+        height="14"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2.4"
+        stroke-linecap="round"
+        aria-hidden="true"
+      ><path d="M18 6 6 18M6 6l12 12" /></svg>
+    </button>
   </div>
 </template>
 
@@ -64,6 +81,16 @@ const props = withDefaults(
     boundaryLabel: '2025/12/17'
   }
 )
+
+const STORAGE_KEY = 'mcis.history-retention-notice.dismissed'
+function readDismissed(): boolean {
+  try { return localStorage.getItem(STORAGE_KEY) === '1' } catch { return false }
+}
+const dismissed = ref(readDismissed())
+function dismiss(): void {
+  dismissed.value = true
+  try { localStorage.setItem(STORAGE_KEY, '1') } catch { /* private mode: the chip just returns next visit */ }
+}
 
 const visible = computed(() => (props.platform || '').toLowerCase() === 'line')
 const boundaryLabel = computed(() => props.boundaryLabel)
@@ -92,33 +119,59 @@ onBeforeUnmount(() => {
 .history-retention-notice {
   display: flex;
   align-items: center;
-  justify-content: center;
   gap: 8px;
-  margin: 8px 16px;
-  padding: 8px 14px;
-  border-radius: 12px;
-  background: #eef1f6;
-  color: var(--ui-muted);
+  width: fit-content;
+  max-width: calc(100% - 32px);
+  margin: 10px auto 0;
+  padding: 4px 4px 4px 12px;
+  border-radius: 18px;
+  background: var(--ui-accent-soft);
+  color: var(--ui-ink);
   font-size: 13px;
+  font-weight: 500;
   line-height: 1.4;
-  text-align: center;
 }
 
 .hrn-icon {
   display: inline-flex;
   flex-shrink: 0;
-  color: #007aff;
+  color: var(--ui-accent);
 }
 
 .hrn-text {
-  word-break: break-word;
+  min-width: 0;
+}
+
+.hrn-close {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--ui-ink-2);
+  cursor: pointer;
+}
+
+.hrn-close:hover {
+  background: var(--ui-fill);
+}
+
+@media (pointer: coarse) {
+  .hrn-close {
+    width: 44px;
+    height: 44px;
+    margin: -8px 0;
+  }
 }
 
 @media (max-width: 768px) {
   .history-retention-notice {
-    font-size: 13px;
-    margin: 6px 12px;
-    padding: 7px 12px;
+    max-width: calc(100% - 24px);
+    margin-top: 8px;
   }
 }
 
