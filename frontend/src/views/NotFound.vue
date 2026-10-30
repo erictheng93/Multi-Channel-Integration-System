@@ -18,19 +18,19 @@
               class="nf-ring r3"
               cx="160"
               cy="160"
-              r="150"
+              r="90"
             />
             <circle
               class="nf-ring r2"
               cx="160"
               cy="160"
-              r="112"
+              r="68"
             />
             <circle
               class="nf-ring r1"
               cx="160"
               cy="160"
-              r="76"
+              r="46"
             />
           </svg>
           <div class="code">

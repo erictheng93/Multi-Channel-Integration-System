@@ -165,7 +165,7 @@ const STATUS_ORDER = { error: 0, warning: 1, healthy: 2 } as const
 const endpointLabel = (path: string): string => {
   const segment = path.split('/').filter(Boolean).pop() ?? path
   const word = segment.length > 12 ? (segment.split('-').pop() ?? segment) : segment
-  return word.length > 13 ? `${word.slice(0, 12)}…` : word
+  return word.length > 9 ? `${word.slice(0, 8)}…` : word
 }
 
 /** One bar per tracked endpoint, as tall as its P95, coloured by its state; worst first (only when endpoint metrics exist) */

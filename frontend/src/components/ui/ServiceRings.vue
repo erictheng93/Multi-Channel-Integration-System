@@ -305,8 +305,8 @@ onBeforeUnmount(() => { window.cancelAnimationFrame(frame) })
   display: flex;
   align-items: baseline;
   gap: 6px;
+  flex-wrap: wrap;
   font-variant-numeric: tabular-nums;
-  white-space: nowrap;
 }
 .sr-num strong {
   font: 600 26px / 1.1 var(--ui-font-display);
