@@ -1,7 +1,7 @@
 <template>
   <div
     class="rule-card"
-    :class="{ 'rule-card--expanded': isExpanded }"
+    :class="{ 'rule-card--expanded': isExpanded, 'rule-card--off': !rule.isActive }"
   >
     <!-- Collapsed header (always visible) -->
     <div
@@ -68,26 +68,12 @@
       </div>
 
       <div class="rule-card__right">
-        <!-- Priority: the word makes the number self-explanatory -->
+        <!-- Priority and size in one quiet line (the lower the number, the earlier it is tried) -->
         <span
-          class="rule-card__priority"
+          class="rule-card__meta"
           title="優先序：數字越小越先比對"
         >
-          <span
-            class="rule-card__priority-label"
-            aria-hidden="true"
-          >優先</span>
-          <span
-            class="rule-card__priority-badge"
-            :aria-label="`優先序 ${rule.priority}`"
-          >
-            {{ rule.priority }}
-          </span>
-        </span>
-
-        <!-- Meta text -->
-        <span class="rule-card__meta">
-          {{ rule.conditions.length }} 條件 · {{ rule.actions.length }} 動作
+          優先 {{ rule.priority }} · {{ rule.conditions.length }} 條件 · {{ rule.actions.length }} 動作
         </span>
 
         <!-- Expand arrow -->
@@ -280,18 +266,6 @@ const triggerTypeLabel = computed(() => {
   -webkit-line-clamp: 2;
 }
 
-.rule-card__priority {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.rule-card__priority-label {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--ui-ink-2);
-}
-
 /* Toggle switch (same spec as .ui-switch) */
 .rule-card__toggle {
   position: relative;
@@ -340,6 +314,16 @@ const triggerTypeLabel = computed(() => {
   color: var(--ui-muted);
 }
 
+/* a disabled rule reads as off all the way across: neutral badge, quiet reply (no opacity, so contrast holds) */
+.rule-card--off .rule-card__trigger-badge {
+  background: var(--ui-fill);
+  color: var(--ui-muted);
+}
+
+.rule-card--off .rule-card__reply {
+  color: var(--ui-muted);
+}
+
 /* Trigger badge */
 .rule-card__trigger-badge {
   flex: none;
@@ -385,22 +369,6 @@ const triggerTypeLabel = computed(() => {
   white-space: nowrap;
 }
 
-/* Priority badge */
-.rule-card__priority-badge {
-  display: inline-grid;
-  min-width: 26px;
-  height: 26px;
-  padding: 0 8px;
-  place-items: center;
-  border-radius: 999px;
-  background: var(--ui-fill);
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--ui-ink-2);
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-
 .rule-card__prio-line {
   display: none;
 }
@@ -409,7 +377,7 @@ const triggerTypeLabel = computed(() => {
 .rule-card__meta {
   font-size: 13px;
   font-weight: 500;
-  color: var(--ui-ink-2);
+  color: var(--ui-muted);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
@@ -471,10 +439,6 @@ const triggerTypeLabel = computed(() => {
 
   .rule-card__right {
     margin-top: 3px;
-  }
-
-  .rule-card__priority {
-    display: none;
   }
 
   .rule-card__prio-line {
