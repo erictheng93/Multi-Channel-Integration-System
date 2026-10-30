@@ -11,7 +11,7 @@
 
       <LineQuotaCard :pending="pendingByChannel" />
 
-      <div class="page-grid">
+      <div class="page-grid compose-row">
         <BroadcastComposeCard
           :tags="tagsStore.tags"
           :preview="broadcastsStore.preview"
@@ -118,6 +118,8 @@ const phoneMql = typeof window !== 'undefined' && typeof window.matchMedia === '
   : null
 const isPhone = ref(phoneMql?.matches ?? false)
 const phoneOpen = ref(false)
+// The preview opens by itself as soon as there is something to preview
+watch(hasInput, (value) => { if (value && isPhone.value) { phoneOpen.value = true } })
 const onPhoneChange = (event: { matches: boolean }) => { isPhone.value = event.matches }
 phoneMql?.addEventListener('change', onPhoneChange)
 const onPanelToggle = (event: Event) => {
@@ -228,7 +230,13 @@ async function fetchCurrentRecipients() {
 .side-panel {
   display: flex;
   flex-direction: column;
-  align-self: start;
+  align-self: stretch;
+}
+
+@media (min-width: 1281px) {
+  .compose-row {
+    align-items: stretch;
+  }
 }
 
 .side-note {

@@ -62,19 +62,26 @@
         :aria-label="`近 7 天產出：${week.map(d => `${d.label} ${d.count} 份`).join('，')}`"
       >
         <p class="week-h">
-          近 7 天產出
+          近 7 天產出 <b>{{ weekTotal }}</b> 份
         </p>
-        <div class="week-cols">
-          <div
-            v-for="day in week"
-            :key="day.key"
-            class="week-col"
-            :class="{ 'is-today': day.today }"
-          >
-            <span class="week-n">{{ day.count || '' }}</span>
-            <i :style="{ height: day.h }" />
-            <span class="week-d">{{ day.label }}</span>
-          </div>
+        <svg
+          class="spark"
+          viewBox="0 0 280 56"
+          preserveAspectRatio="none"
+          aria-hidden="true"
+        >
+          <path
+            class="spark-area"
+            :d="sparkArea"
+          />
+          <path
+            class="spark-line"
+            :d="sparkLine"
+          />
+        </svg>
+        <div class="week-axis">
+          <span>{{ week[0]?.label }}</span>
+          <span>今天</span>
         </div>
       </div>
     </div>
@@ -124,6 +131,14 @@ const week = computed(() => {
   const max = Math.max(1, ...days.map(d => d.count))
   return days.map(d => ({ ...d, h: d.count ? `${Math.max(8, Math.round((d.count / max) * 100))}%` : '3px' }))
 })
+
+const weekTotal = computed(() => week.value.reduce((sum, d) => sum + d.count, 0))
+const sparkPoints = computed(() => {
+  const max = Math.max(1, ...week.value.map(d => d.count))
+  return week.value.map((d, i) => [Math.round((i / 6) * 280), Math.round(50 - (d.count / max) * 44)] as const)
+})
+const sparkLine = computed(() => sparkPoints.value.map(([x, y], i) => `${i ? 'L' : 'M'}${x} ${y}`).join(' '))
+const sparkArea = computed(() => `${sparkLine.value} L280 56 L0 56 Z`)
 
 const rows = computed(() => {
   const total = Math.max(props.stats.totalReports, 1)
@@ -198,46 +213,42 @@ const rows = computed(() => {
 }
 
 .week-h {
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
   margin: 0;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--ui-ink-2);
 }
 
-.week-cols {
-  display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 10px;
-  align-items: end;
+.week-h b {
+  font: 600 18px var(--ui-font-display);
+  color: var(--ui-ink);
 }
 
-.week-col {
-  display: grid;
-  grid-template-rows: 16px 44px auto;
-  gap: 2px;
-  justify-items: center;
-}
-
-.week-col i {
-  align-self: end;
+.spark {
+  display: block;
   width: 100%;
-  max-width: 28px;
-  border-radius: 6px 6px 3px 3px;
-  background: var(--ui-fill-strong);
+  height: 56px;
 }
 
-.week-col.is-today i {
-  background: var(--ui-accent);
+.spark-line {
+  fill: none;
+  stroke: var(--ui-accent);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
 }
 
-.week-n {
-  font-size: 12px;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  color: var(--ui-ink-2);
+.spark-area {
+  fill: var(--ui-accent-soft);
 }
 
-.week-d {
+.week-axis {
+  display: flex;
+  justify-content: space-between;
   font-size: 12px;
   color: var(--ui-muted);
   font-variant-numeric: tabular-nums;

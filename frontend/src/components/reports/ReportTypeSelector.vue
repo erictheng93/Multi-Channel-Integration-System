@@ -76,20 +76,14 @@
             stroke-linejoin="round"
           ><path d="m5 12 5 5 9-10" /></svg>
         </span>
-        <ul
-          v-if="contentsOf(option.value).length"
-          class="type-has"
-          :aria-label="`${option.label}會包含`"
-        >
-          <li
-            v-for="item in contentsOf(option.value)"
-            :key="item.label"
-          >
-            {{ item.label }}
-          </li>
-        </ul>
       </button>
     </div>
+    <p
+      v-if="selectedType && contentsOf(selectedType).length"
+      class="type-includes"
+    >
+      <b>報表會包含</b>{{ contentsOf(selectedType).map(item => item.label).join('、') }}
+    </p>
     <p
       v-if="error"
       class="error-message"
@@ -152,14 +146,13 @@ function onKey(event: KeyboardEvent, index: number) {
 .step-n {
   display: grid;
   flex: none;
-  width: 26px;
-  height: 26px;
+  width: 32px;
+  height: 32px;
   place-items: center;
   border-radius: 50%;
-  background: var(--ui-fill);
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--ui-muted);
+  background: var(--ui-ink);
+  font: 700 15px / 1 var(--ui-font-display);
+  color: #fff;
 }
 
 .step-n.done {
@@ -271,27 +264,19 @@ function onKey(event: KeyboardEvent, index: number) {
   box-shadow: none;
 }
 
-.type-has {
+.type-includes {
   display: flex;
   flex-wrap: wrap;
-  grid-column: 1 / -1;
-  gap: 6px;
-  margin: 8px 0 0;
-  padding: 10px 0 0;
-  list-style: none;
-  box-shadow: 0 -0.5px 0 var(--ui-sep);
-}
-
-.type-has li {
-  padding: 2px 10px;
-  border-radius: 999px;
-  background: var(--ui-fill);
-  font-size: 13px;
+  gap: 4px 10px;
+  margin: 0;
+  padding: 0 22px 20px;
+  font-size: 14px;
   color: var(--ui-ink-2);
 }
 
-.selected .type-has li {
-  background: var(--ui-surface);
+.type-includes b {
+  font-weight: 600;
+  color: var(--ui-ink);
 }
 
 .error-message {
@@ -316,16 +301,8 @@ function onKey(event: KeyboardEvent, index: number) {
     padding: 12px;
   }
 
-  .type-has {
-    display: none;
-  }
-
-  .type-tile:not(.selected) .type-has {
-    display: none;
-  }
-
-  .selected .type-has {
-    display: flex;
+  .type-includes {
+    padding: 0 16px 16px;
   }
 }
 </style>

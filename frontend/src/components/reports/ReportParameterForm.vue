@@ -62,9 +62,10 @@
               :key="option.value"
               type="button"
               :aria-pressed="timeRange === option.value"
+              :aria-label="option.label"
               @click="pickRange(option.value)"
             >
-              {{ option.label }}
+              {{ shortLabel(option.label) }}
             </button>
             <button
               type="button"
@@ -73,7 +74,7 @@
               aria-controls="more-ranges"
               @click="moreOpen = !moreOpen"
             >
-              {{ moreRangeActive ? moreRangeLabel : '更多' }}
+              {{ moreRangeActive ? shortLabel(moreRangeLabel) : '其他' }}
             </button>
           </div>
           <ReportChoiceGroup
@@ -82,7 +83,7 @@
             class="more-ranges"
             :model-value="timeRange"
             :options="otherRanges"
-            label="更多時間範圍"
+            label="其他時間範圍"
             compact
             :columns="3"
             @update:model-value="emit('update:timeRange', $event as ReportTimeRange)"
@@ -368,6 +369,8 @@ const COMMON_RANGES = ['last_24_hours', 'last_7_days', 'last_30_days', 'last_90_
 const commonRanges = computed(() => timeRangeOptions.value.filter(o => COMMON_RANGES.includes(o.value)));
 const otherRanges = computed(() => timeRangeOptions.value.filter(o => !COMMON_RANGES.includes(o.value)));
 const moreOpen = ref(false);
+// 過去30天 -> 30天: the control stays on one row at phone width, the full label stays in aria-label
+const shortLabel = (label: string) => label.replace(/^過去/, '');
 const advancedOpen = ref(false);
 // Steps 2 and 3 read as done once the report has a title (the format always has a value)
 const stepTwoDone = computed(() => props.title.trim().length > 0);
@@ -424,15 +427,9 @@ const updateOption = (key: string, value: unknown) => {
 }
 
 @media (max-width: 768px) {
-  .range-seg {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    width: 100%;
-  }
-
   .range-seg > button {
     justify-content: center;
-    padding: 0 6px;
+    padding: 0 4px;
   }
 }
 
@@ -444,14 +441,13 @@ const updateOption = (key: string, value: unknown) => {
 .step-n {
   display: grid;
   flex: none;
-  width: 26px;
-  height: 26px;
+  width: 32px;
+  height: 32px;
   place-items: center;
   border-radius: 50%;
-  background: var(--ui-fill);
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--ui-muted);
+  background: var(--ui-ink);
+  font: 700 15px / 1 var(--ui-font-display);
+  color: #fff;
 }
 
 .step-n.done {

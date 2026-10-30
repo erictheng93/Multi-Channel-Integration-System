@@ -40,7 +40,7 @@
 
     <template v-else>
       <div class="rop-meta">
-        <span class="rop-from">取自最近一份 JSON 報表</span>
+        <span class="rop-from">最近一份產出</span>
         <router-link
           :to="`/reports/${latest.id}`"
           class="rop-title"
@@ -80,7 +80,9 @@
               :class="metric.tone"
             />{{ metric.label }}
           </dt>
-          <dd>{{ metric.value.toLocaleString('en-US') }}</dd>
+          <dd>
+            {{ metric.value.toLocaleString('en-US') }}<small v-if="share(metric)">{{ share(metric) }}</small>
+          </dd>
         </div>
       </dl>
 
@@ -132,34 +134,8 @@
         這份報表目前沒有可顯示的統計值，請開啟完整報表查看。
       </p>
 
-      <p
-        v-if="period"
-        class="rop-period"
-      >
-        統計期間 {{ period }}
-      </p>
     </template>
 
-    <section
-      v-if="!loading && recent.length"
-      class="rop-recent"
-      aria-label="此類型最近的報表"
-    >
-      <h3 class="rop-recent-h">
-        此類型最近的報表
-      </h3>
-      <ul>
-        <li
-          v-for="item in recent"
-          :key="item.id"
-        >
-          <router-link :to="`/reports/${item.id}`">
-            <span class="rr-title">{{ item.title }}</span>
-            <span class="rr-meta">{{ statusText(item) }} ・ {{ item.format.toUpperCase() }}</span>
-          </router-link>
-        </li>
-      </ul>
-    </section>
   </div>
 </template>
 
@@ -173,7 +149,7 @@ const props = defineProps<{ type: ReportType }>()
 const emit = defineEmits<{ resolved: [report: ReportBase | null] }>()
 
 type Row = { name: string; cells: number[] }
-type Loaded = { report: ReportBase | null; recent: ReportBase[]; content: Record<string, unknown> | null; failed: boolean }
+type Loaded = { report: ReportBase | null; content: Record<string, unknown> | null; failed: boolean }
 
 const cache = new Map<ReportType, Loaded>()
 const state = ref<Loaded | null>(null)
@@ -194,17 +170,17 @@ async function load(type: ReportType) {
     return
   }
   loading.value = true
-  let result: Loaded = { report: null, recent: [], content: null, failed: false }
+  let result: Loaded = { report: null, content: null, failed: false }
   try {
     const list = await ReportsAPI.listReports({ type, page: 1, pageSize: 6, sortBy: 'createdAt', sortOrder: 'desc' })
     const recent = list.reports.filter(item => item.type === type)
     const report = recent.find(item => item.status === 'completed' && item.format === 'json') ?? null
-    result = { report, recent: recent.slice(0, 4), content: null, failed: false }
+    result = { report, content: null, failed: false }
     if (report && report.format === 'json') {
       result.content = await ReportsAPI.getReportJsonContent(report.id)
     }
   } catch {
-    result = { report: result.report, recent: result.recent, content: null, failed: true }
+    result = { report: result.report, content: null, failed: true }
   }
   if (mine !== token) { return }
   cache.set(type, result)
@@ -216,9 +192,6 @@ async function load(type: ReportType) {
 watch(() => props.type, type => { void load(type) }, { immediate: true })
 
 const latest = computed(() => state.value?.report ?? null)
-const recent = computed(() => state.value?.recent ?? [])
-const STATUS_TEXT: Record<string, string> = { completed: '已完成', generating: '生成中', pending: '待處理', failed: '失敗', expired: '已過期' }
-const statusText = (r: ReportBase) => `${STATUS_TEXT[r.status] ?? r.status} ・ ${relative(r.completedAt ?? r.createdAt)}`
 const failed = computed(() => !!state.value?.failed)
 const fields = computed(() => REPORT_CONTENTS[props.type] ?? [])
 
@@ -269,6 +242,13 @@ const kpis = computed(() => {
   return rest ? [...metrics.value, { label: '其他', value: rest.value, tone: 'grey' as Tone }] : metrics.value
 })
 
+/** Share of the total, shown beside the coloured tiles so the bar has a scale */
+const share = (metric: { value: number; tone?: Tone }): string => {
+  const total = metrics.value[0]?.value ?? 0
+  if (!metric.tone || total <= 0 || metric === metrics.value[0]) { return '' }
+  return `${Math.round((metric.value / total) * 100)}%`
+}
+
 const rowsHead = computed(() =>
   props.type === 'message_statistics' ? ['訊息類型', '則數'] : ['客服', '對話', '訊息']
 )
@@ -277,7 +257,7 @@ const rowsCaption = computed(() => (props.type === 'message_statistics' ? '依�
 const rows = computed<Row[]>(() => {
   const d = data.value
   if (props.type === 'agent_performance' && Array.isArray(d.agentMetrics)) {
-    return d.agentMetrics.filter(isRecord).slice(0, 5).map(m => ({
+    return d.agentMetrics.filter(isRecord).slice(0, 4).map(m => ({
       name: typeof m.agentName === 'string' && m.agentName ? m.agentName : '未命名客服',
       cells: [num(m.conversationsHandled), num(m.messagesHandled)]
     }))
@@ -314,7 +294,8 @@ const metaLine = computed(() => {
   if (!r) { return '' }
   const ago = relative(r.completedAt ?? r.createdAt)
   const size = r.fileSize ? ` ・ ${ReportsAPI.formatFileSize(r.fileSize)}` : ''
-  return `最近一份 ・ ${ago}產生 ・ ${r.format.toUpperCase()}${size}`
+  const span = period.value ? ` ・ 統計 ${period.value}` : ''
+  return `${ago}產生 ・ ${r.format.toUpperCase()}${size}${span}`
 })
 </script>
 
@@ -396,7 +377,7 @@ const metaLine = computed(() => {
 .rop-split {
   display: flex;
   gap: 3px;
-  height: 12px;
+  height: 14px;
   overflow: hidden;
   border-radius: 999px;
 }
@@ -423,8 +404,8 @@ const metaLine = computed(() => {
 
 .rop-dot {
   display: inline-block;
-  width: 8px;
-  height: 8px;
+  width: 10px;
+  height: 10px;
   margin-right: 6px;
   border-radius: 50%;
 }
@@ -433,58 +414,16 @@ const metaLine = computed(() => {
   min-width: 0;
 }
 
-.rop-recent {
-  padding-top: 14px;
-  box-shadow: 0 -0.5px 0 var(--ui-sep);
-}
-
-.rop-recent-h {
-  margin: 0 0 4px;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--ui-ink-2);
-}
-
-.rop-recent ul {
-  display: grid;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.rop-recent a {
-  display: flex;
-  gap: 16px;
-  align-items: baseline;
-  justify-content: space-between;
-  min-height: 44px;
-  padding: 10px 0;
-  color: var(--ui-ink);
-  font-size: 14px;
-  text-decoration: none;
-}
-
-.rop-recent a:hover .rr-title {
-  color: var(--ui-accent);
-}
-
-.rr-title {
-  min-width: 0;
-  overflow: hidden;
-  font-weight: 500;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.rr-meta {
-  flex: none;
-  font-size: 13px;
-  color: var(--ui-muted);
-}
-
 .rop-kpi dt {
   font-size: 13px;
   color: var(--ui-ink-2);
+}
+
+.rop-kpi dd small {
+  margin-left: 6px;
+  font: 600 13px / 1 var(--ui-font-ui);
+  letter-spacing: 0;
+  color: var(--ui-muted);
 }
 
 .rop-kpi dd {
@@ -510,7 +449,7 @@ const metaLine = computed(() => {
 
 .rop-table th,
 .rop-table td {
-  padding: 10px 0;
+  padding: 8px 0;
   text-align: left;
   font-weight: 400;
   box-shadow: 0 0.5px 0 var(--ui-sep);
@@ -531,12 +470,6 @@ const metaLine = computed(() => {
   width: 90px;
   text-align: right;
   font-variant-numeric: tabular-nums;
-}
-
-.rop-period {
-  margin: 0;
-  font-size: 13px;
-  color: var(--ui-muted);
 }
 
 @media (max-width: 768px) {
