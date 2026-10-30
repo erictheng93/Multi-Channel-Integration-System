@@ -5,54 +5,38 @@
       subtitle="整個資料庫備份在雲端儲存（Cloudflare R2），可隨時下載備份檔。"
     />
 
-    <section class="top-row">
-      <!-- Automatic backup status and the one primary action -->
-      <article class="ui-card status-card">
-        <span
-          class="status-ico"
-          :class="statusTone"
-          aria-hidden="true"
-        >
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          ><path d="M17.5 19a4.5 4.5 0 0 0 .5-8.97A6 6 0 0 0 6.3 9.5 4 4 0 0 0 7 19Z" /><path d="m9 14 2 2 4-4" /></svg>
-        </span>
-        <div class="status-main">
-          <div class="lbl">
-            自動備份
-            <span
-              v-if="!loading && data"
-              class="ui-pill ui-pill-dot"
-              :class="statusPill.className"
-            >{{ statusPill.label }}</span>
-          </div>
-          <div class="big">
-            <template v-if="loading">
-              載入中...
-            </template>
-            <template v-else-if="data && data.lastAuto">
-              {{ formatDate(data.lastAuto.uploaded) }}<small>{{ formatBytes(data.lastAuto.size) }}</small>
-            </template>
-            <template v-else>
-              尚未有自動備份記錄
-            </template>
-          </div>
-          <div
-            v-if="policy"
-            class="hint"
-          >
-            {{ scheduleText }}
-          </div>
-        </div>
-        <div class="status-act">
+    <!-- Lead: the newest automatic backup, the 30-day coverage ring and the one primary action -->
+    <RingLead
+      kicker="最近自動備份"
+      :value="leadValue"
+      :tone="statusTone === 'ok' ? 'good' : (statusTone === 'warn' ? 'warn' : 'none')"
+      :meaning="leadMeaning"
+      :busy="loading && !data"
+      summary="近 30 天備份"
+      :rings="coverageRings"
+      :center-value="coverageCenter"
+      center-label="有備份"
+      :size="144"
+    >
+      <p
+        v-if="storageLine"
+        class="lead-storage"
+      >
+        {{ storageLine }}
+      </p>
+      <p
+        v-if="message"
+        class="message"
+        :class="messageType"
+        role="status"
+      >
+        {{ message }}
+      </p>
+      <template #actions>
+        <div class="lead-act">
           <button
             type="button"
-            class="btn btn-primary btn-lg"
+            class="btn btn-primary"
             :disabled="running"
             @click="onBackupNow"
           >
@@ -73,299 +57,276 @@
             class="act-note"
           >手動備份保留 {{ policy.retentionDays.manual }} 天</span>
         </div>
-        <p
-          v-if="message"
-          class="message"
-          :class="messageType"
-          role="status"
-        >
-          {{ message }}
-        </p>
-      </article>
-    </section>
+      </template>
+    </RingLead>
 
     <!-- Retention strip: one cell per day, bar height = that day's total size -->
-    <article
+    <section
       v-if="data"
-      class="ui-card strip-card"
+      aria-label="每日備份"
     >
-      <div class="ui-card-head">
-        <div>
-          <h2 class="ui-card-title">
-            近 {{ strip.length }} 天備份
-          </h2>
-          <div class="ui-card-sub">
-            {{ stripSummary }}
-          </div>
-        </div>
-        <div
+      <h2 class="ui-group-label">
+        近 {{ strip.length }} 天備份
+        <span class="label-note">{{ stripSummary }}</span>
+        <button
           v-if="dayFilter"
-          class="ui-card-end"
+          type="button"
+          class="ui-chip label-chip"
+          @click="dayFilter = ''"
         >
-          <button
-            type="button"
-            class="ui-chip"
-            @click="dayFilter = ''"
+          {{ dayFilterLabel }} ✕
+        </button>
+      </h2>
+      <div class="ui-group strip-card">
+        <ol
+          class="strip"
+          aria-label="每日備份狀態，點選可只看該日"
+        >
+          <li
+            v-for="cell in strip"
+            :key="cell.key"
           >
-            {{ dayFilterLabel }} ✕
-          </button>
-        </div>
+            <button
+              type="button"
+              class="cell"
+              :class="{ has: cell.count > 0, on: dayFilter === cell.key }"
+              :aria-pressed="dayFilter === cell.key"
+              :aria-label="cell.aria"
+              :disabled="cell.count === 0"
+              @click="dayFilter = dayFilter === cell.key ? '' : cell.key"
+            >
+              <span class="bar">
+                <i :style="{ height: cell.height + '%' }" />
+              </span>
+              <span class="num">{{ cell.day }}</span>
+            </button>
+          </li>
+        </ol>
       </div>
-      <ol
-        class="strip"
-        aria-label="每日備份狀態，點選可只看該日"
-      >
-        <li
-          v-for="cell in strip"
-          :key="cell.key"
-        >
-          <button
-            type="button"
-            class="cell"
-            :class="{ has: cell.count > 0, on: dayFilter === cell.key }"
-            :aria-pressed="dayFilter === cell.key"
-            :aria-label="cell.aria"
-            :disabled="cell.count === 0"
-            @click="dayFilter = dayFilter === cell.key ? '' : cell.key"
-          >
-            <span class="bar">
-              <i :style="{ height: cell.height + '%' }" />
-            </span>
-            <span class="num">{{ cell.day }}</span>
-          </button>
-        </li>
-      </ol>
-    </article>
+    </section>
 
     <div class="list-row">
-      <article class="ui-card list-card">
-        <div class="ui-card-head">
-          <div>
-            <h2 class="ui-card-title">
-              備份檔案
-            </h2>
-            <div class="ui-card-sub">
-              <template v-if="data">
-                共 {{ data.count.toLocaleString() }} 份，依日期分組、新到舊
-              </template>
-              <template v-else>
-              &nbsp;
-              </template>
-            </div>
-          </div>
-          <div class="ui-card-end">
-            <button
-              type="button"
-              class="btn btn-secondary btn-sm"
-              :disabled="loading"
-              @click="load"
-            >
-              重新整理
-            </button>
-          </div>
-        </div>
-
-        <div
-          v-if="data && tierChips.length > 1"
-          class="chips"
-          role="group"
-          aria-label="依類型篩選"
-        >
+      <section class="list-card">
+        <h2 class="ui-group-label">
+          備份檔案
+          <span
+            v-if="data"
+            class="label-note"
+          >共 {{ data.count.toLocaleString() }} 份，依日期分組、新到舊</span>
           <button
-            v-for="chip in tierChips"
-            :key="chip.key"
             type="button"
-            class="ui-chip"
-            :aria-pressed="tierFilter === chip.key"
-            @click="setTier(chip.key)"
+            class="ui-link label-act"
+            :disabled="loading"
+            @click="load"
           >
-            {{ chip.label }} <span class="chip-n">{{ chip.count.toLocaleString() }}</span>
+            重新整理
           </button>
-        </div>
-
-        <p
-          v-if="data && data.incompletePrefixes.length > 0"
-          class="warn"
-        >
-          部分類型的備份數量過多，列表可能不完整。
-        </p>
-
-        <UiEmptyState
-          v-if="loading && !data"
-          description="載入中..."
-        />
-        <UiEmptyState
-          v-else-if="!data"
-          title="無法載入備份列表"
-          :description="loadError || '請稍後再試。'"
-        >
-          <template #action>
-            <button
-              type="button"
-              class="btn btn-secondary btn-sm"
-              @click="load"
-            >
-              重試
-            </button>
-          </template>
-        </UiEmptyState>
-        <UiEmptyState
-          v-else-if="visibleItems.length === 0"
-          title="尚無備份檔"
-          description="按「立即備份到雲端」建立第一份備份。"
-        />
-        <template v-else>
-          <div class="day-groups">
-            <component
-              :is="section.kind === 'week' ? 'details' : 'div'"
-              v-for="section in sections"
-              :key="section.key"
-              class="section"
-              :class="section.kind === 'week' ? 'section-week' : 'section-open'"
-              :open="section.kind === 'week' && dayFilter ? true : undefined"
-            >
-              <summary
-                v-if="section.kind === 'week'"
-                class="week-head"
-              >
-                <svg
-                  class="week-chev"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2.2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  aria-hidden="true"
-                ><path d="m9 6 6 6-6 6" /></svg>
-                <span class="week-title">{{ section.label }}</span>
-                <span class="day-sum">{{ section.count }} 份 · {{ formatBytes(section.size) }}</span>
-              </summary>
-              <section
-                v-for="group in section.days"
-                :key="group.key"
-                class="day"
-              >
-                <header class="day-head">
-                  <h3>
-                    {{ group.label }}
-                    <small v-if="group.date">{{ group.date }}</small>
-                  </h3>
-                  <span class="day-sum">{{ group.items.length }} 份 · {{ formatBytes(group.size) }}</span>
-                </header>
-                <ul class="brow-list">
-                  <li
-                    v-for="item in group.items"
-                    :key="item.key"
-                    class="brow"
-                  >
-                    <span
-                      class="ui-pill brow-type"
-                      :class="tierPill(item.tier)"
-                    >{{ tierLabel(item.tier) }}</span>
-                    <div class="brow-main">
-                      <div class="brow-name">
-                        {{ itemName(item) }}
-                      </div>
-                      <div
-                        class="brow-file"
-                        :title="fileName(item.key)"
-                      >
-                        {{ fileName(item.key) }}
-                      </div>
-                    </div>
-                    <span class="brow-stat">
-                      <b>{{ formatBytes(item.size) }}</b>
-                      <small>{{ formatClock(item.uploaded) }}</small>
-                    </span>
-                    <button
-                      type="button"
-                      class="btn btn-ghost btn-sm brow-dl"
-                      :aria-label="`下載 ${itemLabel(item)}`"
-                      :aria-busy="downloadingKey === item.key"
-                      :disabled="downloadingKey === item.key"
-                      @click="onDownload(item)"
-                    >
-                      <svg
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        aria-hidden="true"
-                      ><path d="M12 4v11M7 11l5 5 5-5M5 20h14" /></svg>
-                    </button>
-                  </li>
-                </ul>
-              </section>
-            </component>
-          </div>
+        </h2>
+        <div class="ui-group list-body">
           <div
-            v-if="visibleItems.length > shownItems.length"
-            class="more"
+            v-if="data && tierChips.length > 1"
+            class="chips"
+            role="group"
+            aria-label="依類型篩選"
           >
             <button
+              v-for="chip in tierChips"
+              :key="chip.key"
               type="button"
-              class="btn btn-secondary btn-sm"
-              @click="showCount += PAGE_SIZE"
+              class="ui-chip"
+              :aria-pressed="tierFilter === chip.key"
+              @click="setTier(chip.key)"
             >
-              顯示更多（{{ shownItems.length }} / {{ visibleItems.length }}）
+              {{ chip.label }} <span class="chip-n">{{ chip.count.toLocaleString() }}</span>
             </button>
           </div>
-        </template>
-      </article>
+
+          <p
+            v-if="data && data.incompletePrefixes.length > 0"
+            class="warn"
+          >
+            部分類型的備份數量過多，列表可能不完整。
+          </p>
+
+          <UiEmptyState
+            v-if="loading && !data"
+            description="載入中..."
+          />
+          <UiEmptyState
+            v-else-if="!data"
+            title="無法載入備份列表"
+            :description="loadError || '請稍後再試。'"
+          >
+            <template #action>
+              <button
+                type="button"
+                class="btn btn-secondary btn-sm"
+                @click="load"
+              >
+                重試
+              </button>
+            </template>
+          </UiEmptyState>
+          <UiEmptyState
+            v-else-if="visibleItems.length === 0"
+            title="尚無備份檔"
+            description="按「立即備份到雲端」建立第一份備份。"
+          />
+          <template v-else>
+            <div class="day-groups">
+              <component
+                :is="section.kind === 'week' ? 'details' : 'div'"
+                v-for="section in sections"
+                :key="section.key"
+                class="section"
+                :class="section.kind === 'week' ? 'section-week' : 'section-open'"
+                :open="section.kind === 'week' && dayFilter ? true : undefined"
+              >
+                <summary
+                  v-if="section.kind === 'week'"
+                  class="week-head"
+                >
+                  <svg
+                    class="week-chev"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2.2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    aria-hidden="true"
+                  ><path d="m9 6 6 6-6 6" /></svg>
+                  <span class="week-title">{{ section.label }}</span>
+                  <span class="day-sum">{{ section.count }} 份 · {{ formatBytes(section.size) }}</span>
+                </summary>
+                <section
+                  v-for="group in section.days"
+                  :key="group.key"
+                  class="day"
+                >
+                  <header class="day-head">
+                    <h3>
+                      {{ group.label }}
+                      <small v-if="group.date">{{ group.date }}</small>
+                    </h3>
+                    <span class="day-sum">{{ group.items.length }} 份 · {{ formatBytes(group.size) }}</span>
+                  </header>
+                  <ul class="brow-list">
+                    <li
+                      v-for="item in group.items"
+                      :key="item.key"
+                      class="brow"
+                    >
+                      <span
+                        class="ui-pill brow-type"
+                        :class="tierPill(item.tier)"
+                      >{{ tierLabel(item.tier) }}</span>
+                      <div class="brow-main">
+                        <div class="brow-name">
+                          {{ itemName(item) }}
+                        </div>
+                        <div
+                          class="brow-file"
+                          :title="fileName(item.key)"
+                        >
+                          {{ fileName(item.key) }}
+                        </div>
+                      </div>
+                      <span class="brow-stat">
+                        <b>{{ formatBytes(item.size) }}</b>
+                        <small>{{ formatClock(item.uploaded) }}</small>
+                      </span>
+                      <button
+                        type="button"
+                        class="btn btn-ghost btn-sm brow-dl"
+                        :aria-label="`下載 ${itemLabel(item)}`"
+                        :aria-busy="downloadingKey === item.key"
+                        :disabled="downloadingKey === item.key"
+                        @click="onDownload(item)"
+                      >
+                        <svg
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="2"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          aria-hidden="true"
+                        ><path d="M12 4v11M7 11l5 5 5-5M5 20h14" /></svg>
+                      </button>
+                    </li>
+                  </ul>
+                </section>
+              </component>
+            </div>
+            <div
+              v-if="visibleItems.length > shownItems.length"
+              class="more"
+            >
+              <button
+                type="button"
+                class="btn btn-secondary btn-sm"
+                @click="showCount += PAGE_SIZE"
+              >
+                顯示更多（{{ shownItems.length }} / {{ visibleItems.length }}）
+              </button>
+            </div>
+          </template>
+        </div>
+      </section>
 
       <div class="side-col">
         <aside
           v-if="data && summary.total > 0"
-          class="ui-card sum-card"
           aria-label="備份概覽"
         >
-          <h2 class="sum-title">
+          <h2 class="ui-group-label">
             備份概覽
           </h2>
-          <div class="sum-big">
-            {{ formatBytes(summary.size) }}<small>{{ summary.total.toLocaleString() }} 份</small>
+          <div class="ui-group sum-card">
+            <div class="sum-big">
+              {{ formatBytes(summary.size) }}<small>{{ summary.total.toLocaleString() }} 份</small>
+            </div>
+            <p class="sum-span">
+              {{ summary.span }}
+            </p>
+            <ul class="sum-list">
+              <li
+                v-for="row in summary.tiers"
+                :key="row.key"
+              >
+                <span class="sum-row">
+                  <span>{{ row.label }}</span>
+                  <span class="sum-n">{{ row.count }} 份 · {{ formatBytes(row.size) }}</span>
+                </span>
+                <span
+                  class="sum-bar"
+                  aria-hidden="true"
+                ><i :style="{ width: row.share + '%' }" /></span>
+              </li>
+            </ul>
           </div>
-          <p class="sum-span">
-            {{ summary.span }}
-          </p>
-          <ul class="sum-list">
-            <li
-              v-for="row in summary.tiers"
-              :key="row.key"
-            >
-              <span class="sum-row">
-                <span>{{ row.label }}</span>
-                <span class="sum-n">{{ row.count }} 份 · {{ formatBytes(row.size) }}</span>
-              </span>
-              <span
-                class="sum-bar"
-                aria-hidden="true"
-              ><i :style="{ width: row.share + '%' }" /></span>
-            </li>
-          </ul>
         </aside>
-        <article
+        <section
           v-if="policy"
-          class="ui-card keep-card"
           aria-label="保留期限"
         >
-          <h2 class="keep-title">
+          <h2 class="ui-group-label">
             保留期限
-            <span class="keep-tag">設定值</span>
+            <span class="label-note">設定值</span>
           </h2>
-          <dl class="keep-list">
-            <div
-              v-for="row in retentionRows"
-              :key="row.key"
-            >
-              <dt>{{ row.label }}</dt>
-              <dd>{{ row.days }} 天</dd>
-            </div>
-          </dl>
-        </article>
+          <div class="ui-group keep-card">
+            <dl class="keep-list">
+              <div
+                v-for="row in retentionRows"
+                :key="row.key"
+              >
+                <dt>{{ row.label }}</dt>
+                <dd>{{ row.days }} 天</dd>
+              </div>
+            </dl>
+          </div>
+        </section>
       </div>
     </div>
   </div>
@@ -374,6 +335,8 @@
 <script setup lang="ts">
 import UiEmptyState from '@/components/ui/UiEmptyState.vue'
 import UiPageHead from '@/components/ui/UiPageHead.vue'
+import RingLead from '@/components/lead/RingLead.vue'
+import type { ServiceRing } from '@/components/ui/ServiceRings.vue'
 import { computed, onMounted, ref } from 'vue'
 import { listBackups, runBackup, downloadBackup, type BackupItem, type BackupList } from '@/api/backup'
 
@@ -645,6 +608,42 @@ const stripSummary = computed(() => {
   return missing === 0 ? `每天都有備份，共 ${cells.length} 天` : `${cells.length} 天中有 ${have} 天有備份，${missing} 天沒有`
 })
 
+const leadValue = computed(() => {
+  const last = data.value?.lastAuto
+  return last ? formatDate(last.uploaded) : '尚無紀錄'
+})
+
+const leadMeaning = computed(() => {
+  if (!data.value) { return '' }
+  if (!data.value.lastAuto) { return '尚未有自動備份記錄' }
+  return [scheduleText.value, statusPill.value.label === '已逾期' ? '已逾期' : ''].filter(Boolean).join(' · ')
+})
+
+const storageLine = computed(() =>
+  data.value && summary.value.total > 0
+    ? `儲存 ${formatBytes(summary.value.size)} · ${summary.value.total.toLocaleString()} 份備份`
+    : '')
+
+/** One ring: days of the last 30 (or the daily retention) that have at least one backup */
+const coverageDays = computed(() => ({
+  have: strip.value.filter(cell => cell.count > 0).length,
+  total: strip.value.length
+}))
+
+const coverageRings = computed<ServiceRing[]>(() => {
+  if (!data.value || coverageDays.value.total === 0) { return [] }
+  const ratio = coverageDays.value.have / coverageDays.value.total
+  return [{
+    label: `近 ${coverageDays.value.total} 天有備份`,
+    value: coverageDays.value.have,
+    total: coverageDays.value.total,
+    of: '天',
+    hue: ratio >= 0.9 ? 'var(--ui-green)' : (ratio >= 0.7 ? 'var(--ui-orange)' : 'var(--ui-red)')
+  }]
+})
+
+const coverageCenter = computed(() => `${coverageDays.value.have}/${coverageDays.value.total}`)
+
 const dayFilterLabel = computed(() => {
   if (!dayFilter.value) {
     return ''
@@ -791,53 +790,37 @@ onMounted(load)
 </script>
 
 <style scoped>
-.top-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 16px;
-}
-
-.status-card {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  gap: 18px;
+.lead-act {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
   align-items: center;
-  padding: 24px;
 }
 
-.status-ico {
-  display: grid;
-  place-items: center;
-  width: 56px;
-  height: 56px;
-  border-radius: 18px;
-  background: var(--ui-fill);
+.lead-storage {
+  margin: 4px 0 0;
+  font-size: 13px;
   color: var(--ui-muted);
 }
 
-.status-ico.ok {
-  background: var(--ui-green-soft);
-  color: var(--ui-green-ink);
+.label-note {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--ui-muted);
 }
 
-.status-ico.warn {
-  background: var(--ui-orange-soft);
-  color: var(--ui-orange-ink);
+.label-chip {
+  margin-left: 8px;
 }
 
-.status-ico svg {
-  width: 28px;
-  height: 28px;
-}
-
-.status-act {
-  display: grid;
-  gap: 6px;
-  justify-items: center;
+.label-act {
+  margin-left: auto;
+  border: 0;
+  background: none;
 }
 
 .act-note {
-  font-size: 12.5px;
+  font-size: 13px;
   color: var(--ui-muted);
 }
 
@@ -846,38 +829,8 @@ onMounted(load)
   height: 16px;
 }
 
-.lbl {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--ui-muted);
-}
-
-.big {
-  margin-top: 2px;
-  font: 600 24px / 1.25 var(--ui-font-display);
-  letter-spacing: -0.02em;
-  font-variant-numeric: tabular-nums;
-}
-
-.big small {
-  margin-left: 8px;
-  font: 500 14px var(--ui-font-ui);
-  letter-spacing: 0;
-  color: var(--ui-muted);
-}
-
-.hint {
-  margin-top: 4px;
-  font-size: 13px;
-  color: var(--ui-muted);
-}
-
 .message {
-  grid-column: 1 / -1;
-  margin: 0;
+  margin: 8px 0 0;
   padding: 10px 14px;
   border-radius: var(--ui-r-inner);
   background: var(--ui-green-soft);
@@ -893,22 +846,6 @@ onMounted(load)
 /* Retention policy: configuration constants, listed as a compact two-column key/value block */
 .keep-card {
   padding: 20px 22px;
-}
-
-.keep-title {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  margin: 0 0 10px;
-  font: 600 var(--ui-t-title) / 1.25 var(--ui-font-display);
-}
-
-.keep-tag {
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: var(--ui-fill);
-  font: 500 12px var(--ui-font-ui);
-  color: var(--ui-muted);
 }
 
 .keep-list {
@@ -944,7 +881,7 @@ onMounted(load)
   grid-auto-flow: column;
   gap: 6px;
   margin: 0;
-  padding: 4px 22px 20px;
+  padding: 18px 22px 20px;
   list-style: none;
 }
 
@@ -1011,6 +948,10 @@ onMounted(load)
 .cell.on .num {
   font-weight: 700;
   color: var(--ui-accent);
+}
+
+.list-body {
+  padding-top: 16px;
 }
 
 .chips {
@@ -1124,11 +1065,6 @@ onMounted(load)
 
 .sum-card {
   padding: 20px 22px;
-}
-
-.sum-title {
-  margin: 0 0 8px;
-  font: 600 var(--ui-t-title) / 1.25 var(--ui-font-display);
 }
 
 .sum-big {
@@ -1280,7 +1216,6 @@ onMounted(load)
 }
 
 @media (max-width: 1280px) {
-  .top-row,
   .list-row {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -1291,16 +1226,7 @@ onMounted(load)
 }
 
 @media (max-width: 768px) {
-  .status-card {
-    grid-template-columns: auto minmax(0, 1fr);
-    padding: 18px 16px;
-  }
-
-  .status-act {
-    grid-column: 1 / -1;
-  }
-
-  .status-act .btn {
+  .lead-act .btn {
     width: 100%;
     justify-content: center;
   }
@@ -1309,7 +1235,7 @@ onMounted(load)
     grid-auto-flow: row;
     grid-template-columns: repeat(10, minmax(0, 1fr));
     gap: 8px 4px;
-    padding: 4px 16px 18px;
+    padding: 16px 16px 18px;
   }
 
   .bar {
