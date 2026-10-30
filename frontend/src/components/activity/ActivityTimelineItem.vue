@@ -30,7 +30,7 @@
         >{{ formatTime(activity.createdAt) }}</time>
         <span
           v-if="quietStatus"
-          class="timeline-item__status"
+          class="timeline-item__status ui-pill"
           aria-hidden="true"
         >{{ quietStatus }}</span>
       </div>
@@ -54,21 +54,21 @@
       </button>
       <span
         v-else-if="restoreState.kind === 'expired'"
-        class="timeline-item__quiet"
+        class="ui-pill timeline-item__chip"
         data-test="restore-expired"
       >
         已過期
       </span>
       <span
         v-else-if="restoreState.kind === 'irreversible'"
-        class="timeline-item__quiet"
+        class="ui-pill timeline-item__chip"
         data-test="restore-irreversible"
       >
         不可還原
       </span>
       <span
         v-else-if="restoreState.kind === 'already-restored'"
-        class="ui-pill ui-pill-green ui-pill-dot"
+        class="ui-pill ui-pill-green ui-pill-dot timeline-item__chip"
         data-test="restore-done"
       >
         已還原
@@ -153,7 +153,6 @@ const formattedDetails = computed(() =>
 /** Phone: the closed states read as plain text on the meta line instead of a chip on their own line */
 const quietStatus = computed(() => {
   switch (restoreState.value.kind) {
-    case 'eligible': return '可還原'
     case 'expired': return '已過期'
     case 'irreversible': return '不可還原'
     case 'already-restored': return '已還原'
@@ -312,7 +311,7 @@ onUnmounted(() => {
 
 .timeline-item__restore-zone {
   display: grid;
-  grid-template-columns: 76px 56px 28px;
+  grid-template-columns: 84px 28px;
   align-items: center;
   align-self: center;
   gap: 8px;
@@ -325,14 +324,14 @@ onUnmounted(() => {
   width: 100%;
 }
 
+/* the button and the chips share ONE slot, so the action column never goes ragged */
 .timeline-item__restore-zone .btn {
-  grid-column: 2;
+  grid-column: 1;
+  width: 100%;
 }
 
-/* the button is the whole offer: no chip repeating "可還原" beside it */
-
 .timeline-item__restore-zone .timeline-item__details-toggle {
-  grid-column: 3;
+  grid-column: 2;
 }
 
 .timeline-item__description {
@@ -370,16 +369,14 @@ onUnmounted(() => {
   cursor: pointer;
 }
 
-.timeline-item__quiet {
-  grid-column: 1;
-  justify-self: end;
-  font-size: 13px;
-  color: var(--ui-muted);
-  white-space: nowrap;
-}
-
 .timeline-item__status {
   display: none;
+}
+
+.timeline-item__chip {
+  grid-column: 1;
+  justify-content: center;
+  width: 100%;
 }
 
 @media (max-width: 768px) {
@@ -413,31 +410,22 @@ onUnmounted(() => {
     margin: -10px -12px -10px 0;
   }
 
-  .timeline-item__restore-zone .timeline-item__quiet,
-  .timeline-item__restore-zone .ui-pill {
+  /* the closed state is a chip on the meta line (same chip as desktop), so the zone shows only 還原 */
+  .timeline-item__restore-zone .timeline-item__chip {
     display: none;
   }
 
   .timeline-item__status {
-    display: inline;
-    font-size: 13px;
-    color: var(--ui-muted);
+    display: inline-flex;
   }
 
-  .timeline-item__status::before {
-    margin-right: 8px;
-    content: '\00b7';
-  }
-
-  /* 還原 is the one real action: it appears with the details, or at once when the row has none */
+  /* 還原 is the one real action: always on the row, under the description, full touch height */
   .timeline-item__restore-zone .btn {
     grid-area: rest;
     justify-self: start;
+    width: auto;
+    min-height: 40px;
     margin-top: 10px;
-  }
-
-  .timeline-item.is-clickable:not(.is-open) .timeline-item__restore-zone .btn {
-    display: none;
   }
 }
 </style>
