@@ -738,7 +738,8 @@ function clearAll() {
 }
 
 .trigger-stats {
-  display: flex;
+  /* the tabs above already carry the counts; an unlabelled number beside the search read as noise */
+  display: none;
   align-items: baseline;
   gap: 4px;
   font-size: 13px;
@@ -756,10 +757,15 @@ function clearAll() {
 }
 
 .trigger-filter-label {
-  display: none;
+  display: inline-flex;
+  align-items: center;
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: var(--ui-fill);
   font-size: 13px;
   font-weight: 600;
-  color: var(--ui-ink-2);
+  color: var(--ui-ink);
 }
 
 .trigger-chevron {
@@ -1057,13 +1063,4 @@ function clearAll() {
   }
 }
 
-@media (max-width: 480px) {
-  .trigger-stats {
-    display: none;
-  }
-
-  .trigger-filter-label {
-    display: inline;
-  }
-}
 </style>

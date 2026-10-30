@@ -97,11 +97,11 @@
           </template>{{ getLastMessageText(conversation) }}
         </div>
         <div class="status-cell">
-          <!-- A pill only for the exceptions that need an agent (waiting / stale); every other state is quiet text -->
+          <!-- One treatment for every state: a dot-and-text pill of the same height (waiting adds how long) -->
           <div class="status-line">
             <template v-if="replyStateOf(conversation, now).state === 'stale'">
               <span
-                class="ui-pill"
+                class="ui-pill ui-pill-dot"
                 :title="STALE_HINT"
               >{{ replyStateOf(conversation, now).text }}</span>
               <span
@@ -110,21 +110,15 @@
                 title="這位客戶從未收到客服回覆"
               >從未回覆</span>
             </template>
-            <template v-else-if="replyStateOf(conversation, now).state === 'waiting'">
-              <span
-                class="ui-pill ui-pill-orange"
-                :title="WAITING_HINT"
-              >{{ replyStateOf(conversation, now).text }}</span>
-              <span
-                v-if="waitedText(conversation)"
-                class="waited"
-              >已等 {{ waitedText(conversation) }}</span>
-            </template>
             <span
               v-else
-              class="state-text"
-              :class="`state-${replyStateOf(conversation, now).state}`"
-            >{{ replyStateOf(conversation, now).text }}</span>
+              class="ui-pill ui-pill-dot state-text"
+              :class="[pillTone(replyStateOf(conversation, now).state), `state-${replyStateOf(conversation, now).state}`]"
+              :title="replyStateOf(conversation, now).state === 'waiting' ? WAITING_HINT : undefined"
+            >{{ replyStateOf(conversation, now).text }}<span
+              v-if="replyStateOf(conversation, now).state === 'waiting' && waitedText(conversation)"
+              class="waited"
+            >{{ waitedText(conversation) }}</span></span>
           </div>
         </div>
         <div class="owner-cell">
@@ -249,6 +243,9 @@ const waitedText = (conversation: Conversation): string => {
   return Number.isNaN(since) ? '' : formatWaitText(Math.max(0, (now.value - since) / 1000))
 }
 
+const pillTone = (state: string): string =>
+  state === 'waiting' ? 'ui-pill-orange' : state === 'replied' ? 'ui-pill-green' : ''
+
 const getUpdatedAt = (conversation: Conversation) => {
   const legacyConversation = withLegacyFields(conversation)
   return conversation.updatedAt || legacyConversation.updated_at
@@ -268,7 +265,7 @@ const getLastMessageText = (conversation: Conversation) => {
 
 <style scoped>
 .desktop-table {
-  --conv-cols: minmax(176px, 0.8fr) minmax(0, 1.5fr) 132px 92px 112px;
+  --conv-cols: minmax(176px, 0.8fr) minmax(0, 1.4fr) 168px 92px 112px;
   display: block;
 }
 
@@ -520,9 +517,19 @@ const getLastMessageText = (conversation: Conversation) => {
 }
 
 .waited {
-  font-size: 13px;
+  font-weight: 500;
   font-variant-numeric: tabular-nums;
-  color: var(--ui-muted);
+}
+
+.waited::before {
+  display: inline-block;
+  width: 1px;
+  height: 11px;
+  margin-right: 8px;
+  background: currentColor;
+  opacity: 0.35;
+  vertical-align: -1px;
+  content: '';
 }
 
 .status-line .ui-pill-orange {
@@ -532,33 +539,13 @@ const getLastMessageText = (conversation: Conversation) => {
 .status-line {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 4px;
   align-items: flex-start;
 }
 
-/* Quiet states: a dot and plain text instead of a pill on every row */
-.state-text,
 .team-text {
   font-size: 13px;
   color: var(--ui-muted);
-}
-
-.state-text {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.state-text::before {
-  content: '';
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--ui-faint);
-}
-
-.state-text.state-replied::before {
-  background: var(--ui-green);
 }
 
 .team-text:not(.unassigned) {
@@ -585,7 +572,7 @@ const getLastMessageText = (conversation: Conversation) => {
 
 @media (max-width: 1024px) {
   .desktop-table {
-    --conv-cols: minmax(150px, 1fr) minmax(0, 1.1fr) 92px 84px 118px;
+    --conv-cols: minmax(150px, 1fr) minmax(0, 1.1fr) 150px 84px 118px;
   }
 
   .conversation-row,
