@@ -103,7 +103,7 @@ describe('ReportRow.vue', () => {
       expect(wrapper.find('.report-description').exists()).toBe(false)
     })
 
-    it('没有文件大小时应该显示连字符', () => {
+    it('没有文件大小时不显示大小', () => {
       const reportWithoutSize = { ...mockReport, fileSize: undefined }
       const wrapper = mount(ReportRow, {
         props: {
@@ -112,7 +112,7 @@ describe('ReportRow.vue', () => {
         }
       })
 
-      expect(wrapper.text()).toContain('—')
+      expect(wrapper.find('.size-text').exists()).toBe(false)
     })
   })
 
@@ -331,7 +331,6 @@ describe('ReportRow.vue', () => {
       expect(wrapper.find('.status-cell').exists()).toBe(true)
       expect(wrapper.find('.format-cell').exists()).toBe(true)
       expect(wrapper.find('.time-cell').exists()).toBe(true)
-      expect(wrapper.find('.size-cell').exists()).toBe(true)
       expect(wrapper.find('.actions-cell').exists()).toBe(true)
     })
 

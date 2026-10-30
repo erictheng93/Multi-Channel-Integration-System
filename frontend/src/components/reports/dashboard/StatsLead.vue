@@ -28,25 +28,35 @@
       </button>
     </div>
 
-    <ul
+    <div
       v-if="stats.totalReports > 0"
       class="lead-status"
-      aria-label="報表狀態"
     >
-      <li
-        v-for="row in rows"
-        :key="row.label"
+      <div
+        class="st-bar"
+        role="img"
+        :aria-label="rows.map(r => `${r.label} ${r.value} 份`).join('，')"
       >
-        <span class="st-label">{{ row.label }}</span>
         <span
-          class="st-track"
-          aria-hidden="true"
-        ><i
-          :style="{ width: row.width, background: row.hue }"
-        /></span>
-        <b>{{ row.value }}<small> 份</small></b>
-      </li>
-    </ul>
+          v-for="row in rows"
+          :key="row.label"
+          :style="{ flexGrow: row.value, background: row.hue }"
+        />
+      </div>
+      <ul
+        class="st-legend"
+        aria-label="報表狀態"
+      >
+        <li
+          v-for="row in rows"
+          :key="row.label"
+        >
+          <i :style="{ background: row.hue }" />
+          <span class="st-label">{{ row.label }}</span>
+          <b>{{ row.value }}</b>
+        </li>
+      </ul>
+    </div>
   </article>
 </template>
 
@@ -113,7 +123,7 @@ const rows = computed(() => {
 .lead-kicker {
   font-size: 15px;
   font-weight: 600;
-  color: var(--section-ink);
+  color: var(--ui-ink-2);
 }
 
 .lead-num {
@@ -153,10 +163,8 @@ const rows = computed(() => {
 .lead-status {
   position: relative;
   display: grid;
-  gap: 18px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
+  gap: 14px;
+  min-width: 0;
 }
 
 .lead-status::before {
@@ -169,42 +177,53 @@ const rows = computed(() => {
   content: '';
 }
 
-.lead-status li {
-  display: grid;
-  grid-template-columns: 64px minmax(0, 1fr) 72px;
-  gap: 16px;
-  align-items: center;
+.st-bar {
+  display: flex;
+  gap: 3px;
+  height: 14px;
+  overflow: hidden;
+  border-radius: 999px;
+}
+
+.st-bar span {
+  flex-basis: 0;
+  min-width: 0;
+}
+
+.st-bar span[style*='flex-grow: 0'] {
+  display: none;
+}
+
+.st-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 28px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.st-legend li {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+}
+
+.st-legend i {
+  align-self: center;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
 }
 
 .st-label {
   font-size: 14px;
-  font-weight: 500;
   color: var(--ui-ink-2);
 }
 
-.st-track {
-  height: 12px;
-  overflow: hidden;
-  border-radius: 999px;
-  background: var(--ui-fill);
-}
-
-.st-track i {
-  display: block;
-  height: 100%;
-  border-radius: inherit;
-}
-
-.lead-status b {
-  font: 600 22px var(--ui-font-display);
-  text-align: right;
+.st-legend b {
+  font: 600 20px var(--ui-font-display);
   font-variant-numeric: tabular-nums;
-}
-
-.lead-status b small {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--ui-muted);
 }
 
 @media (max-width: 768px) {
@@ -219,6 +238,10 @@ const rows = computed(() => {
 
   .lead-status::before {
     display: none;
+  }
+
+  .lead-meaning {
+    font-size: 14px;
   }
 }
 </style>

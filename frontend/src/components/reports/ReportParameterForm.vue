@@ -42,7 +42,7 @@
             :value="description"
             class="ui-textarea"
             placeholder="輸入報表描述"
-            rows="3"
+            rows="2"
             @input="$emit('update:description', ($event.target as HTMLTextAreaElement).value)"
           />
         </div>
@@ -161,9 +161,6 @@
       >
         {{ errors.format }}
       </p>
-    </section>
-
-    <section class="ui-card step-card">
       <button
         type="button"
         class="adv-toggle"
@@ -171,7 +168,6 @@
         aria-controls="advanced-body"
         @click="advancedOpen = !advancedOpen"
       >
-        <span class="step-n">4</span>
         <span class="adv-text">
           <span class="ui-card-title">進階選項<span class="adv-tag">選填</span></span>
           <span class="ui-card-sub">{{ advancedSummary }}</span>
@@ -411,12 +407,20 @@ const updateOption = (key: string, value: unknown) => {
 .range-seg {
   display: flex;
   flex-wrap: wrap;
-  width: fit-content;
-  max-width: 100%;
+  width: 100%;
+}
+
+.range-seg > button {
+  flex: 1 1 0;
+  justify-content: center;
 }
 
 .more-ranges {
   margin-top: 10px;
+}
+
+.parameter-form .ui-textarea {
+  min-height: 72px;
 }
 
 @media (max-width: 768px) {
@@ -518,9 +522,10 @@ const updateOption = (key: string, value: unknown) => {
   width: 100%;
   align-items: center;
   gap: 12px;
-  padding: 18px 22px;
+  padding: 16px 22px;
   border: 0;
-  border-radius: inherit;
+  border-radius: 0 0 var(--ui-r-group) var(--ui-r-group);
+  box-shadow: 0 -0.5px 0 var(--ui-sep);
   background: none;
   color: inherit;
   font: inherit;

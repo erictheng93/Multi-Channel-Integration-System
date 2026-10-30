@@ -321,9 +321,9 @@ describe('ReportsSection.vue', () => {
       expect(header.exists()).toBe(true)
       expect(header.text()).toContain('報表')
       expect(header.text()).toContain('狀態')
-      expect(header.text()).toContain('格式')
+      expect(header.text()).toContain('檔案')
       expect(header.text()).toContain('建立時間')
-      expect(header.text()).toContain('大小')
+      expect(header.text()).toContain('檔案')
     })
 
     it('列表视图应该为每个报表渲染 ReportRow', () => {
