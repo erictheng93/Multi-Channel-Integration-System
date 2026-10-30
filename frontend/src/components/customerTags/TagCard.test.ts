@@ -171,10 +171,9 @@ describe('TagCard — emitted events', () => {
     expect(wrapper.emitted('delete')).toBeTruthy()
   })
 
-  it('emits view-stats when stats action button is clicked', async () => {
+  it('has no stats button (nothing renders a stats view)', () => {
     const wrapper = mountTagCard(makeTag())
-    await wrapper.find('.action-btn-info').trigger('click')
-    expect(wrapper.emitted('view-stats')).toBeTruthy()
+    expect(wrapper.find('.action-btn-info').exists()).toBe(false)
   })
 })
 
@@ -195,13 +194,6 @@ describe('TagCard — @click.stop event isolation', () => {
     const wrapper = mountTagCard(makeTag())
     await wrapper.find('.action-btn-danger').trigger('click')
     expect(wrapper.emitted('delete')).toBeTruthy()
-    expect(wrapper.emitted('view-conversations')).toBeFalsy()
-  })
-
-  it('clicking stats button does not emit view-conversations', async () => {
-    const wrapper = mountTagCard(makeTag())
-    await wrapper.find('.action-btn-info').trigger('click')
-    expect(wrapper.emitted('view-stats')).toBeTruthy()
     expect(wrapper.emitted('view-conversations')).toBeFalsy()
   })
 

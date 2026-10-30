@@ -58,20 +58,13 @@
         v-if="!(tag.conversationCount || 0)"
         class="ui-pill"
       >尚未套用</span>
+
       <span
         class="meter"
         aria-hidden="true"
       ><i :style="{ width: meterWidth }" /></span>
 
       <div class="tag-actions">
-        <button
-          class="action-btn action-btn-info"
-          title="查看統計"
-          aria-label="查看統計"
-          @click.stop="$emit('view-stats')"
-        >
-          <BarChartIcon />
-        </button>
         <button
           class="action-btn action-btn-primary"
           title="編輯標籤"
@@ -95,11 +88,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import {
-  BarChartIcon,
-  EditIcon,
-  TrashIcon
-} from '@/components/icons'
+import { EditIcon, TrashIcon } from '@/components/icons'
 import type { Tag } from '@/types/tag'
 
 const props = defineProps<{
@@ -115,7 +104,6 @@ defineEmits<{
   select: []
   edit: []
   delete: []
-  'view-stats': []
   'view-conversations': []
 }>()
 
@@ -133,7 +121,7 @@ const meterWidth = computed(() => {
 .tag-card {
   position: relative;
   display: grid;
-  grid-template-columns: 22px minmax(0, 1fr) minmax(72px, 150px) 96px 112px;
+  grid-template-columns: 22px minmax(0, 1fr) minmax(72px, 150px) 96px 80px;
   grid-template-areas:
     'check chip meter count actions'
     'check desc meter count actions';
@@ -177,7 +165,7 @@ const meterWidth = computed(() => {
 
 /* Selection reads as a tint, never as a hard outline */
 .tag-card.tag-active {
-  background: color-mix(in srgb, var(--tag-c) 10%, var(--ui-surface));
+  background: color-mix(in srgb, var(--tag-c) 6%, var(--ui-surface));
 }
 
 .tag-card.tag-selected {
@@ -285,12 +273,13 @@ const meterWidth = computed(() => {
 .tag-description {
   grid-area: desc;
   margin: 0;
+  display: -webkit-box;
   overflow: hidden;
   font-size: 13px;
   line-height: 1.45;
   color: var(--ui-muted);
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .tag-description-spacer {
@@ -327,7 +316,7 @@ const meterWidth = computed(() => {
   color: var(--ui-muted);
 }
 
-/* the "not applied yet" note sits where the usage bar would be */
+
 .t-foot > .ui-pill {
   grid-area: meter;
   justify-self: start;
@@ -357,7 +346,7 @@ const meterWidth = computed(() => {
   display: flex;
   justify-content: flex-end;
   gap: 2px;
-  opacity: 0.55;
+  opacity: 0;
   transition: opacity var(--ui-dur) var(--ui-ease);
 }
 
@@ -393,6 +382,10 @@ const meterWidth = computed(() => {
   height: 18px;
 }
 
+.action-btn {
+  color: var(--ui-ink-2);
+}
+
 .action-btn:hover {
   background: var(--ui-fill);
   color: var(--ui-ink);
@@ -403,16 +396,16 @@ const meterWidth = computed(() => {
   color: var(--ui-red-ink);
 }
 
-/* The detail panel takes the right column on wide screens: drop the usage bar to keep names readable */
+/* The detail panel takes the right column on wide screens: drop the usage note to keep names readable */
 @media (max-width: 1280px) {
   .tag-card {
-    grid-template-columns: 22px minmax(0, 1fr) minmax(72px, 130px) 96px 112px;
+    grid-template-columns: 22px minmax(0, 1fr) minmax(72px, 150px) 96px 80px;
   }
 }
 
 @media (max-width: 1024px) {
   .tag-card {
-    grid-template-columns: 22px minmax(0, 1fr) minmax(60px, 120px) 96px 112px;
+    grid-template-columns: 22px minmax(0, 1fr) minmax(72px, 150px) 96px 80px;
   }
 }
 

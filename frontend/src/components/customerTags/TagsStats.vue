@@ -193,8 +193,8 @@ const coverage = computed(() => {
 
 .mix-legend {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px 24px;
+  grid-template-columns: repeat(2, minmax(0, 230px));
+  gap: 8px 36px;
   margin: 16px 0 0;
   padding: 0;
   list-style: none;

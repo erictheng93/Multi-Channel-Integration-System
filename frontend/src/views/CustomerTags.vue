@@ -71,7 +71,6 @@
             @select-tag="selection.toggleTagSelection"
             @edit-tag="openEditModal"
             @delete-tag="openDeleteModal"
-            @view-stats="openStatsModal"
             @view-conversations="openConversationsModal"
           />
         </div>
@@ -174,7 +173,6 @@ const {
   openCreateModal,
   openEditModal,
   openDeleteModal,
-  openStatsModal,
   openConversationsModal,
   openBulkDeleteModal,
   initialize,
@@ -329,5 +327,25 @@ onUnmounted(() => {
 
 /* ==================== Responsive Design ==================== */
 @media (max-width: 768px) {
+}
+
+/* Phone: the title and its action share one row (the shared head drops actions under the subtitle) */
+@media (max-width: 768px) {
+  .customer-tags :deep(.ui-page-head) {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      'title actions'
+      'sub sub';
+    align-items: center;
+  }
+
+  .customer-tags :deep(.ui-page-actions) {
+    padding-top: 0;
+    min-height: 0;
+  }
+
+  .customer-tags :deep(.ui-page-actions > .btn-primary) {
+    flex: none;
+  }
 }
 </style>
