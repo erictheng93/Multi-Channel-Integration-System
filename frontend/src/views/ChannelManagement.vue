@@ -92,11 +92,12 @@
               >{{ formatCount(row.total) }}<small> 則</small></span>
             </div>
             <div
-              v-if="!row.off"
               class="cl-bar"
+              :class="{ off: row.off }"
               aria-hidden="true"
             >
               <span
+                v-if="!row.off"
                 class="cl-bar-fill"
                 :style="{ width: row.width }"
               >
@@ -109,11 +110,8 @@
                 />
               </span>
             </div>
-            <div
-              v-if="!row.off"
-              class="cl-row-sub"
-            >
-              來訊 {{ formatCount(row.inN) }} · 發送 {{ formatCount(row.outN) }}
+            <div class="cl-row-sub">
+              {{ row.off ? '已停用，不計入訊息量' : `來訊 ${formatCount(row.inN)} · 發送 ${formatCount(row.outN)}` }}
             </div>
           </li>
         </ul>
@@ -145,7 +143,7 @@
           </span>
           <div class="alert-main">
             <div class="alert-title">
-              {{ channelTitle(channel) }} · Webhook 需注意
+              {{ channelTitle(channel) }}<span class="alert-tag"> · Webhook 需注意</span>
             </div>
             <div class="alert-text">
               {{ webhookProblems(channel).join(' ') }}
@@ -257,7 +255,7 @@
           v-for="channel in filteredChannels"
           :key="channel.id"
           class="ui-card chcard"
-          :class="{ off: !channel.isActive, warn: hasWebhookProblem(channel) }"
+          :class="{ off: !channel.isActive }"
         >
           <!-- Card Header -->
           <div class="chhead">
@@ -369,10 +367,6 @@
               class="ui-pill"
               :class="channel.isVerified ? 'ui-pill-green' : 'ui-pill-orange'"
             >{{ channel.isVerified ? '已驗證' : '未驗證' }}</span>
-            <span
-              v-if="hasWebhookProblem(channel)"
-              class="ui-pill ui-pill-orange ui-pill-dot"
-            >Webhook 需注意</span>
           </div>
 
           <!-- Card Body -->
@@ -393,10 +387,7 @@
 
           <!-- Activity: platform totals, so a disabled channel shows none of it -->
           <div class="activity">
-            <div
-              v-if="channel.isActive && channel.activity"
-              class="stats"
-            >
+            <div class="stats">
               <div class="stat-i">
                 <div class="l">
                   客戶來訊 · 24 小時
@@ -730,6 +721,9 @@ i.out {
   border-radius: 999px;
   background: var(--ui-fill);
 }
+.cl-bar.off {
+  background: repeating-linear-gradient(90deg, var(--ui-fill) 0 6px, transparent 6px 10px);
+}
 .cl-bar-fill {
   display: flex;
   height: 100%;
@@ -768,18 +762,24 @@ i.out {
   display: flex;
   gap: 14px;
   align-items: center;
-  padding: 14px 18px;
-  background: var(--ui-orange-soft);
+  padding: 16px 20px;
+  background: color-mix(in srgb, var(--ui-orange-soft) 70%, var(--ui-surface));
+  box-shadow: inset 4px 0 0 var(--ui-orange), var(--ui-shadow-card, none);
+}
+.alert-row .btn {
+  min-height: 40px;
+  background: var(--ui-surface);
+  color: var(--ui-ink);
 }
 .alert-ico {
   display: grid;
   flex: none;
   place-items: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 11px;
-  background: var(--ui-surface);
-  color: var(--ui-orange-ink);
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  background: var(--ui-orange-ink);
+  color: #fff;
 }
 .alert-ico svg {
   width: 19px;
@@ -790,13 +790,17 @@ i.out {
   min-width: 0;
 }
 .alert-title {
-  font: 600 15px / 1.3 var(--ui-font-display);
+  font: 600 16px / 1.3 var(--ui-font-display);
+  color: var(--ui-orange-ink);
+}
+.alert-tag {
+  white-space: nowrap;
 }
 .alert-text {
   margin-top: 2px;
-  font-size: 14px;
+  font-size: 14.5px;
   line-height: 1.5;
-  color: var(--ui-ink-2);
+  color: var(--ui-ink);
 }
 
 /* Every card has the same parts in the same order, so rows line up without any grid trickery */
@@ -869,8 +873,8 @@ i.out {
 }
 .more-btn {
   display: grid;
-  width: 34px;
-  height: 34px;
+  width: 40px;
+  height: 40px;
   place-items: center;
   border: 0;
   border-radius: 10px;
@@ -926,12 +930,12 @@ i.out {
   display: flex;
   align-items: baseline;
   gap: 10px;
-  font-size: 13px;
+  font-size: 14px;
 }
 .meta-row .k {
   width: 84px;
   flex: none;
-  color: var(--ui-muted);
+  color: var(--ui-ink-2);
   white-space: nowrap;
 }
 .meta-row .v.none {
@@ -945,15 +949,14 @@ i.out {
 }
 .mono {
   font-family: var(--ui-font-mono);
+  font-size: 14px;
+  letter-spacing: 0.02em;
 }
 .pills {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
   padding: 12px 20px 12px;
-}
-.chcard.warn {
-  box-shadow: inset 0 0 0 1.5px var(--ui-orange);
 }
 .cl-off {
   flex: none;
@@ -962,6 +965,8 @@ i.out {
   color: var(--ui-muted);
 }
 .chverify {
+  min-height: 40px;
+  padding-inline: 18px;
   background: var(--ui-accent-soft);
   color: var(--ui-accent);
 }
@@ -997,7 +1002,7 @@ i.out {
 }
 .stat-i .l {
   font-size: 13px;
-  color: var(--ui-muted);
+  color: var(--ui-ink-2);
 }
 .stat-i .n {
   font: 600 22px / 1.2 var(--ui-font-display);
@@ -1017,6 +1022,9 @@ i.out {
 }
 .chcard.off .stat-i .s {
   visibility: hidden;
+}
+.chcard.off .stat-i .l {
+  color: var(--ui-muted);
 }
 .chcard.off .stat-i .n {
   color: var(--ui-muted);
@@ -1061,6 +1069,20 @@ i.out {
   .cl-num {
     font-size: 44px;
   }
+  /* the per-channel bars repeat the cards right below; the phone keeps the total and the legend */
+  .cl-rows {
+    display: none;
+  }
+  .toolbar .ui-seg button {
+    min-height: 44px;
+  }
+  .more-btn {
+    width: 44px;
+    height: 44px;
+  }
+  .chverify {
+    min-height: 44px;
+  }
   /* phone cards: the ID and the numbers; the free-text description is one tap away in the details */
   .meta-row:nth-child(2) {
     display: none;
@@ -1071,20 +1093,33 @@ i.out {
   .pills {
     padding-top: 10px;
   }
+  .activity {
+    margin-top: 4px;
+  }
   .stats {
-    margin-top: 12px;
+    margin-top: 8px;
   }
   .chgrid {
     grid-template-columns: minmax(0, 1fr);
   }
   .alert-row {
     flex-wrap: wrap;
+    padding: 14px 16px;
+  }
+  .alert-ico {
+    width: 32px;
+    height: 32px;
+    border-radius: 10px;
+  }
+  .alert-title {
+    font-size: 15px;
   }
   .alert-main {
-    flex-basis: calc(100% - 60px);
+    flex-basis: calc(100% - 48px);
   }
   .alert-row .btn {
-    margin-left: 50px;
+    width: 100%;
+    min-height: 44px;
   }
 }
 </style>
