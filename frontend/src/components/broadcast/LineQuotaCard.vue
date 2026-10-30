@@ -147,8 +147,6 @@
               :summary="`${channel.label} 本月額度`"
               :rings="ringsFor(channel)"
               :size="164"
-              :center-value="`${percent(channel)}%`"
-              center-label="已使用"
             />
           </div>
         </div>
