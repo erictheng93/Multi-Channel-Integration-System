@@ -10,6 +10,7 @@
   >
     <span
       class="tpl-ico"
+      :class="template.type"
       aria-hidden="true"
     >
       <svg
@@ -19,12 +20,32 @@
         stroke-width="2"
         stroke-linecap="round"
         stroke-linejoin="round"
-      ><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z" /><path d="M14 3v5h5M9 13h6M9 17h6" /></svg>
+      >
+        <path
+          v-if="template.type === 'agent_performance'"
+          d="M4 20V10M10 20V4M16 20v-7M22 20H2"
+        />
+        <path
+          v-else
+          d="M21 12a8 8 0 0 1-11.6 7.1L4 20.5l1.4-4.6A8 8 0 1 1 21 12Z"
+        />
+      </svg>
     </span>
     <span class="tpl-main">
       <b class="tpl-name">{{ template.name }}</b>
       <span class="tpl-desc">{{ template.description }}</span>
       <span class="tpl-meta">{{ meta }}</span>
+      <span
+        v-if="contents.length"
+        class="tpl-has"
+        aria-label="報表會包含"
+      >
+        <span
+          v-for="item in contents"
+          :key="item.label"
+          class="tpl-chip"
+        >{{ item.label }}</span>
+      </span>
     </span>
     <i
       class="radio"
@@ -36,7 +57,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import type { ReportTemplate } from '@/types/reports';
-import { formatEstimatedTime } from './templateHelpers';
+import { formatEstimatedTime, REPORT_CONTENTS } from './templateHelpers';
 
 const props = defineProps<{
   template: ReportTemplate;
@@ -46,6 +67,8 @@ const props = defineProps<{
 defineEmits<{
   select: [template: ReportTemplate];
 }>();
+
+const contents = computed(() => REPORT_CONTENTS[props.template.type] ?? []);
 
 const meta = computed(() => {
   const parts = ['近 30 天', 'JSON'];
@@ -98,6 +121,16 @@ const meta = computed(() => {
   color: var(--section-ink);
 }
 
+.tpl-ico.conversation_summary {
+  background: var(--ui-accent-soft);
+  color: var(--ui-accent);
+}
+
+.tpl-ico.agent_performance {
+  background: var(--ui-green-soft);
+  color: var(--ui-green-ink);
+}
+
 .tpl-ico svg {
   width: 20px;
   height: 20px;
@@ -122,6 +155,31 @@ const meta = computed(() => {
   margin-top: 2px;
   font-size: 13px;
   color: var(--ui-muted);
+}
+
+.tpl-has {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.tpl-chip {
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: var(--ui-fill);
+  font-size: 13px;
+  color: var(--ui-ink-2);
+}
+
+.is-on .tpl-chip {
+  background: var(--ui-surface);
+}
+
+@media (max-width: 768px) {
+  .tpl-has {
+    display: none;
+  }
 }
 
 .radio {
