@@ -9,13 +9,13 @@
           class="lead-title"
           :class="{ 'is-empty': !reportType }"
         >
-          {{ reportType ? reportTypeLabel : '尚未選擇類型' }}
+          {{ reportType ? reportTypeLabel : '新報表' }}
         </h3>
         <p
           class="lead-sub"
           :class="{ 'is-empty': !title.trim() }"
         >
-          {{ title.trim() || '尚未輸入標題' }}
+          {{ title.trim() || '填完下方兩項就能產生' }}
         </p>
       </div>
 
@@ -24,16 +24,34 @@
         aria-label="必填項目"
       >
         <li :class="{ done: !!reportType }">
-          <span
-            class="tick"
+          <svg
+            v-if="reportType"
+            class="need-ok"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="3"
+            stroke-linecap="round"
+            stroke-linejoin="round"
             aria-hidden="true"
-          />報表類型
+          ><path d="m5 12 5 5 9-10" /></svg>
+          <span class="need-name">報表類型</span>
+          <span class="need-state">{{ reportType ? '已選擇' : '尚未選擇' }}</span>
         </li>
         <li :class="{ done: !!title.trim() }">
-          <span
-            class="tick"
+          <svg
+            v-if="title.trim()"
+            class="need-ok"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="3"
+            stroke-linecap="round"
+            stroke-linejoin="round"
             aria-hidden="true"
-          />報表標題
+          ><path d="m5 12 5 5 9-10" /></svg>
+          <span class="need-name">報表標題</span>
+          <span class="need-state">{{ title.trim() ? '已填寫' : '尚未填寫' }}</span>
         </li>
       </ul>
 
@@ -62,22 +80,6 @@
         </div>
       </dl>
 
-      <div
-        v-if="includes.length"
-        class="inc"
-      >
-        <h4 class="inc-h">
-          報表會包含
-        </h4>
-        <ul class="inc-list">
-          <li
-            v-for="item in includes"
-            :key="item.label"
-          >
-            {{ item.label }}
-          </li>
-        </ul>
-      </div>
       <slot name="action" />
     </section>
 
@@ -109,15 +111,15 @@
     </section>
 
     <div
-      v-if="recentReports.length > 0"
+      v-if="shownRecent.length > 0"
       class="recent-wrap"
     >
       <h3 class="ui-group-label">
-        最近報表
+        {{ reportType ? `最近的${reportTypeLabel}` : '最近報表' }}
       </h3>
       <ul class="ui-group recent-list">
         <li
-          v-for="report in recentReports.slice(0, 5)"
+          v-for="report in shownRecent"
           :key="report.id"
         >
           <button
@@ -144,7 +146,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import ReportsAPI from '@/api/reports';
-import { REPORT_CONTENTS } from './templates/templateHelpers';
 import type {
   ReportType,
   ReportFormat,
@@ -170,8 +171,11 @@ defineEmits<{
   'view-report': [reportId: string];
 }>();
 
-// What the report will contain: the generator's own field labels for the chosen type
-const includes = computed(() => (props.reportType ? REPORT_CONTENTS[props.reportType] ?? [] : []));
+// Same type as the one being set up (the list is long on the dashboard already); all types until one is chosen
+const shownRecent = computed(() => {
+  const same = props.reportType ? props.recentReports.filter(item => item.type === props.reportType) : props.recentReports
+  return same.slice(0, 5)
+});
 
 const contentLabel = computed(() => {
   const o = props.options;
@@ -260,45 +264,40 @@ const formatDate = (dateString: string): string => {
 }
 
 .need {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px 18px;
+  display: grid;
   margin: 0;
-  padding: 0 24px 14px;
+  padding: 0 24px 6px;
   list-style: none;
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--ui-ink-2);
+  font-size: 14px;
 }
 
 .need li {
   display: flex;
-  gap: 6px;
+  gap: 8px;
   align-items: center;
+  min-height: 32px;
+  color: var(--ui-ink-2);
 }
 
-.tick {
-  display: grid;
+.need-name {
+  font-weight: 600;
+}
+
+.need-state {
+  margin-left: auto;
+  font-size: 13px;
+  color: var(--ui-muted);
+}
+
+.need-ok {
+  flex: none;
   width: 16px;
   height: 16px;
-  place-items: center;
-  border-radius: 50%;
-  box-shadow: inset 0 0 0 1.5px var(--ui-muted);
+  color: var(--ui-green-ink);
 }
 
-.need .done .tick {
-  background: var(--ui-green);
-  box-shadow: none;
-}
-
-.need .done .tick::after {
-  width: 8px;
-  height: 4px;
-  margin-top: -2px;
-  border-bottom: 2px solid #fff;
-  border-left: 2px solid #fff;
-  transform: rotate(-45deg);
-  content: '';
+.need .done .need-state {
+  color: var(--ui-green-ink);
 }
 
 .kv {
@@ -326,35 +325,6 @@ const formatDate = (dateString: string): string => {
   overflow-wrap: anywhere;
   font-weight: 600;
   text-align: right;
-}
-
-.inc {
-  padding: 12px 24px 4px;
-  box-shadow: 0 -0.5px 0 var(--ui-sep);
-}
-
-.inc-h {
-  margin: 0 0 8px;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--ui-ink-2);
-}
-
-.inc-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.inc-list li {
-  padding: 3px 10px;
-  border-radius: 999px;
-  background: var(--ui-fill);
-  font-size: 13px;
-  color: var(--ui-ink-2);
 }
 
 .progress-content {
