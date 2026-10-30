@@ -122,7 +122,7 @@ const badgeClass = computed(() => {
 /* Compact 模式 */
 .assignment-badge.compact {
   padding: 2px 8px;
-  font-size: 12px;
+  font-size: 13px;
 }
 
 .assignment-badge.compact .badge-icon {

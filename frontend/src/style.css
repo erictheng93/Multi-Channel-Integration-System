@@ -116,16 +116,19 @@
     --ui-messenger: #0866ff;
 
     --ui-p-lavender: #eee8fb;
-    --ui-p-lavender-ink: #5c4f7c;
+    --ui-p-lavender-ink: #473b66; /* 8.4:1 on --ui-p-lavender */
     --ui-p-peach: #fff1e0;
-    --ui-p-peach-ink: #86643e; /* 4.8:1 on --ui-p-peach */
+    --ui-p-peach-ink: #6b4a1c; /* 7.2:1 on --ui-p-peach */
     --ui-p-mint: #e6f5ea;
-    --ui-p-mint-ink: #3f7452;
+    --ui-p-mint-ink: #2c5a3c; /* 7.1:1 on --ui-p-mint */
     --ui-p-sky: #e4f0fd;
-    --ui-p-sky-ink: #3e6488;
+    --ui-p-sky-ink: #2a4d72; /* 7.6:1 on --ui-p-sky */
     --ui-p-rose: #fde9ec;
-    --ui-p-rose-ink: #8a4a57;
+    --ui-p-rose-ink: #783445; /* 7.6:1 on --ui-p-rose */
 
+    /* pills and tags: status ink pushed toward black (light) / white (dark) for >= 7:1 on their tint */
+    --ui-pill-shade: #000;
+    --ui-w-mid: 500; /* the tier between body (400) and headings (600/700): secondary text, labels */
     --ui-shadow-card: 0 0 0 0.5px rgba(0, 0, 0, 0.03), 0 1px 2px rgba(0, 0, 0, 0.03), 0 4px 16px rgba(0, 0, 0, 0.05);
     --ui-shadow-raised: 0 0 0 0.5px rgba(0, 0, 0, 0.04), 0 2px 6px rgba(0, 0, 0, 0.05), 0 12px 32px rgba(0, 0, 0, 0.07);
     --ui-shadow-pill: 0 1px 2px rgba(0, 0, 0, 0.06), 0 2px 8px rgba(0, 0, 0, 0.04);
@@ -158,7 +161,7 @@
     --ui-t-foot: 13px;
     --ui-t-cap: 13px;
     --ui-t-meta: 13px;
-    --ui-t-nav-label: 11.5px;
+    --ui-t-nav-label: 13px;
 
     /* Page frame: every routed page uses the same gutter and the same content width */
     --ui-gutter: 28px;
@@ -220,6 +223,7 @@
     --ui-p-sky-ink: #9cc4ec;
     --ui-p-rose: #35202a;
     --ui-p-rose-ink: #f0afc0;
+    --ui-pill-shade: #fff;
     --ui-shadow-card: 0 0 0 0.5px rgba(255, 255, 255, 0.06), 0 4px 16px rgba(0, 0, 0, 0.4);
     --ui-shadow-raised: 0 0 0 0.5px rgba(255, 255, 255, 0.08), 0 12px 32px rgba(0, 0, 0, 0.5);
     --ui-shadow-pill: 0 0 0 0.5px rgba(255, 255, 255, 0.08), 0 2px 8px rgba(0, 0, 0, 0.4);
@@ -839,7 +843,7 @@
   /* the quiet note after a group label stays secondary, still AA */
   .ui-group-label .label-note {
     font-size: 13px;
-    font-weight: 400;
+    font-weight: var(--ui-w-mid);
     color: var(--ui-muted);
   }
   .ui-group-label .ui-link {
@@ -852,6 +856,7 @@
     font-size: 13px;
     line-height: 18px;
     color: var(--ui-muted);
+    font-weight: var(--ui-w-mid);
   }
   .ui-card-pad {
     padding: 20px 22px;
@@ -871,6 +876,7 @@
   .ui-card-head .ui-card-sub {
     margin-top: 2px;
     font-size: var(--ui-t-foot);
+    font-weight: var(--ui-w-mid);
     color: var(--ui-muted);
   }
   .ui-card-head .ui-card-end {
@@ -947,6 +953,7 @@
     color: var(--ui-muted);
     text-overflow: ellipsis;
     white-space: nowrap;
+    font-weight: var(--ui-w-mid);
   }
   /* Settings-style row: label left, current value right (muted), optional chevron */
   .ui-row-value {
@@ -957,6 +964,7 @@
     color: var(--ui-muted);
     text-overflow: ellipsis;
     white-space: nowrap;
+    font-weight: var(--ui-w-mid);
   }
   .ui-row.is-nav::after {
     content: '';
@@ -989,37 +997,38 @@
     text-align: right;
     white-space: nowrap;
     font-variant-numeric: tabular-nums;
+    font-weight: var(--ui-w-mid);
   }
 
   /* Pills and tags */
   .ui-pill {
     display: inline-flex;
     align-items: center;
-    gap: 5px;
-    height: 22px;
-    padding: 0 9px;
+    gap: 6px;
+    height: 24px;
+    padding: 0 10px;
     border-radius: 999px;
     background: var(--ui-fill);
     font-size: 13px;
-    font-weight: 500;
-    color: var(--ui-ink-2);
+    font-weight: 600;
+    color: var(--ui-ink);
     white-space: nowrap;
   }
   .ui-pill-blue {
     background: var(--ui-accent-soft);
-    color: var(--ui-accent);
+    color: color-mix(in srgb, var(--ui-accent) 72%, var(--ui-pill-shade));
   }
   .ui-pill-green {
     background: var(--ui-green-soft);
-    color: var(--ui-green-ink);
+    color: color-mix(in srgb, var(--ui-green-ink) 72%, var(--ui-pill-shade));
   }
   .ui-pill-orange {
     background: var(--ui-orange-soft);
-    color: var(--ui-orange-ink);
+    color: color-mix(in srgb, var(--ui-orange-ink) 72%, var(--ui-pill-shade));
   }
   .ui-pill-red {
     background: var(--ui-red-soft);
-    color: var(--ui-red-ink);
+    color: color-mix(in srgb, var(--ui-red-ink) 72%, var(--ui-pill-shade));
   }
   .ui-pill-dot::before {
     content: '';
@@ -1031,13 +1040,13 @@
   .ui-tag {
     display: inline-flex;
     align-items: center;
-    height: 22px;
-    padding: 0 9px;
+    height: 24px;
+    padding: 0 10px;
     border-radius: 999px;
     background: var(--ui-fill);
     font-size: 13px;
-    font-weight: 500;
-    color: var(--ui-ink-2);
+    font-weight: 600;
+    color: var(--ui-ink);
   }
   .ui-tag-lavender {
     background: var(--ui-p-lavender);

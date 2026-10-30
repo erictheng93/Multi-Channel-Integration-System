@@ -69,7 +69,7 @@ defineEmits<{
 
 .count-line {
   padding: 14px 22px 18px;
-  font-size: 12.5px;
+  font-size: 13px;
   color: var(--ui-muted);
 }
 
