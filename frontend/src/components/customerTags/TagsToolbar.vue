@@ -1,5 +1,5 @@
 <template>
-  <section class="ui-card toolbar-section">
+  <section class="toolbar-section">
     <div class="search-box">
       <SearchIcon class="search-icon" />
       <input
@@ -21,15 +21,6 @@
         &times;
       </button>
     </div>
-    <span
-      v-if="isSearching"
-      class="count search-stats"
-    >找到 {{ filteredCount }} / {{ totalCount }}</span>
-    <span
-      v-else
-      class="count"
-    >共 {{ totalCount }} 個標籤</span>
-
     <div class="toolbar-actions">
       <!-- Bulk actions (shown when tags are selected) -->
       <div
@@ -92,13 +83,11 @@ function handleClear() {
   flex-wrap: wrap;
   align-items: center;
   gap: 12px;
-  padding: 12px 14px;
 }
 
 .search-box {
   position: relative;
   flex: 1 1 260px;
-  max-width: 420px;
 }
 
 .search-icon {
@@ -113,9 +102,10 @@ function handleClear() {
 }
 
 .search-input {
-  height: 38px;
+  height: 40px;
   padding-left: 38px;
   border-radius: 999px;
+  background: var(--ui-surface);
 }
 
 .search-clear {
@@ -136,10 +126,8 @@ function handleClear() {
   transform: translateY(-50%);
 }
 
-.count {
-  font-size: 12.5px;
-  color: var(--ui-muted);
-  font-variant-numeric: tabular-nums;
+.toolbar-actions:empty {
+  display: none;
 }
 
 .toolbar-actions {
@@ -168,9 +156,6 @@ function handleClear() {
 }
 
 @media (max-width: 640px) {
-  .search-box {
-    max-width: none;
-  }
   .toolbar-actions {
     width: 100%;
     margin-left: 0;

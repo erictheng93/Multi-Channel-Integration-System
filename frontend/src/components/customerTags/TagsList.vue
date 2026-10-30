@@ -14,7 +14,11 @@
 
     <!-- Tags Grid (paginated) -->
     <template v-else>
-      <div class="tags-grid">
+      <h2 class="ui-group-label">
+        {{ isSearching ? '搜尋結果' : '全部標籤' }}
+        <span class="count">{{ tags.length }}</span>
+      </h2>
+      <div class="ui-group tags-grid">
         <TagCard
           v-for="tag in paginatedTags"
           :key="tag.id"
@@ -103,21 +107,20 @@ watch(
 }
 
 .tags-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
+  display: flex;
+  flex-direction: column;
 }
 
-@media (max-width: 1024px) {
-  .tags-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-/* Phone: compact 2-up tiles; the detail opens in a bottom sheet */
-@media (max-width: 768px) {
-  .tags-grid {
-    gap: 10px;
-  }
+.ui-group-label .count {
+  min-width: 20px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: var(--section-hue-soft);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 20px;
+  text-align: center;
+  color: var(--section-ink);
+  font-variant-numeric: tabular-nums;
 }
 </style>
