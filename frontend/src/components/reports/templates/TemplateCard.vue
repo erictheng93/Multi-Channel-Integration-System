@@ -152,14 +152,6 @@ const meta = computed(() => {
   color: var(--ui-ink-2);
 }
 
-@media (max-width: 768px) {
-  .tpl-has {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-}
-
 .radio {
   width: 20px;
   height: 20px;
