@@ -28,11 +28,11 @@ describe('AutoReplyStats -- lead', () => {
     expect(wrapper.find('.lead-num').text()).toContain('99')
   })
 
-  it('shows the real ratios as small bars: active rules and successful replies', () => {
+  it('shows the real figures once: active rules as pips, failed replies as text', () => {
     const wrapper = mountStats({ activeRules: 5, totalRules: 6, todayReplies: 47, todayFailed: 1 })
     const labels = wrapper.findAll('[role="img"]').map((n) => n.attributes('aria-label') ?? '').join('|')
     expect(labels).toContain('啟用 5 條，共 6 條')
-    expect(labels).toContain('成功 47 則，失敗 1 則')
+    expect(wrapper.text()).toContain('1 則失敗')
   })
 
   it('omits the result bar when nothing was attempted', () => {

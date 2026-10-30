@@ -41,6 +41,7 @@
       >
         <dt>啟用規則</dt>
         <dd>
+          <b>{{ activeRules }}<small> / {{ totalRules }} 條</small></b>
           <span
             class="pips"
             role="img"
@@ -52,54 +53,26 @@
               :class="{ on: n <= activeRules }"
             />
           </span>
-          <b>{{ activeRules }}<small> / {{ totalRules }} 條</small></b>
         </dd>
       </div>
       <div
         v-if="yesterdaySameTime !== null && yesterdaySameTime !== undefined"
         class="fact"
       >
-        <dt>今天 對比 昨天同時段</dt>
+        <dt>昨天同時段</dt>
         <dd>
-          <span
-            class="duo"
-            role="img"
-            :aria-label="`今天 ${todayReplies} 則，昨天同時段 ${yesterdaySameTime} 則`"
-          >
-            <i
-              class="today"
-              :style="{ width: duoWidth(todayReplies) }"
-            />
-            <i
-              class="before"
-              :style="{ width: duoWidth(yesterdaySameTime) }"
-            />
-          </span>
-          <b>{{ yesterdaySameTime }}<small> 則昨天</small></b>
+          <b>{{ yesterdaySameTime }}<small> 則</small></b>
+          <span class="sub">今天 {{ todayReplies }} 則</span>
         </dd>
       </div>
       <div
         v-if="successRate !== null && successRate !== undefined"
         class="fact"
       >
-        <dt>回覆結果</dt>
+        <dt>回覆成功率</dt>
         <dd>
-          <span
-            class="result"
-            role="img"
-            :aria-label="`成功 ${todayReplies} 則，失敗 ${todayFailed ?? 0} 則`"
-          >
-            <i
-              class="ok"
-              :style="{ flexGrow: todayReplies }"
-            />
-            <i
-              v-if="(todayFailed ?? 0) > 0"
-              class="bad"
-              :style="{ flexGrow: todayFailed }"
-            />
-          </span>
-          <b>{{ successRate }}<small>% 成功</small></b>
+          <b>{{ successRate }}<small>%</small></b>
+          <span class="sub">{{ (todayFailed ?? 0) > 0 ? `${todayFailed} 則失敗` : '沒有失敗' }}</span>
         </dd>
       </div>
     </dl>
@@ -137,12 +110,6 @@ const hasFacts = computed(() =>
   || (props.yesterdaySameTime !== null && props.yesterdaySameTime !== undefined)
   || (props.successRate !== null && props.successRate !== undefined),
 )
-
-// Both bars share one scale so today and yesterday are comparable at a glance
-function duoWidth(value: number): string {
-  const max = Math.max(props.todayReplies, props.yesterdaySameTime ?? 0, 1)
-  return `${Math.max(3, Math.round((value / max) * 100))}%`
-}
 
 const DAY_LABELS = ['週日', '週一', '週二', '週三', '週四', '週五', '週六']
 
@@ -254,7 +221,8 @@ const hoursNote = computed(() => {
 .lead-facts {
   position: relative;
   display: grid;
-  gap: 20px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px 24px;
   min-width: 0;
   margin: 0;
 }
@@ -272,88 +240,47 @@ const hoursNote = computed(() => {
 .fact dt {
   font-size: 14px;
   font-weight: 500;
-  color: var(--ui-ink-2);
+  color: var(--ui-muted);
 }
 
 .fact dd {
-  display: flex;
-  gap: 16px;
-  align-items: center;
-  justify-content: space-between;
-  margin: 8px 0 0;
+  display: grid;
+  gap: 8px;
+  margin: 6px 0 0;
 }
 
 .fact b {
-  flex: none;
-  min-width: 92px;
-  font-size: 20px;
-  font-weight: 600;
-  text-align: right;
+  font: 600 32px / 1.1 var(--ui-font-display);
+  letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
 }
 
 .fact b small {
-  font-size: 13px;
-  font-weight: 500;
+  font: 500 14px var(--ui-font-ui);
+  letter-spacing: 0;
   color: var(--ui-muted);
+}
+
+.sub {
+  font-size: 14px;
+  color: var(--ui-ink-2);
 }
 
 .pips {
   display: flex;
-  flex: 1;
-  gap: 4px;
+  gap: 3px;
 }
 
 .pips i {
   flex: 1;
-  height: 10px;
+  height: 8px;
+  max-width: 14px;
   border-radius: 999px;
   background: var(--ui-fill-strong);
 }
 
 .pips i.on {
   background: var(--section-hue);
-}
-
-.duo {
-  display: grid;
-  flex: 1;
-  gap: 4px;
-}
-
-.duo i {
-  display: block;
-  height: 8px;
-  border-radius: 999px;
-}
-
-.duo .today {
-  background: var(--section-hue);
-}
-
-.duo .before {
-  background: #8e8e93;
-}
-
-.result {
-  display: flex;
-  flex: 1;
-  gap: 3px;
-  height: 10px;
-}
-
-.result i {
-  flex-basis: 0;
-  min-width: 6px;
-  border-radius: 999px;
-}
-
-.result .ok {
-  background: var(--ui-green);
-}
-
-.result .bad {
-  background: var(--ui-red);
 }
 
 @media (max-width: 1024px) {
