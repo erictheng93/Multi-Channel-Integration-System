@@ -101,7 +101,7 @@
 
         <VueDraggable
           v-model="localTeams"
-          class="ui-grid ui-cols-2 teams-list"
+          class="teams-list"
           :animation="200"
           ghost-class="drag-ghost"
           chosen-class="drag-chosen"
@@ -402,6 +402,11 @@ function handlePageChange(page: number) {
 }
 .team-section :deep(.team-card:hover) {
   background: var(--ui-fill);
+}
+.teams-list {
+  display: grid;
+  gap: 2px;
+  padding-bottom: 8px;
 }
 .drag-hint {
   padding: 4px 4px 8px;

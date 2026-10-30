@@ -78,23 +78,16 @@
       </div>
     </div>
 
-    <div
-      class="sysrole"
-      :class="{ 'is-default': member.role !== 'admin' }"
-    >
+    <div class="roles">
       <span
-        class="ui-pill"
-        :class="{ 'ui-pill-blue': member.role === 'admin' }"
+        v-if="member.role === 'admin'"
+        class="ui-pill ui-pill-blue"
       >{{ getRoleText(member.role) }}</span>
-    </div>
-
-    <div class="teams">
       <template v-if="visibleTeams.length > 0">
         <span
           v-for="t in visibleTeams"
           :key="t.teamId"
           class="ui-tag"
-          :class="teamTagClass(t.teamId)"
         >{{ t.teamName || `團隊 ${t.teamId}` }}<span class="tr-in"> · {{ teamRoleText(t.roleInTeam) }}</span></span>
         <span
           v-if="hiddenTeamCount > 0"
@@ -112,20 +105,15 @@
     </div>
 
     <div
-      class="stcell"
-      :class="{ 'is-active': member.status === 'active' }"
-    >
-      <span
-        class="ui-pill"
-        :class="statusClass"
-      >{{ getStatusText(member.status) }}</span>
-    </div>
-
-    <div
       class="last"
       :title="lastLoginTitle"
     >
-      {{ lastLogin }}
+      <span
+        v-if="member.status !== 'active'"
+        class="ui-pill"
+        :class="statusClass"
+      >{{ getStatusText(member.status) }}</span>
+      <span>{{ lastLogin }}</span>
     </div>
 
     <div
@@ -199,7 +187,7 @@ import MemberEditModal from '@/components/team/member-edit/MemberEditModal.vue'
 import Dropdown from '@/components/ui/Dropdown.vue'
 import DropdownItem from '@/components/ui/DropdownItem.vue'
 import TeamAvatar from '@/components/team/TeamAvatar.vue'
-import { formatLastLogin, teamRoleText, teamTagClass } from '@/utils/team-tone'
+import { formatLastLogin, teamRoleText } from '@/utils/team-tone'
 import type { TeamMember, Team } from '@/types'
 
 interface Props {
@@ -361,8 +349,7 @@ const getRoleText = (role: string) => {
 .member-row.is-off :deep(.team-avatar) {
   filter: saturate(0.35);
 }
-.member-row.is-off .teams,
-.member-row.is-off .sysrole {
+.member-row.is-off .roles {
   filter: saturate(0.4);
 }
 
@@ -449,27 +436,24 @@ const getRoleText = (role: string) => {
   font-weight: 600;
   color: var(--ui-muted);
 }
-.teams {
+.roles {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 6px 10px;
+  gap: 6px 8px;
+  min-width: 0;
 }
 .tr-in {
   font-weight: 500;
-  opacity: 0.8;
+  color: var(--ui-ink-2);
 }
 .tr {
   font-size: 13px;
   color: var(--ui-muted);
 }
-.stcell,
-.sysrole {
-  display: flex;
-  align-items: center;
-}
 .last {
   display: flex;
+  gap: 8px;
   align-items: center;
   font-size: 13px;
   color: var(--ui-muted);
@@ -522,13 +506,16 @@ const getRoleText = (role: string) => {
     order: 1;
     margin-left: auto;
   }
-  .sysrole,
-  .teams,
-  .stcell,
+  .roles,
   .last {
     order: 2;
   }
+  .roles {
+    flex: 1 1 0;
+    min-width: 55%;
+  }
   .last {
+    flex: none;
     margin-left: auto;
   }
 }
@@ -542,11 +529,9 @@ const getRoleText = (role: string) => {
   .drag-handle {
     display: none;
   }
-  /* Phone rows keep to two chips: the plain "active" state is the default, only a deactivated
-     account needs a pill of its own. */
-  .stcell.is-active,
-  .sysrole.is-default {
-    display: none;
+  /* Phone: chips and the last login share one line under the name */
+  .last {
+    font-size: 13px;
   }
 }
 </style>
