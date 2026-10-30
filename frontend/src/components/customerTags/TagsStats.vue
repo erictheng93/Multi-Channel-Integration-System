@@ -29,6 +29,11 @@
           :key="p.id"
           :style="{ flexGrow: p.count, background: p.color }"
         />
+        <i
+          v-if="rest"
+          class="mix-rest"
+          :style="{ flexGrow: rest.count }"
+        />
       </div>
       <ul class="mix-legend">
         <li
@@ -38,6 +43,11 @@
           <i :style="{ background: p.color }" />
           <span class="mix-name">{{ p.name }}</span>
           <b>{{ p.count }}</b>
+        </li>
+        <li v-if="rest">
+          <i class="mix-rest" />
+          <span class="mix-name">其他 {{ rest.tags }} 個標籤</span>
+          <b>{{ rest.count }}</b>
         </li>
       </ul>
       <p
@@ -74,6 +84,14 @@ const parts = computed(() =>
     .map((t) => ({ id: t.id, name: t.name, color: t.color, count: t.conversationCount || 0 })),
 )
 
+/** Everything outside the top five, so the bar and legend add up to the whole */
+const rest = computed(() => {
+  const total = props.tags.reduce((n, t) => n + (t.conversationCount || 0), 0)
+  const count = total - parts.value.reduce((n, p) => n + p.count, 0)
+  const tags = props.tags.filter((t) => (t.conversationCount || 0) > 0).length - parts.value.length
+  return count > 0 ? { count, tags } : null
+})
+
 const coverage = computed(() => {
   const total = props.tags.reduce((n, t) => n + (t.conversationCount || 0), 0)
   if (total <= 0) { return 0 }
@@ -82,6 +100,10 @@ const coverage = computed(() => {
 </script>
 
 <style scoped>
+.mix-rest {
+  background: var(--ui-fill-strong);
+}
+
 .lead {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
