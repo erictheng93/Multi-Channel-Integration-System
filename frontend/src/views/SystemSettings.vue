@@ -68,14 +68,11 @@
 
       <Transition name="settings-bar">
         <UiActionBar
-          v-if="isForm && (alwaysBar || dirty || controller.saving.value)"
+          v-if="isForm && (dirty || controller.saving.value)"
           class="settings-actions"
           label="儲存設定"
         >
-          <span
-            class="settings-state"
-            :class="{ 'is-dirty': dirty }"
-          >{{ dirty ? '有尚未儲存的變更' : '所有變更已儲存' }}</span>
+          <span class="settings-state">有尚未儲存的變更</span>
           <button
             type="button"
             class="btn btn-secondary"
@@ -88,7 +85,7 @@
             type="submit"
             class="btn btn-primary"
             :form="SETTINGS_FORM_ID"
-            :disabled="(!alwaysBar && !dirty) || controller.saving.value || controller.testing.value"
+            :disabled="!dirty || controller.saving.value || controller.testing.value"
           >
             {{ controller.saving.value ? '儲存中...' : '儲存變更' }}
           </button>
@@ -119,8 +116,6 @@ const section = computed(() => findSettingsSection(route.name))
 // Pages with a form and a save button (everything but the health check)
 const isForm = computed(() => !!section.value && section.value.key !== 'health')
 // Facebook and advanced keep one readable column; general and LINE lay out a context column beside it
-// General and advanced always show the save bar (a visible commit point, never disabled); credential pages show it once typed into
-const alwaysBar = computed(() => section.value?.key === 'general' || section.value?.key === 'advanced')
 const isNarrow = computed(() => section.value?.key === 'facebook' || section.value?.key === 'advanced')
 
 // Dirty tracking: general/advanced compare against the last loaded or saved values;
@@ -189,10 +184,6 @@ onUnmounted(() => controller.cleanup())
 .settings-state {
   margin-right: auto;
   font-size: 14px;
-  color: var(--ui-muted);
-}
-
-.settings-state.is-dirty {
   font-weight: 600;
   color: var(--ui-orange-ink);
 }
