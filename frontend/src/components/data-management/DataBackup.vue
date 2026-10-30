@@ -79,6 +79,7 @@
       </h2>
       <div class="ui-group strip-card">
         <ol
+          ref="stripEl"
           class="strip"
           aria-label="每日備份狀態，點選可只看該日"
         >
@@ -337,7 +338,7 @@ import UiEmptyState from '@/components/ui/UiEmptyState.vue'
 import UiPageHead from '@/components/ui/UiPageHead.vue'
 import RingLead from '@/components/lead/RingLead.vue'
 import type { ServiceRing } from '@/components/ui/ServiceRings.vue'
-import { computed, onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { listBackups, runBackup, downloadBackup, type BackupItem, type BackupList } from '@/api/backup'
 
 const PAGE_SIZE = 24
@@ -786,6 +787,13 @@ async function onDownload(item: BackupItem) {
   downloadingKey.value = null
 }
 
+// Phone: the 30 day cells scroll sideways (each stays a full-size target); start at today, the right end
+const stripEl = ref<HTMLElement | null>(null)
+watch(strip, async () => {
+  await nextTick()
+  if (stripEl.value) { stripEl.value.scrollLeft = stripEl.value.scrollWidth }
+})
+
 onMounted(load)
 </script>
 
@@ -1233,10 +1241,16 @@ onMounted(load)
   }
 
   .strip {
-    grid-auto-flow: row;
-    grid-template-columns: repeat(15, minmax(0, 1fr));
-    gap: 10px 3px;
+    grid-auto-columns: 40px;
+    grid-template-columns: none;
+    gap: 4px;
     padding: 16px 16px 18px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .strip::-webkit-scrollbar {
+    display: none;
   }
 
   .bar {
