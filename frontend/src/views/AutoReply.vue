@@ -106,31 +106,45 @@
 
           <!-- Tab Content -->
           <div class="tab-content">
-            <!-- Rules Tab -->
-            <RuleList
+            <!-- Rules Tab: the list, and beside it a message tester and the newest triggers -->
+            <div
               v-if="activeTab === 'rules'"
-              :rules="filteredRules"
-              :expanded-rule-id="ruleEditor.expandedRuleId.value"
-              :is-creating="ruleEditor.isCreating.value"
-              :form-data="ruleEditor.formData"
-              :saving="ruleEditor.saving.value"
-              :search-query="searchQuery"
-              :filter-trigger-type="filterTriggerType"
-              @update:search-query="searchQuery = $event"
-              @update:filter-trigger-type="filterTriggerType = $event"
-              @start-create="ruleEditor.startCreate()"
-              @expand-rule="ruleEditor.expandRule($event)"
-              @toggle-active="ruleEditor.toggleRuleActive($event)"
-              @collapse="ruleEditor.collapseRule()"
-              @save="handleSaveRule"
-              @delete="handleDeleteRule"
-              @add-condition="(type: string, value: string) => ruleEditor.addCondition(type as 'exact' | 'contains' | 'regex' | 'message_type', value)"
-              @remove-condition="(index: number) => ruleEditor.removeCondition(index)"
-              @add-action="(type: string) => ruleEditor.addAction(type as 'reply_text' | 'reply_image' | 'reply_flex')"
-              @remove-action="(index: number) => ruleEditor.removeAction(index)"
-              @update-action-content="(index: number, content: string) => ruleEditor.updateActionContent(index, content)"
-              @update-field="handleUpdateField"
-            />
+              class="rules-grid"
+            >
+              <RuleList
+                :hits="ruleHits"
+                :hits-window="store.logs.length"
+                :rules="filteredRules"
+                :expanded-rule-id="ruleEditor.expandedRuleId.value"
+                :is-creating="ruleEditor.isCreating.value"
+                :form-data="ruleEditor.formData"
+                :saving="ruleEditor.saving.value"
+                :search-query="searchQuery"
+                :filter-trigger-type="filterTriggerType"
+                @update:search-query="searchQuery = $event"
+                @update:filter-trigger-type="filterTriggerType = $event"
+                @start-create="ruleEditor.startCreate()"
+                @expand-rule="ruleEditor.expandRule($event)"
+                @toggle-active="ruleEditor.toggleRuleActive($event)"
+                @collapse="ruleEditor.collapseRule()"
+                @save="handleSaveRule"
+                @delete="handleDeleteRule"
+                @add-condition="(type: string, value: string) => ruleEditor.addCondition(type as 'exact' | 'contains' | 'regex' | 'message_type', value)"
+                @remove-condition="(index: number) => ruleEditor.removeCondition(index)"
+                @add-action="(type: string) => ruleEditor.addAction(type as 'reply_text' | 'reply_image' | 'reply_flex')"
+                @remove-action="(index: number) => ruleEditor.removeAction(index)"
+                @update-action-content="(index: number, content: string) => ruleEditor.updateActionContent(index, content)"
+                @update-field="handleUpdateField"
+              />
+              <RuleAside
+                v-if="store.rules.length > 0"
+                :rules="store.rules"
+                :logs="store.logs"
+                :is-business-hours="stats.isBusinessHours"
+                @open-rule="openRule"
+                @open-logs="switchTab('logs')"
+              />
+            </div>
 
             <!-- Schedules Tab -->
             <ScheduleGrid
@@ -183,6 +197,7 @@ import LoadingSpinner from '@/components/ui/LoadingSpinner.vue'
 import ConfirmDialog from '@/components/ui/ConfirmDialog.vue'
 import AutoReplyStats from '@/components/auto-reply/AutoReplyStats.vue'
 import RuleList from '@/components/auto-reply/RuleList.vue'
+import RuleAside from '@/components/auto-reply/RuleAside.vue'
 import ScheduleGrid from '@/components/auto-reply/ScheduleGrid.vue'
 import LogTable from '@/components/auto-reply/LogTable.vue'
 import { useAutoReplyController } from '@/composables/autoReply/useAutoReplyController'
@@ -240,6 +255,21 @@ const todayWindow = computed(() => {
   const toMin = (t: string) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5))
   return { start: toMin(row.startTime), end: toMin(row.endTime), now: minutes }
 })
+
+// How often each rule fired in the newest logs; unknown while the log view is filtered or on a later page
+const ruleHits = computed<Record<number, number> | null>(() => {
+  if (filterRuleId.value || filterPlatform.value || store.logsPagination.page > 1 || store.logs.length === 0) { return null }
+  const map: Record<number, number> = {}
+  for (const log of store.logs) {
+    if (log.rule_id !== null) { map[log.rule_id] = (map[log.rule_id] ?? 0) + 1 }
+  }
+  return map
+})
+
+function openRule(id: number) {
+  const rule = store.rules.find(r => r.id === id)
+  if (rule) { ruleEditor.expandRule(rule) }
+}
 
 async function refresh() {
   await initialize()
@@ -329,6 +359,19 @@ onUnmounted(() => cleanup())
   min-height: 200px;
 }
 
+.rules-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: 16px;
+  align-items: start;
+}
+
+@media (max-width: 1280px) {
+  .rules-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 @media (max-width: 768px) {
 
   .tabs-bar {
@@ -337,8 +380,11 @@ onUnmounted(() => cleanup())
 
   .tabs-bar > button {
     flex: 1;
+    gap: 4px;
     justify-content: center;
     min-height: 44px;
+    padding: 0 6px;
+    white-space: nowrap;
   }
 }
 
