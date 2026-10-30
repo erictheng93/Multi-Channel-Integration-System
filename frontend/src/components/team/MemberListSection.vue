@@ -13,19 +13,22 @@
           共 {{ members.length }} 位成員，{{ sortCaption }}
         </div>
       </div>
-      <div class="ui-card-end legend">
-        <svg
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
+      <div
+        class="ui-card-end legend"
+        aria-label="團隊角色由低到高：成員、組長、主管"
+      >
+        <span class="lg-k">團隊角色</span>
+        <span class="lg-c">成員</span>
+        <span
+          class="lg-a"
           aria-hidden="true"
-        ><circle
-          cx="12"
-          cy="12"
-          r="9"
-        /><path d="M12 8v5M12 16.5h.01" /></svg>團隊角色：成員 → 組長 → 主管
+        >›</span>
+        <span class="lg-c lg-lead">組長</span>
+        <span
+          class="lg-a"
+          aria-hidden="true"
+        >›</span>
+        <span class="lg-c lg-sup">主管</span>
       </div>
     </div>
 
@@ -233,7 +236,7 @@
             @end="onDragEnd"
           >
             <TeamMemberCard
-              v-for="member in localMembers"
+              v-for="member in shownMembers"
               :key="member.id"
               :member="member"
               :all-teams="allTeams"
@@ -252,9 +255,18 @@
           </VueDraggable>
         </template>
 
+        <button
+          v-if="hiddenOnPhone > 0"
+          type="button"
+          class="more-members"
+          @click="phoneExpanded = true"
+        >
+          顯示其餘 {{ hiddenOnPhone }} 位成員
+        </button>
+
         <!-- Pagination Controls -->
         <div
-          v-if="paginationInfo.totalPages <= 1 && filteredMembers.length > 0"
+          v-if="paginationInfo.totalPages <= 1 && filteredMembers.length > 0 && hiddenOnPhone === 0"
           class="mfoot"
         >
           顯示 1 – {{ filteredMembers.length }}，共 {{ filteredMembers.length }} 位
@@ -271,7 +283,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, computed, nextTick } from 'vue'
+import { ref, watch, computed, nextTick, onMounted, onUnmounted } from 'vue'
+import { BREAKPOINTS } from '@/config/breakpoints'
 import { VueDraggable } from 'vue-draggable-plus'
 import type { TeamMember, Team } from '@/types'
 import type { SortOption, SortState, SortMode } from '@/composables/useListSorting'
@@ -444,6 +457,23 @@ watch(
   { deep: true }
 )
 
+// Phone: the list opens with the first few members; the rest is one tap away (drag is off on phones)
+const PHONE_ROWS = 5
+const isPhone = ref(false)
+const phoneExpanded = ref(false)
+let phoneQuery: ReturnType<typeof window.matchMedia> | null = null
+function syncPhone() { isPhone.value = phoneQuery?.matches ?? false }
+onMounted(() => {
+  if (typeof window.matchMedia !== 'function') return
+  phoneQuery = window.matchMedia(`(max-width: ${BREAKPOINTS.md}px)`)
+  syncPhone()
+  phoneQuery.addEventListener('change', syncPhone)
+})
+onUnmounted(() => phoneQuery?.removeEventListener('change', syncPhone))
+const capped = computed(() => isPhone.value && !phoneExpanded.value && !props.isSelectionMode && localMembers.value.length > PHONE_ROWS + 1)
+const shownMembers = computed(() => (capped.value ? localMembers.value.slice(0, PHONE_ROWS) : localMembers.value))
+const hiddenOnPhone = computed(() => (capped.value ? localMembers.value.length - PHONE_ROWS : 0))
+
 // Handle drag start - no action needed
 function onDragStart() {
   // Optional: Add visual feedback
@@ -515,10 +545,47 @@ function handleSelectPage() {
   font-size: 13px;
   color: var(--ui-muted);
 }
-.legend svg {
-  width: 13px;
-  height: 13px;
+.legend {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.lg-k {
+  margin-right: 4px;
+  font-weight: 600;
+  color: var(--ui-ink-2);
+}
+.lg-c {
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ui-muted);
+}
+.lg-lead {
+  background: var(--ui-green-soft);
+  color: color-mix(in srgb, var(--ui-green-ink) 72%, var(--ui-pill-shade));
+}
+.lg-sup {
+  background: var(--ui-indigo-soft);
+  color: color-mix(in srgb, var(--ui-indigo-ink) 72%, var(--ui-pill-shade));
+}
+.lg-a {
   color: var(--ui-faint);
+}
+.more-members {
+  display: block;
+  width: calc(100% - 32px);
+  min-height: 44px;
+  margin: 4px 16px 8px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--ui-fill);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ui-ink);
+  cursor: pointer;
 }
 
 /* Tools row */
@@ -692,6 +759,10 @@ function handleSelectPage() {
   }
 }
 @media (max-width: 768px) {
+  .legend {
+    flex-basis: 100%;
+    margin-left: 0;
+  }
   .tools {
     padding-right: 16px;
     padding-left: 16px;
