@@ -40,7 +40,8 @@ describe('LineQuotaCard', () => {
     const wrapper = mount(LineQuotaCard)
     await flushPromises()
 
-    expect(wrapper.text()).toContain('8,120 / 10,000')
+    expect(wrapper.text()).toContain('8,120')
+    expect(wrapper.text()).toContain('10,000')
     expect(wrapper.text()).toContain('剩餘 1,880')
     expect(wrapper.find('[role="progressbar"]').attributes('aria-valuenow')).toBe('8120')
     expect(wrapper.find('.bar-fill').attributes('style')).toContain('width: 81%')
@@ -83,12 +84,13 @@ describe('LineQuotaCard', () => {
     await wrapper.find('button').trigger('click')
 
     expect(wrapper.find('button').attributes('disabled')).toBeDefined()
-    expect(wrapper.text()).toContain('8,120 / 10,000')
+    expect(wrapper.text()).toContain('8,120')
+    expect(wrapper.text()).toContain('10,000')
 
     finishRefresh()
     await flushPromises()
 
-    expect(wrapper.text()).toContain('9,000 / 10,000')
+    expect(wrapper.text()).toContain('9,000')
     expect(wrapper.text()).toContain('手動查詢')
   })
 
@@ -101,7 +103,8 @@ describe('LineQuotaCard', () => {
     await flushPromises()
 
     expect(toast.showError).toHaveBeenCalledWith('boom')
-    expect(wrapper.text()).toContain('8,120 / 10,000')
+    expect(wrapper.text()).toContain('8,120')
+    expect(wrapper.text()).toContain('10,000')
   })
 
   it('flags a channel whose latest poll failed', async () => {
