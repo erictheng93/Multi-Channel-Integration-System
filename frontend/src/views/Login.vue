@@ -498,8 +498,8 @@ const handleLogin = async (event?: Event) => {
 }
 
 .brand-copy h1 {
-  font: 700 44px/1.15 var(--ui-font-display);
-  letter-spacing: -0.03em;
+  font: 700 52px/1.12 var(--ui-font-display);
+  letter-spacing: -0.04em;
 }
 
 .brand-copy p {
@@ -563,28 +563,39 @@ const handleLogin = async (event?: Event) => {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  width: min(420px, 100%);
+  width: min(480px, 100%);
   margin: 0 auto;
   padding: 40px 24px;
 }
 
 .auth {
   width: 100%;
-  padding: 34px 32px 28px;
-  border-radius: 28px;
+  padding: 40px 36px 34px;
+  border-radius: var(--ui-r-lead);
   background: var(--ui-surface);
   box-shadow: var(--ui-shadow-raised);
 }
 
 .auth h2 {
-  font: 700 24px/1.2 var(--ui-font-display);
-  letter-spacing: -0.02em;
+  font: 700 34px/1.15 var(--ui-font-display);
+  letter-spacing: -0.035em;
 }
 
 .lede {
-  margin-top: 6px;
+  margin-top: 8px;
+  font-size: 15px;
+  color: var(--ui-ink-2);
+}
+
+.auth :deep(.ui-field > label) {
   font-size: 14px;
+  font-weight: 600;
+  color: var(--ui-ink-2);
+}
+
+.auth .ui-input::placeholder {
   color: var(--ui-muted);
+  opacity: 1;
 }
 
 .auth form {

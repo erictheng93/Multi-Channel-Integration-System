@@ -135,28 +135,28 @@ const QUICK_LINKS: QuickLink[] = [
     to: '/conversations',
     title: '對話',
     text: 'LINE 與 Messenger 客戶訊息',
-    tone: 'green',
+    tone: 'blue',
     icon: '<path d="M21 12a8 8 0 0 1-11.6 7.1L4 20.5l1.4-4.6A8 8 0 1 1 21 12Z"/>'
   },
   {
     to: '/notifications',
     title: '通知',
     text: '指派、提及與系統提醒',
-    tone: 'orange',
+    tone: 'blue',
     icon: '<path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/>'
   },
   {
     to: '/tags',
     title: '客戶標籤',
     text: '分類與客戶經營',
-    tone: 'indigo',
+    tone: 'orange',
     icon: '<path d="M12.6 2.6A2 2 0 0 0 11.2 2H4a2 2 0 0 0-2 2v7.2a2 2 0 0 0 .6 1.4l8.7 8.7a2.4 2.4 0 0 0 3.4 0l6.6-6.6a2.4 2.4 0 0 0 0-3.4Z"/><circle cx="7.5" cy="7.5" r="1.2"/>'
   },
   {
     to: '/settings',
     title: '系統設定',
     text: '整合、備份與健康檢查',
-    tone: 'blue',
+    tone: 'indigo',
     icon: '<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M2 12h3M19 12h3M4.9 19.1 7 17M17 7l2.1-2.1"/>',
     adminOnly: true
   }
@@ -227,7 +227,7 @@ const goBack = () => {
 
 .code {
   position: relative;
-  font: 300 168px / 1 var(--ui-font-display);
+  font: 600 160px / 1 var(--ui-font-display);
   letter-spacing: -0.05em;
   font-variant-numeric: tabular-nums;
   color: var(--ui-ink);
@@ -250,8 +250,8 @@ const goBack = () => {
 
 .nf-title {
   margin: 18px 0 0;
-  font: 700 28px/1.2 var(--ui-font-display);
-  letter-spacing: -0.02em;
+  font: 700 34px/1.2 var(--ui-font-display);
+  letter-spacing: -0.035em;
 }
 
 .nf-reason {
@@ -305,7 +305,6 @@ const goBack = () => {
   padding: 16px;
   border-radius: 18px;
   background: var(--ui-surface);
-  box-shadow: var(--ui-shadow-card);
   color: inherit;
   text-align: left;
   text-decoration: none;
@@ -335,24 +334,21 @@ const goBack = () => {
   height: 18px;
 }
 
-.go-ico.blue {
-  background: var(--ui-accent-soft);
-  color: var(--ui-accent);
+/* Solid section hue tile, white glyph (same language as the page-title tile and the sidebar sections) */
+.go-ico {
+  color: #fff;
 }
 
-.go-ico.green {
-  background: var(--ui-green-soft);
-  color: var(--ui-green-ink);
+.go-ico.blue {
+  background: var(--ui-blue);
 }
 
 .go-ico.orange {
-  background: var(--ui-orange-soft);
-  color: var(--ui-orange-ink);
+  background: var(--ui-orange);
 }
 
 .go-ico.indigo {
-  background: var(--ui-indigo-soft);
-  color: var(--ui-indigo);
+  background: var(--ui-indigo);
 }
 
 .go b {

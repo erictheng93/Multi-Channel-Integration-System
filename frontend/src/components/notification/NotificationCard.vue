@@ -238,11 +238,11 @@ const formattedTime = computed(() => {
 
 /* Unread: tinted row, bold title, coloured icon tile and a dot by the time. Read: flat row, grey tile. */
 .notification-unread {
-  background: color-mix(in srgb, var(--ui-accent) 8%, var(--ui-surface));
+  background: color-mix(in srgb, var(--section-hue) 7%, var(--ui-surface));
 }
 
 .notification-unread:hover {
-  background: color-mix(in srgb, var(--ui-accent) 12%, var(--ui-surface));
+  background: color-mix(in srgb, var(--section-hue) 11%, var(--ui-surface));
 }
 
 .notification-card:not(.notification-unread) .notification-icon {
