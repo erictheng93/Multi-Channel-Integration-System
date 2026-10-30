@@ -9,99 +9,88 @@
 -->
 <template>
   <section
-    class="ov"
+    v-if="part === 'head'"
+    class="ov-strip ui-lead"
     aria-label="系統概覽"
   >
-    <article class="ui-lead ov-lead">
-      <div class="ov-main">
-        <div class="ov-kicker">
-          系統狀態
-        </div>
-        <div
-          class="ov-big"
-          :class="headline.tone"
-        >
-          {{ headline.text }}
-        </div>
-        <p class="ov-meaning">
-          <span
-            class="ov-dot"
-            :class="healthTile.tone"
-            aria-hidden="true"
-          />{{ meaning }}
-          <router-link
-            class="ui-link"
-            :to="healthTile.to"
-          >
-            健康檢查
-          </router-link>
-        </p>
-        <div
-          v-if="disconnected.length > 0"
-          class="ov-warns"
-        >
-          <router-link
-            v-for="c in disconnected"
-            :key="c.key"
-            :to="c.to"
-            class="ui-pill ui-pill-orange ov-warn"
-          >
-            {{ c.name }} 未連線 · 前往設定
-          </router-link>
-        </div>
-      </div>
-      <ul
-        class="ov-list"
-        aria-label="連線與備份狀態"
+    <span
+      class="ov-dot"
+      :class="healthTile.tone"
+      aria-hidden="true"
+    />
+    <div class="ov-strip-text">
+      <div
+        class="ov-big"
+        :class="headline.tone"
       >
-        <li
-          v-for="tile in tiles"
-          :key="tile.key"
-        >
-          <router-link
-            :to="tile.to"
-            class="ov-row"
-          >
-            <span
-              class="ov-ico"
-              :class="tile.tone"
-              aria-hidden="true"
-            >
-              <!-- eslint-disable vue/no-v-html -->
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                v-html="tile.icon"
-              />
-              <!-- eslint-enable vue/no-v-html -->
-            </span>
-            <span class="ov-text">
-              <span class="ov-label">{{ tile.label }}</span>
-              <span class="ov-sub">{{ tile.sub }}</span>
-            </span>
-            <span
-              class="ov-state"
-              :class="tile.tone"
-            >{{ tile.state }}</span>
-            <svg
-              class="ov-chev"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2.4"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              aria-hidden="true"
-            ><path d="m9 6 6 6-6 6" /></svg>
-          </router-link>
-        </li>
-      </ul>
-    </article>
+        {{ headline.text }}
+      </div>
+      <p class="ov-meaning">
+        {{ meaning }}
+      </p>
+    </div>
+    <router-link
+      class="ui-link ov-strip-link"
+      :to="healthTile.to"
+    >
+      健康檢查
+    </router-link>
   </section>
+
+  <ul
+    v-else
+    class="ov-list"
+    aria-label="連線與備份狀態"
+  >
+    <li
+      v-for="tile in tiles"
+      :key="tile.key"
+    >
+      <router-link
+        :to="tile.to"
+        class="ov-row"
+      >
+        <span
+          class="ov-ico"
+          :class="tile.tone"
+          aria-hidden="true"
+        >
+          <!-- eslint-disable vue/no-v-html -->
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            v-html="tile.icon"
+          />
+          <!-- eslint-enable vue/no-v-html -->
+        </span>
+        <span class="ov-text">
+          <span class="ov-label">{{ tile.label }}</span>
+          <span
+            class="ov-sub"
+            :class="{ bad: tile.tone === 'red' }"
+          >{{ tile.sub }}</span>
+        </span>
+        <span
+          class="ov-state"
+          :class="tile.tone"
+        >{{ tile.state }}</span>
+        <svg
+          class="ov-chev"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2.4"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        ><path d="m9 6 6 6-6 6" /></svg>
+      </router-link>
+    </li>
+  </ul>
 </template>
 
 <script setup lang="ts">
@@ -112,6 +101,8 @@ import { SETTINGS_SECTIONS } from './settings-pages'
 import { listBackups } from '@/api/backup'
 import type { BackupItem } from '@/api/backup'
 import { formatRelativeTime as relative } from '@/utils/monitor-helpers'
+
+const props = withDefaults(defineProps<{ part?: 'head' | 'list' }>(), { part: 'head' })
 
 /** "0 秒前" reads like a bug; anything under ten seconds is simply just now */
 function formatRelativeTime(iso: string): string {
@@ -142,8 +133,11 @@ const backupCount = ref<number | null>(null)
 const backupLoaded = ref(false)
 
 onMounted(async () => {
-  if (controller.healthCheckResults.value.length === 0) {
-    void controller.healthCheck(false, false)
+  if (props.part === 'head') {
+    if (controller.healthCheckResults.value.length === 0) {
+      void controller.healthCheck(false, false)
+    }
+    return
   }
   try {
     const res = await listBackups()
@@ -169,7 +163,8 @@ function integrationTile(
   status: IntegrationStatus,
   lastTest: IntegrationLastTest | null | undefined,
 ): Tile {
-  const tone: Tone = status === 'connected' ? 'green' : (status === 'error' ? 'red' : 'muted')
+  const failed = status !== 'connected' && !!lastTest && lastTest.status !== 'success'
+  const tone: Tone = status === 'connected' ? 'green' : (status === 'error' || failed ? 'red' : 'muted')
   const state = status === 'connected' ? '已連線' : (status === 'error' ? '連線異常' : '未連線')
   let sub = '尚未測試連線'
   if (lastTest) {
@@ -216,14 +211,6 @@ const backupTile = computed<Tile>(() => {
 })
 
 
-const CHANNELS = [
-  { key: 'line', name: 'LINE', to: section('line').to },
-  { key: 'facebook', name: 'Facebook', to: section('facebook').to },
-] as const
-
-const disconnected = computed(() => CHANNELS
-  .filter(c => controller.settings.integrations[c.key].status !== 'connected'))
-
 /**
  * The lead answers "does anything need me?": a service fault is the headline; a disconnected channel is a warning chip,
  * not a headline, so a settings page does not open on an error.
@@ -252,36 +239,26 @@ const tiles = computed<Tile[]>(() => [
 </script>
 
 <style scoped>
-.ov {
-  display: grid;
-  gap: 20px;
-  min-width: 0;
-}
-
-.ov-lead {
-  display: grid;
-  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
-  gap: 24px 48px;
+/* head: one slim status line, not a hero */
+.ov-strip {
+  display: flex;
+  gap: 14px;
   align-items: center;
-  padding: 24px 32px;
+  padding: 18px 28px;
 }
 
-.ov-main {
-  display: grid;
-  gap: 4px;
-  justify-items: start;
+.ov-strip-text {
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  gap: 2px 16px;
+  align-items: baseline;
   min-width: 0;
-}
-
-.ov-kicker {
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--section-ink);
 }
 
 .ov-big {
-  font: 600 40px / 1.15 var(--ui-font-display);
-  letter-spacing: -0.03em;
+  font: 600 24px / 1.2 var(--ui-font-display);
+  letter-spacing: -0.02em;
   color: var(--ui-ink);
 }
 
@@ -298,36 +275,28 @@ const tiles = computed<Tile[]>(() => [
 }
 
 .ov-meaning {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 10px;
-  align-items: center;
-  margin: 6px 0 0;
+  margin: 0;
   font-size: 14px;
   color: var(--ui-ink-2);
 }
 
-.ov-warns {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 14px;
-}
-
-.ov-warn {
-  min-height: 32px;
-  text-decoration: none;
+.ov-strip-link {
+  flex: none;
+  font-size: 14px;
+  font-weight: 600;
 }
 
 .ov-dot {
-  width: 8px;
-  height: 8px;
+  flex: none;
+  width: 12px;
+  height: 12px;
   border-radius: 50%;
   background: var(--ui-muted);
 }
 
 .ov-dot.green {
   background: var(--ui-green);
+  box-shadow: 0 0 0 5px var(--ui-green-soft);
 }
 
 .ov-dot.orange {
@@ -338,23 +307,12 @@ const tiles = computed<Tile[]>(() => [
   background: var(--ui-red);
 }
 
-/* the status list lives inside the lead: hairline on its left, rows separated by inset hairlines */
+/* list: connections and backup, one row each */
 .ov-list {
-  position: relative;
   display: grid;
   margin: 0;
-  padding: 0 0 0 32px;
+  padding: 0 22px;
   list-style: none;
-}
-
-.ov-list::before {
-  position: absolute;
-  top: 4px;
-  bottom: 4px;
-  left: 0;
-  width: 0.5px;
-  background: var(--ui-sep);
-  content: '';
 }
 
 .ov-list li + li {
@@ -365,8 +323,8 @@ const tiles = computed<Tile[]>(() => [
   display: flex;
   gap: 14px;
   align-items: center;
-  min-height: 64px;
-  padding: 8px 0;
+  min-height: 68px;
+  padding: 10px 0;
   color: inherit;
   text-decoration: none;
 }
@@ -393,8 +351,8 @@ const tiles = computed<Tile[]>(() => [
   display: grid;
   flex: none;
   place-items: center;
-  width: 34px;
-  height: 34px;
+  width: 36px;
+  height: 36px;
   border-radius: 10px;
   background: var(--ui-fill);
   color: var(--ui-muted);
@@ -437,6 +395,10 @@ const tiles = computed<Tile[]>(() => [
   white-space: nowrap;
 }
 
+.ov-sub.bad {
+  color: var(--ui-red-ink);
+}
+
 .ov-state {
   flex: none;
   font: 600 15px var(--ui-font-display);
@@ -459,28 +421,17 @@ const tiles = computed<Tile[]>(() => [
   color: var(--ui-muted);
 }
 
-@media (max-width: 1024px) {
-  .ov-lead {
-    grid-template-columns: minmax(0, 1fr);
-    padding: 22px 24px;
-  }
-
-  .ov-list {
-    padding-left: 0;
-  }
-
-  .ov-list::before {
-    display: none;
-  }
-}
-
 @media (max-width: 768px) {
-  .ov-lead {
-    padding: 20px;
+  .ov-strip {
+    padding: 16px 18px;
   }
 
   .ov-big {
-    font-size: 32px;
+    font-size: 21px;
+  }
+
+  .ov-list {
+    padding: 0 18px;
   }
 
   .ov-sub {

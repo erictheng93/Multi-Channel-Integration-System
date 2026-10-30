@@ -67,11 +67,17 @@
       <SettingsRow
         label="介面語言"
         hint="目前僅支援繁體中文"
+        for-id="language"
       >
-        <span
+        <select
           id="language"
-          class="ro-value"
-        >繁體中文</span>
+          class="ui-select"
+          disabled
+        >
+          <option value="zh-TW">
+            繁體中文
+          </option>
+        </select>
       </SettingsRow>
     </SettingsGroup>
   </form>
@@ -158,23 +164,19 @@ function handleSave() {
 <style scoped>
 .general-form {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 20px 16px;
+  gap: 20px;
   align-items: start;
+  min-width: 0;
 }
 
-/* read-only value: plain text, so it never reads as a disabled field */
-.ro-value {
-  display: block;
-  padding: 0 4px;
-  font-size: 15px;
-  font-weight: 500;
-  color: var(--ui-ink);
+/* fields sit on the soft fill; the 1px boundary stays (WCAG 1.4.11) */
+.general-form :deep(.ui-input),
+.general-form :deep(.ui-select) {
+  background-color: var(--ui-fill);
 }
 
-@media (max-width: 1024px) {
-  .general-form {
-    grid-template-columns: minmax(0, 1fr);
-  }
+.general-form :deep(.ui-select:disabled) {
+  color: var(--ui-muted);
+  cursor: not-allowed;
 }
 </style>

@@ -98,6 +98,9 @@ function onNext() {
     flex: 1;
     justify-content: center;
     min-height: 44px;
+    background: var(--ui-surface);
+    box-shadow: var(--ui-shadow-card);
+    color: var(--ui-ink);
   }
 }
 </style>

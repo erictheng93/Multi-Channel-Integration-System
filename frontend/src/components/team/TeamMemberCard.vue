@@ -73,7 +73,11 @@
         <b>{{ displayName }}<span
           v-if="isCurrentUser"
           class="you"
-        >你</span></b>
+        >你</span><span
+          v-if="phoneRole"
+          class="m-role"
+          :class="phoneRole.cls"
+        >{{ phoneRole.text }}</span></b>
         <span class="mail">{{ member.email || '無電子郵件' }}</span>
       </div>
     </div>
@@ -87,8 +91,11 @@
         <span
           v-for="t in visibleTeams"
           :key="t.teamId"
-          class="ui-tag"
-        >{{ t.teamName || `團隊 ${t.teamId}` }}<span class="tr-in"> · {{ teamRoleText(t.roleInTeam) }}</span></span>
+          class="tg"
+        ><span class="ui-tag">{{ t.teamName || `團隊 ${t.teamId}` }}</span><span
+          class="rl"
+          :class="`rl-${t.roleInTeam}`"
+        >{{ teamRoleText(t.roleInTeam) }}</span></span>
         <span
           v-if="hiddenTeamCount > 0"
           class="tr"
@@ -288,6 +295,14 @@ const MAX_TEAMS = 2
 const visibleTeams = computed(() => sortedTeams.value.slice(0, MAX_TEAMS))
 const hiddenTeamCount = computed(() => Math.max(0, sortedTeams.value.length - MAX_TEAMS))
 
+/** Phone shows one role pill beside the name: system admin first, then the highest team role (plain members get none) */
+const phoneRole = computed<{ text: string, cls: string } | null>(() => {
+  if (props.member.role === 'admin') { return { text: getRoleText(props.member.role), cls: 'rl-admin' } }
+  const roles = sortedTeams.value.map(t => t.roleInTeam)
+  const top = roles.includes('supervisor') ? 'supervisor' : roles.includes('lead') ? 'lead' : null
+  return top ? { text: teamRoleText(top), cls: `rl-${top}` } : null
+})
+
 const lastLogin = computed(() => formatLastLogin(props.member.lastLoginAt))
 const lastLoginTitle = computed(() =>
   props.member.lastLoginAt ? new Date(props.member.lastLoginAt).toLocaleString('zh-TW') : ''
@@ -443,9 +458,47 @@ const getRoleText = (role: string) => {
   gap: 6px 8px;
   min-width: 0;
 }
-.tr-in {
-  font-weight: 500;
+.tg {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+/* role ramp: admin blue, supervisor indigo, lead green, member plain text (colour follows rank, not decoration) */
+.rl {
+  font-size: 13px;
+  font-weight: 600;
   color: var(--ui-ink-2);
+}
+.rl-lead,
+.rl-supervisor,
+.rl-admin,
+.m-role {
+  padding: 2px 9px;
+  border-radius: 999px;
+  line-height: 1.4;
+}
+.rl-lead {
+  background: var(--ui-green-soft);
+  color: color-mix(in srgb, var(--ui-green-ink) 72%, var(--ui-pill-shade));
+}
+.rl-supervisor {
+  background: var(--ui-indigo-soft);
+  color: color-mix(in srgb, var(--ui-indigo-ink) 72%, var(--ui-pill-shade));
+}
+.rl-admin {
+  background: var(--ui-accent-soft);
+  color: color-mix(in srgb, var(--ui-accent) 72%, var(--ui-pill-shade));
+}
+.rl-member {
+  font-weight: 500;
+  color: var(--ui-muted);
+}
+.m-role {
+  display: none;
+  margin-left: 8px;
+  font-size: 12.5px;
+  font-weight: 600;
+  vertical-align: 1px;
 }
 .tr {
   font-size: 13px;
@@ -520,18 +573,39 @@ const getRoleText = (role: string) => {
   }
 }
 @media (max-width: 768px) {
+  /* Phone: two lines per member (name + rank pill, email), last login inline on the right */
   .member-row {
-    padding: 14px 16px;
+    flex-wrap: nowrap;
+    padding: 12px 16px;
+    column-gap: 10px;
   }
   .member-row + .member-row::before {
     left: 16px;
   }
-  .drag-handle {
+  .drag-handle,
+  .roles {
     display: none;
   }
-  /* Phone: chips and the last login share one line under the name */
+  .m-role {
+    display: inline-block;
+  }
+  .who {
+    flex: 1 1 0;
+  }
   .last {
+    order: 1;
+    margin-left: 0;
     font-size: 13px;
+    white-space: nowrap;
+  }
+  .macts {
+    order: 2;
+    margin-left: 0;
+  }
+  .more-btn {
+    width: 44px;
+    height: 44px;
+    margin-right: -10px;
   }
 }
 </style>

@@ -6,7 +6,10 @@
 
 <template>
   <div class="general">
-    <GeneralSettingsOverview />
+    <GeneralSettingsOverview
+      class="g-head"
+      part="head"
+    />
 
     <GeneralSettingsForm
       :settings="controller.settings.general"
@@ -15,29 +18,32 @@
       @update:settings="(data) => Object.assign(controller.settings.general, data)"
     />
 
-    <SettingsGroup
-      class="adv-group"
-      title="目前生效的進階參數"
-    >
-      <div class="adv-grid">
-        <dl class="adv-list">
-          <div
-            v-for="item in advancedRows"
-            :key="item.label"
-            class="adv-item"
+    <div class="g-side">
+      <SettingsGroup title="連線與備份">
+        <GeneralSettingsOverview part="list" />
+      </SettingsGroup>
+
+      <SettingsGroup title="目前生效的進階參數">
+        <div class="adv-grid">
+          <dl class="adv-list">
+            <div
+              v-for="item in advancedRows"
+              :key="item.label"
+              class="adv-item"
+            >
+              <dt>{{ item.label }}</dt>
+              <dd>{{ item.value }}</dd>
+            </div>
+          </dl>
+          <router-link
+            class="ui-link adv-edit"
+            to="/settings/advanced"
           >
-            <dt>{{ item.label }}</dt>
-            <dd>{{ item.value }}</dd>
-          </div>
-        </dl>
-        <router-link
-          class="ui-link adv-edit"
-          to="/settings/advanced"
-        >
-          調整進階設定
-        </router-link>
-      </div>
-    </SettingsGroup>
+            調整進階設定
+          </router-link>
+        </div>
+      </SettingsGroup>
+    </div>
   </div>
 </template>
 
@@ -66,25 +72,36 @@ const advancedRows = computed(() => {
 </script>
 
 <style scoped>
+/* bento: slim status line on top; the form (two stacked groups) beside the live status and parameters */
 .general {
+  display: grid;
+  grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+  gap: 20px;
+  align-items: start;
+  min-width: 0;
+}
+
+.g-head {
+  grid-column: 1 / -1;
+}
+
+.g-side {
   display: grid;
   gap: 20px;
   min-width: 0;
 }
 
-/* read-only values: label over value, no row chrome, so nothing here looks like a field */
+/* read-only values: label over value in a 2x2 grid, no row chrome, so nothing here looks like a field */
 .adv-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 12px 24px;
-  align-items: center;
-  padding: 16px 22px;
+  gap: 16px;
+  padding: 18px 22px;
 }
 
 .adv-list {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px 24px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px 24px;
   margin: 0;
 }
 
@@ -94,7 +111,7 @@ const advancedRows = computed(() => {
 }
 
 .adv-edit {
-  justify-self: end;
+  justify-self: start;
   font-size: 14px;
   font-weight: 600;
 }
@@ -105,20 +122,9 @@ const advancedRows = computed(() => {
   font-variant-numeric: tabular-nums;
 }
 
-
-
 @media (max-width: 1024px) {
-  .adv-grid {
+  .general {
     grid-template-columns: minmax(0, 1fr);
   }
-
-  .adv-list {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .adv-edit {
-    justify-self: start;
-  }
 }
-
 </style>

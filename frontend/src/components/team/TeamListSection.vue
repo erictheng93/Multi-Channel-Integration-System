@@ -15,7 +15,7 @@
       </div>
       <div class="section-end">
         <div
-          v-if="!loading && teams.length > 0"
+          v-if="!loading && teams.length >= SEARCH_MIN_TEAMS"
           class="search-bar"
         >
           <SearchIcon class="search-icon" />
@@ -41,7 +41,7 @@
           </span>
         </div>
         <SortDropdown
-          v-if="teams.length > 0"
+          v-if="teams.length >= SEARCH_MIN_TEAMS"
           :options="sortOptions"
           :current-field="sortState.field"
           :current-label="isCustomMode ? '自訂順序' : currentSortLabel"
@@ -116,6 +116,7 @@
             :team="team"
             :loading="loading"
             :preview-members="previewMembersFor(team.id)"
+            :open-count="openByTeam ? (openByTeam.get(team.id) ?? 0) : null"
             class="draggable-card"
             @toggle-status="(t) => emit('toggle-status', t)"
             @remove-team="(t) => emit('remove-team', t)"
@@ -163,6 +164,8 @@ interface Props {
   sortMode: SortMode
   /** All members, used to draw each team's avatar stack. */
   members?: TeamMember[]
+  /** Open conversations per team id; null until known */
+  openByTeam?: Map<number, number> | null
 }
 
 interface Emits {
@@ -177,11 +180,14 @@ interface Emits {
   (_e: 'custom-order-change', _ids: string[]): void
 }
 
-const props = withDefaults(defineProps<Props>(), { members: () => [] })
+const props = withDefaults(defineProps<Props>(), { members: () => [], openByTeam: null })
 
 const emit = defineEmits<Emits>()
 
 const PREVIEW_COUNT = 3
+
+/** Search and sort only earn their place once there are enough teams to look through */
+const SEARCH_MIN_TEAMS = 5
 
 function previewMembersFor(teamId: number): TeamMember[] {
   return props.members

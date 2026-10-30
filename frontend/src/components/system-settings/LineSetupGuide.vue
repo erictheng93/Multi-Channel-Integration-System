@@ -15,14 +15,45 @@
       <div class="url-box">
         <code
           class="url"
+          tabindex="0"
+          role="textbox"
+          aria-readonly="true"
+          aria-label="Webhook 網址"
           :title="webhookUrl"
         >{{ webhookUrl }}</code>
         <button
           type="button"
-          class="btn btn-secondary btn-sm"
+          class="btn btn-secondary btn-sm copy-btn"
+          :aria-label="copied ? '已複製' : '複製網址'"
           @click="copy"
         >
-          {{ copied ? '已複製' : '複製' }}
+          <svg
+            v-if="!copied"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          ><rect
+            x="9"
+            y="9"
+            width="11"
+            height="11"
+            rx="2.5"
+          /><path d="M5 15V6.5A2.5 2.5 0 0 1 7.5 4H15" /></svg>
+          <svg
+            v-else
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2.4"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          ><path d="M5 12.5 10 17.5 19 7" /></svg>
+          <span>{{ copied ? '已複製' : '複製' }}</span>
         </button>
       </div>
       <ol class="steps">
@@ -80,8 +111,8 @@ async function copy(): Promise<void> {
 .url-box {
   display: flex;
   gap: 8px;
-  align-items: flex-start;
-  padding: 8px 8px 8px 12px;
+  align-items: center;
+  padding: 8px 8px 8px 14px;
   border-radius: var(--ui-r-inner);
   background: var(--ui-fill);
 }
@@ -89,10 +120,44 @@ async function copy(): Promise<void> {
 .url {
   flex: 1;
   min-width: 0;
-  padding-top: 4px;
-  font: 12px / 1.5 var(--ui-font-mono);
-  color: var(--ui-ink-2);
-  overflow-wrap: anywhere;
+  padding: 6px 0;
+  overflow-x: auto;
+  font: 13px / 1.5 var(--ui-font-mono);
+  color: var(--ui-ink);
+  white-space: nowrap;
+  scrollbar-width: none;
+}
+
+.url::-webkit-scrollbar {
+  display: none;
+}
+
+.copy-btn {
+  display: inline-flex;
+  flex: none;
+  gap: 6px;
+  align-items: center;
+  min-height: 40px;
+}
+
+.copy-btn {
+  justify-content: center;
+  width: 40px;
+  padding: 0;
+}
+
+.copy-btn svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* icon only: the name stays for assistive tech (aria-label) */
+.copy-btn span {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
 }
 
 .steps {
@@ -114,14 +179,13 @@ async function copy(): Promise<void> {
 }
 
 @media (max-width: 768px) {
-  .url-box {
-    flex-direction: column;
-    align-items: stretch;
+  .copy-btn {
+    width: 44px;
+    min-height: 44px;
   }
 
-  .url-box .btn {
-    width: 100%;
-    min-height: 44px;
+  .url {
+    mask-image: linear-gradient(90deg, #000 calc(100% - 28px), transparent);
   }
 }
 
