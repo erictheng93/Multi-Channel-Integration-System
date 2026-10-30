@@ -38,10 +38,11 @@ defineProps<{
 <style scoped>
 .group-title {
   margin: 0;
-  padding: 0 8px 8px;
-  font-size: 13px;
+  padding: 0 6px 8px 16px;
+  font-size: 14px;
   font-weight: 600;
-  color: var(--ui-muted);
+  line-height: 20px;
+  color: var(--ui-ink-2);
 }
 
 /* 22px stack gap + 18px = 40px above a danger zone */
@@ -54,7 +55,7 @@ defineProps<{
 
 .group-note {
   margin: 0;
-  padding: 8px 8px 0;
+  padding: 8px 16px 0;
   font-size: 13px;
   color: var(--ui-muted);
 }
