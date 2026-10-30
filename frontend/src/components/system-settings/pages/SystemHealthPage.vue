@@ -16,16 +16,20 @@
         </div>
         <div
           class="hl-big"
-          :class="overallTone"
+          :class="mixed ? 'mixed' : overallTone"
           :aria-busy="(controller.processing.value && !controller.healthOverall.value) || undefined"
         >
           {{ heroValue ?? '—' }}
         </div>
+        <span
+          v-if="mixed"
+          class="ui-pill ui-pill-orange hl-badge"
+        >{{ counts.unchecked }} 項未檢查</span>
         <p class="hl-meaning">
           {{ heroSubtitle }}
         </p>
         <ul
-          v-if="rows.length > 0"
+          v-if="rows.length > 0 && !mixed"
           class="hero-counts"
           aria-label="服務狀態統計"
         >
@@ -162,14 +166,28 @@
               :class="pillClass(row.tone)"
             >{{ row.label }}</span>
           </li>
+          <li class="hnote">
+            <span
+              class="hnote-ico"
+              aria-hidden="true"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              ><circle
+                cx="12"
+                cy="12"
+                r="9"
+              /><path d="M12 11v5M12 8h.01" /></svg>
+            </span>
+            <p>LINE webhook 只在按「立即檢查」時測試；持續失敗請到 LINE Developers 對 Webhook URL 按「Verify」。</p>
+          </li>
         </ul>
       </div>
-      <p
-        v-if="rows.length > 0"
-        class="ui-group-foot"
-      >
-        LINE webhook 只在按「立即檢查」時測試；持續失敗請到 LINE Developers 對 Webhook URL 按「Verify」。
-      </p>
     </section>
   </div>
 </template>
@@ -310,6 +328,10 @@ const overallTone = computed<'ok' | 'warn' | 'bad' | 'unknown'>(() => {
   return overall ? toneOf(overall.status) : 'unknown'
 })
 
+/** Everything measured is fine but something was never checked: the headline must not read "all normal" */
+const mixed = computed(() =>
+  Boolean(controller.healthOverall.value) && counts.value.critical === 0 && counts.value.warning === 0 && counts.value.unchecked > 0)
+
 const heroValue = computed<string | null>(() => {
   if (!controller.healthOverall.value) {
     return null
@@ -319,6 +341,9 @@ const heroValue = computed<string | null>(() => {
   }
   if (counts.value.warning > 0) {
     return '降級'
+  }
+  if (mixed.value) {
+    return `${counts.value.healthy} 項正常`
   }
   return overallTone.value === 'ok' ? '正常' : null
 })
@@ -352,10 +377,13 @@ const heroSubtitle = computed(() => {
   const attention = rows.value.filter(row => row.tone === 'warn' || row.tone === 'bad')
   const unchecked = rows.value.filter(row => row.tone === 'unknown')
   const pending = unchecked.length > 0 ? `，${unchecked.map(row => row.name).join('、')} 尚未檢查` : ''
-  const summary = attention.length > 0
-    ? `${attention.map(row => row.name).join('、')} 需要注意。`
-    : `${counts.value.healthy} 項服務運作正常${pending}。`
-  return summary
+  if (attention.length > 0) {
+    return `${attention.map(row => row.name).join('、')} 需要注意。`
+  }
+  if (unchecked.length > 0) {
+    return `${unchecked.map(row => row.name).join('、')} 還沒有測試結果，按「立即檢查」補上。`
+  }
+  return `${counts.value.healthy} 項服務運作正常${pending}。`
 })
 
 function formatChecked(iso: string): string {
@@ -431,6 +459,15 @@ onMounted(() => {
 
 .hl-big.bad {
   color: var(--ui-red-ink);
+}
+
+.hl-big.mixed {
+  font-size: 44px;
+  color: var(--ui-ink);
+}
+
+.hl-badge {
+  margin-top: 8px;
 }
 
 .hl-big.unknown {
@@ -531,7 +568,7 @@ onMounted(() => {
 }
 
 .hero-counts .dot.u {
-  background: var(--ui-accent);
+  background: var(--ui-orange);
 }
 
 .hero-counts li.zero .dot {
@@ -577,8 +614,8 @@ onMounted(() => {
 .lat-bar {
   display: block;
   flex: none;
-  width: 160px;
-  height: 6px;
+  width: 240px;
+  height: 10px;
   overflow: hidden;
   border-radius: 999px;
   /* ruler: faint ticks at each quarter of the scale */
@@ -586,7 +623,7 @@ onMounted(() => {
     linear-gradient(90deg, transparent calc(25% - 0.5px), var(--ui-surface) calc(25% - 0.5px) calc(25% + 0.5px), transparent calc(25% + 0.5px)),
     linear-gradient(90deg, transparent calc(50% - 0.5px), var(--ui-surface) calc(50% - 0.5px) calc(50% + 0.5px), transparent calc(50% + 0.5px)),
     linear-gradient(90deg, transparent calc(75% - 0.5px), var(--ui-surface) calc(75% - 0.5px) calc(75% + 0.5px), transparent calc(75% + 0.5px)),
-    var(--ui-fill);
+    var(--ui-fill-strong);
 }
 
 .lat-bar:empty {
@@ -643,6 +680,37 @@ onMounted(() => {
   min-width: 62px;
 }
 
+.hnote {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  margin: 6px 12px 12px;
+  padding: 14px 16px;
+  background: var(--ui-fill);
+  border-radius: 14px;
+}
+
+.hnote p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--ui-ink-2);
+}
+
+.hnote-ico {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  color: var(--ui-muted);
+}
+
+.hnote-ico svg {
+  width: 18px;
+  height: 18px;
+}
+
 .hrow .ui-row-sub {
   white-space: normal;
 }
@@ -671,9 +739,26 @@ onMounted(() => {
     font-size: 24px;
   }
 
-  .lat-bar,
   .row-at {
     display: none;
+  }
+
+  /* the bar sits under the row text, aligned with it (the 30px tile and the gap come first) */
+  .lat-bar {
+    order: 9;
+    flex: 1 0 calc(100% - 44px);
+    width: auto;
+    height: 8px;
+    margin: -4px 0 0 44px;
+  }
+
+  .lat-bar:empty {
+    display: none;
+  }
+
+  .hnote {
+    margin: 6px 10px 10px;
+    padding: 12px 14px;
   }
 
   .lat-n {

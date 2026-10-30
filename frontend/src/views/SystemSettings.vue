@@ -167,6 +167,18 @@ onUnmounted(() => controller.cleanup())
   min-width: 0;
 }
 
+/* the check button is an action, not a banner: on the phone it keeps its natural width at the row end */
+@media (max-width: 768px) {
+  .system-settings :deep(.ui-page-actions) {
+    justify-content: flex-end;
+  }
+
+  .system-settings :deep(.ui-page-actions > .btn) {
+    flex: none;
+    width: auto;
+  }
+}
+
 @media (min-width: 769px) {
   .settings-actions {
     position: sticky;
