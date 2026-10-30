@@ -24,147 +24,257 @@
           </template>
         </UiPageHead>
 
-        <!-- 分頁籤：預設「處理中」，已結案的對話不佔據最顯眼的位置 -->
-        <div class="conv-stack">
-          <section class="ui-group filter-card">
-            <div class="filter-top">
-              <div
-                ref="scopeTabsEl"
-                class="ui-seg"
-                :class="{ 'is-overflowing': scopeTabsOverflow }"
-                role="tablist"
-                aria-label="對話分類"
-              >
-                <button
-                  v-for="tab in visibleTabs"
-                  :key="tab.value"
-                  type="button"
-                  role="tab"
-                  class="scope-tab"
-                  :class="{ 'is-on': scope === tab.value, 'is-stale': tab.value === 'stale' }"
-                  :aria-selected="scope === tab.value"
-                  :title="tab.value === 'stale' ? `已含在處理中：客戶來訊後超過 ${WAITING_WINDOW_DAYS} 天仍未回覆，不計入待回覆` : undefined"
-                  :data-testid="`scope-tab-${tab.value}`"
-                  @click="selectView(tab.value)"
+        <div class="conv-layout">
+          <!-- 分頁籤：預設「處理中」，已結案的對話不佔據最顯眼的位置 -->
+          <div class="conv-stack">
+            <section class="ui-group filter-card">
+              <div class="filter-top">
+                <div
+                  ref="scopeTabsEl"
+                  class="ui-seg"
+                  :class="{ 'is-overflowing': scopeTabsOverflow }"
+                  role="tablist"
+                  aria-label="對話分類"
                 >
-                  {{ tab.label }}
-                  <span
-                    v-if="tabCount(tab.value) !== null"
-                    class="ui-seg-n"
-                  >{{ tabCount(tab.value) }}</span>
-                </button>
-              </div>
-              <p
-                v-if="isSearching && scope !== 'stale'"
-                class="scope-hint"
-                role="status"
-              >
-                搜尋時會一併顯示已結案的對話
-              </p>
-            </div>
-            <ConversationFilters
-              :filters="filterComposable.filters.value"
-              :available-tags="availableTags"
-              :total-conversations="conversations.length"
-              :unread-count="0"
-              @update:filter="handleFilterUpdate"
-              @toggle:tag="filterComposable.toggleTagFilter"
-              @clear:tags="filterComposable.clearTagFilter"
-              @clear:all="filterComposable.clearAllFilters"
-            />
-          </section>
-
-          <div class="ui-group conv-group">
-            <!-- 逾期待回覆：說明結案是可逆的 -->
-            <p
-              v-if="scope === 'stale'"
-              class="stale-note"
-              role="note"
-              data-testid="stale-note"
-            >
-              這些對話的客戶已超過 {{ WAITING_WINDOW_DAYS }} 天沒有收到回覆，不計入待回覆。從未獲得回覆的排在最前面，其餘依等待時間由久到近。
-              按「選取」勾選後可批量結案；結案不會刪除任何內容，客戶下次來訊時會自動重新開啟同一個對話。
-            </p>
-
-            <!-- SSE 更新指示器 -->
-            <ConversationSyncIndicator :visible="isUpdating" />
-
-            <div class="conversations-content">
-              <div
-                v-if="loading && displayedConversations.length === 0"
-                class="loading-overlay"
-              >
-                <HamsterLoader message="載入對話列表中..." />
-              </div>
-              <div
-                v-else-if="loadError && displayedConversations.length === 0"
-                class="conversations-error"
-                role="alert"
-              >
-                <div class="conversations-error-content">
-                  <div class="conversations-error-title">
-                    無法載入對話列表
-                  </div>
-                  <div class="conversations-error-text">
-                    {{ loadError }}
-                  </div>
                   <button
+                    v-for="tab in visibleTabs"
+                    :key="tab.value"
                     type="button"
-                    class="btn btn-primary"
-                    :disabled="isUpdating"
-                    @click="refreshConversations"
+                    role="tab"
+                    class="scope-tab"
+                    :class="{ 'is-on': scope === tab.value, 'is-stale': tab.value === 'stale' }"
+                    :aria-selected="scope === tab.value"
+                    :title="tab.value === 'stale' ? `已含在處理中：客戶來訊後超過 ${WAITING_WINDOW_DAYS} 天仍未回覆，不計入待回覆` : undefined"
+                    :data-testid="`scope-tab-${tab.value}`"
+                    @click="selectView(tab.value)"
                   >
-                    重試
+                    {{ tab.label }}
+                    <span
+                      v-if="tabCount(tab.value) !== null"
+                      class="ui-seg-n"
+                    >{{ tabCount(tab.value) }}</span>
                   </button>
                 </div>
-              </div>
-              <UiEmptyState
-                v-else-if="displayedConversations.length === 0"
-                class="no-data"
-                :title="emptyText"
-              >
-                <template #icon>
-                  <svg
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="1.8"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    aria-hidden="true"
-                  ><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20.5l1.4-4.6A8 8 0 1 1 21 12Z" /></svg>
-                </template>
-              </UiEmptyState>
-              <div
-                v-else
-                class="conversations-table-container"
-                :class="{ updating: isUpdating }"
-              >
-                <!-- Desktop Table View -->
-                <ConversationDesktopTable
-                  :conversations="displayedConversations"
-                  :selection-mode="selectionMode"
-                  :selected-ids="selectedIds"
-                  @select="goToConversation"
-                  @toggle-select="toggleSelect"
-                  @toggle-select-all="toggleSelectAll"
-                />
-
-                <!-- Mobile Card View -->
-                <ConversationMobileCards
-                  :conversations="displayedConversations"
-                  :selection-mode="selectionMode"
-                  :selected-ids="selectedIds"
-                  @select="goToConversation"
-                  @toggle-select="toggleSelect"
-                />
-
-                <p class="list-foot">
-                  {{ LEGEND_TEXT }}
+                <p
+                  v-if="isSearching && scope !== 'stale'"
+                  class="scope-hint"
+                  role="status"
+                >
+                  搜尋時會一併顯示已結案的對話
                 </p>
+              </div>
+              <ConversationFilters
+                :filters="filterComposable.filters.value"
+                :available-tags="availableTags"
+                :total-conversations="conversations.length"
+                :unread-count="0"
+                @update:filter="handleFilterUpdate"
+                @toggle:tag="filterComposable.toggleTagFilter"
+                @clear:tags="filterComposable.clearTagFilter"
+                @clear:all="filterComposable.clearAllFilters"
+              />
+            </section>
+
+            <div class="ui-group conv-group">
+              <!-- 逾期待回覆：說明結案是可逆的 -->
+              <p
+                v-if="scope === 'stale'"
+                class="stale-note"
+                role="note"
+                data-testid="stale-note"
+              >
+                這些對話的客戶已超過 {{ WAITING_WINDOW_DAYS }} 天沒有收到回覆，不計入待回覆。從未獲得回覆的排在最前面，其餘依等待時間由久到近。
+                按「選取」勾選後可批量結案；結案不會刪除任何內容，客戶下次來訊時會自動重新開啟同一個對話。
+              </p>
+
+              <!-- SSE 更新指示器 -->
+              <ConversationSyncIndicator :visible="isUpdating" />
+
+              <div class="conversations-content">
+                <div
+                  v-if="loading && displayedConversations.length === 0"
+                  class="loading-overlay"
+                >
+                  <HamsterLoader message="載入對話列表中..." />
+                </div>
+                <div
+                  v-else-if="loadError && displayedConversations.length === 0"
+                  class="conversations-error"
+                  role="alert"
+                >
+                  <div class="conversations-error-content">
+                    <div class="conversations-error-title">
+                      無法載入對話列表
+                    </div>
+                    <div class="conversations-error-text">
+                      {{ loadError }}
+                    </div>
+                    <button
+                      type="button"
+                      class="btn btn-primary"
+                      :disabled="isUpdating"
+                      @click="refreshConversations"
+                    >
+                      重試
+                    </button>
+                  </div>
+                </div>
+                <UiEmptyState
+                  v-else-if="displayedConversations.length === 0"
+                  class="no-data"
+                  :title="emptyText"
+                >
+                  <template #icon>
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="1.8"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      aria-hidden="true"
+                    ><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20.5l1.4-4.6A8 8 0 1 1 21 12Z" /></svg>
+                  </template>
+                </UiEmptyState>
+                <div
+                  v-else
+                  class="conversations-table-container"
+                  :class="{ updating: isUpdating }"
+                >
+                  <!-- Desktop Table View -->
+                  <ConversationDesktopTable
+                    :conversations="displayedConversations"
+                    :selection-mode="selectionMode"
+                    :selected-ids="selectedIds"
+                    @select="goToConversation"
+                    @toggle-select="toggleSelect"
+                    @toggle-select-all="toggleSelectAll"
+                  />
+
+                  <!-- Mobile Card View -->
+                  <ConversationMobileCards
+                    :conversations="displayedConversations"
+                    :selection-mode="selectionMode"
+                    :selected-ids="selectedIds"
+                    @select="goToConversation"
+                    @toggle-select="toggleSelect"
+                  />
+
+                  <p class="list-foot">
+                    {{ LEGEND_TEXT }}
+                  </p>
+                </div>
               </div>
             </div>
           </div>
+
+          <!-- Rail (wide screens): the queue at a glance, and the team split as one-tap filters. Real counts. -->
+          <aside
+            v-if="counts"
+            class="conv-rail"
+            aria-label="佇列概況"
+          >
+            <section
+              class="ui-card rail-wait"
+              aria-labelledby="rail-wait-title"
+            >
+              <h2
+                id="rail-wait-title"
+                class="rail-label"
+              >
+                待回覆
+              </h2>
+              <p class="rail-num">
+                <span class="ui-num">{{ waitingTotal }}</span><small>件</small>
+              </p>
+              <p
+                v-if="waitingTop"
+                class="rail-meta"
+              >
+                最久等 <strong :class="{ 'is-hot': oldestWaitHot }">{{ oldestWaitText }}</strong> ・ {{ waitingTop.customerName }}
+              </p>
+              <p
+                v-else
+                class="rail-meta"
+              >
+                目前沒有等待回覆的客戶
+              </p>
+              <div class="rail-actions">
+                <button
+                  v-if="waitingTop"
+                  type="button"
+                  class="btn btn-primary btn-sm"
+                  @click="goToConversation(waitingTop.conversationId)"
+                >
+                  先處理最久的
+                </button>
+                <button
+                  v-if="staleCount > 0 && scope !== 'stale'"
+                  type="button"
+                  class="btn btn-secondary btn-sm"
+                  @click="selectView('stale')"
+                >
+                  逾期 {{ staleCount }} 件
+                </button>
+              </div>
+            </section>
+
+            <section
+              v-if="teamRows.length > 0"
+              aria-labelledby="rail-team-title"
+            >
+              <h2
+                id="rail-team-title"
+                class="ui-group-label"
+              >
+                處理中依團隊
+              </h2>
+              <div class="ui-group">
+                <button
+                  v-for="row in teamRows"
+                  :key="row.key"
+                  type="button"
+                  class="ui-row rail-row"
+                  :class="{ 'is-selected': filterComposable.filters.value.teamId === row.filterId }"
+                  :aria-pressed="filterComposable.filters.value.teamId === row.filterId"
+                  @click="toggleTeam(row.filterId)"
+                >
+                  <span class="ui-row-main rail-name">{{ row.name }}</span>
+                  <span class="rail-total">{{ row.open }}</span>
+                </button>
+              </div>
+            </section>
+  
+            <section aria-labelledby="rail-legend-title">
+              <h2
+                id="rail-legend-title"
+                class="ui-group-label"
+              >
+                列表怎麼看
+              </h2>
+              <dl class="ui-card rail-legend">
+                <div>
+                  <dt>
+                    <span
+                      class="legend-dot"
+                      aria-hidden="true"
+                    />未讀
+                  </dt>
+                  <dd>你尚未開啟的客戶來訊</dd>
+                </div>
+                <div>
+                  <dt><span class="ui-pill ui-pill-orange">待回覆</span></dt>
+                  <dd>近 7 天內，客戶來訊後尚無客服回覆</dd>
+                </div>
+                <div>
+                  <dt class="legend-free">
+                    免費回覆
+                  </dt>
+                  <dd>客戶來訊 50 秒內，用回覆 API 送出不佔推播額度</dd>
+                </div>
+              </dl>
+            </section>
+          </aside>
         </div>
 
         <!-- 批量操作列 -->
@@ -227,6 +337,7 @@ import { useToast } from '@/composables/useToast'
 import { useConfirmDialog } from '@/composables/useConfirmDialog'
 import { conversationApi } from '@/api/conversations'
 import { useUnreadStore } from '@/stores/unread'
+import { useAuthStore } from '@/stores/auth'
 import { formatWaitText } from '@/composables/dashboard/useDashboardOverview'
 import { LEGEND_TEXT } from '@/composables/conversation/useConversationRowMeta'
 import { WAITING_WINDOW_DAYS, type ConversationStats } from '@shared/api-contracts'
@@ -252,6 +363,7 @@ const counts = ref<ConversationStats | null>(null)
 const waitingTotal = ref(0)
 const waitingSince = ref<string | null>(null)
 const staleCount = ref(0)
+const waitingTop = ref<{ conversationId: string; customerName: string } | null>(null)
 const clock = ref(Date.now())
 let clockTimer: ReturnType<typeof setInterval> | null = null
 
@@ -263,6 +375,8 @@ async function loadCounts() {
       waitingTotal.value = waitingRes.data.total
       waitingSince.value = waitingRes.data.items[0]?.waitingSince ?? null
       staleCount.value = waitingRes.data.stale?.count ?? 0
+      const top = waitingRes.data.items[0]
+      waitingTop.value = top ? { conversationId: top.conversationId, customerName: top.customerName ?? '客戶' } : null
     }
   } catch (err) {
     console.warn('Failed to load conversation counts:', err)
@@ -271,6 +385,22 @@ async function loadCounts() {
 
 const oldestWaitText = computed(() =>
   waitingSince.value ? formatWaitText(Math.max(0, (clock.value - Date.parse(waitingSince.value)) / 1000)) : '')
+
+const oldestWaitHot = computed(() => waitingSince.value !== null && clock.value - Date.parse(waitingSince.value) >= 30 * 60 * 1000)
+
+// Rail: open conversations per team (a row filters the list; the unassigned pool filters teamId 0)
+const authStore = useAuthStore()
+const teamRows = computed(() => (counts.value?.byTeam ?? [])
+  .filter(t => t.open > 0)
+  .map(t => ({
+    key: String(t.teamId ?? 'none'),
+    filterId: t.teamId === null ? 0 : t.teamId,
+    name: t.teamId === null ? '未指派' : (authStore.currentAgent?.teams?.find(x => x.id === t.teamId)?.name ?? `團隊 ${t.teamId}`),
+    open: t.open
+  })))
+function toggleTeam(filterId: number) {
+  filterComposable.updateFilter('teamId', filterComposable.filters.value.teamId === filterId ? undefined : filterId)
+}
 
 // One line (<= 60 chars); the 未讀 / 待回覆 definitions live in the table header tooltip
 const subtitle = computed(() => {
@@ -622,6 +752,160 @@ onUnmounted(() => {
   position: relative;
 }
 
+/* List (left) + queue rail (right, wide screens only) */
+.conv-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 296px;
+  gap: 20px;
+  align-items: start;
+}
+
+.conv-rail {
+  display: grid;
+  gap: 20px;
+  min-width: 0;
+}
+
+.conv-rail .ui-group {
+  --row-inset: 18px;
+}
+
+.rail-wait {
+  display: grid;
+  gap: 6px;
+  padding: 20px 22px;
+}
+
+.rail-label {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ui-ink-2);
+}
+
+.rail-num {
+  margin: 0;
+  font: 600 48px / 1.05 var(--ui-font-display);
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+}
+
+.rail-num small {
+  margin-left: 4px;
+  font-size: 16px;
+  font-weight: 500;
+  letter-spacing: 0;
+  color: var(--ui-muted);
+}
+
+.rail-meta {
+  margin: 0;
+  font-size: 14px;
+  color: var(--ui-ink-2);
+}
+
+.rail-meta strong {
+  font-weight: 600;
+}
+
+.rail-meta strong.is-hot {
+  color: var(--ui-red-ink);
+}
+
+.rail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.rail-row {
+  width: 100%;
+  min-height: 48px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.rail-row:focus-visible {
+  outline: 2px solid var(--ui-accent);
+  outline-offset: -2px;
+}
+
+.rail-legend {
+  display: grid;
+  gap: 14px;
+  margin: 0;
+  padding: 18px 20px;
+}
+
+.rail-legend > div {
+  display: grid;
+  gap: 4px;
+}
+
+.rail-legend dt {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.rail-legend dd {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ui-muted);
+}
+
+.legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--section-hue);
+}
+
+.legend-free {
+  color: var(--ui-green-ink);
+}
+
+@media (min-width: 1025px) {
+  .conv-rail {
+    position: sticky;
+    top: calc(var(--ui-topbar-h) + 20px);
+  }
+
+  /* the rail's legend card replaces the footer line */
+  .list-foot {
+    display: none;
+  }
+}
+
+.rail-name {
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.rail-total {
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ui-ink-2);
+}
+
+@media (max-width: 1024px) {
+  .conv-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .conv-rail {
+    display: none;
+  }
+}
+
 /* One group holds the controls and the list: the filter block heads it, a hairline divides them */
 .conv-stack {
   display: flex;
@@ -804,13 +1088,20 @@ onUnmounted(() => {
     width: 100%;
   }
 
+  /* Label over count: four tabs share the row evenly, nothing is clipped */
   .filter-top > .ui-seg .scope-tab {
-    flex: 1 0 auto;
+    flex: 1 1 0;
+    flex-direction: column;
     justify-content: center;
-    gap: 3px;
+    gap: 0;
     min-width: 0;
-    padding-right: 2px;
-    padding-left: 2px;
+    padding: 4px 2px;
+    font-size: 13px;
+    line-height: 1.25;
+  }
+
+  .filter-top > .ui-seg .scope-tab .ui-seg-n {
+    margin-left: 0;
     font-size: 13px;
   }
 

@@ -107,11 +107,16 @@
                 title="這位客戶從未收到客服回覆"
               >從未回覆</span>
             </template>
-            <span
-              v-else-if="replyStateOf(conversation, now).state === 'waiting'"
-              class="ui-pill ui-pill-orange"
-              :title="WAITING_HINT"
-            >{{ replyStateOf(conversation, now).text }}</span>
+            <template v-else-if="replyStateOf(conversation, now).state === 'waiting'">
+              <span
+                class="ui-pill ui-pill-orange"
+                :title="WAITING_HINT"
+              >{{ replyStateOf(conversation, now).text }}</span>
+              <span
+                v-if="waitedText(conversation)"
+                class="waited"
+              >已等 {{ waitedText(conversation) }}</span>
+            </template>
             <span
               v-else
               class="state-text"
@@ -149,6 +154,7 @@
 <script setup lang="ts">
 import { computed, ref, toRef, watchEffect } from 'vue'
 import type { Conversation } from '@/types'
+import { formatWaitText } from '@/composables/dashboard/useDashboardOverview'
 import { convertEmojiForConversationList } from '@/utils/layered-emoji-processor'
 import {
   LEGEND_TEXT,
@@ -233,6 +239,12 @@ const sinceText = (conversation: Conversation): string => {
   return now.value - new Date(created).getTime() < 864e5 ? ' · 新對話' : ''
 }
 
+// How long the customer has been waiting (from the backend's awaitingSince marker)
+const waitedText = (conversation: Conversation): string => {
+  const since = conversation.awaitingSince ? Date.parse(conversation.awaitingSince) : NaN
+  return Number.isNaN(since) ? '' : formatWaitText(Math.max(0, (now.value - since) / 1000))
+}
+
 const getUpdatedAt = (conversation: Conversation) => {
   const legacyConversation = withLegacyFields(conversation)
   return conversation.updatedAt || legacyConversation.updated_at
@@ -252,7 +264,7 @@ const getLastMessageText = (conversation: Conversation) => {
 
 <style scoped>
 .desktop-table {
-  --conv-cols: minmax(200px, 0.9fr) minmax(0, 1.3fr) 136px 104px 96px;
+  --conv-cols: minmax(180px, 0.9fr) minmax(0, 1.3fr) 120px 96px 84px;
   display: block;
 }
 
@@ -501,6 +513,12 @@ const getLastMessageText = (conversation: Conversation) => {
   display: block;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.waited {
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ui-orange-ink);
 }
 
 .status-line .ui-pill-orange {
