@@ -4,27 +4,34 @@
   Where each credential lives is stated in the credential rows themselves. Static help, no invented status.
 -->
 <template>
-  <article class="ui-card guide-card">
-    <h2 class="guide-title">
+  <section class="guide">
+    <h2 class="ui-group-label">
       Webhook 網址
     </h2>
-    <p class="guide-text">
-      在 LINE Developers 的 Messaging API 設定中，把這個網址填入 Webhook URL 並開啟「Use webhook」。
-    </p>
-    <div class="url-box">
-      <code
-        class="url"
-        :title="webhookUrl"
-      >{{ webhookUrl }}</code>
-      <button
-        type="button"
-        class="btn btn-secondary btn-sm"
-        @click="copy"
-      >
-        {{ copied ? '已複製' : '複製' }}
-      </button>
-    </div>
-  </article>
+    <article class="ui-card guide-card">
+      <p class="guide-text">
+        LINE 把訊息送到這個網址。到 LINE Developers 的 Messaging API 分頁照三步設定：
+      </p>
+      <div class="url-box">
+        <code
+          class="url"
+          :title="webhookUrl"
+        >{{ webhookUrl }}</code>
+        <button
+          type="button"
+          class="btn btn-secondary btn-sm"
+          @click="copy"
+        >
+          {{ copied ? '已複製' : '複製' }}
+        </button>
+      </div>
+      <ol class="steps">
+        <li>複製上方網址</li>
+        <li>貼到 Webhook URL，按「Verify」確認可連線</li>
+        <li>開啟「Use webhook」</li>
+      </ol>
+    </article>
+  </section>
 </template>
 
 <script setup lang="ts">
@@ -79,5 +86,36 @@ async function copy(): Promise<void> {
   font: 12.5px / 1.5 var(--ui-font-mono);
   color: var(--ui-ink-2);
   overflow-wrap: anywhere;
+}
+
+.steps {
+  display: grid;
+  gap: 8px;
+  margin: 16px 0 0;
+  padding: 0;
+  font-size: 14px;
+  color: var(--ui-ink-2);
+  list-style: none;
+  counter-reset: step;
+}
+
+.steps li {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  counter-increment: step;
+}
+
+.steps li::before {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--ui-accent-soft);
+  font: 600 13px var(--ui-font-display);
+  color: var(--ui-accent-ink, var(--ui-accent));
+  content: counter(step);
 }
 </style>

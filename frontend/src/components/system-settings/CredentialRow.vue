@@ -8,6 +8,7 @@
 
 <template>
   <SettingsRow
+    :class="{ 'is-masked': showMasked }"
     :label="label"
     :hint="hint"
     :for-id="showMasked ? undefined : inputId"
@@ -33,7 +34,6 @@
     </template>
     <template v-if="showMasked">
       <div class="cred-state">
-        <span class="ui-pill ui-pill-green ui-pill-dot">已設定</span>
         <code class="cred-last4">{{ maskedText }}</code>
       </div>
       <button
@@ -143,7 +143,7 @@ function cancelReplace() {
   height: 18px;
 }
 
-/* the stored value: a state pill and the last four characters, pushed against the replace button */
+/* the stored value: the last four characters (the leading tile is green once set), pushed against the replace button */
 .cred-state {
   display: flex;
   flex: 1;
@@ -154,11 +154,29 @@ function cancelReplace() {
 }
 
 .cred-last4 {
-  font: 13px var(--ui-font-mono);
-  letter-spacing: 0.06em;
-  color: var(--ui-ink-2);
+  font: 500 15px var(--ui-font-mono);
+  letter-spacing: 0.08em;
+  color: var(--ui-ink);
 }
 
+
+/* phone: the stored value and 更換 stay on the label's line instead of wrapping under it */
+@media (max-width: 768px) {
+  .is-masked.srow {
+    flex-direction: row;
+    gap: 12px;
+    align-items: center;
+  }
+
+  .is-masked :deep(.srow-c) {
+    flex: none;
+    width: auto;
+  }
+
+  .cred-state {
+    flex: none;
+  }
+}
 
 .mono {
   font-family: var(--ui-font-mono);
