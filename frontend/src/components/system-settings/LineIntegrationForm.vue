@@ -11,7 +11,10 @@
     class="integration-form"
     @submit.prevent="handleSave"
   >
-    <SettingsGroup title="Messaging API 憑證">
+    <h2 class="ui-group-label">
+      Messaging API 憑證
+    </h2>
+    <div class="ui-group">
       <CredentialRow
         v-for="field in FIELDS"
         :key="field.key"
@@ -26,10 +29,10 @@
         :icon="field.icon"
         :disabled="saving || testing"
       />
-      <template #note>
-        更換憑證後請按「測試連線」確認新憑證可用，再儲存變更。
-      </template>
-    </SettingsGroup>
+    </div>
+    <p class="ui-group-foot">
+      更換憑證後請按「測試連線」確認新憑證可用，再儲存變更。
+    </p>
   </form>
 </template>
 
@@ -38,7 +41,6 @@ import { reactive, watch } from 'vue'
 import type { MaskedCredential } from '@shared/api-contracts/system'
 import type { LineIntegration } from '@/types/system-settings'
 import CredentialRow from './CredentialRow.vue'
-import SettingsGroup from './SettingsGroup.vue'
 import { SETTINGS_FORM_ID } from './settings-pages'
 
 interface Props {
@@ -95,7 +97,6 @@ function handleSave() {
 
 <style scoped>
 .integration-form {
-  display: grid;
-  gap: 22px;
+  min-width: 0;
 }
 </style>
