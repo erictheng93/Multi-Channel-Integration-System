@@ -9,7 +9,7 @@
           依目前設定，必填項目填完即可產生
         </p>
       </div>
-      <div class="lead-ring">
+      <div class="lead-gauge">
         <ServiceRings
           summary="報表必填項目"
           :rings="[{ label: '必填項目', value: requiredDone, total: REQUIRED_TOTAL, of: '項', hue: 'var(--section-hue)' }]"
@@ -220,7 +220,7 @@ const formatDate = (dateString: string): string => {
   padding: 0 24px 12px;
 }
 
-.lead-ring {
+.lead-gauge {
   padding: 0 24px 16px;
 }
 

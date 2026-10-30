@@ -21,6 +21,11 @@
         &times;
       </button>
     </div>
+    <span
+      v-if="isSearching"
+      class="count search-stats"
+    >找到 {{ filteredCount }} / {{ totalCount }}</span>
+
     <div class="toolbar-actions">
       <!-- Bulk actions (shown when tags are selected) -->
       <div
@@ -124,6 +129,12 @@ function handleClear() {
   line-height: 1;
   cursor: pointer;
   transform: translateY(-50%);
+}
+
+.count {
+  font-size: 13px;
+  color: var(--ui-muted);
+  font-variant-numeric: tabular-nums;
 }
 
 .toolbar-actions:empty {
