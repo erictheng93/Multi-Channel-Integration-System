@@ -784,12 +784,12 @@ watch(
   display: grid;
   flex: none;
   place-items: center;
-  width: 92px;
-  height: 92px;
+  width: 104px;
+  height: 104px;
   border-radius: 50%;
   background: linear-gradient(160deg, #5aa8ff, #1d6fe0);
   color: #fff;
-  font: 600 36px var(--ui-font-display);
+  font: 600 42px var(--ui-font-display);
 }
 
 .identity-text {
@@ -800,7 +800,7 @@ watch(
 
 .identity-name {
   overflow: hidden;
-  font: 700 28px / 1.15 var(--ui-font-display);
+  font: 700 30px / 1.15 var(--ui-font-display);
   letter-spacing: -0.03em;
   text-overflow: ellipsis;
   white-space: nowrap;
