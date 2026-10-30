@@ -65,21 +65,6 @@
             </div>
           </div>
 
-          <ul class="brand-facts">
-            <li>
-              <b>一個收件匣</b>
-              <span>LINE 與 Messenger 的對話合併在同一個畫面</span>
-            </li>
-            <li>
-              <b>等最久的先處理</b>
-              <span>待回覆依等待時間排序，不漏接任何客戶</span>
-            </li>
-            <li>
-              <b>團隊分流</b>
-              <span>對話依團隊指派，即時同步給所有在線客服</span>
-            </li>
-          </ul>
-
           <div class="brand-foot">
             Daiwan Abrasives Corp
           </div>
@@ -101,9 +86,6 @@
               <svg viewBox="0 0 24 24"><path d="M12 3C6.5 3 2 6.6 2 11c0 2.5 1.4 4.7 3.7 6.2L5 21l4.1-2.3c.9.2 1.9.3 2.9.3 5.5 0 10-3.6 10-8s-4.5-8-10-8Z" /></svg>
             </div>
             <b>全通路客服整合平台</b>
-            <p class="m-sub">
-              LINE 與 Messenger 的<span class="nw">客戶對話</span>，集中在同一個工作台。
-            </p>
           </div>
 
           <div class="auth">
@@ -152,7 +134,6 @@
                     class="ui-input"
                     :type="showPassword ? 'text' : 'password'"
                     autocomplete="current-password"
-                    placeholder="輸入你的密碼"
                     required
                     :disabled="loading"
                     :aria-invalid="!!passwordError"
@@ -231,10 +212,6 @@
                 </svg>
               </button>
 
-              <p class="help-line">
-                登入遇到問題？請聯絡你的管理員重設密碼。
-              </p>
-
               <div
                 v-if="isDev && $route.query.debug === '1'"
                 class="debug-info"
@@ -245,11 +222,7 @@
           </div>
 
           <div class="m-foot">
-            <div class="m-channels">
-              <span class="ui-chip"><span class="ui-ch ui-ch-line"><svg viewBox="0 0 24 24"><path d="M12 3C6.5 3 2 6.6 2 11c0 2.5 1.4 4.7 3.7 6.2L5 21l4.1-2.3c.9.2 1.9.3 2.9.3 5.5 0 10-3.6 10-8s-4.5-8-10-8Z" /></svg></span>LINE 官方帳號</span>
-              <span class="ui-chip"><span class="ui-ch ui-ch-fb"><svg viewBox="0 0 24 24"><path d="M12 3C6.5 3 2 6.6 2 11c0 2.5 1.4 4.7 3.7 6.2L5 21l4.1-2.3c.9.2 1.9.3 2.9.3 5.5 0 10-3.6 10-8s-4.5-8-10-8Z" /></svg></span>Messenger</span>
-            </div>
-            <span>Daiwan Abrasives Corp</span>
+            Daiwan Abrasives Corp
           </div>
         </section>
       </div>
@@ -483,23 +456,12 @@ const handleLogin = async (event?: Event) => {
   position: relative;
   display: flex;
   flex-direction: column;
+  justify-content: space-between;
   margin: 16px 0 16px 16px;
   padding: 44px 56px 40px;
   overflow: hidden;
   border-radius: 32px;
-  /* Deep brand blue: white type on it has real figure/ground, and the disc rim reads as light */
-  background: linear-gradient(155deg, #0a4a9e 0%, #0066cc 58%, #1c7ee0 100%);
-  color: #fff;
-  --ui-disc-a: #fff;
-  --ui-disc-b: #9cc8ff;
-}
-
-.brand-side .brand-mark {
-  background: #fff;
-}
-
-.brand-side .brand-mark svg {
-  fill: var(--ui-accent);
+  background: var(--ui-accent-soft);
 }
 
 .brand-top {
@@ -533,7 +495,6 @@ const handleLogin = async (event?: Event) => {
   position: relative;
   z-index: 1;
   max-width: 460px;
-  margin-top: auto;
 }
 
 .brand-copy h1 {
@@ -544,9 +505,9 @@ const handleLogin = async (event?: Event) => {
 .brand-copy p {
   max-width: 34ch;
   margin-top: 14px;
-  font-size: 17px;
+  font-size: 16px;
   line-height: 1.6;
-  color: rgb(255 255 255 / 0.92);
+  color: var(--ui-ink-2);
 }
 
 .channels {
@@ -557,75 +518,35 @@ const handleLogin = async (event?: Event) => {
 }
 
 .channels .ui-chip {
-  height: 34px;
-  padding: 0 14px 0 8px;
-  background: #fff;
-  color: var(--ui-ink);
+  height: 32px;
+  padding: 0 12px 0 8px;
   cursor: default;
 }
 
-/* What the console does, in three lines: the proof that sits under the headline */
-.brand-facts {
-  position: relative;
-  z-index: 1;
-  display: grid;
-  gap: 0;
-  max-width: 460px;
-  margin: 36px 0 0;
-  padding: 0;
-  list-style: none;
-}
-
-.brand-facts li {
-  display: grid;
-  gap: 2px;
-  padding: 14px 0;
-  box-shadow: inset 0 0.5px 0 rgb(255 255 255 / 0.35);
-}
-
-.brand-facts b {
-  font: 700 17px / 1.3 var(--ui-font-display);
-}
-
-.brand-facts span {
-  font-size: 15px;
-  color: rgb(255 255 255 / 0.92);
-}
-
 .brand-foot {
-  margin-top: auto;
   position: relative;
   z-index: 1;
   font-size: var(--ui-t-cap);
   font-weight: 500;
-  color: rgb(255 255 255 / 0.95);
+  color: var(--ui-ink-2);
 }
 
 /* The hero disc sits in the panel's lower right and runs off its outer edge on purpose
    (the panel clips it); a mask fades it before it reaches the copy. */
 .zone {
   position: absolute;
-  top: 50%;
-  right: -300px;
-  width: 860px;
-  height: 860px;
-  transform: translateY(-46%);
+  right: -240px;
+  bottom: -200px;
+  width: 760px;
+  height: 760px;
   pointer-events: none;
   -webkit-mask-image: linear-gradient(to left, #000 0%, #000 55%, transparent 92%);
   mask-image: linear-gradient(to left, #000 0%, #000 55%, transparent 92%);
 }
 
 .wheel {
-  --ui-disc-weight: 1.9;
-
   width: 100%;
   height: 100%;
-}
-
-/* On the blue panel the rim is light */
-.brand-side .wheel {
-  --ui-disc-a: #fff;
-  --ui-disc-b: #bcd9ff;
 }
 
 /* Dark: the rim turns white for contrast on the black canvas */
@@ -642,80 +563,17 @@ const handleLogin = async (event?: Event) => {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  width: min(580px, 100%);
+  width: min(480px, 100%);
   margin: 0 auto;
   padding: 40px 24px;
 }
 
 .auth {
   width: 100%;
-  padding: 48px 44px 42px;
+  padding: 40px 36px 34px;
   border-radius: var(--ui-r-lead);
   background: var(--ui-surface);
   box-shadow: var(--ui-shadow-raised);
-}
-
-/* Wide screens: the whole right column is the white sheet, so the form is part of the page rather than a card adrift on grey */
-@media (min-width: 1025px) {
-  .login-page {
-    background: var(--ui-surface);
-  }
-
-  .auth {
-    padding: 0;
-    border-radius: 0;
-    background: transparent;
-    box-shadow: none;
-  }
-
-  .login-page .auth h2 {
-    font-size: 44px;
-  }
-
-  .login-page .auth .ui-input {
-    height: 54px;
-  }
-
-  .login-page .auth .submit-btn {
-    height: 54px;
-    font-size: 16px;
-  }
-
-  .login-page .lede {
-    font-size: 16px;
-  }
-
-  /* the theme switch lines up with the brand row, the credit with the panel footer */
-  .theme-btn {
-    top: 38px;
-    right: 40px;
-  }
-
-  .form-side {
-    width: min(560px, 100%);
-    padding: 40px 24px 56px;
-  }
-
-  .auth {
-    margin: auto 0;
-  }
-
-  .m-foot {
-    display: flex;
-    justify-content: flex-start;
-    font-size: var(--ui-t-cap);
-    font-weight: 500;
-    color: var(--ui-ink-2);
-  }
-
-  .m-channels {
-    display: none;
-  }
-
-  /* white fields on the white sheet: the 1px boundary does the separating, no grey slab inside it */
-  .login-page .auth .ui-input {
-    background: var(--ui-surface);
-  }
 }
 
 .auth h2 {
@@ -747,9 +605,9 @@ const handleLogin = async (event?: Event) => {
 }
 
 .auth .ui-input {
-  height: 50px;
+  height: 46px;
   border-radius: 14px;
-  font-size: 16px;
+  font-size: 15px;
 }
 
 .pw {
@@ -843,23 +701,13 @@ const handleLogin = async (event?: Event) => {
   opacity: 0.75;
 }
 
-.help-line {
-  margin: 4px 0 0;
-  font-size: 14px;
-  color: var(--ui-ink-2);
-  text-align: center;
-}
-
-.nw {
-  white-space: nowrap;
-}
-
 .debug-info {
   font-size: 13px;
   color: var(--ui-muted);
 }
 
-.m-brand {
+.m-brand,
+.m-foot {
   display: none;
 }
 
@@ -873,7 +721,7 @@ const handleLogin = async (event?: Event) => {
 .m-disc {
   position: absolute;
   left: 50%;
-  top: 54px;
+  top: 46px;
   z-index: -1;
   margin: -180px 0 0 -180px;
   opacity: 0.85;
@@ -911,48 +759,30 @@ const handleLogin = async (event?: Event) => {
   }
 
   .m-brand .brand-mark {
-    width: 60px;
-    height: 60px;
+    width: 44px;
+    height: 44px;
     margin: 0 auto 28px;
-    border-radius: 18px;
+    border-radius: 14px;
   }
 
   .m-brand .brand-mark svg {
-    width: 32px;
-    height: 32px;
+    width: 24px;
+    height: 24px;
   }
 
   .m-brand b {
     display: block;
-    font: 700 26px/1.2 var(--ui-font-display);
-    letter-spacing: -0.03em;
-  }
-
-  .m-sub {
-    max-width: 30ch;
-    margin: 8px auto 0;
-    text-wrap: balance;
-    font-size: 15px;
-    line-height: 1.5;
-    color: var(--ui-ink-2);
+    font: 700 20px/1.2 var(--ui-font-display);
+    letter-spacing: -0.02em;
   }
 
   .m-foot {
-    display: grid;
-    gap: 14px;
-    justify-items: center;
-    margin-top: auto;
-    padding-top: 28px;
+    display: flex;
+    justify-content: center;
+    margin-top: 24px;
     font-size: var(--ui-t-cap);
     font-weight: 500;
-    color: var(--ui-ink-2);
-  }
-
-  .m-channels {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    justify-content: center;
+    color: var(--ui-muted);
   }
 
   .theme-btn {
