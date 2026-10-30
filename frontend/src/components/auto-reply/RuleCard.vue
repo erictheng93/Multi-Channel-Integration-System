@@ -62,9 +62,8 @@
           </div>
           <!-- phone only: priority joins the meta line so the row keeps one trailing control -->
           <div class="rule-card__prio-line">
-            <span class="meta-pill">優先 {{ rule.priority }}</span>
-            <span class="meta-pill">{{ rule.conditions.length }} 條件</span>
-            <span class="meta-pill">{{ rule.actions.length }} 動作</span>
+            <span class="rule-card__prio-when">{{ conditionSummary || (rule.conditions.length ? `${rule.conditions.length} 條件` : '不需條件') }}</span>
+            <span class="rule-card__prio-n">優先 {{ rule.priority }}</span>
           </div>
         </div>
       </div>
@@ -75,11 +74,8 @@
           class="rule-card__meta"
           title="優先序：數字越小越先比對"
         >
-          <span class="meta-pill">優先 {{ rule.priority }}</span>
-          <span class="meta-pill">{{ rule.conditions.length }} 條件</span>
-          <span class="meta-pill">{{ rule.actions.length }} 動作</span>
+          {{ metaText }}
         </span>
-        <span class="rule-card__edit">編輯</span>
 
         <!-- Expand arrow -->
         <span
@@ -178,6 +174,9 @@ const replyOutcome = computed(() => {
   }
   return ACTION_LABELS[first.actionType] ?? ''
 })
+
+// Priority and size as one quiet line; the lower the number, the earlier the rule is tried
+const metaText = computed(() => `優先 ${props.rule.priority} · ${props.rule.conditions.length} 條件 · ${props.rule.actions.length} 動作`)
 
 const triggerTypeLabel = computed(() => {
   return TRIGGER_TYPE_LABELS[props.rule.triggerType] || props.rule.triggerType
@@ -379,28 +378,12 @@ const triggerTypeLabel = computed(() => {
   display: none;
 }
 
-/* Meta: three small pills, ink on a neutral fill (AA), never grey run-on text */
+/* Meta: one muted line, no pills and no separate edit link: the row itself is the edit affordance */
 .rule-card__meta {
-  display: inline-flex;
-  gap: 6px;
-  white-space: nowrap;
-}
-
-.meta-pill {
-  padding: 0 9px;
-  border-radius: 999px;
-  background: var(--ui-fill);
   font-size: 13px;
-  font-weight: 500;
-  line-height: 24px;
-  color: var(--ui-ink-2);
+  color: var(--ui-muted);
   font-variant-numeric: tabular-nums;
-}
-
-.rule-card__edit {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--ui-ink-2);
+  white-space: nowrap;
 }
 
 /* the rule type reads as a colour at the row's left edge; a disabled rule stays neutral */
@@ -447,64 +430,61 @@ const triggerTypeLabel = computed(() => {
 
 @media (max-width: 768px) {
   .rule-card__header {
+    align-items: flex-start;
     padding: 14px 16px;
   }
 
-  .rule-card__meta,
-  .rule-card__edit {
+  .rule-card__meta {
     display: none;
-  }
-
-  /* name, badges and the condition wrap instead of clipping; the chevron is the one trailing control */
-  .rule-card__header {
-    align-items: flex-start;
   }
 
   .rule-card__left {
     align-items: flex-start;
   }
 
-  .rule-card__title {
-    flex-wrap: wrap;
-  }
-
-  .rule-card__name {
-    overflow: visible;
-    white-space: normal;
-  }
-
-  .rule-card__when {
-    flex: 1 1 100%;
-  }
-
   .rule-card__right {
     margin-top: 3px;
   }
 
-  .rule-card__prio-line {
-    display: flex;
-    gap: 6px;
-    margin-top: 8px;
-  }
-
-  /* the full reply stays readable on a phone: no clamp */
-  .rule-card__reply {
-    display: block;
-    -webkit-line-clamp: unset;
-  }
-
-  /* condition on the first line, the reply outcome under it */
+  /* two quiet lines under the name: condition then reply on one line, and the size line */
   .rule-card__summary {
-    flex-wrap: wrap;
-    gap: 0 6px;
+    flex-wrap: nowrap;
+    gap: 6px;
   }
 
+  /* the reply is the line; the condition moves to the meta line below it */
+  .rule-card__when,
   .rule-card__then {
     display: none;
   }
 
   .rule-card__reply {
-    flex: 1 1 100%;
+    display: block;
+    flex: 1 1 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    -webkit-line-clamp: unset;
+  }
+
+  .rule-card__prio-line {
+    display: flex;
+    gap: 10px;
+    margin-top: 2px;
+    font-size: 13px;
+    color: var(--ui-muted);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .rule-card__prio-when {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .rule-card__prio-n {
+    flex: none;
   }
 
   .rule-card__body {
