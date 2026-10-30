@@ -15,10 +15,10 @@
       </div>
       <div
         class="ui-card-end legend"
-        aria-label="團隊角色由低到高：成員、組長、主管"
+        aria-label="團隊內角色，權限由低到高：成員、組長、主管"
       >
-        <span class="lg-k">團隊角色</span>
-        <span class="lg-c">成員</span>
+        <span class="lg-k">團隊內角色・權限由低到高</span>
+        <span class="lg-c lg-member">成員</span>
         <span
           class="lg-a"
           aria-hidden="true"
@@ -458,7 +458,7 @@ watch(
 )
 
 // Phone: the list opens with the first few members; the rest is one tap away (drag is off on phones)
-const PHONE_ROWS = 5
+const PHONE_ROWS = 12
 const isPhone = ref(false)
 const phoneExpanded = ref(false)
 let phoneQuery: ReturnType<typeof window.matchMedia> | null = null
@@ -556,11 +556,17 @@ function handleSelectPage() {
   color: var(--ui-ink-2);
 }
 .lg-c {
+  flex: none;
   padding: 2px 9px;
+  white-space: nowrap;
   border-radius: 999px;
   font-size: 13px;
   font-weight: 600;
   color: var(--ui-muted);
+}
+.lg-member {
+  background: var(--ui-fill);
+  color: var(--ui-ink-2);
 }
 .lg-lead {
   background: var(--ui-green-soft);
@@ -761,7 +767,12 @@ function handleSelectPage() {
 @media (max-width: 768px) {
   .legend {
     flex-basis: 100%;
+    flex-wrap: wrap;
     margin-left: 0;
+  }
+  .lg-k {
+    flex-basis: 100%;
+    margin-right: 0;
   }
   .tools {
     padding-right: 16px;

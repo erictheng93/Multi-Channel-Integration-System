@@ -79,6 +79,10 @@
           :class="phoneRole.cls"
         >{{ phoneRole.text }}</span></b>
         <span class="mail">{{ member.email || '無電子郵件' }}</span>
+        <span
+          class="m-last"
+          :title="lastLoginTitle"
+        ><template v-if="member.status !== 'active'">{{ getStatusText(member.status) }}・</template>最後登入 {{ lastLogin }}</span>
       </div>
     </div>
 
@@ -300,7 +304,9 @@ const phoneRole = computed<{ text: string, cls: string } | null>(() => {
   if (props.member.role === 'admin') { return { text: getRoleText(props.member.role), cls: 'rl-admin' } }
   const roles = sortedTeams.value.map(t => t.roleInTeam)
   const top = roles.includes('supervisor') ? 'supervisor' : roles.includes('lead') ? 'lead' : null
-  return top ? { text: teamRoleText(top), cls: `rl-${top}` } : null
+  if (top) { return { text: teamRoleText(top), cls: `rl-${top}` } }
+  // a plain member still gets a chip, so every row answers "what is this person's rank"
+  return sortedTeams.value.length > 0 ? { text: teamRoleText('member'), cls: 'rl-member' } : null
 })
 
 const lastLogin = computed(() => formatLastLogin(props.member.lastLoginAt))
@@ -490,8 +496,18 @@ const getRoleText = (role: string) => {
   color: color-mix(in srgb, var(--ui-accent) 72%, var(--ui-pill-shade));
 }
 .rl-member {
-  font-weight: 500;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: var(--ui-fill);
+  line-height: 1.4;
+  font-weight: 600;
+  color: var(--ui-ink-2);
+}
+.m-last {
+  display: none;
+  font-size: 13px;
   color: var(--ui-muted);
+  font-variant-numeric: tabular-nums;
 }
 .m-role {
   display: none;
@@ -583,11 +599,21 @@ const getRoleText = (role: string) => {
     left: 16px;
   }
   .drag-handle,
-  .roles {
+  .roles,
+  .last {
     display: none;
   }
   .m-role {
     display: inline-block;
+  }
+  /* the full address stays readable: login time moves under it instead of squeezing it */
+  .who .mail {
+    overflow: visible;
+    overflow-wrap: anywhere;
+    white-space: normal;
+  }
+  .m-last {
+    display: block;
   }
   .who {
     flex: 1 1 0;

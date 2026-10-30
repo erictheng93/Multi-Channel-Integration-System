@@ -116,6 +116,7 @@
             :team="team"
             :loading="loading"
             :preview-members="previewMembersFor(team.id)"
+            :leaders="leadersFor(team.id)"
             :open-count="openByTeam ? (openByTeam.get(team.id) ?? 0) : null"
             class="draggable-card"
             @toggle-status="(t) => emit('toggle-status', t)"
@@ -152,6 +153,7 @@ import TeamCard from '@/components/team/TeamCard.vue'
 import SortDropdown from '@/components/ui/SortDropdown.vue'
 import TeamsIcon from '@/components/icons/TeamsIcon.vue'
 import { SearchIcon } from '@/components/icons'
+import { teamRoleText } from '@/utils/team-tone'
 
 interface Props {
   teams: Team[]
@@ -193,6 +195,18 @@ function previewMembersFor(teamId: number): TeamMember[] {
   return props.members
     .filter(m => m.primaryTeamId === teamId || (m.teams ?? []).some(t => t.teamId === teamId))
     .slice(0, PREVIEW_COUNT)
+}
+
+/** Supervisors first, then leads: the people who run the team, by name */
+function leadersFor(teamId: number): { id: string, name: string, role: string }[] {
+  const out: { id: string, name: string, role: string, rank: number }[] = []
+  for (const m of props.members) {
+    const t = (m.teams ?? []).find(x => x.teamId === teamId)
+    if (t && (t.roleInTeam === 'supervisor' || t.roleInTeam === 'lead')) {
+      out.push({ id: m.id, name: m.name || m.loginId, role: teamRoleText(t.roleInTeam), rank: t.roleInTeam === 'supervisor' ? 0 : 1 })
+    }
+  }
+  return out.sort((a, b) => a.rank - b.rank).slice(0, 3).map(({ rank: _rank, ...rest }) => rest)
 }
 
 // Template ref for scroll-into-view on page change

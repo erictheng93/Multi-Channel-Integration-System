@@ -22,6 +22,15 @@
       >
         {{ team.description || '尚未填寫描述' }}
       </div>
+      <div
+        v-if="leaders.length > 0"
+        class="team-leaders"
+      >
+        <span
+          v-for="l in leaders"
+          :key="l.id"
+        ><small>{{ l.role }}</small> {{ l.name }}</span>
+      </div>
       <div class="team-meta">
         <span class="ui-pill">{{ team.memberCount || 0 }} 成員</span>
         <span
@@ -57,13 +66,16 @@
       class="team-acts"
       @click.stop
     >
-      <button
-        type="button"
-        class="btn btn-secondary btn-sm"
-        @click="showTeamDetails"
-      >
-        編輯團隊
-      </button>
+      <svg
+        class="go"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2.4"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        aria-hidden="true"
+      ><path d="m9 6 6 6-6 6" /></svg>
       <Dropdown
         placement="bottom-end"
         :disabled="loading"
@@ -168,8 +180,10 @@ import { createLogger } from '@/utils/logger'
       previewMembers?: TeamMember[]
       /** Open conversations of this team; null/undefined = unknown, nothing is drawn */
       openCount?: number | null
+      /** Who runs this team: supervisors and leads, highest rank first */
+      leaders?: { id: string, name: string, role: string }[]
     }>(),
-    { loading: false, previewMembers: () => [], openCount: null }
+    { loading: false, previewMembers: () => [], openCount: null, leaders: () => [] }
   )
   const emit = defineEmits<{
     'toggle-status': [team: Team]
@@ -506,6 +520,26 @@ import { createLogger } from '@/utils/logger'
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.team-leaders {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 16px;
+  margin-top: 4px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ui-ink-2);
+}
+.team-leaders small {
+  margin-right: 2px;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--ui-muted);
+}
+.go {
+  width: 16px;
+  height: 16px;
+  color: var(--ui-faint);
+}
 .team-meta {
   display: flex;
   flex-wrap: wrap;
@@ -589,7 +623,7 @@ import { createLogger } from '@/utils/logger'
     grid-area: avs;
     padding: 0;
   }
-  .team-acts .btn {
+  .team-acts .go {
     display: none;
   }
   .team-acts {
