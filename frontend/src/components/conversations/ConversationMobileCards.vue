@@ -28,7 +28,10 @@
           >
         </label>
 
-        <div class="avatar">
+        <div
+          class="avatar"
+          :class="`ui-av-${avatarToneOf(getCustomerName(conversation))}`"
+        >
           {{ initialOf(getCustomerName(conversation)) }}
           <span
             v-if="platformOf(conversation) === 'line' || platformOf(conversation) === 'facebook'"
@@ -108,6 +111,7 @@ import {
   WAITING_HINT,
   freeReplySeconds,
   initialOf,
+  avatarToneOf,
   isHotWait,
   STALE_HINT,
   replyStateOf,
@@ -237,7 +241,6 @@ const getLastMessageText = (conversation: Conversation) => {
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  background: linear-gradient(160deg, #b9b6f5, #6e6bd8);
   color: #fff;
   font: 600 15px var(--ui-font-display);
 }
@@ -356,16 +359,9 @@ const getLastMessageText = (conversation: Conversation) => {
   background: var(--ui-orange);
 }
 
-/* Unread: the same gutter dot as the desktop list */
-.conversation-card.has-unread::after {
-  position: absolute;
-  top: 24px;
-  left: 4px;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--section-hue);
-  content: '';
+/* Unread: the same faint wash as the desktop list */
+.conversation-card.has-unread {
+  background: color-mix(in srgb, var(--section-hue) 4%, var(--ui-surface));
 }
 
 .team-text:not(.unassigned) {

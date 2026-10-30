@@ -1106,14 +1106,29 @@
   .ui-seg > button[aria-selected='true'] {
     background: var(--ui-sel-bg);
     color: var(--ui-ink);
-    font-weight: 500;
+    font-weight: 700;
     box-shadow: var(--ui-shadow-pill);
+  }
+  .ui-seg > button.is-on .ui-seg-n,
+  .ui-seg > button[aria-pressed='true'] .ui-seg-n,
+  .ui-seg > button[aria-selected='true'] .ui-seg-n {
+    color: var(--section-ink, var(--ui-accent));
+    font-weight: 700;
   }
   .ui-seg .ui-seg-n {
     font-size: 13px;
     color: var(--ui-muted);
     font-variant-numeric: tabular-nums;
   }
+
+  /* Avatar tones: a stable colour per person (see avatarToneOf). All pass AA with white initials. */
+  .ui-av-0 { background: #5856d6; }
+  .ui-av-1 { background: #0e7490; }
+  .ui-av-2 { background: #a33b2c; }
+  .ui-av-3 { background: #b45309; }
+  .ui-av-4 { background: #b8326b; }
+  .ui-av-5 { background: #2563eb; }
+  .ui-av-6 { background: #5b6577; }
 
   /* Filter chip */
   .ui-chip {

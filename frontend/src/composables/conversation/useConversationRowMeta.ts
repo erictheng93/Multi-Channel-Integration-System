@@ -113,6 +113,13 @@ export function initialOf(name: string): string {
   return (name.trim().charAt(0) || '?').toUpperCase()
 }
 
+/** A stable avatar tone (0-6) per customer, so a name keeps its colour on every row and every page. */
+export function avatarToneOf(name: string): number {
+  let h = 0
+  for (const ch of name) { h = (h * 31 + ch.codePointAt(0)!) % 997 }
+  return h % 7
+}
+
 export function relativeTime(value: Date | number | string | undefined, nowMs: number): string {
   if (!value) { return '' }
   const t = new Date(value).getTime()
