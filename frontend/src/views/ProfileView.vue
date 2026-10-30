@@ -71,16 +71,33 @@
                   由管理員管理
                 </div>
                 <dl class="admin-list">
+                  <div class="admin-item">
+                    <dt class="admin-label">
+                      電子郵件
+                    </dt>
+                    <dd class="admin-value">
+                      {{ profile.email || '—' }}
+                    </dd>
+                  </div>
+                  <div class="admin-item">
+                    <dt class="admin-label">
+                      角色
+                    </dt>
+                    <dd class="admin-value">
+                      <span class="ui-pill ui-pill-blue">{{ roleLabel }}</span>
+                    </dd>
+                  </div>
                   <div
-                    v-for="item in adminItems"
-                    :key="item.label"
+                    v-for="(row, i) in teamRows"
+                    :key="row.id"
                     class="admin-item"
                   >
                     <dt class="admin-label">
-                      {{ item.label }}
+                      {{ i === 0 ? '團隊' : '' }}
                     </dt>
-                    <dd class="admin-value">
-                      {{ item.value }}
+                    <dd class="admin-value admin-team">
+                      <span class="team-name">{{ row.name }}</span>
+                      <span class="ui-pill">{{ row.role }}</span>
                     </dd>
                   </div>
                 </dl>
@@ -103,19 +120,15 @@
             <div class="ui-group">
               <div
                 class="ui-row"
-                :class="`device-${devicePerm.tone}`"
                 data-testid="device-notify"
               >
-                <span
-                  class="device-dot"
-                  aria-hidden="true"
-                />
                 <div class="ui-row-main row-label-strong">
-                  這台裝置
+                  這台裝置的桌面通知
                 </div>
-                <div class="ui-row-value">
-                  {{ devicePerm.label }}
-                </div>
+                <span
+                  class="ui-pill ui-pill-dot"
+                  :class="devicePerm.tone === 'on' ? 'ui-pill-green' : 'ui-pill-orange'"
+                >{{ devicePerm.label }}</span>
               </div>
               <RouterLink
                 class="ui-row is-nav row-link"
@@ -125,10 +138,10 @@
                   開啟通知設定
                 </div>
               </RouterLink>
+              <p class="notify-hint">
+                {{ devicePerm.hint }}
+              </p>
             </div>
-            <p class="ui-group-foot">
-              {{ devicePerm.hint }}
-            </p>
           </section>
         </div>
 
@@ -146,58 +159,61 @@
               基本資料
             </h2>
             <form
-              class="ui-group"
+              class="ui-group name-card"
               @submit.prevent="onSaveProfile"
             >
-              <div class="ui-row form-row">
+              <div class="form-row">
                 <label
                   class="row-label"
                   for="display-name"
                 >顯示名稱</label>
-                <div class="row-control">
-                  <input
-                    id="display-name"
-                    v-model.trim="profile.displayName"
-                    type="text"
-                    maxlength="50"
-                    class="ui-input"
-                    :class="{ 'is-invalid': profileErrors.displayName }"
-                    autocomplete="name"
-                    aria-required="true"
+                <div class="name-line">
+                  <div class="row-control">
+                    <input
+                      id="display-name"
+                      v-model.trim="profile.displayName"
+                      type="text"
+                      maxlength="50"
+                      class="ui-input"
+                      :class="{ 'is-invalid': profileErrors.displayName }"
+                      autocomplete="name"
+                      aria-required="true"
+                      :aria-describedby="profileErrors.displayName ? 'display-name-error' : 'display-name-hint'"
+                      :disabled="profileSaving"
+                    >
+                    <span
+                      v-if="profileErrors.displayName"
+                      id="display-name-error"
+                      class="form-error"
+                    >
+                      {{ profileErrors.displayName }}
+                    </span>
+                  </div>
+                  <button
+                    v-if="profileChanged"
+                    type="button"
+                    class="btn btn-ghost"
+                    :disabled="profileSaving"
+                    @click="resetProfile"
+                  >
+                    重設
+                  </button>
+                  <button
+                    type="submit"
+                    class="btn btn-primary"
                     :disabled="profileSaving"
                   >
-                  <span
-                    v-if="profileErrors.displayName"
-                    class="form-error"
-                  >
-                    {{ profileErrors.displayName }}
-                  </span>
+                    {{ profileSaving ? '儲存中…' : '儲存' }}
+                  </button>
                 </div>
-              </div>
-              <div
-                v-if="profileChanged || profileSaving"
-                class="ui-row form-actions"
-              >
-                <button
-                  type="button"
-                  class="btn btn-ghost"
-                  :disabled="profileSaving"
-                  @click="resetProfile"
+                <p
+                  id="display-name-hint"
+                  class="field-hint"
                 >
-                  重設
-                </button>
-                <button
-                  type="submit"
-                  class="btn btn-primary"
-                  :disabled="profileSaving"
-                >
-                  {{ profileSaving ? '儲存中…' : '儲存變更' }}
-                </button>
+                  會出現在你送出的訊息署名 · {{ profile.displayName.length }} / 50
+                </p>
               </div>
             </form>
-            <p class="ui-group-foot">
-              顯示名稱會出現在你送出的訊息署名 · {{ profile.displayName.length }} / 50
-            </p>
           </section>
 
           <!-- 安全性 -->
@@ -374,6 +390,37 @@
               修改後會自動登出，需用新密碼重新登入。
             </p>
           </section>
+
+          <!-- 登入階段 -->
+          <section
+            id="session"
+            class="o-session"
+            aria-labelledby="session-title"
+          >
+            <h2
+              id="session-title"
+              class="ui-group-label"
+            >
+              登入階段
+            </h2>
+            <div class="ui-group session-card">
+              <div class="session-text">
+                <div class="row-label-strong">
+                  這個瀏覽器
+                </div>
+                <div class="session-sub">
+                  {{ sessionLine }}
+                </div>
+              </div>
+              <button
+                type="button"
+                class="btn btn-secondary"
+                @click="onSignOut"
+              >
+                登出
+              </button>
+            </div>
+          </section>
         </div>
       </div>
     </div>
@@ -400,7 +447,7 @@ const logger = createLogger('ProfileView')
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
-const { showSuccess, showError } = useToast()
+const { showSuccess, showError, showInfo } = useToast()
 
 // ============== 基本資料 ==============
 // Presence = own websocket state; teams from /auth/me teams[]
@@ -410,13 +457,6 @@ const initial = computed(() => (profile.displayName.trim().charAt(0) || '?').toU
 // Avatar caption = presence only; the team lives in the one admin-managed summary line
 const identitySub = computed(() => connection.value.label)
 
-// Email, role and teams are admin-managed: one read-only line instead of three locked fields
-const adminItems = computed(() => [
-  { label: '電子郵件', value: profile.email || '—' },
-  { label: '角色', value: roleLabel.value },
-  ...teamRows.value.map((row, i) => ({ label: i === 0 ? '團隊' : '', value: `${row.name} ・ ${row.role}` })),
-])
-
 // One row per team with my role in it (admins without a team role show 管理員)
 const teamRows = computed(() =>
   teams.value.map((t) => {
@@ -425,16 +465,34 @@ const teamRows = computed(() =>
   }),
 )
 
+// Real session clock from the auth store (sessionExpiry)
+const sessionLine = computed(() => {
+  const exp = authStore.sessionExpiry
+  if (!exp) { return '登入狀態有效' }
+  const d = new Date(exp)
+  const pad = (n: number): string => String(n).padStart(2, '0')
+  return `登入有效至 ${d.getMonth() + 1}/${d.getDate()} ${pad(d.getHours())}:${pad(d.getMinutes())}`
+})
+
+async function onSignOut(): Promise<void> {
+  try {
+    await authStore.logout()
+  } catch (err) {
+    logger.warn('Sign out failed (continuing anyway)', { error: err })
+  }
+  router.push('/login')
+}
+
 // 這台裝置的桌面通知權限（瀏覽器 Notification.permission，只讀）
 const devicePerm = computed(() => {
   const perm = typeof Notification === 'undefined' ? 'unsupported' : Notification.permission
   const shared = '桌面通知只套用於這台裝置，其餘跟著你的帳號。'
-  if (perm === 'granted') { return { label: '桌面通知已開啟', tone: 'on', hint: shared } }
+  if (perm === 'granted') { return { label: '已開啟', tone: 'on', hint: shared } }
   if (perm === 'denied') {
-    return { label: '桌面通知已被瀏覽器封鎖', tone: 'off', hint: '到瀏覽器網址列左側的網站設定，把「通知」改為允許。' }
+    return { label: '被瀏覽器封鎖', tone: 'off', hint: '到瀏覽器網址列左側的網站設定，把「通知」改為允許。' }
   }
-  if (perm === 'unsupported') { return { label: '瀏覽器不支援桌面通知', tone: 'off', hint: shared } }
-  return { label: '桌面通知尚未開啟', tone: 'off', hint: shared }
+  if (perm === 'unsupported') { return { label: '瀏覽器不支援', tone: 'off', hint: shared } }
+  return { label: '尚未開啟', tone: 'off', hint: shared }
 })
 
 // 密碼顯示/隱藏（僅本地 UI 狀態）
@@ -489,7 +547,10 @@ function validateProfile(): boolean {
 
 async function onSaveProfile(): Promise<void> {
   if (!validateProfile()) {return}
-  if (!profileChanged.value) {return}
+  if (!profileChanged.value) {
+    showInfo('名稱沒有變更', '修改上方的名稱後再儲存')
+    return
+  }
 
   profileSaving.value = true
   try {
@@ -688,7 +749,7 @@ watch(
   display: grid;
   grid-template-columns: minmax(300px, 400px) minmax(0, 1fr);
   gap: 20px;
-  align-items: start;
+  align-items: stretch;
 }
 
 .profile-col {
@@ -879,6 +940,8 @@ watch(
 
 .form-actions {
   justify-content: flex-end;
+  padding-right: 20px;
+  padding-left: 20px;
   padding-top: 16px;
   padding-bottom: 18px;
 }
@@ -975,21 +1038,74 @@ watch(
   color: var(--ui-ink-2);
 }
 
-/* notification device state */
-.device-dot {
-  flex: none;
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  background: var(--ui-faint);
+/* display name: input and its save action share one line, hint lives in the same card */
+.name-card .form-row {
+  gap: 10px;
 }
 
-.device-on .device-dot {
-  background: var(--ui-green);
+.name-line {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
 }
 
-.device-off .device-dot {
-  background: var(--ui-orange);
+.name-line .row-control {
+  flex: 1;
+}
+
+.notify-hint {
+  text-wrap: pretty;
+  margin: 0;
+  padding: 14px var(--row-pad-x) 18px;
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--ui-ink-2);
+  box-shadow: inset 0 0.5px 0 var(--ui-sep);
+}
+
+.field-hint {
+  margin: 0;
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--ui-muted);
+}
+
+.admin-team {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.team-name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* session card */
+.session-card {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+}
+
+.session-sub {
+  margin-top: 2px;
+  font-size: 13px;
+  color: var(--ui-muted);
+}
+
+/* the last card of each column absorbs spare height so both columns end on one line */
+.profile-col > section:last-child {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
+
+.profile-col > section:last-child > .ui-group {
+  flex: 1;
 }
 
 @media (max-width: 1024px) {
@@ -1019,12 +1135,16 @@ watch(
     order: 1;
   }
 
-  .o-security {
+  .o-notify {
     order: 2;
   }
 
-  .o-notify {
+  .o-security {
     order: 3;
+  }
+
+  .o-session {
+    order: 4;
   }
 
   .identity-lead {
@@ -1060,6 +1180,10 @@ watch(
 
   .form-actions .btn-primary {
     flex: 1;
+  }
+
+  .profile-col > section:last-child {
+    display: block;
   }
 }
 </style>
