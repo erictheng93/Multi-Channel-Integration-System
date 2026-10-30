@@ -239,7 +239,7 @@ function formatTime(date: string): string {
 .api-method-badge {
   padding: 4px 8px;
   border-radius: 4px;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: bold;
   min-width: 60px;
   text-align: center;

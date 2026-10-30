@@ -284,7 +284,7 @@ const successClass = computed(() => {
     justify-self: start;
     padding: 0 9px;
     height: 20px;
-    font-size: 12px;
+    font-size: 13px;
   }
 
   .ep-main {
@@ -307,7 +307,7 @@ const successClass = computed(() => {
      and the success rate keeps a line of its own */
   .path {
     overflow: visible;
-    font-size: 12.5px;
+    font-size: 13px;
     text-overflow: clip;
     white-space: normal;
   }

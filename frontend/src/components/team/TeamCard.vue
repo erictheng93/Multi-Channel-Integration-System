@@ -527,7 +527,7 @@ import { createLogger } from '@/utils/logger'
   border-radius: 14px;
   background: var(--ui-fill-strong);
   box-shadow: 0 0 0 2px var(--ui-surface);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--ui-ink-2);
 }
