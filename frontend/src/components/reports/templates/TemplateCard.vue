@@ -109,8 +109,8 @@ const contents = computed(() => REPORT_CONTENTS[props.template.type] ?? []);
 .template-card {
   display: flex;
   flex-direction: column;
-  gap: 26px;
-  padding: 28px;
+  gap: 22px;
+  padding: 24px;
 }
 
 .tc-head {
@@ -122,22 +122,22 @@ const contents = computed(() => REPORT_CONTENTS[props.template.type] ?? []);
 
 .tpl-ico {
   display: grid;
-  width: 48px;
-  height: 48px;
+  width: 44px;
+  height: 44px;
   place-items: center;
-  border-radius: 15px;
-  background: var(--ui-accent-soft);
-  color: var(--ui-accent);
+  border-radius: 12px;
+  background: var(--section-hue-soft);
+  color: var(--section-ink);
 }
 
 .tpl-ico svg {
-  width: 24px;
-  height: 24px;
+  width: 22px;
+  height: 22px;
 }
 
 .template-name {
   margin: 0;
-  font: 600 20px / 1.25 var(--ui-font-display);
+  font: 600 19px / 1.25 var(--ui-font-display);
   letter-spacing: -0.01em;
 }
 
