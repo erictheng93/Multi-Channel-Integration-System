@@ -6,12 +6,18 @@
     @click="$emit('view-conversations')"
   >
     <div class="t-top">
-      <span class="tag-chip">
+      <span class="tag-head">
+        <span class="tag-chip">
+          <span
+            class="tag-color-indicator"
+            :style="{ background: tag.color }"
+          />
+          <h3 class="tag-name">{{ tag.name }}</h3>
+        </span>
         <span
-          class="tag-color-indicator"
-          :style="{ background: tag.color }"
-        />
-        <h3 class="tag-name">{{ tag.name }}</h3>
+          v-if="!(tag.conversationCount || 0)"
+          class="ui-pill unused"
+        >尚未套用</span>
       </span>
       <div
         class="tag-checkbox"
@@ -55,15 +61,17 @@
         </button>
       </div>
       <span
-        v-if="!(tag.conversationCount || 0)"
-        class="ui-pill"
-      >尚未套用</span>
-
-      <span
         class="meter"
         aria-hidden="true"
       ><i :style="{ width: meterWidth }" /></span>
 
+      <button
+        class="phone-edit"
+        :aria-label="`編輯 ${tag.name}`"
+        @click.stop="$emit('edit')"
+      >
+        <EditIcon />
+      </button>
       <div class="tag-actions">
         <button
           class="action-btn action-btn-primary"
@@ -121,7 +129,7 @@ const meterWidth = computed(() => {
 .tag-card {
   position: relative;
   display: grid;
-  grid-template-columns: 22px minmax(0, 1fr) minmax(72px, 150px) 96px 80px;
+  grid-template-columns: 22px minmax(0, 1fr) minmax(72px, 150px) 104px 80px;
   grid-template-areas:
     'check chip meter count actions'
     'check desc meter count actions';
@@ -165,7 +173,7 @@ const meterWidth = computed(() => {
 
 /* Selection reads as a tint, never as a hard outline */
 .tag-card.tag-active {
-  background: color-mix(in srgb, var(--tag-c) 6%, var(--ui-surface));
+  background: var(--ui-surface-2);
 }
 
 .tag-card.tag-selected {
@@ -173,7 +181,6 @@ const meterWidth = computed(() => {
 }
 
 .tag-chip {
-  grid-area: chip;
   display: inline-flex;
   align-items: center;
   gap: 7px;
@@ -301,6 +308,8 @@ const meterWidth = computed(() => {
 }
 
 .t-count {
+  min-width: 2ch;
+  text-align: right;
   font: 600 22px var(--ui-font-display);
   letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
@@ -317,9 +326,16 @@ const meterWidth = computed(() => {
 }
 
 
-.t-foot > .ui-pill {
-  grid-area: meter;
-  justify-self: start;
+.tag-head {
+  grid-area: chip;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+}
+
+.phone-edit {
+  display: none;
 }
 
 .meter {
@@ -327,7 +343,7 @@ const meterWidth = computed(() => {
   height: 8px;
   overflow: hidden;
   border-radius: 999px;
-  background: var(--ui-fill);
+  background: var(--ui-fill-strong);
 }
 
 .tag-unused .meter {
@@ -399,13 +415,13 @@ const meterWidth = computed(() => {
 /* The detail panel takes the right column on wide screens: drop the usage note to keep names readable */
 @media (max-width: 1280px) {
   .tag-card {
-    grid-template-columns: 22px minmax(0, 1fr) minmax(72px, 150px) 96px 80px;
+    grid-template-columns: 22px minmax(0, 1fr) minmax(72px, 150px) 104px 80px;
   }
 }
 
 @media (max-width: 1024px) {
   .tag-card {
-    grid-template-columns: 22px minmax(0, 1fr) minmax(72px, 150px) 96px 80px;
+    grid-template-columns: 22px minmax(0, 1fr) minmax(72px, 150px) 104px 80px;
   }
 }
 
@@ -413,11 +429,11 @@ const meterWidth = computed(() => {
 @media (max-width: 768px) {
   /* No empty select column on a phone: the checkbox column exists only where there is no hover to reveal it */
   .tag-card {
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr) auto 36px;
     grid-template-areas:
-      'chip count'
-      'desc count';
-    column-gap: 12px;
+      'chip count edit'
+      'desc count edit';
+    column-gap: 8px;
     margin: 0 4px;
     padding: 12px 12px;
   }
@@ -432,9 +448,38 @@ const meterWidth = computed(() => {
   }
 
   .meter,
-  .tag-actions,
-  .t-foot > .ui-pill {
+  .tag-actions {
     display: none;
+  }
+
+  .phone-edit {
+    display: grid;
+    grid-area: edit;
+    width: 36px;
+    height: 36px;
+    place-items: center;
+    border: 0;
+    border-radius: 10px;
+    background: var(--ui-fill);
+    color: var(--ui-ink-2);
+    cursor: pointer;
+  }
+
+  .phone-edit svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  /* numeral over unit: the count stays narrow and never competes with the name */
+  .stat-item {
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0;
+  }
+
+  .stat-item small {
+    font-size: 13px;
+    line-height: 1.2;
   }
 
   /* the whole name stays readable: the chip grows to two lines instead of cutting it */
@@ -453,10 +498,10 @@ const meterWidth = computed(() => {
 
   @media (hover: none) {
     .tag-card {
-      grid-template-columns: 22px minmax(0, 1fr) auto;
+      grid-template-columns: 22px minmax(0, 1fr) auto 36px;
       grid-template-areas:
-        'check chip count'
-        'check desc count';
+        'check chip count edit'
+        'check desc count edit';
     }
 
     .tag-checkbox {
@@ -470,10 +515,8 @@ const meterWidth = computed(() => {
 
   /* the count doubles as the entry to the tag's conversations */
   .stat-item-clickable::after {
-    margin-left: 2px;
-    color: var(--ui-faint);
-    font-size: 18px;
-    content: '›';
+    display: none;
+    content: '';
   }
 }
 </style>

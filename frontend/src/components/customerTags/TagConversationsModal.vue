@@ -98,7 +98,7 @@
                 <!-- Avatar -->
                 <div
                   class="avatar"
-                  :class="`tone-${avatarTone(conversation.customer_name)}`"
+                  :style="{ '--tag-c': tag?.color }"
                 >
                   <img
                     v-if="conversation.customer_avatar"
@@ -254,13 +254,6 @@ onUnmounted(() => {
 })
 
 // ==================== Helpers ====================
-
-/** A stable pastel per customer, so a list of initials is not a column of identical grey discs */
-function avatarTone(name: string | null | undefined): number {
-  let h = 0
-  for (const ch of name ?? '') { h = (h * 31 + ch.charCodeAt(0)) % 5 }
-  return h
-}
 
 function statusLabel(status: string): string {
   return getConversationStatusLabel(status as ConversationStatus)
@@ -509,11 +502,10 @@ function formatDate(dateStr: string): string {
   background: var(--ui-fill-strong);
 }
 
-.avatar.tone-0 { background: var(--ui-p-lavender); color: var(--ui-p-lavender-ink); }
-.avatar.tone-1 { background: var(--ui-p-peach); color: var(--ui-p-peach-ink); }
-.avatar.tone-2 { background: var(--ui-p-mint); color: var(--ui-p-mint-ink); }
-.avatar.tone-3 { background: var(--ui-p-sky); color: var(--ui-p-sky-ink); }
-.avatar.tone-4 { background: var(--ui-p-rose); color: var(--ui-p-rose-ink); }
+.avatar {
+  background: color-mix(in srgb, var(--tag-c, var(--ui-muted)) 16%, var(--ui-surface));
+  color: color-mix(in srgb, var(--tag-c, var(--ui-muted)) 62%, #000);
+}
 
 .avatar-img {
   width: 100%;
