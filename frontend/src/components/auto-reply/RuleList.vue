@@ -1,7 +1,7 @@
 <template>
   <div class="rule-list">
     <!-- Toolbar -->
-    <div class="ui-card rule-list__toolbar">
+    <div class="rule-list__toolbar">
       <div class="rule-list__filters">
         <input
           class="ui-input rule-list__search"
@@ -63,9 +63,16 @@
     </div>
 
     <!-- Rule list -->
+    <h2
+      v-if="rules.length > 0"
+      class="ui-group-label rule-list__label"
+    >
+      規則
+      <span class="rule-list__count">{{ rules.length }}</span>
+    </h2>
     <div
       v-if="rules.length > 0"
-      class="ui-card rule-list__items"
+      class="ui-group rule-list__items"
     >
       <RuleCard
         v-for="rule in rules"
@@ -161,6 +168,25 @@ const emit = defineEmits<{
   gap: 16px;
 }
 
+/* the label sits tight on its group, not a full page gap above it */
+.rule-list__label {
+  margin: 4px 0 -8px;
+}
+
+.rule-list__count {
+  min-width: 20px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: var(--section-hue-soft);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 20px;
+  text-align: center;
+  color: var(--section-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+
 .rule-list__toolbar {
   display: flex;
   flex-wrap: wrap;
@@ -181,19 +207,20 @@ const emit = defineEmits<{
 .rule-list__search {
   flex: 1 1 220px;
   max-width: 340px;
-  height: 38px;
+  height: 40px;
   border-radius: 999px;
+  background: var(--ui-surface);
 }
 
 .rule-list__filter-select {
   width: auto;
   min-width: 140px;
-  height: 38px;
+  height: 40px;
   border-radius: 999px;
+  background-color: var(--ui-surface);
 }
 
 .rule-list__items {
-  overflow: hidden;
   padding: 4px 0;
 }
 

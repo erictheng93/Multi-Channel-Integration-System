@@ -1,15 +1,20 @@
 <template>
   <aside class="preview-section">
-    <section class="ui-card preview-card">
-      <div class="ui-card-head">
-        <div>
-          <h3 class="ui-card-title">
-            即將產生
-          </h3>
-          <p class="ui-card-sub">
-            依目前設定
-          </p>
-        </div>
+    <section class="ui-lead preview-card">
+      <div class="lead-head">
+        <h3 class="lead-title">
+          即將產生
+        </h3>
+        <p class="lead-sub">
+          依目前設定，必填項目填完即可產生
+        </p>
+      </div>
+      <div class="lead-gauge">
+        <ServiceRings
+          summary="報表必填項目"
+          :rings="[{ label: '必填項目', value: requiredDone, total: REQUIRED_TOTAL, of: '項', hue: 'var(--section-hue)' }]"
+          :size="76"
+        />
       </div>
       <p
         v-if="missing.length > 0"
@@ -86,16 +91,14 @@
       </div>
     </section>
 
-    <section
+    <div
       v-if="recentReports.length > 0"
-      class="ui-card recent-reports"
+      class="recent-wrap"
     >
-      <div class="ui-card-head">
-        <h3 class="ui-card-title">
-          最近報表
-        </h3>
-      </div>
-      <ul class="recent-list">
+      <h3 class="ui-group-label">
+        最近報表
+      </h3>
+      <ul class="ui-group recent-list">
         <li
           v-for="report in recentReports.slice(0, 5)"
           :key="report.id"
@@ -117,12 +120,13 @@
           </button>
         </li>
       </ul>
-    </section>
+    </div>
   </aside>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue';
+import ServiceRings from '@/components/ui/ServiceRings.vue';
 import ReportsAPI from '@/api/reports';
 import type {
   ReportType,
@@ -154,6 +158,10 @@ const missing = computed(() => [
   !props.reportType && '報表類型',
   !props.title.trim() && '標題'
 ].filter((item): item is string => !!item));
+
+// Required fields done / required: the same two the "還需要" line names
+const REQUIRED_TOTAL = 2;
+const requiredDone = computed(() => REQUIRED_TOTAL - missing.value.length);
 
 const contentLabel = computed(() => {
   const o = props.options;
@@ -202,6 +210,30 @@ const formatDate = (dateString: string): string => {
 .preview-section {
   display: grid;
   gap: 16px;
+}
+
+.preview-card {
+  padding: 22px 0 0;
+}
+
+.lead-head {
+  padding: 0 24px 12px;
+}
+
+.lead-gauge {
+  padding: 0 24px 16px;
+}
+
+.lead-title {
+  margin: 0;
+  font: 700 20px / 1.2 var(--ui-font-display);
+  letter-spacing: -0.02em;
+}
+
+.lead-sub {
+  margin: 2px 0 0;
+  font-size: 13px;
+  color: var(--ui-muted);
 }
 
 .need {
@@ -307,7 +339,7 @@ const formatDate = (dateString: string): string => {
 
 .recent-list {
   margin: 0;
-  padding: 0 8px 10px;
+  padding: 6px 8px;
   list-style: none;
 }
 

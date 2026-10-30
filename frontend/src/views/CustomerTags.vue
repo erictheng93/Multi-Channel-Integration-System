@@ -10,7 +10,7 @@
 <template>
   <AppLayout>
     <div
-      class="ui-page customer-tags"
+      class="ui-page customer-tags ui-rise"
       role="main"
       aria-label="客戶標籤管理頁面"
     >
@@ -292,6 +292,8 @@ onUnmounted(() => {
   position: relative;
   min-width: 0;
   min-height: 420px;
+  /* tops line up with the first group row, below the group label */
+  margin-top: 29px;
 }
 
 /* The panel is exactly as tall as the tag grid; a long list scrolls inside it */
