@@ -74,7 +74,7 @@
               </p>
               <button
                 class="btn btn-primary"
-                        type="button"
+                type="button"
                 :disabled="isGenerating"
                 @click="generateReport"
               >
@@ -91,11 +91,10 @@
       label="產生報表"
     >
       <p
-        v-if="!isFormValid"
         class="generate-hint"
         role="status"
       >
-        {{ missingHint }}
+        {{ isFormValid ? selectionLine : missingHint }}
       </p>
       <button
         class="btn btn-primary"
@@ -214,6 +213,13 @@ const missingHint = computed(() => {
     formData.timeRange === 'custom' && !(formData.startDate && formData.endDate) && '日期範圍'
   ].filter(Boolean);
   return missing.length > 0 ? `還需要：${missing.join('、')}` : '';
+});
+
+// What the phone action bar says it will make: type, range and format at a glance
+const selectionLine = computed(() => {
+  const range = ReportsAPI.getTimeRangeOptions().find(option => option.value === formData.timeRange)?.label ?? '';
+  const format = ReportsAPI.getAvailableFormats().find(option => option.value === formData.format)?.label ?? formData.format;
+  return [formData.type ? ReportsAPI.formatReportType(formData.type) : '', range, format].filter(Boolean).join(' ・ ');
 });
 
 // Methods

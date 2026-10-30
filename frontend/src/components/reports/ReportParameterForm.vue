@@ -42,12 +42,12 @@
             :value="description"
             class="ui-textarea"
             placeholder="輸入報表描述"
-            rows="2"
+            rows="1"
             @input="$emit('update:description', ($event.target as HTMLTextAreaElement).value)"
           />
         </div>
 
-        <div class="ui-field">
+        <div class="ui-field span-all">
           <span
             id="timeRangeLabel"
             class="field-label"
@@ -89,6 +89,12 @@
             @update:model-value="emit('update:timeRange', $event as ReportTimeRange)"
           />
           <p
+            v-if="rangeSpan"
+            class="field-hint range-span"
+          >
+            統計 {{ rangeSpan }}
+          </p>
+          <p
             v-if="errors.timeRange"
             class="error-message"
           >
@@ -98,7 +104,7 @@
 
         <div
           v-if="timeRange === 'custom'"
-          class="ui-field"
+          class="ui-field span-all"
         >
           <label for="startDate">自訂日期範圍</label>
           <div class="date-range">
@@ -372,6 +378,22 @@ const moreOpen = ref(false);
 // 過去30天 -> 30天: the control stays on one row at phone width, the full label stays in aria-label
 const shortLabel = (label: string) => label.replace(/^過去/, '');
 const advancedOpen = ref(false);
+// The calendar span the chosen range covers, so "30天" is never abstract
+const DAYS = new Map<string, number>([['last_24_hours', 1], ['last_7_days', 7], ['last_30_days', 30], ['last_90_days', 90]]);
+const spanFmt = new Intl.DateTimeFormat('zh-TW', { timeZone: 'Asia/Taipei', month: 'numeric', day: 'numeric' });
+const rangeSpan = computed(() => {
+  const end = new Date();
+  let start: Date | null = null;
+  let days = DAYS.get(props.timeRange) ?? 0;
+  if (days) {
+    start = new Date(end.getTime() - days * 864e5);
+  } else if (props.timeRange === 'current_month') {
+    const tpe = new Date(end.getTime() + 8 * 36e5);
+    start = new Date(Date.UTC(tpe.getUTCFullYear(), tpe.getUTCMonth(), 1) - 8 * 36e5);
+    days = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / 864e5));
+  }
+  return start ? `${spanFmt.format(start)} – ${spanFmt.format(end)} ・ 共 ${days} 天` : '';
+});
 // Steps 2 and 3 read as done once the report has a title (the format always has a value)
 const stepTwoDone = computed(() => props.title.trim().length > 0);
 const advancedSummary = computed(() => {
@@ -431,7 +453,7 @@ const updateOption = (key: string, value: unknown) => {
 }
 
 .parameter-form .ui-textarea {
-  min-height: 72px;
+  min-height: 44px;
 }
 
 @media (max-width: 768px) {
@@ -466,8 +488,14 @@ const updateOption = (key: string, value: unknown) => {
 
 .step-body {
   display: grid;
-  gap: 16px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: 16px 20px;
   padding: 4px 22px 22px;
+}
+
+.span-all {
+  grid-column: 1 / -1;
 }
 
 .req {
@@ -510,6 +538,10 @@ const updateOption = (key: string, value: unknown) => {
   color: var(--ui-ink-2);
 }
 
+.range-span {
+  font-variant-numeric: tabular-nums;
+}
+
 .field-hint {
   margin: 0;
   font-size: 13px;
@@ -519,13 +551,14 @@ const updateOption = (key: string, value: unknown) => {
 .adv-toggle {
   display: flex;
   width: calc(100% - 44px);
-  margin: 4px 22px 22px;
+  margin: 0 22px;
   align-items: center;
   gap: 12px;
-  padding: 14px 16px;
+  padding: 16px 0 18px;
   border: 0;
-  border-radius: var(--ui-r-inner);
-  background: var(--ui-fill);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: 0 -0.5px 0 var(--ui-sep);
   color: inherit;
   font: inherit;
   text-align: left;
@@ -545,7 +578,7 @@ const updateOption = (key: string, value: unknown) => {
 }
 
 .adv-text .ui-card-title {
-  font: 600 17px / 1.25 var(--ui-font-display);
+  font: 600 15px / 1.25 var(--ui-font-display);
   letter-spacing: -0.01em;
 }
 
@@ -620,14 +653,18 @@ const updateOption = (key: string, value: unknown) => {
 @media (max-width: 768px) {
   .adv-toggle {
     width: calc(100% - 32px);
-    margin: 4px 16px 16px;
-    padding: 14px;
+    margin: 0 16px;
+    padding: 14px 0 16px;
   }
 
   .step-body,
   .adv-grid {
     padding-right: 16px;
     padding-left: 16px;
+  }
+
+  .step-body {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .adv-grid {

@@ -3,6 +3,7 @@
 <template>
   <div
     class="rop"
+    :class="{ compact }"
     :aria-busy="loading"
   >
     <div
@@ -40,7 +41,7 @@
 
     <template v-else>
       <div class="rop-meta">
-        <span class="rop-from">此模板上次產出 ・ {{ ago }}</span>
+        <span class="rop-from">{{ compact ? '上一份同類報表' : '此模板上次產出' }} ・ {{ ago }}</span>
         <router-link
           :to="`/reports/${latest.id}`"
           class="rop-title"
@@ -139,7 +140,7 @@
       </p>
 
       <section
-        v-if="earlier.length"
+        v-if="earlier.length && !compact"
         class="rop-hist"
         aria-label="更早的產出"
       >
@@ -175,7 +176,7 @@ import ReportsAPI from '@/api/reports'
 import type { ReportBase, ReportType } from '@/types/reports'
 import { REPORT_CONTENTS } from './templateHelpers'
 
-const props = defineProps<{ type: ReportType }>()
+const props = defineProps<{ type: ReportType; compact?: boolean }>()
 const emit = defineEmits<{ resolved: [report: ReportBase | null] }>()
 
 type Row = { name: string; cells: number[] }
@@ -570,6 +571,47 @@ const metaLine = computed(() => {
   width: 90px;
   text-align: right;
   font-variant-numeric: tabular-nums;
+}
+
+.rop.compact {
+  gap: 14px;
+}
+
+.compact .rop-title {
+  font-size: 15px;
+}
+
+.compact .rop-big {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+}
+
+.compact .rop-big-num {
+  order: -1;
+  font-size: 44px;
+}
+
+.compact .rop-split {
+  height: 10px;
+}
+
+.compact .rop-legend {
+  gap: 4px 18px;
+  font-size: 13px;
+}
+
+.compact .rop-legend b {
+  font-size: 15px;
+}
+
+.compact .rop-state,
+.compact .rop-empty {
+  padding: 0;
+}
+
+.compact .rop-empty b {
+  font-size: 16px;
 }
 
 @media (max-width: 768px) {
