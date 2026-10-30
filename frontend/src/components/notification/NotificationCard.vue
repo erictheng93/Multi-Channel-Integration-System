@@ -217,7 +217,9 @@ const formattedTime = computed(() => {
   display: flex;
   gap: 14px;
   align-items: flex-start;
-  padding: 14px 22px;
+  margin: 2px 10px;
+  padding: 14px 14px;
+  border-radius: 16px;
   cursor: pointer;
   transition: background-color var(--ui-dur) var(--ui-ease);
 }
@@ -225,8 +227,8 @@ const formattedTime = computed(() => {
 .notification-card + .notification-card::before {
   position: absolute;
   top: 0;
-  right: 22px;
-  left: 78px;
+  right: 14px;
+  left: 68px;
   height: 0.5px;
   background: var(--ui-sep);
   content: '';
@@ -250,10 +252,16 @@ const formattedTime = computed(() => {
   color: var(--ui-muted);
 }
 
-/* Urgent: a solid red icon tile whatever the type */
+/* Urgent: the same pastel tile language, in red, whatever the type (the pill says why) */
 .notification-urgent .notification-icon {
-  background: var(--ui-red);
-  color: #fff;
+  background: var(--ui-red-soft);
+  color: var(--ui-red-ink);
+}
+
+/* An inset rounded row has no hairline against it: hide the separator on either side of an unread row */
+.notification-unread::before,
+.notification-unread + .notification-card::before {
+  opacity: 0;
 }
 
 .notification-card:focus-visible,
@@ -411,7 +419,7 @@ const formattedTime = computed(() => {
 /* Row actions live under the time in the trailing column and appear on hover or focus */
 .notification-actions {
   position: absolute;
-  right: 22px;
+  right: 14px;
   bottom: 10px;
   display: flex;
   gap: 4px;
@@ -524,12 +532,13 @@ const formattedTime = computed(() => {
 
 @media (max-width: 768px) {
   .notification-card {
-    padding: 14px 16px;
+    margin: 2px 6px;
+    padding: 14px 10px;
   }
 
   .notification-card + .notification-card::before {
-    right: 16px;
-    left: 70px;
+    right: 10px;
+    left: 64px;
   }
 
   /* The title wraps (two lines at most) instead of cutting the customer name off */
