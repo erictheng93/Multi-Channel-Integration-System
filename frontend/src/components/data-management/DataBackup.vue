@@ -12,18 +12,24 @@
       :tone="statusTone === 'ok' ? 'good' : (statusTone === 'warn' ? 'warn' : 'none')"
       :meaning="leadMeaning"
       :busy="loading && !data"
-      summary="近 30 天備份"
-      :rings="coverageRings"
-      :center-value="coverageCenter"
-      center-label="有備份"
-      :size="144"
     >
-      <p
-        v-if="storageLine"
-        class="lead-storage"
+      <dl
+        v-if="data"
+        class="lead-facts"
       >
-        {{ storageLine }}
-      </p>
+        <div>
+          <dt>近 {{ coverageDays.total }} 天有備份</dt>
+          <dd>{{ coverageDays.have }}<small> / {{ coverageDays.total }} 天</small></dd>
+        </div>
+        <div>
+          <dt>儲存用量</dt>
+          <dd>{{ formatBytes(summary.size) }}</dd>
+        </div>
+        <div>
+          <dt>備份份數</dt>
+          <dd>{{ summary.total.toLocaleString() }}<small> 份</small></dd>
+        </div>
+      </dl>
       <p
         v-if="message"
         class="message"
@@ -68,6 +74,10 @@
       <h2 class="ui-group-label">
         近 {{ strip.length }} 天備份
         <span class="label-note">{{ stripSummary }}</span>
+        <span
+          v-if="strip.some(c => c.count === 0)"
+          class="gap-key"
+        ><i />沒有備份</span>
         <button
           v-if="dayFilter"
           type="button"
@@ -337,7 +347,6 @@
 import UiEmptyState from '@/components/ui/UiEmptyState.vue'
 import UiPageHead from '@/components/ui/UiPageHead.vue'
 import RingLead from '@/components/lead/RingLead.vue'
-import type { ServiceRing } from '@/components/ui/ServiceRings.vue'
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { listBackups, runBackup, downloadBackup, type BackupItem, type BackupList } from '@/api/backup'
 
@@ -620,30 +629,11 @@ const leadMeaning = computed(() => {
   return [scheduleText.value, statusPill.value.label === '已逾期' ? '已逾期' : ''].filter(Boolean).join(' · ')
 })
 
-const storageLine = computed(() =>
-  data.value && summary.value.total > 0
-    ? `儲存 ${formatBytes(summary.value.size)} · ${summary.value.total.toLocaleString()} 份備份`
-    : '')
-
 /** One arc: days of the last 30 (or the daily retention) that have at least one backup */
 const coverageDays = computed(() => ({
   have: strip.value.filter(cell => cell.count > 0).length,
   total: strip.value.length
 }))
-
-const coverageRings = computed<ServiceRing[]>(() => {
-  if (!data.value || coverageDays.value.total === 0) { return [] }
-  const ratio = coverageDays.value.have / coverageDays.value.total
-  return [{
-    label: `近 ${coverageDays.value.total} 天有備份`,
-    value: coverageDays.value.have,
-    total: coverageDays.value.total,
-    of: '天',
-    hue: ratio >= 0.9 ? 'var(--ui-green)' : (ratio >= 0.7 ? 'var(--ui-orange)' : 'var(--ui-red)')
-  }]
-})
-
-const coverageCenter = computed(() => `${coverageDays.value.have}/${coverageDays.value.total}`)
 
 const dayFilterLabel = computed(() => {
   if (!dayFilter.value) {
@@ -805,10 +795,47 @@ onMounted(load)
   align-items: center;
 }
 
-.lead-storage {
-  margin: 4px 0 0;
+.lead-facts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px 28px;
+  margin: 18px 0 0;
+}
+
+.lead-facts dt {
   font-size: 13px;
   color: var(--ui-muted);
+}
+
+.lead-facts dd {
+  margin: 4px 0 0;
+  font: 600 30px / 1.1 var(--ui-font-display);
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.lead-facts small {
+  font: 500 14px var(--ui-font-ui);
+  letter-spacing: 0;
+  color: var(--ui-muted);
+}
+
+.gap-key {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  margin-left: 10px;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--ui-muted);
+}
+
+.gap-key i {
+  width: 12px;
+  height: 12px;
+  border-radius: 4px;
+  background: var(--ui-orange-soft);
+  box-shadow: inset 0 0 0 1.5px var(--ui-orange);
 }
 
 .label-note {
@@ -921,9 +948,10 @@ onMounted(load)
   background: var(--ui-fill);
 }
 
+/* A day with no backup is the exception worth seeing: tinted and outlined in orange */
 .cell:not(.has) .bar {
-  background: none;
-  box-shadow: inset 0 0 0 1.5px var(--ui-fill-strong);
+  background: var(--ui-orange-soft);
+  box-shadow: inset 0 0 0 1.5px var(--ui-orange);
 }
 
 .bar i {
@@ -1235,6 +1263,19 @@ onMounted(load)
 }
 
 @media (max-width: 768px) {
+  .lead-facts {
+    gap: 12px 16px;
+  }
+
+  .lead-facts dd {
+    font-size: 24px;
+    white-space: nowrap;
+  }
+
+  .gap-key {
+    display: none;
+  }
+
   .lead-act .btn {
     width: 100%;
     justify-content: center;
@@ -1247,6 +1288,12 @@ onMounted(load)
     padding: 16px 16px 18px;
     overflow-x: auto;
     scrollbar-width: none;
+  }
+
+  /* the older days fade out on the left: a cue that the strip scrolls */
+  .strip {
+    -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 28px);
+    mask-image: linear-gradient(90deg, transparent 0, #000 28px);
   }
 
   .strip::-webkit-scrollbar {
