@@ -52,19 +52,20 @@
         </div>
         <div
           v-else
-          class="thread skeleton"
-          aria-label="尚未輸入內容，下列為示意"
-          role="img"
+          class="chat-empty"
         >
-          <div class="bubble sk-bubble">
-            <i style="width: 100%" />
-            <i style="width: 78%" />
-            <i style="width: 46%" />
-          </div>
-          <div class="pic sk-pic" />
-          <p class="sk-note">
-            輸入文字或加入圖片後，這裡會換成客戶實際看到的訊息
-          </p>
+          <svg
+            class="chat-empty-ico"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.6"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          ><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20.5l1.4-4.6A8 8 0 1 1 21 12Z" /></svg>
+          <b>還沒有內容</b>
+          <span>輸入文字或加入圖片，客戶會收到的樣子會即時出現在這裡。</span>
         </div>
       </div>
     </div>
@@ -116,11 +117,11 @@ const order = computed(() => {
 
 .phone {
   display: flex;
-  flex: none;
+  flex: 1 1 auto;
   flex-direction: column;
   width: min(100% - 44px, 300px);
-  min-height: 300px;
-  max-height: 460px;
+  min-height: 280px;
+  max-height: 560px;
   margin: 0 auto;
   overflow: hidden;
   border-radius: 28px;
@@ -185,45 +186,34 @@ const order = computed(() => {
   justify-items: start;
 }
 
-/* Skeleton of the message the form will produce: a text bubble and a picture, shimmering softly */
-.sk-bubble {
+.chat-empty {
   display: grid;
-  gap: 8px;
-  width: 78%;
-  padding: 14px 16px;
-}
-
-.sk-bubble i {
-  display: block;
-  height: 9px;
-  border-radius: 999px;
-  background: #d9dee8;
-}
-
-.sk-pic {
-  background: #d9dee8;
-  opacity: 0.8;
-}
-
-.sk-note {
-  max-width: 88%;
-  margin: 10px 0 0;
-  font-size: 13px;
-  line-height: 1.5;
+  flex: 1;
+  align-content: center;
+  justify-items: center;
+  gap: 6px;
+  padding: 8px 8px 12px;
+  text-align: center;
   color: #4c4c50;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  .sk-bubble i,
-  .sk-pic {
-    animation: sk-pulse 1.8s ease-in-out infinite;
-  }
+.chat-empty-ico {
+  width: 34px;
+  height: 34px;
+  margin-bottom: 4px;
+  color: #6b7280;
 }
 
-@keyframes sk-pulse {
-  50% {
-    opacity: 0.55;
-  }
+.chat-empty b {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1c1c1e;
+}
+
+.chat-empty span {
+  max-width: 200px;
+  font-size: 13px;
+  line-height: 1.5;
 }
 
 .bubble {

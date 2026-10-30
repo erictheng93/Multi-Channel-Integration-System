@@ -150,14 +150,6 @@
               >
             </label>
           </li>
-          <li
-            v-for="slot in emptySlots"
-            :key="`slot-${slot}`"
-            class="image-slot"
-            aria-hidden="true"
-          >
-            {{ slot }}
-          </li>
         </ul>
         <div
           role="status"
@@ -428,10 +420,6 @@
     if (!content.value && !images.value.length) {items.push('文字或圖片')}
     return items
   })
-  // The unused slots after the add tile, numbered, so the 4-image limit reads as a row
-  const emptySlots = computed(() =>
-    Array.from({ length: Math.max(MAX_IMAGES - images.value.length - 1, 0) }, (_, i) => images.value.length + i + 2)
-  )
   const imagesBusy = computed(() => !imagesReady.value)
 
   const canSubmit = computed(
@@ -556,18 +544,6 @@
     list-style: none;
   }
 
-  .image-slot {
-    display: grid;
-    aspect-ratio: 1;
-    place-items: center;
-    border: 1.5px dashed rgba(60, 60, 67, 0.22);
-    border-radius: var(--ui-r-inner);
-    background: transparent;
-    font-size: var(--ui-t-meta);
-    font-variant-numeric: tabular-nums;
-    color: var(--ui-muted);
-  }
-
   .image-tile,
   .image-add {
     position: relative;
@@ -655,8 +631,20 @@
   }
 
   .image-add {
-    background: var(--ui-surface);
+    background: var(--ui-surface-2);
     box-shadow: inset 0 0 0 1px var(--ui-sep);
+  }
+
+  /* Nothing picked yet: the add control is one wide row, not a lone square with empty siblings */
+  .image-grid:has(> .image-add:only-child) .image-add {
+    grid-column: 1 / -1;
+    aspect-ratio: auto;
+    min-height: 56px;
+  }
+
+  .image-grid:has(> .image-add:only-child) .image-picker {
+    grid-auto-flow: column;
+    gap: 8px;
   }
 
   .image-picker {
