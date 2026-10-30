@@ -65,6 +65,21 @@
             </div>
           </div>
 
+          <ul class="brand-facts">
+            <li>
+              <b>一個收件匣</b>
+              <span>LINE 與 Messenger 的對話合併在同一個畫面</span>
+            </li>
+            <li>
+              <b>等最久的先處理</b>
+              <span>待回覆依等待時間排序，不漏接任何客戶</span>
+            </li>
+            <li>
+              <b>團隊分流</b>
+              <span>對話依團隊指派，即時同步給所有在線客服</span>
+            </li>
+          </ul>
+
           <div class="brand-foot">
             Daiwan Abrasives Corp
           </div>
@@ -230,7 +245,11 @@
           </div>
 
           <div class="m-foot">
-            Daiwan Abrasives Corp
+            <div class="m-channels">
+              <span class="ui-chip"><span class="ui-ch ui-ch-line"><svg viewBox="0 0 24 24"><path d="M12 3C6.5 3 2 6.6 2 11c0 2.5 1.4 4.7 3.7 6.2L5 21l4.1-2.3c.9.2 1.9.3 2.9.3 5.5 0 10-3.6 10-8s-4.5-8-10-8Z" /></svg></span>LINE 官方帳號</span>
+              <span class="ui-chip"><span class="ui-ch ui-ch-fb"><svg viewBox="0 0 24 24"><path d="M12 3C6.5 3 2 6.6 2 11c0 2.5 1.4 4.7 3.7 6.2L5 21l4.1-2.3c.9.2 1.9.3 2.9.3 5.5 0 10-3.6 10-8s-4.5-8-10-8Z" /></svg></span>Messenger</span>
+            </div>
+            <span>Daiwan Abrasives Corp</span>
           </div>
         </section>
       </div>
@@ -464,7 +483,6 @@ const handleLogin = async (event?: Event) => {
   position: relative;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
   margin: 16px 0 16px 16px;
   padding: 44px 56px 40px;
   overflow: hidden;
@@ -515,6 +533,7 @@ const handleLogin = async (event?: Event) => {
   position: relative;
   z-index: 1;
   max-width: 460px;
+  margin-top: auto;
 }
 
 .brand-copy h1 {
@@ -545,7 +564,36 @@ const handleLogin = async (event?: Event) => {
   cursor: default;
 }
 
+/* What the console does, in three lines: the proof that sits under the headline */
+.brand-facts {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 0;
+  max-width: 460px;
+  margin: 36px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.brand-facts li {
+  display: grid;
+  gap: 2px;
+  padding: 14px 0;
+  box-shadow: inset 0 0.5px 0 rgb(255 255 255 / 0.35);
+}
+
+.brand-facts b {
+  font: 700 17px / 1.3 var(--ui-font-display);
+}
+
+.brand-facts span {
+  font-size: 15px;
+  color: rgb(255 255 255 / 0.92);
+}
+
 .brand-foot {
+  margin-top: auto;
   position: relative;
   z-index: 1;
   font-size: var(--ui-t-cap);
@@ -635,6 +683,38 @@ const handleLogin = async (event?: Event) => {
 
   .login-page .lede {
     font-size: 16px;
+  }
+
+  /* the theme switch lines up with the brand row, the credit with the panel footer */
+  .theme-btn {
+    top: 38px;
+    right: 40px;
+  }
+
+  .form-side {
+    width: min(560px, 100%);
+    padding: 40px 24px 56px;
+  }
+
+  .auth {
+    margin: auto 0;
+  }
+
+  .m-foot {
+    display: flex;
+    justify-content: flex-start;
+    font-size: var(--ui-t-cap);
+    font-weight: 500;
+    color: var(--ui-ink-2);
+  }
+
+  .m-channels {
+    display: none;
+  }
+
+  /* white fields on the white sheet: the 1px boundary does the separating, no grey slab inside it */
+  .login-page .auth .ui-input {
+    background: var(--ui-surface);
   }
 }
 
@@ -779,8 +859,7 @@ const handleLogin = async (event?: Event) => {
   color: var(--ui-muted);
 }
 
-.m-brand,
-.m-foot {
+.m-brand {
   display: none;
 }
 
@@ -859,12 +938,21 @@ const handleLogin = async (event?: Event) => {
   }
 
   .m-foot {
-    display: flex;
-    justify-content: center;
-    margin-top: 24px;
+    display: grid;
+    gap: 14px;
+    justify-items: center;
+    margin-top: auto;
+    padding-top: 28px;
     font-size: var(--ui-t-cap);
     font-weight: 500;
-    color: var(--ui-muted);
+    color: var(--ui-ink-2);
+  }
+
+  .m-channels {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
   }
 
   .theme-btn {
