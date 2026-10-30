@@ -24,6 +24,7 @@
               aria-hidden="true"
             ><path d="M21 12a9 9 0 0 1-15.5 6.2L3 16M3 12a9 9 0 0 1 15.5-6.2L21 8M21 3v5h-5M3 21v-5h5" /></svg>
             <span class="btn-txt">重新整理</span>
+            <span class="btn-txt-short">更新</span>
           </button>
           <button
             v-if="!loading && activeTab === 'rules'"
@@ -275,6 +276,10 @@ onUnmounted(() => cleanup())
 </script>
 
 <style scoped>
+.btn-txt-short {
+  display: none;
+}
+
 .btn-ico {
   width: 15px;
   height: 15px;
@@ -292,6 +297,11 @@ onUnmounted(() => cleanup())
   display: flex;
   flex-direction: column;
   gap: 16px;
+}
+
+.tabs-bar > button {
+  min-height: 40px;
+  font-size: 14px;
 }
 
 .tabs-bar {
@@ -321,6 +331,10 @@ onUnmounted(() => cleanup())
 @media (max-width: 768px) {
   .btn-txt {
     display: none;
+  }
+
+  .btn-txt-short {
+    display: inline;
   }
 
   .auto-reply-page :deep(.ui-page-head) {

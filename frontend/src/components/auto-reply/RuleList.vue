@@ -195,6 +195,7 @@ const emit = defineEmits<{
 .rule-list__search {
   flex: 1 1 auto;
   min-width: 0;
+  max-width: 360px;
   height: 40px;
   border-radius: 999px;
   background: var(--ui-surface);
@@ -229,6 +230,10 @@ const emit = defineEmits<{
 
 @media (max-width: 768px) {
   /* Phone: the search takes the row, the type filter sits beside it as a compact chip */
+  .rule-list__search {
+    max-width: none;
+  }
+
   .rule-list__filter-select {
     flex: none;
     width: 128px;
