@@ -16,7 +16,7 @@
         {{ loaded ? stats.thisMonthGenerated.toLocaleString('en-US') : '—' }}<small>份</small>
       </div>
       <div class="lead-meaning">
-        本月已產生的報表數，累計 {{ stats.totalReports.toLocaleString('en-US') }} 份，完成率 {{ completionRate }}%
+        累計 {{ stats.totalReports.toLocaleString('en-US') }} 份，<b>完成率 {{ completionRate }}%</b>
       </div>
       <button
         v-if="stats.failedReports > 0"
@@ -56,6 +56,27 @@
           <b>{{ row.value }}</b>
         </li>
       </ul>
+      <div
+        class="week"
+        role="img"
+        :aria-label="`近 7 天產出：${week.map(d => `${d.label} ${d.count} 份`).join('，')}`"
+      >
+        <p class="week-h">
+          近 7 天產出
+        </p>
+        <div class="week-cols">
+          <div
+            v-for="day in week"
+            :key="day.key"
+            class="week-col"
+            :class="{ 'is-today': day.today }"
+          >
+            <span class="week-n">{{ day.count || '' }}</span>
+            <i :style="{ height: day.h }" />
+            <span class="week-d">{{ day.label }}</span>
+          </div>
+        </div>
+      </div>
     </div>
   </article>
 </template>
@@ -66,12 +87,13 @@
  * completed / processing / failed count as one bar each, taken from the same summary.
  */
 import { computed } from 'vue'
-import type { DashboardStats } from '@/types/reports'
+import type { DashboardStats, ReportBase } from '@/types/reports'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   stats: DashboardStats
   loaded: boolean
-}>()
+  reports?: ReportBase[]
+}>(), { reports: () => [] })
 
 defineEmits<{
   'show-failed-reports': []
@@ -82,6 +104,25 @@ const completionRate = computed(() => {
     return 0
   }
   return Math.round((props.stats.completedReports / props.stats.totalReports) * 100)
+})
+
+// Reports created per day over the last 7 days, from the loaded list (Asia/Taipei days)
+const dayKey = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Taipei' })
+const dayLabel = new Intl.DateTimeFormat('zh-TW', { timeZone: 'Asia/Taipei', month: 'numeric', day: 'numeric' })
+const week = computed(() => {
+  const counts = new Map<string, number>()
+  for (const report of props.reports) {
+    const key = dayKey.format(new Date(report.createdAt))
+    counts.set(key, (counts.get(key) ?? 0) + 1)
+  }
+  const now = Date.now()
+  const days = Array.from({ length: 7 }, (_, i) => {
+    const at = new Date(now - (6 - i) * 864e5)
+    const key = dayKey.format(at)
+    return { key, label: dayLabel.format(at), count: counts.get(key) ?? 0, today: i === 6 }
+  })
+  const max = Math.max(1, ...days.map(d => d.count))
+  return days.map(d => ({ ...d, h: d.count ? `${Math.max(8, Math.round((d.count / max) * 100))}%` : '3px' }))
 })
 
 const rows = computed(() => {
@@ -144,6 +185,62 @@ const rows = computed(() => {
   font-weight: 500;
   letter-spacing: 0;
   color: var(--ui-muted);
+}
+
+.lead-meaning b {
+  font-weight: 600;
+  color: var(--ui-ink);
+}
+
+.week {
+  display: grid;
+  gap: 6px;
+}
+
+.week-h {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ui-ink-2);
+}
+
+.week-cols {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 10px;
+  align-items: end;
+}
+
+.week-col {
+  display: grid;
+  grid-template-rows: 16px 44px auto;
+  gap: 2px;
+  justify-items: center;
+}
+
+.week-col i {
+  align-self: end;
+  width: 100%;
+  max-width: 28px;
+  border-radius: 6px 6px 3px 3px;
+  background: var(--ui-fill-strong);
+}
+
+.week-col.is-today i {
+  background: var(--ui-accent);
+}
+
+.week-n {
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--ui-ink-2);
+}
+
+.week-d {
+  font-size: 12px;
+  color: var(--ui-muted);
+  font-variant-numeric: tabular-nums;
 }
 
 .lead-meaning {
