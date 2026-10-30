@@ -40,14 +40,14 @@ describe('ActivityStatsCards', () => {
     expect(wrapper.find('.rl-num').text()).toContain('1,284')
   })
 
-  it('draws an arc for the top member and the top action, each against the total', () => {
+  it('names the top member and the top action as plain lines against the total', () => {
     const wrapper = mountCards({ overview: makeOverview(), loading: false })
-    const text = wrapper.find('.sr-legend').text()
-    expect(text).toContain('最活躍：Alice')
-    expect(text).toContain('40')
-    expect(text).toContain('最常見：訊息發送')
-    expect(text).toContain('50')
-    expect(wrapper.findAll('.sr-item')).toHaveLength(2)
+    const text = wrapper.find('.highlights').text()
+    expect(text).toContain('Alice')
+    expect(text).toContain('40 筆')
+    expect(text).toContain('訊息發送')
+    expect(text).toContain('50 筆')
+    expect(wrapper.findAll('.highlights li')).toHaveLength(2)
   })
 
   it('names the period, the member count and the real restorable count', () => {
@@ -62,14 +62,15 @@ describe('ActivityStatsCards', () => {
     restore.enabled = true
   })
 
-  it('draws no rings when there was no activity (a share of zero means nothing)', () => {
+  it('names no top member or action when there was no activity', () => {
     const wrapper = mountCards({ overview: makeOverview({ totalActivities: 0, topUsers: [], actionStats: {} }), loading: false })
-    expect(wrapper.find('.sr-legend').exists()).toBe(false)
+    expect(wrapper.find('.highlights').exists()).toBe(false)
   })
 
-  it('draws one bar per day from dailyStats', () => {
-    const wrapper = mountCards({ overview: makeOverview(), loading: false })
-    expect(wrapper.findAll('.bars i')).toHaveLength(2)
+  it('draws one labelled bar per day from dailyStats and marks the busiest', () => {
+    const wrapper = mountCards({ overview: makeOverview({ dailyStats: [{ date: '2026-03-19', count: 20 }, { date: '2026-03-20', count: 50 }] }), loading: false })
+    expect(wrapper.findAll('.lb-col')).toHaveLength(2)
+    expect(wrapper.find('.lb-col.is-current .lb-label').text()).toBe('週五')
   })
 
   it('shows a busy lead while loading', () => {

@@ -51,10 +51,15 @@
         :unit="leadVolume.total === null ? '' : '則'"
         :meaning="leadVolume.meaning"
         :tone="leadVolume.total === null ? 'none' : ''"
-        summary="頻道概況"
-        :rings="channelRings"
-        :size="144"
-      />
+      >
+        <template #visual>
+          <LeadMeter
+            summary="近 24 小時各頻道訊息量"
+            :legend="[{ label: '客戶來訊', tone: 'blue' }, { label: '客服發送', tone: 'indigo' }]"
+            :rows="volumeMeter"
+          />
+        </template>
+      </RingLead>
 
       <!-- Platform Filter -->
       <div class="toolbar">
@@ -389,48 +394,6 @@
         </article>
       </div>
 
-      <!-- Message volume by channel: the same real 24 h counters the cards show, side by side -->
-      <section
-        v-if="!isLoading && !loadFailed && volumeRows.length > 0"
-        aria-label="近 24 小時各頻道訊息量"
-      >
-        <h2 class="ui-group-label">
-          各頻道訊息量
-          <span class="vol-legend">
-            <span><i class="sw sw-in" />客戶來訊</span>
-            <span><i class="sw sw-out" />客服發送</span>
-          </span>
-        </h2>
-        <ul class="ui-group vol-list">
-          <li
-            v-for="row in volumeRows"
-            :key="row.id"
-            class="vol-row"
-          >
-            <span class="vol-name">{{ row.name }}</span>
-            <span class="vol-bars">
-              <span class="vol-line">
-                <span class="vol-track"><span
-                  class="vol-bar in"
-                  :style="{ width: `${row.inPct}%` }"
-                /></span>
-                <b class="vol-n">{{ row.inText }}</b>
-              </span>
-              <span class="vol-line">
-                <span class="vol-track"><span
-                  class="vol-bar out"
-                  :style="{ width: `${row.outPct}%` }"
-                /></span>
-                <b class="vol-n">{{ row.outText }}</b>
-              </span>
-            </span>
-          </li>
-        </ul>
-        <p class="ui-group-foot">
-          條長為各頻道 24 小時內的相對比例。
-        </p>
-      </section>
-
       <!-- Channel Config Dialog -->
       <ChannelConfigDialog
         :show="showConfigDialog"
@@ -455,7 +418,7 @@
 import UiEmptyState from '@/components/ui/UiEmptyState.vue'
 import UiPageHead from '@/components/ui/UiPageHead.vue'
 import RingLead from '@/components/lead/RingLead.vue'
-import type { ServiceRing } from '@/components/ui/ServiceRings.vue'
+import LeadMeter, { type MeterRow } from '@/components/lead/LeadMeter.vue'
 import { computed } from 'vue'
 import AppLayout from '@/components/ui/AppLayout.vue'
 import ChannelConfigDialog from '@/components/channels/ChannelConfigDialog.vue'
@@ -562,23 +525,16 @@ function activityCaption(channel: ChannelIntegration): string {
   return `平台合計 · 最後活動 ${at ? formatLastLogin(at) : '尚無活動'}`
 }
 
-/** Active channels with activity data, bars scaled to the largest 24 h figure on the page */
-const volumeRows = computed(() => {
-  const rows = channels.value.filter(c => c.isActive && c.activity)
-  const max = Math.max(1, ...rows.flatMap(c => [c.activity?.customerMessages24h ?? 0, c.activity?.agentMessages24h ?? 0]))
-  return rows.map((c) => {
-    const inN = c.activity?.customerMessages24h ?? 0
-    const outN = c.activity?.agentMessages24h ?? 0
-    return {
-      id: c.id,
-      name: channelTitle(c),
-      inText: formatCount(inN),
-      outText: formatCount(outN),
-      inPct: inN === 0 ? 0 : Math.max(2, Math.round((inN / max) * 100)),
-      outPct: outN === 0 ? 0 : Math.max(2, Math.round((outN / max) * 100))
-    }
-  })
-})
+/** Active channels with activity data: the same real 24 h counters the cards show, one pair of bars per channel */
+const volumeMeter = computed<MeterRow[]>(() =>
+  channels.value.filter(c => c.isActive && c.activity).map(c => ({
+    key: String(c.id),
+    label: channelTitle(c),
+    lines: [
+      { value: c.activity?.customerMessages24h ?? 0, tone: 'blue' as const },
+      { value: c.activity?.agentMessages24h ?? 0, tone: 'indigo' as const },
+    ],
+  })))
 
 /** 24 h totals over the active channels that report activity; null when none does (never a made-up zero) */
 const leadVolume = computed(() => {
@@ -587,14 +543,6 @@ const leadVolume = computed(() => {
   const inN = rows.reduce((sum, c) => sum + (c.activity?.customerMessages24h ?? 0), 0)
   const outN = rows.reduce((sum, c) => sum + (c.activity?.agentMessages24h ?? 0), 0)
   return { total: inN + outN, meaning: `客戶來訊 ${formatCount(inN)} · 客服發送 ${formatCount(outN)}` }
-})
-
-const channelRings = computed<ServiceRing[]>(() => {
-  const total = channels.value.length
-  return [
-    { label: '啟用中', value: channels.value.filter(c => c.isActive).length, total, of: '個頻道', hue: 'var(--section-hue)' },
-    { label: '已驗證', value: channels.value.filter(c => c.isVerified).length, total, of: '個頻道', hue: 'var(--ui-blue)' }
-  ]
 })
 
 const channelSummary = computed(() => {
@@ -894,85 +842,6 @@ const selectedPlatformLabel = computed(() =>
   color: var(--ui-ink-2);
 }
 
-/* Volume comparison */
-.vol-legend {
-  display: inline-flex;
-  gap: 14px;
-  margin-left: auto;
-  font-size: 13px;
-  font-weight: 400;
-  color: var(--ui-muted);
-}
-.vol-legend span {
-  display: inline-flex;
-  gap: 6px;
-  align-items: center;
-}
-.sw {
-  width: 10px;
-  height: 10px;
-  border-radius: 3px;
-}
-.sw-in,
-.vol-bar.in {
-  background: var(--ui-accent);
-}
-.sw-out,
-.vol-bar.out {
-  background: var(--ui-indigo);
-}
-.vol-list {
-  display: grid;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-.vol-row {
-  display: grid;
-  grid-template-columns: minmax(140px, 220px) minmax(0, 1fr);
-  gap: 20px;
-  align-items: center;
-  padding: 14px 22px;
-}
-.vol-row + .vol-row {
-  box-shadow: inset 0 0.5px 0 var(--ui-sep);
-}
-.vol-name {
-  overflow: hidden;
-  font-size: 14px;
-  font-weight: 600;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.vol-bars {
-  display: grid;
-  gap: 6px;
-}
-.vol-line {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 52px;
-  gap: 12px;
-  align-items: center;
-}
-.vol-n {
-  font-size: 13px;
-  font-weight: 600;
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-}
-.vol-track {
-  display: block;
-  height: 8px;
-  overflow: hidden;
-  border-radius: 999px;
-  background: var(--ui-fill);
-}
-.vol-bar {
-  display: block;
-  height: 100%;
-  border-radius: 999px;
-}
-
 @media (max-width: 1280px) {
   .chgrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -990,11 +859,6 @@ const selectedPlatformLabel = computed(() =>
   }
   .alert-row .btn {
     margin-left: 50px;
-  }
-  .vol-row {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 8px;
-    padding: 12px 16px;
   }
 }
 </style>
