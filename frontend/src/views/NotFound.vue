@@ -7,34 +7,41 @@
     <div class="ui-page not-found-page">
       <section class="nf">
         <div class="code-wrap">
-          <!-- Lost signal: three rings pinging out from the zero. Decoration, so hidden from assistive tech -->
-          <svg
-            class="hero-rings"
-            viewBox="0 0 320 320"
-            aria-hidden="true"
-            focusable="false"
+          <!-- The zero is a lost signal: a ring with a quiet echo inside. Decoration; the number is read as 404 -->
+          <div
+            class="code"
+            role="img"
+            aria-label="404"
           >
-            <circle
-              class="nf-ring r3"
-              cx="160"
-              cy="160"
-              r="90"
-            />
-            <circle
-              class="nf-ring r2"
-              cx="160"
-              cy="160"
-              r="68"
-            />
-            <circle
-              class="nf-ring r1"
-              cx="160"
-              cy="160"
-              r="46"
-            />
-          </svg>
-          <div class="code">
-            4<span>0</span>4
+            <span aria-hidden="true">4</span>
+            <svg
+              class="zero"
+              viewBox="0 0 100 124"
+              aria-hidden="true"
+              focusable="false"
+            >
+              <ellipse
+                class="nf-ring r3"
+                cx="50"
+                cy="62"
+                rx="42"
+                ry="56"
+              />
+              <ellipse
+                class="nf-ring r2"
+                cx="50"
+                cy="62"
+                rx="24"
+                ry="33"
+              />
+              <circle
+                class="nf-dot"
+                cx="50"
+                cy="62"
+                r="7"
+              />
+            </svg>
+            <span aria-hidden="true">4</span>
           </div>
         </div>
         <h1 class="nf-title">
@@ -181,14 +188,14 @@ const QUICK_LINKS: QuickLink[] = [
     to: '/tags',
     title: '客戶標籤',
     text: '分類與客戶經營',
-    tone: 'orange',
+    tone: 'blue',
     icon: '<path d="M12.6 2.6A2 2 0 0 0 11.2 2H4a2 2 0 0 0-2 2v7.2a2 2 0 0 0 .6 1.4l8.7 8.7a2.4 2.4 0 0 0 3.4 0l6.6-6.6a2.4 2.4 0 0 0 0-3.4Z"/><circle cx="7.5" cy="7.5" r="1.2"/>'
   },
   {
     to: '/settings',
     title: '系統設定',
     text: '整合、備份與健康檢查',
-    tone: 'indigo',
+    tone: 'blue',
     icon: '<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M2 12h3M19 12h3M4.9 19.1 7 17M17 7l2.1-2.1"/>',
     adminOnly: true
   }
@@ -249,76 +256,59 @@ const goBack = () => {
   text-align: center;
 }
 
-/* The rings live in the numerals' own box, so they can never reach the sentence below */
 .code-wrap {
-  position: relative;
   display: grid;
   place-items: center;
-  padding: 8px 80px;
+  padding: 8px 0;
 }
 
 .code {
-  position: relative;
+  display: flex;
+  gap: 0.04em;
+  align-items: center;
   font: 300 168px / 1 var(--ui-font-display);
   letter-spacing: -0.06em;
-  font-variant-numeric: tabular-nums;
   color: var(--ui-ink);
 }
 
-.code span {
-  color: var(--ui-accent);
-  font-weight: 500;
-}
-
-.hero-rings {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 320px;
-  height: 320px;
-  translate: -50% -50%;
+/* The zero is drawn, sized in the numerals' own em so it follows the font size at every width */
+.zero {
+  width: 0.6em;
+  height: 0.745em;
+  margin: 0 0.07em;
   overflow: visible;
-  pointer-events: none;
 }
 
 .nf-ring {
   fill: none;
   stroke: var(--ui-blue);
-  stroke-width: 2;
-  transform-origin: 160px 160px;
-}
-
-.nf-ring.r1 {
-  opacity: 0.34;
-}
-
-.nf-ring.r2 {
-  opacity: 0.2;
+  transform-origin: 50px 62px;
 }
 
 .nf-ring.r3 {
-  opacity: 0.11;
+  stroke-width: 12;
 }
 
-/* The signal goes out once on arrival and settles; nothing loops */
+.nf-ring.r2 {
+  stroke-width: 3;
+  opacity: 0.4;
+}
+
+.nf-dot {
+  fill: var(--ui-blue);
+}
+
+/* The echo goes out once on arrival and settles; nothing loops */
 @media (prefers-reduced-motion: no-preference) {
-  .nf-ring {
-    animation: nf-ping 900ms var(--ui-ease) both;
-  }
-
   .nf-ring.r2 {
-    animation-delay: 120ms;
-  }
-
-  .nf-ring.r3 {
-    animation-delay: 240ms;
+    animation: nf-ping 900ms var(--ui-ease) 150ms both;
   }
 }
 
 @keyframes nf-ping {
   from {
     opacity: 0;
-    transform: scale(0.7);
+    transform: scale(0.6);
   }
 }
 
@@ -340,8 +330,8 @@ const goBack = () => {
   display: flex;
   gap: 10px;
   align-items: center;
-  width: min(100%, 420px);
-  margin-top: 18px;
+  width: min(100%, 460px);
+  margin-top: 20px;
   padding: 12px 14px;
   font-size: 14px;
   background: var(--ui-surface);
@@ -447,14 +437,6 @@ const goBack = () => {
   background: var(--ui-blue);
 }
 
-.go-ico.orange {
-  background: var(--ui-orange);
-}
-
-.go-ico.indigo {
-  background: var(--ui-indigo);
-}
-
 .go b {
   display: block;
   font-size: var(--ui-t-head);
@@ -470,33 +452,18 @@ const goBack = () => {
 .nf-actions {
   display: flex;
   gap: 10px;
-  justify-content: center;
-  margin-top: 28px;
+  width: min(100%, 460px);
+  margin-top: 20px;
 }
 
-@media (max-width: 768px) {
-  .nf-actions {
-    width: 100%;
-  }
-
-  .nf-actions > .btn {
-    flex: 1 1 0;
-    justify-content: center;
-  }
+.nf-actions > .btn {
+  flex: 1 1 0;
+  justify-content: center;
 }
 
 @media (max-width: 480px) {
   .code {
     font-size: 104px;
-  }
-
-  .code-wrap {
-    padding: 8px 40px;
-  }
-
-  .hero-rings {
-    width: 220px;
-    height: 220px;
   }
 
   .asked {
