@@ -507,7 +507,9 @@ function formatTime(iso: string): string {
 
 .bar-reserve {
   display: block;
+  min-width: 10px;
   height: 100%;
+  margin-left: 2px;
   background: var(--ui-indigo);
 }
 

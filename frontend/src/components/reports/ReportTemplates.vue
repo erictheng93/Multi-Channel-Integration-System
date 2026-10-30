@@ -123,8 +123,6 @@
       </section>
     </div>
 
-    <RecentOutputs v-if="selected" />
-
     <UiActionBar
       v-if="selected"
       class="tpl-bar"
@@ -161,7 +159,6 @@ import type { ReportTemplate } from '@/types/reports';
 import ReportsAPI from '@/api/reports';
 import TemplateCard from './templates/TemplateCard.vue';
 import ReportOutputPreview from './templates/ReportOutputPreview.vue';
-import RecentOutputs from './templates/RecentOutputs.vue';
 import { DEFAULT_TEMPLATES } from './templates/templateHelpers';
 
 const router = useRouter();
@@ -372,10 +369,6 @@ onMounted(() => {
   height: 18px;
 }
 
-.tpl-out :deep(.rop-kpi dd) {
-  font-size: 52px;
-}
-
 .tpl-out :deep(.rop-from) {
   color: var(--ui-ink-2);
 }
@@ -438,10 +431,6 @@ onMounted(() => {
 @media (max-width: 768px) {
   .tpl-out :deep(.rop) {
     gap: 18px;
-  }
-
-  .tpl-out :deep(.rop-kpi dd) {
-    font-size: 30px;
   }
 
   .tpl-out {

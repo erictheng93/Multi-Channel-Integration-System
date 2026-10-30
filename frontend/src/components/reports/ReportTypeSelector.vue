@@ -25,7 +25,7 @@
         type="button"
         role="radio"
         class="type-tile"
-        :class="{ selected: selectedType === option.value }"
+        :class="[option.value, { selected: selectedType === option.value }]"
         :aria-checked="selectedType === option.value"
         :tabindex="selectedType === option.value || (selectedType === null && index === 0) ? 0 : -1"
         @click="$emit('select', option.value)"
@@ -162,12 +162,17 @@ function onKey(event: KeyboardEvent, index: number) {
 }
 
 .type-tile {
+  --hue: var(--ui-accent);
+  --hue-soft: var(--ui-accent-soft);
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  gap: 4px 12px;
-  align-items: center;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    'ico radio'
+    'info info';
+  gap: 14px 12px;
+  align-items: start;
   min-width: 0;
-  padding: 14px;
+  padding: 16px;
   border: 0;
   border-radius: var(--ui-r-inner);
   background: var(--ui-surface);
@@ -179,6 +184,16 @@ function onKey(event: KeyboardEvent, index: number) {
   transition:
     background var(--ui-dur) var(--ui-ease),
     box-shadow var(--ui-dur) var(--ui-ease);
+}
+
+.type-tile.agent_performance {
+  --hue: var(--ui-green-ink);
+  --hue-soft: var(--ui-green-soft);
+}
+
+.type-tile.message_statistics {
+  --hue: var(--ui-indigo-ink);
+  --hue-soft: var(--ui-indigo-soft);
 }
 
 .type-tile:hover:not(.selected) {
@@ -197,42 +212,45 @@ function onKey(event: KeyboardEvent, index: number) {
 
 .type-ico {
   display: grid;
-  width: 36px;
-  height: 36px;
+  grid-area: ico;
+  width: 44px;
+  height: 44px;
   place-items: center;
-  border-radius: 11px;
-  background: var(--ui-fill);
-  color: var(--ui-ink-2);
+  border-radius: 14px;
+  background: var(--hue-soft);
+  color: var(--hue);
 }
 
 .selected .type-ico {
-  background: var(--ui-accent);
+  background: var(--hue);
   color: #fff;
 }
 
 .type-ico svg {
-  width: 20px;
-  height: 20px;
+  width: 24px;
+  height: 24px;
 }
 
 .type-info {
   display: grid;
+  grid-area: info;
   gap: 2px;
   min-width: 0;
 }
 
 .type-name {
-  font-size: 15px;
-  font-weight: 600;
+  font: 600 17px / 1.25 var(--ui-font-display);
 }
 
 .type-desc {
   font-size: 13px;
-  color: var(--ui-muted);
+  line-height: 1.4;
+  color: var(--ui-ink-2);
 }
 
 .radio {
   display: grid;
+  grid-area: radio;
   width: 22px;
   height: 22px;
   place-items: center;
@@ -247,7 +265,7 @@ function onKey(event: KeyboardEvent, index: number) {
 }
 
 .selected .radio {
-  background: var(--ui-accent);
+  background: var(--hue);
   box-shadow: none;
 }
 
@@ -261,6 +279,12 @@ function onKey(event: KeyboardEvent, index: number) {
 @media (max-width: 1280px) {
   .type-options {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .type-tile {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas: 'ico info radio';
+    align-items: center;
   }
 }
 

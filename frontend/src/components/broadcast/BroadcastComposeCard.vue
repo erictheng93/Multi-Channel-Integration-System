@@ -64,7 +64,7 @@
           v-model.trim="content"
           class="ui-textarea"
           maxlength="2000"
-          rows="5"
+          rows="4"
           placeholder="輸入文字（選填，可只發圖片）"
         />
         <span class="ui-hint hint-split"><span>LINE 單則文字上限 2,000 字</span><span class="num">{{ content.length }} / 2000</span></span>
@@ -532,7 +532,7 @@
   }
 
   .ui-textarea {
-    min-height: 120px;
+    min-height: 96px;
   }
 
   .image-grid {

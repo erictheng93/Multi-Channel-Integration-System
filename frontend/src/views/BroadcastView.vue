@@ -25,7 +25,10 @@
         />
 
         <!-- One panel for audience + LINE preview, always visible (on a phone it sits right under the form) -->
-        <div class="ui-card side-panel">
+        <div
+          class="ui-card side-panel"
+          :class="{ 'is-idle': !hasDraft }"
+        >
           <BroadcastAudienceCard
             :preview="broadcastsStore.preview"
             :tag-name="previewTagName"
@@ -97,6 +100,10 @@ const pendingByChannel = computed(() =>
   Object.fromEntries(
     (broadcastsStore.preview?.tokenGroups ?? []).map(group => [group.channelKey, group.recipientCount])
   )
+)
+// Nothing typed and no audience yet: on a phone the empty panel would only push the history down
+const hasDraft = computed(() =>
+  !!draft.value.content || draft.value.imageUrls.length > 0 || !!broadcastsStore.preview || broadcastsStore.previewLoading
 )
 const previewTagName = computed(
   () => tagsStore.tags.find(tag => tag.id === broadcastsStore.previewTagId)?.name
@@ -232,6 +239,10 @@ async function fetchCurrentRecipients() {
 @media (max-width: 768px) {
   .side-panel {
     align-self: start;
+  }
+
+  .side-panel.is-idle {
+    display: none;
   }
 }
 </style>
