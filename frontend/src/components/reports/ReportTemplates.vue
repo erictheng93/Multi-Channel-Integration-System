@@ -293,12 +293,19 @@ onMounted(() => {
   }
 
   .custom-lead {
+    align-items: start;
     gap: 16px;
     padding: 22px 20px;
   }
 
   .custom-name {
     font-size: 24px;
+  }
+
+  .custom-ico {
+    width: 44px;
+    height: 44px;
+    border-radius: 13px;
   }
 }
 </style>
