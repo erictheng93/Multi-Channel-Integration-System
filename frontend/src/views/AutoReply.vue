@@ -23,8 +23,7 @@
               stroke-linejoin="round"
               aria-hidden="true"
             ><path d="M21 12a9 9 0 0 1-15.5 6.2L3 16M3 12a9 9 0 0 1 15.5-6.2L21 8M21 3v5h-5M3 21v-5h5" /></svg>
-            <span class="btn-txt">重新整理</span>
-            <span class="btn-txt-short">更新</span>
+            重新整理
           </button>
           <button
             v-if="!loading && activeTab === 'rules'"
@@ -65,6 +64,7 @@
           :is-business-hours="stats.isBusinessHours"
           :business-hours="stats.businessHours"
           :success-rate="stats.successRate"
+          :today-window="todayWindow"
         />
 
         <!-- Tabs -->
@@ -222,6 +222,25 @@ const headline = computed(() => {
   return `${summary}${today}優先序數字越小越先比對。`
 })
 
+// Today's opening window (minutes since midnight) and the current time, both in the team's timezone,
+// from the saved schedule: it draws where "now" sits inside the day
+const todayWindow = computed(() => {
+  void stats.value
+  const tz = stats.value.businessHours?.timezone || store.schedules[0]?.timezone || 'Asia/Taipei'
+  let weekday = new Date().getDay()
+  let minutes = new Date().getHours() * 60 + new Date().getMinutes()
+  try {
+    const parts = new Intl.DateTimeFormat('en-US', { timeZone: tz, weekday: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(new Date())
+    const get = (t: string) => parts.find(p => p.type === t)?.value ?? ''
+    weekday = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].indexOf(get('weekday'))
+    minutes = Number(get('hour')) * 60 + Number(get('minute'))
+  } catch { /* unknown timezone: keep the browser clock */ }
+  const row = store.schedules.find(sc => sc.dayOfWeek === weekday)
+  if (!row || !row.isActive) { return null }
+  const toMin = (t: string) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5))
+  return { start: toMin(row.startTime), end: toMin(row.endTime), now: minutes }
+})
+
 async function refresh() {
   await initialize()
 }
@@ -276,10 +295,6 @@ onUnmounted(() => cleanup())
 </script>
 
 <style scoped>
-.btn-txt-short {
-  display: none;
-}
-
 .btn-ico {
   width: 15px;
   height: 15px;
@@ -329,12 +344,9 @@ onUnmounted(() => cleanup())
 
 /* Phone: the title and its action share one row (the shared head drops actions under the subtitle) */
 @media (max-width: 768px) {
-  .btn-txt {
+  /* the phone header keeps one action: refresh is a desktop control (the lists reload on every visit) */
+  .auto-reply-page :deep(.ui-page-actions > .btn-secondary) {
     display: none;
-  }
-
-  .btn-txt-short {
-    display: inline;
   }
 
   .auto-reply-page :deep(.ui-page-head) {

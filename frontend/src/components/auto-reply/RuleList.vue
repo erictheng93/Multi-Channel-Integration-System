@@ -1,36 +1,5 @@
 <template>
   <div class="rule-list">
-    <!-- Toolbar: the add button lives in the page header -->
-    <div class="rule-list__toolbar">
-      <div class="rule-list__filters">
-        <input
-          class="ui-input rule-list__search"
-          aria-label="搜尋規則"
-          type="text"
-          placeholder="搜尋規則"
-          :value="searchQuery"
-          @input="emit('update:searchQuery', ($event.target as HTMLInputElement).value)"
-        >
-        <select
-          class="ui-select rule-list__filter-select"
-          aria-label="規則類型"
-          :value="filterTriggerType"
-          @change="emit('update:filterTriggerType', ($event.target as HTMLSelectElement).value)"
-        >
-          <option value="">
-            所有類型
-          </option>
-          <option
-            v-for="opt in TRIGGER_TYPE_OPTIONS"
-            :key="opt.value"
-            :value="opt.value"
-          >
-            {{ opt.label }}
-          </option>
-        </select>
-      </div>
-    </div>
-
     <!-- New rule editor -->
     <div
       v-if="isCreating"
@@ -55,18 +24,39 @@
       />
     </div>
 
-    <!-- Rule list -->
-    <h2
-      v-if="rules.length > 0"
-      class="ui-group-label rule-list__label"
-    >
-      規則
-      <span class="rule-list__count">{{ rules.length }}</span>
-    </h2>
-    <div
-      v-if="rules.length > 0"
-      class="ui-group rule-list__items"
-    >
+    <!-- Rule list: the search and type filter are the card's own toolbar, with the count -->
+    <div class="ui-group rule-list__items">
+      <div class="rule-list__toolbar">
+        <div class="rule-list__filters">
+          <input
+            class="ui-input rule-list__search"
+            aria-label="搜尋規則"
+            type="text"
+            placeholder="搜尋規則"
+            :value="searchQuery"
+            @input="emit('update:searchQuery', ($event.target as HTMLInputElement).value)"
+          >
+          <select
+            class="ui-select rule-list__filter-select"
+            aria-label="規則類型"
+            :value="filterTriggerType"
+            @change="emit('update:filterTriggerType', ($event.target as HTMLSelectElement).value)"
+          >
+            <option value="">
+              所有類型
+            </option>
+            <option
+              v-for="opt in TRIGGER_TYPE_OPTIONS"
+              :key="opt.value"
+              :value="opt.value"
+            >
+              {{ opt.label }}
+            </option>
+          </select>
+        </div>
+        <span class="rule-list__count">{{ rules.length }} 條規則</span>
+      </div>
+
       <RuleCard
         v-for="rule in rules"
         :key="rule.id"
@@ -90,7 +80,7 @@
 
     <!-- Empty state -->
     <UiEmptyState
-      v-else-if="!isCreating"
+      v-if="rules.length === 0 && !isCreating"
       class="ui-card rule-list__empty"
       title="尚未建立自動回覆規則"
       description="規則會在客戶來訊符合條件時自動回覆。"
@@ -161,32 +151,26 @@ const emit = defineEmits<{
   gap: 16px;
 }
 
-/* the label sits tight on its group, not a full page gap above it */
-.rule-list__label {
-  margin: 4px 0 -8px;
-}
-
 .rule-list__count {
-  min-width: 20px;
-  padding: 0 7px;
-  border-radius: 999px;
-  background: var(--section-hue-soft);
-  font-size: 13px;
-  font-weight: 600;
-  line-height: 20px;
-  text-align: center;
-  color: var(--section-ink);
+  flex: none;
+  margin-left: auto;
+  font-size: 14px;
+  color: var(--ui-muted);
   font-variant-numeric: tabular-nums;
 }
 
-
+/* the toolbar is the top row of the rules card */
 .rule-list__toolbar {
   display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 22px;
+  border-bottom: 0.5px solid var(--ui-sep);
 }
 
 .rule-list__filters {
   display: flex;
-  flex: 1 1 auto;
+  flex: 0 1 560px;
   align-items: center;
   gap: 10px;
   min-width: 0;
@@ -195,18 +179,15 @@ const emit = defineEmits<{
 .rule-list__search {
   flex: 1 1 auto;
   min-width: 0;
-  max-width: 360px;
-  height: 40px;
+  height: 36px;
   border-radius: 999px;
-  background: var(--ui-surface);
 }
 
 .rule-list__filter-select {
   width: auto;
-  min-width: 140px;
-  height: 40px;
+  min-width: 132px;
+  height: 36px;
   border-radius: 999px;
-  background-color: var(--ui-surface);
 }
 
 .rule-list__items {
@@ -230,8 +211,16 @@ const emit = defineEmits<{
 
 @media (max-width: 768px) {
   /* Phone: the search takes the row, the type filter sits beside it as a compact chip */
-  .rule-list__search {
-    max-width: none;
+  .rule-list__toolbar {
+    padding: 10px 12px;
+  }
+
+  .rule-list__filters {
+    flex: 1 1 auto;
+  }
+
+  .rule-list__count {
+    display: none;
   }
 
   .rule-list__filter-select {
