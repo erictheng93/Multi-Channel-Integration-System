@@ -13,7 +13,10 @@
 
       <div class="conversation-info">
         <div class="customer-details">
-          <div class="customer-avatar">
+          <div
+            class="customer-avatar"
+            :class="`ui-av-${avatarToneOf(conversation?.customer?.name || conversation?.user?.name || '未知用戶')}`"
+          >
             {{ customerInitials }}
           </div>
           <div class="customer-meta">
@@ -259,6 +262,7 @@ const emit = defineEmits<{
 const frontendLogger = createLogger('ConversationHeader')
 import { computed, ref, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { ArrowLeftIcon, InfoIcon, RefreshIcon, UserPlusIcon, ChevronDownIcon, SearchIcon, DownloadIcon, MailIcon, CheckIcon } from '@/components/icons'
+import { avatarToneOf } from '@/composables/conversation/useConversationRowMeta'
 import PlatformBadge from '../ui/PlatformBadge.vue'
 import StatusBadge from '../ui/StatusBadge.vue'
 import AssignmentBadge from '../ui/AssignmentBadge.vue'
@@ -586,7 +590,6 @@ defineExpose({
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  background: linear-gradient(160deg, #5aa8ff, #1d6fe0);
   color: #fff;
   font: 600 15px var(--ui-font-display);
 }

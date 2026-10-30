@@ -38,9 +38,10 @@
         />
       </svg>
     </span>
-    <span class="hrn-text">
-      LINE 僅保留近 6 個月記錄，{{ boundaryLabel }} 前的訊息已無法顯示
-    </span>
+    <span
+      class="hrn-text"
+      :title="`LINE 僅保留近 6 個月記錄，${boundaryLabel} 前的訊息已無法顯示`"
+    >LINE 僅保留近 6 個月記錄<span class="hrn-more">，{{ boundaryLabel }} 前的訊息已無法顯示</span></span>
     <button
       type="button"
       class="hrn-close"
@@ -168,10 +169,15 @@ onBeforeUnmount(() => {
   }
 }
 
+/* Phone: the headline only, one line (the boundary date sits in the title) */
 @media (max-width: 768px) {
   .history-retention-notice {
     max-width: calc(100% - 24px);
     margin-top: 8px;
+  }
+
+  .hrn-more {
+    display: none;
   }
 }
 
