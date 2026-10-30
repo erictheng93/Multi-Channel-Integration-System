@@ -75,7 +75,7 @@ describe('DataExport.vue', () => {
 
     it('應該顯示「開始匯出」按鈕', () => {
       wrapper = createWrapper()
-      const btn = wrapper.find('.choose-foot .btn-primary')
+      const btn = wrapper.find('.lead-cta')
       expect(btn.exists()).toBe(true)
       expect(btn.text()).toContain('開始匯出')
     })
@@ -151,7 +151,7 @@ describe('DataExport.vue', () => {
 
     it('點擊「開始匯出」應該打開 ExportDialog', async () => {
       wrapper = createWrapper()
-      const btn = wrapper.find('.choose-foot .btn-primary')
+      const btn = wrapper.find('.lead-cta')
       await btn.trigger('click')
       await nextTick()
 
@@ -169,7 +169,7 @@ describe('DataExport.vue', () => {
       expect(dialog.props('show')).toBe(false)
       expect(cards[1]!.attributes('aria-checked')).toBe('true')
 
-      await wrapper.find('.choose-foot .btn-primary').trigger('click')
+      await wrapper.find('.lead-cta').trigger('click')
       await nextTick()
       expect(dialog.props('show')).toBe(true)
       expect(dialog.props('initialFormat')).toBe('csv')
@@ -179,7 +179,7 @@ describe('DataExport.vue', () => {
       wrapper = createWrapper()
 
       // Open dialog first
-      const btn = wrapper.find('.choose-foot .btn-primary')
+      const btn = wrapper.find('.lead-cta')
       await btn.trigger('click')
       await nextTick()
 

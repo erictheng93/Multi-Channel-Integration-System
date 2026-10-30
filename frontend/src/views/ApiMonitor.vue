@@ -24,7 +24,7 @@
         {{ controller.error.value }}
       </div>
 
-      <!-- Lead: the overall verdict, endpoints healthy as a ring, and the four clickable counts -->
+      <!-- Lead: the overall verdict, endpoints healthy as an arc, and the four clickable counts -->
       <RingLead
         kicker="整體狀態"
         :value="leadValue ?? '—'"
@@ -152,7 +152,7 @@ const leadValue = computed<string | null>(() =>
 )
 const leadTone = computed(() => (leadValue.value ? LEAD_TONE[controller.systemStatus.value] : 'none'))
 
-/** One ring: endpoints currently healthy of all tracked (only when endpoint metrics exist) */
+/** One arc: endpoints currently healthy of all tracked (only when endpoint metrics exist) */
 const endpointRings = computed<ServiceRing[]>(() => {
   if (!hasMetrics.value || statusCounts.value.all === 0) { return [] }
   const { healthy, warning, all, error } = statusCounts.value

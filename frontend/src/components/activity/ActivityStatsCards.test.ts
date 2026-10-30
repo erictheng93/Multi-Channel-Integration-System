@@ -40,7 +40,7 @@ describe('ActivityStatsCards', () => {
     expect(wrapper.find('.rl-num').text()).toContain('1,284')
   })
 
-  it('draws a ring for the top member and the top action, each against the total', () => {
+  it('draws an arc for the top member and the top action, each against the total', () => {
     const wrapper = mountCards({ overview: makeOverview(), loading: false })
     const text = wrapper.find('.sr-legend').text()
     expect(text).toContain('最活躍：Alice')
