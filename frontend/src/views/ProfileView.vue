@@ -189,22 +189,27 @@
                       {{ profileErrors.displayName }}
                     </span>
                   </div>
-                  <button
-                    v-if="profileChanged"
-                    type="button"
-                    class="btn btn-ghost"
-                    :disabled="profileSaving"
-                    @click="resetProfile"
+                  <div
+                    class="save-slot"
+                    :class="{ 'is-open': profileChanged || profileSaving }"
+                    :inert="!(profileChanged || profileSaving)"
                   >
-                    重設
-                  </button>
-                  <button
-                    type="submit"
-                    class="btn btn-primary"
-                    :disabled="profileSaving"
-                  >
-                    {{ profileSaving ? '儲存中…' : '儲存' }}
-                  </button>
+                    <button
+                      type="button"
+                      class="btn btn-ghost"
+                      :disabled="profileSaving"
+                      @click="resetProfile"
+                    >
+                      重設
+                    </button>
+                    <button
+                      type="submit"
+                      class="btn btn-primary"
+                      :disabled="profileSaving"
+                    >
+                      {{ profileSaving ? '儲存中…' : '儲存' }}
+                    </button>
+                  </div>
                 </div>
                 <p
                   id="display-name-hint"
@@ -447,7 +452,7 @@ const logger = createLogger('ProfileView')
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
-const { showSuccess, showError, showInfo } = useToast()
+const { showSuccess, showError } = useToast()
 
 // ============== 基本資料 ==============
 // Presence = own websocket state; teams from /auth/me teams[]
@@ -547,10 +552,7 @@ function validateProfile(): boolean {
 
 async function onSaveProfile(): Promise<void> {
   if (!validateProfile()) {return}
-  if (!profileChanged.value) {
-    showInfo('名稱沒有變更', '修改上方的名稱後再儲存')
-    return
-  }
+  if (!profileChanged.value) {return}
 
   profileSaving.value = true
   try {
@@ -1045,7 +1047,7 @@ watch(
 
 .name-line {
   display: flex;
-  gap: 10px;
+  gap: 0;
   align-items: flex-start;
 }
 
@@ -1061,6 +1063,22 @@ watch(
   line-height: 20px;
   color: var(--ui-ink-2);
   box-shadow: inset 0 0.5px 0 var(--ui-sep);
+}
+
+/* 儲存 only exists while the name is changed; its slot slides open so the input never jumps */
+.save-slot {
+  display: flex;
+  gap: 8px;
+  max-width: 0;
+  overflow: hidden;
+  opacity: 0;
+  transition: max-width var(--ui-dur) var(--ui-ease), opacity var(--ui-dur) var(--ui-ease);
+}
+
+.save-slot.is-open {
+  max-width: 200px;
+  margin-left: 10px;
+  opacity: 1;
 }
 
 .field-hint {
