@@ -61,6 +61,12 @@
           aria-label="優先級: 緊急"
         >緊急</span>
         <span
+          v-else-if="notification.priority === 'high'"
+          class="ui-pill ui-pill-orange"
+          role="status"
+          aria-label="優先級: 高"
+        >高優先</span>
+        <span
           v-else-if="notification.priority === 'low'"
           class="ui-pill"
           role="status"
@@ -103,6 +109,10 @@
           @click="$emit('mark-read', notification.id)"
         >
           <CheckIcon aria-hidden="true" />
+          <span
+            class="action-label"
+            aria-hidden="true"
+          >已讀</span>
         </button>
         <button
           class="action-btn action-btn-danger"
@@ -116,10 +126,13 @@
             v-if="confirmingDelete"
             class="confirm-text"
           >刪除？</span>
-          <TrashIcon
-            v-else
-            aria-hidden="true"
-          />
+          <template v-else>
+            <TrashIcon aria-hidden="true" />
+            <span
+              class="action-label"
+              aria-hidden="true"
+            >刪除</span>
+          </template>
         </button>
       </div>
     </div>
@@ -270,6 +283,15 @@ const formattedTime = computed(() => {
 
 .notification-card:hover {
   background: color-mix(in srgb, var(--ui-fill) 45%, transparent);
+}
+
+/* Unread rows carry a faint section wash so the inbox scans by tint, not only by the dot */
+.notification-unread {
+  background: color-mix(in srgb, var(--ui-accent) 4%, transparent);
+}
+
+.notification-unread:hover {
+  background: color-mix(in srgb, var(--ui-accent) 9%, transparent);
 }
 
 /* Unread: coloured icon tile, bold ink title and a dot by the time. Read: grey tile, receding title. No tinted slab (it read as a selected row). */
@@ -453,6 +475,10 @@ const formattedTime = computed(() => {
   color: var(--ui-red-ink);
 }
 
+.action-label {
+  display: none;
+}
+
 .confirm-text {
   font-size: 13px;
   font-weight: 600;
@@ -483,9 +509,9 @@ const formattedTime = computed(() => {
     display: grid;
     grid-template-columns: 40px minmax(0, 1fr) auto;
     grid-template-areas:
-      'icon head act'
-      'icon text act'
-      'icon meta meta';
+      'icon head head'
+      'icon text text'
+      'icon meta act';
     gap: 0 14px;
     align-items: start;
   }
@@ -539,7 +565,8 @@ const formattedTime = computed(() => {
   .notification-actions {
     position: static;
     grid-area: act;
-    margin: -10px -12px -10px 0;
+    align-self: center;
+    margin: -8px -10px -8px 0;
     opacity: 1;
   }
 
@@ -614,15 +641,32 @@ const formattedTime = computed(() => {
 @media (max-width: 768px), (hover: none) {
   /* 44px touch target, but drawn as quiet glyphs so the row reads as part of the item, not a toolbar */
   .action-btn {
-    width: 44px;
+    display: inline-flex;
+    gap: 6px;
+    align-items: center;
+    justify-content: center;
+    width: auto;
+    min-width: 44px;
     height: 44px;
+    padding: 0 12px;
+    border-radius: 999px;
     background: transparent;
     color: var(--ui-ink-2);
   }
 
+  .action-btn:not(.action-btn-danger) {
+    color: var(--section-ink, var(--ui-accent));
+  }
+
   .action-btn svg {
-    width: 20px;
-    height: 20px;
+    width: 18px;
+    height: 18px;
+  }
+
+  .action-label {
+    display: inline;
+    font-size: 14px;
+    font-weight: 600;
   }
 }
 </style>
