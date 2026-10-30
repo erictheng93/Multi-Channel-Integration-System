@@ -116,6 +116,7 @@
                   <div class="conversation-top">
                     <span class="customer-name">{{ conversation.customer_name }}</span>
                     <span
+                      v-if="conversation.status !== 'active'"
                       class="status-badge"
                       :class="`status-${conversation.status}`"
                     >
