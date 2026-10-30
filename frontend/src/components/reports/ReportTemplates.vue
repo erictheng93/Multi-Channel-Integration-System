@@ -1,7 +1,7 @@
 <!-- 報表模板：only templates the backend can generate, plus the custom report entry -->
 
 <template>
-  <div class="ui-page report-templates">
+  <div class="ui-page report-templates ui-rise">
     <UiPageHead
       title="報表模板"
       :subtitle="templatesSubtitle"
@@ -23,20 +23,9 @@
       </button>
     </div>
 
-    <div
-      v-else
-      class="catalogue"
-    >
-      <TemplateCard
-        v-for="template in usableTemplates"
-        :key="template.name"
-        :template="template"
-        :generating="generating"
-        @use="useTemplate"
-        @customize="customizeTemplate"
-      />
-
-      <section class="ui-card custom-card">
+    <template v-else>
+      <!-- Lead: the free-form entry; the ready-made templates follow as a labelled group -->
+      <section class="ui-lead custom-lead">
         <span
           class="custom-ico"
           aria-hidden="true"
@@ -81,7 +70,27 @@
           前往產生報表
         </router-link>
       </section>
-    </div>
+
+      <div
+        v-if="usableTemplates.length > 0"
+        class="catalogue-wrap"
+      >
+        <h2 class="ui-group-label">
+          現成模板
+          <span class="tpl-count">{{ usableTemplates.length }}</span>
+        </h2>
+        <div class="catalogue">
+          <TemplateCard
+            v-for="template in usableTemplates"
+            :key="template.name"
+            :template="template"
+            :generating="generating"
+            @use="useTemplate"
+            @customize="customizeTemplate"
+          />
+        </div>
+      </div>
+    </template>
   </div>
 </template>
 
@@ -172,40 +181,52 @@ onMounted(() => {
   gap: 16px;
 }
 
-.custom-card {
+.tpl-count {
+  min-width: 20px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: var(--section-hue-soft);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 20px;
+  text-align: center;
+  color: var(--section-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.custom-lead {
   display: grid;
-  grid-column: 1 / -1;
   grid-template-columns: auto minmax(0, 1fr) auto auto;
-  gap: 20px;
+  gap: 24px;
   align-items: center;
-  padding: 24px;
+  padding: 28px 36px;
 }
 
 .custom-ico {
   display: grid;
-  width: 48px;
-  height: 48px;
+  width: 56px;
+  height: 56px;
   place-items: center;
-  border-radius: 15px;
-  background: var(--ui-fill);
-  color: var(--ui-ink-2);
+  border-radius: 16px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--section-hue) 82%, #fff), var(--section-hue));
+  color: #fff;
 }
 
 .custom-ico svg {
-  width: 22px;
-  height: 22px;
+  width: 26px;
+  height: 26px;
 }
 
 .custom-name {
   margin: 0;
-  font: 600 20px / 1.25 var(--ui-font-display);
-  letter-spacing: -0.01em;
+  font: 700 28px / 1.2 var(--ui-font-display);
+  letter-spacing: -0.025em;
 }
 
 .custom-desc {
-  margin: 4px 0 12px;
-  font-size: 13.5px;
-  color: var(--ui-muted);
+  margin: 4px 0 14px;
+  font-size: 15px;
+  color: var(--ui-ink-2);
 }
 
 .custom-types {
@@ -219,18 +240,18 @@ onMounted(() => {
 
 .custom-formats {
   margin: 0;
-  padding-left: 20px;
+  padding-left: 24px;
   border-left: 0.5px solid var(--ui-sep);
 }
 
 .custom-formats dt {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--ui-muted);
 }
 
 .custom-formats dd {
   margin: 2px 0 0;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 600;
 }
 
@@ -247,7 +268,7 @@ onMounted(() => {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .custom-card {
+  .custom-lead {
     grid-template-columns: auto minmax(0, 1fr);
   }
 
@@ -271,8 +292,20 @@ onMounted(() => {
     gap: 12px;
   }
 
-  .custom-card {
-    padding: 18px;
+  .custom-lead {
+    align-items: start;
+    gap: 16px;
+    padding: 22px 20px;
+  }
+
+  .custom-name {
+    font-size: 24px;
+  }
+
+  .custom-ico {
+    width: 44px;
+    height: 44px;
+    border-radius: 13px;
   }
 }
 </style>

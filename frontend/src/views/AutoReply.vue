@@ -1,6 +1,6 @@
 <template>
   <AppLayout>
-    <div class="ui-page auto-reply-page">
+    <div class="ui-page auto-reply-page ui-rise">
       <!-- Page Header -->
       <UiPageHead
         title="自動回覆"

@@ -1,7 +1,7 @@
 <template>
   <AppLayout>
     <main
-      class="ui-page broadcast-page"
+      class="ui-page broadcast-page ui-rise"
       aria-label="群發訊息"
     >
       <UiPageHead
@@ -212,6 +212,10 @@ async function fetchCurrentRecipients() {
 
 
 <style scoped>
+/* grouped headers inside the working cards: 17px, not the 19px card title */
+.broadcast-page :deep(.ui-card-title) {
+  font-size: 17px;
+}
 
 .page-grid {
   display: grid;
