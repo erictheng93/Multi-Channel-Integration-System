@@ -50,11 +50,17 @@
       </p>
       <slot />
       <div
-        v-if="$slots.actions"
+        v-if="$slots.actions && sideRings"
         class="rl-actions"
       >
         <slot name="actions" />
       </div>
+    </div>
+    <div
+      v-if="$slots.actions && !sideRings"
+      class="rl-cta"
+    >
+      <slot name="actions" />
     </div>
     <div
       v-if="hasRings || $slots.rings"
@@ -74,7 +80,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, useSlots } from 'vue'
 import ServiceRings, { type ServiceRing } from '@/components/ui/ServiceRings.vue'
 
 const props = withDefaults(defineProps<{
@@ -101,7 +107,11 @@ const props = withDefaults(defineProps<{
   busy: false,
 })
 
+const slots = useSlots()
+
 const hasRings = computed(() => props.rings.length > 0)
+// Actions sit under the number next to rings; with no rings they take the right side so the card has no dead half
+const sideRings = computed(() => hasRings.value || !!slots.rings)
 </script>
 
 <style scoped>
@@ -182,6 +192,15 @@ const hasRings = computed(() => props.rings.length > 0)
   margin-top: 14px;
 }
 
+.rl:has(.rl-cta) {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.rl-cta {
+  display: flex;
+  align-items: center;
+}
+
 .rl-rings {
   position: relative;
   display: flex;
@@ -222,6 +241,10 @@ const hasRings = computed(() => props.rings.length > 0)
   .rl:has(.rl-rings) {
     grid-template-columns: minmax(0, 1fr);
     padding: 20px;
+  }
+
+  .rl:has(.rl-cta) {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .rl-rings {
