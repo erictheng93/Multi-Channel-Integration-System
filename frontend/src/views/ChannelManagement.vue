@@ -1,6 +1,6 @@
 <template>
   <AppLayout>
-    <div class="ui-page channel-management ui-rise">
+    <div class="ui-page rl-page channel-management ui-rise">
       <!-- Page Header -->
       <UiPageHead
         title="頻道"
@@ -42,6 +42,19 @@
           </button>
         </template>
       </UiPageHead>
+
+      <!-- Lead: how much came through in the last 24 h, and how many channels are on and verified -->
+      <RingLead
+        v-if="!isLoading && !loadFailed && channels.length > 0"
+        kicker="近 24 小時訊息"
+        :value="leadVolume.total === null ? '—' : formatCount(leadVolume.total)"
+        :unit="leadVolume.total === null ? '' : '則'"
+        :meaning="leadVolume.meaning"
+        :tone="leadVolume.total === null ? 'none' : ''"
+        summary="頻道概況"
+        :rings="channelRings"
+        :size="144"
+      />
 
       <!-- Platform Filter -->
       <div class="toolbar">
@@ -377,25 +390,18 @@
       </div>
 
       <!-- Message volume by channel: the same real 24 h counters the cards show, side by side -->
-      <article
+      <section
         v-if="!isLoading && !loadFailed && volumeRows.length > 0"
-        class="ui-card volume"
+        aria-label="近 24 小時各頻道訊息量"
       >
-        <div class="ui-card-head">
-          <div>
-            <h2 class="ui-card-title">
-              近 24 小時訊息量
-            </h2>
-            <div class="ui-card-sub">
-              各頻道的客戶來訊與客服發送，條長為相對比例
-            </div>
-          </div>
-          <div class="ui-card-end vol-legend">
+        <h2 class="ui-group-label">
+          各頻道訊息量
+          <span class="vol-legend">
             <span><i class="sw sw-in" />客戶來訊</span>
             <span><i class="sw sw-out" />客服發送</span>
-          </div>
-        </div>
-        <ul class="vol-list">
+          </span>
+        </h2>
+        <ul class="ui-group vol-list">
           <li
             v-for="row in volumeRows"
             :key="row.id"
@@ -420,7 +426,10 @@
             </span>
           </li>
         </ul>
-      </article>
+        <p class="ui-group-foot">
+          條長為各頻道 24 小時內的相對比例。
+        </p>
+      </section>
 
       <!-- Channel Config Dialog -->
       <ChannelConfigDialog
@@ -445,6 +454,8 @@
 <script setup lang="ts">
 import UiEmptyState from '@/components/ui/UiEmptyState.vue'
 import UiPageHead from '@/components/ui/UiPageHead.vue'
+import RingLead from '@/components/lead/RingLead.vue'
+import type { ServiceRing } from '@/components/ui/ServiceRings.vue'
 import { computed } from 'vue'
 import AppLayout from '@/components/ui/AppLayout.vue'
 import ChannelConfigDialog from '@/components/channels/ChannelConfigDialog.vue'
@@ -567,6 +578,23 @@ const volumeRows = computed(() => {
       outPct: outN === 0 ? 0 : Math.max(2, Math.round((outN / max) * 100))
     }
   })
+})
+
+/** 24 h totals over the active channels that report activity; null when none does (never a made-up zero) */
+const leadVolume = computed(() => {
+  const rows = channels.value.filter(c => c.isActive && c.activity)
+  if (rows.length === 0) { return { total: null, meaning: '沒有啟用中的頻道提供訊息量' } }
+  const inN = rows.reduce((sum, c) => sum + (c.activity?.customerMessages24h ?? 0), 0)
+  const outN = rows.reduce((sum, c) => sum + (c.activity?.agentMessages24h ?? 0), 0)
+  return { total: inN + outN, meaning: `客戶來訊 ${formatCount(inN)} · 客服發送 ${formatCount(outN)}` }
+})
+
+const channelRings = computed<ServiceRing[]>(() => {
+  const total = channels.value.length
+  return [
+    { label: '啟用中', value: channels.value.filter(c => c.isActive).length, total, of: '個頻道', hue: 'var(--section-hue)' },
+    { label: '已驗證', value: channels.value.filter(c => c.isVerified).length, total, of: '個頻道', hue: 'var(--ui-blue)' }
+  ]
 })
 
 const channelSummary = computed(() => {
@@ -867,12 +895,12 @@ const selectedPlatformLabel = computed(() =>
 }
 
 /* Volume comparison */
-.volume {
-  padding-bottom: 8px;
-}
 .vol-legend {
+  display: inline-flex;
   gap: 14px;
+  margin-left: auto;
   font-size: 13px;
+  font-weight: 400;
   color: var(--ui-muted);
 }
 .vol-legend span {
@@ -896,7 +924,7 @@ const selectedPlatformLabel = computed(() =>
 .vol-list {
   display: grid;
   margin: 0;
-  padding: 0 0 8px;
+  padding: 0;
   list-style: none;
 }
 .vol-row {
@@ -904,7 +932,7 @@ const selectedPlatformLabel = computed(() =>
   grid-template-columns: minmax(140px, 220px) minmax(0, 1fr);
   gap: 20px;
   align-items: center;
-  padding: 12px 22px;
+  padding: 14px 22px;
 }
 .vol-row + .vol-row {
   box-shadow: inset 0 0.5px 0 var(--ui-sep);
