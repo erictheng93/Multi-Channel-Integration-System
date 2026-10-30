@@ -23,30 +23,31 @@
         {{ team.description || '尚未填寫描述' }}
       </div>
       <div class="team-meta">
-        <span
-          class="ui-pill"
-          :class="team.isActive ? 'ui-pill-green ui-pill-dot' : ''"
-        >{{ team.isActive ? '活躍' : '停用' }}</span>
         <span class="ui-pill">{{ team.memberCount || 0 }} 成員</span>
         <span
-          v-if="previewMembers.length > 0"
-          class="avs"
-        >
-          <TeamAvatar
-            v-for="m in previewMembers"
-            :key="m.id"
-            size="sm"
-            :name="m.name || m.loginId"
-            :seed="m.id"
-            :src="m.avatar"
-          />
-          <span
-            v-if="overflowCount > 0"
-            class="avs-more"
-          >+{{ overflowCount }}</span>
-        </span>
+          v-if="!team.isActive"
+          class="ui-pill"
+        >已停用</span>
       </div>
     </div>
+
+    <span
+      v-if="previewMembers.length > 0"
+      class="avs"
+    >
+      <TeamAvatar
+        v-for="m in previewMembers"
+        :key="m.id"
+        size="sm"
+        :name="m.name || m.loginId"
+        :seed="m.id"
+        :src="m.avatar"
+      />
+      <span
+        v-if="overflowCount > 0"
+        class="avs-more"
+      >+{{ overflowCount }}</span>
+    </span>
 
     <div
       class="team-acts"
@@ -460,7 +461,7 @@ import { createLogger } from '@/utils/logger'
 <style scoped>
 .team-card {
   display: grid;
-  grid-template-columns: 52px minmax(0, 1fr) auto;
+  grid-template-columns: 52px minmax(0, 1fr) auto auto;
   gap: 14px;
   align-items: center;
   padding: 18px 20px;
@@ -509,7 +510,7 @@ import { createLogger } from '@/utils/logger'
 .avs {
   display: flex;
   align-items: center;
-  margin-left: 8px;
+  padding-right: 8px;
 }
 .avs > :deep(*) {
   margin-left: -6px;
@@ -564,19 +565,29 @@ import { createLogger } from '@/utils/logger'
   /* The whole card opens the team, so the phone keeps only the overflow menu, top right: no crowded action row */
   .team-card {
     grid-template-columns: 44px minmax(0, 1fr) auto;
+    grid-template-areas: 'mark main acts' '. avs avs';
     align-items: start;
     padding: 16px;
   }
   .team-mark {
+    grid-area: mark;
     width: 44px;
     height: 44px;
     border-radius: 14px;
     font-size: 18px;
   }
+  .team-main {
+    grid-area: main;
+  }
+  .avs {
+    grid-area: avs;
+    padding: 0;
+  }
   .team-acts .btn {
     display: none;
   }
   .team-acts {
+    grid-area: acts;
     margin: -6px -8px 0 0;
   }
   .team-desc {
