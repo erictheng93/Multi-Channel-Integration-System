@@ -657,6 +657,8 @@ onUnmounted(() => {
 
 .scope-tab {
   flex: none;
+  justify-content: center;
+  min-width: 92px;
   white-space: nowrap;
 }
 
@@ -805,8 +807,10 @@ onUnmounted(() => {
   .filter-top > .ui-seg .scope-tab {
     flex: 1 0 auto;
     justify-content: center;
-    padding-right: 4px;
-    padding-left: 4px;
+    gap: 3px;
+    min-width: 0;
+    padding-right: 2px;
+    padding-left: 2px;
     font-size: 13px;
   }
 
