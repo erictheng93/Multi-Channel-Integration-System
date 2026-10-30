@@ -53,36 +53,51 @@
 
         <div
           v-if="links.length > 0"
-          class="list"
+          class="list-wrap"
         >
-          <router-link
-            v-for="link in links"
-            :key="link.to"
-            :to="link.to"
-            class="go"
-          >
-            <span
-              class="go-ico"
-              :class="link.tone"
-              aria-hidden="true"
+          <h2 class="list-label">
+            常用的頁面
+          </h2>
+          <div class="list ui-group">
+            <router-link
+              v-for="link in links"
+              :key="link.to"
+              :to="link.to"
+              class="go"
             >
-              <!-- eslint-disable vue/no-v-html -->
+              <span
+                class="go-ico"
+                :class="link.tone"
+                aria-hidden="true"
+              >
+                <!-- eslint-disable vue/no-v-html -->
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  v-html="link.icon"
+                />
+              <!-- eslint-enable vue/no-v-html -->
+              </span>
+              <div class="go-text">
+                <b>{{ link.title }}</b>
+                <small>{{ link.text }}</small>
+              </div>
               <svg
+                class="go-chev"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
-                stroke-width="2"
+                stroke-width="2.2"
                 stroke-linecap="round"
                 stroke-linejoin="round"
-                v-html="link.icon"
-              />
-              <!-- eslint-enable vue/no-v-html -->
-            </span>
-            <div>
-              <b>{{ link.title }}</b>
-              <small>{{ link.text }}</small>
-            </div>
-          </router-link>
+                aria-hidden="true"
+              ><path d="m9 6 6 6-6 6" /></svg>
+            </router-link>
+          </div>
         </div>
 
         <div class="nf-actions">
@@ -244,14 +259,15 @@ const goBack = () => {
 
 .code {
   position: relative;
-  font: 600 160px / 1 var(--ui-font-display);
-  letter-spacing: -0.05em;
+  font: 300 168px / 1 var(--ui-font-display);
+  letter-spacing: -0.06em;
   font-variant-numeric: tabular-nums;
   color: var(--ui-ink);
 }
 
 .code span {
   color: var(--ui-accent);
+  font-weight: 500;
 }
 
 .hero-rings {
@@ -273,15 +289,15 @@ const goBack = () => {
 }
 
 .nf-ring.r1 {
-  opacity: 0.5;
+  opacity: 0.34;
 }
 
 .nf-ring.r2 {
-  opacity: 0.32;
+  opacity: 0.2;
 }
 
 .nf-ring.r3 {
-  opacity: 0.18;
+  opacity: 0.11;
 }
 
 /* The signal goes out once on arrival and settles; nothing loops */
@@ -315,8 +331,8 @@ const goBack = () => {
 .nf-reason {
   max-width: 38ch;
   margin: 8px 0 0;
-  font-size: 15px;
-  color: var(--ui-muted);
+  font-size: 16px;
+  color: var(--ui-ink-2);
   text-wrap: balance;
 }
 
@@ -327,8 +343,8 @@ const goBack = () => {
   width: min(100%, 420px);
   margin-top: 18px;
   padding: 12px 14px;
-  font-size: 13px;
-  background: var(--ui-fill);
+  font-size: 14px;
+  background: var(--ui-surface);
 }
 
 .asked .k {
@@ -346,36 +362,66 @@ const goBack = () => {
   white-space: nowrap;
 }
 
-/* Compact shortcut tiles: 4 across on desktop, 2 x 2 on phone */
-.list {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
-  width: 100%;
+/* Shortcuts: one inset-grouped list (iOS Settings), a row per destination */
+.list-wrap {
+  width: min(100%, 460px);
   margin-top: 28px;
+  text-align: left;
+}
+
+.list-label {
+  margin: 0 0 8px;
+  padding: 0 6px 0 16px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ui-ink-2);
+}
+
+.list {
+  --row-inset: 66px;
 }
 
 .go {
+  position: relative;
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 10px;
-  padding: 16px;
-  border-radius: 18px;
-  background: var(--ui-surface);
+  align-items: center;
+  gap: 14px;
+  min-height: 64px;
+  padding: 10px 16px 10px 18px;
   color: inherit;
-  text-align: left;
   text-decoration: none;
   transition: background var(--ui-dur) var(--ui-ease);
 }
 
+.go + .go::before {
+  position: absolute;
+  top: 0;
+  right: 16px;
+  left: 68px;
+  height: 0.5px;
+  background: var(--ui-sep);
+  content: '';
+}
+
 .go:hover {
-  background: var(--ui-surface-2);
+  background: color-mix(in srgb, var(--ui-fill) 45%, transparent);
 }
 
 .go:focus-visible {
   outline: 2px solid var(--ui-accent);
-  outline-offset: 2px;
+  outline-offset: -2px;
+}
+
+.go-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.go-chev {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  color: var(--ui-muted);
 }
 
 .go-ico {
@@ -429,10 +475,6 @@ const goBack = () => {
 }
 
 @media (max-width: 768px) {
-  .list {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
   .nf-actions {
     width: 100%;
   }
@@ -445,7 +487,7 @@ const goBack = () => {
 
 @media (max-width: 480px) {
   .code {
-    font-size: 96px;
+    font-size: 104px;
   }
 
   .code-wrap {
