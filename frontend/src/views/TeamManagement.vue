@@ -1,6 +1,6 @@
 <template>
   <AppLayout>
-    <div class="ui-page team-management ui-rise">
+    <div class="ui-page rl-page team-management ui-rise">
       <!-- Header Section -->
       <UiPageHead
         title="團隊成員"
@@ -52,44 +52,37 @@
         </template>
       </UiPageHead>
 
-      <!-- Presence strip: who is online right now, and where. One compact card; no art, no stretched halves -->
-      <section
+      <!-- Lead: who is online right now, as rings (everyone, then each team when there are at most two) -->
+      <RingLead
         v-if="members.length > 0"
-        class="ui-card presence"
-        aria-label="目前在線"
+        kicker="目前在線"
+        :value="onlineCount === null ? '—' : onlineCount"
+        :unit="onlineCount === null ? '' : '位'"
+        :meaning="onlineMeaning"
+        :tone="onlineCount === null ? 'none' : ''"
+        :busy="loading && !presence.available.value"
+        summary="團隊在線狀況"
+        :rings="presenceRings"
+        :size="144"
+      />
+
+      <!-- Many teams do not fit as rings: one grouped row each, online / members -->
+      <section
+        v-if="teamOnline.length > 2"
+        aria-label="各團隊在線"
       >
-        <div class="pres-lead">
-          <div class="pres-label">
-            <span
-              class="pres-dot"
-              aria-hidden="true"
-            />目前在線
-          </div>
-          <div
-            class="pres-value"
-            :aria-busy="(loading && !presence.available.value) || undefined"
-          >
-            {{ onlineCount === null ? '—' : onlineCount }}<small v-if="onlineCount !== null">位</small>
-          </div>
-          <p class="pres-meaning">
-            {{ onlineMeaning }}
-          </p>
-        </div>
-        <ul
-          v-if="teamOnline.length > 0"
-          class="tm-list"
-          aria-label="各團隊在線"
-        >
+        <h2 class="ui-group-label">
+          各團隊在線
+        </h2>
+        <ul class="ui-group tm-list">
           <li
             v-for="row in teamOnline"
             :key="row.id"
-            class="tm-row"
+            class="ui-row is-flush tm-row"
           >
-            <span class="tm-top">
-              <span class="tm-name">{{ row.name }}</span>
-              <span class="tm-n"><b>{{ row.online === null ? '—' : row.online }}</b> / {{ row.total }}</span>
-            </span>
+            <span class="tm-name">{{ row.name }}</span>
             <span class="tm-bar"><i :style="{ width: row.percent + '%' }" /></span>
+            <span class="tm-n"><b>{{ row.online === null ? '—' : row.online }}</b> / {{ row.total }}</span>
           </li>
         </ul>
       </section>
@@ -229,6 +222,8 @@
 
 <script setup lang="ts">
 import UiPageHead from '@/components/ui/UiPageHead.vue'
+import RingLead from '@/components/lead/RingLead.vue'
+import type { ServiceRing } from '@/components/ui/ServiceRings.vue'
 import { onMounted, onUnmounted, computed } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useTeamManagementController } from '@/composables/team-management'
@@ -309,6 +304,27 @@ const teamOnline = computed(() =>
     })
     .filter(row => row.total > 0)
 )
+
+/**
+ * Rings: online of the active members, then (up to two teams) online of each team's active members.
+ * With presence unavailable the only honest ratio is active members of all members.
+ */
+const presenceRings = computed<ServiceRing[]>(() => {
+  const active = members.value.filter(m => m.status !== 'inactive').length
+  if (onlineCount.value === null) {
+    return [{ label: '啟用中成員', value: active, total: members.value.length, of: '位成員', hue: 'var(--section-hue)' }]
+  }
+  const list: ServiceRing[] = [
+    { label: '全部成員在線', value: onlineCount.value, total: active, of: '位啟用中', hue: 'var(--section-hue)' }
+  ]
+  if (teamOnline.value.length <= 2) {
+    const hues = ['var(--ui-blue)', 'var(--ui-orange)']
+    teamOnline.value.forEach((row, i) => {
+      list.push({ label: row.name, value: row.online ?? 0, total: row.total, of: '位在線', hue: hues[i] })
+    })
+  }
+  return list
+})
 
 // Handle select-page: add page member IDs to selection
 function handleSelectPage(memberIds: string[]) {
@@ -420,90 +436,29 @@ onUnmounted(() => {
   height: 16px;
 }
 
-.presence {
-  display: grid;
-  grid-template-columns: minmax(240px, 300px) minmax(0, 1fr);
-  gap: 8px 32px;
-  align-items: center;
-  padding: 18px 24px;
-}
-
-.pres-lead {
-  display: grid;
-  gap: 2px;
-  min-width: 0;
-}
-
-.pres-label {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  font-size: var(--ui-t-meta);
-  font-weight: 600;
-  color: var(--ui-ink-2);
-}
-
-.pres-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--ui-green);
-}
-
-.pres-value {
-  font: 600 44px / 1.1 var(--ui-font-display);
-  letter-spacing: -0.03em;
-  font-variant-numeric: tabular-nums;
-}
-
-.pres-value small {
-  margin-left: 4px;
-  font-size: 18px;
-  font-weight: 500;
-  letter-spacing: 0;
-  color: var(--ui-muted);
-}
-
-.pres-meaning {
-  margin: 0;
-  font-size: var(--ui-t-meta);
-  color: var(--ui-muted);
-}
-
-/* Teams as equal columns beside the number, each a name, a count and a bar */
+/* One grouped row per team (shown only when there are too many teams for rings) */
 .tm-list {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 18px 28px;
   margin: 0;
-  padding: 0 0 0 32px;
+  padding: 0;
   list-style: none;
-  box-shadow: inset 0.5px 0 0 var(--ui-sep);
 }
 
 .tm-row {
-  display: grid;
-  gap: 8px;
-  min-width: 0;
-}
-
-.tm-top {
-  display: flex;
-  gap: 10px;
-  align-items: baseline;
-  justify-content: space-between;
-  font-size: 14px;
+  gap: 16px;
 }
 
 .tm-name {
+  flex: 0 1 160px;
   min-width: 0;
   overflow: hidden;
+  font-size: 15px;
   font-weight: 500;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .tm-bar {
+  flex: 1;
   height: 8px;
   overflow: hidden;
   border-radius: 999px;
@@ -514,7 +469,7 @@ onUnmounted(() => {
   display: block;
   height: 100%;
   border-radius: inherit;
-  background: var(--ui-green);
+  background: var(--section-hue);
   transition: width var(--ui-dur) var(--ui-ease);
 }
 
@@ -529,42 +484,5 @@ onUnmounted(() => {
   font-size: 15px;
   font-weight: 600;
   color: var(--ui-ink);
-}
-
-@media (max-width: 1024px) {
-  .presence {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 14px;
-  }
-
-  .tm-list {
-    padding: 14px 0 0;
-    box-shadow: inset 0 0.5px 0 var(--ui-sep);
-  }
-}
-
-/* Phone: the number and its caption share a line, so the list starts within the first screen */
-@media (max-width: 768px) {
-  .presence {
-    padding: 14px 16px;
-  }
-
-  .pres-lead {
-    grid-template-columns: auto 1fr;
-    column-gap: 12px;
-    align-items: baseline;
-  }
-
-  .pres-label {
-    grid-column: 1 / -1;
-  }
-
-  .pres-value {
-    font-size: 36px;
-  }
-
-  .pres-meaning {
-    align-self: center;
-  }
 }
 </style>

@@ -1,6 +1,6 @@
 <template>
   <AppLayout>
-    <div class="ui-page activity-log ui-rise">
+    <div class="ui-page rl-page activity-log ui-rise">
       <!-- Header -->
       <UiPageHead
         title="活動記錄"

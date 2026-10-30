@@ -6,68 +6,148 @@
 
 <template>
   <div class="health-stack">
-    <div class="health-top">
-      <article class="ui-card hero">
-        <UiLeadMetric
-          label="整體狀態"
-          :value="heroValue"
-          :loading="controller.processing.value && !controller.healthOverall.value"
-          :meaning="heroSubtitle"
-          :tone="leadTone"
-          :ratio="rows.length > 0 ? counts.healthy / rows.length : null"
-        >
-          <ul
-            v-if="rows.length > 0"
-            class="hero-counts"
-            aria-label="服務狀態統計"
-          >
-            <li :class="{ zero: counts.healthy === 0 }">
-              <span class="dot g" />{{ counts.healthy }} 正常
-            </li>
-            <li :class="{ zero: counts.warning === 0 }">
-              <span class="dot o" />{{ counts.warning }} 警告
-            </li>
-            <li :class="{ zero: counts.critical === 0 }">
-              <span class="dot r" />{{ counts.critical }} 異常
-            </li>
-            <li v-if="counts.unchecked > 0">
-              <span class="dot u" />{{ counts.unchecked }} 未檢查
-            </li>
-          </ul>
-        </UiLeadMetric>
-      </article>
-    </div>
-
-    <SettingsGroup title="服務檢查">
-      <UiEmptyState
-        v-if="serviceRows.length === 0"
-        :title="controller.processing.value ? '檢查中...' : '尚無檢查結果'"
-        :description="controller.processing.value ? '正在逐項檢查服務。' : '按右上角「立即檢查」開始。'"
-      >
-        <template #icon>
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.8"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            aria-hidden="true"
-          ><path d="M22 12h-4l-3 9L9 3l-3 9H2" /></svg>
-        </template>
-      </UiEmptyState>
+    <RingLead
+      kicker="整體狀態"
+      :value="heroValue ?? '—'"
+      :busy="controller.processing.value && !controller.healthOverall.value"
+      :tone="leadToneName"
+      :meaning="heroSubtitle"
+      summary="服務狀態"
+      :rings="healthRings"
+      :center-value="`${counts.healthy}/${rows.length}`"
+      center-label="服務正常"
+      :size="144"
+    >
       <ul
-        v-else
-        class="ui-list"
+        v-if="rows.length > 0"
+        class="hero-counts"
+        aria-label="服務狀態統計"
       >
-        <li
-          v-for="row in serviceRows"
-          :key="row.key"
-          class="ui-row is-flush hrow"
+        <li :class="{ zero: counts.healthy === 0 }">
+          <span class="dot g" />{{ counts.healthy }} 正常
+        </li>
+        <li :class="{ zero: counts.warning === 0 }">
+          <span class="dot o" />{{ counts.warning }} 警告
+        </li>
+        <li :class="{ zero: counts.critical === 0 }">
+          <span class="dot r" />{{ counts.critical }} 異常
+        </li>
+        <li v-if="counts.unchecked > 0">
+          <span class="dot u" />{{ counts.unchecked }} 未檢查
+        </li>
+      </ul>
+    </RingLead>
+
+    <section aria-label="服務檢查">
+      <h2 class="ui-group-label">
+        服務檢查
+      </h2>
+      <div class="ui-group">
+        <UiEmptyState
+          v-if="serviceRows.length === 0"
+          :title="controller.processing.value ? '檢查中...' : '尚無檢查結果'"
+          :description="controller.processing.value ? '正在逐項檢查服務。' : '按右上角「立即檢查」開始。'"
+        >
+          <template #icon>
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.8"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            ><path d="M22 12h-4l-3 9L9 3l-3 9H2" /></svg>
+          </template>
+        </UiEmptyState>
+        <ul
+          v-else
+          class="ui-list"
+        >
+          <li
+            v-for="row in serviceRows"
+            :key="row.key"
+            class="ui-row is-flush hrow"
+          >
+            <span
+              class="hstat"
+              :class="row.tone"
+              aria-hidden="true"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path
+                  v-if="row.tone === 'ok'"
+                  d="M5 12.5 10 17.5 19 7"
+                />
+                <path
+                  v-else-if="row.tone === 'unknown'"
+                  d="M5 12h14"
+                />
+                <path
+                  v-else
+                  d="M12 8v5M12 17h.01"
+                />
+              </svg>
+            </span>
+            <div class="ui-row-main">
+              <div class="ui-row-title">
+                {{ row.name }}
+              </div>
+              <div class="ui-row-sub">
+                {{ row.sub }}
+              </div>
+            </div>
+            <div class="lat">
+              <span
+                v-if="row.latencyMs !== null"
+                class="lat-track"
+                aria-hidden="true"
+              >
+                <span
+                  class="lat-bar"
+                  :class="row.tone"
+                  :style="{ width: `${barPct(row.latencyMs)}%` }"
+                />
+              </span>
+              <span
+                class="lat-n"
+                :class="row.tone"
+              >
+                <template v-if="row.latencyMs !== null">{{ row.latencyMs.toLocaleString() }}<small>ms</small></template>
+                <template v-else>—</template>
+              </span>
+            </div>
+            <span
+              class="ui-pill ui-pill-dot"
+              :class="pillClass(row.tone)"
+            >{{ row.label }}</span>
+          </li>
+        </ul>
+      </div>
+    </section>
+
+    <section
+      v-if="webhookRow"
+      aria-label="LINE webhook"
+    >
+      <h2 class="ui-group-label">
+        LINE webhook
+      </h2>
+      <div class="ui-group">
+        <div
+          class="hrow wh"
+          :class="`is-${webhookRow.tone}`"
         >
           <span
             class="hstat"
-            :class="row.tone"
+            :class="webhookRow.tone"
             aria-hidden="true"
           >
             <svg
@@ -79,12 +159,12 @@
               stroke-linejoin="round"
             >
               <path
-                v-if="row.tone === 'ok'"
+                v-if="webhookRow.tone === 'ok'"
                 d="M5 12.5 10 17.5 19 7"
               />
               <path
-                v-else-if="row.tone === 'unknown'"
-                d="M5 12h14"
+                v-else-if="webhookRow.tone === 'unknown'"
+                d="M12 6.5V12l3.5 2"
               />
               <path
                 v-else
@@ -94,115 +174,45 @@
           </span>
           <div class="ui-row-main">
             <div class="ui-row-title">
-              {{ row.name }}
+              {{ webhookRow.name }}
             </div>
             <div class="ui-row-sub">
-              {{ row.sub }}
+              {{ webhookRow.sub }}
             </div>
           </div>
-          <div class="lat">
-            <span
-              v-if="row.latencyMs !== null"
-              class="lat-track"
-              aria-hidden="true"
-            >
-              <span
-                class="lat-bar"
-                :class="row.tone"
-                :style="{ width: `${barPct(row.latencyMs)}%` }"
-              />
-            </span>
-            <span
-              class="lat-n"
-              :class="row.tone"
-            >
-              <template v-if="row.latencyMs !== null">{{ row.latencyMs.toLocaleString() }}<small>ms</small></template>
-              <template v-else>—</template>
-            </span>
-          </div>
+          <span
+            v-if="webhookRow.latencyMs !== null"
+            class="lat-n"
+            :class="webhookRow.tone"
+          >{{ webhookRow.latencyMs.toLocaleString() }}<small>ms</small></span>
           <span
             class="ui-pill ui-pill-dot"
-            :class="pillClass(row.tone)"
-          >{{ row.label }}</span>
-        </li>
-      </ul>
-    </SettingsGroup>
-
-    <SettingsGroup
-      v-if="webhookRow"
-      title="LINE webhook"
-    >
-      <div
-        class="hrow wh"
-        :class="`is-${webhookRow.tone}`"
-      >
-        <span
-          class="hstat"
-          :class="webhookRow.tone"
-          aria-hidden="true"
-        >
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2.2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
+            :class="pillClass(webhookRow.tone)"
+          >{{ webhookRow.label }}</span>
+          <button
+            v-if="webhookRow.tone === 'unknown'"
+            type="button"
+            class="btn btn-secondary btn-sm"
+            :disabled="controller.processing.value"
+            @click="controller.healthCheck(true)"
           >
-            <path
-              v-if="webhookRow.tone === 'ok'"
-              d="M5 12.5 10 17.5 19 7"
-            />
-            <path
-              v-else-if="webhookRow.tone === 'unknown'"
-              d="M12 6.5V12l3.5 2"
-            />
-            <path
-              v-else
-              d="M12 8v5M12 17h.01"
-            />
-          </svg>
-        </span>
-        <div class="ui-row-main">
-          <div class="ui-row-title">
-            {{ webhookRow.name }}
-          </div>
-          <div class="ui-row-sub">
-            {{ webhookRow.sub }}
-          </div>
+            立即測試
+          </button>
         </div>
-        <span
-          v-if="webhookRow.latencyMs !== null"
-          class="lat-n"
-          :class="webhookRow.tone"
-        >{{ webhookRow.latencyMs.toLocaleString() }}<small>ms</small></span>
-        <span
-          class="ui-pill ui-pill-dot"
-          :class="pillClass(webhookRow.tone)"
-        >{{ webhookRow.label }}</span>
-        <button
-          v-if="webhookRow.tone === 'unknown'"
-          type="button"
-          class="btn btn-secondary btn-sm"
-          :disabled="controller.processing.value"
-          @click="controller.healthCheck(true)"
-        >
-          立即測試
-        </button>
       </div>
-      <template #note>
+      <p class="ui-group-foot">
         LINE webhook 只在按「立即檢查」時測試；若持續失敗，請到 LINE Developers 主控台對 Webhook URL 按「Verify」。
-      </template>
-    </SettingsGroup>
+      </p>
+    </section>
   </div>
 </template>
 
 <script setup lang="ts">
-import UiLeadMetric from '@/components/ui/UiLeadMetric.vue'
+import RingLead from '@/components/lead/RingLead.vue'
+import type { ServiceRing } from '@/components/ui/ServiceRings.vue'
 import UiEmptyState from '@/components/ui/UiEmptyState.vue'
 import { computed, inject, onMounted } from 'vue'
 import { SETTINGS_CONTROLLER_KEY } from '@/types/system-settings'
-import SettingsGroup from '@/components/system-settings/SettingsGroup.vue'
 
 type Tone = 'ok' | 'warn' | 'bad' | 'unknown'
 
@@ -340,7 +350,19 @@ const heroValue = computed<string | null>(() => {
   return overallTone.value === 'ok' ? '正常' : null
 })
 
-const leadTone = computed(() => ({ ok: 'green', warn: 'orange', bad: 'red', unknown: 'ink' } as const)[overallTone.value])
+const leadToneName = computed(() => ({ ok: 'good', warn: 'warn', bad: 'bad', unknown: 'none' } as const)[overallTone.value])
+
+/** One arc: services healthy of all listed (an unchecked LINE webhook leaves the arc open, which is the honest picture) */
+const healthRings = computed<ServiceRing[]>(() => {
+  if (rows.value.every(row => row.tone === 'unknown')) { return [] }
+  return [{
+    label: '服務正常',
+    value: counts.value.healthy,
+    total: rows.value.length,
+    of: '項服務',
+    hue: overallTone.value === 'bad' ? 'var(--ui-red)' : (overallTone.value === 'warn' ? 'var(--ui-orange)' : 'var(--ui-green)')
+  }]
+})
 
 const heroSubtitle = computed(() => {
   if (!controller.healthOverall.value) {
@@ -395,17 +417,6 @@ onMounted(() => {
   display: grid;
   gap: 22px;
   min-width: 0;
-}
-
-/* The verdict; each service row below carries its own measured latency bar */
-.health-top {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 16px;
-}
-
-.hero {
-  overflow: hidden;
 }
 
 .lat-track {
