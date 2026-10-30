@@ -2,27 +2,37 @@
 <!-- Pick a format here; the existing ExportDialog collects date, customer and agent filters -->
 
 <template>
-  <div class="ui-page data-export">
+  <div class="ui-page rl-page data-export">
     <UiPageHead
       title="匯出對話"
       :subtitle="`選擇檔案格式後開始匯出，單次最多 ${EXPORT_LIMIT.toLocaleString()} 筆。`"
     />
 
-    <section class="export-grid">
-      <article class="ui-card choose">
-        <div class="ui-card-head">
-          <div>
-            <h2 class="ui-card-title">
-              檔案格式
-            </h2>
-            <div class="ui-card-sub">
-              選好格式後，在匯出視窗再設定日期、客戶與客服人員的篩選
-            </div>
-          </div>
-        </div>
+    <!-- Lead: the one task. The chosen format and the single action -->
+    <RingLead
+      kicker="匯出格式"
+      :value="selectedName"
+      :meaning="`${selectedTagline}，單次最多 ${EXPORT_LIMIT.toLocaleString()} 筆`"
+    >
+      <template #actions>
+        <button
+          type="button"
+          class="btn btn-primary lead-cta"
+          @click="openExportDialog"
+        >
+          <DownloadIcon :size="16" />
+          開始匯出 {{ selectedName }}
+        </button>
+      </template>
+    </RingLead>
 
+    <section class="export-grid">
+      <div class="choose">
+        <h2 class="ui-group-label">
+          檔案格式
+        </h2>
         <div
-          class="fmt-list"
+          class="ui-group fmt-list"
           role="radiogroup"
           aria-label="匯出格式"
         >
@@ -30,7 +40,7 @@
             v-for="format in formats"
             :key="format.id"
             type="button"
-            class="fmt-row"
+            class="ui-row is-flush fmt-row"
             :class="{ 'is-selected': selectedFormat === format.id }"
             role="radio"
             :aria-checked="selectedFormat === format.id"
@@ -52,37 +62,19 @@
             />
           </button>
         </div>
-
-        <div class="choose-foot">
-          <span class="choose-note">
-            未設定篩選時匯出全部記錄，最多 {{ EXPORT_LIMIT.toLocaleString() }} 筆，超出部分會被截斷。
-          </span>
-          <button
-            type="button"
-            class="btn btn-primary"
-            @click="openExportDialog"
-          >
-            <DownloadIcon :size="16" />
-            開始匯出 {{ selectedName }}
-          </button>
-        </div>
-      </article>
+        <p class="ui-group-foot">
+          選好格式後，在匯出視窗再設定日期、客戶與客服人員的篩選。未設定篩選時匯出全部記錄，最多 {{ EXPORT_LIMIT.toLocaleString() }} 筆，超出部分會被截斷。
+        </p>
+      </div>
 
       <aside
-        class="ui-card scope"
+        class="scope"
         aria-label="匯出內容"
       >
-        <div class="ui-card-head">
-          <div>
-            <h2 class="ui-card-title">
-              匯出內容
-            </h2>
-            <div class="ui-card-sub">
-              {{ selectedName }} 檔案會包含
-            </div>
-          </div>
-        </div>
-        <div class="scope-body">
+        <h2 class="ui-group-label">
+          {{ selectedName }} 檔案會包含
+        </h2>
+        <div class="ui-group scope-body">
           <h3 class="scope-h">
             欄位
           </h3>
@@ -114,10 +106,6 @@
               <b>{{ f.name }}</b>{{ f.hint }}
             </li>
           </ul>
-          <div class="cap">
-            <span class="cap-num">{{ EXPORT_LIMIT.toLocaleString() }}</span>
-            <span class="cap-text">筆 / 單次匯出上限<br>超出部分會被截斷</span>
-          </div>
         </div>
       </aside>
     </section>
@@ -147,6 +135,7 @@
 
 <script setup lang="ts">
 import UiPageHead from '@/components/ui/UiPageHead.vue'
+import RingLead from '@/components/lead/RingLead.vue'
 import { computed, ref } from 'vue'
 import UiActionBar from '@/components/ui/UiActionBar.vue'
 import { DownloadIcon } from '@/components/icons'
@@ -210,6 +199,7 @@ const filterOptions = [
 ]
 
 const selectedFields = computed(() => formats.find(f => f.id === selectedFormat.value)?.fields ?? [])
+const selectedTagline = computed(() => formats.find(f => f.id === selectedFormat.value)?.tagline ?? '')
 const selectedName = computed(() => formats.find(f => f.id === selectedFormat.value)?.name ?? '')
 
 function openExportDialog() {
@@ -225,26 +215,20 @@ function selectFormat(format: FormatId) {
 .export-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: 16px;
-  align-items: stretch;
+  gap: 20px;
+  align-items: start;
 }
 
-.choose {
-  display: flex;
-  flex-direction: column;
-}
-
+.choose,
 .scope {
-  display: flex;
-  flex-direction: column;
+  min-width: 0;
 }
 
 .scope-body {
   display: flex;
-  flex: 1;
   flex-direction: column;
   gap: 4px;
-  padding: 0 22px 22px;
+  padding: 18px 20px 20px;
 }
 
 .scope-h {
@@ -286,46 +270,6 @@ function selectFormat(format: FormatId) {
   content: '';
 }
 
-.fmt-list {
-  display: grid;
-  gap: 10px;
-  padding: 0 22px 6px;
-}
-
-.fmt-preview {
-  display: block;
-  margin-top: 8px;
-  padding: 8px 10px;
-  border-radius: 10px;
-  background: color-mix(in srgb, var(--ui-ink) 5%, transparent);
-  font: 12px / 1.45 var(--ui-font-mono);
-  color: var(--ui-ink-2);
-  overflow-wrap: anywhere;
-}
-
-.cap {
-  display: flex;
-  gap: 14px;
-  align-items: center;
-  margin-top: 14px;
-  padding: 16px 18px;
-  border-radius: var(--ui-r-inner);
-  background: var(--ui-accent-soft);
-}
-
-.cap-num {
-  font: 600 32px / 1 var(--ui-font-display);
-  letter-spacing: -0.02em;
-  font-variant-numeric: tabular-nums;
-  color: var(--ui-accent-ink, var(--ui-accent));
-}
-
-.cap-text {
-  font-size: 13px;
-  line-height: 1.45;
-  color: var(--ui-ink-2);
-}
-
 .scope-filters li b {
   display: block;
   font-size: 13.5px;
@@ -337,37 +281,27 @@ function selectFormat(format: FormatId) {
   color: var(--ui-muted);
 }
 
+/* One group of four selectable rows (iOS Settings style) */
 .fmt-row {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 14px;
   width: 100%;
-  min-height: 64px;
-  padding: 10px 10px;
+  min-height: 72px;
+  padding: 14px 18px;
   border: 0;
-  border-radius: var(--ui-r-inner);
-  background: var(--ui-surface);
-  box-shadow: var(--ui-shadow-card), inset 0 0 0 1px color-mix(in srgb, var(--ui-ink) 10%, transparent);
+  background: transparent;
   font: inherit;
   color: inherit;
   text-align: left;
   cursor: pointer;
-  transition: background var(--ui-dur) var(--ui-ease);
 }
 
-.fmt-row:hover {
-  box-shadow: var(--ui-shadow-raised), inset 0 0 0 1px color-mix(in srgb, var(--ui-ink) 14%, transparent);
+.fmt-row.is-selected {
+  background: var(--ui-sel-tint);
+  box-shadow: none;
 }
 
 .fmt-row:focus-visible {
   outline: 2px solid var(--ui-accent);
   outline-offset: -2px;
-}
-
-.fmt-row.is-selected {
-  background: var(--ui-sel-tint);
-  box-shadow: var(--ui-sel-ring);
 }
 
 .fmt-ico {
@@ -404,7 +338,7 @@ function selectFormat(format: FormatId) {
   display: grid;
   min-width: 0;
   flex: 1;
-  gap: 1px;
+  gap: 2px;
 }
 
 .fmt-text b {
@@ -427,6 +361,16 @@ function selectFormat(format: FormatId) {
   white-space: nowrap;
 }
 
+.fmt-preview {
+  display: block;
+  margin-top: 4px;
+  overflow: hidden;
+  font: 12px / 1.45 var(--ui-font-mono);
+  color: var(--ui-ink-2);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .radio {
   flex: none;
   width: 20px;
@@ -440,76 +384,23 @@ function selectFormat(format: FormatId) {
   box-shadow: inset 0 0 0 6px var(--ui-accent);
 }
 
-.choose-foot {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px 20px;
-  margin-top: auto;
-  padding: 16px 22px 20px;
-}
-
-.choose-note {
-  flex: 1 1 240px;
-  font-size: 13px;
-  line-height: 1.5;
-  color: var(--ui-muted);
-}
-
-/* The card footer carries the CTA on larger screens; phones get the sticky action bar */
+/* The lead carries the CTA on larger screens; phones get the sticky action bar */
 .export-actions {
   display: none;
 }
 
-/* Wide screens: the four formats are tiles across the card, not a list beside an empty panel */
 @media (min-width: 769px) {
+  .fmt-row {
+    min-height: 92px;
+  }
+
   .export-grid {
     grid-template-columns: minmax(0, 1fr) 340px;
-  }
-
-  .fmt-list {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px;
-    padding: 4px 22px 6px;
-  }
-
-  .fmt-row {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 14px;
-    min-height: 210px;
-    padding: 20px;
-  }
-
-  .fmt-ico {
-    width: 44px;
-    height: 44px;
-  }
-
-  .fmt-text {
-    flex: none;
-    width: 100%;
-  }
-
-  .fmt-text b small {
-    display: block;
-    margin: 2px 0 6px;
-  }
-
-  .fmt-use {
-    white-space: normal;
-  }
-
-  .radio {
-    position: absolute;
-    top: 18px;
-    right: 18px;
   }
 }
 
 @media (max-width: 768px) {
-  .choose-foot {
+  .lead-cta {
     display: none;
   }
 
@@ -517,12 +408,8 @@ function selectFormat(format: FormatId) {
     display: flex;
   }
 
-  .fmt-list {
-    padding: 0 16px 18px;
-  }
-
-  .scope-body {
-    padding: 0 18px 18px;
+  .fmt-preview {
+    display: none;
   }
 
   /* Short page: the bar rides the bottom of the viewport rather than floating under the cards */

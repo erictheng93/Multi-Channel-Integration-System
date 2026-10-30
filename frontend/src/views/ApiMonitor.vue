@@ -1,6 +1,6 @@
 <template>
   <AppLayout>
-    <div class="ui-page api-monitor">
+    <div class="ui-page rl-page api-monitor">
       <ApiHeader
         :loading="controller.loading.value"
         :is-refreshing="controller.isRefreshing.value"
@@ -24,31 +24,29 @@
         {{ controller.error.value }}
       </div>
 
-      <!-- Lead metric: the overall verdict, with the four counts beside it -->
-      <section
-        class="top"
-        :class="{ 'is-solo': !hasMetrics }"
+      <!-- Lead: the overall verdict, endpoints healthy as an arc, and the four clickable counts -->
+      <RingLead
+        kicker="整體狀態"
+        :value="leadValue ?? '—'"
+        :busy="controller.loading.value && !controller.lastUpdated.value"
+        :tone="leadTone"
+        :meaning="leadMeaning"
+        summary="端點狀態"
+        :rings="endpointRings"
+        :center-value="statusCounts.all > 0 ? `${statusCounts.healthy}/${statusCounts.all}` : undefined"
+        center-label="正常"
+        :size="144"
       >
-        <article class="ui-card lead-card">
-          <UiLeadMetric
-            label="整體狀態"
-            :value="leadValue"
-            :loading="controller.loading.value && !controller.lastUpdated.value"
-            :meaning="leadMeaning"
-            :tone="leadTone"
-            :ratio="statusCounts.all > 0 ? statusCounts.healthy / statusCounts.all : null"
-          />
-        </article>
         <div
           v-if="hasMetrics"
-          class="kpis"
+          class="lead-stats"
         >
           <ApiStatsGrid
             :stats="controller.stats.value"
             @stat-click="handleStatClick"
           />
         </div>
-      </section>
+      </RingLead>
 
       <section class="bento">
         <div class="s8 stack">
@@ -57,32 +55,28 @@
             :error="controller.metricsError.value"
           />
 
-          <article
+          <section
             v-else-if="hasMetrics"
-            class="ui-card"
+            aria-label="端點狀態"
           >
-            <div class="ui-card-head">
-              <div>
-                <h2 class="ui-card-title">
-                  端點狀態
-                </h2>
-                <div class="ui-card-sub">
-                  點選一列查看延遲分布與狀態碼
-                </div>
-              </div>
+            <h2 class="ui-group-label">
+              端點狀態
+              <span class="label-note">點選一列查看延遲分布與狀態碼</span>
+            </h2>
+            <div class="ui-group endpoints">
+              <ApiFilter
+                :filters="controller.filters.value"
+                :counts="statusCounts"
+                @update:filters="handleFilterUpdate"
+              />
+              <ApiCardList
+                :endpoints="controller.filteredApis.value"
+                :expanded-card="controller.expandedCard.value"
+                :total="controller.endpoints.value.length"
+                @toggle-card="controller.toggleCard"
+              />
             </div>
-            <ApiFilter
-              :filters="controller.filters.value"
-              :counts="statusCounts"
-              @update:filters="handleFilterUpdate"
-            />
-            <ApiCardList
-              :endpoints="controller.filteredApis.value"
-              :expanded-card="controller.expandedCard.value"
-              :total="controller.endpoints.value.length"
-              @toggle-card="controller.toggleCard"
-            />
-          </article>
+          </section>
 
           <div
             v-else
@@ -127,7 +121,8 @@ import {
   RecentEventsCard,
 } from '@/components/api-monitor'
 import ApiMetricsSetup from '@/components/api-monitor/ApiMetricsSetup.vue'
-import UiLeadMetric from '@/components/ui/UiLeadMetric.vue'
+import RingLead from '@/components/lead/RingLead.vue'
+import type { ServiceRing } from '@/components/ui/ServiceRings.vue'
 import type { ApiStatus, FilterState } from '@/types/api-monitor'
 
 // Initialize controller
@@ -149,13 +144,24 @@ const statusCounts = computed(() => {
 })
 
 const LEAD_LABEL = { operational: '運作正常', degraded: '部分降級', outage: '服務中斷' } as const
-const LEAD_TONE = { operational: 'green', degraded: 'orange', outage: 'red' } as const
+const LEAD_TONE = { operational: 'good', degraded: 'warn', outage: 'bad' } as const
 
 /** The overall verdict; null until the first check lands */
 const leadValue = computed<string | null>(() =>
   controller.lastUpdated.value ? LEAD_LABEL[controller.systemStatus.value] : null,
 )
-const leadTone = computed(() => LEAD_TONE[controller.systemStatus.value])
+const leadTone = computed(() => (leadValue.value ? LEAD_TONE[controller.systemStatus.value] : 'none'))
+
+/** One arc: endpoints currently healthy of all tracked (only when endpoint metrics exist) */
+const endpointRings = computed<ServiceRing[]>(() => {
+  if (!hasMetrics.value || statusCounts.value.all === 0) { return [] }
+  const { healthy, warning, all, error } = statusCounts.value
+  const rings: ServiceRing[] = [{ label: '端點正常', value: healthy, total: all, of: '個端點', hue: 'var(--ui-green)' }]
+  if (warning + error > 0) {
+    rings.push({ label: '需要注意', value: warning + error, total: all, of: '個端點', hue: error > 0 ? 'var(--ui-red)' : 'var(--ui-orange)' })
+  }
+  return rings
+})
 
 /** One line of why: the failing components (the header subtitle carries the endpoint counts) */
 const leadMeaning = computed(() => {
@@ -199,29 +205,18 @@ function handleFilterUpdate(filters: FilterState) {
   color: var(--ui-red-ink);
 }
 
-.top {
-  display: grid;
-  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
-  gap: 16px;
+.endpoints {
+  padding-top: 14px;
 }
 
-.top.is-solo {
-  grid-template-columns: minmax(0, 1fr);
+.lead-stats {
+  margin-top: 14px;
 }
 
-.lead-card {
-  overflow: hidden;
-}
-
-/* keep the one-line reason clear of the disc crop in the corner */
-.lead-card :deep(.ui-lead-meaning) {
-  max-width: min(100%, 300px);
-}
-
-.kpis {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
+.label-note {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--ui-muted);
 }
 
 .bento {
@@ -262,16 +257,4 @@ function handleFilterUpdate(filters: FilterState) {
   }
 }
 
-@media (max-width: 1024px) {
-  .top {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
-
-/* Phone: a compact 2 x 2 grid */
-@media (max-width: 768px) {
-  .kpis {
-    gap: 12px;
-  }
-}
 </style>

@@ -35,54 +35,36 @@ function mountCards(props: { overview: ActivityOverview | null; loading: boolean
 }
 
 describe('ActivityStatsCards', () => {
-  it('renders 4 stat cards when restore is enabled', () => {
-    restore.enabled = true
-    const wrapper = mountCards({ overview: makeOverview(), loading: false })
-    expect(wrapper.findAll('.stat-card')).toHaveLength(4)
+  it('leads with the total activity count with thousands separators', () => {
+    const wrapper = mountCards({ overview: makeOverview({ totalActivities: 1284 }), loading: false })
+    expect(wrapper.find('.rl-num').text()).toContain('1,284')
   })
 
-  it('hides the restorable card while the restore feature is off', () => {
+  it('draws an arc for the top member and the top action, each against the total', () => {
+    const wrapper = mountCards({ overview: makeOverview(), loading: false })
+    const text = wrapper.find('.sr-legend').text()
+    expect(text).toContain('最活躍：Alice')
+    expect(text).toContain('40')
+    expect(text).toContain('最常見：訊息發送')
+    expect(text).toContain('50')
+    expect(wrapper.findAll('.sr-item')).toHaveLength(2)
+  })
+
+  it('names the period, the member count and the real restorable count', () => {
+    const wrapper = mountCards({ overview: makeOverview({ restorableCount: 7 }), loading: false })
+    expect(wrapper.find('.rl-meaning').text()).toBe('近 7 天 · 2 位成員 · 7 筆可還原')
+  })
+
+  it('hides the restorable count while the restore feature is off', () => {
     restore.enabled = false
     const wrapper = mountCards({ overview: makeOverview({ restorableCount: 9 }), loading: false })
-    expect(wrapper.findAll('.stat-card')).toHaveLength(3)
     expect(wrapper.text()).not.toContain('可還原')
     restore.enabled = true
   })
 
-  it('shows skeleton loading state when loading is true', () => {
-    const wrapper = mountCards({ overview: null, loading: true })
-    expect(wrapper.findAll('.stat-card--skeleton')).toHaveLength(4)
-    expect(wrapper.findAll('.shimmer').length).toBeGreaterThan(0)
-  })
-
-  it('hides entirely when overview is null and loading is false', () => {
-    const wrapper = mountCards({ overview: null, loading: false })
-    expect(wrapper.find('.stats-grid').exists()).toBe(false)
-  })
-
-  it('displays totalActivities with thousands separators', () => {
-    const wrapper = mountCards({ overview: makeOverview({ totalActivities: 1284 }), loading: false })
-    expect(wrapper.findAll('.stat-card')[0]!.find('.stat-value').text()).toBe('1,284')
-  })
-
-  it('names the most active member with count and role', () => {
-    const wrapper = mountCards({ overview: makeOverview(), loading: false })
-    const card = wrapper.findAll('.stat-card')[1]!
-    expect(card.find('.stat-value').text()).toBe('Alice')
-    expect(card.text()).toContain('40 筆')
-    expect(card.text()).toContain('管理員')
-  })
-
-  it('shows the top action with its share of all activity', () => {
-    const wrapper = mountCards({ overview: makeOverview(), loading: false })
-    const card = wrapper.findAll('.stat-card')[2]!
-    expect(card.find('.stat-value').text()).toBe('訊息發送')
-    expect(card.text()).toContain('50 筆，佔 50%')
-  })
-
-  it('shows the real restorable count', () => {
-    const wrapper = mountCards({ overview: makeOverview({ restorableCount: 7 }), loading: false })
-    expect(wrapper.findAll('.stat-card')[3]!.find('.stat-value').text()).toContain('7')
+  it('draws no rings when there was no activity (a share of zero means nothing)', () => {
+    const wrapper = mountCards({ overview: makeOverview({ totalActivities: 0, topUsers: [], actionStats: {} }), loading: false })
+    expect(wrapper.find('.sr-legend').exists()).toBe(false)
   })
 
   it('draws one bar per day from dailyStats', () => {
@@ -90,13 +72,13 @@ describe('ActivityStatsCards', () => {
     expect(wrapper.findAll('.bars i')).toHaveLength(2)
   })
 
-  it('renders stat-label for each card', () => {
-    const wrapper = mountCards({ overview: makeOverview(), loading: false })
-    expect(wrapper.findAll('.stat-label')).toHaveLength(4)
+  it('shows a busy lead while loading', () => {
+    const wrapper = mountCards({ overview: null, loading: true })
+    expect(wrapper.find('.rl-num').attributes('aria-busy')).toBe('true')
   })
 
-  it('shows skeleton cards even when overview is provided if loading is true', () => {
-    const wrapper = mountCards({ overview: makeOverview(), loading: true })
-    expect(wrapper.findAll('.stat-card--skeleton')).toHaveLength(4)
+  it('hides entirely when overview is null and loading is false', () => {
+    const wrapper = mountCards({ overview: null, loading: false })
+    expect(wrapper.find('.stats-grid').exists()).toBe(false)
   })
 })
