@@ -79,12 +79,6 @@
       </button>
     </div>
     <p
-      v-if="selectedType && contentsOf(selectedType).length"
-      class="type-includes"
-    >
-      <b>報表會包含</b>{{ contentsOf(selectedType).map(item => item.label).join('、') }}
-    </p>
-    <p
       v-if="error"
       class="error-message"
       role="alert"
@@ -97,7 +91,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import ReportsAPI from '@/api/reports';
-import { REPORT_CONTENTS } from './templates/templateHelpers';
 import type { ReportType } from '@/types/reports';
 
 interface Props {
@@ -120,7 +113,6 @@ const selectedLabel = computed(
   () => typeOptions.value.find(option => option.value === props.selectedType)?.label ?? ''
 );
 
-const contentsOf = (type: ReportType) => REPORT_CONTENTS[type] ?? [];
 
 // Arrow keys move the selection like a native radio group
 function onKey(event: KeyboardEvent, index: number) {
@@ -155,15 +147,10 @@ function onKey(event: KeyboardEvent, index: number) {
   color: #fff;
 }
 
+/* A satisfied step turns brand blue and keeps its number: a tick means finished work, and nothing is finished before the report exists */
 .step-n.done {
   background: var(--ui-accent);
-  font-size: 0;
   color: #fff;
-}
-
-.step-n.done::after {
-  font-size: 13px;
-  content: '\2713';
 }
 
 .type-options {
@@ -264,21 +251,6 @@ function onKey(event: KeyboardEvent, index: number) {
   box-shadow: none;
 }
 
-.type-includes {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 10px;
-  margin: 0;
-  padding: 0 22px 20px;
-  font-size: 14px;
-  color: var(--ui-ink-2);
-}
-
-.type-includes b {
-  font-weight: 600;
-  color: var(--ui-ink);
-}
-
 .error-message {
   margin: 0;
   padding: 0 22px 16px;
@@ -299,10 +271,6 @@ function onKey(event: KeyboardEvent, index: number) {
 
   .type-tile {
     padding: 12px;
-  }
-
-  .type-includes {
-    padding: 0 16px 16px;
   }
 }
 </style>

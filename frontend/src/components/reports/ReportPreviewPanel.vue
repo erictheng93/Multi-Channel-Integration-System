@@ -80,6 +80,24 @@
         </div>
       </dl>
 
+      <div
+        v-if="includes.length"
+        class="inc"
+      >
+        <p class="inc-label">
+          報表包含
+        </p>
+        <ul class="inc-list">
+          <li
+            v-for="item in includes"
+            :key="item.label"
+            class="ui-chip"
+          >
+            {{ item.label }}
+          </li>
+        </ul>
+      </div>
+
       <slot name="action" />
     </section>
 
@@ -146,6 +164,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import ReportsAPI from '@/api/reports';
+import { REPORT_CONTENTS } from './templates/templateHelpers';
 import type {
   ReportType,
   ReportFormat,
@@ -176,6 +195,8 @@ const shownRecent = computed(() => {
   const same = props.reportType ? props.recentReports.filter(item => item.type === props.reportType) : props.recentReports
   return same.slice(0, 5)
 });
+
+const includes = computed(() => (props.reportType ? REPORT_CONTENTS[props.reportType] ?? [] : []));
 
 const contentLabel = computed(() => {
   const o = props.options;
@@ -328,6 +349,26 @@ const formatDate = (dateString: string): string => {
   text-align: right;
 }
 
+.inc {
+  padding: 14px 24px 4px;
+  box-shadow: 0 -0.5px 0 var(--ui-sep);
+}
+
+.inc-label {
+  margin: 0 0 8px;
+  font-size: 14px;
+  color: var(--ui-ink-2);
+}
+
+.inc-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
 .progress-content {
   padding: 0 22px 20px;
 }
@@ -436,7 +477,8 @@ const formatDate = (dateString: string): string => {
 }
 
 @media (max-width: 768px) {
-  .recent-list li:nth-child(n + 4) {
+  /* Past reports are not part of filling the form in on a phone */
+  .recent-wrap {
     display: none;
   }
 }

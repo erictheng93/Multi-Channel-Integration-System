@@ -483,9 +483,17 @@ onMounted(() => {
     display: none;
   }
 
+  /* Hint on its own line, the action spans the bar */
+  .generate-bar {
+    flex-wrap: wrap;
+  }
+
+  .generate-hint {
+    flex: 1 0 100%;
+  }
+
   .generate-bar .btn {
-    flex: 0 0 auto;
-    min-width: 140px;
+    flex: 1 1 100%;
   }
 }
 </style>
