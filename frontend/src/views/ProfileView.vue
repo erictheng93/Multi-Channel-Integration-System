@@ -14,72 +14,129 @@
         subtitle="修改顯示名稱與密碼，其餘由管理員管理"
       />
 
-      <!-- Lead: who you are -->
-      <article
-        class="ui-lead identity-lead"
-        aria-label="帳號身分"
-      >
-        <div class="identity">
-          <div class="avatar">
-            {{ initial }}
-          </div>
-          <div class="identity-text">
-            <div class="identity-name">
-              {{ profile.displayName || '—' }}
-            </div>
-            <div
-              class="identity-presence"
-              :class="`presence--${connection.tone}`"
-            >
-              <span
-                class="presence-dot"
-                aria-hidden="true"
-              />
-              {{ identitySub }}
-            </div>
-          </div>
-        </div>
-
-        <div
-          class="admin-line"
-          data-testid="admin-managed"
-        >
-          <div class="admin-head">
-            <svg
-              class="ico"
-              viewBox="0 0 24 24"
-              aria-hidden="true"
-            ><rect
-              x="4"
-              y="11"
-              width="16"
-              height="9"
-              rx="2"
-            /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></svg>
-            由管理員管理
-          </div>
-          <dl class="admin-list">
-            <div
-              v-for="item in adminItems"
-              :key="item.label"
-              class="admin-item"
-            >
-              <dt class="admin-label">
-                {{ item.label }}
-              </dt>
-              <dd class="admin-value">
-                {{ item.value }}
-              </dd>
-            </div>
-          </dl>
-        </div>
-      </article>
-
       <div class="profile-cols">
-        <div class="profile-col">
+        <div class="profile-col profile-side">
+          <!-- Lead: who you are -->
+          <section
+            class="o-id"
+            aria-labelledby="identity-title"
+          >
+            <h2
+              id="identity-title"
+              class="ui-group-label"
+            >
+              我的帳號
+            </h2>
+            <article
+              class="ui-lead identity-lead"
+              aria-label="帳號身分"
+            >
+              <div class="identity">
+                <div class="avatar">
+                  {{ initial }}
+                </div>
+                <div class="identity-text">
+                  <div class="identity-name">
+                    {{ profile.displayName || '—' }}
+                  </div>
+                  <div
+                    class="identity-presence"
+                    :class="`presence--${connection.tone}`"
+                  >
+                    <span
+                      class="presence-dot"
+                      aria-hidden="true"
+                    />
+                    {{ identitySub }}
+                  </div>
+                </div>
+              </div>
+
+              <div
+                class="admin-line"
+                data-testid="admin-managed"
+              >
+                <div class="admin-head">
+                  <svg
+                    class="ico"
+                    viewBox="0 0 24 24"
+                    aria-hidden="true"
+                  ><rect
+                    x="4"
+                    y="11"
+                    width="16"
+                    height="9"
+                    rx="2"
+                  /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></svg>
+                  由管理員管理
+                </div>
+                <dl class="admin-list">
+                  <div
+                    v-for="item in adminItems"
+                    :key="item.label"
+                    class="admin-item"
+                  >
+                    <dt class="admin-label">
+                      {{ item.label }}
+                    </dt>
+                    <dd class="admin-value">
+                      {{ item.value }}
+                    </dd>
+                  </div>
+                </dl>
+              </div>
+            </article>
+          </section>
+
+          <!-- 通知偏好 — the settings already live on the notifications page -->
+          <section
+            id="notification-prefs"
+            class="o-notify"
+            aria-labelledby="prefs-title"
+          >
+            <h2
+              id="prefs-title"
+              class="ui-group-label"
+            >
+              通知偏好
+            </h2>
+            <div class="ui-group">
+              <div
+                class="ui-row"
+                :class="`device-${devicePerm.tone}`"
+                data-testid="device-notify"
+              >
+                <span
+                  class="device-dot"
+                  aria-hidden="true"
+                />
+                <div class="ui-row-main row-label-strong">
+                  這台裝置
+                </div>
+                <div class="ui-row-value">
+                  {{ devicePerm.label }}
+                </div>
+              </div>
+              <RouterLink
+                class="ui-row is-nav row-link"
+                :to="{ path: '/notifications', query: { settings: '1' } }"
+              >
+                <div class="ui-row-main row-label-strong">
+                  開啟通知設定
+                </div>
+              </RouterLink>
+            </div>
+            <p class="ui-group-foot">
+              {{ devicePerm.hint }}
+            </p>
+          </section>
+        </div>
+
+        <div class="profile-col profile-main">
           <!-- 基本資料 -->
           <section
             id="basic"
+            class="o-basic"
             aria-labelledby="basic-title"
           >
             <h2
@@ -143,89 +200,10 @@
             </p>
           </section>
 
-          <!-- 通知偏好 — the settings already live on the notifications page -->
-          <section
-            id="notification-prefs"
-            aria-labelledby="prefs-title"
-          >
-            <h2
-              id="prefs-title"
-              class="ui-group-label"
-            >
-              通知偏好
-            </h2>
-            <div class="ui-group">
-              <div
-                class="ui-row"
-                :class="`device-${devicePerm.tone}`"
-                data-testid="device-notify"
-              >
-                <span
-                  class="device-dot"
-                  aria-hidden="true"
-                />
-                <div class="ui-row-main row-label-strong">
-                  這台裝置
-                </div>
-                <div class="ui-row-value">
-                  {{ devicePerm.label }}
-                </div>
-              </div>
-              <RouterLink
-                class="ui-row is-nav row-link"
-                :to="{ path: '/notifications', query: { settings: '1' } }"
-              >
-                <div class="ui-row-main row-label-strong">
-                  開啟通知設定
-                </div>
-              </RouterLink>
-            </div>
-            <p class="ui-group-foot">
-              {{ devicePerm.hint }}
-            </p>
-          </section>
-
-          <!-- 我的團隊：from /auth/me teams[] + teamRoles -->
-          <section
-            v-if="teamRows.length > 0"
-            aria-labelledby="teams-title"
-            data-testid="my-teams"
-          >
-            <h2
-              id="teams-title"
-              class="ui-group-label"
-            >
-              我的團隊
-            </h2>
-            <div class="ui-group">
-              <div
-                v-for="row in teamRows"
-                :key="row.id"
-                class="ui-row"
-              >
-                <span
-                  class="team-mark"
-                  aria-hidden="true"
-                  :style="{ background: teamMarkBackground(row.id), color: teamMarkInk(row.id) }"
-                >{{ row.name.charAt(0) }}</span>
-                <div class="ui-row-main row-label-strong">
-                  {{ row.name }}
-                </div>
-                <div class="ui-row-value">
-                  {{ row.role }}
-                </div>
-              </div>
-            </div>
-            <p class="ui-group-foot">
-              團隊與角色由管理員指派。
-            </p>
-          </section>
-        </div>
-
-        <div class="profile-col">
           <!-- 安全性 -->
           <section
             id="security"
+            class="o-security"
             aria-labelledby="security-title"
           >
             <h2
@@ -281,102 +259,104 @@
                 </div>
               </div>
 
-              <div class="ui-row form-row">
-                <label
-                  class="row-label"
-                  for="new-password"
-                >新密碼</label>
-                <div class="row-control">
-                  <div class="pw">
-                    <input
-                      id="new-password"
-                      v-model="passwordForm.newPassword"
-                      :type="show.next ? 'text' : 'password'"
-                      class="ui-input"
-                      :class="{ 'is-invalid': passwordErrors.newPassword }"
-                      placeholder="至少 8 個字元"
-                      autocomplete="new-password"
-                      aria-required="true"
-                      :disabled="passwordSaving"
-                    >
-                    <button
-                      type="button"
-                      class="pw-toggle"
-                      :aria-label="show.next ? '隱藏密碼' : '顯示密碼'"
-                      @click="show.next = !show.next"
-                    >
-                      <svg
-                        class="ico"
-                        viewBox="0 0 24 24"
-                      ><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z" /><circle
-                        cx="12"
-                        cy="12"
-                        r="3"
-                      /></svg>
-                    </button>
-                  </div>
-                  <div
-                    v-if="passwordForm.newPassword"
-                    class="strength-bar"
-                  >
-                    <div class="strength-track">
-                      <div
-                        class="strength-fill"
-                        :class="`strength-${passwordStrength.level}`"
-                        :style="{ width: `${passwordStrength.percent}%` }"
-                      />
+              <div class="pw-pair">
+                <div class="form-cell">
+                  <label
+                    class="row-label"
+                    for="new-password"
+                  >新密碼</label>
+                  <div class="row-control">
+                    <div class="pw">
+                      <input
+                        id="new-password"
+                        v-model="passwordForm.newPassword"
+                        :type="show.next ? 'text' : 'password'"
+                        class="ui-input"
+                        :class="{ 'is-invalid': passwordErrors.newPassword }"
+                        placeholder="至少 8 個字元"
+                        autocomplete="new-password"
+                        aria-required="true"
+                        :disabled="passwordSaving"
+                      >
+                      <button
+                        type="button"
+                        class="pw-toggle"
+                        :aria-label="show.next ? '隱藏密碼' : '顯示密碼'"
+                        @click="show.next = !show.next"
+                      >
+                        <svg
+                          class="ico"
+                          viewBox="0 0 24 24"
+                        ><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z" /><circle
+                          cx="12"
+                          cy="12"
+                          r="3"
+                        /></svg>
+                      </button>
                     </div>
-                    <span class="strength-label">{{ passwordStrength.label }}</span>
+                    <div
+                      v-if="passwordForm.newPassword"
+                      class="strength-bar"
+                    >
+                      <div class="strength-track">
+                        <div
+                          class="strength-fill"
+                          :class="`strength-${passwordStrength.level}`"
+                          :style="{ width: `${passwordStrength.percent}%` }"
+                        />
+                      </div>
+                      <span class="strength-label">{{ passwordStrength.label }}</span>
+                    </div>
+                    <span
+                      v-if="passwordErrors.newPassword"
+                      class="form-error"
+                    >
+                      {{ passwordErrors.newPassword }}
+                    </span>
                   </div>
-                  <span
-                    v-if="passwordErrors.newPassword"
-                    class="form-error"
-                  >
-                    {{ passwordErrors.newPassword }}
-                  </span>
                 </div>
-              </div>
 
-              <div class="ui-row form-row">
-                <label
-                  class="row-label"
-                  for="confirm-password"
-                >確認新密碼</label>
-                <div class="row-control">
-                  <div class="pw">
-                    <input
-                      id="confirm-password"
-                      v-model="passwordForm.confirmPassword"
-                      :type="show.confirm ? 'text' : 'password'"
-                      class="ui-input"
-                      :class="{ 'is-invalid': passwordErrors.confirmPassword }"
-                      placeholder="再輸入一次新密碼"
-                      autocomplete="new-password"
-                      aria-required="true"
-                      :disabled="passwordSaving"
+                <div class="form-cell">
+                  <label
+                    class="row-label"
+                    for="confirm-password"
+                  >確認新密碼</label>
+                  <div class="row-control">
+                    <div class="pw">
+                      <input
+                        id="confirm-password"
+                        v-model="passwordForm.confirmPassword"
+                        :type="show.confirm ? 'text' : 'password'"
+                        class="ui-input"
+                        :class="{ 'is-invalid': passwordErrors.confirmPassword }"
+                        placeholder="再輸入一次新密碼"
+                        autocomplete="new-password"
+                        aria-required="true"
+                        :disabled="passwordSaving"
+                      >
+                      <button
+                        type="button"
+                        class="pw-toggle"
+                        :aria-label="show.confirm ? '隱藏密碼' : '顯示密碼'"
+                        @click="show.confirm = !show.confirm"
+                      >
+                        <svg
+                          class="ico"
+                          viewBox="0 0 24 24"
+                        ><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z" /><circle
+                          cx="12"
+                          cy="12"
+                          r="3"
+                        /></svg>
+                      </button>
+                    </div>
+                    <span
+                      v-if="passwordErrors.confirmPassword"
+                      class="form-error"
                     >
-                    <button
-                      type="button"
-                      class="pw-toggle"
-                      :aria-label="show.confirm ? '隱藏密碼' : '顯示密碼'"
-                      @click="show.confirm = !show.confirm"
-                    >
-                      <svg
-                        class="ico"
-                        viewBox="0 0 24 24"
-                      ><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z" /><circle
-                        cx="12"
-                        cy="12"
-                        r="3"
-                      /></svg>
-                    </button>
+                      {{ passwordErrors.confirmPassword }}
+                    </span>
                   </div>
-                  <span
-                    v-if="passwordErrors.confirmPassword"
-                    class="form-error"
-                  >
-                    {{ passwordErrors.confirmPassword }}
-                  </span>
                 </div>
               </div>
 
@@ -406,7 +386,7 @@ import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppLayout from '@/components/ui/AppLayout.vue'
 import { useAuthStore } from '@/stores/auth'
-import { teamMarkBackground, teamMarkInk, teamRoleText } from '@/utils/team-tone'
+import { teamRoleText } from '@/utils/team-tone'
 import { useWebSocketStore } from '@/stores/websocket'
 import { useConnectionStatus } from '@/composables/useConnectionStatus'
 import { useToast } from '@/composables/useToast'
@@ -434,6 +414,7 @@ const identitySub = computed(() => connection.value.label)
 const adminItems = computed(() => [
   { label: '電子郵件', value: profile.email || '—' },
   { label: '角色', value: roleLabel.value },
+  ...teamRows.value.map((row, i) => ({ label: i === 0 ? '團隊' : '', value: `${row.name} ・ ${row.role}` })),
 ])
 
 // One row per team with my role in it (admins without a team role show 管理員)
@@ -450,7 +431,7 @@ const devicePerm = computed(() => {
   const shared = '桌面通知只套用於這台裝置，其餘跟著你的帳號。'
   if (perm === 'granted') { return { label: '桌面通知已開啟', tone: 'on', hint: shared } }
   if (perm === 'denied') {
-    return { label: '桌面通知已被瀏覽器封鎖', tone: 'off', hint: '要接收桌面通知，請點網址列左側的圖示，把「通知」改為允許後重新整理頁面。' }
+    return { label: '桌面通知已被瀏覽器封鎖', tone: 'off', hint: '到瀏覽器網址列左側的網站設定，把「通知」改為允許。' }
   }
   if (perm === 'unsupported') { return { label: '瀏覽器不支援桌面通知', tone: 'off', hint: shared } }
   return { label: '桌面通知尚未開啟', tone: 'off', hint: shared }
@@ -705,8 +686,8 @@ watch(
 
 .profile-cols {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 20px 16px;
+  grid-template-columns: minmax(300px, 400px) minmax(0, 1fr);
+  gap: 20px;
   align-items: start;
 }
 
@@ -717,18 +698,16 @@ watch(
   min-width: 0;
 }
 
-/* ---- lead: identity ---- */
+/* ---- lead: identity (the one elevated object) ---- */
 .identity-lead {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 24px 40px;
-  align-items: center;
-  padding: 34px 44px;
+  gap: 22px;
+  padding: 28px 28px 26px;
 }
 
 .identity {
   display: flex;
-  gap: 20px;
+  gap: 18px;
   align-items: center;
   min-width: 0;
 }
@@ -737,23 +716,23 @@ watch(
   display: grid;
   flex: none;
   place-items: center;
-  width: 96px;
-  height: 96px;
+  width: 80px;
+  height: 80px;
   border-radius: 50%;
   background: linear-gradient(160deg, #5aa8ff, #1d6fe0);
   color: #fff;
-  font: 600 38px var(--ui-font-display);
+  font: 600 32px var(--ui-font-display);
 }
 
 .identity-text {
   display: grid;
-  gap: 6px;
+  gap: 4px;
   min-width: 0;
 }
 
 .identity-name {
   overflow: hidden;
-  font: 700 34px / 1.15 var(--ui-font-display);
+  font: 700 28px / 1.15 var(--ui-font-display);
   letter-spacing: -0.03em;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -785,29 +764,19 @@ watch(
   background: var(--ui-orange);
 }
 
-/* admin-managed facts: a quiet definition list with its own hairline */
+/* admin-managed facts: a quiet definition list under a hairline */
 .admin-line {
-  position: relative;
   display: grid;
-  gap: 14px;
+  gap: 12px;
   margin: 0;
-  padding-left: 40px;
+  padding-top: 20px;
+  box-shadow: inset 0 0.5px 0 var(--ui-sep);
 }
 
 .admin-list {
   display: grid;
-  gap: 16px;
+  gap: 12px;
   margin: 0;
-}
-
-.admin-line::before {
-  position: absolute;
-  top: 2px;
-  bottom: 2px;
-  left: 0;
-  width: 0.5px;
-  background: var(--ui-sep);
-  content: '';
 }
 
 .admin-head {
@@ -821,7 +790,7 @@ watch(
 
 .admin-item {
   display: grid;
-  grid-template-columns: 76px minmax(0, 1fr);
+  grid-template-columns: 72px minmax(0, 1fr);
   gap: 12px;
   align-items: baseline;
 }
@@ -840,36 +809,49 @@ watch(
 }
 
 /* ---- grouped form rows ---- */
-.form-row {
-  align-items: flex-start;
-  padding-top: 18px;
-  padding-bottom: 18px;
+/* Labels sit above their fields: nothing is squeezed into a narrow label column */
+.form-row,
+.form-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  min-width: 0;
+  padding: 16px 20px 18px;
+}
+
+.pw-pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  position: relative;
+}
+
+.pw-pair::before,
+.ui-group .form-row + .pw-pair::before {
+  position: absolute;
+  top: 0;
+  right: 20px;
+  left: 20px;
+  height: 0.5px;
+  background: var(--ui-sep);
+  content: '';
+}
+
+.ui-group .form-row + .ui-row::before {
+  left: 20px;
+  right: 20px;
 }
 
 .row-label {
-  flex: none;
-  width: 104px;
-  padding-top: 10px;
-  font-size: 16px;
-  font-weight: 500;
-  color: var(--ui-ink);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ui-ink-2);
 }
 
 .row-control {
   display: grid;
-  flex: 1;
   gap: 6px;
   min-width: 0;
-}
-
-.team-mark {
-  display: grid;
-  flex: none;
-  place-items: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 10px;
-  font: 600 15px var(--ui-font-display);
 }
 
 .row-label-strong {
@@ -1014,58 +996,66 @@ watch(
   .profile-cols {
     grid-template-columns: minmax(0, 1fr);
   }
-
-  .identity-lead {
-    padding: 28px;
-  }
 }
 
+/* Phone: one column in the order a person acts in: who I am, my name, my password, then the rest */
 @media (max-width: 768px) {
+  .profile-cols {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 20px;
+  }
+
+  .profile-col {
+    display: contents;
+  }
+
+  .o-id {
+    order: 0;
+  }
+
+  .o-basic {
+    order: 1;
+  }
+
+  .o-security {
+    order: 2;
+  }
+
+  .o-notify {
+    order: 3;
+  }
+
   .identity-lead {
-    grid-template-columns: minmax(0, 1fr);
-    padding: 22px 20px;
+    gap: 16px;
+    padding: 20px;
   }
 
   .identity {
-    gap: 16px;
+    gap: 14px;
   }
 
   .avatar {
-    width: 72px;
-    height: 72px;
-    font-size: 30px;
+    width: 56px;
+    height: 56px;
+    font-size: 24px;
   }
 
   .identity-name {
-    font-size: 26px;
+    font-size: 22px;
   }
 
   .admin-line {
-    padding-top: 18px;
-    padding-left: 0;
+    padding-top: 16px;
   }
 
-  .admin-line::before {
-    top: 0;
-    right: 0;
-    bottom: auto;
-    width: auto;
-    height: 0.5px;
+  .pw-pair {
+    grid-template-columns: minmax(0, 1fr);
   }
 
-  .form-row {
-    flex-direction: column;
-    gap: 6px;
-  }
-
-  .row-label {
-    width: auto;
+  .pw-pair .form-cell + .form-cell {
     padding-top: 0;
-    font-size: 14px;
-  }
-
-  .row-control {
-    width: 100%;
   }
 
   .form-actions .btn-primary {
