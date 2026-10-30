@@ -10,6 +10,7 @@
           <button
             class="btn btn-secondary"
             :disabled="loading"
+            aria-label="重新整理"
             @click="refresh"
           >
             <svg
@@ -22,7 +23,7 @@
               stroke-linejoin="round"
               aria-hidden="true"
             ><path d="M21 12a9 9 0 0 1-15.5 6.2L3 16M3 12a9 9 0 0 1 15.5-6.2L21 8M21 3v5h-5M3 21v-5h5" /></svg>
-            重新整理
+            <span class="btn-txt">重新整理</span>
           </button>
           <button
             v-if="!loading && activeTab === 'rules'"
@@ -313,6 +314,30 @@ onUnmounted(() => cleanup())
     flex: 1;
     justify-content: center;
     min-height: 44px;
+  }
+}
+
+/* Phone: the title and its action share one row (the shared head drops actions under the subtitle) */
+@media (max-width: 768px) {
+  .btn-txt {
+    display: none;
+  }
+
+  .auto-reply-page :deep(.ui-page-head) {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      'title actions'
+      'sub sub';
+    align-items: center;
+  }
+
+  .auto-reply-page :deep(.ui-page-actions) {
+    padding-top: 0;
+    min-height: 0;
+  }
+
+  .auto-reply-page :deep(.ui-page-actions > .btn-primary) {
+    flex: none;
   }
 }
 </style>
