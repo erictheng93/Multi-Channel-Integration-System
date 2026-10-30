@@ -29,13 +29,13 @@
           class="hero-counts"
           aria-label="服務狀態統計"
         >
-          <li :class="{ zero: counts.healthy === 0 }">
+          <li>
             <span class="dot g" />{{ counts.healthy }} 正常
           </li>
-          <li :class="{ zero: counts.warning === 0 }">
+          <li v-if="counts.warning > 0">
             <span class="dot o" />{{ counts.warning }} 警告
           </li>
-          <li :class="{ zero: counts.critical === 0 }">
+          <li v-if="counts.critical > 0">
             <span class="dot r" />{{ counts.critical }} 異常
           </li>
           <li v-if="counts.unchecked > 0">
@@ -66,7 +66,7 @@
     <section aria-label="服務檢查">
       <h2 class="ui-group-label">
         服務檢查
-        <span class="label-note">回應時間共用同一把尺，最長的服務填滿</span>
+        <span class="label-note">條長為回應時間，滿格 {{ latencyScale }} ms</span>
       </h2>
       <div class="ui-group">
         <UiEmptyState
@@ -127,7 +127,10 @@
                 {{ row.name }}
               </div>
               <div class="ui-row-sub">
-                {{ row.sub }}
+                {{ row.sub }}<span
+                  v-if="row.at"
+                  class="row-at"
+                > · {{ row.at }}</span>
               </div>
             </div>
             <span
@@ -144,19 +147,20 @@
             >
               <template v-if="row.latencyMs !== null">{{ row.latencyMs.toLocaleString() }}<small>ms</small></template>
             </span>
-            <span
-              class="ui-pill ui-pill-dot"
-              :class="pillClass(row.tone)"
-            >{{ row.label }}</span>
             <button
               v-if="row.key === 'lineWebhook' && row.label === '未檢查'"
               type="button"
-              class="btn btn-secondary btn-sm"
+              class="btn btn-secondary btn-sm hrow-test"
               :disabled="controller.processing.value"
               @click="controller.healthCheck(true)"
             >
               立即測試
             </button>
+            <span
+              v-else
+              class="ui-pill ui-pill-dot"
+              :class="pillClass(row.tone)"
+            >{{ row.label }}</span>
           </li>
         </ul>
       </div>
@@ -164,7 +168,7 @@
         v-if="rows.length > 0"
         class="ui-group-foot"
       >
-        LINE webhook 只在按「立即檢查」時測試；若持續失敗，請到 LINE Developers 主控台對 Webhook URL 按「Verify」。
+        LINE webhook 只在按「立即檢查」時測試；持續失敗請到 LINE Developers 對 Webhook URL 按「Verify」。
       </p>
     </section>
   </div>
@@ -184,6 +188,8 @@ interface Row {
   tone: Tone
   label: string
   latencyMs: number | null
+  /** Wall time of the check that produced this row (HH:mm), when one has run */
+  at?: string
 }
 
 const controller = inject(SETTINGS_CONTROLLER_KEY)
@@ -214,6 +220,11 @@ function toneOf(status: string): Tone {
 
 const TONE_LABEL: Record<Tone, string> = { ok: '正常', warn: '警告', bad: '異常', unknown: '未知' }
 
+const checkedClock = computed(() => {
+  const iso = controller.healthCheckedAt.value
+  return iso ? formatChecked(iso).replace('今天 ', '') : undefined
+})
+
 const serviceRows = computed<Row[]>(() =>
   controller.healthCheckResults.value.map((item) => {
     const tone = toneOf(item.status)
@@ -223,7 +234,8 @@ const serviceRows = computed<Row[]>(() =>
       sub: tone === 'ok' ? (SERVICE_DESCRIPTIONS[item.key] ?? item.message) : item.message,
       tone,
       label: TONE_LABEL[tone],
-      latencyMs: item.responseTime ?? null
+      latencyMs: item.responseTime ?? null,
+      at: checkedClock.value
     }
   })
 )
@@ -250,7 +262,8 @@ const webhookRow = computed<Row | null>(() => {
       sub: '簽章驗證與回應時間',
       tone: 'ok',
       label: '正常',
-      latencyMs: result.latencyMs ?? null
+      latencyMs: result.latencyMs ?? null,
+      at: result.testedAt ? formatChecked(result.testedAt).replace('今天 ', '') : undefined
     }
   }
   if (result.status === 'skipped') {
@@ -389,8 +402,8 @@ onMounted(() => {
 
 .hl {
   display: grid;
-  grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
-  gap: 24px 48px;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 24px 56px;
   align-items: center;
   padding: 24px 32px;
 }
@@ -457,7 +470,7 @@ onMounted(() => {
 
 .hl-fact-v {
   margin: 0;
-  font: 600 32px / 1.15 var(--ui-font-display);
+  font: 600 40px / 1.15 var(--ui-font-display);
   letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
 }
@@ -568,7 +581,12 @@ onMounted(() => {
   height: 6px;
   overflow: hidden;
   border-radius: 999px;
-  background: var(--ui-fill);
+  /* ruler: faint ticks at each quarter of the scale */
+  background:
+    linear-gradient(90deg, transparent calc(25% - 0.5px), var(--ui-surface) calc(25% - 0.5px) calc(25% + 0.5px), transparent calc(25% + 0.5px)),
+    linear-gradient(90deg, transparent calc(50% - 0.5px), var(--ui-surface) calc(50% - 0.5px) calc(50% + 0.5px), transparent calc(50% + 0.5px)),
+    linear-gradient(90deg, transparent calc(75% - 0.5px), var(--ui-surface) calc(75% - 0.5px) calc(75% + 0.5px), transparent calc(75% + 0.5px)),
+    var(--ui-fill);
 }
 
 .lat-bar:empty {
@@ -617,6 +635,14 @@ onMounted(() => {
   width: 62px;
 }
 
+.row-at {
+  font-variant-numeric: tabular-nums;
+}
+
+.hrow-test {
+  min-width: 62px;
+}
+
 .hrow .ui-row-sub {
   white-space: normal;
 }
@@ -645,7 +671,8 @@ onMounted(() => {
     font-size: 24px;
   }
 
-  .lat-bar {
+  .lat-bar,
+  .row-at {
     display: none;
   }
 
