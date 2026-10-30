@@ -96,7 +96,7 @@
                 class="load-more-section"
               >
                 <button
-                  class="btn btn-ghost"
+                  class="btn btn-secondary"
                   :disabled="loadingMore"
                   @click="actions.handleLoadMore"
                 >
@@ -120,88 +120,117 @@
           class="notif-rail"
           aria-label="通知概況"
         >
-          <section
-            v-if="typeRows.length > 0"
-            aria-labelledby="rail-type"
-          >
-            <h2
-              id="rail-type"
-              class="ui-group-label"
+          <div class="ui-card rail-card">
+            <section
+              class="rail-lead"
+              aria-labelledby="rail-lead-title"
             >
-              依類型
-            </h2>
-            <div class="ui-group">
-              <button
-                v-for="row in typeRows"
-                :key="row.value"
-                type="button"
-                class="ui-row rail-row rail-row-sm"
-                :class="{ 'is-selected': filters.selectedType.value === row.value }"
-                :aria-pressed="filters.selectedType.value === row.value"
-                @click="toggleType(row.value)"
+              <h2
+                id="rail-lead-title"
+                class="rail-label"
               >
-                <span class="ui-row-main rail-name">{{ row.label }}</span>
-                <span
-                  class="rail-bar"
-                  aria-hidden="true"
-                ><i :style="{ width: `${row.share}%` }" /></span>
-                <span class="rail-total">{{ row.total }}</span>
-              </button>
-            </div>
-          </section>
+                未讀通知
+              </h2>
+              <p class="rail-num">
+                <span class="ui-num">{{ stats.unread }}</span><small>則</small>
+              </p>
+              <p class="rail-meta">
+                <template v-if="urgentUnread > 0">
+                  其中 <strong class="is-hot">{{ urgentUnread }} 則緊急</strong>
+                </template>
+                <template v-else-if="stats.unread > 0">
+                  沒有緊急通知
+                </template>
+                <template v-else>
+                  全部看完了
+                </template>
+              </p>
+              <dl class="rail-time">
+                <div>
+                  <dt>今天</dt>
+                  <dd>{{ stats.timeRange?.today ?? 0 }}</dd>
+                </div>
+                <div>
+                  <dt>本週</dt>
+                  <dd>{{ stats.timeRange?.thisWeek ?? 0 }}</dd>
+                </div>
+                <div>
+                  <dt>本月</dt>
+                  <dd>{{ stats.timeRange?.thisMonth ?? 0 }}</dd>
+                </div>
+              </dl>
+            </section>
 
-          <section
-            v-if="priorityRows.length > 0"
-            aria-labelledby="rail-priority"
-          >
-            <h2
-              id="rail-priority"
-              class="ui-group-label"
+            <section
+              v-if="priorityRows.length > 0"
+              class="rail-sec"
+              aria-labelledby="rail-priority"
             >
-              依優先級
-            </h2>
-            <div class="ui-group">
+              <h2
+                id="rail-priority"
+                class="rail-label rail-label-pad"
+              >
+                依優先級
+              </h2>
+              <div
+                class="rail-stack"
+                aria-hidden="true"
+              >
+                <i
+                  v-for="row in priorityRows"
+                  :key="row.value"
+                  :class="`tone-${row.value}`"
+                  :style="{ flexGrow: row.total }"
+                />
+              </div>
               <button
                 v-for="row in priorityRows"
                 :key="row.value"
                 type="button"
-                class="ui-row rail-row rail-row-sm"
+                class="rail-row"
                 :class="{ 'is-selected': filters.selectedPriority.value === row.value }"
                 :aria-pressed="filters.selectedPriority.value === row.value"
                 @click="togglePriority(row.value)"
               >
-                <span class="ui-row-main rail-name">{{ row.label }}</span>
+                <span
+                  class="rail-key"
+                  :class="`tone-${row.value}`"
+                  aria-hidden="true"
+                />
+                <span class="rail-name">{{ row.label }}</span>
+                <span class="rail-total">{{ row.total }}</span>
+              </button>
+            </section>
+
+            <section
+              v-if="typeRows.length > 0"
+              class="rail-sec"
+              aria-labelledby="rail-type"
+            >
+              <h2
+                id="rail-type"
+                class="rail-label rail-label-pad"
+              >
+                依類型
+              </h2>
+              <button
+                v-for="row in typeRows"
+                :key="row.value"
+                type="button"
+                class="rail-row"
+                :class="{ 'is-selected': filters.selectedType.value === row.value }"
+                :aria-pressed="filters.selectedType.value === row.value"
+                @click="toggleType(row.value)"
+              >
+                <span class="rail-name">{{ row.label }}</span>
                 <span
                   class="rail-bar"
                   aria-hidden="true"
                 ><i :style="{ width: `${row.share}%` }" /></span>
                 <span class="rail-total">{{ row.total }}</span>
               </button>
-            </div>
-          </section>
-
-          <section aria-labelledby="rail-time">
-            <h2
-              id="rail-time"
-              class="ui-group-label"
-            >
-              收到的通知
-            </h2>
-            <dl class="ui-card rail-time">
-              <div>
-                <dt>今天</dt>
-                <dd>{{ stats.timeRange?.today ?? 0 }}</dd>
-              </div>
-              <div>
-                <dt>本週</dt>
-                <dd>{{ stats.timeRange?.thisWeek ?? 0 }}</dd>
-              </div>
-              <div>
-                <dt>本月</dt>
-                <dd>{{ stats.timeRange?.thisMonth ?? 0 }}</dd>
-              </div>
-            </dl>
-          </section>
+            </section>
+          </div>
         </aside>
       </div>
 
@@ -280,6 +309,8 @@ const priorityRows = computed(() =>
     .filter((row) => row.total > 0))
 )
 
+const urgentUnread = computed(() => stats.value?.byPriority?.urgent?.unread ?? 0)
+
 function togglePriority(value: string): void {
   filters.selectedPriority.value = (filters.selectedPriority.value === value ? '' : value) as typeof filters.selectedPriority.value
   filters.applyFilters()
@@ -353,22 +384,113 @@ onUnmounted(() => {
   overflow: hidden;
 }
 
-.notif-rail .ui-group {
-  --row-inset: 18px;
-}
-
 .notif-rail {
   position: sticky;
   top: 16px;
-  display: grid;
-  gap: 20px;
   min-width: 0;
 }
 
+.rail-card {
+  display: grid;
+  overflow: hidden;
+  box-shadow: var(--ui-shadow-card);
+}
+
+.rail-lead {
+  display: grid;
+  gap: 4px;
+  padding: 20px 22px 18px;
+}
+
+.rail-label {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ui-ink-2);
+}
+
+.rail-label-pad {
+  padding: 0 10px 4px;
+}
+
+.rail-num {
+  margin: 0;
+  font: 600 48px / 1.05 var(--ui-font-display);
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+}
+
+.rail-num small {
+  margin-left: 4px;
+  font-size: 16px;
+  font-weight: 500;
+  letter-spacing: 0;
+  color: var(--ui-ink-2);
+}
+
+.rail-meta {
+  margin: 0;
+  font-size: 14px;
+  color: var(--ui-ink-2);
+}
+
+.rail-meta .is-hot {
+  font-weight: 600;
+  color: var(--ui-red-ink);
+}
+
+.rail-sec {
+  display: grid;
+  gap: 2px;
+  padding: 16px 12px 12px;
+  box-shadow: inset 0 0.5px 0 var(--ui-sep);
+}
+
+.rail-stack {
+  display: flex;
+  gap: 3px;
+  height: 10px;
+  margin: 0 10px 6px;
+}
+
+.rail-stack i {
+  flex-basis: 0;
+  min-width: 6px;
+  border-radius: 999px;
+}
+
+.tone-urgent {
+  background: var(--ui-red);
+}
+
+.tone-high {
+  background: var(--ui-orange);
+}
+
+.tone-normal {
+  background: var(--ui-accent);
+}
+
+.tone-low {
+  background: var(--ui-faint);
+}
+
+.rail-key {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
 .rail-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
   width: 100%;
-  min-height: 52px;
+  min-height: 44px;
+  padding: 0 10px;
   border: 0;
+  border-radius: 12px;
   background: transparent;
   color: inherit;
   font: inherit;
@@ -376,35 +498,42 @@ onUnmounted(() => {
   cursor: pointer;
 }
 
+.rail-row:hover {
+  background: var(--ui-fill);
+}
+
+.rail-row.is-selected {
+  background: var(--ui-sel-tint);
+  box-shadow: var(--ui-sel-ring);
+}
+
 .rail-row:focus-visible {
   outline: 2px solid var(--ui-accent);
   outline-offset: -2px;
 }
 
-.rail-row-sm {
-  min-height: 44px;
-}
-
 .rail-name {
+  flex: 1;
+  min-width: 0;
   font-size: 15px;
   font-weight: 500;
 }
 
+/* type share: a solid bar against a visible track, so the ranking reads at a glance */
 .rail-bar {
   flex: none;
-  width: 64px;
-  height: 6px;
-  margin-right: 12px;
+  width: 72px;
+  height: 8px;
   overflow: hidden;
   border-radius: 999px;
-  background: var(--ui-fill);
+  background: var(--ui-fill-strong);
 }
 
 .rail-bar i {
   display: block;
   height: 100%;
   border-radius: 999px;
-  background: var(--ui-faint);
+  background: var(--ui-ink-2);
 }
 
 .rail-row.is-selected .rail-bar i {
@@ -414,22 +543,28 @@ onUnmounted(() => {
 .rail-total {
   min-width: 2ch;
   font-size: 15px;
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
-  color: var(--ui-ink-2);
+  color: var(--ui-ink);
   text-align: right;
 }
 
 .rail-time {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  margin: 0;
-  padding: 18px 8px;
+  margin: 12px 0 0;
+  padding: 12px 0 0;
+  box-shadow: inset 0 0.5px 0 var(--ui-sep);
 }
 
 .rail-time > div {
   display: grid;
-  gap: 4px;
-  padding: 0 14px;
+  gap: 2px;
+  padding: 0 10px;
+}
+
+.rail-time > div:first-child {
+  padding-left: 0;
 }
 
 .rail-time > div + div {
@@ -439,12 +574,12 @@ onUnmounted(() => {
 .rail-time dt {
   font-size: 13px;
   font-weight: 500;
-  color: var(--ui-muted);
+  color: var(--ui-ink-2);
 }
 
 .rail-time dd {
   margin: 0;
-  font: 600 28px / 1.1 var(--ui-font-display);
+  font: 600 24px / 1.1 var(--ui-font-display);
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.02em;
   color: var(--ui-ink);
