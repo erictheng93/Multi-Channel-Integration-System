@@ -9,10 +9,15 @@
     <RingLead
       kicker="最近自動備份"
       :value="leadValue"
-      :tone="statusTone === 'ok' ? 'good' : (statusTone === 'warn' ? 'warn' : 'none')"
+      :tone="statusTone === 'warn' ? 'warn' : (statusTone === 'ok' ? '' : 'none')"
       :meaning="leadMeaning"
       :busy="loading && !data"
     >
+      <span
+        v-if="data && data.lastAuto"
+        class="ui-pill lead-state"
+        :class="statusPill.className"
+      >{{ statusPill.label }}</span>
       <dl
         v-if="data"
         class="lead-facts"
@@ -100,19 +105,21 @@
             <button
               type="button"
               class="cell"
-              :class="{ has: cell.count > 0, on: dayFilter === cell.key }"
+              :class="{ has: cell.count > 0, on: dayFilter === cell.key, today: cell.today }"
+              :title="cell.aria"
               :aria-pressed="dayFilter === cell.key"
               :aria-label="cell.aria"
               :disabled="cell.count === 0"
               @click="dayFilter = dayFilter === cell.key ? '' : cell.key"
             >
-              <span class="bar">
-                <i :style="{ height: cell.height + '%' }" />
-              </span>
               <span class="num">{{ cell.day }}</span>
             </button>
           </li>
         </ol>
+        <p class="strip-ends">
+          <span>{{ strip[0]?.key.slice(5).replace('-', '/') }}</span>
+          <span>今天</span>
+        </p>
       </div>
     </section>
 
@@ -307,7 +314,7 @@
                 :key="row.key"
               >
                 <span class="sum-row">
-                  <span>{{ row.label }}</span>
+                  <span>{{ row.label }}<small v-if="row.keep"> 保留 {{ row.keep }} 天</small></span>
                   <span class="sum-n">{{ row.count }} 份 · {{ formatBytes(row.size) }}</span>
                 </span>
                 <span
@@ -318,26 +325,6 @@
             </ul>
           </div>
         </aside>
-        <section
-          v-if="policy"
-          aria-label="保留期限"
-        >
-          <h2 class="ui-group-label">
-            保留期限
-            <span class="label-note">設定值</span>
-          </h2>
-          <div class="ui-group keep-card">
-            <dl class="keep-list">
-              <div
-                v-for="row in retentionRows"
-                :key="row.key"
-              >
-                <dt>{{ row.label }}</dt>
-                <dd>{{ row.days }} 天</dd>
-              </div>
-            </dl>
-          </div>
-        </section>
       </div>
     </div>
   </div>
@@ -375,15 +362,6 @@ const TIER_LABELS: Record<string, string> = {
   manual: '手動'
 }
 const TIER_ORDER = ['manual', 'daily', 'monthly', 'members', 'tags', 'assignments']
-const RETENTION_LABELS: Record<string, string> = {
-  daily: '每日備份保留',
-  monthly: '每月備份保留',
-  manual: '手動備份保留',
-  members: '人員備份保留',
-  tags: '標籤備份保留',
-  assignments: '指派備份保留'
-}
-
 interface DayGroup {
   key: string
   label: string
@@ -397,7 +375,7 @@ interface StripCell {
   day: number
   count: number
   size: number
-  height: number
+  today: boolean
   aria: string
 }
 
@@ -431,16 +409,6 @@ const scheduleText = computed(() => {
   }
   const zone = p.schedule.timezone === TAIPEI ? '台北時間' : p.schedule.timezone
   return `每日 ${p.schedule.localTime}（${zone}）自動執行`
-})
-
-const retentionRows = computed(() => {
-  const p = policy.value
-  if (!p) {
-    return []
-  }
-  return (Object.keys(RETENTION_LABELS) as Array<keyof typeof p.retentionDays>)
-    .filter(key => typeof p.retentionDays[key] === 'number')
-    .map(key => ({ key, label: (RETENTION_LABELS[key] ?? key).replace('保留', ''), days: p.retentionDays[key] }))
 })
 
 /** Healthy when the newest automatic backup is recent; derived from the real timestamp. */
@@ -571,6 +539,7 @@ const summary = computed(() => {
     .map(([key, entry]) => ({
       key,
       label: tierLabel(key),
+      keep: policy.value?.retentionDays[key as keyof NonNullable<typeof policy.value>['retentionDays']] ?? 0,
       count: entry.count,
       size: entry.size,
       share: size > 0 ? Math.max(3, Math.round((entry.size / size) * 100)) : 0
@@ -591,7 +560,6 @@ const strip = computed<StripCell[]>(() => {
     entry.size += item.size
     perDay.set(key, entry)
   }
-  const max = Math.max(1, ...Array.from(perDay.values()).map(entry => entry.size))
   const cells: StripCell[] = []
   for (let i = span - 1; i >= 0; i--) {
     const d = new Date(Date.now() - i * 24 * 3600 * 1000)
@@ -604,7 +572,7 @@ const strip = computed<StripCell[]>(() => {
       day: Number(key.slice(8, 10)),
       count,
       size,
-      height: size > 0 ? Math.max(18, Math.round((size / max) * 100)) : 0,
+      today: i === 0,
       aria: entry ? `${dayLabel(d)} ${dayDate(d)}，${count} 份，${formatBytes(size)}` : `${dayDate(d)}，沒有備份`
     })
   }
@@ -878,113 +846,77 @@ onMounted(load)
   color: var(--ui-red-ink);
 }
 
-/* Retention policy: configuration constants, listed as a compact two-column key/value block */
-.keep-card {
-  padding: 20px 22px;
+/* Day strip: a calendar heatmap, one tile per day (green = has a backup, orange = none) */
+.strip-card {
+  padding: 18px 22px 14px;
 }
 
-.keep-list {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 0;
-  margin: 0;
-}
-
-.keep-list > div {
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 7px 0;
-  font-size: 13.5px;
-  box-shadow: 0 0.5px 0 var(--ui-sep);
-}
-
-.keep-list dt {
-  color: var(--ui-muted);
-}
-
-.keep-list dd {
-  margin: 0;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-}
-
-/* Day strip */
 .strip {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
   grid-auto-flow: column;
   gap: 6px;
   margin: 0;
-  padding: 18px 22px 20px;
+  padding: 0;
   list-style: none;
 }
 
 .cell {
   display: grid;
+  place-items: center;
   width: 100%;
-  gap: 6px;
-  justify-items: center;
+  height: 44px;
   padding: 0;
   border: 0;
-  background: none;
-  color: var(--ui-muted);
+  border-radius: 10px;
+  background: var(--ui-orange-soft);
+  color: var(--ui-orange-ink);
   font: inherit;
-  cursor: pointer;
-}
-
-.cell:disabled {
   cursor: default;
 }
 
-.bar {
-  position: relative;
-  display: flex;
-  align-items: flex-end;
-  width: 100%;
-  height: 64px;
-  overflow: hidden;
-  border-radius: 8px;
-  background: var(--ui-fill);
+.cell.has {
+  background: var(--ui-green-soft);
+  color: var(--ui-green-ink);
+  cursor: pointer;
+  transition: background var(--ui-dur) var(--ui-ease), color var(--ui-dur) var(--ui-ease);
 }
 
-/* A day with no backup is the exception worth seeing: tinted and outlined in orange */
-.cell:not(.has) .bar {
-  background: var(--ui-orange-soft);
-  box-shadow: inset 0 0 0 1.5px var(--ui-orange);
+.cell.has:hover {
+  background: var(--ui-fill-strong);
 }
 
-.bar i {
-  display: block;
-  width: 100%;
-  border-radius: 6px 6px 0 0;
-  background: var(--ui-green);
-  transition: background var(--ui-dur) var(--ui-ease);
+.cell.today {
+  box-shadow: inset 0 0 0 2px var(--ui-green-ink);
 }
 
-.cell.has:hover .bar i,
-.cell.on .bar i {
+.cell.on,
+.cell.on:hover {
   background: var(--ui-accent);
+  color: #fff;
 }
 
-.cell.on .bar {
-  box-shadow: 0 0 0 2px var(--ui-accent);
-}
-
-.cell:focus-visible .bar {
+.cell:focus-visible {
   outline: 2px solid var(--ui-accent);
   outline-offset: 2px;
 }
 
 .num {
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
 
-.cell.on .num {
-  font-weight: 700;
-  color: var(--ui-accent);
+.strip-ends {
+  display: flex;
+  justify-content: space-between;
+  margin: 10px 0 0;
+  font-size: 13px;
+  color: var(--ui-muted);
+}
+
+.lead-state {
+  margin-top: 10px;
 }
 
 .list-body {
@@ -1139,6 +1071,12 @@ onMounted(load)
   font-weight: 500;
 }
 
+.sum-row small {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--ui-muted);
+}
+
 .sum-n {
   font-weight: 400;
   color: var(--ui-muted);
@@ -1281,27 +1219,24 @@ onMounted(load)
     justify-content: center;
   }
 
+  /* all 30 days at once: a three-row calendar of ten */
+  .strip-card {
+    padding: 16px 16px 12px;
+  }
+
   .strip {
-    grid-auto-columns: 40px;
-    grid-template-columns: none;
+    grid-auto-flow: row;
+    grid-template-columns: repeat(10, minmax(0, 1fr));
     gap: 4px;
-    padding: 16px 16px 18px;
-    overflow-x: auto;
-    scrollbar-width: none;
   }
 
-  /* the older days fade out on the left: a cue that the strip scrolls */
-  .strip {
-    -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 28px);
-    mask-image: linear-gradient(90deg, transparent 0, #000 28px);
+  .cell {
+    height: 36px;
+    border-radius: 8px;
   }
 
-  .strip::-webkit-scrollbar {
+  .strip-ends {
     display: none;
-  }
-
-  .bar {
-    height: 40px;
   }
 
   .chips,
@@ -1315,7 +1250,7 @@ onMounted(load)
     padding-left: 10px;
   }
 
-  /* the type is already in the name; the file name wraps instead of clipping */
+  /* the type is already in the name; the file name ends in an ellipsis (full name on hover) */
   .brow {
     grid-template-columns: minmax(0, 1fr) auto 36px;
     gap: 8px;
@@ -1325,13 +1260,5 @@ onMounted(load)
     display: none;
   }
 
-  .brow-file {
-    overflow-wrap: anywhere;
-    white-space: normal;
-  }
-
-  .keep-list {
-    gap: 2px 16px;
-  }
 }
 </style>
