@@ -124,11 +124,15 @@ describe('ConversationMobileCards.vue', () => {
   })
 
   describe('待回覆 (team-wide)', () => {
-    it('shows a 待回覆 pill (no minutes) when the customer wrote last on an open conversation', () => {
-      const wrapper = mountCards([createConversation({ lastMessage: lastMessage('customer') })])
-      const pill = wrapper.findAll('.card-pills .ui-pill').find(p => p.text() === '待回覆')
+    it('shows a 待回覆 pill (no minutes) once the wait is long, quiet text before that', () => {
+      const long = mountCards([createConversation({ lastMessage: lastMessage('customer'), awaitingSince: new Date(Date.now() - 2 * 3600e3).toISOString() })])
+      const pill = long.findAll('.card-pills .ui-pill').find(p => p.text() === '待回覆')
       expect(pill).toBeTruthy()
       expect(pill!.text()).not.toMatch(/\d/)
+
+      const fresh = mountCards([createConversation({ lastMessage: lastMessage('customer'), awaitingSince: new Date(Date.now() - 60e3).toISOString() })])
+      expect(fresh.findAll('.card-pills .ui-pill').find(p => p.text() === '待回覆')).toBeUndefined()
+      expect(fresh.findAll('.card-pills .state-text').map(p => p.text())).toContain('待回覆')
     })
 
     it('shows 已回覆 when an agent replied last', () => {

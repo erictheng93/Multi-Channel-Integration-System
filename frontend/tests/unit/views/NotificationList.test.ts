@@ -453,6 +453,9 @@ describe('NotificationList.vue', () => {
 
       // 点击删除按钮
       const deleteBtn = wrapper.findAll('.action-btn')[1] || wrapper.find('.action-btn-danger')
+      // Two taps: the first arms the red 刪除？ state, the second deletes
+      await deleteBtn.trigger('click')
+      expect(deleteSpy).not.toHaveBeenCalled()
       await deleteBtn.trigger('click')
 
       expect(deleteSpy).toHaveBeenCalledWith('1')
@@ -696,7 +699,7 @@ describe('NotificationList.vue', () => {
 
       await nextTick()
 
-      const times = wrapper.findAll('.notification-time')
+      const times = wrapper.findAll('.notification-trail .notification-time')
       expect(times[0].text()).toContain('分鐘前')
       expect(times[1].text()).toContain('小時前')
       expect(times[2].text()).toContain('天前')
