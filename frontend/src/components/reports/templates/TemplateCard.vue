@@ -36,9 +36,14 @@
       <span class="tpl-desc">{{ template.description }}</span>
       <span class="tpl-meta">{{ meta }}</span>
       <span
-        v-if="contents.length"
+        v-if="selected && contents.length"
         class="tpl-has"
-      >包含 {{ contents.map(item => item.label).join('、') }}</span>
+      >
+        <span
+          v-for="item in contents"
+          :key="item.label"
+        ><b>{{ item.label }}</b>{{ item.hint }}</span>
+      </span>
     </span>
     <i
       class="radio"
@@ -77,7 +82,7 @@ const meta = computed(() => {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   gap: 14px;
-  align-items: center;
+  align-items: start;
   width: 100%;
   padding: 16px 18px;
   border: 0;
@@ -102,6 +107,10 @@ const meta = computed(() => {
 .tpl-row:focus-visible {
   outline: 2px solid var(--ui-accent);
   outline-offset: 2px;
+}
+
+.tpl-row .radio {
+  margin-top: 10px;
 }
 
 .tpl-ico {
@@ -146,10 +155,27 @@ const meta = computed(() => {
 }
 
 .tpl-has {
-  margin-top: 6px;
+  display: grid;
+  gap: 6px;
+  margin-top: 10px;
+  padding-top: 12px;
+  box-shadow: 0 -0.5px 0 var(--ui-sep);
+}
+
+.tpl-has > span {
+  display: flex;
+  gap: 12px;
+  align-items: baseline;
   font-size: 13px;
-  line-height: 1.45;
+  line-height: 1.4;
   color: var(--ui-ink-2);
+}
+
+.tpl-has b {
+  flex: none;
+  min-width: 76px;
+  font-size: 14px;
+  color: var(--ui-ink);
 }
 
 .radio {
