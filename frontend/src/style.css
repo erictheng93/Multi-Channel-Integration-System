@@ -87,6 +87,8 @@
     --ui-sep: rgba(60, 60, 67, 0.1);
     --ui-ink: #1c1c1e;
     --ui-ink-2: #3a3a3c;
+    /* Hero / lead numbers default to ink: colour is for STATE only (overdue red, healthy green). Use var(--ui-num-ink) or .ui-num */
+    --ui-num-ink: var(--ui-ink);
     /* WCAG AA: iOS #8E8E93 is 3.3:1 on white; #636366 is 6.0:1 (5.0:1 on the grey fills) */
     --ui-muted: #636366;
     --ui-faint: #aeaeb2;
@@ -884,6 +886,10 @@
     align-items: center;
     gap: 8px;
     margin-left: auto;
+  }
+  .ui-num {
+    color: var(--ui-num-ink);
+    font-variant-numeric: tabular-nums;
   }
   .ui-link {
     display: inline-flex;
