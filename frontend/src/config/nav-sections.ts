@@ -26,3 +26,15 @@ const matchesPrefix = (path: string, prefix: string): boolean =>
 export function sectionForPath(path: string): NavSection | undefined {
   return NAV_SECTIONS.find((section) => section.prefixes.some((prefix) => matchesPrefix(path, prefix)))
 }
+
+export type SectionId = NavSection['id']
+
+/**
+ * The section whose hue a page wears (page-title tile, active nav item, lead graphic, accent links).
+ * One place: AppLayout sets `data-section` from this on its root, and the CSS tokens
+ * `--section-hue`, `--section-hue-soft`, `--section-ink` (style.css) resolve from the attribute.
+ * Pages outside every section (/profile, 404) wear the workspace hue.
+ */
+export function sectionIdForPath(path: string): SectionId {
+  return sectionForPath(path)?.id ?? 'workspace'
+}

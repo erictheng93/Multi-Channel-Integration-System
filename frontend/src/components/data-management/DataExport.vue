@@ -2,127 +2,127 @@
 <!-- Pick a format here; the existing ExportDialog collects date, customer and agent filters -->
 
 <template>
-  <div class="data-export">
-    <header class="ui-page-head">
-      <div>
-        <div class="ui-eyebrow">
-          資料
-        </div>
-        <h1 class="ui-page-title page-title">
-          匯出對話
-        </h1>
-        <p class="ui-page-sub page-subtitle">
-          選擇檔案格式，按「開始匯出」後在視窗設定日期、客戶與客服；單次最多匯出 {{ EXPORT_LIMIT.toLocaleString() }} 筆，用於備份、分析或歸檔。
-        </p>
-        <DataSubnav />
-      </div>
-      <div class="ui-page-actions header-actions">
+  <div class="ui-page rl-page data-export">
+    <UiPageHead
+      title="匯出對話"
+      :subtitle="`選擇檔案格式後開始匯出，單次最多 ${EXPORT_LIMIT.toLocaleString()} 筆。`"
+    />
+
+    <!-- Lead: the one task. The chosen format and the single action -->
+    <RingLead
+      kicker="匯出格式"
+      :value="selectedName"
+      :meaning="`${selectedTagline}，單次最多 ${EXPORT_LIMIT.toLocaleString()} 筆`"
+    >
+      <template #actions>
         <button
           type="button"
-          class="btn btn-primary"
+          class="btn btn-primary lead-cta"
           @click="openExportDialog"
         >
           <DownloadIcon :size="16" />
-          開始匯出
+          開始匯出 {{ selectedName }}
         </button>
-      </div>
-    </header>
+      </template>
+    </RingLead>
 
-    <section class="bento">
-      <div
-        class="fmt-grid"
-        role="radiogroup"
-        aria-label="匯出格式"
-      >
-        <button
-          v-for="format in formats"
-          :key="format.id"
-          type="button"
-          class="ui-card format-card"
-          :class="{ 'is-selected': selectedFormat === format.id }"
-          role="radio"
-          :aria-checked="selectedFormat === format.id"
-          @click="selectFormat(format.id)"
+    <section class="export-grid">
+      <div class="choose">
+        <h2 class="ui-group-label">
+          檔案格式
+        </h2>
+        <div
+          class="ui-group fmt-list"
+          role="radiogroup"
+          aria-label="匯出格式"
         >
-          <div class="fmt-top">
+          <button
+            v-for="format in formats"
+            :key="format.id"
+            type="button"
+            class="ui-row is-flush fmt-row"
+            :class="{ 'is-selected': selectedFormat === format.id }"
+            role="radio"
+            :aria-checked="selectedFormat === format.id"
+            @click="selectFormat(format.id)"
+          >
             <span
               class="fmt-ico"
               :class="format.tone"
               aria-hidden="true"
             >{{ format.icon }}</span>
-            <h3 class="format-name">
-              {{ format.name }}<small>{{ format.tagline }}</small>
-            </h3>
+            <span class="fmt-text">
+              <b>{{ format.name }}<small>{{ format.tagline }}</small></b>
+              <span class="fmt-use">{{ format.usecases.join('、') }}</span>
+              <code class="fmt-preview">{{ format.preview }}</code>
+            </span>
             <i
               class="radio"
               aria-hidden="true"
             />
-          </div>
-          <p class="format-description">
-            {{ format.description }}
-          </p>
-          <div class="use">
-            <span>適用</span>{{ format.usecases.join('、') }}
-          </div>
-        </button>
+          </button>
+        </div>
+        <p class="ui-group-foot">
+          選好格式後，在匯出視窗再設定日期、客戶與客服人員的篩選。未設定篩選時匯出全部記錄，最多 {{ EXPORT_LIMIT.toLocaleString() }} 筆，超出部分會被截斷。
+        </p>
       </div>
 
-      <aside class="ui-card features">
-        <div class="ui-card-head">
-          <div>
-            <h2 class="ui-card-title section-title">
-              匯出視窗可設定
-            </h2>
-            <div class="ui-card-sub">
-              按「開始匯出」後開啟
-            </div>
-          </div>
-        </div>
-        <div
-          v-for="feature in features"
-          :key="feature.title"
-          class="feat feature-item"
-        >
-          <span
-            class="ic"
-            :class="feature.tone"
-            aria-hidden="true"
-          >
-            <!-- eslint-disable vue/no-v-html -->
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              v-html="feature.icon"
-            />
-            <!-- eslint-enable vue/no-v-html -->
-          </span>
-          <div>
-            <b>{{ feature.title }}</b>
-            <span>{{ feature.text }}</span>
-          </div>
-        </div>
-        <div class="note">
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            aria-hidden="true"
-          ><circle
-            cx="12"
-            cy="12"
-            r="9"
-          /><path d="M12 8v5M12 16.5v.5" /></svg>
-          <span>未設定任何篩選時會匯出全部記錄，系統最多匯出 {{ EXPORT_LIMIT.toLocaleString() }} 筆，超出部分將被截斷。</span>
+      <aside
+        class="scope"
+        aria-label="匯出內容"
+      >
+        <h2 class="ui-group-label">
+          {{ selectedName }} 檔案會包含
+        </h2>
+        <div class="ui-group scope-body">
+          <h3 class="scope-h">
+            欄位
+          </h3>
+          <ul class="scope-list">
+            <li
+              v-for="item in selectedFields"
+              :key="item"
+            >
+              {{ item }}
+            </li>
+          </ul>
+
+          <h3 class="scope-h">
+            範圍
+          </h3>
+          <ul class="scope-list">
+            <li>你有權限查看的對話中的訊息</li>
+            <li>不含已收回的訊息</li>
+            <li>依時間由新到舊，最多 {{ EXPORT_LIMIT.toLocaleString() }} 筆</li>
+          </ul>
+          <h3 class="scope-h">
+            匯出前可篩選
+          </h3>
+          <ul class="scope-list scope-filters">
+            <li
+              v-for="f in filterOptions"
+              :key="f.name"
+            >
+              <b>{{ f.name }}</b>{{ f.hint }}
+            </li>
+          </ul>
         </div>
       </aside>
     </section>
+
+    <UiActionBar
+      class="export-actions"
+      label="匯出"
+    >
+      <button
+        type="button"
+        class="btn btn-primary"
+        @click="openExportDialog"
+      >
+        <DownloadIcon :size="16" />
+        開始匯出 {{ selectedName }}
+      </button>
+    </UiActionBar>
 
     <!-- ExportDialog Modal (reuse existing component) -->
     <ExportDialog
@@ -134,10 +134,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import UiPageHead from '@/components/ui/UiPageHead.vue'
+import RingLead from '@/components/lead/RingLead.vue'
+import { computed, ref } from 'vue'
+import UiActionBar from '@/components/ui/UiActionBar.vue'
 import { DownloadIcon } from '@/components/icons'
 import ExportDialog from '@/components/conversation/ExportDialog.vue'
-import DataSubnav from '@/components/data-management/DataSubnav.vue'
 
 type FormatId = 'json' | 'csv' | 'txt' | 'pdf'
 
@@ -154,8 +156,9 @@ const formats = [
     tagline: '結構化資料',
     icon: '{ }',
     tone: 'blue',
-    description: '完整的結構化資料格式，包含所有欄位和中繼資訊，適合程式化處理和資料分析。',
-    usecases: ['API 整合', '資料分析', '系統備份']
+    fields: ['訊息編號、對話編號', '寄件者類型與名稱', '訊息內容與類型', '傳送時間、傳送狀態、建立時間', '附加資料（metadata）', '匯出資訊：時間、匯出者、篩選條件'],
+    usecases: ['API 整合', '資料分析', '系統備份'],
+    preview: '{ id, conversationId, senderType, senderName, content, messageType, sentAt }'
   },
   {
     id: 'csv' as const,
@@ -163,8 +166,9 @@ const formats = [
     tagline: '試算表格式',
     icon: 'CSV',
     tone: 'green',
-    description: '以逗號分隔的表格格式，可直接在 Excel 或 Google Sheets 中開啟和分析。',
-    usecases: ['Excel 報表', '統計分析', '團隊共享']
+    fields: ['訊息編號、對話編號', '寄件者類型與名稱', '訊息內容與類型', '傳送時間、傳送狀態、建立時間'],
+    usecases: ['Excel 報表', '統計分析', '團隊共享'],
+    preview: 'Message ID, Conversation ID, Sender Type, Sender Name, Content'
   },
   {
     id: 'txt' as const,
@@ -172,8 +176,9 @@ const formats = [
     tagline: '純文字聊天記錄',
     icon: 'TXT',
     tone: 'lavender',
-    description: '人類可讀的純文字格式，按對話分組，每則訊息包含時間和發送者。',
-    usecases: ['直接閱讀', '品質審查', '列印備份']
+    fields: ['檔頭：匯出時間、總筆數、使用的篩選條件', '依對話分組，組內依時間由舊到新', '每則一行：[時間] 寄件者: 內容'],
+    usecases: ['直接閱讀', '品質審查', '列印備份'],
+    preview: '[時間] 寄件者: 內容'
   },
   {
     id: 'pdf' as const,
@@ -181,32 +186,21 @@ const formats = [
     tagline: '可攜式報告',
     icon: 'PDF',
     tone: 'red',
-    description: '專業排版的可攜式文件，完整支援中文，適合列印、存檔和對外分享。',
-    usecases: ['列印報告', '正式存檔', '對外分享']
+    fields: ['在瀏覽器內依 JSON 資料排版產生', '標題與匯出資訊、使用的篩選條件', '依對話分組的訊息內容'],
+    usecases: ['列印報告', '正式存檔', '對外分享'],
+    preview: '標題 · 匯出資訊 · 依對話分組的訊息'
   }
 ]
 
-// Inner SVG markup is static (never user input)
-const features = [
-  {
-    title: '日期範圍',
-    text: '指定起訖時間，只匯出特定時間段的對話',
-    tone: 'blue',
-    icon: '<rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/>'
-  },
-  {
-    title: '客戶',
-    text: '篩選特定客戶的對話，快速找到需要的記錄',
-    tone: 'green',
-    icon: '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>'
-  },
-  {
-    title: '客服人員',
-    text: '依客服篩選，只匯出該客服送出的訊息，用於績效評估或品質審查',
-    tone: 'indigo',
-    icon: '<circle cx="9" cy="8" r="4"/><path d="M2 21v-1a6 6 0 0 1 12 0v1M17 11a3 3 0 1 0 0-6M22 21v-1a5 5 0 0 0-4-4.9"/>'
-  }
+const filterOptions = [
+  { name: '日期範圍', hint: '只匯出起訖日期之間的訊息' },
+  { name: '客戶', hint: '只匯出指定客戶的對話' },
+  { name: '客服人員', hint: '只匯出指定客服發送的訊息' }
 ]
+
+const selectedFields = computed(() => formats.find(f => f.id === selectedFormat.value)?.fields ?? [])
+const selectedTagline = computed(() => formats.find(f => f.id === selectedFormat.value)?.tagline ?? '')
+const selectedName = computed(() => formats.find(f => f.id === selectedFormat.value)?.name ?? '')
 
 function openExportDialog() {
   showExportDialog.value = true
@@ -218,75 +212,106 @@ function selectFormat(format: FormatId) {
 </script>
 
 <style scoped>
-.data-export {
+.export-grid {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 20px;
-  width: 100%;
-  max-width: 1280px;
-  margin: 0 auto;
-}
-
-.bento {
-  display: grid;
-  grid-template-columns: repeat(12, minmax(0, 1fr));
-  gap: 16px;
   align-items: start;
 }
 
-.fmt-grid {
-  display: grid;
-  grid-column: span 8;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
+.choose,
+.scope {
+  min-width: 0;
 }
 
-.features {
-  grid-column: span 4;
+.scope-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 18px 20px 20px;
 }
 
-.format-card {
+.scope-h {
+  margin: 12px 0 4px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ui-ink-2);
+}
+
+.scope-h:first-child {
+  margin-top: 0;
+}
+
+.scope-list {
   display: grid;
-  gap: 12px;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.scope-list li {
+  position: relative;
+  padding-left: 14px;
+  font-size: 13.5px;
+  line-height: 1.45;
+  text-wrap: pretty;
+  color: var(--ui-ink);
+}
+
+.scope-list li::before {
+  position: absolute;
+  top: 0.6em;
+  left: 0;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--ui-faint);
+  content: '';
+}
+
+.scope-filters li b {
+  display: block;
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.scope-filters li {
+  font-size: 13px;
+  color: var(--ui-muted);
+}
+
+/* One group of four selectable rows (iOS Settings style) */
+.fmt-row {
   width: 100%;
-  padding: 20px 22px;
+  min-height: 72px;
+  padding: 14px 18px;
   border: 0;
+  background: transparent;
   font: inherit;
   color: inherit;
   text-align: left;
   cursor: pointer;
-  transition:
-    box-shadow var(--ui-dur) var(--ui-ease),
-    background var(--ui-dur) var(--ui-ease);
 }
 
-.format-card:hover {
-  box-shadow: var(--ui-shadow-raised);
-}
-
-.format-card:focus-visible {
-  outline: 2px solid var(--ui-accent);
-  outline-offset: 2px;
-}
-
-.format-card.is-selected {
+.fmt-row.is-selected {
   background: var(--ui-sel-tint);
-  box-shadow: var(--ui-sel-ring), var(--ui-shadow-raised);
+  box-shadow: none;
 }
 
-.fmt-top {
-  display: flex;
-  align-items: center;
-  gap: 12px;
+.fmt-row:focus-visible {
+  outline: 2px solid var(--ui-accent);
+  outline-offset: -2px;
 }
 
 .fmt-ico {
   display: grid;
   flex: none;
   place-items: center;
-  width: 44px;
-  height: 44px;
-  border-radius: 14px;
-  font: 600 13px var(--ui-font-mono);
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  font: 600 12px var(--ui-font-mono);
 }
 
 .fmt-ico.blue {
@@ -309,25 +334,47 @@ function selectFormat(format: FormatId) {
   color: var(--ui-red-ink);
 }
 
-.format-name {
-  margin: 0;
-  font: 600 16px / 1.3 var(--ui-font-display);
+.fmt-text {
+  display: grid;
+  min-width: 0;
+  flex: 1;
+  gap: 2px;
+}
+
+.fmt-text b {
+  font: 600 15px / 1.3 var(--ui-font-display);
   letter-spacing: -0.01em;
 }
 
-.format-name small {
-  display: block;
-  margin-top: 1px;
-  font: 500 12.5px var(--ui-font-ui);
+.fmt-text b small {
+  margin-left: 8px;
+  font: 500 13px var(--ui-font-ui);
   letter-spacing: 0;
   color: var(--ui-muted);
+}
+
+.fmt-use {
+  overflow: hidden;
+  font-size: 13px;
+  color: var(--ui-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fmt-preview {
+  display: block;
+  margin-top: 4px;
+  overflow: hidden;
+  font: 12px / 1.45 var(--ui-font-mono);
+  color: var(--ui-ink-2);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .radio {
   flex: none;
   width: 20px;
   height: 20px;
-  margin-left: auto;
   border-radius: 50%;
   box-shadow: inset 0 0 0 1.5px var(--ui-faint);
   transition: box-shadow var(--ui-dur) var(--ui-ease);
@@ -337,122 +384,41 @@ function selectFormat(format: FormatId) {
   box-shadow: inset 0 0 0 6px var(--ui-accent);
 }
 
-.format-description {
-  margin: 0;
-  font-size: 13px;
-  line-height: 1.55;
-  color: var(--ui-muted);
+/* The lead carries the CTA on larger screens; phones get the sticky action bar */
+.export-actions {
+  display: none;
 }
 
-.use {
-  display: flex;
-  gap: 8px;
-  font-size: 12.5px;
-  color: var(--ui-ink-2);
-}
+@media (min-width: 769px) {
+  .fmt-row {
+    min-height: 92px;
+  }
 
-.use span {
-  flex: none;
-  color: var(--ui-muted);
-}
-
-.feat {
-  position: relative;
-  display: flex;
-  gap: 12px;
-  padding: 12px 22px;
-}
-
-.feat + .feat::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  right: 0;
-  left: 62px;
-  height: 0.5px;
-  background: var(--ui-sep);
-}
-
-.feat .ic {
-  display: grid;
-  flex: none;
-  place-items: center;
-  width: 28px;
-  height: 28px;
-  margin-top: 1px;
-  border-radius: 9px;
-}
-
-.feat .ic svg {
-  width: 15px;
-  height: 15px;
-}
-
-.feat .ic.blue {
-  background: var(--ui-accent-soft);
-  color: var(--ui-accent);
-}
-
-.feat .ic.green {
-  background: var(--ui-green-soft);
-  color: var(--ui-green-ink);
-}
-
-.feat .ic.indigo {
-  background: var(--ui-indigo-soft);
-  color: var(--ui-indigo);
-}
-
-.feat b {
-  display: block;
-  font-size: 14px;
-}
-
-.feat span {
-  font-size: 13px;
-  color: var(--ui-muted);
-}
-
-.note {
-  display: flex;
-  gap: 10px;
-  margin: 8px 22px 20px;
-  padding: 12px 14px;
-  border-radius: var(--ui-r-inner);
-  background: var(--ui-orange-soft);
-  font-size: 13px;
-  color: var(--ui-orange-ink);
-}
-
-.note svg {
-  flex: none;
-  width: 16px;
-  height: 16px;
-  margin-top: 2px;
-}
-
-@media (max-width: 1280px) {
-  .fmt-grid,
-  .features {
-    grid-column: span 12;
+  .export-grid {
+    grid-template-columns: minmax(0, 1fr) 340px;
   }
 }
 
 @media (max-width: 768px) {
-  .fmt-grid {
-    grid-template-columns: 1fr;
+  .lead-cta {
+    display: none;
   }
 
-  .feat {
-    padding: 12px 16px;
+  .export-actions {
+    display: flex;
   }
 
-  .feat + .feat::before {
-    left: 56px;
+  .fmt-preview {
+    display: none;
   }
 
-  .note {
-    margin: 8px 16px 18px;
+  /* Short page: the bar rides the bottom of the viewport rather than floating under the cards */
+  .data-export {
+    min-height: calc(100dvh - 120px);
+  }
+
+  .export-actions {
+    margin-top: auto;
   }
 }
 </style>

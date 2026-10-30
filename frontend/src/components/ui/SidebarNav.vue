@@ -1,12 +1,18 @@
 <template>
+  <!-- The nav is its own scroll region between the pinned header and the pinned profile:
+       it fades at whichever edge has more items, and the active item is scrolled into view. -->
   <nav
+    ref="navEl"
     class="sidebar-nav"
+    :class="{ 'has-above': moreAbove, 'has-below': moreBelow }"
     aria-label="主要導覽"
+    @scroll.passive="updateFades"
   >
     <section
       v-for="group in navigationGroups"
       :key="group.id"
       class="nav-group"
+      :data-section="group.id"
     >
       <span
         v-if="!sidebarCollapsed || isMobile"
@@ -27,7 +33,7 @@
           :sidebar-collapsed="sidebarCollapsed"
           :is-mobile="isMobile"
           :items="item.submenu"
-          @toggle="toggleSubmenu(item.path)"
+          @toggle="toggleSubmenu(item.path, item.submenu[0]?.path)"
         />
 
         <!-- Regular navigation items -->
@@ -62,39 +68,21 @@
 </template>
 
 <script setup lang="ts">
-  import { computed, watch, reactive, type Component } from 'vue'
-  import { useRoute } from 'vue-router'
+  import { computed, watch, reactive, ref, nextTick, onMounted, onBeforeUnmount, type Component } from 'vue'
+  import { useRoute, useRouter } from 'vue-router'
   import { useAuthStore } from '@/stores/auth'
   import { useUnreadStore } from '@/stores/unread'
   import { useNotificationsStore } from '@/stores/notifications'
   import { NAV_SECTIONS, sectionForPath } from '@/config/nav-sections'
+  import { SECTION_NAV, sectionNavItems, type SectionNavItem, type SectionNavKey } from '@/config/section-nav'
+  import { NAV_ICONS } from '@/config/nav-icons'
   import ExpandableNavGroup from './ExpandableNavGroup.vue'
-
-  // Icon imports
-  import DashboardIcon from '@/components/icons/DashboardIcon.vue'
-  import ChatIcon from '@/components/icons/ChatIcon.vue'
-  import TagIcon from '@/components/icons/TagIcon.vue'
-  import UsersIcon from '@/components/icons/UsersIcon.vue'
-  import ActivityIcon from '@/components/icons/ActivityIcon.vue'
-  import SettingsIcon from '@/components/icons/SettingsIcon.vue'
-  import MonitorIcon from '@/components/icons/MonitorIcon.vue'
-  import ReportsIcon from '@/components/icons/ReportsIcon.vue'
-  import DataManagementIcon from '@/components/icons/DataManagementIcon.vue'
-  import ChannelIcon from '@/components/icons/ChannelIcon.vue'
-  import AutoReplyIcon from '@/components/icons/AutoReplyIcon.vue'
-  import SendIcon from '@/components/icons/SendIcon.vue'
-  import BellIcon from '@/components/icons/BellIcon.vue'
-
-  interface SubmenuItem {
-    path: string
-    label: string
-  }
 
   interface NavItem {
     path: string
     label: string
     icon: Component
-    submenu?: SubmenuItem[]
+    submenu?: readonly SectionNavItem[]
   }
 
   defineProps<{
@@ -102,7 +90,10 @@
     isMobile: boolean
   }>()
 
+  const iconFor = (path: string): Component => NAV_ICONS[path] as Component
+
   const route = useRoute()
+  const router = useRouter()
   const authStore = useAuthStore()
   const currentPath = computed(() => route.path)
   const unreadStore = useUnreadStore()
@@ -125,74 +116,129 @@
   // Submenu expansion state keyed by route prefix
   const expandedMenus = reactive<Record<string, boolean>>({})
 
-  const toggleSubmenu = (path: string) => {
-    expandedMenus[path] = !expandedMenus[path]
+  // Accordion: only the section you are in shows its children. Another section's parent row
+  // navigates to that section's first child (the route watcher then opens it).
+  const toggleSubmenu = (path: string, firstChild?: string) => {
+    if (expandedMenus[path]) {
+      expandedMenus[path] = false
+    } else if (firstChild) {
+      void router.push(firstChild)
+    } else {
+      expandedMenus[path] = true
+    }
+    // the submenu animates open: re-evaluate the fades once it settled
+    scheduleSettle()
   }
 
-  // ── Navigation item definitions ──
-  const baseNavigationItems: NavItem[] = [
-    { path: '/dashboard', label: '\u5100\u8868\u677F', icon: DashboardIcon },
-    { path: '/conversations', label: '\u5C0D\u8A71\u7BA1\u7406', icon: ChatIcon },
-    // Personal inbox + per-device desktop notification settings: visible to everyone, not under admin-only settings
-    { path: '/notifications', label: '\u901A\u77E5\u4E2D\u5FC3', icon: BellIcon },
-    { path: '/tags', label: '\u6A19\u7C64\u7BA1\u7406', icon: TagIcon },
-    {
-      path: '/reports',
-      label: '\u5831\u8868\u7CFB\u7D71',
-      icon: ReportsIcon,
-      submenu: [
-        { path: '/reports/dashboard', label: '\u5100\u8868\u677F' },
-        { path: '/reports/templates', label: '\u6A21\u677F' },
-        { path: '/reports/generate', label: '\u751F\u6210\u5831\u8868' },
-      ],
-    },
-    {
-      path: '/data',
-      label: '\u8CC7\u6599\u7BA1\u7406',
-      icon: DataManagementIcon,
-      submenu: [
-        { path: '/data/export', label: '\u532F\u51FA\u5C0D\u8A71\u8A18\u9304' },
-      ],
-    },
-  ]
+  // ── Scroll region: edge fades + keep the active item visible ──
+  const navEl = ref<HTMLElement | null>(null)
+  const moreAbove = ref(false)
+  const moreBelow = ref(false)
+  const EDGE_GAP = 28 // keep the revealed item clear of the fade
+  const GROUP_GAP = 16 // .nav-group + .nav-group margin; must stay >= --nav-fade-top
+  const NAV_PAD_BOTTOM = 10 // .sidebar-nav padding-bottom
 
-  const adminNavigationItems: NavItem[] = [
-    ...baseNavigationItems,
-    { path: '/team', label: '\u5718\u968A\u7BA1\u7406', icon: UsersIcon },
-    { path: '/channels', label: '\u983B\u9053\u7BA1\u7406', icon: ChannelIcon },
-    { path: '/auto-reply', label: '\u81EA\u52D5\u56DE\u8986', icon: AutoReplyIcon },
-    { path: '/activities', label: '\u6D3B\u52D5\u8A18\u9304', icon: ActivityIcon },
-    { path: '/monitoring/api', label: 'API\u76E3\u63A7', icon: MonitorIcon },
-    { path: '/monitoring/websocket', label: 'WebSocket\u76E3\u63A7', icon: MonitorIcon },
-    {
-      path: '/settings',
-      label: '\u7CFB\u7D71\u8A2D\u5B9A',
-      icon: SettingsIcon,
-      submenu: [
-        { path: '/settings/general', label: '\u4E00\u822C\u8A2D\u5B9A' },
-        { path: '/settings/integrations/line', label: 'LINE OA' },
-        { path: '/settings/integrations/facebook', label: 'Facebook' },
-        { path: '/settings/advanced', label: '\u9032\u968E\u8A2D\u5B9A' },
-        { path: '/settings/maintenance/health', label: '\u5065\u5EB7\u6AA2\u67E5' },
-      ],
-    },
-  ]
+  const updateFades = () => {
+    const el = navEl.value
+    if (!el) { return }
+    moreAbove.value = el.scrollTop > 2
+    moreBelow.value = el.scrollTop + el.clientHeight < el.scrollHeight - 2
+  }
 
-  const navigationItems = computed(() => {
-    const isAdmin = authStore.currentAgent?.role === 'admin'
-    // Broadcast goes right after the tags item; insert by path, not index, so items added above it stay safe
-    const withBroadcast = (items: NavItem[]) => items.flatMap((item) => item.path === '/tags'
-      ? [item, { path: '/broadcasts', label: '\u7FA4\u767C\u8A0A\u606F', icon: SendIcon }]
-      : [item]
-    )
-    if (!isAdmin) { return withBroadcast(baseNavigationItems) }
-    // 資料備份 is admin-only — inject it under 資料管理 for admins only
-    return withBroadcast(adminNavigationItems.map((item) =>
-      item.path === '/data'
-        ? { ...item, submenu: [...(item.submenu ?? []), { path: '/data/backup', label: '資料備份' }] }
-        : item
-    ))
+  const revealActive = () => {
+    const el = navEl.value
+    if (!el) { return }
+    el.style.paddingBottom = ''
+    // Everything fits (the common 900px-tall case): nothing to reveal, never scroll
+    if (el.scrollHeight <= el.clientHeight + 1) {
+      el.scrollTop = 0
+      updateFades()
+      return
+    }
+    // the open submenu's own item wins over its group header
+    const active = el.querySelector<HTMLElement>('.submenu-item.active') ?? el.querySelector<HTMLElement>('.nav-item.active')
+    if (active) {
+      const box = el.getBoundingClientRect()
+      const rect = active.getBoundingClientRect()
+      if (rect.height > 0) {
+        if (rect.bottom > box.bottom - EDGE_GAP) {
+          const needed = el.scrollTop + rect.bottom - (box.bottom - EDGE_GAP)
+          // Land on a group boundary so the top fade covers the gap between groups,
+          // never half an item (a cut-off row under the logo reads as a bug)
+          const activeTop = rect.top - box.top + el.scrollTop
+          const groupStop = [...el.querySelectorAll<HTMLElement>('.nav-group')]
+            .map(g => g.getBoundingClientRect().top - box.top + el.scrollTop - GROUP_GAP)
+            .find(top => top >= needed && top <= activeTop - EDGE_GAP)
+          // The stop can sit past the scroll range (the list overflows by less than a group):
+          // pad the end by exactly the difference so the scroll can reach it
+          if (groupStop !== undefined) {
+            const short = Math.ceil(groupStop - (el.scrollHeight - el.clientHeight))
+            if (short > 0) { el.style.paddingBottom = `${NAV_PAD_BOTTOM + short}px` }
+          }
+          el.scrollTop = groupStop ?? needed
+        } else if (rect.top < box.top + EDGE_GAP) {
+          el.scrollTop -= box.top + EDGE_GAP - rect.top
+        }
+      }
+    }
+    updateFades()
+  }
+
+  let settleTimer: ReturnType<typeof setTimeout> | undefined
+  const scheduleSettle = () => {
+    clearTimeout(settleTimer)
+    settleTimer = setTimeout(() => { revealActive() }, 280)
+  }
+
+  let resizeObserver: InstanceType<typeof window.ResizeObserver> | undefined
+  onMounted(() => {
+    void nextTick(() => { revealActive(); scheduleSettle() })
+    if (typeof window.ResizeObserver !== 'undefined' && navEl.value) {
+      resizeObserver = new window.ResizeObserver(updateFades)
+      resizeObserver.observe(navEl.value)
+    }
   })
+  onBeforeUnmount(() => {
+    clearTimeout(settleTimer)
+    resizeObserver?.disconnect()
+  })
+
+  // ── Navigation item definitions ──
+  // Children of 報表 / 資料管理 / 系統設定 come from config/section-nav.ts so the in-page
+  // fallback (UiSectionNav, <= 1024px) always shows the same names and order.
+  const buildNavigationItems = (isAdmin: boolean): NavItem[] => {
+    const group = (key: SectionNavKey, icon: Component): NavItem => ({
+      path: SECTION_NAV[key].path,
+      label: SECTION_NAV[key].label,
+      icon,
+      submenu: sectionNavItems(key, isAdmin),
+    })
+
+    const items: NavItem[] = [
+      { path: '/dashboard', label: '儀表板', icon: iconFor('/dashboard') },
+      { path: '/conversations', label: '對話', icon: iconFor('/conversations') },
+      // Personal inbox + per-device desktop notification settings: visible to everyone, not under admin-only settings
+      { path: '/notifications', label: '通知', icon: iconFor('/notifications') },
+      { path: '/tags', label: '客戶標籤', icon: iconFor('/tags') },
+      // Broadcast goes right after the tags item
+      { path: '/broadcasts', label: '群發訊息', icon: iconFor('/broadcasts') },
+      group('reports', iconFor('/reports')),
+      group('data', iconFor('/data')),
+    ]
+    if (!isAdmin) { return items }
+    return [
+      ...items,
+      { path: '/team', label: '團隊成員', icon: iconFor('/team') },
+      { path: '/channels', label: '頻道', icon: iconFor('/channels') },
+      { path: '/auto-reply', label: '自動回覆', icon: iconFor('/auto-reply') },
+      { path: '/activities', label: '活動記錄', icon: iconFor('/activities') },
+      { path: '/monitoring/api', label: 'API 監控', icon: iconFor('/monitoring/api') },
+      { path: '/monitoring/websocket', label: '即時連線監控', icon: iconFor('/monitoring/websocket') },
+      group('settings', iconFor('/settings')),
+    ]
+  }
+
+  const navigationItems = computed(() => buildNavigationItems(authStore.currentAgent?.role === 'admin'))
 
   // Sidebar groups: same items, in the same order, bucketed under section labels
   const navigationGroups = computed(() =>
@@ -207,29 +253,42 @@
   watch(
     () => route.path,
     (newPath) => {
-      if (newPath.startsWith('/reports')) {
-        expandedMenus['/reports'] = true
-      }
-      if (newPath.startsWith('/data')) {
-        expandedMenus['/data'] = true
-      }
-      if (newPath.startsWith('/settings')) {
-        expandedMenus['/settings'] = true
+      for (const prefix of ['/reports', '/data', '/settings']) {
+        expandedMenus[prefix] = newPath === prefix || newPath.startsWith(`${prefix}/`)
       }
     },
     { flush: 'post', immediate: true },
   )
+
+  watch(() => route.path, () => { scheduleSettle() }, { flush: 'post' })
 </script>
 
 <style scoped>
   .sidebar-nav {
     flex: 1;
-    padding: 4px 10px 12px;
+    padding: 2px 10px 10px;
     overflow-y: auto;
     overflow-x: hidden;
     min-height: 0;
     scrollbar-width: thin;
     scrollbar-color: var(--ui-fill-strong) transparent;
+  }
+
+  /* Fades hint that more items sit above / below the visible part */
+  .sidebar-nav.has-above,
+  .sidebar-nav.has-below {
+    --nav-fade-top: 0px;
+    --nav-fade-bottom: 0px;
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 var(--nav-fade-top), #000 calc(100% - var(--nav-fade-bottom)), transparent 100%);
+    mask-image: linear-gradient(to bottom, transparent 0, #000 var(--nav-fade-top), #000 calc(100% - var(--nav-fade-bottom)), transparent 100%);
+  }
+
+  .sidebar-nav.has-above {
+    --nav-fade-top: 16px;
+  }
+
+  .sidebar-nav.has-below {
+    --nav-fade-bottom: 22px;
   }
 
   .sidebar-nav::-webkit-scrollbar {
@@ -245,14 +304,15 @@
     border-radius: 2px;
   }
 
+  /* Group labels: 11.5px / 600, with 16px of air above every group after the first */
   .nav-group + .nav-group {
-    margin-top: 14px;
+    margin-top: 16px;
   }
 
   .nav-label {
     display: block;
-    padding: 6px 10px 4px;
-    font-size: var(--ui-t-cap);
+    padding: 0 10px 3px;
+    font-size: var(--ui-t-nav-label);
     font-weight: 600;
     letter-spacing: 0.04em;
     color: var(--ui-muted);
@@ -263,7 +323,7 @@
     display: flex;
     align-items: center;
     gap: 10px;
-    height: 34px;
+    height: 32px;
     padding: 0 10px;
     margin-bottom: 1px;
     border-radius: 9px;
@@ -287,12 +347,11 @@
     background-color: var(--ui-fill);
   }
 
-  /* Active: raised white pill, accent icon */
+  /* Active: the whole row is tinted (accent wash), accent icon, ink label */
   .nav-item.active {
-    background-color: var(--ui-sel-bg);
-    color: var(--ui-ink);
+    background-color: color-mix(in srgb, var(--section-hue) 15%, transparent);
+    color: var(--section-ink);
     font-weight: 600;
-    box-shadow: var(--ui-shadow-pill);
   }
 
   .nav-count {
@@ -332,7 +391,7 @@
   }
 
   .nav-item.active .nav-icon {
-    color: var(--ui-accent);
+    color: var(--section-hue);
   }
 
   .nav-text {
@@ -344,6 +403,10 @@
 
   /* Medium screens: the rail shows icons only */
   @media (min-width: 769px) and (max-width: 1024px) {
+    .nav-group + .nav-group {
+      margin-top: 12px;
+    }
+
     .nav-label,
     .nav-text {
       display: none;

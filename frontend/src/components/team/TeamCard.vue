@@ -7,7 +7,7 @@
   >
     <div
       class="team-mark"
-      :style="{ background: markBackground }"
+      :style="{ background: markBackground, color: markInk }"
     >
       {{ getTeamInitial(team.name) }}
     </div>
@@ -16,7 +16,10 @@
       <div class="team-name">
         {{ team.name }}
       </div>
-      <div class="team-desc">
+      <div
+        class="team-desc"
+        :title="team.description || undefined"
+      >
         {{ team.description || '尚未填寫描述' }}
       </div>
       <div class="team-meta">
@@ -37,6 +40,10 @@
             :seed="m.id"
             :src="m.avatar"
           />
+          <span
+            v-if="overflowCount > 0"
+            class="avs-more"
+          >+{{ overflowCount }}</span>
         </span>
       </div>
     </div>
@@ -179,7 +186,7 @@ import { createLogger } from '@/utils/logger'
   import Dropdown from '@/components/ui/Dropdown.vue'
   import DropdownItem from '@/components/ui/DropdownItem.vue'
   import TeamAvatar from '@/components/team/TeamAvatar.vue'
-  import { teamMarkBackground } from '@/utils/team-tone'
+  import { teamMarkBackground, teamMarkInk } from '@/utils/team-tone'
   import type { Team, TeamMember, LiffQRCode } from '@/types'
 
   // Composables
@@ -189,6 +196,9 @@ import { createLogger } from '@/utils/logger'
   const teamStore = useTeamStore()
   const qrCodeStore = useQRCodeStore()
   const teamModal = useTeamModal()
+
+  // Members beyond the avatar stack
+  const overflowCount = computed(() => Math.max(0, (props.team.memberCount || 0) - props.previewMembers.length))
 
   // 當前用戶資訊
   const currentUser = computed(() => authStore.currentAgent)
@@ -210,6 +220,7 @@ import { createLogger } from '@/utils/logger'
   const qrStats = ref<{ scanCount: number; assignmentCount: number } | null>(null)
 
   const markBackground = computed(() => teamMarkBackground(props.team.id))
+  const markInk = computed(() => teamMarkInk(props.team.id))
 
   // 工具函數
   const getTeamInitial = (name: string): string => {
@@ -455,9 +466,13 @@ import { createLogger } from '@/utils/logger'
   padding: 18px 20px;
   cursor: pointer;
 }
-.team-card.is-off .team-mark,
+/* an off team stays legible: only the mark loses its colour, text keeps AA contrast */
+.team-card.is-off .team-mark {
+  background: var(--ui-fill);
+  color: var(--ui-muted);
+}
 .team-card.is-off .team-name {
-  opacity: 0.55;
+  color: var(--ui-ink-2);
 }
 .team-mark {
   display: grid;
@@ -466,7 +481,6 @@ import { createLogger } from '@/utils/logger'
   place-items: center;
   border-radius: 16px;
   font: 600 21px var(--ui-font-display);
-  color: #fff;
 }
 .team-main {
   min-width: 0;
@@ -494,13 +508,28 @@ import { createLogger } from '@/utils/logger'
 }
 .avs {
   display: flex;
-  margin-left: 4px;
+  align-items: center;
+  margin-left: 8px;
 }
 .avs > :deep(*) {
   margin-left: -6px;
+  box-shadow: 0 0 0 2px var(--ui-surface);
 }
 .avs > :deep(*:first-child) {
   margin-left: 0;
+}
+.avs-more {
+  display: grid;
+  min-width: 28px;
+  height: 28px;
+  padding: 0 6px;
+  place-items: center;
+  border-radius: 14px;
+  background: var(--ui-fill-strong);
+  box-shadow: 0 0 0 2px var(--ui-surface);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ui-ink-2);
 }
 .team-acts {
   display: flex;
@@ -532,8 +561,11 @@ import { createLogger } from '@/utils/logger'
 }
 
 @media (max-width: 768px) {
+  /* The whole card opens the team, so the phone keeps only the overflow menu, top right: no crowded action row */
   .team-card {
-    grid-template-columns: 44px minmax(0, 1fr);
+    grid-template-columns: 44px minmax(0, 1fr) auto;
+    align-items: start;
+    padding: 16px;
   }
   .team-mark {
     width: 44px;
@@ -541,11 +573,18 @@ import { createLogger } from '@/utils/logger'
     border-radius: 14px;
     font-size: 18px;
   }
-  .team-acts {
-    grid-column: 1 / -1;
-  }
   .team-acts .btn {
-    flex: 1;
+    display: none;
+  }
+  .team-acts {
+    margin: -6px -8px 0 0;
+  }
+  .team-desc {
+    display: -webkit-box;
+    overflow: hidden;
+    white-space: normal;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
   }
 }
 </style>

@@ -247,7 +247,7 @@ const formattedTime = computed(() => {
 }
 
 .notification-item-time {
-  font-size: 0.75rem;
+  font-size: 13px;
   color: var(--gray-500);
   white-space: nowrap;
   flex-shrink: 0;

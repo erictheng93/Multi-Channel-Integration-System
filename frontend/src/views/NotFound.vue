@@ -4,20 +4,70 @@
     :is="isAuthenticated ? AppLayout : 'div'"
     :class="{ 'bare-shell': !isAuthenticated }"
   >
-    <div class="not-found-page">
-      <header class="ui-page-head">
-        <div>
-          <div class="ui-eyebrow">
-            錯誤 404
+    <div class="ui-page not-found-page">
+      <section class="nf">
+        <div class="code-wrap">
+          <DiscRing
+            class="hero-disc"
+            tone="accent"
+            :size="190"
+            :weight="1.4"
+            fade="strong"
+            :grain="false"
+          />
+          <div class="code">
+            4<span>0</span>4
           </div>
-          <h1 class="ui-page-title">
-            找不到這個頁面
-          </h1>
-          <p class="ui-page-sub">
-            抱歉，您要找的頁面不存在或已被移除。{{ links.length > 0 ? '可以從下方常用頁面繼續。' : '' }}
-          </p>
         </div>
-        <div class="ui-page-actions">
+        <h1 class="nf-title">
+          找不到這個頁面
+        </h1>
+        <p class="nf-reason">
+          可能原因：網址輸入有誤、頁面已被移除，或你沒有權限查看。
+        </p>
+        <div class="asked ui-well">
+          <span class="k">你開啟的網址</span>
+          <span
+            class="mono"
+            :title="route.fullPath"
+          >{{ route.fullPath }}</span>
+        </div>
+
+        <div
+          v-if="links.length > 0"
+          class="list"
+        >
+          <router-link
+            v-for="link in links"
+            :key="link.to"
+            :to="link.to"
+            class="go"
+          >
+            <span
+              class="go-ico"
+              :class="link.tone"
+              aria-hidden="true"
+            >
+              <!-- eslint-disable vue/no-v-html -->
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                v-html="link.icon"
+              />
+              <!-- eslint-enable vue/no-v-html -->
+            </span>
+            <div>
+              <b>{{ link.title }}</b>
+              <small>{{ link.text }}</small>
+            </div>
+          </router-link>
+        </div>
+
+        <div class="nf-actions">
           <button
             type="button"
             class="btn btn-secondary"
@@ -52,121 +102,13 @@
             {{ isAuthenticated ? '回到儀表板' : '前往登入' }}
           </router-link>
         </div>
-      </header>
-
-      <section
-        class="nf"
-        :class="{ single: links.length === 0 }"
-      >
-        <article class="ui-card hero">
-          <svg
-            class="rings"
-            viewBox="0 0 300 300"
-            aria-hidden="true"
-          >
-            <circle
-              cx="150"
-              cy="150"
-              r="140"
-              stroke-width="1"
-              opacity=".10"
-            />
-            <circle
-              cx="150"
-              cy="150"
-              r="100"
-              stroke-width="1"
-              opacity=".16"
-            />
-            <circle
-              cx="150"
-              cy="150"
-              r="60"
-              stroke-width="1"
-              opacity=".26"
-            />
-            <circle
-              cx="150"
-              cy="150"
-              r="20"
-              stroke-width="1.5"
-              opacity=".5"
-            />
-          </svg>
-          <div class="code">
-            4<span>0</span>4
-          </div>
-          <p>可能原因：網址輸入有誤、頁面已被移除，或你沒有權限查看。</p>
-          <div class="asked ui-well">
-            <span class="k">你開啟的網址</span>
-            <span
-              class="mono"
-              :title="route.fullPath"
-            >{{ route.fullPath }}</span>
-          </div>
-        </article>
-
-        <article
-          v-if="links.length > 0"
-          class="ui-card"
-        >
-          <div class="ui-card-head">
-            <div>
-              <h2 class="ui-card-title">
-                常用頁面
-              </h2>
-              <div class="ui-card-sub">
-                直接前往工作台的主要區域
-              </div>
-            </div>
-          </div>
-          <div class="list">
-            <router-link
-              v-for="link in links"
-              :key="link.to"
-              :to="link.to"
-              class="go"
-            >
-              <span
-                class="go-ico"
-                :class="link.tone"
-                aria-hidden="true"
-              >
-                <!-- eslint-disable vue/no-v-html -->
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  v-html="link.icon"
-                />
-                <!-- eslint-enable vue/no-v-html -->
-              </span>
-              <div>
-                <b>{{ link.title }}</b>
-                <small>{{ link.text }}</small>
-              </div>
-              <svg
-                class="chev"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                aria-hidden="true"
-              ><path d="m9 18 6-6-6-6" /></svg>
-            </router-link>
-          </div>
-        </article>
       </section>
     </div>
   </component>
 </template>
 
 <script setup lang="ts">
+import DiscRing from '@/components/ui/DiscRing.vue'
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
@@ -190,38 +132,31 @@ const { isAuthenticated, isAdmin } = storeToRefs(authStore)
 
 const QUICK_LINKS: QuickLink[] = [
   {
-    to: '/dashboard',
-    title: '儀表板',
-    text: '待回覆與今日概況',
-    tone: 'blue',
-    icon: '<rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/>'
-  },
-  {
     to: '/conversations',
     title: '對話',
     text: 'LINE 與 Messenger 客戶訊息',
-    tone: 'green',
+    tone: 'blue',
     icon: '<path d="M21 12a8 8 0 0 1-11.6 7.1L4 20.5l1.4-4.6A8 8 0 1 1 21 12Z"/>'
   },
   {
     to: '/notifications',
     title: '通知',
     text: '指派、提及與系統提醒',
-    tone: 'orange',
+    tone: 'blue',
     icon: '<path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/>'
   },
   {
     to: '/tags',
     title: '客戶標籤',
     text: '分類與客戶經營',
-    tone: 'indigo',
+    tone: 'orange',
     icon: '<path d="M12.6 2.6A2 2 0 0 0 11.2 2H4a2 2 0 0 0-2 2v7.2a2 2 0 0 0 .6 1.4l8.7 8.7a2.4 2.4 0 0 0 3.4 0l6.6-6.6a2.4 2.4 0 0 0 0-3.4Z"/><circle cx="7.5" cy="7.5" r="1.2"/>'
   },
   {
     to: '/settings',
     title: '系統設定',
     text: '整合、備份與健康檢查',
-    tone: 'blue',
+    tone: 'indigo',
     icon: '<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M2 12h3M19 12h3M4.9 19.1 7 17M17 7l2.1-2.1"/>',
     adminOnly: true
   }
@@ -245,18 +180,13 @@ const goBack = () => {
 
 <style scoped>
 .bare-shell {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
   min-height: 100vh;
   min-height: 100dvh;
   padding: 32px 20px;
   background: var(--ui-canvas);
-}
-
-.not-found-page {
-  display: grid;
-  gap: 20px;
-  width: 100%;
-  max-width: 1280px;
-  margin: 0 auto;
 }
 
 .ico {
@@ -264,28 +194,41 @@ const goBack = () => {
   height: 16px;
 }
 
-.nf {
-  display: grid;
-  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
-  gap: 16px;
-}
-
-.nf.single {
-  grid-template-columns: minmax(0, 1fr);
-}
-
-.hero {
-  position: relative;
+/* One centred column, vertically centred in the viewport; nothing stretches */
+.not-found-page {
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  padding: 36px 32px 32px;
-  overflow: hidden;
+  justify-content: center;
+  min-height: calc(100vh - var(--ui-topbar-h) - 2 * var(--ui-gutter));
+  min-height: calc(100dvh - var(--ui-topbar-h) - 2 * var(--ui-gutter));
+}
+
+.bare-shell .not-found-page {
+  min-height: 0;
+}
+
+.nf {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  max-width: 760px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+/* The rings live in the numerals' own box, so they can never reach the sentence below */
+.code-wrap {
+  position: relative;
+  display: grid;
+  place-items: center;
+  padding: 8px 80px;
 }
 
 .code {
-  font: 700 120px / 0.9 var(--ui-font-display);
-  letter-spacing: -0.06em;
+  position: relative;
+  font: 600 160px / 1 var(--ui-font-display);
+  letter-spacing: -0.05em;
   font-variant-numeric: tabular-nums;
   color: var(--ui-ink);
 }
@@ -294,10 +237,27 @@ const goBack = () => {
   color: var(--ui-accent);
 }
 
-.hero p {
-  max-width: 40ch;
-  margin: 0;
-  font-size: 14.5px;
+.hero-disc {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 320px !important;
+  height: 320px !important;
+  translate: -50% -50%;
+  opacity: 0.8;
+  pointer-events: none;
+}
+
+.nf-title {
+  margin: 18px 0 0;
+  font: 700 34px/1.2 var(--ui-font-display);
+  letter-spacing: -0.035em;
+}
+
+.nf-reason {
+  max-width: 38ch;
+  margin: 8px 0 0;
+  font-size: 15px;
   color: var(--ui-muted);
   text-wrap: balance;
 }
@@ -306,106 +266,89 @@ const goBack = () => {
   display: flex;
   gap: 10px;
   align-items: center;
-  margin-top: 10px;
+  width: min(100%, 420px);
+  margin-top: 18px;
   padding: 12px 14px;
   font-size: 13px;
+  background: var(--ui-fill);
 }
 
 .asked .k {
   flex: none;
-  color: var(--ui-muted);
+  color: var(--ui-ink-2);
 }
 
 .asked .mono {
   min-width: 0;
   overflow: hidden;
   font-family: var(--ui-font-mono);
-  color: var(--ui-ink-2);
+  font-weight: 500;
+  color: var(--ui-ink);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.rings {
-  position: absolute;
-  top: -90px;
-  right: -90px;
-  width: 300px;
-  height: 300px;
-  color: var(--ui-accent);
-  pointer-events: none;
-}
-
-.rings circle {
-  fill: none;
-  stroke: currentColor;
-}
-
+/* Compact shortcut tiles: 4 across on desktop, 2 x 2 on phone */
 .list {
-  padding-bottom: 8px;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  width: 100%;
+  margin-top: 28px;
 }
 
 .go {
-  position: relative;
   display: flex;
-  gap: 12px;
-  align-items: center;
-  padding: 12px 22px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 16px;
+  border-radius: 18px;
+  background: var(--ui-surface);
   color: inherit;
+  text-align: left;
   text-decoration: none;
   transition: background var(--ui-dur) var(--ui-ease);
 }
 
-.go + .go::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  right: 0;
-  left: 66px;
-  height: 0.5px;
-  background: var(--ui-sep);
-}
-
 .go:hover {
-  background: color-mix(in srgb, var(--ui-fill) 45%, transparent);
+  background: var(--ui-surface-2);
 }
 
 .go:focus-visible {
   outline: 2px solid var(--ui-accent);
-  outline-offset: -2px;
+  outline-offset: 2px;
 }
 
 .go-ico {
   display: grid;
   flex: none;
   place-items: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 10px;
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
 }
 
 .go-ico svg {
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
+}
+
+/* Solid section hue tile, white glyph (same language as the page-title tile and the sidebar sections) */
+.go-ico {
+  color: #fff;
 }
 
 .go-ico.blue {
-  background: var(--ui-accent-soft);
-  color: var(--ui-accent);
-}
-
-.go-ico.green {
-  background: var(--ui-green-soft);
-  color: var(--ui-green-ink);
+  background: var(--ui-blue);
 }
 
 .go-ico.orange {
-  background: var(--ui-orange-soft);
-  color: var(--ui-orange-ink);
+  background: var(--ui-orange);
 }
 
 .go-ico.indigo {
-  background: var(--ui-indigo-soft);
-  color: var(--ui-indigo);
+  background: var(--ui-indigo);
 }
 
 .go b {
@@ -415,30 +358,45 @@ const goBack = () => {
 }
 
 .go small {
-  font-size: 12.5px;
+  font-size: 13px;
+  line-height: 1.4;
   color: var(--ui-muted);
 }
 
-.go .chev {
-  width: 15px;
-  height: 15px;
-  margin-left: auto;
-  color: var(--ui-faint);
+.nf-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin-top: 28px;
 }
 
-@media (max-width: 1024px) {
-  .nf {
-    grid-template-columns: minmax(0, 1fr);
+@media (max-width: 768px) {
+  .list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .nf-actions {
+    width: 100%;
+  }
+
+  .nf-actions > .btn {
+    flex: 1 1 0;
+    justify-content: center;
   }
 }
 
 @media (max-width: 480px) {
   .code {
-    font-size: 92px;
+    font-size: 96px;
   }
 
-  .hero {
-    padding: 28px 22px 22px;
+  .code-wrap {
+    padding: 8px 40px;
+  }
+
+  .hero-disc {
+    width: 200px !important;
+    height: 200px !important;
   }
 
   .asked {

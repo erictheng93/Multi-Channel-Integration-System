@@ -6,93 +6,148 @@
 
 <template>
   <div class="health-stack">
-    <article
-      class="ui-card hero"
-      :class="`tone-${overallTone}`"
+    <RingLead
+      kicker="整體狀態"
+      :value="heroValue ?? '—'"
+      :busy="controller.processing.value && !controller.healthOverall.value"
+      :tone="leadToneName"
+      :meaning="heroSubtitle"
+      summary="服務狀態"
+      :rings="healthRings"
+      :center-value="`${counts.healthy}/${rows.length}`"
+      center-label="服務正常"
+      :size="144"
     >
-      <div
-        class="hero-ico"
-        aria-hidden="true"
-      >
-        <svg
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        >
-          <path
-            v-if="overallTone === 'ok'"
-            d="M5 12.5 10 17.5 19 7"
-          />
-          <path
-            v-else-if="overallTone === 'unknown'"
-            d="M12 8v5M12 17h.01"
-          />
-          <template v-else>
-            <path d="M12 8v5M12 17h.01" />
-            <path d="M10.3 3.9 2.4 17.5A2 2 0 0 0 4.1 20.5h15.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z" />
-          </template>
-        </svg>
-      </div>
-      <div class="hero-main">
-        <div class="hero-t">
-          {{ heroTitle }}
-        </div>
-        <div class="hero-s">
-          {{ heroSubtitle }}
-        </div>
-      </div>
-      <div
-        v-if="rows.length > 0"
-        class="hero-stats"
-      >
-        <div class="hs g">
-          <b>{{ counts.healthy }}</b><span>正常</span>
-        </div>
-        <div class="hs o">
-          <b>{{ counts.warning }}</b><span>警告</span>
-        </div>
-        <div class="hs r">
-          <b>{{ counts.critical }}</b><span>異常</span>
-        </div>
-      </div>
-    </article>
-
-    <SettingsGroup title="服務檢查">
-      <div
-        v-if="rows.length === 0"
-        class="ui-empty"
-      >
-        <div
-          class="ui-empty-art"
-          aria-hidden="true"
-        >
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.8"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          ><path d="M22 12h-4l-3 9L9 3l-3 9H2" /></svg>
-        </div>
-        <h3>{{ controller.processing.value ? '檢查中...' : '尚無檢查結果' }}</h3>
-        <p>{{ controller.processing.value ? '正在逐項檢查服務。' : '按右上角「立即檢查」開始。' }}</p>
-      </div>
       <ul
-        v-else
-        class="ui-list"
+        v-if="rows.length > 0"
+        class="hero-counts"
+        aria-label="服務狀態統計"
       >
-        <li
-          v-for="row in rows"
-          :key="row.key"
-          class="ui-row is-flush hrow"
+        <li :class="{ zero: counts.healthy === 0 }">
+          <span class="dot g" />{{ counts.healthy }} 正常
+        </li>
+        <li :class="{ zero: counts.warning === 0 }">
+          <span class="dot o" />{{ counts.warning }} 警告
+        </li>
+        <li :class="{ zero: counts.critical === 0 }">
+          <span class="dot r" />{{ counts.critical }} 異常
+        </li>
+        <li v-if="counts.unchecked > 0">
+          <span class="dot u" />{{ counts.unchecked }} 未檢查
+        </li>
+      </ul>
+    </RingLead>
+
+    <section aria-label="服務檢查">
+      <h2 class="ui-group-label">
+        服務檢查
+      </h2>
+      <div class="ui-group">
+        <UiEmptyState
+          v-if="serviceRows.length === 0"
+          :title="controller.processing.value ? '檢查中...' : '尚無檢查結果'"
+          :description="controller.processing.value ? '正在逐項檢查服務。' : '按右上角「立即檢查」開始。'"
+        >
+          <template #icon>
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.8"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            ><path d="M22 12h-4l-3 9L9 3l-3 9H2" /></svg>
+          </template>
+        </UiEmptyState>
+        <ul
+          v-else
+          class="ui-list"
+        >
+          <li
+            v-for="row in serviceRows"
+            :key="row.key"
+            class="ui-row is-flush hrow"
+          >
+            <span
+              class="hstat"
+              :class="row.tone"
+              aria-hidden="true"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path
+                  v-if="row.tone === 'ok'"
+                  d="M5 12.5 10 17.5 19 7"
+                />
+                <path
+                  v-else-if="row.tone === 'unknown'"
+                  d="M5 12h14"
+                />
+                <path
+                  v-else
+                  d="M12 8v5M12 17h.01"
+                />
+              </svg>
+            </span>
+            <div class="ui-row-main">
+              <div class="ui-row-title">
+                {{ row.name }}
+              </div>
+              <div class="ui-row-sub">
+                {{ row.sub }}
+              </div>
+            </div>
+            <div class="lat">
+              <span
+                v-if="row.latencyMs !== null"
+                class="lat-track"
+                aria-hidden="true"
+              >
+                <span
+                  class="lat-bar"
+                  :class="row.tone"
+                  :style="{ width: `${barPct(row.latencyMs)}%` }"
+                />
+              </span>
+              <span
+                class="lat-n"
+                :class="row.tone"
+              >
+                <template v-if="row.latencyMs !== null">{{ row.latencyMs.toLocaleString() }}<small>ms</small></template>
+                <template v-else>—</template>
+              </span>
+            </div>
+            <span
+              class="ui-pill ui-pill-dot"
+              :class="pillClass(row.tone)"
+            >{{ row.label }}</span>
+          </li>
+        </ul>
+      </div>
+    </section>
+
+    <section
+      v-if="webhookRow"
+      aria-label="LINE webhook"
+    >
+      <h2 class="ui-group-label">
+        LINE webhook
+      </h2>
+      <div class="ui-group">
+        <div
+          class="hrow wh"
+          :class="`is-${webhookRow.tone}`"
         >
           <span
             class="hstat"
-            :class="row.tone"
+            :class="webhookRow.tone"
             aria-hidden="true"
           >
             <svg
@@ -104,12 +159,12 @@
               stroke-linejoin="round"
             >
               <path
-                v-if="row.tone === 'ok'"
+                v-if="webhookRow.tone === 'ok'"
                 d="M5 12.5 10 17.5 19 7"
               />
               <path
-                v-else-if="row.tone === 'unknown'"
-                d="M5 12h14"
+                v-else-if="webhookRow.tone === 'unknown'"
+                d="M12 6.5V12l3.5 2"
               />
               <path
                 v-else
@@ -119,45 +174,45 @@
           </span>
           <div class="ui-row-main">
             <div class="ui-row-title">
-              {{ row.name }}
+              {{ webhookRow.name }}
             </div>
             <div class="ui-row-sub">
-              {{ row.sub }}
+              {{ webhookRow.sub }}
             </div>
           </div>
-          <div class="lat">
-            <span
-              class="lat-n"
-              :class="row.tone"
-            >
-              <template v-if="row.latencyMs !== null">{{ row.latencyMs.toLocaleString() }}<small>ms</small></template>
-              <template v-else>—</template>
-            </span>
-            <span class="lbar">
-              <i
-                v-if="row.latencyMs !== null"
-                :class="row.tone"
-                :style="{ width: `${barWidth(row.latencyMs)}%` }"
-              />
-            </span>
-          </div>
+          <span
+            v-if="webhookRow.latencyMs !== null"
+            class="lat-n"
+            :class="webhookRow.tone"
+          >{{ webhookRow.latencyMs.toLocaleString() }}<small>ms</small></span>
           <span
             class="ui-pill ui-pill-dot"
-            :class="pillClass(row.tone)"
-          >{{ row.label }}</span>
-        </li>
-      </ul>
-      <template #note>
-        長條以 0 – {{ BAR_MAX_MS.toLocaleString() }} ms 為滿格。LINE webhook 只在按「立即檢查」時測試；若持續失敗，請到 LINE Developers 主控台對 Webhook URL 按「Verify」。
-      </template>
-    </SettingsGroup>
+            :class="pillClass(webhookRow.tone)"
+          >{{ webhookRow.label }}</span>
+          <button
+            v-if="webhookRow.tone === 'unknown'"
+            type="button"
+            class="btn btn-secondary btn-sm"
+            :disabled="controller.processing.value"
+            @click="controller.healthCheck(true)"
+          >
+            立即測試
+          </button>
+        </div>
+      </div>
+      <p class="ui-group-foot">
+        LINE webhook 只在按「立即檢查」時測試；若持續失敗，請到 LINE Developers 主控台對 Webhook URL 按「Verify」。
+      </p>
+    </section>
   </div>
 </template>
 
 <script setup lang="ts">
+import RingLead from '@/components/lead/RingLead.vue'
+import type { ServiceRing } from '@/components/ui/ServiceRings.vue'
+import UiEmptyState from '@/components/ui/UiEmptyState.vue'
 import { computed, inject, onMounted } from 'vue'
 import { SETTINGS_CONTROLLER_KEY } from '@/types/system-settings'
-import SettingsGroup from '@/components/system-settings/SettingsGroup.vue'
 
 type Tone = 'ok' | 'warn' | 'bad' | 'unknown'
 
@@ -169,8 +224,6 @@ interface Row {
   label: string
   latencyMs: number | null
 }
-
-const BAR_MAX_MS = 2000
 
 const controller = inject(SETTINGS_CONTROLLER_KEY)
 if (!controller) {
@@ -264,8 +317,14 @@ const rows = computed<Row[]>(() => (webhookRow.value ? [...serviceRows.value, we
 const counts = computed(() => ({
   healthy: rows.value.filter(row => row.tone === 'ok').length,
   warning: rows.value.filter(row => row.tone === 'warn').length,
-  critical: rows.value.filter(row => row.tone === 'bad').length
+  critical: rows.value.filter(row => row.tone === 'bad').length,
+  unchecked: rows.value.filter(row => row.tone === 'unknown').length
 }))
+
+/** Bar length inside each row: relative to the slowest measured service, floored at 100 ms so 12 ms vs 64 ms is not exaggerated */
+const latencyScale = computed(() =>
+  Math.max(100, ...rows.value.map(row => row.latencyMs ?? 0)))
+const barPct = (ms: number): number => Math.max(3, Math.round((ms / latencyScale.value) * 100))
 
 const overallTone = computed<'ok' | 'warn' | 'bad' | 'unknown'>(() => {
   if (counts.value.critical > 0) {
@@ -278,17 +337,31 @@ const overallTone = computed<'ok' | 'warn' | 'bad' | 'unknown'>(() => {
   return overall ? toneOf(overall.status) : 'unknown'
 })
 
-const heroTitle = computed(() => {
+const heroValue = computed<string | null>(() => {
   if (!controller.healthOverall.value) {
-    return controller.processing.value ? '檢查中' : '尚未檢查'
+    return null
   }
   if (counts.value.critical > 0) {
-    return '系統異常'
+    return '異常'
   }
   if (counts.value.warning > 0) {
-    return '部分降級'
+    return '降級'
   }
-  return overallTone.value === 'ok' ? '系統正常' : '狀態未知'
+  return overallTone.value === 'ok' ? '正常' : null
+})
+
+const leadToneName = computed(() => ({ ok: 'good', warn: 'warn', bad: 'bad', unknown: 'none' } as const)[overallTone.value])
+
+/** One arc: services healthy of all listed (an unchecked LINE webhook leaves the arc open, which is the honest picture) */
+const healthRings = computed<ServiceRing[]>(() => {
+  if (rows.value.every(row => row.tone === 'unknown')) { return [] }
+  return [{
+    label: '服務正常',
+    value: counts.value.healthy,
+    total: rows.value.length,
+    of: '項服務',
+    hue: overallTone.value === 'bad' ? 'var(--ui-red)' : (overallTone.value === 'warn' ? 'var(--ui-orange)' : 'var(--ui-green)')
+  }]
 })
 
 const heroSubtitle = computed(() => {
@@ -316,10 +389,6 @@ function formatChecked(iso: string): string {
     hour12: false
   }).format(date)
   return `今天 ${time}`
-}
-
-function barWidth(latencyMs: number): number {
-  return Math.max(1.5, Math.min(100, (latencyMs / BAR_MAX_MS) * 100))
 }
 
 function pillClass(tone: Tone): string {
@@ -350,102 +419,95 @@ onMounted(() => {
   min-width: 0;
 }
 
-.hero {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 16px;
-  padding: 20px 22px;
-  background: var(--ui-surface);
+.lat-track {
+  display: block;
+  width: 140px;
+  height: 6px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--ui-fill);
 }
 
-.hero.tone-ok {
-  background: linear-gradient(180deg, var(--ui-green-soft), transparent 90%), var(--ui-surface);
-}
-
-.hero.tone-warn {
-  background: linear-gradient(180deg, var(--ui-orange-soft), transparent 90%), var(--ui-surface);
-}
-
-.hero.tone-bad {
-  background: linear-gradient(180deg, var(--ui-red-soft), transparent 90%), var(--ui-surface);
-}
-
-.hero-ico {
-  display: grid;
-  flex: none;
-  place-items: center;
-  width: 52px;
-  height: 52px;
-  border-radius: 16px;
-  background: var(--ui-muted);
-  color: #fff;
-}
-
-.tone-ok .hero-ico {
+.lat-bar {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
   background: var(--ui-green);
 }
 
-.tone-warn .hero-ico {
+.lat-bar.warn {
   background: var(--ui-orange);
 }
 
-.tone-bad .hero-ico {
+.lat-bar.bad {
   background: var(--ui-red);
 }
 
-.hero-ico svg {
-  width: 28px;
-  height: 28px;
-}
-
-.hero-main {
-  flex: 1;
-  min-width: 220px;
-}
-
-.hero-t {
-  font: 600 22px / 1.2 var(--ui-font-display);
-  letter-spacing: -0.02em;
-}
-
-.hero-s {
-  margin-top: 3px;
-  font-size: 13.5px;
-  color: var(--ui-muted);
-}
-
-.hero-stats {
+/* LINE webhook is its own on-demand state, not one more row of the always-on checks */
+.wh {
   display: flex;
-  gap: 28px;
+  align-items: center;
 }
 
-.hs {
-  display: grid;
-  gap: 2px;
+.wh .ui-pill {
+  width: auto;
+  min-width: 62px;
 }
 
-.hs b {
-  font: 600 26px / 1 var(--ui-font-display);
-  letter-spacing: -0.02em;
+.wh.is-unknown .hstat {
+  background: var(--ui-accent-soft);
+  color: var(--ui-accent);
+}
+
+.hero-counts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 20px;
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--ui-t-meta);
+  font-weight: 600;
+  color: var(--ui-ink-2);
   font-variant-numeric: tabular-nums;
 }
 
-.hs span {
-  font-size: 12px;
+.hero-counts li {
+  display: inline-flex;
+  gap: 7px;
+  align-items: center;
+}
+
+/* A zero is not news: quiet it down */
+.hero-counts li.zero {
+  font-weight: 500;
   color: var(--ui-muted);
 }
 
-.hs.g b {
-  color: var(--ui-green-ink);
+.hero-counts .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
 }
 
-.hs.o b {
-  color: var(--ui-orange-ink);
+.hero-counts .dot.g {
+  background: var(--ui-green);
 }
 
-.hs.r b {
-  color: var(--ui-red-ink);
+.hero-counts .dot.o {
+  background: var(--ui-orange);
+}
+
+.hero-counts .dot.r {
+  background: var(--ui-red);
+}
+
+.hero-counts .dot.u {
+  background: var(--ui-accent);
+}
+
+.hero-counts li.zero .dot {
+  background: var(--ui-fill-strong);
 }
 
 .hrow {
@@ -492,7 +554,7 @@ onMounted(() => {
 }
 
 .lat-n {
-  width: 74px;
+  width: 64px;
   font: 600 14px var(--ui-font-display);
   text-align: right;
   font-variant-numeric: tabular-nums;
@@ -500,7 +562,7 @@ onMounted(() => {
 
 .lat-n small {
   margin-left: 2px;
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 500;
   color: var(--ui-muted);
 }
@@ -513,29 +575,6 @@ onMounted(() => {
   color: var(--ui-red-ink);
 }
 
-.lbar {
-  width: 120px;
-  height: 6px;
-  overflow: hidden;
-  border-radius: 999px;
-  background: var(--ui-fill);
-}
-
-.lbar i {
-  display: block;
-  height: 100%;
-  border-radius: inherit;
-  background: var(--ui-green);
-}
-
-.lbar i.warn {
-  background: var(--ui-orange);
-}
-
-.lbar i.bad {
-  background: var(--ui-red);
-}
-
 .hrow .ui-pill {
   justify-content: center;
   width: 62px;
@@ -546,17 +585,17 @@ onMounted(() => {
 }
 
 @media (max-width: 768px) {
-  .lbar {
-    display: none;
-  }
-
   .lat-n {
     width: auto;
   }
 
-  .hero-stats {
-    gap: 24px;
-    width: 100%;
+  /* the number already says it; the bar would squeeze the row's own text on a phone */
+  .lat-track {
+    display: none;
+  }
+
+  .wh {
+    flex-wrap: wrap;
   }
 
   .hrow {

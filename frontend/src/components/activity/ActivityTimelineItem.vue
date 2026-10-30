@@ -1,5 +1,9 @@
 <template>
-  <div class="timeline-item">
+  <div
+    class="timeline-item"
+    :class="{ 'is-clickable': formattedDetails.length > 0, 'is-open': detailsExpanded }"
+    @click="onRowClick"
+  >
     <div
       class="timeline-item__icon"
       :class="[iconStyle.bgClass, iconStyle.colorClass]"
@@ -24,54 +28,74 @@
           :datetime="activity.createdAt"
           :title="fullTime"
         >{{ formatTime(activity.createdAt) }}</time>
-        <div class="timeline-item__restore-zone">
-          <button
-            v-if="restoreState.kind === 'eligible'"
-            class="btn btn-secondary btn-sm"
-            data-test="restore-button"
-            :disabled="restoring"
-            @click.stop="openRestoreModal"
-          >
-            還原
-          </button>
-          <span
-            v-else-if="restoreState.kind === 'expired'"
-            class="timeline-item__restore-hint"
-            data-test="restore-expired"
-          >
-            已過期
-          </span>
-          <span
-            v-else-if="restoreState.kind === 'irreversible'"
-            class="timeline-item__restore-hint"
-            data-test="restore-irreversible"
-          >
-            不可還原
-          </span>
-          <span
-            v-else-if="restoreState.kind === 'already-restored'"
-            class="ui-pill ui-pill-green ui-pill-dot"
-            data-test="restore-done"
-          >
-            已還原
-          </span>
-        </div>
+        <span
+          v-if="quietStatus"
+          class="timeline-item__status"
+          aria-hidden="true"
+        >{{ quietStatus }}</span>
       </div>
       <div class="timeline-item__description">
         {{ getActivityDescription(activity) }}
       </div>
-      <button
-        v-if="formattedDetails.length > 0"
-        class="timeline-item__details-toggle"
-        :aria-expanded="detailsExpanded"
-        @click="detailsExpanded = !detailsExpanded"
-      >
-        {{ detailsExpanded ? '隱藏詳情' : '查看詳情' }}
-      </button>
       <ActivityDetailPanel
         :entries="formattedDetails"
         :show="detailsExpanded"
       />
+    </div>
+    <div class="timeline-item__restore-zone">
+      <span
+        v-if="restoreState.kind === 'eligible'"
+        class="ui-pill ui-pill-green"
+        data-test="restore-eligible"
+      >可還原</span>
+      <button
+        v-if="restoreState.kind === 'eligible'"
+        class="btn btn-secondary btn-sm"
+        data-test="restore-button"
+        :disabled="restoring"
+        @click.stop="openRestoreModal"
+      >
+        還原
+      </button>
+      <span
+        v-else-if="restoreState.kind === 'expired'"
+        class="timeline-item__quiet"
+        data-test="restore-expired"
+      >
+        已過期
+      </span>
+      <span
+        v-else-if="restoreState.kind === 'irreversible'"
+        class="timeline-item__quiet"
+        data-test="restore-irreversible"
+      >
+        不可還原
+      </span>
+      <span
+        v-else-if="restoreState.kind === 'already-restored'"
+        class="ui-pill ui-pill-green ui-pill-dot"
+        data-test="restore-done"
+      >
+        已還原
+      </span>
+      <button
+        v-if="formattedDetails.length > 0"
+        class="timeline-item__details-toggle"
+        type="button"
+        :aria-expanded="detailsExpanded"
+        :aria-label="detailsExpanded ? '隱藏詳情' : '查看詳情'"
+        @click.stop="detailsExpanded = !detailsExpanded"
+      >
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2.2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        ><path d="m6 9 6 6 6-6" /></svg>
+      </button>
     </div>
     <RestoreConfirmModal
       :open="modalOpen"
@@ -118,7 +142,8 @@ const {
 } = useRestoreActivity()
 
 const systemActor = computed(() => isSystemActor(props.activity))
-// Not a person: neutral tile instead of the action colour, never an avatar
+// The tile is tinted by the kind of action (message, assignment, close, settings, team, account);
+// system-initiated rows stay neutral so automation never reads as a person's action.
 const iconStyle = computed(() => {
   const style = getActionIconStyle(props.activity.action)
   return systemActor.value
@@ -129,6 +154,17 @@ const iconStyle = computed(() => {
 const formattedDetails = computed(() =>
   formatActivityDetails(props.activity.details ?? null, props.activity.action)
 )
+
+/** Phone: the closed states read as plain text on the meta line instead of a chip on their own line */
+const quietStatus = computed(() => {
+  switch (restoreState.value.kind) {
+    case 'eligible': return '可還原'
+    case 'expired': return '已過期'
+    case 'irreversible': return '不可還原'
+    case 'already-restored': return '已還原'
+    default: return ''
+  }
+})
 
 const restoreState = computed<RestoreState>(() => {
   if (!isActivityRestoreEnabled()) {return { kind: 'hidden' }}
@@ -167,6 +203,13 @@ const restoreState = computed<RestoreState>(() => {
 
   return { kind: 'hidden' }
 })
+
+/** The whole row opens the details; real controls inside it keep their own behaviour. */
+function onRowClick(event: MouseEvent) {
+  if (formattedDetails.value.length === 0) {return}
+  if ((event.target as HTMLElement).closest('button, a, input, select')) {return}
+  detailsExpanded.value = !detailsExpanded.value
+}
 
 function openRestoreModal() {
   conflictMidChanges.value = null
@@ -225,8 +268,9 @@ onUnmounted(() => {
 <style scoped>
 .timeline-item {
   display: grid;
-  grid-template-columns: 38px minmax(0, 1fr);
+  grid-template-columns: 38px minmax(0, 1fr) auto;
   gap: 14px;
+  align-items: start;
   padding: 16px 22px;
   transition: background-color var(--ui-dur) var(--ui-ease);
 }
@@ -265,24 +309,33 @@ onUnmounted(() => {
 }
 
 .timeline-item__time {
-  font-size: 12.5px;
+  font-size: 13px;
   color: var(--ui-muted);
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
 
 .timeline-item__restore-zone {
-  display: flex;
+  display: grid;
+  grid-template-columns: 84px 56px 28px;
   align-items: center;
-  flex-shrink: 0;
+  align-self: center;
   gap: 8px;
-  margin-left: auto;
 }
 
-.timeline-item__restore-hint {
-  font-size: 12px;
-  color: var(--ui-muted);
-  white-space: nowrap;
+/* One width for every status chip so 可還原 / 已過期 / 不可還原 line up down the column */
+.timeline-item__restore-zone .ui-pill {
+  grid-column: 1;
+  justify-content: center;
+  width: 100%;
+}
+
+.timeline-item__restore-zone .btn {
+  grid-column: 2;
+}
+
+.timeline-item__restore-zone .timeline-item__details-toggle {
+  grid-column: 3;
 }
 
 .timeline-item__description {
@@ -294,36 +347,100 @@ onUnmounted(() => {
 }
 
 .timeline-item__details-toggle {
-  display: inline-flex;
-  align-items: center;
-  margin-top: 6px;
-  padding: 0;
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
   border: 0;
+  border-radius: 50%;
   background: none;
-  font-size: 12.5px;
-  font-weight: 600;
-  color: var(--ui-accent);
+  color: var(--ui-muted);
+  cursor: pointer;
+  transition: background var(--ui-dur) var(--ui-ease);
+}
+.timeline-item__details-toggle:hover {
+  background: var(--ui-fill);
+}
+.timeline-item__details-toggle svg {
+  width: 16px;
+  height: 16px;
+  transition: transform var(--ui-dur) var(--ui-ease);
+}
+.timeline-item.is-open .timeline-item__details-toggle svg {
+  transform: rotate(180deg);
+}
+.timeline-item.is-clickable {
   cursor: pointer;
 }
 
-.timeline-item__details-toggle:hover {
-  opacity: 0.75;
+.timeline-item__quiet {
+  grid-column: 1;
+  justify-self: end;
+  font-size: 13px;
+  color: var(--ui-muted);
+  white-space: nowrap;
+}
+
+.timeline-item__status {
+  display: none;
 }
 
 @media (max-width: 768px) {
   .timeline-item {
-    grid-template-columns: 34px minmax(0, 1fr);
-    gap: 12px;
+    grid-template-columns: 34px minmax(0, 1fr) auto;
+    grid-template-areas: 'icon content zone' '. rest rest';
+    gap: 0 12px;
     padding: 14px 16px;
   }
+
   .timeline-item__icon {
+    grid-area: icon;
     width: 34px;
     height: 34px;
     border-radius: 11px;
   }
+
+  .timeline-item__content {
+    grid-area: content;
+  }
+
+  /* One trailing control per row, on the title line: the chevron. The quiet status moves up next to the time. */
   .timeline-item__restore-zone {
-    flex-basis: 100%;
-    margin-left: 0;
+    display: contents;
+  }
+
+  .timeline-item__restore-zone .timeline-item__details-toggle {
+    grid-area: zone;
+    width: 44px;
+    height: 44px;
+    margin: -10px -12px -10px 0;
+  }
+
+  .timeline-item__restore-zone .timeline-item__quiet,
+  .timeline-item__restore-zone .ui-pill {
+    display: none;
+  }
+
+  .timeline-item__status {
+    display: inline;
+    font-size: 13px;
+    color: var(--ui-muted);
+  }
+
+  .timeline-item__status::before {
+    margin-right: 8px;
+    content: '\00b7';
+  }
+
+  /* 還原 is the one real action: it appears with the details, or at once when the row has none */
+  .timeline-item__restore-zone .btn {
+    grid-area: rest;
+    justify-self: start;
+    margin-top: 10px;
+  }
+
+  .timeline-item.is-clickable:not(.is-open) .timeline-item__restore-zone .btn {
+    display: none;
   }
 }
 </style>

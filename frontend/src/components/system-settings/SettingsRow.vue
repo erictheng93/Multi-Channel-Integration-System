@@ -8,25 +8,28 @@
 <template>
   <div
     class="srow"
-    :class="{ 'is-danger': danger }"
+    :class="{ 'is-danger': danger, 'is-stacked': stacked }"
   >
-    <div class="srow-l">
-      <label
-        v-if="forId"
-        class="srow-t"
-        :for="forId"
-      >{{ label }}</label>
-      <div
-        v-else
-        class="srow-t"
-      >
-        {{ label }}
-      </div>
-      <div
-        v-if="hint"
-        class="srow-h"
-      >
-        {{ hint }}
+    <div class="srow-head">
+      <slot name="lead" />
+      <div class="srow-l">
+        <label
+          v-if="forId"
+          class="srow-t"
+          :for="forId"
+        >{{ label }}</label>
+        <div
+          v-else
+          class="srow-t"
+        >
+          {{ label }}
+        </div>
+        <div
+          v-if="hint"
+          class="srow-h"
+        >
+          {{ hint }}
+        </div>
       </div>
     </div>
     <div
@@ -46,6 +49,8 @@ defineProps<{
   danger?: boolean
   /** Right-align the control (buttons) instead of stretching it */
   end?: boolean
+  /** Control sits under its label (with a sane max width) instead of far right: for text fields */
+  stacked?: boolean
 }>()
 </script>
 
@@ -63,10 +68,18 @@ defineProps<{
   content: '';
   position: absolute;
   top: 0;
-  right: 0;
+  right: 22px;
   left: 22px;
   height: 0.5px;
   background: var(--ui-sep);
+}
+
+.srow-head {
+  display: flex;
+  flex: 1;
+  gap: 14px;
+  align-items: center;
+  min-width: 0;
 }
 
 .srow-l {
@@ -86,7 +99,7 @@ defineProps<{
 
 .srow-h {
   margin-top: 1px;
-  font-size: 12.5px;
+  font-size: 13px;
   color: var(--ui-muted);
 }
 
@@ -104,6 +117,16 @@ defineProps<{
 
 .srow-c :deep(.btn) {
   flex: none;
+}
+
+.srow.is-stacked {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+}
+
+.is-stacked .srow-c {
+  width: min(440px, 100%);
 }
 
 @media (max-width: 768px) {

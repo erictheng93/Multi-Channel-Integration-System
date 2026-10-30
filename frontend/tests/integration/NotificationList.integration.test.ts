@@ -461,7 +461,7 @@ describe('NotificationList Integration', () => {
 
       const mainElement = wrapper.find('.notification-page')
       expect(mainElement.attributes('role')).toBe('main')
-      expect(mainElement.attributes('aria-label')).toBe('通知中心頁面')
+      expect(mainElement.attributes('aria-label')).toBe('通知頁面')
 
       const sectionElement = wrapper.find('.notifications-section')
       expect(sectionElement.attributes('role')).toBe('region')

@@ -1,17 +1,16 @@
 <template>
-  <!-- Four peer tiles that take part in the parent grid; the first three open the endpoint list for that status -->
-  <button
-    v-for="tile in tiles"
-    :key="tile.key"
-    type="button"
-    class="ui-card tile"
-    :class="{ 'is-static': !tile.clickable }"
-    @click="$emit('stat-click', tile.key)"
-  >
-    <div class="tile-top">
+  <!-- Four compact status chips under the lead number; the first three open the endpoint list for that status -->
+  <div class="stat-row">
+    <button
+      v-for="tile in tiles"
+      :key="tile.key"
+      type="button"
+      class="tile"
+      :class="[{ 'is-static': !tile.clickable }, tile.tone]"
+      @click="$emit('stat-click', tile.key)"
+    >
       <span
         class="tile-ico"
-        :class="tile.tone"
         aria-hidden="true"
       >
         <!-- eslint-disable vue/no-v-html -->
@@ -26,21 +25,10 @@
         />
         <!-- eslint-enable vue/no-v-html -->
       </span>
-      {{ tile.label }}
-    </div>
-    <div
-      class="tile-value"
-      :class="tile.tone"
-    >
-      {{ tile.value }}<small>{{ tile.unit }}</small>
-    </div>
-    <div class="bar4">
-      <i
-        :class="tile.tone"
-        :style="{ width: tile.pct + '%' }"
-      />
-    </div>
-  </button>
+      <span class="tile-label">{{ tile.label }}</span>
+      <span class="tile-value">{{ tile.value }}<small>{{ tile.unit }}</small></span>
+    </button>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -55,17 +43,6 @@ defineEmits<{
   (_e: 'stat-click', _type: string): void
 }>()
 
-const total = computed(() => props.stats.totalEndpoints || 1)
-
-function pct(count: number): number {
-  return Math.min(100, Math.round((count / total.value) * 100))
-}
-
-// Avg response bar: capped at 1000 ms for the visual scale
-const responsePct = computed(() =>
-  Math.min(100, Math.round((props.stats.avgResponseTime / 1000) * 100)),
-)
-
 // Inner SVG markup below is static, never user input
 const tiles = computed(() => [
   {
@@ -74,7 +51,6 @@ const tiles = computed(() => [
     tone: 'green',
     value: props.stats.healthyCount,
     unit: ` / ${props.stats.totalEndpoints}`,
-    pct: pct(props.stats.healthyCount),
     clickable: true,
     icon: '<circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/>',
   },
@@ -84,7 +60,6 @@ const tiles = computed(() => [
     tone: 'orange',
     value: props.stats.warningCount,
     unit: ` / ${props.stats.totalEndpoints}`,
-    pct: pct(props.stats.warningCount),
     clickable: true,
     icon: '<path d="M12 3 2 20h20Z"/><path d="M12 10v4M12 17h.01"/>',
   },
@@ -94,7 +69,6 @@ const tiles = computed(() => [
     tone: 'red',
     value: props.stats.errorCount,
     unit: ` / ${props.stats.totalEndpoints}`,
-    pct: pct(props.stats.errorCount),
     clickable: true,
     icon: '<circle cx="12" cy="12" r="9"/><path d="m9 9 6 6M15 9l-6 6"/>',
   },
@@ -104,7 +78,6 @@ const tiles = computed(() => [
     tone: 'blue',
     value: props.stats.avgResponseTime,
     unit: ' ms',
-    pct: responsePct.value,
     clickable: false,
     icon: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
   },
@@ -112,23 +85,38 @@ const tiles = computed(() => [
 </script>
 
 <style scoped>
+.stat-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .tile {
-  display: block;
-  padding: 18px 20px 16px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0 12px 0 8px;
   border: 0;
+  border-radius: 999px;
+  background: var(--ui-fill);
   font: inherit;
-  text-align: left;
-  color: inherit;
+  font-size: 13px;
+  color: var(--ui-ink-2);
   cursor: pointer;
-  transition: box-shadow var(--ui-dur) var(--ui-ease);
+  transition: background var(--ui-dur) var(--ui-ease);
 }
 
 .tile:hover {
-  box-shadow: var(--ui-shadow-raised);
+  background: var(--ui-fill-strong);
 }
 
 .tile.is-static {
   cursor: default;
+}
+
+.tile.is-static:hover {
+  background: var(--ui-fill);
 }
 
 .tile:focus-visible {
@@ -136,97 +124,52 @@ const tiles = computed(() => [
   outline-offset: 2px;
 }
 
-.tile-top {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 13.5px;
-  font-weight: 600;
-  color: var(--ui-ink-2);
-}
-
 .tile-ico {
   display: grid;
   place-items: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 9px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
 }
 
 .tile-ico svg {
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
 }
 
-.tile-ico.green {
+.green .tile-ico {
   background: var(--ui-green-soft);
   color: var(--ui-green-ink);
 }
 
-.tile-ico.orange {
+.orange .tile-ico {
   background: var(--ui-orange-soft);
   color: var(--ui-orange-ink);
 }
 
-.tile-ico.red {
+.red .tile-ico {
   background: var(--ui-red-soft);
   color: var(--ui-red-ink);
 }
 
-.tile-ico.blue {
+.blue .tile-ico {
   background: var(--ui-accent-soft);
   color: var(--ui-accent);
 }
 
+.tile-label {
+  font-weight: 500;
+}
+
 .tile-value {
-  margin: 12px 0 10px;
-  font: 600 34px / 1 var(--ui-font-display);
-  letter-spacing: -0.03em;
+  font: 600 14px var(--ui-font-display);
   font-variant-numeric: tabular-nums;
-}
-
-.tile-value.orange {
-  color: var(--ui-orange-ink);
-}
-
-.tile-value.red {
-  color: var(--ui-red-ink);
+  color: var(--ui-ink);
 }
 
 .tile-value small {
-  margin-left: 4px;
-  font: 500 14px var(--ui-font-ui);
-  letter-spacing: 0;
+  margin-left: 2px;
+  font: 500 13px var(--ui-font-ui);
   color: var(--ui-muted);
-}
-
-.bar4 {
-  height: 4px;
-  overflow: hidden;
-  border-radius: 999px;
-  background: var(--ui-fill);
-}
-
-.bar4 i {
-  display: block;
-  height: 100%;
-  border-radius: inherit;
-  transition: width 300ms var(--ui-ease);
-}
-
-.bar4 i.green {
-  background: var(--ui-green);
-}
-
-.bar4 i.orange {
-  background: var(--ui-orange);
-}
-
-.bar4 i.red {
-  background: var(--ui-red);
-}
-
-.bar4 i.blue {
-  background: var(--ui-accent);
 }
 </style>

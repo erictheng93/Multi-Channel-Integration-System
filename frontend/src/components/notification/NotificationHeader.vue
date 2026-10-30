@@ -1,21 +1,9 @@
 <template>
-  <header
-    class="ui-page-head"
-    role="banner"
+  <UiPageHead
+    title="通知"
+    :subtitle="subtitle"
   >
-    <div>
-      <div class="ui-eyebrow">
-        工作台
-      </div>
-      <h1 class="ui-page-title">
-        通知
-      </h1>
-      <p class="ui-page-sub">
-        {{ subtitle }}
-      </p>
-    </div>
-
-    <div class="ui-page-actions">
+    <template #actions>
       <button
         type="button"
         class="btn btn-secondary btn-sm"
@@ -39,11 +27,12 @@
         />
         <span>全部標記已讀</span>
       </button>
-    </div>
-  </header>
+    </template>
+  </UiPageHead>
 </template>
 
 <script setup lang="ts">
+import UiPageHead from '@/components/ui/UiPageHead.vue'
 import { computed } from 'vue'
 import { CheckAllIcon, SettingsIcon } from '@/components/icons'
 import { LoadingSpinner } from '@/components/ui'
@@ -60,15 +49,15 @@ defineEmits<{
   'open-settings': []
 }>()
 
-// "3 則未讀，其中 1 則為緊急。今天新增 7 則、本週共 23 則通知。" from /notifications/stats
+// One line from /notifications/stats: "3 則未讀，其中 1 則為緊急 · 今天 7 則 · 本週 23 則"
 const subtitle = computed(() => {
   const s = props.stats
-  if (!s) { return ' ' }
+  if (!s) { return ' ' }
   const urgent = s.byPriority?.urgent?.unread ?? 0
   const lead = s.unread > 0
-    ? `${s.unread} 則未讀${urgent > 0 ? `，其中 ${urgent} 則為緊急` : ''}。`
-    : '沒有未讀通知。'
-  return `${lead}今天新增 ${s.timeRange?.today ?? 0} 則、本週共 ${s.timeRange?.thisWeek ?? 0} 則通知。`
+    ? `${s.unread} 則未讀${urgent > 0 ? `，其中 ${urgent} 則為緊急` : ''}`
+    : '沒有未讀通知'
+  return `${lead} · 今天 ${s.timeRange?.today ?? 0} 則 · 本週 ${s.timeRange?.thisWeek ?? 0} 則`
 })
 </script>
 

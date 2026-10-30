@@ -1,23 +1,12 @@
 <template>
   <AppLayout>
-    <div class="channel-management ui-rise">
+    <div class="ui-page rl-page channel-management ui-rise">
       <!-- Page Header -->
-      <header class="ui-page-head">
-        <div>
-          <div class="ui-eyebrow">
-            團隊與頻道
-          </div>
-          <h1 class="ui-page-title">
-            頻道
-          </h1>
-          <p
-            v-if="!isLoading && channels.length > 0"
-            class="ui-page-sub"
-          >
-            {{ channelSummary }}
-          </p>
-        </div>
-        <div class="ui-page-actions">
+      <UiPageHead
+        title="頻道"
+        :subtitle="!isLoading && channels.length > 0 ? channelSummary : ''"
+      >
+        <template #actions>
           <button
             type="button"
             class="btn btn-secondary btn-sm"
@@ -51,8 +40,21 @@
               aria-hidden="true"
             ><path d="M12 5v14M5 12h14" /></svg>新增頻道
           </button>
-        </div>
-      </header>
+        </template>
+      </UiPageHead>
+
+      <!-- Lead: how much came through in the last 24 h, and how many channels are on and verified -->
+      <RingLead
+        v-if="!isLoading && !loadFailed && channels.length > 0"
+        kicker="近 24 小時訊息"
+        :value="leadVolume.total === null ? '—' : formatCount(leadVolume.total)"
+        :unit="leadVolume.total === null ? '' : '則'"
+        :meaning="leadVolume.meaning"
+        :tone="leadVolume.total === null ? 'none' : ''"
+        summary="頻道概況"
+        :rings="channelRings"
+        :size="144"
+      />
 
       <!-- Platform Filter -->
       <div class="toolbar">
@@ -80,14 +82,55 @@
         </div>
       </div>
 
-      <!-- Loading State -->
-      <div
-        v-if="isLoading"
-        class="ui-card ui-empty"
-        role="status"
+      <!-- Webhook problems: one place, with the one primary action; the cards stay uniform -->
+      <section
+        v-if="!isLoading && !loadFailed && problemChannels.length > 0"
+        class="alerts"
+        aria-label="Webhook 需注意"
       >
-        <p>載入頻道資料中...</p>
-      </div>
+        <article
+          v-for="channel in problemChannels"
+          :key="channel.id"
+          class="ui-card alert-row"
+        >
+          <span
+            class="alert-ico"
+            aria-hidden="true"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            ><path d="M12 3 2 20h20Z" /><path d="M12 10v4M12 17h.01" /></svg>
+          </span>
+          <div class="alert-main">
+            <div class="alert-title">
+              {{ channelTitle(channel) }} · Webhook 需注意
+            </div>
+            <div class="alert-text">
+              {{ webhookProblems(channel).join(' ') }}
+            </div>
+          </div>
+          <button
+            type="button"
+            class="btn btn-primary btn-sm"
+            @click="verifyChannel(channel)"
+          >
+            重新驗證
+          </button>
+        </article>
+      </section>
+
+      <!-- Loading State -->
+      <UiEmptyState
+        v-if="isLoading"
+        class="ui-card"
+        role="status"
+        description="載入頻道資料中..."
+      />
 
       <!-- Error State -->
       <div
@@ -107,11 +150,13 @@
       </div>
 
       <!-- Empty State -->
-      <div
+      <UiEmptyState
         v-else-if="filteredChannels.length === 0"
-        class="ui-card ui-empty"
+        class="ui-card"
+        :title="selectedPlatform ? `尚未設定 ${selectedPlatformLabel} 頻道` : '尚未設定任何頻道'"
+        :description="selectedPlatform ? '此平台還沒有頻道，新增後客戶訊息才會進到系統。' : '點擊右上角「新增頻道」開始設定您的第一個通訊平台。'"
       >
-        <div class="ui-empty-art">
+        <template #icon>
           <svg
             viewBox="0 0 24 24"
             fill="none"
@@ -125,10 +170,11 @@
             cy="12"
             r="1.5"
           /></svg>
-        </div>
-        <template v-if="selectedPlatform">
-          <h3>尚未設定 {{ selectedPlatformLabel }} 頻道</h3>
-          <p>此平台還沒有頻道，新增後客戶訊息才會進到系統。</p>
+        </template>
+        <template
+          v-if="selectedPlatform"
+          #action
+        >
           <button
             type="button"
             class="btn btn-secondary"
@@ -137,11 +183,7 @@
             新增頻道
           </button>
         </template>
-        <template v-else>
-          <h3>尚未設定任何頻道</h3>
-          <p>點擊右上角「新增頻道」開始設定您的第一個通訊平台。</p>
-        </template>
-      </div>
+      </UiEmptyState>
 
       <!-- Channel List -->
       <div
@@ -181,14 +223,6 @@
               <span>{{ PLATFORM_KIND[channel.platform] }}</span>
             </div>
             <div class="chtools">
-              <button
-                type="button"
-                class="ui-switch"
-                role="switch"
-                :aria-checked="channel.isActive"
-                :aria-label="channel.isActive ? '停用頻道' : '啟用頻道'"
-                @click.stop="toggleChannelStatus(channel)"
-              />
               <button
                 type="button"
                 class="more-btn"
@@ -234,6 +268,12 @@
                 </button>
                 <button
                   role="menuitem"
+                  @click="copyWebhookUrl(channel)"
+                >
+                  複製 Webhook URL
+                </button>
+                <button
+                  role="menuitem"
                   @click="verifyChannel(channel)"
                 >
                   驗證配置
@@ -267,12 +307,12 @@
               <span class="k">{{ idLabel(channel.platform) }}</span>
               <span class="v mono">{{ getChannelId(channel) }}</span>
             </div>
-            <div
-              v-if="channelDescription(channel)"
-              class="meta-row"
-            >
+            <div class="meta-row">
               <span class="k">說明</span>
-              <span class="v">{{ channelDescription(channel) }}</span>
+              <span
+                class="v"
+                :class="{ none: !channelDescription(channel) }"
+              >{{ channelDescription(channel) || '尚未填寫' }}</span>
             </div>
           </div>
 
@@ -291,87 +331,105 @@
             >Webhook 需注意</span>
           </div>
 
-          <div
-            v-if="webhookNotice(channel)"
-            class="notice"
-            :class="{ quiet: webhookNotice(channel)?.tone === 'quiet' }"
-          >
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              aria-hidden="true"
-            ><circle
-              cx="12"
-              cy="12"
-              r="9"
-            /><path d="M12 8v5M12 16.5h.01" /></svg>
-            <span>{{ webhookNotice(channel)?.text }}</span>
-          </div>
-
-          <!-- Activity (per platform, not per channel) -->
-          <template v-if="channel.activity">
-            <div class="scope">
-              此平台訊息量 · 近 24 小時
-            </div>
-            <div class="stats">
+          <!-- Activity: platform totals, so a disabled channel shows none of it -->
+          <div class="activity">
+            <div
+              v-if="channel.isActive"
+              class="stats"
+            >
               <div class="stat-i">
                 <div class="l">
-                  客戶來訊
+                  客戶來訊 · 24 小時
                 </div>
                 <div class="n">
-                  {{ formatCount(channel.activity.customerMessages24h) }}
+                  {{ activityValue(channel, 'customerMessages24h') }}
                 </div>
                 <div class="s">
-                  累計 {{ formatCount(channel.activity.customerMessagesTotal) }}
+                  累計 {{ activityValue(channel, 'customerMessagesTotal') }}
                 </div>
               </div>
               <div class="stat-i">
                 <div class="l">
-                  客服發送
+                  客服發送 · 24 小時
                 </div>
                 <div class="n">
-                  {{ formatCount(channel.activity.agentMessages24h) }}
+                  {{ activityValue(channel, 'agentMessages24h') }}
                 </div>
                 <div class="s">
-                  累計 {{ formatCount(channel.activity.agentMessagesTotal) }}
+                  累計 {{ activityValue(channel, 'agentMessagesTotal') }}
                 </div>
               </div>
             </div>
             <div class="last">
-              此平台最後活動 {{ channel.activity.lastActivityAt ? formatLastLogin(channel.activity.lastActivityAt) : '尚無活動' }}
+              {{ activityCaption(channel) }}
             </div>
-          </template>
-          <div
-            v-else
-            class="last"
-          >
-            暫時無法取得訊息量
           </div>
 
-          <!-- Card Footer -->
+          <!-- Card Footer: the on/off switch with its label, and the one action -->
           <div class="chfoot">
+            <label class="toggle">
+              <button
+                type="button"
+                class="ui-switch"
+                role="switch"
+                :aria-checked="channel.isActive"
+                :aria-label="channel.isActive ? '停用頻道' : '啟用頻道'"
+                @click.stop="toggleChannelStatus(channel)"
+              />
+              <span>{{ channel.isActive ? '啟用中' : '已停用' }}</span>
+            </label>
             <button
               type="button"
               class="btn btn-secondary btn-sm"
-              @click="copyWebhookUrl(channel)"
-            >
-              複製 Webhook URL
-            </button>
-            <button
-              type="button"
-              class="btn btn-sm"
-              :class="hasWebhookProblem(channel) ? 'btn-primary' : 'btn-secondary'"
               @click="verifyChannel(channel)"
             >
-              {{ hasWebhookProblem(channel) ? '重新驗證' : '驗證配置' }}
+              驗證配置
             </button>
           </div>
         </article>
       </div>
+
+      <!-- Message volume by channel: the same real 24 h counters the cards show, side by side -->
+      <section
+        v-if="!isLoading && !loadFailed && volumeRows.length > 0"
+        aria-label="近 24 小時各頻道訊息量"
+      >
+        <h2 class="ui-group-label">
+          各頻道訊息量
+          <span class="vol-legend">
+            <span><i class="sw sw-in" />客戶來訊</span>
+            <span><i class="sw sw-out" />客服發送</span>
+          </span>
+        </h2>
+        <ul class="ui-group vol-list">
+          <li
+            v-for="row in volumeRows"
+            :key="row.id"
+            class="vol-row"
+          >
+            <span class="vol-name">{{ row.name }}</span>
+            <span class="vol-bars">
+              <span class="vol-line">
+                <span class="vol-track"><span
+                  class="vol-bar in"
+                  :style="{ width: `${row.inPct}%` }"
+                /></span>
+                <b class="vol-n">{{ row.inText }}</b>
+              </span>
+              <span class="vol-line">
+                <span class="vol-track"><span
+                  class="vol-bar out"
+                  :style="{ width: `${row.outPct}%` }"
+                /></span>
+                <b class="vol-n">{{ row.outText }}</b>
+              </span>
+            </span>
+          </li>
+        </ul>
+        <p class="ui-group-foot">
+          條長為各頻道 24 小時內的相對比例。
+        </p>
+      </section>
 
       <!-- Channel Config Dialog -->
       <ChannelConfigDialog
@@ -394,6 +452,10 @@
 </template>
 
 <script setup lang="ts">
+import UiEmptyState from '@/components/ui/UiEmptyState.vue'
+import UiPageHead from '@/components/ui/UiPageHead.vue'
+import RingLead from '@/components/lead/RingLead.vue'
+import type { ServiceRing } from '@/components/ui/ServiceRings.vue'
 import { computed } from 'vue'
 import AppLayout from '@/components/ui/AppLayout.vue'
 import ChannelConfigDialog from '@/components/channels/ChannelConfigDialog.vue'
@@ -445,7 +507,7 @@ const PLATFORM_FILTERS: Array<{ id: ChannelPlatform; label: string }> = [
 /** Optional display name lives in configMetadata.name; fall back to the platform. */
 function channelTitle(channel: ChannelIntegration): string {
   const name = channel.configMetadata?.name
-  return typeof name === 'string' && name.trim() ? name.trim() : getPlatformName(channel.platform)
+  return typeof name === 'string' && name.trim() ? name.trim() : `${PLATFORM_KIND[channel.platform]}（未命名）`
 }
 
 function channelDescription(channel: ChannelIntegration): string {
@@ -462,11 +524,6 @@ function idLabel(platform: ChannelPlatform): string {
 const number = new Intl.NumberFormat('zh-TW')
 function formatCount(value: number): string {
   return number.format(value)
-}
-
-interface WebhookNotice {
-  tone: 'warn' | 'quiet'
-  text: string
 }
 
 /** Webhook failure records (KV alerts, 7-day retention). Failures only: no records means no failures were recorded, not proof of liveness. */
@@ -488,19 +545,57 @@ function hasWebhookProblem(channel: ChannelIntegration): boolean {
   return webhookProblems(channel).length > 0
 }
 
-function webhookNotice(channel: ChannelIntegration): WebhookNotice | null {
-  const problems = webhookProblems(channel)
-  if (problems.length > 0) {
-    return { tone: 'warn', text: problems.join(' ') }
-  }
-  if (!channel.isActive) {
-    return { tone: 'quiet', text: channel.isVerified ? '已停用。' : '已停用，啟用前請先驗證配置。' }
-  }
-  if (channel.webhookHealth) {
-    return { tone: 'quiet', text: '近 24 小時沒有 webhook 處理或簽章失敗紀錄。' }
-  }
-  return null
+const problemChannels = computed(() => channels.value.filter(hasWebhookProblem))
+
+type ActivityKey = 'customerMessages24h' | 'customerMessagesTotal' | 'agentMessages24h' | 'agentMessagesTotal'
+
+/** Real counters only: a disabled channel or one without activity data shows a dash, never a made-up zero */
+function activityValue(channel: ChannelIntegration, key: ActivityKey): string {
+  if (!channel.isActive || !channel.activity) { return '—' }
+  return formatCount(channel.activity[key])
 }
+
+function activityCaption(channel: ChannelIntegration): string {
+  if (!channel.isActive) { return '已停用 · 啟用後才會顯示訊息量' }
+  if (!channel.activity) { return '暫時無法取得訊息量' }
+  const at = channel.activity.lastActivityAt
+  return `平台合計 · 最後活動 ${at ? formatLastLogin(at) : '尚無活動'}`
+}
+
+/** Active channels with activity data, bars scaled to the largest 24 h figure on the page */
+const volumeRows = computed(() => {
+  const rows = channels.value.filter(c => c.isActive && c.activity)
+  const max = Math.max(1, ...rows.flatMap(c => [c.activity?.customerMessages24h ?? 0, c.activity?.agentMessages24h ?? 0]))
+  return rows.map((c) => {
+    const inN = c.activity?.customerMessages24h ?? 0
+    const outN = c.activity?.agentMessages24h ?? 0
+    return {
+      id: c.id,
+      name: channelTitle(c),
+      inText: formatCount(inN),
+      outText: formatCount(outN),
+      inPct: inN === 0 ? 0 : Math.max(2, Math.round((inN / max) * 100)),
+      outPct: outN === 0 ? 0 : Math.max(2, Math.round((outN / max) * 100))
+    }
+  })
+})
+
+/** 24 h totals over the active channels that report activity; null when none does (never a made-up zero) */
+const leadVolume = computed(() => {
+  const rows = channels.value.filter(c => c.isActive && c.activity)
+  if (rows.length === 0) { return { total: null, meaning: '沒有啟用中的頻道提供訊息量' } }
+  const inN = rows.reduce((sum, c) => sum + (c.activity?.customerMessages24h ?? 0), 0)
+  const outN = rows.reduce((sum, c) => sum + (c.activity?.agentMessages24h ?? 0), 0)
+  return { total: inN + outN, meaning: `客戶來訊 ${formatCount(inN)} · 客服發送 ${formatCount(outN)}` }
+})
+
+const channelRings = computed<ServiceRing[]>(() => {
+  const total = channels.value.length
+  return [
+    { label: '啟用中', value: channels.value.filter(c => c.isActive).length, total, of: '個頻道', hue: 'var(--section-hue)' },
+    { label: '已驗證', value: channels.value.filter(c => c.isVerified).length, total, of: '個頻道', hue: 'var(--ui-blue)' }
+  ]
+})
 
 const channelSummary = computed(() => {
   const total = channels.value.length
@@ -522,16 +617,6 @@ const selectedPlatformLabel = computed(() =>
 </script>
 
 <style scoped>
-.channel-management {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-  width: 100%;
-  max-width: 1280px;
-  margin: 0 auto;
-  /* AppLayout's page area already pads 24px / 20px */
-  padding: 4px 8px 32px;
-}
 .head-ico {
   width: 16px;
   height: 16px;
@@ -549,6 +634,45 @@ const selectedPlatformLabel = computed(() =>
   scrollbar-width: none;
 }
 
+.alerts {
+  display: grid;
+  gap: 12px;
+}
+.alert-row {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  padding: 14px 18px;
+}
+.alert-ico {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 11px;
+  background: var(--ui-orange-soft);
+  color: var(--ui-orange-ink);
+}
+.alert-ico svg {
+  width: 19px;
+  height: 19px;
+}
+.alert-main {
+  flex: 1;
+  min-width: 0;
+}
+.alert-title {
+  font: 600 15px / 1.3 var(--ui-font-display);
+}
+.alert-text {
+  margin-top: 2px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ui-ink-2);
+}
+
+/* Every card has the same parts in the same order, so rows line up without any grid trickery */
 .chgrid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -562,7 +686,8 @@ const selectedPlatformLabel = computed(() =>
 /* Disabled channel: muted text, not opacity (opacity drops text below WCAG AA contrast) */
 .chcard.off .chhead,
 .chcard.off .stats,
-.chcard.off .meta {
+.chcard.off .meta,
+.chcard.off .toggle {
   color: var(--ui-muted);
 }
 .chhead {
@@ -606,7 +731,7 @@ const selectedPlatformLabel = computed(() =>
   white-space: nowrap;
 }
 .chname span {
-  font-size: 12.5px;
+  font-size: 13px;
   color: var(--ui-muted);
 }
 .chtools {
@@ -682,6 +807,9 @@ const selectedPlatformLabel = computed(() =>
   color: var(--ui-muted);
   white-space: nowrap;
 }
+.meta-row .v.none {
+  color: var(--ui-muted);
+}
 .meta-row .v {
   min-width: 0;
   overflow: hidden;
@@ -697,39 +825,19 @@ const selectedPlatformLabel = computed(() =>
   gap: 6px;
   padding: 12px 20px 0;
 }
-.notice {
-  display: flex;
-  gap: 8px;
-  margin: 12px 20px 0;
-  padding: 10px 12px;
-  border-radius: var(--ui-r-inner);
-  background: var(--ui-orange-soft);
-  font-size: 12.5px;
-  line-height: 1.45;
-  color: var(--ui-orange-ink);
+.activity {
+  min-width: 0;
 }
-.notice svg {
-  width: 16px;
-  height: 16px;
-  flex: none;
-  margin-top: 1px;
-}
-.notice.quiet {
-  background: var(--ui-surface-2);
-  color: var(--ui-muted);
-}
-.scope {
-  margin: 14px 20px 0;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--ui-muted);
+.activity {
+  margin-top: auto;
 }
 .stats {
   position: relative;
   display: grid;
   grid-template-columns: 1fr 1fr;
-  margin: 6px 20px 0;
-  padding: 10px 0 12px;
+  margin: 16px 20px 0;
+  padding: 14px 0 10px;
+  box-shadow: inset 0 0.5px 0 var(--ui-sep);
 }
 .stat-i + .stat-i {
   position: relative;
@@ -745,7 +853,7 @@ const selectedPlatformLabel = computed(() =>
   background: var(--ui-sep);
 }
 .stat-i .l {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--ui-muted);
 }
 .stat-i .n {
@@ -754,28 +862,115 @@ const selectedPlatformLabel = computed(() =>
   font-variant-numeric: tabular-nums;
 }
 .stat-i .s {
-  font-size: 11.5px;
+  font-size: 13px;
   color: var(--ui-muted);
   font-variant-numeric: tabular-nums;
 }
 .last {
   padding: 0 20px 14px;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--ui-muted);
   font-variant-numeric: tabular-nums;
 }
-.chcard > .last:first-of-type {
-  padding-top: 14px;
+/* a disabled channel has no counters: one quiet line states it is off, under the same hairline */
+.chcard.off .last {
+  margin: 16px 20px 0;
+  padding: 14px 0 16px;
+  box-shadow: inset 0 0.5px 0 var(--ui-sep);
 }
 .chfoot {
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: auto;
-  padding: 0 20px 18px;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px 18px;
 }
-.chfoot .btn {
-  flex: 1;
+.toggle {
+  display: inline-flex;
+  gap: 10px;
+  align-items: center;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--ui-ink-2);
+}
+
+/* Volume comparison */
+.vol-legend {
+  display: inline-flex;
+  gap: 14px;
+  margin-left: auto;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--ui-muted);
+}
+.vol-legend span {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+}
+.sw {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+}
+.sw-in,
+.vol-bar.in {
+  background: var(--ui-accent);
+}
+.sw-out,
+.vol-bar.out {
+  background: var(--ui-indigo);
+}
+.vol-list {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.vol-row {
+  display: grid;
+  grid-template-columns: minmax(140px, 220px) minmax(0, 1fr);
+  gap: 20px;
+  align-items: center;
+  padding: 14px 22px;
+}
+.vol-row + .vol-row {
+  box-shadow: inset 0 0.5px 0 var(--ui-sep);
+}
+.vol-name {
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.vol-bars {
+  display: grid;
+  gap: 6px;
+}
+.vol-line {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 52px;
+  gap: 12px;
+  align-items: center;
+}
+.vol-n {
+  font-size: 13px;
+  font-weight: 600;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.vol-track {
+  display: block;
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--ui-fill);
+}
+.vol-bar {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
 }
 
 @media (max-width: 1280px) {
@@ -784,11 +979,22 @@ const selectedPlatformLabel = computed(() =>
   }
 }
 @media (max-width: 768px) {
-  .channel-management {
-    padding: 0 0 24px;
-  }
   .chgrid {
     grid-template-columns: minmax(0, 1fr);
+  }
+  .alert-row {
+    flex-wrap: wrap;
+  }
+  .alert-main {
+    flex-basis: calc(100% - 60px);
+  }
+  .alert-row .btn {
+    margin-left: 50px;
+  }
+  .vol-row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+    padding: 12px 16px;
   }
 }
 </style>

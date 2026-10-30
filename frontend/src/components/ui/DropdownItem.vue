@@ -219,14 +219,14 @@ const handleKeydown = (event: KeyboardEvent) => {
 }
 
 .dropdown-item-description {
-  font-size: 0.75rem;
+  font-size: 13px;
   color: var(--gray-600);
   margin-top: var(--space-1);
   line-height: 1.3;
 }
 
 .dropdown-item-shortcut {
-  font-size: 0.75rem;
+  font-size: 13px;
   color: var(--gray-500);
   background: var(--gray-100);
   padding: var(--space-1) var(--space-2);

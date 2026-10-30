@@ -42,18 +42,47 @@
             >已停用</span>
           </div>
           <div
-            v-if="summary"
+            v-if="conditionSummary || replyOutcome"
             class="rule-card__summary"
           >
-            {{ summary }}
+            <span
+              v-if="conditionSummary"
+              class="rule-card__when"
+            >{{ conditionSummary }}</span>
+            <span
+              v-if="conditionSummary && replyOutcome"
+              class="rule-card__then"
+              aria-hidden="true"
+            >→</span>
+            <span
+              v-if="replyOutcome"
+              class="rule-card__reply"
+              :title="replyOutcome"
+            >回覆 {{ replyOutcome }}</span>
+          </div>
+          <!-- phone only: priority joins the meta line so the row keeps one trailing control -->
+          <div class="rule-card__prio-line">
+            優先序 {{ rule.priority }} · {{ rule.conditions.length }} 條件 · {{ rule.actions.length }} 動作
           </div>
         </div>
       </div>
 
       <div class="rule-card__right">
-        <!-- Priority badge -->
-        <span class="badge rule-card__priority-badge">
-          P{{ rule.priority }}
+        <!-- Priority: the word makes the number self-explanatory -->
+        <span
+          class="rule-card__priority"
+          title="優先序：數字越小越先比對"
+        >
+          <span
+            class="rule-card__priority-label"
+            aria-hidden="true"
+          >優先</span>
+          <span
+            class="rule-card__priority-badge"
+            :aria-label="`優先序 ${rule.priority}`"
+          >
+            {{ rule.priority }}
+          </span>
         </span>
 
         <!-- Meta text -->
@@ -62,8 +91,19 @@
         </span>
 
         <!-- Expand arrow -->
-        <span class="rule-card__arrow">
-          {{ isExpanded ? '\u25BC' : '\u25B6' }}
+        <span
+          class="rule-card__arrow"
+          :class="{ 'is-open': isExpanded }"
+          aria-hidden="true"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2.2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          ><path d="m9 6 6 6-6 6" /></svg>
         </span>
       </div>
     </div>
@@ -125,19 +165,27 @@ const CONDITION_LABELS: Record<string, string> = {
   'message_type': '訊息類型'
 }
 
-// One line of what the rule does, built only from the rule's own conditions / first reply text
-const summary = computed(() => {
+// One line: when it fires (keyword rules) and what the customer gets back, from the rule's own data
+const conditionSummary = computed(() => {
   const rule = props.rule
-  if (rule.triggerType === 'keyword' && rule.conditions.length > 0) {
-    const first = rule.conditions[0]
-    const sameType = rule.conditions.every(c => c.conditionType === first?.conditionType)
-    const values = rule.conditions.map(c => `「${c.value}」`).join('')
-    return sameType && first
-      ? `${CONDITION_LABELS[first.conditionType] ?? first.conditionType}${values}`
-      : rule.conditions.map(c => `${CONDITION_LABELS[c.conditionType] ?? c.conditionType}「${c.value}」`).join(' ')
+  if (rule.triggerType !== 'keyword' || rule.conditions.length === 0) { return '' }
+  const first = rule.conditions[0]
+  const sameType = rule.conditions.every(c => c.conditionType === first?.conditionType)
+  const values = rule.conditions.map(c => `「${c.value}」`).join('')
+  return sameType && first
+    ? `${CONDITION_LABELS[first.conditionType] ?? first.conditionType}${values}`
+    : rule.conditions.map(c => `${CONDITION_LABELS[c.conditionType] ?? c.conditionType}「${c.value}」`).join(' ')
+})
+
+const ACTION_LABELS: Record<string, string> = { 'reply_image': '圖片回覆', 'reply_flex': '卡片訊息' }
+const replyOutcome = computed(() => {
+  const first = props.rule.actions[0]
+  if (!first) { return '' }
+  if (first.actionType === 'reply_text') {
+    const text = (first.content ?? '').replace(/\s+/g, ' ').trim()
+    return text ? `「${text}」` : ''
   }
-  const text = rule.actions.find(a => a.actionType === 'reply_text')?.content
-  return text ? `「${text.replace(/s+/g, ' ')}」` : ''
+  return ACTION_LABELS[first.actionType] ?? ''
 })
 
 const triggerTypeLabel = computed(() => {
@@ -208,12 +256,39 @@ const triggerTypeLabel = computed(() => {
 }
 
 .rule-card__summary {
+  display: flex;
+  gap: 6px;
   margin-top: 2px;
+  min-width: 0;
   overflow: hidden;
   font-size: 13px;
+  line-height: 1.45;
   color: var(--ui-muted);
-  text-overflow: ellipsis;
-  white-space: nowrap;
+}
+
+.rule-card__when,
+.rule-card__then {
+  flex: none;
+}
+
+.rule-card__reply {
+  display: -webkit-box;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ui-ink-2);
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.rule-card__priority {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.rule-card__priority-label {
+  font-size: 12.5px;
+  color: var(--ui-muted);
 }
 
 /* Toggle switch (same spec as .ui-switch) */
@@ -270,8 +345,8 @@ const triggerTypeLabel = computed(() => {
   padding: 0 9px;
   border-radius: 999px;
   background: var(--ui-fill);
-  font-size: 11.5px;
-  font-weight: 600;
+  font-size: 13px;
+  font-weight: 500;
   line-height: 22px;
   color: var(--ui-ink-2);
   white-space: nowrap;
@@ -302,8 +377,8 @@ const triggerTypeLabel = computed(() => {
   padding: 0 9px;
   border-radius: 999px;
   background: var(--ui-fill);
-  font-size: 11.5px;
-  font-weight: 600;
+  font-size: 13px;
+  font-weight: 500;
   line-height: 22px;
   color: var(--ui-muted);
   white-space: nowrap;
@@ -311,16 +386,27 @@ const triggerTypeLabel = computed(() => {
 
 /* Priority badge */
 .rule-card__priority-badge {
-  padding: 2px 7px;
-  border-radius: 8px;
+  display: inline-grid;
+  min-width: 26px;
+  height: 26px;
+  padding: 0 8px;
+  place-items: center;
+  border-radius: 999px;
   background: var(--ui-fill);
-  font: 600 11.5px var(--ui-font-mono);
+  font-size: 13px;
+  font-weight: 500;
   color: var(--ui-ink-2);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.rule-card__prio-line {
+  display: none;
 }
 
 /* Meta text */
 .rule-card__meta {
-  font-size: 12.5px;
+  font-size: 13px;
   color: var(--ui-muted);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
@@ -328,10 +414,21 @@ const triggerTypeLabel = computed(() => {
 
 /* Arrow */
 .rule-card__arrow {
-  width: 14px;
-  font-size: 10px;
-  color: var(--ui-faint);
-  text-align: center;
+  display: grid;
+  width: 18px;
+  height: 18px;
+  place-items: center;
+  color: var(--ui-muted);
+  transition: transform var(--ui-dur) var(--ui-ease);
+}
+
+.rule-card__arrow svg {
+  width: 16px;
+  height: 16px;
+}
+
+.rule-card__arrow.is-open {
+  transform: rotate(90deg);
 }
 
 /* Body */
@@ -344,9 +441,66 @@ const triggerTypeLabel = computed(() => {
     padding: 14px 16px;
   }
 
-  .rule-card__meta,
-  .rule-card__priority-badge {
+  .rule-card__meta {
     display: none;
+  }
+
+  /* name, badges and the condition wrap instead of clipping; the chevron is the one trailing control */
+  .rule-card__header {
+    align-items: flex-start;
+  }
+
+  .rule-card__left {
+    align-items: flex-start;
+  }
+
+  .rule-card__title {
+    flex-wrap: wrap;
+  }
+
+  .rule-card__name {
+    overflow: visible;
+    white-space: normal;
+  }
+
+  .rule-card__when {
+    flex: 1 1 100%;
+  }
+
+  .rule-card__right {
+    margin-top: 3px;
+  }
+
+  .rule-card__priority {
+    display: none;
+  }
+
+  .rule-card__prio-line {
+    display: block;
+    margin-top: 4px;
+    font-size: 13px;
+    color: var(--ui-muted);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* the full reply stays readable on a phone: no clamp */
+  .rule-card__reply {
+    display: block;
+    -webkit-line-clamp: unset;
+  }
+
+  /* condition on the first line, the reply outcome under it */
+  .rule-card__summary {
+    flex-wrap: wrap;
+    gap: 0 6px;
+  }
+
+  .rule-card__then {
+    display: none;
+  }
+
+  .rule-card__reply {
+    flex: 1 1 100%;
   }
 
   .rule-card__body {

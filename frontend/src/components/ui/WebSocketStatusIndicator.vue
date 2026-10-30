@@ -145,7 +145,7 @@ const protocolIcon = computed(() => '')
   position: relative;
   display: inline-flex;
   align-items: center;
-  font-size: 0.75rem;
+  font-size: 13px;
   user-select: none;
 }
 
@@ -220,7 +220,7 @@ const protocolIcon = computed(() => '')
 }
 
 .protocol-icon {
-  font-size: 0.625rem;
+  font-size: 13px;
   opacity: 0.8;
 }
 
@@ -237,7 +237,7 @@ const protocolIcon = computed(() => '')
 }
 
 .connection-quality {
-  font-size: 0.625rem;
+  font-size: 13px;
   color: var(--gray-500);
 }
 
@@ -292,7 +292,7 @@ const protocolIcon = computed(() => '')
   padding: var(--space-3);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-lg);
-  font-size: 0.75rem;
+  font-size: 13px;
   white-space: nowrap;
   position: relative;
 }
@@ -322,7 +322,7 @@ const protocolIcon = computed(() => '')
 }
 
 .tooltip-protocol {
-  font-size: 0.625rem;
+  font-size: 13px;
   padding: 1px 4px;
   background-color: rgba(255, 255, 255, 0.2);
   border-radius: 2px;
@@ -390,7 +390,7 @@ const protocolIcon = computed(() => '')
   }
 
   .tooltip-content {
-    font-size: 0.625rem;
+    font-size: 13px;
     padding: var(--space-2);
   }
 }

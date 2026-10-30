@@ -8,6 +8,7 @@
     :settings="controller.settings.advanced"
     :saving="controller.saving.value"
     @save="controller.saveAdvancedSettings"
+    @update:settings="(data) => Object.assign(controller.settings.advanced, data)"
   />
 </template>
 

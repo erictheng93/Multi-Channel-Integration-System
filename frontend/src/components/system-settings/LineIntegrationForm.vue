@@ -1,7 +1,7 @@
 <!--
   LineIntegrationForm.vue
 
-  LINE Messaging API credentials plus the danger zone. Test and save live in the page head
+  LINE Messaging API credentials (the danger zone is LineDangerZone, placed last by the page). Test and save live in the page head
   (the save button submits this form by id). Stored values are never shown: only 已設定 ••••last4.
 -->
 
@@ -11,7 +11,10 @@
     class="integration-form"
     @submit.prevent="handleSave"
   >
-    <SettingsGroup title="Messaging API 憑證">
+    <h2 class="ui-group-label">
+      Messaging API 憑證
+    </h2>
+    <div class="ui-group">
       <CredentialRow
         v-for="field in FIELDS"
         :key="field.key"
@@ -23,43 +26,21 @@
         :last4="credentials?.[field.key]?.last4 ?? null"
         :secret="field.secret"
         :placeholder="field.placeholder"
+        :icon="field.icon"
         :disabled="saving || testing"
       />
-      <template #note>
-        更換憑證後請按「測試連線」確認新憑證可用，再儲存變更。
-      </template>
-    </SettingsGroup>
-
-    <SettingsGroup
-      v-if="hasStoredCredentials"
-      title="危險操作"
-    >
-      <SettingsRow
-        label="清除已儲存的憑證"
-        hint="清除後無法收發 LINE 訊息，直到重新填入憑證。"
-        danger
-        end
-      >
-        <button
-          type="button"
-          class="btn btn-danger"
-          :disabled="saving || testing"
-          @click="handleClear"
-        >
-          清除憑證
-        </button>
-      </SettingsRow>
-    </SettingsGroup>
+    </div>
+    <p class="ui-group-foot">
+      更換憑證後請按「測試連線」確認新憑證可用，再儲存變更。
+    </p>
   </form>
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, watch } from 'vue'
+import { reactive, watch } from 'vue'
 import type { MaskedCredential } from '@shared/api-contracts/system'
 import type { LineIntegration } from '@/types/system-settings'
 import CredentialRow from './CredentialRow.vue'
-import SettingsGroup from './SettingsGroup.vue'
-import SettingsRow from './SettingsRow.vue'
 import { SETTINGS_FORM_ID } from './settings-pages'
 
 interface Props {
@@ -74,14 +55,13 @@ const props = defineProps<Props>()
 
 const emit = defineEmits<{
   save: []
-  clear: []
   'update:settings': [value: LineIntegration]
 }>()
 
 const FIELDS = [
-  { id: 'lineChannelId', key: 'channelId', label: 'Channel ID', hint: 'LINE Developers 主控台的 Channel ID', secret: false, placeholder: '輸入 LINE Channel ID' },
-  { id: 'lineChannelSecret', key: 'channelSecret', label: 'Channel Secret', hint: '用於驗證 Webhook 簽章，已加密儲存', secret: true, placeholder: '輸入 LINE Channel Secret' },
-  { id: 'lineAccessToken', key: 'accessToken', label: 'Access Token', hint: '長效 Channel access token，用於回覆與推播', secret: true, placeholder: '輸入 LINE Access Token' }
+  { id: 'lineChannelId', key: 'channelId', label: 'Channel ID', hint: 'Basic settings 分頁，頻道的識別碼', secret: false, placeholder: '輸入 LINE Channel ID', icon: '<rect x="3" y="5" width="18" height="14" rx="3"/><path d="M8 11h4M8 15h8"/>' },
+  { id: 'lineChannelSecret', key: 'channelSecret', label: 'Channel Secret', hint: 'Basic settings 分頁，驗證 Webhook 簽章用', secret: true, placeholder: '輸入 LINE Channel Secret', icon: '<path d="M12 3 4 6v6c0 4.4 3.4 8 8 9 4.6-1 8-4.6 8-9V6l-8-3Z"/><path d="m9 12 2 2 4-4"/>' },
+  { id: 'lineAccessToken', key: 'accessToken', label: 'Access Token', hint: 'Messaging API 分頁，長效 Channel access token', secret: true, placeholder: '輸入 LINE Access Token', icon: '<circle cx="8" cy="15" r="4"/><path d="m11 12 9-9M16 7l3 3"/>' }
 ] as const
 
 const localSettings = reactive<LineIntegration>({
@@ -90,10 +70,6 @@ const localSettings = reactive<LineIntegration>({
   accessToken: '',
   status: 'disconnected'
 })
-
-const hasStoredCredentials = computed(() =>
-  FIELDS.some(field => props.credentials?.[field.key]?.configured)
-)
 
 // Parent -> local
 watch(
@@ -117,14 +93,10 @@ function handleSave() {
   emit('save')
 }
 
-function handleClear() {
-  emit('clear')
-}
 </script>
 
 <style scoped>
 .integration-form {
-  display: grid;
-  gap: 22px;
+  min-width: 0;
 }
 </style>

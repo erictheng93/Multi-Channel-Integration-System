@@ -20,6 +20,8 @@ vi.mock('@/components/icons', () => ({
   XIcon: { template: '<span class="icon-x" />' },
   MessageCircleIcon: { template: '<span class="icon-message" />' },
   ExternalLinkIcon: { template: '<span class="icon-external-link" />' },
+  EditIcon: { template: '<span class="icon-edit" />' },
+  TrashIcon: { template: '<span class="icon-trash" />' },
 }))
 
 vi.mock('@/components/ui', () => ({

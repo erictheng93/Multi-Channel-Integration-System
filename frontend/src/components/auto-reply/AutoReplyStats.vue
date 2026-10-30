@@ -1,125 +1,52 @@
 <template>
-  <div class="auto-reply-stats">
-    <div class="ui-grid ui-cols-4 stats-grid">
-      <div class="ui-card ui-kpi stat-card stat-card--rules">
-        <div class="ui-kpi-top">
-          <span class="ui-kpi-ico ico-blue"><svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          ><path d="M13 2 3 14h9l-1 8 10-12h-9Z" /></svg></span>
-          <span class="stat-label">啟用規則數</span>
-        </div>
-        <div class="ui-kpi-value stat-value">
-          {{ activeRules }}<small v-if="totalRules !== undefined">/ {{ totalRules }}</small>
-        </div>
-        <div
-          v-if="totalRules !== undefined && totalRules > activeRules"
-          class="ui-kpi-foot"
-        >
-          {{ totalRules - activeRules }} 條已停用
-        </div>
+  <article class="ui-lead lead auto-reply-stats">
+    <div class="lead-main">
+      <div class="lead-kicker">
+        今日自動回覆
+      </div>
+      <div class="lead-num">
+        {{ todayReplies.toLocaleString('en-US') }}<small>則</small>
+      </div>
+      <div
+        v-if="yesterdaySameTime !== null && yesterdaySameTime !== undefined"
+        class="lead-meaning"
+      >
+        <span
+          class="ui-delta"
+          :class="delta >= 0 ? 'ui-delta-up' : 'ui-delta-down'"
+        >{{ deltaText }}</span>
+        比昨天同時段
       </div>
 
-      <div class="ui-card ui-kpi stat-card stat-card--replies">
-        <div class="ui-kpi-top">
-          <span class="ui-kpi-ico ico-green"><svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          ><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20.5l1.4-4.6A8 8 0 1 1 21 12Z" /></svg></span>
-          <span class="stat-label">今日回覆數</span>
-        </div>
-        <div class="ui-kpi-value stat-value">
-          {{ todayReplies }}
-        </div>
-        <div
-          v-if="yesterdaySameTime !== null && yesterdaySameTime !== undefined"
-          class="ui-kpi-foot"
-        >
-          <span
-            class="ui-delta"
-            :class="delta >= 0 ? 'ui-delta-up' : 'ui-delta-down'"
-          >{{ deltaText }}</span>
-          比昨天同時段
-        </div>
-      </div>
-
-      <div class="ui-card ui-kpi stat-card stat-card--hours">
-        <div class="ui-kpi-top">
-          <span class="ui-kpi-ico ico-orange"><svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          ><circle
-            cx="12"
-            cy="12"
-            r="9"
-          /><path d="M12 7v5l3 2" /></svg></span>
-          <span class="stat-label">營業狀態</span>
-        </div>
-        <div>
-          <span
-            class="ui-pill ui-pill-dot hours-pill stat-value"
-            :class="noSchedule ? [] : isBusinessHours ? ['ui-pill-green', 'text-amber'] : ['ui-pill-red', 'text-red']"
-          >{{ noSchedule ? '未設定' : isBusinessHours ? '營業中' : '非營業時間' }}</span>
-        </div>
-        <div
+      <div
+        class="hours-state"
+        :class="noSchedule ? 'is-none' : isBusinessHours ? 'is-open' : 'is-closed'"
+      >
+        <span class="hours-dot" />
+        <strong class="hours-label">{{ noSchedule ? '未設定' : isBusinessHours ? '營業中' : '非營業時間' }}</strong>
+        <span
           v-if="hoursNote"
-          class="ui-kpi-foot"
-        >
-          {{ hoursNote }}
-        </div>
-      </div>
-
-      <div class="ui-card ui-kpi stat-card stat-card--rate">
-        <div class="ui-kpi-top">
-          <span class="ui-kpi-ico ico-indigo"><svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          ><circle
-            cx="12"
-            cy="12"
-            r="9"
-          /><path d="m8 12.5 3 3 5-6" /></svg></span>
-          <span class="stat-label">成功率</span>
-        </div>
-        <div class="ui-kpi-value stat-value">
-          <template v-if="successRate === null || successRate === undefined">
-            —
-          </template>
-          <template v-else>
-            {{ successRate }}%
-          </template>
-        </div>
-        <div class="ui-kpi-foot">
-          <template v-if="successRate === null || successRate === undefined">
-            今天尚無回覆紀錄
-          </template>
-          <template v-else>
-            {{ todayReplies }} 則成功 · {{ todayFailed ?? 0 }} 則失敗
-          </template>
-        </div>
+          class="hours-note"
+        >{{ hoursNote }}</span>
       </div>
     </div>
-  </div>
+
+    <div
+      v-if="rings.length > 0"
+      class="lead-rings"
+    >
+      <ServiceRings
+        summary="自動回覆概況"
+        :rings="rings"
+        :size="148"
+      />
+    </div>
+  </article>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import ServiceRings, { type ServiceRing } from '@/components/ui/ServiceRings.vue'
 import type { AutoReplyBusinessHours } from '@/api/autoReply'
 
 const props = defineProps<{
@@ -144,6 +71,19 @@ const deltaText = computed(() => {
   return `${delta.value > 0 ? '+' : '-'}${Math.abs(delta.value)}`
 })
 
+// Two real ratios: rules switched on / all rules, and replies that succeeded / attempted today
+const rings = computed<ServiceRing[]>(() => {
+  const list: ServiceRing[] = []
+  if (props.totalRules !== undefined && props.totalRules > 0) {
+    list.push({ label: '啟用規則', value: props.activeRules, total: props.totalRules, of: '條規則', hue: 'var(--section-hue)' })
+  }
+  if (props.successRate !== null && props.successRate !== undefined) {
+    const failed = props.todayFailed ?? 0
+    list.push({ label: '今日回覆成功', value: props.todayReplies, total: props.todayReplies + failed, of: '則', hue: 'var(--ui-green)' })
+  }
+  return list
+})
+
 const DAY_LABELS = ['週日', '週一', '週二', '週三', '週四', '週五', '週六']
 
 const hoursNote = computed(() => {
@@ -161,51 +101,132 @@ const hoursNote = computed(() => {
 </script>
 
 <style scoped>
-/* Neutralise the legacy global .stat-card (centered flex row, border, hover lift) */
-.stat-card {
-  align-items: stretch;
-  gap: 10px;
-  padding: 18px 20px 16px;
-  border: 0;
-  box-shadow: var(--ui-shadow-card);
-  transform: none;
+.lead {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+  gap: 20px 40px;
+  align-items: center;
+  padding: 24px 40px;
 }
 
-.stat-card:hover {
-  box-shadow: var(--ui-shadow-card);
-  transform: none;
+.lead:not(:has(.lead-rings)) {
+  grid-template-columns: minmax(0, 1fr);
 }
 
-.ico-blue {
-  background: var(--ui-accent-soft);
-  color: var(--ui-accent);
+.lead-main {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
 }
 
-.ico-green {
-  background: var(--ui-green-soft);
+.lead-kicker {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--section-ink);
+}
+
+.lead-num {
+  margin-top: 4px;
+  font: 600 56px / 1.05 var(--ui-font-display);
+  letter-spacing: -0.035em;
+  font-variant-numeric: tabular-nums;
+  color: var(--ui-ink);
+}
+
+.lead-num small {
+  margin-left: 6px;
+  font-size: 22px;
+  font-weight: 500;
+  letter-spacing: 0;
+  color: var(--ui-muted);
+}
+
+.lead-meaning {
+  margin-top: 4px;
+  font-size: 15px;
+  color: var(--ui-ink-2);
+}
+
+.hours-state {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 8px;
+  margin-top: 16px;
+  font-size: 14px;
+}
+
+.hours-dot {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--ui-faint);
+}
+
+.hours-label {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ui-muted);
+}
+
+.hours-note {
+  color: var(--ui-muted);
+}
+
+.hours-state.is-open .hours-dot {
+  background: var(--ui-green);
+}
+
+.hours-state.is-open .hours-label {
   color: var(--ui-green-ink);
 }
 
-.ico-orange {
-  background: var(--ui-orange-soft);
-  color: var(--ui-orange-ink);
+.hours-state.is-closed .hours-dot {
+  background: var(--ui-red);
 }
 
-.ico-indigo {
-  background: var(--ui-indigo-soft);
-  color: var(--ui-indigo);
+.hours-state.is-closed .hours-label {
+  color: var(--ui-red-ink);
 }
 
-.hours-pill {
-  height: 26px;
-  padding: 0 12px;
-  font-size: 13px;
+.lead-rings {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
 }
 
-@media (max-width: 640px) {
-  .stats-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
+.lead-rings::before {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: -20px;
+  width: 0.5px;
+  background: var(--ui-sep);
+  content: '';
+}
+
+@media (max-width: 1024px) {
+  .lead {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 22px 20px;
+  }
+
+  .lead-rings {
+    justify-content: flex-start;
+  }
+
+  .lead-rings::before {
+    display: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .lead-num {
+    font-size: 48px;
   }
 }
 </style>

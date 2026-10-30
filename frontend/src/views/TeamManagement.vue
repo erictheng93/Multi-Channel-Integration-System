@@ -1,23 +1,12 @@
 <template>
   <AppLayout>
-    <div class="team-management ui-rise">
+    <div class="ui-page rl-page team-management ui-rise">
       <!-- Header Section -->
-      <header class="ui-page-head">
-        <div>
-          <div class="ui-eyebrow">
-            團隊與頻道
-          </div>
-          <h1 class="ui-page-title">
-            團隊成員
-          </h1>
-          <p
-            v-if="members.length > 0"
-            class="ui-page-sub"
-          >
-            {{ headSummary }}
-          </p>
-        </div>
-        <div class="ui-page-actions">
+      <UiPageHead
+        title="團隊成員"
+        :subtitle="members.length > 0 ? headSummary : ''"
+      >
+        <template #actions>
           <RefreshButton
             :loading="loading"
             @refresh="controller.refresh"
@@ -60,15 +49,43 @@
               r="4"
             /><path d="M19 8v6M22 11h-6" /></svg>新增成員
           </button>
-        </div>
-      </header>
+        </template>
+      </UiPageHead>
 
-      <!-- Stats Overview -->
-      <TeamStatsOverview
-        :stats="stats"
-        :members="members"
-        :teams="teams"
+      <!-- Lead: who is online right now, as rings (everyone, then each team when there are at most two) -->
+      <RingLead
+        v-if="members.length > 0"
+        kicker="目前在線"
+        :value="onlineCount === null ? '—' : onlineCount"
+        :unit="onlineCount === null ? '' : '位'"
+        :meaning="onlineMeaning"
+        :tone="onlineCount === null ? 'none' : ''"
+        :busy="loading && !presence.available.value"
+        summary="團隊在線狀況"
+        :rings="presenceRings"
+        :size="144"
       />
+
+      <!-- Many teams do not fit as rings: one grouped row each, online / members -->
+      <section
+        v-if="teamOnline.length > 2"
+        aria-label="各團隊在線"
+      >
+        <h2 class="ui-group-label">
+          各團隊在線
+        </h2>
+        <ul class="ui-group tm-list">
+          <li
+            v-for="row in teamOnline"
+            :key="row.id"
+            class="ui-row is-flush tm-row"
+          >
+            <span class="tm-name">{{ row.name }}</span>
+            <span class="tm-bar"><i :style="{ width: row.percent + '%' }" /></span>
+            <span class="tm-n"><b>{{ row.online === null ? '—' : row.online }}</b> / {{ row.total }}</span>
+          </li>
+        </ul>
+      </section>
 
       <!-- Member Management Section -->
       <MemberListSection
@@ -204,6 +221,9 @@
 </template>
 
 <script setup lang="ts">
+import UiPageHead from '@/components/ui/UiPageHead.vue'
+import RingLead from '@/components/lead/RingLead.vue'
+import type { ServiceRing } from '@/components/ui/ServiceRings.vue'
 import { onMounted, onUnmounted, computed } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useTeamManagementController } from '@/composables/team-management'
@@ -213,7 +233,6 @@ import { teamApi } from '@/api/team'
 import type { MemberSortField, TeamSortField } from '@/composables/useListSorting'
 import AppLayout from '@/components/ui/AppLayout.vue'
 import RefreshButton from '@/components/ui/RefreshButton.vue'
-import TeamStatsOverview from '@/components/team/TeamStatsOverview.vue'
 import MemberListSection from '@/components/team/MemberListSection.vue'
 import TeamListSection from '@/components/team/TeamListSection.vue'
 import AddMemberModal from '@/components/team/AddMemberModal.vue'
@@ -241,22 +260,70 @@ const currentUserId = computed(() => authStore.currentAgent?.id)
 // Extract state from controller
 const { loading, teams, members, stats, memberSorting, teamSorting, memberSortMode, teamSortMode } = controller
 
-/** "8 位成員分屬 2 個團隊，其中 5 位目前在線。王柏翰已停用，無法登入。" built from loaded data only. */
+/** "8 位成員分屬 2 個團隊。王柏翰已停用，無法登入。" built from loaded data only (who is online lives in the lead metric). */
 const headSummary = computed(() => {
-  const parts: string[] = [`${members.value.length} 位成員分屬 ${stats.value.teamCount} 個團隊`]
-  if (presence.available.value) {
-    const online = members.value.filter(m => presence.onlineIds.value.has(m.id)).length
-    parts[0] += `，其中 ${online} 位目前在線`
-  }
+  let text = `${members.value.length} 位成員分屬 ${stats.value.teamCount} 個團隊。`
   const inactive = members.value.filter(m => m.status === 'inactive')
   const [onlyInactive] = inactive
-  let text = `${parts[0]}。`
   if (inactive.length === 1 && onlyInactive) {
     text += `${onlyInactive.name || onlyInactive.loginId}已停用，無法登入。`
   } else if (inactive.length > 1) {
     text += `${inactive.length} 位成員已停用，無法登入。`
   }
   return text
+})
+
+/** Online members; null when presence is unavailable (never a made-up zero) */
+const onlineCount = computed<number | null>(() =>
+  presence.available.value ? members.value.filter(m => presence.onlineIds.value.has(m.id)).length : null
+)
+
+const onlineMeaning = computed(() => {
+  if (onlineCount.value === null) {
+    return '目前無法取得在線狀態'
+  }
+  const active = members.value.filter(m => m.status !== 'inactive').length
+  return `共 ${active} 位啟用中的成員`
+})
+
+/** Online / total per team, from the loaded members only */
+const teamOnline = computed(() =>
+  teams.value
+    .map((team) => {
+      const people = members.value.filter(
+        m => m.status !== 'inactive' && (m.primaryTeamId === team.id || (m.teams ?? []).some(t => t.teamId === team.id))
+      )
+      const online = presence.available.value ? people.filter(m => presence.onlineIds.value.has(m.id)).length : null
+      return {
+        id: team.id,
+        name: team.name,
+        total: people.length,
+        online,
+        percent: online === null || people.length === 0 ? 0 : Math.round((online / people.length) * 100)
+      }
+    })
+    .filter(row => row.total > 0)
+)
+
+/**
+ * Rings: online of the active members, then (up to two teams) online of each team's active members.
+ * With presence unavailable the only honest ratio is active members of all members.
+ */
+const presenceRings = computed<ServiceRing[]>(() => {
+  const active = members.value.filter(m => m.status !== 'inactive').length
+  if (onlineCount.value === null) {
+    return [{ label: '啟用中成員', value: active, total: members.value.length, of: '位成員', hue: 'var(--section-hue)' }]
+  }
+  const list: ServiceRing[] = [
+    { label: '全部成員在線', value: onlineCount.value, total: active, of: '位啟用中', hue: 'var(--section-hue)' }
+  ]
+  if (teamOnline.value.length <= 2) {
+    const hues = ['var(--ui-blue)', 'var(--ui-orange)']
+    teamOnline.value.forEach((row, i) => {
+      list.push({ label: row.name, value: row.online ?? 0, total: row.total, of: '位在線', hue: hues[i] })
+    })
+  }
+  return list
 })
 
 // Handle select-page: add page member IDs to selection
@@ -364,24 +431,58 @@ onUnmounted(() => {
 
 <style scoped>
 /* ==================== Page Layout ==================== */
-.team-management {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-  width: 100%;
-  max-width: 1280px;
-  margin: 0 auto;
-  /* AppLayout's page area already pads 24px / 20px */
-  padding: 4px 8px 32px;
-}
 .head-ico {
   width: 16px;
   height: 16px;
 }
 
-@media (max-width: 768px) {
-  .team-management {
-    padding: 0 0 24px;
-  }
+/* One grouped row per team (shown only when there are too many teams for rings) */
+.tm-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tm-row {
+  gap: 16px;
+}
+
+.tm-name {
+  flex: 0 1 160px;
+  min-width: 0;
+  overflow: hidden;
+  font-size: 15px;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tm-bar {
+  flex: 1;
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--ui-fill);
+}
+
+.tm-bar i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--section-hue);
+  transition: width var(--ui-dur) var(--ui-ease);
+}
+
+.tm-n {
+  flex: none;
+  font-size: 13px;
+  color: var(--ui-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.tm-n b {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ui-ink);
 }
 </style>

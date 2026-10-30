@@ -33,6 +33,7 @@
     <SettingsGroup
       v-if="hasStoredCredentials"
       title="危險操作"
+      danger
     >
       <SettingsRow
         label="清除已儲存的憑證"

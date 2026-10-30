@@ -30,16 +30,10 @@
         <h3 class="notification-title">
           {{ notification.title }}
         </h3>
-        <time
-          class="notification-time"
-          :datetime="notification.createdAt"
-        >{{ formattedTime }}</time>
         <span
           v-if="!notification.isRead"
-          class="unread-dot"
-          role="img"
-          aria-label="未讀"
-        />
+          class="sr-only"
+        >未讀</span>
       </div>
       <p class="notification-text">
         {{ notification.content }}
@@ -70,32 +64,45 @@
       </div>
     </div>
 
-    <!-- Actions -->
-    <div
-      class="notification-actions"
-      role="group"
-      aria-label="通知操作"
-      @click.stop
-    >
-      <button
-        v-if="!notification.isRead"
-        class="action-btn"
-        type="button"
-        :aria-label="`標記 ${notification.title} 為已讀`"
-        title="標記已讀 (Ctrl+M)"
-        @click="$emit('mark-read', notification.id)"
+    <!-- Trailing column at the card edge: unread dot + time, then the row actions -->
+    <div class="notification-trail">
+      <span class="notification-when">
+        <span
+          v-if="!notification.isRead"
+          class="notification-dot"
+          aria-hidden="true"
+        />
+        <time
+          class="notification-time"
+          :datetime="notification.createdAt"
+        >{{ formattedTime }}</time>
+      </span>
+      <div
+        class="notification-actions"
+        role="group"
+        aria-label="通知操作"
+        @click.stop
       >
-        <CheckIcon aria-hidden="true" />
-      </button>
-      <button
-        class="action-btn action-btn-danger"
-        type="button"
-        :aria-label="`刪除 ${notification.title}`"
-        title="刪除 (Delete)"
-        @click="$emit('delete', notification.id)"
-      >
-        <TrashIcon aria-hidden="true" />
-      </button>
+        <button
+          v-if="!notification.isRead"
+          class="action-btn"
+          type="button"
+          :aria-label="`標記 ${notification.title} 為已讀`"
+          title="標記已讀 (Ctrl+M)"
+          @click="$emit('mark-read', notification.id)"
+        >
+          <CheckIcon aria-hidden="true" />
+        </button>
+        <button
+          class="action-btn action-btn-danger"
+          type="button"
+          :aria-label="`刪除 ${notification.title}`"
+          title="刪除 (Delete)"
+          @click="$emit('delete', notification.id)"
+        >
+          <TrashIcon aria-hidden="true" />
+        </button>
+      </div>
     </div>
   </article>
 </template>
@@ -218,7 +225,7 @@ const formattedTime = computed(() => {
 .notification-card + .notification-card::before {
   position: absolute;
   top: 0;
-  right: 0;
+  right: 22px;
   left: 78px;
   height: 0.5px;
   background: var(--ui-sep);
@@ -227,6 +234,26 @@ const formattedTime = computed(() => {
 
 .notification-card:hover {
   background: color-mix(in srgb, var(--ui-fill) 45%, transparent);
+}
+
+/* Unread: tinted row, bold title, coloured icon tile and a dot by the time. Read: flat row, grey tile. */
+.notification-unread {
+  background: color-mix(in srgb, var(--section-hue) 7%, var(--ui-surface));
+}
+
+.notification-unread:hover {
+  background: color-mix(in srgb, var(--section-hue) 11%, var(--ui-surface));
+}
+
+.notification-card:not(.notification-unread) .notification-icon {
+  background: var(--ui-fill);
+  color: var(--ui-muted);
+}
+
+/* Urgent: a solid red icon tile whatever the type */
+.notification-urgent .notification-icon {
+  background: var(--ui-red);
+  color: #fff;
 }
 
 .notification-card:focus-visible,
@@ -295,6 +322,7 @@ const formattedTime = computed(() => {
   color: var(--ui-red-ink);
 }
 
+/* Copy takes the whole row; the trailing column sits on the card's right edge */
 .notification-content {
   min-width: 0;
   flex: 1;
@@ -317,18 +345,34 @@ const formattedTime = computed(() => {
   white-space: nowrap;
 }
 
-.notification-time {
+.notification-trail {
+  display: flex;
   flex: none;
-  font-size: 12.5px;
-  color: var(--ui-muted);
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-end;
+  min-width: 92px;
 }
 
-.unread-dot {
-  flex: none;
+.notification-when {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  height: 22px;
+}
+
+.notification-dot {
   width: 8px;
   height: 8px;
   border-radius: 50%;
   background: var(--ui-accent);
+}
+
+.notification-time {
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ui-muted);
+  white-space: nowrap;
 }
 
 .notification-text {
@@ -355,23 +399,23 @@ const formattedTime = computed(() => {
   margin-top: 8px;
 }
 
+/* Pills sit on a solid surface mix so the tinted unread row cannot dip their text below AA */
+.notification-meta > .ui-pill-red {
+  background: color-mix(in srgb, var(--ui-red) 12%, var(--ui-surface));
+}
+
 .notification-meta > .ui-ch {
   margin-top: 8px;
 }
 
-/* Hover toolbar floats over the time so rows keep the full width */
+/* Row actions live under the time in the trailing column and appear on hover or focus */
 .notification-actions {
   position: absolute;
-  top: 50%;
-  right: 16px;
+  right: 22px;
+  bottom: 10px;
   display: flex;
   gap: 4px;
-  padding: 3px;
-  border-radius: 999px;
-  background: var(--ui-surface);
-  box-shadow: var(--ui-shadow-pill);
   opacity: 0;
-  transform: translateY(-50%);
   transition: opacity var(--ui-dur) var(--ui-ease);
 }
 
@@ -380,23 +424,73 @@ const formattedTime = computed(() => {
   opacity: 1;
 }
 
-/* Touch: no hover, so actions sit in the flow below the text */
-@media (hover: none) {
+/* Phone and touch: a grid. Title and its single trailing control share the first line, the copy
+   follows, and the time sits at the right end of the one meta line. Unread rows offer mark-read,
+   read rows offer delete (one control per row; Delete / Ctrl+M still work from the keyboard). */
+@media (max-width: 768px), (hover: none) {
+  .notification-card {
+    display: grid;
+    grid-template-columns: 40px minmax(0, 1fr) auto;
+    grid-template-areas:
+      'icon head act'
+      'icon text act'
+      'icon meta meta';
+    gap: 0 14px;
+    align-items: start;
+  }
+
+  .notification-icon {
+    grid-area: icon;
+  }
+
+  .notification-content,
+  .notification-trail {
+    display: contents;
+  }
+
+  .notification-header {
+    grid-area: head;
+    align-self: center;
+    min-height: 24px;
+  }
+
+  .notification-text {
+    grid-area: text;
+  }
+
+  .notification-meta {
+    grid-area: meta;
+    align-self: center;
+    justify-self: start;
+  }
+
+  .notification-when {
+    grid-area: meta;
+    align-self: center;
+    justify-self: end;
+  }
+
   .notification-actions {
     position: static;
-    padding: 0;
-    background: none;
-    box-shadow: none;
+    grid-area: act;
+    margin: -10px -12px -10px 0;
     opacity: 1;
-    transform: none;
+  }
+
+  .notification-unread .action-btn-danger {
+    display: none;
+  }
+
+  .notification-card:not(.notification-unread) .action-btn:not(.action-btn-danger) {
+    display: none;
   }
 }
 
 .action-btn {
   display: grid;
   place-items: center;
-  width: 32px;
-  height: 32px;
+  width: 30px;
+  height: 30px;
   border: 0;
   border-radius: 50%;
   background: var(--ui-fill);
@@ -434,12 +528,34 @@ const formattedTime = computed(() => {
   }
 
   .notification-card + .notification-card::before {
+    right: 16px;
     left: 70px;
   }
 
+  /* The title wraps (two lines at most) instead of cutting the customer name off */
+  .notification-title {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    white-space: normal;
+    text-overflow: clip;
+  }
+}
+
+@media (max-width: 768px), (hover: none) {
+  /* 44px touch target, but drawn as quiet glyphs so the row reads as part of the item, not a toolbar */
   .action-btn {
     width: 44px;
     height: 44px;
+    background: transparent;
+    color: var(--ui-ink-2);
+  }
+
+  .action-btn svg {
+    width: 20px;
+    height: 20px;
   }
 }
 </style>

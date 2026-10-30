@@ -461,7 +461,7 @@ function handleAddAction(actionType: string): void {
   justify-content: center;
   width: 18px;
   color: var(--gray-400, #9ca3af);
-  font-size: 0.75rem;
+  font-size: 13px;
   font-weight: 500;
   font-variant-numeric: tabular-nums;
   flex-shrink: 0;
@@ -616,7 +616,7 @@ function handleAddAction(actionType: string): void {
   align-items: center;
   gap: 6px;
   color: var(--gray-400, #9ca3af);
-  font-size: 0.75rem;
+  font-size: 13px;
   font-weight: 500;
 }
 

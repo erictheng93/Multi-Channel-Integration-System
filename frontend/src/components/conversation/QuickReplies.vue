@@ -5,13 +5,22 @@
       class="quick-replies"
     >
       <button
-        v-for="reply in replies"
+        v-for="reply in visibleReplies"
         :key="reply.id"
         class="quick-reply-btn"
         :disabled="disabled"
         @click="handleSelect(reply)"
       >
         {{ reply.text }}
+      </button>
+      <button
+        v-if="replies.length > MAX_VISIBLE"
+        type="button"
+        class="quick-reply-btn quick-reply-more"
+        :aria-expanded="expanded"
+        @click="expanded = !expanded"
+      >
+        {{ expanded ? '收合' : `更多 ${replies.length - MAX_VISIBLE}` }}
       </button>
     </div>
   </Transition>
@@ -32,6 +41,8 @@
  * />
  * ```
  */
+
+import { computed, ref } from 'vue'
 
 export interface QuickReply {
   /** 唯一标识 */
@@ -57,11 +68,15 @@ interface Props {
   disabled?: boolean
 }
 
-withDefaults(defineProps<Props>(), {
+const props = withDefaults(defineProps<Props>(), {
   disabled: false,
 })
 
 const emit = defineEmits<Emits>()
+// At most three suggestions are shown; the rest sit behind 更多 so the row never needs a scroll to find the end
+const MAX_VISIBLE = 3
+const expanded = ref(false)
+const visibleReplies = computed(() => (expanded.value ? props.replies : props.replies.slice(0, MAX_VISIBLE)))
 
 interface Emits {
   /**
@@ -83,6 +98,8 @@ const handleSelect = (reply: QuickReply) => {
   gap: 8px;
   padding: 10px 0 2px;
   overflow-x: auto;
+  -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 24px), transparent);
+  mask-image: linear-gradient(90deg, #000 calc(100% - 24px), transparent);
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
 }
@@ -99,7 +116,7 @@ const handleSelect = (reply: QuickReply) => {
   border-radius: 999px;
   background: var(--ui-fill);
   color: var(--ui-ink-2);
-  font-size: 12.5px;
+  font-size: 13px;
   font-weight: 500;
   white-space: nowrap;
   cursor: pointer;
@@ -108,6 +125,12 @@ const handleSelect = (reply: QuickReply) => {
 
 .quick-reply-btn:hover:not(:disabled) {
   background: var(--ui-fill-strong);
+}
+
+.quick-reply-more {
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--ui-sep);
+  color: var(--ui-muted);
 }
 
 .quick-reply-btn:disabled {
@@ -142,6 +165,23 @@ const handleSelect = (reply: QuickReply) => {
 
   to {
     opacity: 0;
+  }
+}
+
+/* Phone: chips wrap onto a second row instead of clipping at the edge */
+@media (max-width: 768px) {
+  .quick-replies {
+    flex-wrap: wrap;
+    overflow: visible;
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+
+  .quick-reply-btn {
+    flex: 0 1 auto;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 }
 

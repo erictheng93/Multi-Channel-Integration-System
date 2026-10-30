@@ -90,6 +90,8 @@
     /* WCAG AA: iOS #8E8E93 is 3.3:1 on white; #636366 is 6.0:1 (5.0:1 on the grey fills) */
     --ui-muted: #636366;
     --ui-faint: #aeaeb2;
+    --ui-placeholder: #6c6c70; /* 4.9:1 on --ui-surface-2: placeholder text is text */
+    --ui-field-edge: #8e8e93; /* 3.3:1 on white: an input boundary a user can see */
 
     /* WCAG AA: #007AFF is 4.0:1 on white and with white text; #0066CC is 5.6:1 */
     --ui-accent: #0066cc;
@@ -107,6 +109,8 @@
     --ui-teal-soft: rgba(48, 176, 199, 0.14);
     --ui-indigo: #5856d6;
     --ui-indigo-soft: rgba(88, 86, 214, 0.12);
+    --ui-indigo-ink: #4a48c6; /* 6:1 on --ui-indigo-soft */
+    --ui-blue: #007aff; /* iOS system blue: fills and graphics only; text uses --ui-accent */
 
     --ui-line: #06c755;
     --ui-messenger: #0866ff;
@@ -114,7 +118,7 @@
     --ui-p-lavender: #eee8fb;
     --ui-p-lavender-ink: #5c4f7c;
     --ui-p-peach: #fff1e0;
-    --ui-p-peach-ink: #8d6e4c;
+    --ui-p-peach-ink: #86643e; /* 4.8:1 on --ui-p-peach */
     --ui-p-mint: #e6f5ea;
     --ui-p-mint-ink: #3f7452;
     --ui-p-sky: #e4f0fd;
@@ -127,6 +131,8 @@
     --ui-shadow-pill: 0 1px 2px rgba(0, 0, 0, 0.06), 0 2px 8px rgba(0, 0, 0, 0.04);
 
     --ui-r-card: 22px;
+    --ui-r-group: 18px; /* inset-grouped surfaces */
+    --ui-r-lead: 28px; /* the one elevated lead object */
     --ui-r-inner: 14px;
     --ui-r-control: 12px;
 
@@ -134,12 +140,31 @@
     --ui-font-display: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Geist', 'Noto Sans TC', 'PingFang TC', 'Microsoft JhengHei', sans-serif;
     --ui-font-mono: 'SF Mono', 'Geist Mono', ui-monospace, Menlo, Consolas, monospace;
 
-    --ui-t-large: 30px;
+    /* Type scale (one scale, used through the shared components; pages never invent sizes):
+       lead numeral 64 (56 phone) light / page title 30 / section title 19 / row head 15 /
+       body 14 / meta 13. Tracking tightens as the size grows. */
+    --ui-t-lead: 64px;
+    --ui-t-lead-sm: 56px;
+    --ui-w-lead: 300;
+    --ui-track-lead: -0.045em;
+    --ui-t-large: 34px;
+    --ui-track-large: -0.035em;
     --ui-t-title: 19px;
+    --ui-track-title: -0.015em;
     --ui-t-head: 15px;
     --ui-t-body: 14px;
-    --ui-t-foot: 12.5px;
-    --ui-t-cap: 11.5px;
+    --ui-t-kpi: 34px;
+    /* Typography floor: 13px for meta, labels, table headers, chips. Chart axes may go to 11px. */
+    --ui-t-foot: 13px;
+    --ui-t-cap: 13px;
+    --ui-t-meta: 13px;
+    --ui-t-nav-label: 11.5px;
+
+    /* Page frame: every routed page uses the same gutter and the same content width */
+    --ui-gutter: 28px;
+    --ui-page-max: 1360px;
+    --ui-page-gap: 20px;
+    --ui-head-h: 36px;
 
     --ui-ease: cubic-bezier(0.22, 1, 0.36, 1);
     --ui-dur: 240ms;
@@ -166,6 +191,8 @@
     --ui-ink-2: #d1d1d6;
     --ui-muted: #98989f;
     --ui-faint: #636366;
+    --ui-placeholder: #9a9aa1;
+    --ui-field-edge: #6e6e73;
     --ui-accent: #0a84ff;
     --ui-accent-soft: rgba(10, 132, 255, 0.18);
     --ui-green: #30d158;
@@ -181,6 +208,8 @@
     --ui-teal-soft: rgba(64, 200, 224, 0.18);
     --ui-indigo: #5e5ce6;
     --ui-indigo-soft: rgba(94, 92, 230, 0.22);
+    --ui-indigo-ink: #a5a4ff;
+    --ui-blue: #0a84ff;
     --ui-p-lavender: #2b2638;
     --ui-p-lavender-ink: #c9b8f0;
     --ui-p-peach: #33281c;
@@ -197,6 +226,40 @@
     --ui-glass: rgba(28, 28, 30, 0.72);
     --ui-sidebar-bg: rgba(22, 22, 24, 0.82);
     --ui-sel-bg: #2c2c2e;
+  }
+
+  /* ------------------------------------------------------------
+     Section colour identity ("Service Rings" direction).
+     Each sidebar section owns one iOS system hue. AppLayout puts
+     data-section on its root (from config/nav-sections.ts) and the
+     sidebar puts it on each nav group, so everything inside reads the
+     same three tokens:
+       --section-hue       fills and graphics (icon tile, ring, active icon)
+       --section-hue-soft  quiet wash (active nav row, tinted chips)
+       --section-ink       text and links; AA on --section-hue-soft and on white
+     Semantic colours (good / warn / bad) stay separate: never use a
+     section hue to say "ok" or "wrong".
+     ------------------------------------------------------------ */
+  :root,
+  [data-section='workspace'] {
+    --section-hue: var(--ui-blue);
+    --section-hue-soft: var(--ui-accent-soft);
+    --section-ink: var(--ui-accent);
+  }
+  [data-section='growth'] {
+    --section-hue: var(--ui-orange);
+    --section-hue-soft: var(--ui-orange-soft);
+    --section-ink: var(--ui-orange-ink);
+  }
+  [data-section='team'] {
+    --section-hue: var(--ui-green);
+    --section-hue-soft: var(--ui-green-soft);
+    --section-ink: var(--ui-green-ink);
+  }
+  [data-section='system'] {
+    --section-hue: var(--ui-indigo);
+    --section-hue-soft: var(--ui-indigo-soft);
+    --section-ink: var(--ui-indigo-ink);
   }
 
   /* Force Light Mode Override (System Preference) */
@@ -287,9 +350,15 @@
     box-shadow: 0 0 0 3px color-mix(in srgb, var(--ui-accent) 35%, transparent);
   }
 
+  /* iOS disabled pattern: neutral fill + muted ink, never a faded brand colour
+     (a 40% blue reads as broken). Keeps cursor; aria/disabled attrs unchanged. */
   .btn:disabled {
-    opacity: 0.4;
+    background-color: var(--ui-fill);
+    color: var(--ui-muted);
     cursor: not-allowed;
+  }
+  .btn-ghost:disabled {
+    background-color: transparent;
   }
 
   /* Primary - iOS System Blue */
@@ -370,7 +439,7 @@
   .btn-sm {
     min-height: 30px;
     padding: 0 11px;
-    font-size: 12.5px;
+    font-size: 13px;
     border-radius: 10px;
   }
 
@@ -486,10 +555,14 @@
   .form-select {
     @apply block w-full px-3 py-3;
     @apply text-sm text-gray-900 bg-white;
-    @apply border border-gray-300 rounded-md;
+    @apply rounded-md;
+    border-width: 1px;
+    border-style: solid;
+    border-color: var(--ui-field-edge);
     @apply transition-all duration-150;
     @apply focus:outline-hidden focus:ring-2 focus:ring-primary-500 focus:border-primary-500;
-    @apply disabled:bg-gray-50 disabled:text-gray-500 disabled:cursor-not-allowed;
+    @apply disabled:cursor-not-allowed;
+    &:disabled { background-color: var(--ui-fill); border-color: var(--ui-sep); color: var(--ui-muted); -webkit-text-fill-color: var(--ui-muted); }
     /* Absorbed from @tailwindcss/forms. Load-bearing for .form-select, which
        draws its own arrow via background-image - without this the native arrow
        returns and every select renders two. */
@@ -500,7 +573,7 @@
   .form-input::placeholder,
   .form-textarea::placeholder,
   .form-select::placeholder {
-    color: #6b7280;
+    color: var(--ui-placeholder);
     opacity: 1;
   }
 
@@ -620,42 +693,89 @@
      scoped in the page. Tokens: --ui-* (see :root above).
      ============================================ */
 
-  /* Page header */
-  .ui-page-head {
+  /* Page frame: root element of every routed page. AppLayout supplies the gutter; this
+     supplies width, centring and the vertical rhythm, so the head and the content start at
+     the same x/y on every page. Do not add padding, max-width or margin to a page root. */
+  .ui-page {
     display: flex;
-    align-items: flex-end;
-    flex-wrap: wrap;
-    gap: 16px;
-    padding-bottom: 4px;
+    flex-direction: column;
+    gap: var(--ui-page-gap);
+    width: 100%;
+    max-width: var(--ui-page-max);
+    margin: 0 auto;
   }
-  .ui-page-head > :first-child {
-    min-width: 0;
-    flex: 1;
-  }
-  .ui-eyebrow {
-    margin-bottom: 4px;
-    font-size: 12.5px;
-    font-weight: 600;
-    color: var(--ui-muted);
+
+  /* Page header (use <UiPageHead>): title row at 36px with the actions centred on it, then a
+     one-line subtitle. The subtitle line is always reserved so the content never shifts. */
+  .ui-page-head {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      'title actions'
+      'sub sub';
+    align-items: center;
+    column-gap: 16px;
+    row-gap: 4px;
   }
   .ui-page-title {
+    grid-area: title;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    min-width: 0;
+    min-height: 44px;
     margin: 0;
-    font: 700 var(--ui-t-large) / 1.15 var(--ui-font-display);
-    letter-spacing: -0.025em;
+    font: 700 var(--ui-t-large) / 40px var(--ui-font-display);
+    letter-spacing: var(--ui-track-large);
     color: var(--ui-ink);
-    text-wrap: balance;
+  }
+  /* Section icon tile: the page's nav glyph on a solid section-hue squircle (iOS Settings) */
+  .ui-page-ico {
+    flex: none;
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 11px;
+    background: linear-gradient(180deg, color-mix(in srgb, var(--section-hue) 82%, #fff), var(--section-hue));
+    color: #fff;
+    box-shadow: inset 0 0 0 0.5px rgba(0, 0, 0, 0.08);
+  }
+  .ui-page-ico svg {
+    width: 22px;
+    height: 22px;
+    stroke-width: 1.9;
+  }
+  .ui-page-title-text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   .ui-page-sub {
-    max-width: 62ch;
-    margin: 6px 0 0;
+    grid-area: sub;
+    min-height: 20px;
+    margin-top: 2px;
+    margin: 0;
+    overflow: hidden;
     font-size: 14px;
+    line-height: 20px;
     color: var(--ui-muted);
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   .ui-page-actions {
+    grid-area: actions;
     display: flex;
-    flex-wrap: wrap;
     align-items: center;
+    justify-content: flex-end;
     gap: 8px;
+    min-height: 44px;
+  }
+  .ui-page-actions .btn {
+    min-height: var(--ui-head-h);
+    height: var(--ui-head-h);
+    padding-top: 0;
+    padding-bottom: 0;
   }
 
   /* Grid helpers */
@@ -674,12 +794,64 @@
   }
 
   /* Card */
+  /* Surface levels (Service Rings direction):
+       a. canvas        the page background
+       b. .ui-card / .ui-group   white inset-grouped surface, NO shadow (iOS Settings)
+       c. .ui-lead      the ONE elevated object per page: larger radius, the only soft shadow
+     Nothing but .ui-lead (and floating layers: menus, modals) casts a shadow. */
   .ui-card {
     min-width: 0;
     background: var(--ui-surface);
-    border-radius: var(--ui-r-card);
-    box-shadow: var(--ui-shadow-card);
+    border-radius: var(--ui-r-group);
     color: var(--ui-ink);
+  }
+  .ui-lead {
+    min-width: 0;
+    background: var(--ui-surface);
+    border-radius: var(--ui-r-lead);
+    box-shadow: var(--ui-shadow-raised);
+    color: var(--ui-ink);
+  }
+  .ui-lead-pad {
+    padding: 28px 32px;
+  }
+  /* Inset-grouped list: a labelled white group of rows with hairline separators */
+  .ui-group {
+    --row-pad-x: 18px;
+    min-width: 0;
+    overflow: hidden;
+    background: var(--ui-surface);
+    border-radius: var(--ui-r-group);
+    color: var(--ui-ink);
+  }
+  .ui-group-label {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    margin: 0 0 8px;
+    padding: 0 6px 0 16px;
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 20px;
+    letter-spacing: 0.01em;
+    color: var(--ui-ink-2);
+  }
+  /* the quiet note after a group label stays secondary, still AA */
+  .ui-group-label .label-note {
+    font-size: 13px;
+    font-weight: 400;
+    color: var(--ui-muted);
+  }
+  .ui-group-label .ui-link {
+    margin-left: auto;
+    font-weight: 500;
+  }
+  .ui-group-foot {
+    margin: 8px 0 0;
+    padding: 0 16px;
+    font-size: 13px;
+    line-height: 18px;
+    color: var(--ui-muted);
   }
   .ui-card-pad {
     padding: 20px 22px;
@@ -694,7 +866,7 @@
   .ui-card-title {
     margin: 0;
     font: 600 var(--ui-t-title) / 1.25 var(--ui-font-display);
-    letter-spacing: -0.015em;
+    letter-spacing: var(--ui-track-title);
   }
   .ui-card-head .ui-card-sub {
     margin-top: 2px;
@@ -712,8 +884,8 @@
     align-items: center;
     gap: 2px;
     font-size: 13px;
-    font-weight: 600;
-    color: var(--ui-accent);
+    font-weight: 500;
+    color: var(--section-ink, var(--ui-accent));
     text-decoration: none;
     cursor: pointer;
   }
@@ -733,20 +905,22 @@
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 12px 22px;
+    padding: 12px var(--row-pad-x, 22px);
     transition: background var(--ui-dur) var(--ui-ease);
   }
+  /* Dividers are inset symmetrically: the leading inset clears the avatar/icon, the trailing
+     inset mirrors the row padding (22px), so the hairline never runs to one card edge only. */
   .ui-row + .ui-row::before {
     content: '';
     position: absolute;
     top: 0;
-    right: 0;
-    left: 66px;
+    right: var(--row-pad-x, 22px);
+    left: var(--row-inset, 66px);
     height: 0.5px;
     background: var(--ui-sep);
   }
   .ui-row.is-flush + .ui-row.is-flush::before {
-    left: 22px;
+    left: var(--row-pad-x, 22px);
   }
   .ui-row:hover {
     background: color-mix(in srgb, var(--ui-fill) 45%, transparent);
@@ -774,8 +948,43 @@
     text-overflow: ellipsis;
     white-space: nowrap;
   }
+  /* Settings-style row: label left, current value right (muted), optional chevron */
+  .ui-row-value {
+    flex: none;
+    max-width: 55%;
+    overflow: hidden;
+    font-size: 15px;
+    color: var(--ui-muted);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .ui-row.is-nav::after {
+    content: '';
+    flex: none;
+    width: 8px;
+    height: 14px;
+    margin-left: 2px;
+    background: var(--ui-faint);
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 14'%3E%3Cpath d='M1 1l6 6-6 6' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / contain no-repeat;
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 14'%3E%3Cpath d='M1 1l6 6-6 6' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / contain no-repeat;
+  }
+  /* Leading icon tile of a settings row, in a section or semantic hue */
+  .ui-row-ico {
+    flex: none;
+    display: grid;
+    place-items: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    background: var(--section-hue);
+    color: #fff;
+  }
+  .ui-row-ico svg {
+    width: 17px;
+    height: 17px;
+  }
   .ui-row-meta {
-    font-size: 12px;
+    font-size: 13px;
     color: var(--ui-muted);
     text-align: right;
     white-space: nowrap;
@@ -791,8 +1000,8 @@
     padding: 0 9px;
     border-radius: 999px;
     background: var(--ui-fill);
-    font-size: 11.5px;
-    font-weight: 600;
+    font-size: 13px;
+    font-weight: 500;
     color: var(--ui-ink-2);
     white-space: nowrap;
   }
@@ -826,7 +1035,7 @@
     padding: 0 9px;
     border-radius: 999px;
     background: var(--ui-fill);
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 500;
     color: var(--ui-ink-2);
   }
@@ -851,7 +1060,9 @@
     color: var(--ui-p-rose-ink);
   }
 
-  /* Segmented control: buttons inside; active one carries .is-on or aria-pressed/selected */
+  /* THE segmented control (one per app: tabs, ranges, view switches, formats): buttons inside,
+     the active one carries .is-on or aria-pressed/selected. Never hand-roll a second style, and
+     never put two segmented controls side by side: a second axis is a dropdown or a chip row. */
   .ui-seg {
     display: inline-flex;
     gap: 2px;
@@ -880,11 +1091,11 @@
   .ui-seg > button[aria-selected='true'] {
     background: var(--ui-sel-bg);
     color: var(--ui-ink);
-    font-weight: 600;
+    font-weight: 500;
     box-shadow: var(--ui-shadow-pill);
   }
   .ui-seg .ui-seg-n {
-    font-size: 11.5px;
+    font-size: 13px;
     color: var(--ui-muted);
     font-variant-numeric: tabular-nums;
   }
@@ -900,15 +1111,19 @@
     border-radius: 999px;
     background: var(--ui-surface);
     box-shadow: var(--ui-shadow-pill);
-    font-size: 12.5px;
+    font-size: 13px;
     font-weight: 500;
     color: var(--ui-ink-2);
     cursor: pointer;
   }
+  /* On state = the accent wash with accent ink (same family as .ui-seg and .ui-pill-blue).
+     Never a solid black capsule: that reads as a second, competing control language. */
   .ui-chip.is-on,
   .ui-chip[aria-pressed='true'] {
-    background: var(--ui-ink);
-    color: var(--ui-surface);
+    background: var(--ui-accent-soft);
+    color: var(--ui-accent);
+    font-weight: 600;
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ui-accent) 26%, transparent);
   }
 
   /* Channel glyph tile (brand-coloured). Put an svg (fill #fff) inside. */
@@ -939,11 +1154,11 @@
   }
   .ui-field > label {
     font-size: 13px;
-    font-weight: 600;
+    font-weight: 500;
     color: var(--ui-ink-2);
   }
   .ui-field .ui-hint {
-    font-size: 12px;
+    font-size: 13px;
     color: var(--ui-muted);
   }
   .ui-input,
@@ -955,7 +1170,7 @@
     border: 0;
     border-radius: var(--ui-r-control);
     background: var(--ui-surface-2);
-    box-shadow: inset 0 0 0 0.5px var(--ui-sep);
+    box-shadow: inset 0 0 0 1px var(--ui-field-edge);
     font-size: 14px;
     color: var(--ui-ink);
     transition:
@@ -971,7 +1186,8 @@
   }
   .ui-input::placeholder,
   .ui-textarea::placeholder {
-    color: var(--ui-faint);
+    color: var(--ui-placeholder);
+    opacity: 1;
   }
   .ui-input:focus,
   .ui-select:focus,
@@ -985,7 +1201,11 @@
   .ui-input:disabled,
   .ui-select:disabled,
   .ui-textarea:disabled {
-    opacity: 0.5;
+    /* Quiet but legible: flat fill + muted AA text, never a faded opacity */
+    background: var(--ui-fill);
+    box-shadow: inset 0 0 0 1px var(--ui-sep);
+    color: var(--ui-muted);
+    -webkit-text-fill-color: var(--ui-muted);
     cursor: not-allowed;
   }
   .ui-select {
@@ -1047,8 +1267,8 @@
     padding: 10px 14px;
     background: var(--ui-surface);
     box-shadow: inset 0 -0.5px 0 var(--ui-sep);
-    font-size: 12px;
-    font-weight: 600;
+    font-size: 13px;
+    font-weight: 500;
     color: var(--ui-muted);
     text-align: left;
     white-space: nowrap;
@@ -1088,7 +1308,7 @@
     align-items: center;
     gap: 8px;
     font-size: 13px;
-    font-weight: 600;
+    font-weight: 500;
     color: var(--ui-ink-2);
   }
   .ui-kpi-ico {
@@ -1103,7 +1323,7 @@
     height: 15px;
   }
   .ui-kpi-value {
-    font: 600 34px / 1 var(--ui-font-display);
+    font: 600 var(--ui-t-kpi) / 1 var(--ui-font-display);
     letter-spacing: -0.03em;
     font-variant-numeric: tabular-nums;
   }
@@ -1118,7 +1338,7 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    font-size: 12px;
+    font-size: 13px;
     color: var(--ui-muted);
   }
   .ui-delta {
@@ -1132,37 +1352,103 @@
     color: var(--ui-red-ink);
   }
 
-  /* Empty state */
+  /* KPI row (use instead of ui-grid ui-cols-4): 4 across on desktop, 2 across on tablet,
+     and a compact 2 x 2 grid on phones where each tile stays about 88px tall (icon and long
+     footers give way to the number). */
+  .ui-kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 16px;
+  }
+
+  /* Sticky bottom action bar (use <UiActionBar>): inline footer row on desktop, pinned
+     above the safe area on phones. */
+  .ui-action-bar {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+
+  /* Empty state (use <UiEmptyState>): art tile on a faint disc ring, 15px title, 13px body */
   .ui-empty {
     display: grid;
     justify-items: center;
-    gap: 8px;
-    padding: 44px 24px;
+    gap: 6px;
+    padding: 40px 24px;
     text-align: center;
   }
-  .ui-empty-art {
+  .ui-empty-compact {
+    padding: 20px 16px;
+  }
+  .ui-empty-stage {
+    position: relative;
     display: grid;
     place-items: center;
-    width: 56px;
-    height: 56px;
+    width: 112px;
+    height: 96px;
     margin-bottom: 4px;
-    border-radius: 18px;
+  }
+  .ui-empty-compact .ui-empty-stage {
+    width: auto;
+    height: auto;
+  }
+  .ui-empty-stage .ui-empty-disc {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    translate: -50% -50%;
+    opacity: 1;
+  }
+  .ui-empty-art {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: 48px;
+    height: 48px;
+    border-radius: 16px;
     background: var(--ui-surface-2);
     color: var(--ui-muted);
+    box-shadow: inset 0 0 0 0.5px var(--ui-sep);
+  }
+  .ui-empty-art.is-accent {
+    background: var(--ui-accent-soft);
+    color: var(--ui-accent);
+  }
+  .ui-empty-art.is-orange {
+    background: var(--ui-orange-soft);
+    color: var(--ui-orange-ink);
+  }
+  .ui-empty-art.is-red {
+    background: var(--ui-red-soft);
+    color: var(--ui-red-ink);
+  }
+  .ui-empty-art.is-green {
+    background: var(--ui-green-soft);
+    color: var(--ui-green-ink);
   }
   .ui-empty-art svg {
-    width: 26px;
-    height: 26px;
+    width: 24px;
+    height: 24px;
   }
   .ui-empty h3 {
     margin: 0;
-    font: 600 16px var(--ui-font-display);
+    font: 600 15px / 1.35 var(--ui-font-display);
+    color: var(--ui-ink);
   }
   .ui-empty p {
     max-width: 40ch;
     margin: 0;
-    font-size: 13.5px;
+    font-size: 13px;
+    line-height: 1.5;
     color: var(--ui-muted);
+  }
+  .ui-empty-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 10px;
   }
 
   /* Entrance: children rise in, staggered. Reduced-motion guard below. */
@@ -1207,7 +1493,8 @@
     }
   }
   @media (max-width: 1024px) {
-    .ui-cols-3 {
+    .ui-cols-3,
+    .ui-kpi-grid {
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
   }
@@ -1217,14 +1504,106 @@
       grid-template-columns: 1fr;
     }
     .ui-page-title {
-      font-size: 26px;
+      gap: 11px;
+      min-height: 38px;
+      font-size: 28px;
+      line-height: 34px;
     }
+    .ui-page-ico {
+      width: 34px;
+      height: 34px;
+      border-radius: 10px;
+    }
+    .ui-page-ico svg {
+      width: 19px;
+      height: 19px;
+    }
+    .ui-lead-pad {
+      padding: 22px 20px;
+    }
+    /* Compact KPI tiles: icon + label, number and one footer line */
+    .ui-kpi-grid {
+      gap: 10px;
+    }
+    .ui-kpi-grid .ui-kpi {
+      gap: 4px;
+      min-width: 0;
+      padding: 10px 14px;
+    }
+    /* Icons stay on at every width (parity with desktop), just a size down */
+    .ui-kpi-grid .ui-kpi-ico {
+      width: 22px;
+      height: 22px;
+      border-radius: 7px;
+    }
+    .ui-kpi-grid .ui-kpi-ico svg {
+      width: 13px;
+      height: 13px;
+    }
+    .ui-kpi-grid .ui-kpi-top {
+      font-size: 13px;
+      line-height: 17px;
+    }
+    .ui-kpi-grid .ui-kpi-value {
+      font-size: 26px;
+      line-height: 30px;
+    }
+    /* Captions wrap to a second line on phone; a KPI's meaning is never cut off */
+    .ui-kpi-grid .ui-kpi-foot {
+      font-size: 13px;
+      line-height: 17px;
+      text-wrap: pretty;
+    }
+    /* Action bar: pinned to the bottom of the scrolling page, full bleed, safe-area aware.
+       Bleeds through the 16px page gutter (negative margin) so it reads as a bar, not a card. */
+    .ui-action-bar {
+      position: sticky;
+      /* sticky offsets are measured from the content edge, so cancel the page padding */
+      bottom: calc(-1 * (var(--space-4) + env(safe-area-inset-bottom)));
+      z-index: 4;
+      margin: 0 calc(-1 * var(--space-4)) calc(-1 * (var(--space-4) + env(safe-area-inset-bottom)));
+      padding: 10px var(--space-4) calc(10px + env(safe-area-inset-bottom));
+      background: var(--ui-glass);
+      backdrop-filter: saturate(180%) blur(20px);
+      -webkit-backdrop-filter: saturate(180%) blur(20px);
+      box-shadow: inset 0 0.5px 0 var(--ui-sep);
+    }
+    .ui-action-bar > .btn {
+      flex: 1;
+      min-height: 44px;
+    }
+    /* Phone: the actions drop under the subtitle as one full-width row */
     .ui-page-head {
-      flex-direction: column;
-      align-items: stretch;
+      grid-template-columns: minmax(0, 1fr);
+      grid-template-areas:
+        'title'
+        'sub'
+        'actions';
+      row-gap: 4px;
+    }
+    /* Phone: the subtitle may wrap to two lines (desktop stays one) so key information is never cut */
+    .ui-page-sub {
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
+      line-clamp: 2;
+      min-height: 20px;
+      font-size: 13px;
+      line-height: 18px;
+      white-space: normal;
+    }
+    .ui-page-actions {
+      justify-content: stretch;
+      flex-wrap: wrap;
+      padding-top: 8px;
     }
     .ui-page-actions > .btn-primary {
       flex: 1;
+    }
+  }
+  @media (max-width: 768px) {
+    .ui-kpi-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
     }
   }
   @media (max-width: 480px) {

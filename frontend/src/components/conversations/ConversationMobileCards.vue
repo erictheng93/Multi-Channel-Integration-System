@@ -46,7 +46,13 @@
               :title="UNREAD_HINT"
               :aria-label="`未讀 ${unreadOf(conversation)} 則訊息（${UNREAD_HINT}）`"
             >{{ unreadOf(conversation) }}</span>
-            <span class="card-time">{{ relativeTime(getUpdatedAt(conversation), now) }}</span>
+            <span class="card-time">
+              <span
+                v-if="freeReplySeconds(conversation, now) !== null"
+                class="free-pill"
+              >免費回覆 {{ freeReplySeconds(conversation, now) }} 秒</span>
+              {{ relativeTime(getUpdatedAt(conversation), now) }}
+            </span>
           </div>
           <div
             class="last-message"
@@ -57,40 +63,34 @@
             </template>{{ getLastMessageText(conversation) }}
           </div>
           <div class="card-pills">
-            <span
-              v-if="awaitingKind(conversation, now) === 'waiting'"
-              class="ui-pill ui-pill-orange"
-              :title="WAITING_HINT"
-            >待回覆</span>
-            <template v-else-if="awaitingKind(conversation, now) === 'stale'">
+            <!-- Pills only for exceptions (waiting / stale); quiet text for everything else -->
+            <template v-if="replyStateOf(conversation, now).state === 'stale'">
               <span
                 class="ui-pill"
                 :title="STALE_HINT"
-              >{{ staleWaitText(conversation.awaitingSince, now) }}</span>
+              >{{ replyStateOf(conversation, now).text }}</span>
               <span
                 v-if="conversation.neverReplied"
                 class="ui-pill ui-pill-red never-pill"
               >從未回覆</span>
             </template>
             <span
-              v-else-if="isReplied(conversation, now)"
-              class="replied"
-            >已回覆</span>
+              v-else-if="replyStateOf(conversation, now).state === 'waiting'"
+              class="ui-pill ui-pill-orange"
+              :title="WAITING_HINT"
+            >{{ replyStateOf(conversation, now).text }}</span>
             <span
-              v-if="freeReplySeconds(conversation, now) !== null"
-              class="ui-pill ui-pill-green ui-pill-dot"
-            >免費回覆 {{ freeReplySeconds(conversation, now) }} 秒</span>
-            <span
-              class="ui-pill"
-              :class="statusPillClass(statusOf(conversation).tone)"
-            >{{ statusOf(conversation).text }}</span>
+              v-else
+              class="state-text"
+              :class="`state-${replyStateOf(conversation, now).state}`"
+            >{{ replyStateOf(conversation, now).text }}</span>
             <span
               v-if="conversation.assignedTeam?.name"
-              class="ui-pill"
+              class="team-text"
             >{{ conversation.assignedTeam.name }}</span>
             <span
               v-else
-              class="unassigned"
+              class="team-text unassigned"
             >未指派</span>
           </div>
         </div>
@@ -109,14 +109,10 @@ import {
   freeReplySeconds,
   initialOf,
   STALE_HINT,
-  awaitingKind,
-  staleWaitText,
-  isReplied,
+  replyStateOf,
   relativeTime,
-  statusOf,
   unreadOf,
-  useRowClock,
-  type StatusTone
+  useRowClock
 } from '@/composables/conversation/useConversationRowMeta'
 
 const props = withDefaults(defineProps<{
@@ -168,9 +164,6 @@ const getUpdatedAt = (conversation: Conversation) => {
   return conversation.updatedAt || legacyConversation.updated_at
 }
 
-const statusPillClass = (tone: StatusTone): string =>
-  tone === 'active' ? 'ui-pill-blue' : tone === 'pending' ? 'ui-pill-orange' : ''
-
 const getLastMessageText = (conversation: Conversation) => {
   const content = conversation.lastMessage?.content || '暫無訊息'
   return convertEmojiForConversationList(content)
@@ -194,7 +187,7 @@ const getLastMessageText = (conversation: Conversation) => {
 .conversation-card + .conversation-card::before {
   position: absolute;
   top: 0;
-  right: 0;
+  right: 16px;
   left: 68px;
   height: 0.5px;
   background: var(--ui-sep);
@@ -298,7 +291,7 @@ const getLastMessageText = (conversation: Conversation) => {
 .card-time {
   flex: none;
   margin-left: auto;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--ui-muted);
 }
 
@@ -327,18 +320,47 @@ const getLastMessageText = (conversation: Conversation) => {
   flex-wrap: wrap;
   gap: 6px;
   align-items: center;
-  margin-top: 8px;
+  margin-top: 6px;
 }
 
-.replied {
-  font-size: 12px;
+.state-text,
+.team-text {
+  font-size: 13px;
+  color: var(--ui-muted);
+}
+
+.state-text {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.state-text::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ui-faint);
+}
+
+.state-text.state-replied::before {
+  background: var(--ui-green);
+}
+
+.team-text:not(.unassigned) {
+  color: var(--ui-ink-2);
+}
+
+.team-text::before {
+  content: '\00b7';
+  margin-right: 6px;
   color: var(--ui-faint);
 }
 
-.unassigned {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--ui-orange-ink);
+.free-pill {
+  margin-right: 6px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ui-green-ink);
 }
 
 @media (max-width: 768px) {

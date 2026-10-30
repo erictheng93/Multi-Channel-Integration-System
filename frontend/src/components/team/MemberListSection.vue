@@ -514,7 +514,7 @@ function handleSelectPage() {
 }
 
 .legend {
-  font-size: 12.5px;
+  font-size: 13px;
   color: var(--ui-muted);
 }
 .legend svg {
@@ -597,7 +597,7 @@ function handleSelectPage() {
 }
 .search-stats {
   flex: none;
-  font-size: 11.5px;
+  font-size: 13px;
   white-space: nowrap;
 }
 
@@ -644,7 +644,7 @@ function handleSelectPage() {
   box-shadow:
     inset 0 -0.5px 0 var(--ui-sep),
     inset 0 0.5px 0 var(--ui-sep);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--ui-muted);
 }
@@ -659,7 +659,7 @@ function handleSelectPage() {
 }
 .drag-hint {
   padding: 8px 22px;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--ui-muted);
 }
 .drag-ghost {
@@ -675,14 +675,14 @@ function handleSelectPage() {
 .mfoot {
   position: relative;
   padding: 12px 22px 14px;
-  font-size: 12.5px;
+  font-size: 13px;
   color: var(--ui-muted);
 }
 .mfoot::before {
   content: '';
   position: absolute;
   top: 0;
-  right: 0;
+  right: 22px;
   left: 22px;
   height: 0.5px;
   background: var(--ui-sep);

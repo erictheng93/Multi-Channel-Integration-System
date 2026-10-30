@@ -379,7 +379,7 @@ onUnmounted(() => {
 }
 
 .search-stats {
-  font-size: 0.75rem;
+  font-size: 13px;
   color: #3b82f6;
   font-weight: 600;
   white-space: nowrap;

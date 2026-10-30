@@ -48,7 +48,7 @@
       role="cell"
       class="row-cell time-cell"
     >
-      <span class="time-text">{{ formattedTime }}</span>
+      <span class="time-text"><span class="format-inline">{{ formatLabel }} · </span>{{ formattedTime }}</span>
       <span
         v-if="expiryText"
         class="expiry-text"
@@ -59,7 +59,10 @@
       role="cell"
       class="row-cell size-cell"
     >
-      <span class="size-text">{{ formattedSize }}</span>
+      <span
+        class="size-text"
+        :class="{ 'is-empty': !report.fileSize }"
+      >{{ formattedSize }}</span>
     </div>
 
     <div
@@ -219,7 +222,7 @@ const expiryText = computed(() => {
 const statusLabel = computed(() => props.getStatusLabel(props.report.status))
 const formatLabel = computed(() => props.getFormatLabel(props.report.format))
 const formattedTime = computed(() => props.formatRelativeTime(props.report.createdAt))
-const formattedSize = computed(() => props.report.fileSize ? props.formatFileSize(props.report.fileSize) : '-')
+const formattedSize = computed(() => props.report.fileSize ? props.formatFileSize(props.report.fileSize) : '—')
 
 const canDownload = computed(() => {
   return props.report.status === 'completed' && !!props.report.downloadUrl
@@ -282,7 +285,7 @@ const canDelete = computed(() => {
   max-width: 100%;
   margin: 0;
   overflow: hidden;
-  font-size: 12.5px;
+  font-size: 13px;
   color: var(--ui-muted);
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -293,6 +296,14 @@ const canDelete = computed(() => {
   font-size: 13px;
   color: var(--ui-ink-2);
   font-variant-numeric: tabular-nums;
+}
+
+.size-text.is-empty {
+  color: var(--ui-muted);
+}
+
+.format-inline {
+  display: none;
 }
 
 .time-cell {
@@ -306,12 +317,12 @@ const canDelete = computed(() => {
 }
 
 .expiry-text {
-  font-size: 11.5px;
+  font-size: 13px;
   color: var(--ui-muted);
 }
 
 .size-cell {
-  text-align: right;
+  text-align: left;
 }
 
 .row-actions {
@@ -369,6 +380,12 @@ const canDelete = computed(() => {
   .status-cell {
     grid-column: 2;
     grid-row: 1;
+  }
+
+  .format-inline {
+    display: inline;
+    font-weight: 600;
+    color: var(--ui-ink-2);
   }
 
   .format-cell,

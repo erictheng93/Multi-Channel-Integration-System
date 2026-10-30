@@ -1,28 +1,12 @@
 <template>
   <AppLayout>
-    <div class="dashboard ui-rise">
+    <div class="ui-page dashboard ui-rise">
       <!-- Page head -->
-      <section class="ui-page-head">
-        <div>
-          <div class="ui-eyebrow">
-            {{ dateLabel }}
-          </div>
-          <h1 class="ui-page-title">
-            {{ greeting }}，{{ displayName }}
-          </h1>
-          <p class="ui-page-sub">
-            <template v-if="summary.data.value">
-              {{ subtitle }}
-            </template>
-            <template v-else-if="summary.error.value">
-              無法取得待回覆狀態。
-            </template>
-            <template v-else>
-              &nbsp;
-            </template>
-          </p>
-        </div>
-        <div class="ui-page-actions">
+      <UiPageHead :subtitle="headSubtitle">
+        <template #title>
+          {{ greeting }}，{{ displayName }}
+        </template>
+        <template #actions>
           <button
             type="button"
             class="btn btn-secondary btn-sm"
@@ -47,252 +31,125 @@
               viewBox="0 0 24 24"
             ><path d="M5 12h14M13 6l6 6-6 6" /></svg>
           </router-link>
-        </div>
-      </section>
+        </template>
+      </UiPageHead>
 
-      <!-- KPI row -->
-      <section class="ui-grid ui-cols-4">
-        <article class="ui-card ui-kpi">
-          <div class="ui-kpi-top">
-            <span
-              class="ui-kpi-ico"
-              style="background: var(--ui-orange-soft); color: var(--ui-orange-ink)"
-            ><svg
-              class="ico"
-              viewBox="0 0 24 24"
-            ><circle
-              cx="12"
-              cy="12"
-              r="9"
-            /><path d="M12 7v5l3 2" /></svg></span>
-            待回覆
-          </div>
-          <template v-if="summary.data.value">
-            <div class="ui-kpi-value">
-              {{ summary.data.value.waiting.count }}
-            </div>
-            <div
-              class="ui-kpi-foot"
-              :title="`待回覆＝近 ${WAITING_WINDOW_DAYS} 天內，客戶來訊後尚無客服回覆`"
-            >
-              近 {{ WAITING_WINDOW_DAYS }} 天內，客戶來訊後尚無客服回覆
-            </div>
-          </template>
-          <template v-else>
-            <div class="ui-kpi-value">
-              <span
-                v-if="summary.error.value"
-                class="dash"
-              >—</span>
-              <span
-                v-else
-                class="sk sk-num"
-              />
-            </div>
-            <div class="ui-kpi-foot">
-              <span
-                v-if="summary.error.value"
-                class="retry-text"
-              >無法載入 <button
+      <!-- Lead: the longest wait + Service Rings of the queue -->
+      <article class="ui-lead lead">
+        <div class="lead-main">
+          <div class="lead-kicker">
+            等待最久
+            <span class="info">
+              <button
                 type="button"
-                class="ui-link as-btn"
-                @click="refreshAll"
-              >重試</button></span>
+                class="info-btn"
+                aria-label="說明：待回覆與未讀"
+                aria-describedby="wait-def"
+              >
+                <svg
+                  class="ico"
+                  viewBox="0 0 24 24"
+                ><circle
+                  cx="12"
+                  cy="12"
+                  r="9"
+                /><path d="M12 11v5M12 8h.01" /></svg>
+              </button>
               <span
-                v-else
-                class="sk sk-line"
-              />
-            </div>
-          </template>
-        </article>
-
-        <article class="ui-card ui-kpi">
-          <div class="ui-kpi-top">
-            <span
-              class="ui-kpi-ico"
-              style="background: var(--ui-accent-soft); color: var(--ui-accent)"
-            ><svg
-              class="ico"
-              viewBox="0 0 24 24"
-            ><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20.5l1.4-4.6A8 8 0 1 1 21 12Z" /></svg></span>
-            處理中
+                id="wait-def"
+                role="tooltip"
+                class="info-tip"
+              >待回覆＝近 {{ WAITING_WINDOW_DAYS }} 天內，客戶來訊後尚無客服回覆，依等待時間排序，超過 30 分鐘標為紅色。未讀＝你尚未開啟的對話。</span>
+            </span>
           </div>
-          <template v-if="summary.data.value">
-            <div class="ui-kpi-value">
-              {{ summary.data.value.openConversations }}
-            </div>
-            <div class="ui-kpi-foot">
-              <template v-if="teamSplit.length > 0">
-                {{ teamSplit.map((t) => `${t.name} ${t.open}`).join(' · ') }}
-              </template>
-              <template v-else>
-                尚未結案的對話
-              </template>
-            </div>
-          </template>
-          <template v-else>
-            <div class="ui-kpi-value">
-              <span
-                v-if="summary.error.value"
-                class="dash"
-              >—</span>
-              <span
-                v-else
-                class="sk sk-num"
-              />
-            </div>
-            <div class="ui-kpi-foot">
-              <span
-                v-if="!summary.error.value"
-                class="sk sk-line"
-              />
-            </div>
-          </template>
-        </article>
-
-        <article class="ui-card ui-kpi">
-          <div class="ui-kpi-top">
-            <span
-              class="ui-kpi-ico"
-              style="background: var(--ui-green-soft); color: var(--ui-green-ink)"
-            ><svg
-              class="ico"
-              viewBox="0 0 24 24"
-            ><path d="M4 4h16v12H8l-4 4Z" /></svg></span>
-            今日訊息
+          <div
+            v-if="summary.data.value"
+            class="lead-num"
+            :class="hasWaiting ? waitClass(oldestWaitSeconds ?? 0) : 'is-none'"
+          >
+            {{ leadValue }}<small v-if="leadUnit">{{ leadUnit }}</small>
           </div>
-          <template v-if="summary.data.value">
-            <div class="ui-kpi-value">
-              {{ summary.data.value.customerMessages.today.toLocaleString('en-US') }}
-            </div>
-            <div class="ui-kpi-foot">
-              <template v-if="messagesDelta">
-                <span
-                  class="ui-delta"
-                  :class="deltaClass(messagesDelta.direction)"
-                >{{ messagesDelta.text }}</span>
-                較昨日同時段
-              </template>
-              <template v-else>
-                客戶傳來的訊息
-              </template>
-            </div>
-          </template>
-          <template v-else>
-            <div class="ui-kpi-value">
-              <span
-                v-if="summary.error.value"
-                class="dash"
-              >—</span>
-              <span
-                v-else
-                class="sk sk-num"
-              />
-            </div>
-            <div class="ui-kpi-foot">
-              <span
-                v-if="!summary.error.value"
-                class="sk sk-line"
-              />
-            </div>
-          </template>
-        </article>
-
-        <article class="ui-card ui-kpi">
-          <div class="ui-kpi-top">
-            <span
-              class="ui-kpi-ico"
-              style="background: var(--ui-indigo-soft); color: var(--ui-indigo)"
-            ><svg
-              class="ico"
-              viewBox="0 0 24 24"
-            ><circle
-              cx="9"
-              cy="8"
-              r="4"
-            /><path d="M2 21v-1a6 6 0 0 1 12 0v1M17 11a3 3 0 1 0 0-6M22 21v-1a5 5 0 0 0-4-4.9" /></svg></span>
-            線上客服
+          <div
+            v-else-if="summary.error.value"
+            class="lead-num is-none"
+          >
+            —
           </div>
-          <template v-if="presence.data.value && presence.data.value.available">
-            <div class="ui-kpi-value">
-              {{ onlineIds.size }}<small v-if="activeMembers.length > 0">/ {{ activeMembers.length }}</small>
-            </div>
-            <div class="ui-kpi-foot">
-              目前在線的客服
-            </div>
-          </template>
-          <template v-else-if="presence.data.value || presence.error.value">
-            <div class="ui-kpi-value">
-              <span class="dash">—</span>
-            </div>
-            <div class="ui-kpi-foot">
-              暫時無法取得在線狀態
-            </div>
-          </template>
-          <template v-else>
-            <div class="ui-kpi-value">
-              <span class="sk sk-num" />
-            </div>
-            <div class="ui-kpi-foot">
-              <span class="sk sk-line" />
-            </div>
-          </template>
-        </article>
-      </section>
+          <span
+            v-else
+            class="sk sk-big"
+          />
+          <div
+            v-if="leadMeaning"
+            class="lead-meaning"
+          >
+            {{ leadMeaning }}
+          </div>
+          <router-link
+            v-if="staleWaiting && staleWaiting.count > 0"
+            to="/conversations?view=stale"
+            class="stale-line"
+            data-testid="stale-waiting-link"
+          >
+            {{ staleLine }}
+          </router-link>
+        </div>
 
-      <!-- Focus + team -->
-      <section class="bento">
-        <article class="ui-card focus">
-          <div class="focus-lead">
-            <div class="lbl">
-              等待最久
-            </div>
-            <template v-if="summary.data.value && topWaiting.length > 0">
-              <div class="big">
-                {{ oldestWait.value }}<span class="big-unit">{{ oldestWait.unit }}</span>
-              </div>
-              <div class="lead-sub">
-                {{ topWaiting[0]?.customerName || '未命名客戶' }} · {{ teamLabel(topWaiting[0]?.assignedTeamId ?? null) }}
-              </div>
-            </template>
-            <template v-else-if="summary.data.value">
-              <div class="big dim">
-                0
-              </div>
-              <div class="lead-sub">
-                沒有待回覆的客戶
-              </div>
-            </template>
-            <template v-else-if="summary.error.value">
-              <div class="big dim">
-                —
-              </div>
-            </template>
-            <template v-else>
-              <span class="sk sk-big" />
-            </template>
-            <p class="note">
-              待回覆＝近 {{ WAITING_WINDOW_DAYS }} 天內，客戶來訊後尚無客服回覆。依等待時間排序，超過 30 分鐘標為紅色。
-            </p>
-            <router-link
-              v-if="staleWaiting && staleWaiting.count > 0"
-              to="/conversations?view=stale"
-              class="stale-line"
-              data-testid="stale-waiting-link"
+        <div class="lead-rings">
+          <ServiceRings
+            v-if="summary.data.value"
+            summary="待回覆概況"
+            :rings="ringsData"
+            :size="150"
+          />
+          <div
+            v-else-if="summary.error.value"
+            class="lead-error"
+          >
+            無法載入待回覆狀態
+            <button
+              type="button"
+              class="ui-link as-btn"
+              @click="refreshAll"
             >
-              {{ staleLine }}
-            </router-link>
+              重試
+            </button>
           </div>
+          <span
+            v-else
+            class="sk sk-ring"
+          />
+        </div>
+      </article>
 
-          <div class="focus-list">
+      <!-- Waiting list + team -->
+      <section class="bento">
+        <div class="col">
+          <h2
+            class="ui-group-label"
+            :title="`待回覆＝近 ${WAITING_WINDOW_DAYS} 天內，客戶來訊後尚無客服回覆`"
+          >
+            待回覆
+            <span
+              v-if="summary.data.value"
+              class="count"
+            >{{ waitingCount }}</span>
+            <router-link
+              to="/conversations"
+              class="ui-link"
+            >
+              前往對話
+            </router-link>
+          </h2>
+          <div class="ui-group grow">
             <ul
               v-if="topWaiting.length > 0"
-              class="ui-list"
+              class="ui-list waiting-list"
             >
               <li
                 v-for="item in topWaiting"
                 :key="item.conversationId"
-                class="ui-row"
+                class="ui-row is-nav"
               >
                 <router-link
                   :to="`/conversations/${item.conversationId}`"
@@ -341,32 +198,38 @@
                 </div>
               </li>
             </ul>
-            <div
+            <UiEmptyState
               v-else-if="summary.data.value"
-              class="ui-empty"
+              title="目前沒有待回覆的客戶"
+              description="客戶來訊後，尚未有客服回覆的對話會依等待時間排在這裡。"
+              tone="green"
             >
-              <div class="ui-empty-art">
+              <template #icon>
                 <svg
-                  class="ico"
                   viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
                 ><path d="m5 12 5 5L20 7" /></svg>
-              </div>
-              <h3>目前沒有待回覆的客戶</h3>
-              <p>客戶來訊後，尚未有客服回覆的對話會依等待時間排在這裡。</p>
-            </div>
-            <div
+              </template>
+            </UiEmptyState>
+            <UiEmptyState
               v-else-if="summary.error.value"
-              class="ui-empty"
+              title="無法載入待回覆清單"
             >
-              <h3>無法載入待回覆清單</h3>
-              <button
-                type="button"
-                class="btn btn-secondary btn-sm"
-                @click="refreshAll"
-              >
-                重試
-              </button>
-            </div>
+              <template #action>
+                <button
+                  type="button"
+                  class="btn btn-secondary btn-sm"
+                  @click="refreshAll"
+                >
+                  重試
+                </button>
+              </template>
+            </UiEmptyState>
             <div
               v-else
               class="skel-rows"
@@ -378,273 +241,314 @@
               />
             </div>
             <div
-              v-if="summary.data.value && waitingCount > topWaiting.length"
-              class="focus-foot"
+              v-if="summary.data.value && (waitingCount > topWaiting.length || topWaiting.length > 2)"
+              class="group-foot"
             >
               <router-link
                 to="/conversations"
                 class="ui-link"
               >
-                還有 {{ waitingCount - topWaiting.length }} 件待回覆，前往對話管理
+                <span class="foot-wide">還有 {{ waitingCount - topWaiting.length }} 件待回覆，前往對話</span>
+                <span class="foot-phone">還有 {{ waitingCount - Math.min(2, topWaiting.length) }} 件待回覆，前往對話</span>
               </router-link>
             </div>
           </div>
-        </article>
+        </div>
 
-        <article class="ui-card team-card">
-          <div class="ui-card-head">
-            <div>
-              <h2 class="ui-card-title">
-                團隊狀態
-              </h2>
-              <div class="ui-card-sub">
-                <template v-if="presence.data.value && !presence.data.value.available">
-                  暫時無法取得在線狀態
-                </template>
-                <template v-else-if="presence.data.value">
-                  {{ onlineIds.size }} 位在線 · 共 {{ activeMembers.length }} 位
-                </template>
-                <template v-else>
-                  &nbsp;
-                </template>
-              </div>
-            </div>
-          </div>
-          <ul
-            v-if="teamRows.length > 0"
-            class="people"
-          >
-            <li
-              v-for="p in teamRows"
-              :key="p.id"
-              class="person"
+        <div class="col">
+          <h2 class="ui-group-label">
+            團隊狀態
+            <span class="label-note">
+              <template v-if="presence.data.value && !presence.data.value.available">暫時無法取得在線狀態</template>
+              <template v-else-if="presence.data.value">{{ onlineIds.size }} 位在線 · 共 {{ activeMembers.length }} 位</template>
+            </span>
+          </h2>
+          <div class="ui-group grow">
+            <ul
+              v-if="teamRows.length > 0"
+              class="ui-list"
             >
-              <div class="avatar sm">
-                {{ initialOf(p.name) }}
+              <li
+                v-for="p in teamRows"
+                :key="p.id"
+                class="ui-row person"
+              >
+                <div class="avatar sm">
+                  {{ initialOf(p.name) }}
+                  <span
+                    v-if="presence.data.value?.available"
+                    class="presence"
+                    :class="{ off: !p.online }"
+                  />
+                </div>
+                <div class="ui-row-main">
+                  <div class="person-name">
+                    {{ p.name }}
+                  </div>
+                  <div class="ui-row-sub">
+                    {{ p.sub }}
+                  </div>
+                </div>
                 <span
                   v-if="presence.data.value?.available"
-                  class="presence"
-                  :class="{ off: !p.online }"
-                />
-              </div>
-              <div class="person-main">
-                <div class="person-name">
-                  {{ p.name }}
-                </div>
-                <div class="person-sub">
-                  {{ p.sub }}
-                </div>
-              </div>
-              <span
-                v-if="presence.data.value?.available"
-                class="ui-pill"
-                :class="p.online ? 'ui-pill-green ui-pill-dot' : ''"
-              >{{ p.online ? '在線' : '離線' }}</span>
-            </li>
-          </ul>
-          <div
-            v-else-if="members.data.value || members.error.value"
-            class="ui-empty compact"
-          >
-            <p>{{ members.error.value ? '無法載入成員清單' : '尚無團隊成員' }}</p>
-          </div>
-          <div
-            v-else
-            class="skel-rows pad"
-          >
-            <span
-              v-for="n in 4"
-              :key="n"
-              class="sk sk-row"
+                  class="ui-pill"
+                  :class="p.online ? 'ui-pill-green ui-pill-dot' : ''"
+                >{{ p.online ? '在線' : '離線' }}</span>
+              </li>
+            </ul>
+            <UiEmptyState
+              v-else-if="members.data.value || members.error.value"
+              class="compact"
+              :description="members.error.value ? '無法載入成員清單' : '尚無團隊成員'"
             />
+            <div
+              v-else
+              class="skel-rows pad"
+            >
+              <span
+                v-for="n in 4"
+                :key="n"
+                class="sk sk-row"
+              />
+            </div>
+            <div
+              v-if="teamRows.length > 0"
+              class="group-foot"
+            >
+              <router-link
+                v-if="isAdmin"
+                to="/team"
+                class="ui-link"
+              >
+                前往團隊成員
+              </router-link>
+              <span
+                v-else-if="presence.data.value?.available"
+                class="foot-note"
+              >{{ onlineIds.size }} 位在線，共 {{ activeMembers.length }} 位</span>
+            </div>
           </div>
-        </article>
+        </div>
       </section>
 
-      <!-- Chart + today -->
-      <section class="bento">
-        <article class="ui-card">
-          <div class="ui-card-head">
-            <div>
-              <h2 class="ui-card-title">
-                訊息量
-              </h2>
-              <div class="ui-card-sub">
-                近 {{ volumeDays }} 天，每日客戶訊息數
-              </div>
-            </div>
-            <div class="ui-card-end">
-              <div
-                class="ui-seg"
-                role="tablist"
-                aria-label="訊息量期間"
-              >
-                <button
-                  v-for="d in volumeRanges"
-                  :key="d"
-                  type="button"
-                  role="tab"
-                  :class="{ 'is-on': volumeDays === d }"
-                  :aria-selected="volumeDays === d"
-                  @click="setVolumeDays(d)"
-                >
-                  {{ d }} 天
-                </button>
-              </div>
-            </div>
-          </div>
-          <MessageVolumeChart
-            v-if="volume.data.value"
-            :data="volume.data.value"
-          />
-          <div
-            v-else-if="volume.error.value"
-            class="ui-empty compact"
-          >
-            <h3>無法載入訊息量</h3>
-            <button
-              type="button"
-              class="btn btn-secondary btn-sm"
-              @click="refreshAll"
+      <!-- Chart + feed -->
+      <section
+        class="bento"
+        :class="{ 'no-feed': feed.length === 0 }"
+      >
+        <div class="col">
+          <h2 class="ui-group-label">
+            訊息量
+            <div
+              class="ui-seg label-end"
+              role="tablist"
+              aria-label="訊息量期間"
             >
-              重試
-            </button>
-          </div>
-          <div
-            v-else
-            class="chart-skel"
-          >
-            <span class="sk sk-chart" />
-          </div>
-        </article>
-
-        <article class="ui-card today-card">
-          <div class="ui-card-head">
-            <h2 class="ui-card-title">
-              今日表現
-            </h2>
-          </div>
-          <div
-            v-if="summary.data.value"
-            class="stat-list"
-          >
-            <div class="stat">
-              <span class="k">平均首次回覆</span>
-              <span class="v">
-                <template v-if="firstResponseAvg">{{ firstResponseAvg.value }}<small>{{ firstResponseAvg.unit }}</small></template>
-                <template v-else>—</template>
-              </span>
-              <span
-                v-if="firstResponsePrev"
-                class="cap"
-              >昨天同時段 {{ firstResponsePrev }}</span>
-            </div>
-            <div class="stat">
-              <span class="k">今日已結案</span>
-              <span class="v">{{ summary.data.value.resolved.today }}</span>
-              <span
-                v-if="resolvedDelta"
-                class="cap"
+              <button
+                v-for="d in volumeRanges"
+                :key="d"
+                type="button"
+                role="tab"
+                :class="{ 'is-on': volumeDays === d }"
+                :aria-selected="volumeDays === d"
+                @click="setVolumeDays(d)"
               >
+                {{ d }} 天
+              </button>
+            </div>
+          </h2>
+          <div class="ui-group grow chart-group">
+            <h3 class="chart-title">
+              近 {{ volumeDays }} 天，每日客戶訊息數
+            </h3>
+            <MessageVolumeChart
+              v-if="volume.data.value"
+              :data="volume.data.value"
+            />
+            <UiEmptyState
+              v-else-if="volume.error.value"
+              class="compact"
+              title="無法載入訊息量"
+            >
+              <template #action>
+                <button
+                  type="button"
+                  class="btn btn-secondary btn-sm"
+                  @click="refreshAll"
+                >
+                  重試
+                </button>
+              </template>
+            </UiEmptyState>
+            <div
+              v-else
+              class="chart-skel"
+            >
+              <span class="sk sk-chart" />
+            </div>
+          </div>
+        </div>
+
+        <div
+          v-if="feed.length > 0"
+          class="col"
+        >
+          <h2 class="ui-group-label">
+            最近動態
+            <router-link
+              v-if="isAdmin"
+              to="/activities"
+              class="ui-link"
+            >
+              全部動態
+            </router-link>
+          </h2>
+          <ul class="ui-group grow feed">
+            <li
+              v-for="a in feed"
+              :key="a.id"
+              class="ui-row"
+            >
+              <span
+                class="ico-tile"
+                :class="isSystemActor(a) ? 'tone-system' : `tone-${feedKind(a.action)}`"
+              >
+                <svg
+                  class="ico"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    v-if="feedKind(a.action) === 'close'"
+                    d="m5 12 5 5L20 7"
+                  />
+                  <template v-else-if="feedKind(a.action) === 'assign'">
+                    <circle
+                      cx="9"
+                      cy="8"
+                      r="4"
+                    />
+                    <path d="M2 21v-1a6 6 0 0 1 12 0v1" />
+                  </template>
+                  <path
+                    v-else-if="feedKind(a.action) === 'broadcast'"
+                    d="m22 2-7 20-4-9-9-4Z"
+                  />
+                  <path
+                    v-else-if="feedKind(a.action) === 'login'"
+                    d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3"
+                  />
+                  <template v-else>
+                    <circle
+                      cx="12"
+                      cy="12"
+                      r="9"
+                    />
+                    <path d="M12 8v4l2.5 2.5" />
+                  </template>
+                </svg>
+              </span>
+              <div class="ui-row-main feed-text">
+                {{ getActorName(a) }} {{ describeActivity(a) }}
+                <time :datetime="a.createdAt">{{ relativeTime(a.createdAt) }}</time>
+              </div>
+            </li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- Today -->
+      <section class="col">
+        <h2 class="ui-group-label">
+          今日表現
+        </h2>
+        <div
+          v-if="summary.data.value"
+          class="ui-group stat-list"
+        >
+          <div class="stat">
+            <span class="k">處理中</span>
+            <span class="v">{{ summary.data.value.openConversations }}</span>
+            <span class="cap">
+              <template v-if="teamSplit.length > 0"><span
+                v-for="t in teamSplit"
+                :key="t.name"
+                class="nw"
+              >{{ t.name }} {{ t.open }}</span></template>
+              <template v-else>尚未結案的對話</template>
+            </span>
+          </div>
+          <div class="stat">
+            <span class="k">今日訊息</span>
+            <span class="v">{{ summary.data.value.customerMessages.today.toLocaleString('en-US') }}</span>
+            <span class="cap">
+              <template v-if="messagesDelta">
+                <span
+                  class="ui-delta"
+                  :class="deltaClass(messagesDelta.direction)"
+                >{{ messagesDelta.text }}</span>
+                較昨日同時段
+              </template>
+              <template v-else>客戶傳來的訊息</template>
+            </span>
+          </div>
+          <div class="stat">
+            <span class="k">平均首次回覆</span>
+            <span class="v">
+              <template v-if="firstResponseAvg">{{ firstResponseAvg.value }}<small>{{ firstResponseAvg.unit }}</small></template>
+              <template v-else>—</template>
+            </span>
+            <span class="cap">
+              <template v-if="firstResponsePrev">昨天同時段 {{ firstResponsePrev }}</template>
+            </span>
+          </div>
+          <div class="stat">
+            <span class="k">今日已結案</span>
+            <span class="v">{{ summary.data.value.resolved.today }}</span>
+            <span class="cap">
+              <template v-if="resolvedDelta">
                 <span
                   class="ui-delta"
                   :class="deltaClass(resolvedDelta.direction)"
                 >{{ resolvedDelta.text }}</span>
                 較昨日同時段
-              </span>
-            </div>
-            <div class="stat">
-              <span class="k">今日已首次回覆</span>
-              <span class="v">{{ summary.data.value.firstResponse.today.count }}<small>個新對話</small></span>
-            </div>
+              </template>
+            </span>
           </div>
-          <div
-            v-else-if="summary.error.value"
-            class="ui-empty compact"
-          >
-            <p>無法載入今日表現</p>
+          <div class="stat">
+            <span class="k">今日已首次回覆</span>
+            <span class="v">{{ summary.data.value.firstResponse.today.count }}<small>個新對話</small></span>
+            <span class="cap" />
           </div>
-          <div
-            v-else
-            class="skel-rows pad"
-          >
-            <span
-              v-for="n in 3"
-              :key="n"
-              class="sk sk-row"
-            />
-          </div>
-
-          <template v-if="feed.length > 0">
-            <div class="ui-card-head feed-head">
-              <h2 class="ui-card-title small">
-                最近動態
-              </h2>
-              <router-link
-                v-if="isAdmin"
-                to="/activities"
-                class="ui-link ui-card-end"
-              >
-                全部
-              </router-link>
-            </div>
-            <ul class="feed">
-              <li
-                v-for="a in feed"
-                :key="a.id"
-              >
-                <span
-                  class="ico-tile"
-                  :class="isSystemActor(a) ? 'tone-system' : `tone-${feedKind(a.action)}`"
-                >
-                  <svg
-                    class="ico"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      v-if="feedKind(a.action) === 'close'"
-                      d="m5 12 5 5L20 7"
-                    />
-                    <template v-else-if="feedKind(a.action) === 'assign'">
-                      <circle
-                        cx="9"
-                        cy="8"
-                        r="4"
-                      />
-                      <path d="M2 21v-1a6 6 0 0 1 12 0v1" />
-                    </template>
-                    <path
-                      v-else-if="feedKind(a.action) === 'broadcast'"
-                      d="m22 2-7 20-4-9-9-4Z"
-                    />
-                    <path
-                      v-else-if="feedKind(a.action) === 'login'"
-                      d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3"
-                    />
-                    <template v-else>
-                      <circle
-                        cx="12"
-                        cy="12"
-                        r="9"
-                      />
-                      <path d="M12 8v4l2.5 2.5" />
-                    </template>
-                  </svg>
-                </span>
-                <div>
-                  {{ getActorName(a) }} {{ describeActivity(a) }}
-                  <time :datetime="a.createdAt">{{ relativeTime(a.createdAt) }}</time>
-                </div>
-              </li>
-            </ul>
-          </template>
-        </article>
+        </div>
+        <div
+          v-else-if="summary.error.value"
+          class="ui-group"
+        >
+          <UiEmptyState
+            class="compact"
+            description="無法載入今日表現"
+          />
+        </div>
+        <div
+          v-else
+          class="ui-group skel-rows pad"
+        >
+          <span
+            v-for="n in 3"
+            :key="n"
+            class="sk sk-row"
+          />
+        </div>
       </section>
     </div>
   </AppLayout>
 </template>
 
+
 <script setup lang="ts">
+import ServiceRings, { type ServiceRing } from '@/components/ui/ServiceRings.vue'
+import UiEmptyState from '@/components/ui/UiEmptyState.vue'
+import UiPageHead from '@/components/ui/UiPageHead.vue'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuth } from '@/composables/useAuth'
@@ -685,17 +589,20 @@ const greeting = computed(() => {
   if (hour >= 12 && hour < 18) { return '午安' }
   return '晚安'
 })
-const dateLabel = computed(() => new Intl.DateTimeFormat('zh-TW', {
-  month: 'long', day: 'numeric', weekday: 'long', timeZone: 'Asia/Taipei'
-}).format(new Date(now.value)))
 
 // No spaces around full-width punctuation: sentences are joined here, not in the template
 const subtitle = computed(() => {
   const waitPart = waitingCount.value > 0
-    ? `近 ${WAITING_WINDOW_DAYS} 天內 ${waitingCount.value} 件待回覆，最久已等 ${oldestWaitText.value}。`
-    : `近 ${WAITING_WINDOW_DAYS} 天內沒有待回覆的客戶。`
-  const unreadPart = unreadStore.total > 0 ? `我的未讀 ${unreadStore.total} 件。` : ''
+    ? `${waitingCount.value} 件待回覆 · 最久已等 ${oldestWaitText.value}`
+    : `近 ${WAITING_WINDOW_DAYS} 天內沒有待回覆的客戶`
+  const unreadPart = unreadStore.total > 0 ? ` · 我的未讀 ${unreadStore.total} 件` : ''
   return `${waitPart}${unreadPart}`
+})
+
+// Subtitle in the page head: a summary once loaded, an error line on failure, nothing while loading
+const headSubtitle = computed(() => {
+  if (summary.data.value) { return subtitle.value }
+  return summary.error.value ? '無法取得待回覆狀態' : ''
 })
 
 const oldestWaitText = computed(() =>
@@ -712,6 +619,34 @@ const staleLine = computed(() => {
   return `另有 ${stale.count} 件超過 ${WAITING_WINDOW_DAYS} 天未回覆${never} →`
 })
 const oldestWait = computed(() => formatWait(oldestWaitSeconds.value ?? 0))
+
+// Lead metric: the longest wait, a quiet 0 when nobody waits, an em dash on error
+const hasWaiting = computed(() => !!summary.data.value && topWaiting.value.length > 0)
+const leadValue = computed<string | number | null>(() => {
+  if (hasWaiting.value) { return oldestWait.value.value }
+  return summary.data.value ? 0 : null
+})
+const leadUnit = computed(() => (hasWaiting.value ? oldestWait.value.unit : ''))
+const leadMeaning = computed(() => {
+  if (hasWaiting.value) {
+    const top = topWaiting.value[0]
+    return `${top?.customerName || '未命名客戶'} · ${teamLabel(top?.assignedTeamId ?? null)}`
+  }
+  return summary.data.value ? '沒有待回覆的客戶' : ''
+})
+// Service Rings of the queue. Every ring is a ratio of numbers the summary and the presence feed already carry.
+const ringsData = computed<ServiceRing[]>(() => {
+  const data = summary.data.value
+  if (!data) { return [] }
+  const rings: ServiceRing[] = [
+    { label: '待回覆', value: data.waiting.count, total: data.openConversations, of: '處理中', hue: 'var(--ui-orange)' },
+    { label: '今日已結案', value: data.resolved.today, total: data.resolved.today + data.openConversations, of: '今日處理量', hue: 'var(--ui-green)' }
+  ]
+  if (presence.data.value?.available && activeMembers.value.length > 0) {
+    rings.push({ label: '線上客服', value: onlineIds.value.size, total: activeMembers.value.length, of: '位客服', hue: 'var(--ui-blue)' })
+  }
+  return rings
+})
 const waitClass = (seconds: number): string => seconds >= 30 * 60 ? 'hot' : seconds >= 15 * 60 ? 'warm' : ''
 
 const teamLabel = (teamId: number | null): string => {
@@ -822,12 +757,6 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-.dashboard {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  width: 100%;
-}
 
 .ico {
   width: 15px;
@@ -857,25 +786,55 @@ onBeforeUnmount(() => {
 .bento {
   display: grid;
   grid-template-columns: repeat(12, minmax(0, 1fr));
-  gap: 16px;
+  gap: 20px 16px;
 }
 
 .bento > :first-child {
   grid-column: span 8;
 }
 
-.bento > :last-child {
+.bento > :last-child:not(:first-child) {
   grid-column: span 4;
+}
+
+.bento.no-feed > :first-child {
+  grid-column: span 12;
+}
+
+/* a labelled column: group label on top, the group fills the rest so columns end together */
+.col {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.grow {
+  flex: 1;
+}
+
+.ui-group-label .count {
+  min-width: 20px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: var(--ui-orange-soft);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 20px;
+  text-align: center;
+  color: var(--ui-orange-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.label-note {
+  font-weight: 400;
+}
+
+.label-end {
+  margin-left: auto;
 }
 
 .dash {
   color: var(--ui-faint);
-}
-
-.retry-text {
-  display: inline-flex;
-  gap: 6px;
-  align-items: center;
 }
 
 .as-btn {
@@ -884,75 +843,165 @@ onBeforeUnmount(() => {
   background: none;
 }
 
-/* ---- focus card ---- */
-.focus {
+/* ---- lead ---- */
+.lead {
   display: grid;
-  grid-template-columns: 220px minmax(0, 1fr);
-  overflow: hidden;
+  grid-template-columns: auto auto;
+  justify-content: center;
+  gap: 24px 72px;
+  align-items: center;
+  padding: 22px 40px;
 }
 
-.focus-lead {
+.lead-main {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding: 22px;
-  background: linear-gradient(180deg, var(--ui-orange-soft), transparent 85%);
+  align-items: flex-start;
+  min-width: 0;
 }
 
-.focus-lead .lbl {
+.lead-kicker {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 15px;
   font-weight: 600;
-  color: var(--ui-ink-2);
+  color: var(--section-ink);
 }
 
-.focus-lead .big {
-  font: 600 52px / 1 var(--ui-font-display);
-  letter-spacing: -0.04em;
+.lead-num {
+  margin-top: 4px;
+  font: 600 52px / 1.05 var(--ui-font-display);
+  letter-spacing: -0.035em;
   font-variant-numeric: tabular-nums;
+  color: var(--ui-ink);
 }
 
-.focus-lead .big.dim {
-  color: var(--ui-faint);
-}
-
-.big-unit {
-  margin-left: 4px;
-  font-size: 20px;
+.lead-num small {
+  margin-left: 6px;
+  font-size: 22px;
   font-weight: 500;
   letter-spacing: 0;
   color: var(--ui-muted);
 }
 
-.lead-sub {
-  font-size: 13px;
-  color: var(--ui-muted);
+.lead-num.hot {
+  color: var(--ui-red-ink);
 }
 
-.focus-lead .note {
-  margin: auto 0 0;
-  padding-top: 12px;
-  font-size: 12.5px;
-  color: var(--ui-muted);
+.lead-num.warm {
+  color: var(--ui-orange-ink);
 }
 
-.stale-line {
-  display: block;
-  margin-top: 10px;
-  font-size: 12.5px;
-  line-height: 1.5;
-  color: var(--ui-muted);
-  text-decoration: none;
+.lead-num.is-none {
+  color: var(--ui-faint);
 }
 
-.stale-line:hover {
-  color: var(--ui-blue);
+.lead-meaning {
+  margin-top: 6px;
+  font-size: 15px;
+  color: var(--ui-ink-2);
 }
 
-.focus-list {
-  padding: 6px 0;
+.lead-rings {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   min-width: 0;
 }
 
-.focus-list .ui-row {
+/* hairline between the number and the rings */
+.lead-rings::before {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: -36px;
+  width: 0.5px;
+  background: var(--ui-sep);
+  content: '';
+}
+
+.lead-error {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 14px;
+  color: var(--ui-muted);
+}
+
+/* Definition lives in an info tooltip instead of a paragraph that opens a dead zone */
+.info {
+  position: relative;
+  display: inline-flex;
+}
+
+.info-btn {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--ui-muted);
+  cursor: help;
+}
+
+.info-btn:hover,
+.info-btn:focus-visible {
+  color: var(--ui-ink-2);
+}
+
+.info-tip {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: -8px;
+  z-index: 5;
+  width: 248px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--ui-surface);
+  box-shadow: var(--ui-shadow-raised);
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.5;
+  color: var(--ui-ink-2);
+  visibility: hidden;
+  opacity: 0;
+  transition: opacity var(--ui-dur) var(--ui-ease);
+  pointer-events: none;
+}
+
+.info:hover .info-tip,
+.info:focus-within .info-tip {
+  visibility: visible;
+  opacity: 1;
+}
+
+.stale-line {
+  display: inline-block;
+  max-width: 100%;
+  margin-top: 14px;
+  padding: 7px 14px;
+  border-radius: 999px;
+  background: var(--ui-fill);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.45;
+  color: var(--ui-ink-2);
+  text-decoration: none;
+  text-wrap: balance;
+  transition: background var(--ui-dur) var(--ui-ease);
+}
+
+.stale-line:hover {
+  background: var(--ui-fill-strong);
+}
+
+/* ---- waiting list ---- */
+.ui-group .ui-row.is-nav {
   cursor: pointer;
 }
 
@@ -962,12 +1011,32 @@ onBeforeUnmount(() => {
   z-index: 1;
 }
 
-.focus-foot {
-  padding: 8px 22px 10px;
+.group-foot {
+  margin-top: auto;
+  min-height: 46px;
+  padding: 12px 18px 14px;
+  box-shadow: inset 0 0.5px 0 var(--ui-sep);
+}
+
+.foot-note {
+  font-size: 13px;
+  color: var(--ui-muted);
+}
+
+/* in-card title of the chart group (the label above only names the group) */
+.chart-title {
+  margin: 0;
+  padding: 16px 22px 0;
+  font: 600 15px / 20px var(--ui-font-display);
+  color: var(--ui-ink);
+}
+
+.foot-phone {
+  display: none;
 }
 
 .wait {
-  font: 600 13px var(--ui-font-display);
+  font: 600 14px var(--ui-font-display);
   font-variant-numeric: tabular-nums;
   color: var(--ui-ink);
 }
@@ -1016,8 +1085,8 @@ onBeforeUnmount(() => {
 }
 
 .avatar.sm {
-  width: 32px;
-  height: 32px;
+  width: 34px;
+  height: 34px;
   font-size: 13px;
   background: linear-gradient(160deg, #5aa8ff, #1d6fe0);
 }
@@ -1037,122 +1106,111 @@ onBeforeUnmount(() => {
   background: var(--ui-faint);
 }
 
-/* ---- team card ---- */
-.people {
-  display: grid;
-  gap: 2px;
-  margin: 0;
-  padding: 0 0 8px;
-  list-style: none;
-}
-
-.person {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  padding: 8px 22px;
-}
-
-.person-main {
-  min-width: 0;
-  flex: 1;
-}
-
 .person-name {
   overflow: hidden;
-  font-size: 13.5px;
+  font-size: 15px;
   font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.person-sub {
-  overflow: hidden;
-  font-size: 12px;
-  color: var(--ui-muted);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* ---- today card ---- */
+/* ---- today group: five metrics on one baseline ---- */
 .stat-list {
   display: grid;
-  padding: 4px 0 10px;
+  grid-template-columns: minmax(0, 1.7fr) repeat(4, minmax(0, 1fr));
+  padding: 18px 0;
 }
 
 .stat {
   position: relative;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 2px 10px;
-  align-items: baseline;
-  padding: 12px 22px;
+  display: grid;
+  grid-template-rows: auto auto minmax(18px, auto);
+  gap: 4px;
+  align-content: start;
+  padding: 2px 20px;
 }
 
 .stat + .stat::before {
   position: absolute;
-  top: 0;
-  right: 22px;
-  left: 22px;
-  height: 0.5px;
+  top: 4px;
+  bottom: 4px;
+  left: 0;
+  width: 0.5px;
   background: var(--ui-sep);
   content: '';
 }
 
 .stat .k {
-  font-size: 13.5px;
-  color: var(--ui-ink-2);
+  font-size: 13px;
+  color: var(--ui-muted);
 }
 
 .stat .v {
-  margin-left: auto;
-  font: 600 22px var(--ui-font-display);
+  font: 600 30px / 1.1 var(--ui-font-display);
   letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
 }
 
 .stat .v small {
-  margin-left: 2px;
+  margin-left: 4px;
   font-size: 13px;
   font-weight: 500;
+  letter-spacing: 0;
   color: var(--ui-muted);
+}
+
+.stat .nw:not(:last-child)::after {
+  content: ' ·';
+  white-space: pre;
+}
+
+.stat .nw:not(:last-child) {
+  margin-right: 4px;
+}
+
+.stat .nw {
+  white-space: nowrap;
 }
 
 .stat .cap {
-  flex-basis: 100%;
-  font-size: 11.5px;
+  font-size: 13px;
+  line-height: 1.45;
   color: var(--ui-muted);
+  overflow-wrap: anywhere;
 }
 
-.feed-head {
-  padding-top: 6px;
-}
-
-.ui-card-title.small {
-  font-size: 15px;
+/* ---- chart + feed ---- */
+.chart-group {
+  display: flex;
+  flex-direction: column;
 }
 
 .feed {
-  display: grid;
-  gap: 14px;
+  display: flex;
+  flex-direction: column;
   margin: 0;
-  padding: 0 22px 18px;
+  padding: 0 0 6px;
   list-style: none;
+  --row-inset: 58px;
 }
 
-.feed li {
-  display: grid;
-  grid-template-columns: 28px minmax(0, 1fr);
-  gap: 10px;
-  font-size: 13px;
+.feed .ui-row {
+  align-items: flex-start;
+  padding-top: 11px;
+  padding-bottom: 11px;
+}
+
+.feed-text {
+  font-size: 14px;
   line-height: 1.45;
 }
 
 .ico-tile {
   display: grid;
+  flex: none;
   place-items: center;
-  width: 28px;
-  height: 28px;
+  width: 30px;
+  height: 30px;
   border-radius: 9px;
   background: var(--ui-fill);
   color: var(--ui-muted);
@@ -1180,7 +1238,7 @@ onBeforeUnmount(() => {
 
 .feed time {
   display: block;
-  font-size: 11.5px;
+  font-size: 13px;
   color: var(--ui-muted);
 }
 
@@ -1192,7 +1250,7 @@ onBeforeUnmount(() => {
 .skel-rows {
   display: grid;
   gap: 14px;
-  padding: 14px 22px;
+  padding: 14px 18px;
 }
 
 .skel-rows.pad {
@@ -1211,19 +1269,16 @@ onBeforeUnmount(() => {
   animation: dash-shimmer 1.5s ease-in-out infinite;
 }
 
-.sk-num {
-  width: 64px;
-  height: 34px;
-}
-
-.sk-line {
-  width: 60%;
-  height: 12px;
-}
-
 .sk-big {
-  width: 100px;
-  height: 52px;
+  width: 120px;
+  height: 56px;
+  margin-top: 4px;
+}
+
+.sk-ring {
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
 }
 
 .sk-row {
@@ -1254,18 +1309,99 @@ onBeforeUnmount(() => {
 
 @media (max-width: 1280px) {
   .bento > :first-child,
-  .bento > :last-child {
+  .bento > :last-child:not(:first-child) {
     grid-column: span 12;
+  }
+
+  .stat-list {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    row-gap: 18px;
+  }
+
+  .stat:nth-child(4)::before {
+    display: none;
+  }
+}
+
+@media (max-width: 1024px) {
+  .lead {
+    gap: 20px 32px;
+    padding: 24px 28px;
   }
 }
 
 @media (max-width: 768px) {
-  .focus {
+  .lead {
     grid-template-columns: minmax(0, 1fr);
+    justify-content: stretch;
+    padding: 20px;
   }
 
-  .focus-lead .note {
+  .lead-rings {
+    justify-content: flex-start;
+    --sr-fit: 136px;
+  }
+
+  .lead-rings::before {
     display: none;
+  }
+
+  .label-note {
+    display: none;
+  }
+
+  .lead-num {
+    font-size: 48px;
+  }
+
+  /* Phone: the list shows the two longest waits; the link carries the rest */
+  .waiting-list .ui-row:nth-child(n + 3) {
+    display: none;
+  }
+
+  .foot-wide {
+    display: none;
+  }
+
+  .foot-phone {
+    display: inline;
+  }
+
+  .stat-list {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 6px 0;
+  }
+
+  .stat {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: auto auto;
+    padding: 12px 18px;
+  }
+
+  .stat + .stat::before,
+  .stat:nth-child(4)::before {
+    top: 0;
+    right: 18px;
+    bottom: auto;
+    left: 18px;
+    display: block;
+    width: auto;
+    height: 0.5px;
+  }
+
+  .stat .k {
+    grid-column: 1;
+  }
+
+  .stat .v {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    align-self: center;
+    font-size: 24px;
+  }
+
+  .stat .cap {
+    grid-column: 1;
   }
 }
 </style>

@@ -1,81 +1,29 @@
 <template>
-  <div class="data-backup">
-    <header class="ui-page-head">
-      <div>
-        <div class="ui-eyebrow">
-          資料 · 僅限管理員
-        </div>
-        <h1 class="ui-page-title">
-          資料備份
-        </h1>
-        <p class="ui-page-sub">
-          整個資料庫備份在雲端儲存（Cloudflare R2），可隨時下載備份檔。
-        </p>
-        <DataSubnav />
-      </div>
-    </header>
+  <div class="ui-page data-backup">
+    <UiPageHead
+      title="資料備份"
+      subtitle="整個資料庫備份在雲端儲存（Cloudflare R2），可隨時下載備份檔。"
+    />
 
-    <!-- Automatic backup status -->
-    <article class="ui-card status-card">
-      <span
-        class="status-ico"
-        :class="statusTone"
-        aria-hidden="true"
+    <!-- Lead: the newest automatic backup, the 30-day coverage arc and the one primary action -->
+    <RingLead
+      kicker="最近自動備份"
+      :value="leadValue"
+      :tone="statusTone === 'ok' ? 'good' : (statusTone === 'warn' ? 'warn' : 'none')"
+      :meaning="leadMeaning"
+      :busy="loading && !data"
+      summary="近 30 天備份"
+      :rings="coverageRings"
+      :center-value="coverageCenter"
+      center-label="有備份"
+      :size="144"
+    >
+      <p
+        v-if="storageLine"
+        class="lead-storage"
       >
-        <svg
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        ><path d="M17.5 19a4.5 4.5 0 0 0 .5-8.97A6 6 0 0 0 6.3 9.5 4 4 0 0 0 7 19Z" /><path d="m9 14 2 2 4-4" /></svg>
-      </span>
-      <div class="status-main">
-        <div class="lbl">
-          自動備份
-          <span
-            v-if="!loading && data"
-            class="ui-pill ui-pill-dot"
-            :class="statusPill.className"
-          >{{ statusPill.label }}</span>
-        </div>
-        <div class="big">
-          <template v-if="loading">
-            載入中...
-          </template>
-          <template v-else-if="data && data.lastAuto">
-            {{ formatDate(data.lastAuto.uploaded) }}<small>{{ formatBytes(data.lastAuto.size) }}</small>
-          </template>
-          <template v-else>
-            尚未有自動備份記錄
-          </template>
-        </div>
-        <div
-          v-if="policy"
-          class="hint"
-        >
-          {{ scheduleText }}
-        </div>
-      </div>
-      <button
-        type="button"
-        class="btn btn-primary btn-lg"
-        :disabled="running"
-        @click="onBackupNow"
-      >
-        <svg
-          class="btn-ico"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          aria-hidden="true"
-        ><path d="M12 16V5M7 9l5-5 5 5M4 20h16" /></svg>
-        {{ running ? '備份中...' : '立即備份到雲端' }}
-      </button>
+        {{ storageLine }}
+      </p>
       <p
         v-if="message"
         class="message"
@@ -84,197 +32,315 @@
       >
         {{ message }}
       </p>
-    </article>
+      <template #actions>
+        <div class="lead-act">
+          <button
+            type="button"
+            class="btn btn-primary"
+            :disabled="running"
+            @click="onBackupNow"
+          >
+            <svg
+              class="btn-ico"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            ><path d="M12 16V5M7 9l5-5 5 5M4 20h16" /></svg>
+            {{ running ? '備份中...' : '立即備份到雲端' }}
+          </button>
+          <span
+            v-if="policy"
+            class="act-note"
+          >手動備份保留 {{ policy.retentionDays.manual }} 天</span>
+        </div>
+      </template>
+    </RingLead>
 
-    <section class="bento">
-      <article class="ui-card list-card">
-        <div class="ui-card-head">
-          <div>
-            <h2 class="ui-card-title">
-              最近備份
-            </h2>
-            <div class="ui-card-sub">
-              <template v-if="data">
-                共 {{ data.count.toLocaleString() }} 份，依時間由新到舊
-              </template>
-              <template v-else>
-                &nbsp;
-              </template>
-            </div>
-          </div>
-          <div class="ui-card-end">
+    <!-- Retention strip: one cell per day, bar height = that day's total size -->
+    <section
+      v-if="data"
+      aria-label="每日備份"
+    >
+      <h2 class="ui-group-label">
+        近 {{ strip.length }} 天備份
+        <span class="label-note">{{ stripSummary }}</span>
+        <button
+          v-if="dayFilter"
+          type="button"
+          class="ui-chip label-chip"
+          @click="dayFilter = ''"
+        >
+          {{ dayFilterLabel }} ✕
+        </button>
+      </h2>
+      <div class="ui-group strip-card">
+        <ol
+          class="strip"
+          aria-label="每日備份狀態，點選可只看該日"
+        >
+          <li
+            v-for="cell in strip"
+            :key="cell.key"
+          >
             <button
               type="button"
-              class="btn btn-secondary btn-sm"
-              :disabled="loading"
-              @click="load"
+              class="cell"
+              :class="{ has: cell.count > 0, on: dayFilter === cell.key }"
+              :aria-pressed="dayFilter === cell.key"
+              :aria-label="cell.aria"
+              :disabled="cell.count === 0"
+              @click="dayFilter = dayFilter === cell.key ? '' : cell.key"
             >
-              重新整理
+              <span class="bar">
+                <i :style="{ height: cell.height + '%' }" />
+              </span>
+              <span class="num">{{ cell.day }}</span>
             </button>
-          </div>
-        </div>
+          </li>
+        </ol>
+      </div>
+    </section>
 
-        <div
-          v-if="data && tierChips.length > 1"
-          class="chips"
-          role="group"
-          aria-label="依類型篩選"
-        >
-          <button
-            v-for="chip in tierChips"
-            :key="chip.key"
-            type="button"
-            class="ui-chip"
-            :aria-pressed="tierFilter === chip.key"
-            @click="setTier(chip.key)"
-          >
-            {{ chip.label }} <span class="chip-n">{{ chip.count.toLocaleString() }}</span>
-          </button>
-        </div>
-
-        <p
-          v-if="data && data.incompletePrefixes.length > 0"
-          class="warn"
-        >
-          部分類型的備份數量過多，列表可能不完整。
-        </p>
-
-        <div
-          v-if="loading && !data"
-          class="ui-empty"
-        >
-          <p>載入中...</p>
-        </div>
-        <div
-          v-else-if="!data"
-          class="ui-empty"
-        >
-          <h3>無法載入備份列表</h3>
-          <p>{{ loadError || '請稍後再試。' }}</p>
+    <div class="list-row">
+      <section class="list-card">
+        <h2 class="ui-group-label">
+          備份檔案
+          <span
+            v-if="data"
+            class="label-note"
+          >共 {{ data.count.toLocaleString() }} 份，依日期分組、新到舊</span>
           <button
             type="button"
-            class="btn btn-secondary btn-sm"
+            class="ui-link label-act"
+            :disabled="loading"
             @click="load"
           >
-            重試
+            重新整理
           </button>
-        </div>
-        <div
-          v-else-if="visibleItems.length === 0"
-          class="ui-empty"
-        >
-          <h3>尚無備份檔</h3>
-          <p>按「立即備份到雲端」建立第一份備份。</p>
-        </div>
-        <template v-else>
-          <div class="ui-table-wrap">
-            <table class="ui-table">
-              <thead>
-                <tr>
-                  <th>類型</th>
-                  <th>檔案</th>
-                  <th class="hide-s">
-                    備份時間
-                  </th>
-                  <th class="num hide-s">
-                    大小
-                  </th>
-                  <th />
-                </tr>
-              </thead>
-              <tbody>
-                <tr
-                  v-for="item in shownItems"
-                  :key="item.key"
-                >
-                  <td>
-                    <span
-                      class="ui-pill tier"
-                      :class="tierPill(item.tier)"
-                    >{{ tierLabel(item.tier) }}</span>
-                  </td>
-                  <td class="file">
-                    <span
-                      class="fn"
-                      :title="fileName(item.key)"
-                    >{{ fileName(item.key) }}</span>
-                  </td>
-                  <td class="hide-s">
-                    {{ formatDate(item.uploaded) }}
-                  </td>
-                  <td class="num hide-s">
-                    {{ formatBytes(item.size) }}
-                  </td>
-                  <td>
-                    <button
-                      type="button"
-                      class="btn btn-secondary btn-sm"
-                      :disabled="downloadingKey === item.key"
-                      @click="onDownload(item)"
-                    >
-                      {{ downloadingKey === item.key ? '下載中...' : '下載' }}
-                    </button>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+        </h2>
+        <div class="ui-group list-body">
           <div
-            v-if="visibleItems.length > shownItems.length"
-            class="more"
+            v-if="data && tierChips.length > 1"
+            class="chips"
+            role="group"
+            aria-label="依類型篩選"
           >
             <button
+              v-for="chip in tierChips"
+              :key="chip.key"
               type="button"
-              class="btn btn-secondary btn-sm"
-              @click="showCount += PAGE_SIZE"
+              class="ui-chip"
+              :aria-pressed="tierFilter === chip.key"
+              @click="setTier(chip.key)"
             >
-              顯示更多（{{ shownItems.length }} / {{ visibleItems.length }}）
+              {{ chip.label }} <span class="chip-n">{{ chip.count.toLocaleString() }}</span>
             </button>
           </div>
-        </template>
-      </article>
 
-      <aside
-        v-if="policy"
-        class="ui-card policy-card"
-      >
-        <div class="ui-card-head">
-          <div>
-            <h2 class="ui-card-title">
-              保留政策
-            </h2>
-            <div class="ui-card-sub">
-              設定值，超過期限的備份會自動清除
+          <p
+            v-if="data && data.incompletePrefixes.length > 0"
+            class="warn"
+          >
+            部分類型的備份數量過多，列表可能不完整。
+          </p>
+
+          <UiEmptyState
+            v-if="loading && !data"
+            description="載入中..."
+          />
+          <UiEmptyState
+            v-else-if="!data"
+            title="無法載入備份列表"
+            :description="loadError || '請稍後再試。'"
+          >
+            <template #action>
+              <button
+                type="button"
+                class="btn btn-secondary btn-sm"
+                @click="load"
+              >
+                重試
+              </button>
+            </template>
+          </UiEmptyState>
+          <UiEmptyState
+            v-else-if="visibleItems.length === 0"
+            title="尚無備份檔"
+            description="按「立即備份到雲端」建立第一份備份。"
+          />
+          <template v-else>
+            <div class="day-groups">
+              <component
+                :is="section.kind === 'week' ? 'details' : 'div'"
+                v-for="section in sections"
+                :key="section.key"
+                class="section"
+                :class="section.kind === 'week' ? 'section-week' : 'section-open'"
+                :open="section.kind === 'week' && dayFilter ? true : undefined"
+              >
+                <summary
+                  v-if="section.kind === 'week'"
+                  class="week-head"
+                >
+                  <svg
+                    class="week-chev"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2.2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    aria-hidden="true"
+                  ><path d="m9 6 6 6-6 6" /></svg>
+                  <span class="week-title">{{ section.label }}</span>
+                  <span class="day-sum">{{ section.count }} 份 · {{ formatBytes(section.size) }}</span>
+                </summary>
+                <section
+                  v-for="group in section.days"
+                  :key="group.key"
+                  class="day"
+                >
+                  <header class="day-head">
+                    <h3>
+                      {{ group.label }}
+                      <small v-if="group.date">{{ group.date }}</small>
+                    </h3>
+                    <span class="day-sum">{{ group.items.length }} 份 · {{ formatBytes(group.size) }}</span>
+                  </header>
+                  <ul class="brow-list">
+                    <li
+                      v-for="item in group.items"
+                      :key="item.key"
+                      class="brow"
+                    >
+                      <span
+                        class="ui-pill brow-type"
+                        :class="tierPill(item.tier)"
+                      >{{ tierLabel(item.tier) }}</span>
+                      <div class="brow-main">
+                        <div class="brow-name">
+                          {{ itemName(item) }}
+                        </div>
+                        <div
+                          class="brow-file"
+                          :title="fileName(item.key)"
+                        >
+                          {{ fileName(item.key) }}
+                        </div>
+                      </div>
+                      <span class="brow-stat">
+                        <b>{{ formatBytes(item.size) }}</b>
+                        <small>{{ formatClock(item.uploaded) }}</small>
+                      </span>
+                      <button
+                        type="button"
+                        class="btn btn-ghost btn-sm brow-dl"
+                        :aria-label="`下載 ${itemLabel(item)}`"
+                        :aria-busy="downloadingKey === item.key"
+                        :disabled="downloadingKey === item.key"
+                        @click="onDownload(item)"
+                      >
+                        <svg
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="2"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          aria-hidden="true"
+                        ><path d="M12 4v11M7 11l5 5 5-5M5 20h14" /></svg>
+                      </button>
+                    </li>
+                  </ul>
+                </section>
+              </component>
             </div>
-          </div>
+            <div
+              v-if="visibleItems.length > shownItems.length"
+              class="more"
+            >
+              <button
+                type="button"
+                class="btn btn-secondary btn-sm"
+                @click="showCount += PAGE_SIZE"
+              >
+                顯示更多（{{ shownItems.length }} / {{ visibleItems.length }}）
+              </button>
+            </div>
+          </template>
         </div>
-        <div class="rule">
-          <span>排程時間</span><b>每日 {{ policy.schedule.localTime }}</b>
-        </div>
-        <div
-          v-for="rule in retentionRules"
-          :key="rule.key"
-          class="rule"
+      </section>
+
+      <div class="side-col">
+        <aside
+          v-if="data && summary.total > 0"
+          aria-label="備份概覽"
         >
-          <span>{{ rule.label }}</span><b>{{ rule.days }} 天</b>
-        </div>
-        <div class="rule">
-          <span>儲存位置</span><b>Cloudflare R2</b>
-        </div>
-        <div class="note">
-          排程與保留天數為系統設定值，不是即時讀數。列表中的「人員」「標籤」「指派」為各自獨立的備份檔，可分別下載。
-        </div>
-      </aside>
-    </section>
+          <h2 class="ui-group-label">
+            備份概覽
+          </h2>
+          <div class="ui-group sum-card">
+            <div class="sum-big">
+              {{ formatBytes(summary.size) }}<small>{{ summary.total.toLocaleString() }} 份</small>
+            </div>
+            <p class="sum-span">
+              {{ summary.span }}
+            </p>
+            <ul class="sum-list">
+              <li
+                v-for="row in summary.tiers"
+                :key="row.key"
+              >
+                <span class="sum-row">
+                  <span>{{ row.label }}</span>
+                  <span class="sum-n">{{ row.count }} 份 · {{ formatBytes(row.size) }}</span>
+                </span>
+                <span
+                  class="sum-bar"
+                  aria-hidden="true"
+                ><i :style="{ width: row.share + '%' }" /></span>
+              </li>
+            </ul>
+          </div>
+        </aside>
+        <section
+          v-if="policy"
+          aria-label="保留期限"
+        >
+          <h2 class="ui-group-label">
+            保留期限
+            <span class="label-note">設定值</span>
+          </h2>
+          <div class="ui-group keep-card">
+            <dl class="keep-list">
+              <div
+                v-for="row in retentionRows"
+                :key="row.key"
+              >
+                <dt>{{ row.label }}</dt>
+                <dd>{{ row.days }} 天</dd>
+              </div>
+            </dl>
+          </div>
+        </section>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import UiEmptyState from '@/components/ui/UiEmptyState.vue'
+import UiPageHead from '@/components/ui/UiPageHead.vue'
+import RingLead from '@/components/lead/RingLead.vue'
+import type { ServiceRing } from '@/components/ui/ServiceRings.vue'
 import { computed, onMounted, ref } from 'vue'
 import { listBackups, runBackup, downloadBackup, type BackupItem, type BackupList } from '@/api/backup'
-import DataSubnav from '@/components/data-management/DataSubnav.vue'
 
-const PAGE_SIZE = 20
+const PAGE_SIZE = 24
 /** The daily job should land within a day; allow slack before calling it overdue. */
 const OVERDUE_AFTER_MS = 36 * 60 * 60 * 1000
 const TAIPEI = 'Asia/Taipei'
@@ -288,6 +354,7 @@ const message = ref('')
 const messageType = ref<'ok' | 'error'>('ok')
 const tierFilter = ref<string>('all')
 const showCount = ref(PAGE_SIZE)
+const dayFilter = ref('')
 
 const TIER_LABELS: Record<string, string> = {
   daily: '每日',
@@ -305,6 +372,23 @@ const RETENTION_LABELS: Record<string, string> = {
   members: '人員備份保留',
   tags: '標籤備份保留',
   assignments: '指派備份保留'
+}
+
+interface DayGroup {
+  key: string
+  label: string
+  date: string
+  size: number
+  items: BackupItem[]
+}
+
+interface StripCell {
+  key: string
+  day: number
+  count: number
+  size: number
+  height: number
+  aria: string
 }
 
 function tierRank(tier: string): number {
@@ -336,18 +420,17 @@ const scheduleText = computed(() => {
     return ''
   }
   const zone = p.schedule.timezone === TAIPEI ? '台北時間' : p.schedule.timezone
-  const keep = p.retentionDays
-  return `每日 ${p.schedule.localTime}（${zone}）自動執行 · 保留：每日 ${keep.daily} 天 / 每月 ${keep.monthly} 天`
+  return `每日 ${p.schedule.localTime}（${zone}）自動執行`
 })
 
-const retentionRules = computed(() => {
+const retentionRows = computed(() => {
   const p = policy.value
   if (!p) {
     return []
   }
   return (Object.keys(RETENTION_LABELS) as Array<keyof typeof p.retentionDays>)
     .filter(key => typeof p.retentionDays[key] === 'number')
-    .map(key => ({ key, label: RETENTION_LABELS[key] ?? key, days: p.retentionDays[key] }))
+    .map(key => ({ key, label: (RETENTION_LABELS[key] ?? key).replace('保留', ''), days: p.retentionDays[key] }))
 })
 
 /** Healthy when the newest automatic backup is recent; derived from the real timestamp. */
@@ -382,13 +465,247 @@ const tierChips = computed(() => {
 
 const visibleItems = computed(() => {
   const items = data.value?.items ?? []
-  return tierFilter.value === 'all' ? items : items.filter(item => item.tier === tierFilter.value)
+  const filtered = tierFilter.value === 'all' ? items : items.filter(item => item.tier === tierFilter.value)
+  // The API lists per type; the day groups below need one newest-first sequence
+  const byDay = dayFilter.value ? filtered.filter(item => dayKey(new Date(item.uploaded)) === dayFilter.value) : filtered
+  return [...byDay].sort((a, b) => new Date(b.uploaded).getTime() - new Date(a.uploaded).getTime())
 })
 
 const shownItems = computed(() => visibleItems.value.slice(0, showCount.value))
 
+/** Files grouped by Taipei calendar day (the list is already newest first) */
+const groups = computed<DayGroup[]>(() => {
+  const out: DayGroup[] = []
+  for (const item of shownItems.value) {
+    const d = new Date(item.uploaded)
+    const key = dayKey(d)
+    let group = out[out.length - 1]
+    if (!group || group.key !== key) {
+      const label = dayLabel(d)
+      group = { key, label, date: label === dayDate(d) ? '' : dayDate(d), size: 0, items: [] }
+      out.push(group)
+    }
+    group.items.push(item)
+    group.size += item.size
+  }
+  return out
+})
+
+interface Section {
+  key: string
+  kind: 'open' | 'week'
+  label: string
+  count: number
+  size: number
+  days: DayGroup[]
+}
+
+/** Monday of the Taipei week containing the date, as a Date at Taipei noon */
+function weekStart(d: Date): Date {
+  const day = new Date(`${dayKey(d)}T12:00:00+08:00`)
+  const offset = (day.getUTCDay() + 6) % 7
+  return new Date(day.getTime() - offset * 24 * 3600 * 1000)
+}
+
+function shortDate(d: Date): string {
+  return new Intl.DateTimeFormat('zh-TW', { timeZone: TAIPEI, month: 'numeric', day: 'numeric' }).format(d)
+}
+
+/** Today and yesterday stay open; every older day folds into its week (collapsed, with count and size) */
+const sections = computed<Section[]>(() => {
+  const out: Section[] = []
+  const isRecent = (g: DayGroup) => g.label === '今天' || g.label === '昨天'
+  const recent = groups.value.filter(isRecent)
+  if (recent.length > 0) {
+    out.push({ key: 'recent', kind: 'open', label: '', count: 0, size: 0, days: recent })
+  }
+  const weeks = new Map<string, Section>()
+  for (const group of groups.value) {
+    if (isRecent(group)) {
+      continue
+    }
+    const start = weekStart(new Date(`${group.key}T12:00:00+08:00`))
+    const end = new Date(start.getTime() + 6 * 24 * 3600 * 1000)
+    const key = dayKey(start)
+    let week = weeks.get(key)
+    if (!week) {
+      week = { key, kind: 'week', label: `${shortDate(start)} - ${shortDate(end)}`, count: 0, size: 0, days: [] }
+      weeks.set(key, week)
+      out.push(week)
+    }
+    week.days.push(group)
+    week.count += group.items.length
+    week.size += group.size
+  }
+  return out
+})
+
+/** Totals over every listed file (not just the page shown), grouped by type */
+const summary = computed(() => {
+  const items = data.value?.items ?? []
+  const size = items.reduce((sum, item) => sum + item.size, 0)
+  const byTier = new Map<string, { count: number; size: number }>()
+  let oldest = Infinity
+  let newest = -Infinity
+  for (const item of items) {
+    const entry = byTier.get(item.tier) ?? { count: 0, size: 0 }
+    entry.count += 1
+    entry.size += item.size
+    byTier.set(item.tier, entry)
+    const at = new Date(item.uploaded).getTime()
+    oldest = Math.min(oldest, at)
+    newest = Math.max(newest, at)
+  }
+  const tiers = Array.from(byTier.entries())
+    .sort((a, b) => tierRank(a[0]) - tierRank(b[0]))
+    .map(([key, entry]) => ({
+      key,
+      label: tierLabel(key),
+      count: entry.count,
+      size: entry.size,
+      share: size > 0 ? Math.max(3, Math.round((entry.size / size) * 100)) : 0
+    }))
+  const span = items.length > 0 ? `${shortDate(new Date(oldest))} 至 ${shortDate(new Date(newest))}，共 ${tiers.length} 種類型` : ''
+  return { total: items.length, size, span, tiers }
+})
+
+/** The last N calendar days (N = daily retention, at most 30), oldest to newest, from the real file list */
+const strip = computed<StripCell[]>(() => {
+  const items = data.value?.items ?? []
+  const span = Math.min(30, policy.value?.retentionDays.daily ?? 30)
+  const perDay = new Map<string, { count: number; size: number }>()
+  for (const item of items) {
+    const key = dayKey(new Date(item.uploaded))
+    const entry = perDay.get(key) ?? { count: 0, size: 0 }
+    entry.count += 1
+    entry.size += item.size
+    perDay.set(key, entry)
+  }
+  const max = Math.max(1, ...Array.from(perDay.values()).map(entry => entry.size))
+  const cells: StripCell[] = []
+  for (let i = span - 1; i >= 0; i--) {
+    const d = new Date(Date.now() - i * 24 * 3600 * 1000)
+    const key = dayKey(d)
+    const entry = perDay.get(key)
+    const count = entry?.count ?? 0
+    const size = entry?.size ?? 0
+    cells.push({
+      key,
+      day: Number(key.slice(8, 10)),
+      count,
+      size,
+      height: size > 0 ? Math.max(18, Math.round((size / max) * 100)) : 0,
+      aria: entry ? `${dayLabel(d)} ${dayDate(d)}，${count} 份，${formatBytes(size)}` : `${dayDate(d)}，沒有備份`
+    })
+  }
+  return cells
+})
+
+const stripSummary = computed(() => {
+  const cells = strip.value
+  const have = cells.filter(cell => cell.count > 0).length
+  const missing = cells.length - have
+  return missing === 0 ? `每天都有備份，共 ${cells.length} 天` : `${cells.length} 天中有 ${have} 天有備份，${missing} 天沒有`
+})
+
+const leadValue = computed(() => {
+  const last = data.value?.lastAuto
+  return last ? formatDate(last.uploaded) : '尚無紀錄'
+})
+
+const leadMeaning = computed(() => {
+  if (!data.value) { return '' }
+  if (!data.value.lastAuto) { return '尚未有自動備份記錄' }
+  return [scheduleText.value, statusPill.value.label === '已逾期' ? '已逾期' : ''].filter(Boolean).join(' · ')
+})
+
+const storageLine = computed(() =>
+  data.value && summary.value.total > 0
+    ? `儲存 ${formatBytes(summary.value.size)} · ${summary.value.total.toLocaleString()} 份備份`
+    : '')
+
+/** One arc: days of the last 30 (or the daily retention) that have at least one backup */
+const coverageDays = computed(() => ({
+  have: strip.value.filter(cell => cell.count > 0).length,
+  total: strip.value.length
+}))
+
+const coverageRings = computed<ServiceRing[]>(() => {
+  if (!data.value || coverageDays.value.total === 0) { return [] }
+  const ratio = coverageDays.value.have / coverageDays.value.total
+  return [{
+    label: `近 ${coverageDays.value.total} 天有備份`,
+    value: coverageDays.value.have,
+    total: coverageDays.value.total,
+    of: '天',
+    hue: ratio >= 0.9 ? 'var(--ui-green)' : (ratio >= 0.7 ? 'var(--ui-orange)' : 'var(--ui-red)')
+  }]
+})
+
+const coverageCenter = computed(() => `${coverageDays.value.have}/${coverageDays.value.total}`)
+
+const dayFilterLabel = computed(() => {
+  if (!dayFilter.value) {
+    return ''
+  }
+  const d = new Date(`${dayFilter.value}T12:00:00+08:00`)
+  return `${dayLabel(d)} ${dayDate(d)}`
+})
+
+/** 「10/28 週三」: always numeric, so it never repeats the 今天/昨天 label */
+function dayDate(d: Date): string {
+  const md = new Intl.DateTimeFormat('zh-TW', { timeZone: TAIPEI, month: 'numeric', day: 'numeric' }).format(d)
+  const weekday = new Intl.DateTimeFormat('zh-TW', { timeZone: TAIPEI, weekday: 'short' }).format(d)
+  return `${md} ${weekday}`
+}
+
+/** What the file is, in words; the file name stays as a caption */
+function itemName(item: BackupItem): string {
+  if (item.tier === 'monthly') {
+    return '每月資料庫備份'
+  }
+  if (item.tier === 'members' || item.tier === 'tags' || item.tier === 'assignments') {
+    return `${tierLabel(item.tier)}資料匯出`
+  }
+  return `${tierLabel(item.tier)}資料庫備份`
+}
+
+function dayLabel(d: Date): string {
+  const today = new Date()
+  if (dayKey(d) === dayKey(today)) {
+    return '今天'
+  }
+  if (dayKey(d) === dayKey(new Date(today.getTime() - 24 * 3600 * 1000))) {
+    return '昨天'
+  }
+  return dayDate(d)
+}
+
+/** 「每日備份 · 10/25」: what it is and which day; the file name stays as a caption. */
+function itemLabel(item: BackupItem): string {
+  const d = new Date(item.uploaded)
+  const parts = new Intl.DateTimeFormat('en-US', { timeZone: TAIPEI, month: 'numeric', day: 'numeric' }).formatToParts(d)
+  const month = parts.find(p => p.type === 'month')?.value ?? ''
+  const day = parts.find(p => p.type === 'day')?.value ?? ''
+  const name = `${tierLabel(item.tier)}備份`
+  if (item.tier === 'monthly') {
+    return `${name} · ${month} 月`
+  }
+  if (item.tier === 'manual') {
+    return `${name} · ${month}/${day} ${formatClock(item.uploaded)}`
+  }
+  return `${name} · ${month}/${day}`
+}
+
+function formatClock(iso: string): string {
+  const d = new Date(iso)
+  if (isNaN(d.getTime())) { return iso }
+  return new Intl.DateTimeFormat('zh-TW', { timeZone: TAIPEI, hour: '2-digit', minute: '2-digit', hour12: false }).format(d)
+}
+
 function setTier(key: string) {
   tierFilter.value = key
+  dayFilter.value = ''
   showCount.value = PAGE_SIZE
 }
 
@@ -473,47 +790,38 @@ onMounted(load)
 </script>
 
 <style scoped>
-.data-backup {
-  /* width: 100% — .page-content is a flex column, so with margin: 0 auto this would size to
-     its content and overflow (clipped) on narrow screens */
-  display: grid;
-  gap: 20px;
-  width: 100%;
-  max-width: 1280px;
-  margin: 0 auto;
-}
-
-.status-card {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  gap: 18px;
+.lead-act {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
   align-items: center;
-  padding: 22px;
 }
 
-.status-ico {
-  display: grid;
-  place-items: center;
-  width: 52px;
-  height: 52px;
-  border-radius: 17px;
-  background: var(--ui-fill);
+.lead-storage {
+  margin: 4px 0 0;
+  font-size: 13px;
   color: var(--ui-muted);
 }
 
-.status-ico.ok {
-  background: var(--ui-green-soft);
-  color: var(--ui-green-ink);
+.label-note {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--ui-muted);
 }
 
-.status-ico.warn {
-  background: var(--ui-orange-soft);
-  color: var(--ui-orange-ink);
+.label-chip {
+  margin-left: 8px;
 }
 
-.status-ico svg {
-  width: 26px;
-  height: 26px;
+.label-act {
+  margin-left: auto;
+  border: 0;
+  background: none;
+}
+
+.act-note {
+  font-size: 13px;
+  color: var(--ui-muted);
 }
 
 .btn-ico {
@@ -521,38 +829,8 @@ onMounted(load)
   height: 16px;
 }
 
-.lbl {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  font-size: 12.5px;
-  font-weight: 600;
-  color: var(--ui-muted);
-}
-
-.big {
-  margin-top: 2px;
-  font: 600 22px / 1.25 var(--ui-font-display);
-  letter-spacing: -0.02em;
-  font-variant-numeric: tabular-nums;
-}
-
-.big small {
-  margin-left: 6px;
-  font: 500 14px var(--ui-font-ui);
-  letter-spacing: 0;
-  color: var(--ui-muted);
-}
-
-.hint {
-  margin-top: 4px;
-  font-size: 13px;
-  color: var(--ui-muted);
-}
-
 .message {
-  grid-column: 1 / -1;
-  margin: 0;
+  margin: 8px 0 0;
   padding: 10px 14px;
   border-radius: var(--ui-r-inner);
   background: var(--ui-green-soft);
@@ -565,26 +843,122 @@ onMounted(load)
   color: var(--ui-red-ink);
 }
 
-.bento {
+/* Retention policy: configuration constants, listed as a compact two-column key/value block */
+.keep-card {
+  padding: 20px 22px;
+}
+
+.keep-list {
   display: grid;
-  grid-template-columns: repeat(12, minmax(0, 1fr));
-  gap: 16px;
-  align-items: start;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0;
+  margin: 0;
 }
 
-.list-card {
-  grid-column: span 8;
+.keep-list > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 7px 0;
+  font-size: 13.5px;
+  box-shadow: 0 0.5px 0 var(--ui-sep);
 }
 
-.policy-card {
-  grid-column: span 4;
+.keep-list dt {
+  color: var(--ui-muted);
+}
+
+.keep-list dd {
+  margin: 0;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Day strip */
+.strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
+  grid-auto-flow: column;
+  gap: 6px;
+  margin: 0;
+  padding: 18px 22px 20px;
+  list-style: none;
+}
+
+.cell {
+  display: grid;
+  width: 100%;
+  gap: 6px;
+  justify-items: center;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ui-muted);
+  font: inherit;
+  cursor: pointer;
+}
+
+.cell:disabled {
+  cursor: default;
+}
+
+.bar {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  width: 100%;
+  height: 64px;
+  overflow: hidden;
+  border-radius: 8px;
+  background: var(--ui-fill);
+}
+
+.cell:not(.has) .bar {
+  background: none;
+  box-shadow: inset 0 0 0 1.5px var(--ui-fill-strong);
+}
+
+.bar i {
+  display: block;
+  width: 100%;
+  border-radius: 6px 6px 0 0;
+  background: color-mix(in srgb, var(--ui-green) 70%, var(--ui-surface));
+  transition: background var(--ui-dur) var(--ui-ease);
+}
+
+.cell.has:hover .bar i,
+.cell.on .bar i {
+  background: var(--ui-accent);
+}
+
+.cell.on .bar {
+  box-shadow: 0 0 0 2px var(--ui-accent);
+}
+
+.cell:focus-visible .bar {
+  outline: 2px solid var(--ui-accent);
+  outline-offset: 2px;
+}
+
+.num {
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.cell.on .num {
+  font-weight: 700;
+  color: var(--ui-accent);
+}
+
+.list-body {
+  padding-top: 16px;
 }
 
 .chips {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  padding: 0 22px 12px;
+  padding: 0 22px 14px;
 }
 
 .chip-n {
@@ -592,13 +966,11 @@ onMounted(load)
   color: var(--ui-muted);
 }
 
-/* On the selected (dark) chip the count follows the chip's light text */
 .ui-chip.is-on .chip-n,
 .ui-chip[aria-pressed="true"] .chip-n {
   color: inherit;
-  opacity: 0.8;
+  opacity: 1;
 }
-
 
 .warn {
   margin: 0 22px 12px;
@@ -609,125 +981,295 @@ onMounted(load)
   color: var(--ui-orange-ink);
 }
 
-.tier {
-  justify-content: center;
-  min-width: 48px;
+/* Recent days stay open; older days fold into weeks. The list sits beside a sticky summary. */
+.list-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 16px;
+  align-items: start;
 }
 
-.ui-table td {
-  white-space: nowrap;
+.day-groups {
+  display: grid;
+  gap: 12px;
+  padding: 0 22px 8px;
 }
 
-.ui-table td.file {
-  width: 100%;
-  max-width: 0;
-  font-family: var(--ui-font-mono);
-  font-size: 12.5px;
+.section-open {
+  display: grid;
+  gap: 12px;
 }
 
-.fn {
+.section-week {
+  border-radius: var(--ui-r-inner);
+  background: var(--ui-surface-2);
+}
+
+.week-head {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 14px 16px;
+  font: 600 15px / 1.3 var(--ui-font-display);
+  cursor: pointer;
+  list-style: none;
+}
+
+.week-head::-webkit-details-marker {
+  display: none;
+}
+
+.week-title {
+  flex: 1;
+}
+
+.week-chev {
+  width: 16px;
+  height: 16px;
+  color: var(--ui-muted);
+  transition: transform var(--ui-dur) var(--ui-ease);
+}
+
+.section-week[open] .week-chev {
+  transform: rotate(90deg);
+}
+
+.week-head:focus-visible {
+  border-radius: var(--ui-r-inner);
+  outline: 2px solid var(--ui-accent);
+  outline-offset: -2px;
+}
+
+.section-week .day {
+  margin: 0 8px;
+  background: none;
+}
+
+.section-week .day:last-child {
+  padding-bottom: 8px;
+}
+
+.day {
+  padding: 4px 14px 6px;
+  border-radius: var(--ui-r-inner);
+  background: var(--ui-surface-2);
+}
+
+/* Sticky summary */
+.side-col {
+  position: sticky;
+  top: 16px;
+  display: grid;
+  gap: 16px;
+}
+
+.sum-card {
+  padding: 20px 22px;
+}
+
+.sum-big {
+  font: 600 28px / 1.2 var(--ui-font-display);
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.sum-big small {
+  margin-left: 8px;
+  font: 500 14px var(--ui-font-ui);
+  letter-spacing: 0;
+  color: var(--ui-muted);
+}
+
+.sum-span {
+  margin: 4px 0 14px;
+  font-size: 13px;
+  color: var(--ui-muted);
+}
+
+.sum-list {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sum-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 13.5px;
+  font-weight: 500;
+}
+
+.sum-n {
+  font-weight: 400;
+  color: var(--ui-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.sum-bar {
   display: block;
-  min-width: 0;
+  height: 6px;
+  margin-top: 6px;
   overflow: hidden;
+  border-radius: 999px;
+  background: var(--ui-fill);
+}
+
+.sum-bar i {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--ui-accent);
+}
+
+.day-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 2px 8px;
+}
+
+.day-head h3 {
+  margin: 0;
+  font: 600 15px / 1.3 var(--ui-font-display);
+}
+
+.day-head small {
+  margin-left: 8px;
+  font: 500 13px var(--ui-font-ui);
+  color: var(--ui-muted);
+}
+
+.day-sum {
+  font-size: 12.5px;
+  color: var(--ui-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.brow-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.brow {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr) auto 36px;
+  gap: 12px;
+  align-items: center;
+  min-height: 52px;
+  padding: 8px 0;
+  box-shadow: 0 -0.5px 0 var(--ui-sep);
+}
+
+.brow-type {
+  justify-content: center;
+  width: 100%;
+}
+
+.brow-name {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.brow-file {
+  overflow: hidden;
+  font: 12px / 1.4 var(--ui-font-mono);
+  color: var(--ui-muted);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.ui-table th.num,
-.ui-table td.num {
-  text-align: right;
+.brow-stat {
+  display: grid;
+  justify-items: end;
   font-variant-numeric: tabular-nums;
+}
+
+.brow-stat b {
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.brow-stat small {
+  font-size: 12px;
+  color: var(--ui-muted);
+}
+
+.brow-dl {
+  width: 36px;
+  padding: 0;
+}
+
+.brow-dl svg {
+  width: 18px;
+  height: 18px;
 }
 
 .more {
   display: flex;
   justify-content: center;
-  padding: 14px;
-}
-
-.rule {
-  position: relative;
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  padding: 12px 22px;
-  font-size: 13.5px;
-}
-
-.rule + .rule::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  right: 22px;
-  left: 22px;
-  height: 0.5px;
-  background: var(--ui-sep);
-}
-
-.rule b {
-  margin-left: auto;
-  font-variant-numeric: tabular-nums;
-}
-
-.rule span {
-  color: var(--ui-muted);
-}
-
-.note {
-  margin: 4px 22px 20px;
-  padding: 12px 14px;
-  border-radius: var(--ui-r-inner);
-  background: var(--ui-surface-2);
-  font-size: 12.5px;
-  color: var(--ui-muted);
+  padding: 6px 14px 18px;
 }
 
 @media (max-width: 1280px) {
-  .list-card,
-  .policy-card {
-    grid-column: span 12;
+  .list-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .side-col {
+    position: static;
   }
 }
 
 @media (max-width: 768px) {
-  .status-card {
-    grid-template-columns: auto minmax(0, 1fr);
-    padding: 18px 16px;
+  .lead-act .btn {
+    width: 100%;
+    justify-content: center;
   }
 
-  .status-card .btn {
-    grid-column: span 2;
+  .strip {
+    grid-auto-flow: row;
+    grid-template-columns: repeat(10, minmax(0, 1fr));
+    gap: 8px 4px;
+    padding: 16px 16px 18px;
   }
 
-  .hide-s {
+  .bar {
+    height: 40px;
+  }
+
+  .chips,
+  .day-groups {
+    padding-right: 12px;
+    padding-left: 12px;
+  }
+
+  .day {
+    padding-right: 10px;
+    padding-left: 10px;
+  }
+
+  /* the type is already in the name; the file name wraps instead of clipping */
+  .brow {
+    grid-template-columns: minmax(0, 1fr) auto 36px;
+    gap: 8px;
+  }
+
+  .brow-type {
     display: none;
   }
 
-  .chips {
-    padding: 0 16px 12px;
+  .brow-file {
+    overflow-wrap: anywhere;
+    white-space: normal;
   }
 
-  .ui-table th:first-child,
-  .ui-table td:first-child {
-    padding-left: 16px;
-  }
-
-  .ui-table th:last-child,
-  .ui-table td:last-child {
-    padding-right: 16px;
-  }
-
-  .rule {
-    padding: 12px 16px;
-  }
-
-  .rule + .rule::before {
-    right: 16px;
-    left: 16px;
-  }
-
-  .note {
-    margin: 4px 16px 18px;
+  .keep-list {
+    gap: 2px 16px;
   }
 }
 </style>

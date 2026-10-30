@@ -1,134 +1,106 @@
 <template>
-  <div class="desktop-table ui-table-wrap">
-    <table class="ui-table conversations-table">
-      <thead>
-        <tr>
-          <th
-            v-if="selectionMode"
-            class="select-col"
-          >
-            <label class="select-hit">
-              <input
-                ref="selectAllRef"
-                type="checkbox"
-                class="select-checkbox"
-                aria-label="全選本頁對話"
-                :checked="allSelected"
-                @change="$emit('toggle-select-all')"
-              >
-            </label>
-          </th>
-          <th class="customer-col">
-            客戶
-          </th>
-          <th class="message-col">
-            最後訊息
-          </th>
-          <th
-            class="reply-col"
-            :title="LEGEND_TEXT"
-          >
-            回覆狀態
-            <span
-              class="legend-i"
-              aria-hidden="true"
-            >i</span>
-            <span class="sr-only">{{ LEGEND_TEXT }}</span>
-          </th>
-          <th class="status-col">
-            狀態
-          </th>
-          <th class="agent-col">
-            負責人
-          </th>
-          <th class="time-col">
-            更新
-          </th>
-        </tr>
-      </thead>
-      <TransitionGroup
-        name="conversation-list"
-        tag="tbody"
-        appear
+  <div class="desktop-table">
+    <!-- Selection mode: one "select all" row heads the group -->
+    <label
+      v-if="selectionMode"
+      class="select-all"
+    >
+      <input
+        ref="selectAllRef"
+        type="checkbox"
+        class="select-checkbox"
+        aria-label="全選本頁對話"
+        :checked="allSelected"
+        @change="$emit('toggle-select-all')"
       >
-        <tr
-          v-for="conversation in conversations"
-          :key="conversation.id"
-          class="conversation-row"
-          :class="{
-            'has-unread': unreadOf(conversation) > 0,
-            'is-selected': selectionMode && selectedIds.has(conversation.id)
-          }"
-          @click="handleRowClick(conversation.id)"
+      全選本頁
+    </label>
+    <!-- Column heads share the row grid, so every value sits under its label -->
+    <div
+      class="col-head"
+      :class="{ 'has-select': selectionMode }"
+      aria-hidden="true"
+    >
+      <span>客戶</span>
+      <span>最後訊息</span>
+      <span>狀態</span>
+      <span>負責人</span>
+      <span class="col-end">更新</span>
+    </div>
+    <TransitionGroup
+      name="conversation-list"
+      tag="ul"
+      class="conv-list"
+      appear
+    >
+      <li
+        v-for="conversation in conversations"
+        :key="conversation.id"
+        class="conversation-row"
+        :class="{
+          'has-unread': unreadOf(conversation) > 0,
+          'is-selected': selectionMode && selectedIds.has(conversation.id)
+        }"
+        tabindex="0"
+        @click="handleRowClick(conversation.id)"
+        @keydown.enter.self="handleRowClick(conversation.id)"
+      >
+        <label
+          v-if="selectionMode"
+          class="select-hit"
+          @click.stop
         >
-          <td
-            v-if="selectionMode"
-            class="select-cell"
+          <input
+            type="checkbox"
+            class="select-checkbox"
+            :aria-label="`選取 ${getCustomerName(conversation)} 的對話`"
+            :checked="selectedIds.has(conversation.id)"
+            @change="$emit('toggle-select', conversation.id)"
           >
-            <label
-              class="select-hit"
-              @click.stop
-            >
-              <input
-                type="checkbox"
-                class="select-checkbox"
-                :aria-label="`選取 ${getCustomerName(conversation)} 的對話`"
-                :checked="selectedIds.has(conversation.id)"
-                @change="$emit('toggle-select', conversation.id)"
-              >
-            </label>
-          </td>
-          <td class="customer-cell">
-            <div class="customer-info">
-              <div class="avatar">
-                {{ initialOf(getCustomerName(conversation)) }}
-                <span
-                  v-if="platformOf(conversation) === 'line' || platformOf(conversation) === 'facebook'"
-                  class="ui-ch ch"
-                  :class="platformOf(conversation) === 'line' ? 'ui-ch-line' : 'ui-ch-fb'"
-                ><svg viewBox="0 0 24 24"><path d="M12 3C6.5 3 2 6.6 2 11c0 2.5 1.4 4.7 3.7 6.2L5 21l4.1-2.3c.9.2 1.9.3 2.9.3 5.5 0 10-3.6 10-8s-4.5-8-10-8Z" /></svg></span>
-              </div>
-              <div class="customer-text">
-                <div class="customer-name">
-                  <span
-                    class="customer-name-text"
-                    :title="getCustomerName(conversation)"
-                  >{{ getCustomerName(conversation) }}</span>
-                  <span
-                    v-if="unreadOf(conversation) > 0"
-                    class="unread-badge"
-                    :title="UNREAD_HINT"
-                    :aria-label="`未讀 ${unreadOf(conversation)} 則訊息（${UNREAD_HINT}）`"
-                  >{{ unreadOf(conversation) }}</span>
-                </div>
-                <div class="customer-id">
-                  {{ platformName(platformOf(conversation)) }} · ID {{ conversation.userId }}
-                </div>
-              </div>
-            </div>
-          </td>
-          <td class="message-cell">
-            <div
-              class="last-message"
-              :class="{ 'from-agent': conversation.lastMessage?.senderType === 'agent' }"
-            >
-              <template v-if="conversation.lastMessage?.senderType === 'agent'">
-                你：
-              </template>{{ getLastMessageText(conversation) }}
-            </div>
-          </td>
-          <td class="reply-cell">
-            <template v-if="awaitingKind(conversation, now) === 'waiting'">
+        </label>
+        <div class="customer-info">
+          <div class="avatar">
+            {{ initialOf(getCustomerName(conversation)) }}
+            <span
+              v-if="platformOf(conversation) === 'line' || platformOf(conversation) === 'facebook'"
+              class="ui-ch ch"
+              :class="platformOf(conversation) === 'line' ? 'ui-ch-line' : 'ui-ch-fb'"
+            ><svg viewBox="0 0 24 24"><path d="M12 3C6.5 3 2 6.6 2 11c0 2.5 1.4 4.7 3.7 6.2L5 21l4.1-2.3c.9.2 1.9.3 2.9.3 5.5 0 10-3.6 10-8s-4.5-8-10-8Z" /></svg></span>
+          </div>
+          <div class="customer-text">
+            <div class="customer-name">
               <span
-                class="ui-pill ui-pill-orange"
-                :title="WAITING_HINT"
-              >待回覆</span>
-            </template>
-            <template v-else-if="awaitingKind(conversation, now) === 'stale'">
+                class="customer-name-text"
+                :title="getCustomerName(conversation)"
+              >{{ getCustomerName(conversation) }}</span>
+              <span
+                v-if="unreadOf(conversation) > 0"
+                class="unread-badge"
+                :title="UNREAD_HINT"
+                :aria-label="`未讀 ${unreadOf(conversation)} 則訊息（${UNREAD_HINT}）`"
+              >{{ unreadOf(conversation) }}</span>
+            </div>
+            <div class="customer-id">
+              {{ platformName(platformOf(conversation)) }}{{ sinceText(conversation) }}
+            </div>
+          </div>
+        </div>
+        <div
+          class="last-message"
+          :class="{ 'from-agent': conversation.lastMessage?.senderType === 'agent' }"
+        >
+          <template v-if="conversation.lastMessage?.senderType === 'agent'">
+            你：
+          </template>{{ getLastMessageText(conversation) }}
+        </div>
+        <div class="status-cell">
+          <!-- A pill only for the exceptions that need an agent (waiting / stale); every other state is quiet text -->
+          <div class="status-line">
+            <template v-if="replyStateOf(conversation, now).state === 'stale'">
               <span
                 class="ui-pill"
                 :title="STALE_HINT"
-              >{{ staleWaitText(conversation.awaitingSince, now) }}</span>
+              >{{ replyStateOf(conversation, now).text }}</span>
               <span
                 v-if="conversation.neverReplied"
                 class="ui-pill ui-pill-red never-pill"
@@ -136,40 +108,41 @@
               >從未回覆</span>
             </template>
             <span
-              v-else-if="isReplied(conversation, now)"
-              class="replied"
-            >已回覆</span>
-            <span
-              v-if="freeReplySeconds(conversation, now) !== null"
-              class="ui-pill ui-pill-green ui-pill-dot free-pill"
-              title="Reply API 免費回覆時間"
-            >免費回覆 {{ freeReplySeconds(conversation, now) }} 秒</span>
-          </td>
-          <td class="status-cell">
-            <span
-              class="ui-pill"
-              :class="statusPillClass(statusOf(conversation).tone)"
-            >{{ statusOf(conversation).text }}</span>
-          </td>
-          <td class="agent-cell">
-            <span
-              v-if="conversation.assignedTeam?.name"
-              class="ui-pill"
-            >{{ conversation.assignedTeam.name }}</span>
+              v-else-if="replyStateOf(conversation, now).state === 'waiting'"
+              class="ui-pill ui-pill-orange"
+              :title="WAITING_HINT"
+            >{{ replyStateOf(conversation, now).text }}</span>
             <span
               v-else
-              class="unassigned"
-            >未指派</span>
-          </td>
-          <td
-            class="time-cell"
-            :title="formatFull(getUpdatedAt(conversation))"
-          >
-            {{ relativeTime(getUpdatedAt(conversation), now) }}
-          </td>
-        </tr>
-      </TransitionGroup>
-    </table>
+              class="state-text"
+              :class="`state-${replyStateOf(conversation, now).state}`"
+            >{{ replyStateOf(conversation, now).text }}</span>
+          </div>
+        </div>
+        <div class="owner-cell">
+          <span
+            v-if="conversation.assignedTeam?.name"
+            class="team-text"
+          >{{ conversation.assignedTeam.name }}</span>
+          <span
+            v-else
+            class="team-text unassigned"
+          >未指派</span>
+        </div>
+        <div
+          class="time-cell"
+          :title="formatFull(getUpdatedAt(conversation))"
+        >
+          <span class="time-text">{{ relativeTime(getUpdatedAt(conversation), now) }}</span>
+          <span
+            v-if="freeReplySeconds(conversation, now) !== null"
+            class="free-pill"
+            title="Reply API 免費回覆時間"
+          >免費回覆 {{ freeReplySeconds(conversation, now) }} 秒</span>
+        </div>
+      </li>
+    </TransitionGroup>
+    <span class="sr-only">{{ LEGEND_TEXT }}</span>
   </div>
 </template>
 
@@ -184,15 +157,11 @@ import {
   freeReplySeconds,
   initialOf,
   STALE_HINT,
-  awaitingKind,
-  staleWaitText,
-  isReplied,
+  replyStateOf,
   platformName,
   relativeTime,
-  statusOf,
   unreadOf,
-  useRowClock,
-  type StatusTone
+  useRowClock
 } from '@/composables/conversation/useConversationRowMeta'
 
 const props = withDefaults(defineProps<{
@@ -256,13 +225,18 @@ const getCustomerName = (conversation: Conversation) => {
 const platformOf = (conversation: Conversation): string =>
   conversation.platform || conversation.user?.platform || 'line'
 
+// Secondary identity line: the channel plus when the conversation began (real createdAt)
+const sinceText = (conversation: Conversation): string => {
+  const created = conversation.createdAt
+  if (!created) { return '' }
+  const text = relativeTime(created, now.value)
+  return text ? ` · ${text}開始` : ''
+}
+
 const getUpdatedAt = (conversation: Conversation) => {
   const legacyConversation = withLegacyFields(conversation)
   return conversation.updatedAt || legacyConversation.updated_at
 }
-
-const statusPillClass = (tone: StatusTone): string =>
-  tone === 'active' ? 'ui-pill-blue' : tone === 'pending' ? 'ui-pill-orange' : ''
 
 const formatFull = (date?: Date | number | string) => {
   if (!date) { return '' }
@@ -278,11 +252,35 @@ const getLastMessageText = (conversation: Conversation) => {
 
 <style scoped>
 .desktop-table {
+  --conv-cols: minmax(200px, 0.9fr) minmax(0, 1.3fr) 104px 104px 132px;
   display: block;
 }
 
-.conversations-table {
-  table-layout: fixed;
+/* Column heads: grouped-list header strip above the first row */
+.col-head {
+  display: grid;
+  grid-template-columns: var(--conv-cols);
+  gap: 8px 20px;
+  padding: 10px 20px 8px 28px;
+  box-shadow: inset 0 -0.5px 0 var(--ui-sep);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 18px;
+  color: var(--ui-muted);
+}
+
+.col-head.has-select {
+  padding-left: 68px;
+}
+
+.col-head .col-end {
+  text-align: right;
+}
+
+.conv-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
 .conversation-list-enter-active,
@@ -304,30 +302,87 @@ const getLastMessageText = (conversation: Conversation) => {
   transition: transform 0.3s var(--ui-ease);
 }
 
+/* One inset-grouped row: identity | last message | state + team | time (+ free reply) */
 .conversation-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: var(--conv-cols);
+  gap: 8px 20px;
+  align-items: center;
+  padding: 13px 20px 13px 28px;
   cursor: pointer;
+  transition: background var(--ui-dur) var(--ui-ease);
+}
+
+.conversation-row + .conversation-row::before {
+  position: absolute;
+  top: 0;
+  right: 20px;
+  left: 86px;
+  height: 0.5px;
+  background: var(--ui-sep);
+  content: '';
+}
+
+.conversation-row:hover {
+  background: color-mix(in srgb, var(--section-hue) 5%, var(--ui-surface));
+}
+
+.conversation-row:focus-visible {
+  outline: none;
+  background: color-mix(in srgb, var(--section-hue) 7%, var(--ui-surface));
+  box-shadow: inset 3px 0 0 var(--section-hue);
 }
 
 .conversation-row.is-selected {
-  background: var(--ui-sel-tint);
+  background: color-mix(in srgb, var(--section-hue) 8%, var(--ui-surface));
   box-shadow: var(--ui-sel-ring);
 }
 
-/* Selection column */
-.select-col,
-.select-cell {
-  width: 56px;
-  padding-right: 0 !important;
+/* Unread: a section-hue dot in the gutter (Mail style) plus a heavier message line */
+.conversation-row.has-unread::after {
+  position: absolute;
+  top: 50%;
+  left: 11px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--section-hue);
+  transform: translateY(-50%);
+  content: '';
+}
+
+.select-all {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 20px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--ui-ink-2);
+  box-shadow: inset 0 -0.5px 0 var(--ui-sep);
+  cursor: pointer;
 }
 
 .select-hit {
+  position: absolute;
+  top: 50%;
+  left: 14px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   width: 44px;
   height: 44px;
-  margin: -12px 0;
+  transform: translateY(-50%);
   cursor: pointer;
+}
+
+.conversation-row:has(.select-hit) {
+  padding-left: 68px;
+}
+
+.conversation-row:has(.select-hit)::before {
+  left: 126px !important;
 }
 
 .select-checkbox {
@@ -337,51 +392,10 @@ const getLastMessageText = (conversation: Conversation) => {
   cursor: pointer;
 }
 
-/* Column widths */
-.customer-col {
-  width: 24%;
-}
-
-.message-col {
-  width: 30%;
-}
-
-.reply-col {
-  width: 14%;
-}
-
-.status-col {
-  width: 9%;
-}
-
-.agent-col {
-  width: 12%;
-}
-
-.time-col {
-  width: 11%;
-  text-align: right !important;
-}
-
-.legend-i {
-  display: inline-grid;
-  place-items: center;
-  width: 14px;
-  height: 14px;
-  margin-left: 4px;
-  border-radius: 50%;
-  background: var(--ui-fill-strong);
-  color: var(--ui-muted);
-  font-size: 10px;
-  font-weight: 700;
-  vertical-align: 1px;
-  cursor: help;
-}
-
 .customer-info {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 14px;
   min-width: 0;
 }
 
@@ -390,21 +404,21 @@ const getLastMessageText = (conversation: Conversation) => {
   display: grid;
   flex: none;
   place-items: center;
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   background: linear-gradient(160deg, #b9b6f5, #6e6bd8);
   color: #fff;
-  font: 600 15px var(--ui-font-display);
+  font: 600 16px var(--ui-font-display);
 }
 
 .avatar .ch {
   position: absolute;
   right: -4px;
   bottom: -4px;
-  width: 16px;
-  height: 16px;
-  border-radius: 5px;
+  width: 17px;
+  height: 17px;
+  border-radius: 6px;
   box-shadow: 0 0 0 2px var(--ui-surface);
 }
 
@@ -422,7 +436,7 @@ const getLastMessageText = (conversation: Conversation) => {
   align-items: center;
   gap: 6px;
   min-width: 0;
-  font-size: 14.5px;
+  font-size: 15px;
   font-weight: 600;
   white-space: nowrap;
 }
@@ -442,7 +456,7 @@ const getLastMessageText = (conversation: Conversation) => {
   height: 18px;
   padding: 0 5px;
   border-radius: 999px;
-  background: var(--ui-accent);
+  background: var(--section-ink);
   color: #fff;
   font: 600 11px var(--ui-font-display);
   font-variant-numeric: tabular-nums;
@@ -450,7 +464,7 @@ const getLastMessageText = (conversation: Conversation) => {
 
 .customer-id {
   overflow: hidden;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--ui-muted);
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -462,45 +476,102 @@ const getLastMessageText = (conversation: Conversation) => {
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   line-clamp: 2;
-  font-size: 13.5px;
-  color: var(--ui-ink);
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--ui-ink-2);
   word-break: break-word;
 }
 
 .has-unread .last-message {
   font-weight: 600;
+  color: var(--ui-ink);
 }
 
 .last-message.from-agent {
   color: var(--ui-muted);
 }
 
-.reply-cell {
+.status-cell,
+.owner-cell {
+  min-width: 0;
   white-space: nowrap;
 }
 
-.replied {
-  font-size: 12.5px;
+.owner-cell .team-text {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.status-line .ui-pill-orange {
+  font-weight: 600;
+}
+
+.status-line {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+/* Quiet states: a dot and plain text instead of a pill on every row */
+.state-text,
+.team-text {
+  font-size: 13px;
   color: var(--ui-muted);
 }
 
-.free-pill {
-  display: flex;
-  width: fit-content;
-  margin-top: 4px;
+.state-text {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
-.unassigned {
-  font-size: 12.5px;
+.state-text::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ui-faint);
+}
+
+.state-text.state-replied::before {
+  background: var(--ui-green);
+}
+
+.team-text:not(.unassigned) {
+  color: var(--ui-ink-2);
+}
+
+/* Free-reply countdown is time-critical: a green capsule under the timestamp */
+.free-pill {
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--ui-green-soft);
+  font-size: 13px;
   font-weight: 600;
-  color: var(--ui-orange-ink);
+  font-variant-numeric: tabular-nums;
+  color: var(--ui-green-ink);
 }
 
 .time-cell {
-  font-size: 12.5px;
+  display: grid;
+  gap: 4px;
+  justify-items: end;
+  font-size: 13px;
   color: var(--ui-muted);
   text-align: right;
   white-space: nowrap;
+}
+
+@media (max-width: 1024px) {
+  .desktop-table {
+    --conv-cols: minmax(150px, 1fr) minmax(0, 1.1fr) 92px 84px 118px;
+  }
+
+  .conversation-row,
+  .col-head {
+    gap: 8px 14px;
+  }
 }
 
 @media (max-width: 768px) {

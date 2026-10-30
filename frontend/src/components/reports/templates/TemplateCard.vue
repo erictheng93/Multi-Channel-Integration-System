@@ -1,17 +1,9 @@
 <template>
-  <button
-    type="button"
-    class="ui-card template-card"
-    :class="{ selected: isSelected, unsupported: !supported }"
-    :aria-pressed="isSelected"
-    :aria-disabled="!supported"
-    :disabled="!supported"
-    @click="$emit('select', template)"
-  >
-    <span class="card-top">
+  <article class="ui-card template-card">
+    <header class="tc-head">
       <span
         class="tpl-ico"
-        :class="template.category"
+        aria-hidden="true"
       >
         <svg
           viewBox="0 0 24 24"
@@ -20,158 +12,247 @@
           stroke-width="2"
           stroke-linecap="round"
           stroke-linejoin="round"
-          aria-hidden="true"
         ><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z" /><path d="M14 3v5h5M9 13h6M9 17h6" /></svg>
       </span>
-      <span class="template-name">{{ template.name }}</span>
-    </span>
-    <span class="template-description">{{ template.description }}</span>
-    <span class="card-foot">
-      <span
-        class="ui-tag category-badge"
-        :class="template.category"
-      >{{ getCategoryLabel(template.category) }}</span>
-      <span
-        v-if="isSelected"
-        class="ui-pill ui-pill-blue"
-      >已選取</span>
-      <span
-        v-if="!supported"
-        class="ui-pill"
-      >尚未支援</span>
-    </span>
-  </button>
+      <div class="tc-title">
+        <h2 class="template-name">
+          {{ template.name }}
+        </h2>
+        <p class="template-description">
+          {{ template.description }}
+        </p>
+      </div>
+      <span class="ui-tag category-badge">{{ getCategoryLabel(template.category) }}</span>
+    </header>
+
+    <section
+      class="tc-contents"
+      :aria-label="`${template.name}的報表內容`"
+    >
+      <h3 class="tc-h">
+        報表內容
+      </h3>
+      <ul class="tc-list">
+        <li
+          v-for="item in contents"
+          :key="item.label"
+        >
+          <span class="tc-text">
+            <b>{{ item.label }}</b>
+            <span>{{ item.hint }}</span>
+          </span>
+        </li>
+      </ul>
+    </section>
+
+    <dl class="tc-meta">
+      <div>
+        <dt>預設範圍</dt>
+        <dd>近 30 天</dd>
+      </div>
+      <div>
+        <dt>輸出格式</dt>
+        <dd>JSON</dd>
+      </div>
+      <div v-if="template.presetOptions.maxRecords">
+        <dt>筆數上限</dt>
+        <dd>{{ template.presetOptions.maxRecords.toLocaleString('en-US') }}</dd>
+      </div>
+      <div v-if="template.estimatedTime">
+        <dt>預估時間</dt>
+        <dd>約 {{ formatEstimatedTime(template.estimatedTime) }}</dd>
+      </div>
+    </dl>
+
+    <footer class="tc-foot">
+      <button
+        type="button"
+        class="btn btn-ghost"
+        :disabled="generating"
+        @click="$emit('customize', template)"
+      >
+        調整後產生
+      </button>
+      <button
+        type="button"
+        class="btn btn-primary"
+        :disabled="generating"
+        @click="$emit('use', template)"
+      >
+        {{ generating ? '產生中...' : '直接產生' }}
+      </button>
+    </footer>
+  </article>
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue';
 import type { ReportTemplate } from '@/types/reports';
-import { getCategoryLabel } from './templateHelpers';
+import { REPORT_CONTENTS, formatEstimatedTime, getCategoryLabel } from './templateHelpers';
 
-withDefaults(defineProps<{
+const props = withDefaults(defineProps<{
   template: ReportTemplate;
-  isSelected: boolean;
-  /** False when the backend cannot generate this template's report type */
-  supported?: boolean;
+  generating?: boolean;
 }>(), {
-  supported: true
+  generating: false
 });
 
 defineEmits<{
-  select: [template: ReportTemplate];
+  use: [template: ReportTemplate];
+  customize: [template: ReportTemplate];
 }>();
+
+const contents = computed(() => REPORT_CONTENTS[props.template.type] ?? []);
 </script>
 
 <style scoped>
 .template-card {
-  display: grid;
-  gap: 10px;
-  width: 100%;
-  padding: 16px;
-  border: 0;
-  color: inherit;
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-  transition:
-    box-shadow var(--ui-dur) var(--ui-ease),
-    transform var(--ui-dur) var(--ui-ease);
-}
-
-.template-card:hover:not(:disabled) {
-  box-shadow: var(--ui-shadow-raised);
-  transform: translateY(-1px);
-}
-
-.template-card.selected {
-  background: color-mix(in srgb, var(--ui-accent-soft) 60%, var(--ui-surface));
-  box-shadow: var(--ui-sel-ring), var(--ui-shadow-raised);
-}
-
-.template-card.unsupported {
-  cursor: not-allowed;
-}
-
-.template-card.unsupported .card-top,
-.template-card.unsupported .template-description {
-  opacity: 0.55;
-}
-
-.card-top {
   display: flex;
-  align-items: center;
-  gap: 12px;
-  min-width: 0;
+  flex-direction: column;
+  gap: 22px;
+  padding: 24px;
+}
+
+.tc-head {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: start;
 }
 
 .tpl-ico {
   display: grid;
-  flex: none;
-  width: 34px;
-  height: 34px;
+  width: 44px;
+  height: 44px;
   place-items: center;
-  border-radius: 11px;
-  background: var(--ui-accent-soft);
-  color: var(--ui-accent);
+  border-radius: 12px;
+  background: var(--section-hue-soft);
+  color: var(--section-ink);
 }
 
 .tpl-ico svg {
-  width: 18px;
-  height: 18px;
-}
-
-.tpl-ico.enterprise {
-  background: var(--ui-indigo-soft);
-  color: var(--ui-indigo);
-}
-
-.tpl-ico.business_intelligence {
-  background: var(--ui-green-soft);
-  color: var(--ui-green-ink);
-}
-
-.tpl-ico.advanced_analytics {
-  background: var(--ui-orange-soft);
-  color: var(--ui-orange-ink);
+  width: 22px;
+  height: 22px;
 }
 
 .template-name {
-  overflow: hidden;
-  font: 600 15px var(--ui-font-display);
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  margin: 0;
+  font: 600 19px / 1.25 var(--ui-font-display);
+  letter-spacing: -0.01em;
 }
 
 .template-description {
-  min-height: 38px;
-  font-size: 13px;
+  margin: 4px 0 0;
+  font-size: 13.5px;
   line-height: 1.45;
   color: var(--ui-muted);
 }
 
-.card-foot {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-}
-
-.category-badge.enterprise {
-  background: var(--ui-p-lavender);
-  color: var(--ui-p-lavender-ink);
-}
-
-.category-badge.basic {
+.category-badge {
   background: var(--ui-p-sky);
   color: var(--ui-p-sky-ink);
+  font-weight: 600;
 }
 
-.category-badge.business_intelligence {
-  background: var(--ui-p-mint);
-  color: var(--ui-p-mint-ink);
+.tc-h {
+  margin: 0 0 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ui-ink-2);
 }
 
-.category-badge.advanced_analytics {
-  background: var(--ui-p-peach);
-  color: var(--ui-p-peach-ink);
+.tc-contents {
+  flex: 1;
+}
+
+.tc-list {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tc-list li {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 0;
+  box-shadow: 0 -0.5px 0 var(--ui-sep);
+}
+
+.tc-list li:first-child {
+  box-shadow: none;
+}
+
+.tc-text {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.tc-text b {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.tc-text span {
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: var(--ui-muted);
+}
+
+.tc-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 28px;
+  margin: 0;
+  padding-top: 16px;
+  border-top: 0.5px solid var(--ui-sep);
+}
+
+.tc-meta dt {
+  font-size: 12px;
+  color: var(--ui-muted);
+}
+
+.tc-meta dd {
+  margin: 2px 0 0;
+  font-size: 14px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.tc-foot {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+@media (max-width: 768px) {
+  .template-card {
+    gap: 16px;
+    padding: 18px;
+  }
+
+  .tc-head {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .category-badge {
+    grid-column: 1 / -1;
+    grid-row: 1;
+    justify-self: start;
+  }
+
+  .tc-list li {
+    flex-wrap: wrap;
+    gap: 4px 12px;
+  }
+
+  .tc-foot .btn {
+    flex: 1;
+    justify-content: center;
+  }
 }
 </style>

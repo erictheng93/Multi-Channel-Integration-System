@@ -1,22 +1,13 @@
 <template>
   <AppLayout>
     <main
-      class="broadcast-page"
+      class="ui-page broadcast-page ui-rise"
       aria-label="群發訊息"
     >
-      <header class="ui-page-head">
-        <div>
-          <div class="ui-eyebrow">
-            客戶經營
-          </div>
-          <h1 class="ui-page-title">
-            群發訊息
-          </h1>
-          <p class="ui-page-sub">
-            針對標籤受眾發送 LINE 圖文訊息，並逐位追蹤結果。發送前會先凍結收件人名單。
-          </p>
-        </div>
-      </header>
+      <UiPageHead
+        title="群發訊息"
+        subtitle="針對標籤受眾發送 LINE 圖文訊息，並逐位追蹤結果。發送前會先凍結收件人名單。"
+      />
 
       <LineQuotaCard :pending="pendingByChannel" />
 
@@ -33,7 +24,27 @@
           @draft="draft = $event"
         />
 
-        <div class="side-stack">
+        <!-- One panel for audience + LINE preview. Desktop: always open, same height as the form.
+             Phone: an accordion after the form, shown once there is input to preview. -->
+        <details
+          v-show="!isPhone || hasInput"
+          class="ui-card side-panel"
+          :open="!isPhone || phoneOpen"
+          @toggle="onPanelToggle"
+        >
+          <summary class="side-summary">
+            <span>受眾與 LINE 預覽</span>
+            <svg
+              class="side-chevron"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            ><path d="m6 9 6 6 6-6" /></svg>
+          </summary>
           <BroadcastAudienceCard
             :preview="broadcastsStore.preview"
             :tag-name="previewTagName"
@@ -43,7 +54,7 @@
             :content="draft.content"
             :image-urls="draft.imageUrls"
           />
-        </div>
+        </details>
       </div>
 
       <div
@@ -75,6 +86,7 @@
 </template>
 
 <script setup lang="ts">
+import UiPageHead from '@/components/ui/UiPageHead.vue'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import AppLayout from '@/components/ui/AppLayout.vue'
 import BroadcastComposeCard from '@/components/broadcast/BroadcastComposeCard.vue'
@@ -98,6 +110,19 @@ const detailBroadcastId = ref<string | null>(null)
 const recipientStatus = ref<BroadcastRecipientStatus | undefined>()
 const recipientPage = ref(1)
 const draft = ref<{ content: string; imageUrls: string[] }>({ content: '', imageUrls: [] })
+const hasInput = computed(() => !!draft.value.content || draft.value.imageUrls.length > 0 || !!broadcastsStore.preview)
+
+// Phone: audience + preview collapse into an accordion (open state is the user's choice)
+const phoneMql = typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+  ? window.matchMedia('(max-width: 768px)')
+  : null
+const isPhone = ref(phoneMql?.matches ?? false)
+const phoneOpen = ref(false)
+const onPhoneChange = (event: { matches: boolean }) => { isPhone.value = event.matches }
+phoneMql?.addEventListener('change', onPhoneChange)
+const onPanelToggle = (event: Event) => {
+  if (isPhone.value) { phoneOpen.value = (event.target as HTMLElement & { open: boolean }).open }
+}
 
 // Recipients the current audience preview would send, per LINE channel (feeds the quota card)
 const pendingByChannel = computed(() =>
@@ -122,7 +147,10 @@ const onWideChange = (event: { matches: boolean }) => {
     void openDetail(first.id)
   }
 }
-onUnmounted(() => wideMql?.removeEventListener('change', onWideChange))
+onUnmounted(() => {
+  wideMql?.removeEventListener('change', onWideChange)
+  phoneMql?.removeEventListener('change', onPhoneChange)
+})
 
 onMounted(async () => {
   await Promise.all([
@@ -184,15 +212,9 @@ async function fetchCurrentRecipients() {
 
 
 <style scoped>
-.broadcast-page {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  width: 100%;
-  max-width: 1280px;
-  min-height: 100%;
-  margin: 0 auto;
-  padding: 20px;
+/* grouped headers inside the working cards: 17px, not the 19px card title */
+.broadcast-page :deep(.ui-card-title) {
+  font-size: 17px;
 }
 
 .page-grid {
@@ -203,9 +225,54 @@ async function fetchCurrentRecipients() {
   align-items: start;
 }
 
-.side-stack {
-  display: grid;
-  gap: 16px;
+.side-panel {
+  display: flex;
+  flex-direction: column;
+  align-self: stretch;
+}
+
+/* The browser wraps open <details> content in a slot; make it a flex column so the preview can fill the panel */
+.side-panel::details-content {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
+
+/* the two cards share one panel: flatten them and separate with one hairline */
+.side-panel :deep(.ui-card) {
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.side-panel :deep(.preview-card) {
+  flex: 1;
+  box-shadow: 0 -0.5px 0 var(--ui-sep);
+}
+
+.side-summary {
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  font: 600 var(--ui-t-head) var(--ui-font-display);
+  list-style: none;
+  cursor: pointer;
+}
+
+.side-summary::-webkit-details-marker {
+  display: none;
+}
+
+.side-chevron {
+  width: 18px;
+  height: 18px;
+  color: var(--ui-muted);
+  transition: transform var(--ui-dur) var(--ui-ease);
+}
+
+.side-panel[open] .side-chevron {
+  transform: rotate(180deg);
 }
 
 @media (min-width: 1281px) {
@@ -218,8 +285,13 @@ async function fetchCurrentRecipients() {
 }
 
 @media (max-width: 768px) {
-  .broadcast-page {
-    padding: 16px;
+  .side-panel {
+    align-self: start;
+  }
+
+  .side-summary {
+    display: flex;
+    min-height: 44px;
   }
 }
 </style>

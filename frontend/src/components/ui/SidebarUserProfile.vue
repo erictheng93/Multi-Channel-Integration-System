@@ -187,8 +187,11 @@ const props = defineProps<{
 </script>
 
 <style scoped>
+  /* Pinned under the scrolling nav (never shrinks, never scrolls away) */
   .sidebar-footer {
+    flex: none;
     padding: 8px 10px 12px;
+    box-shadow: inset 0 0.5px 0 var(--ui-sep);
   }
 
   .user-profile {

@@ -69,7 +69,7 @@
   }
 
   .reply-label {
-    font-size: 11px;
+    font-size: 13px;
     font-weight: 600;
     color: #6366f1;
     text-transform: uppercase;
@@ -156,7 +156,7 @@
     }
 
     .reply-label {
-      font-size: 10px;
+      font-size: 13px;
       padding: 1px 6px;
       border-radius: 10px;
     }

@@ -413,7 +413,7 @@ const handleTeamsLoaded = (teams: AgentTeamMembership[]) => {
 .unsaved-indicator {
   padding: 4px 10px;
   border-radius: 12px;
-  font-size: 0.75rem;
+  font-size: 13px;
   font-weight: 500;
   background: #fef3c7;
   color: #92400e;
@@ -504,18 +504,18 @@ const handleTeamsLoaded = (teams: AgentTeamMembership[]) => {
 
 .error-message {
   color: #ef4444;
-  font-size: 0.75rem;
+  font-size: 13px;
 }
 
 .success-message {
   color: #16a34a;
-  font-size: 0.75rem;
+  font-size: 13px;
   font-weight: 500;
 }
 
 .field-hint {
   color: #94a3b8;
-  font-size: 0.75rem;
+  font-size: 13px;
   font-style: italic;
 }
 

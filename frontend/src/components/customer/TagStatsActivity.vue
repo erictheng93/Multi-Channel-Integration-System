@@ -289,13 +289,13 @@ const calculateBarWidth = (value: number, trendData: Array<{ date: string; assig
   }
 
   .trend-date {
-    font-size: 0.75rem;
+    font-size: 13px;
   }
 
   .assigner-rank {
     width: 32px;
     height: 32px;
-    font-size: 0.75rem;
+    font-size: 13px;
   }
 
   .assigner-name {
