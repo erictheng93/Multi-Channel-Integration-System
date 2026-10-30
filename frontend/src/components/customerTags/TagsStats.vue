@@ -12,21 +12,47 @@
       </div>
     </div>
 
-    <div class="lead-rings">
-      <ServiceRings
-        summary="標籤使用概況"
-        :rings="rings"
-        :size="136"
-        center-label="使用中"
-        :center-value="stats.activeTags"
-      />
+    <div
+      v-if="parts.length > 0"
+      class="lead-mix"
+    >
+      <div class="mix-head">
+        標籤分佈<span>前 {{ parts.length }} 名佔 {{ coverage }}%</span>
+      </div>
+      <div
+        class="mix-bar"
+        role="img"
+        :aria-label="`標籤分佈：${parts.map((p) => `${p.name} ${p.count}`).join('、')}`"
+      >
+        <i
+          v-for="p in parts"
+          :key="p.id"
+          :style="{ flexGrow: p.count, background: p.color }"
+        />
+      </div>
+      <ul class="mix-legend">
+        <li
+          v-for="p in parts"
+          :key="p.id"
+        >
+          <i :style="{ background: p.color }" />
+          <span class="mix-name">{{ p.name }}</span>
+          <b>{{ p.count }}</b>
+        </li>
+      </ul>
+      <p
+        v-if="unusedCount > 0"
+        class="mix-note"
+      >
+        另有 {{ unusedCount }} 個標籤尚未套用
+      </p>
     </div>
   </article>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import ServiceRings from '@/components/ui/ServiceRings.vue'
+import type { Tag } from '@/types/tag'
 
 const props = defineProps<{
   stats: {
@@ -34,20 +60,25 @@ const props = defineProps<{
     totalConversations: number
     activeTags: number
   }
+  tags: Tag[]
 }>()
 
 const unusedCount = computed(() => Math.max(0, props.stats.totalTags - props.stats.activeTags))
 
-// One real ratio: tags that are applied to at least one conversation / all tags
-const rings = computed(() => [
-  {
-    label: unusedCount.value > 0 ? `使用中標籤（${unusedCount.value} 個尚未套用）` : '使用中標籤（皆已套用）',
-    value: props.stats.activeTags,
-    total: props.stats.totalTags,
-    of: '個標籤',
-    hue: 'var(--section-hue)',
-  },
-])
+// The five most-applied tags in their own colours: what the counts are made of, not a restated fraction
+const parts = computed(() =>
+  [...props.tags]
+    .filter((t) => (t.conversationCount || 0) > 0)
+    .sort((a, b) => (b.conversationCount || 0) - (a.conversationCount || 0))
+    .slice(0, 5)
+    .map((t) => ({ id: t.id, name: t.name, color: t.color, count: t.conversationCount || 0 })),
+)
+
+const coverage = computed(() => {
+  const total = props.tags.reduce((n, t) => n + (t.conversationCount || 0), 0)
+  if (total <= 0) { return 0 }
+  return Math.round((parts.value.reduce((n, p) => n + p.count, 0) / total) * 100)
+})
 </script>
 
 <style scoped>
@@ -94,15 +125,12 @@ const rings = computed(() => [
   color: var(--ui-ink-2);
 }
 
-.lead-rings {
+.lead-mix {
   position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   min-width: 0;
 }
 
-.lead-rings::before {
+.lead-mix::before {
   position: absolute;
   top: 4px;
   bottom: 4px;
@@ -110,6 +138,79 @@ const rings = computed(() => [
   width: 0.5px;
   background: var(--ui-sep);
   content: '';
+}
+
+.mix-head {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  justify-content: space-between;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ui-ink-2);
+}
+
+.mix-head span {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ui-muted);
+}
+
+.mix-bar {
+  display: flex;
+  gap: 3px;
+  height: 14px;
+  margin-top: 12px;
+}
+
+.mix-bar i {
+  flex-basis: 0;
+  min-width: 6px;
+  border-radius: 999px;
+}
+
+.mix-legend {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 24px;
+  margin: 16px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mix-legend li {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+  font-size: 14px;
+}
+
+.mix-legend li i {
+  flex: none;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+}
+
+.mix-name {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  color: var(--ui-ink-2);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mix-legend b {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.mix-note {
+  margin: 12px 0 0;
+  font-size: 13px;
+  color: var(--ui-muted);
 }
 
 @media (max-width: 768px) {
@@ -122,11 +223,7 @@ const rings = computed(() => [
     font-size: 48px;
   }
 
-  .lead-rings {
-    justify-content: flex-start;
-  }
-
-  .lead-rings::before {
+  .lead-mix::before {
     display: none;
   }
 }

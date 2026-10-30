@@ -140,7 +140,9 @@ const meterWidth = computed(() => {
   align-items: center;
   column-gap: 14px;
   row-gap: 3px;
-  padding: 12px 14px 12px 18px;
+  margin: 0 8px;
+  padding: 12px 12px 12px 14px;
+  border-radius: 16px;
   cursor: pointer;
   transition: background var(--ui-dur) var(--ui-ease);
 }
@@ -155,10 +157,18 @@ const meterWidth = computed(() => {
   content: '';
   position: absolute;
   top: 0;
-  right: 18px;
-  left: 54px;
+  right: 14px;
+  left: 50px;
   height: 0.5px;
   background: var(--ui-sep);
+}
+
+/* A selected or open row is an inset rounded tint: no hairline against it */
+.tag-card.tag-active::before,
+.tag-card.tag-selected::before,
+.tag-card.tag-active + .tag-card::before,
+.tag-card.tag-selected + .tag-card::before {
+  opacity: 0;
 }
 
 .tag-card:hover {
@@ -339,7 +349,7 @@ const meterWidth = computed(() => {
   display: block;
   height: 100%;
   border-radius: inherit;
-  background: var(--section-hue);
+  background: var(--tag-c, var(--section-hue));
 }
 
 .tag-actions {
@@ -408,18 +418,24 @@ const meterWidth = computed(() => {
 
 /* Phone: name, description and count; edit and delete live in the detail sheet */
 @media (max-width: 768px) {
+  /* No empty select column on a phone: the checkbox column exists only where there is no hover to reveal it */
   .tag-card {
-    grid-template-columns: 22px minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr) auto;
     grid-template-areas:
-      'check chip count'
-      'check desc count';
+      'chip count'
+      'desc count';
     column-gap: 12px;
-    padding: 12px 14px;
+    margin: 0 4px;
+    padding: 12px 12px;
+  }
+
+  .tag-checkbox {
+    display: none;
   }
 
   .tag-card + .tag-card::before {
-    right: 14px;
-    left: 48px;
+    right: 12px;
+    left: 12px;
   }
 
   .meter,
@@ -440,6 +456,23 @@ const meterWidth = computed(() => {
     overflow: visible;
     line-height: 1.3;
     white-space: normal;
+  }
+
+  @media (hover: none) {
+    .tag-card {
+      grid-template-columns: 22px minmax(0, 1fr) auto;
+      grid-template-areas:
+        'check chip count'
+        'check desc count';
+    }
+
+    .tag-checkbox {
+      display: grid;
+    }
+
+    .tag-card + .tag-card::before {
+      left: 48px;
+    }
   }
 
   /* the count doubles as the entry to the tag's conversations */
