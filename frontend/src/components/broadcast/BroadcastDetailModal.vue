@@ -277,7 +277,8 @@ function reasonLabel(reason: BroadcastRecipientErrorReason): string {
 .modal-backdrop.is-inline {
   position: static;
   z-index: auto;
-  display: block;
+  display: flex;
+  align-items: stretch;
   padding: 0;
   background: none;
 }
@@ -291,6 +292,7 @@ function reasonLabel(reason: BroadcastRecipientErrorReason): string {
 }
 
 .is-inline .detail-modal {
+  flex: 1;
   width: 100%;
   max-height: none;
   overflow: visible;

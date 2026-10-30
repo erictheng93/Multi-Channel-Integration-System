@@ -297,20 +297,22 @@ function formatDate(value: string | null): string {
 }
 
 .title-text {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 
+/* The date stays on its line; the message text wraps (two lines at most) instead of being cut to "…" */
 .col-title small {
-  display: block;
+  display: -webkit-box;
   max-width: 100%;
   margin-top: 2px;
   overflow: hidden;
   font-size: 13px;
-  color: var(--ui-muted);
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.45;
+  color: var(--ui-ink-2);
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow-wrap: anywhere;
 }
 
 .col-status {
@@ -331,7 +333,7 @@ function formatDate(value: string | null): string {
 
 .result-bar {
   display: flex;
-  height: 6px;
+  height: 8px;
   margin-top: 8px;
   overflow: hidden;
   border-radius: 999px;
@@ -360,7 +362,7 @@ function formatDate(value: string | null): string {
   flex-wrap: wrap;
   gap: 2px 10px;
   margin-top: 0;
-  font-size: 13px;
+  font-size: 14px;
   color: var(--ui-ink-2);
   font-variant-numeric: tabular-nums;
 }

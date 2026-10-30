@@ -24,27 +24,8 @@
           @draft="draft = $event"
         />
 
-        <!-- One panel for audience + LINE preview. Desktop: always open, same height as the form.
-             Phone: an accordion after the form, shown once there is input to preview. -->
-        <details
-          class="ui-card side-panel"
-          :open="!isPhone || phoneOpen"
-          @toggle="onPanelToggle"
-        >
-          <summary class="side-summary">
-            <span>受眾與 LINE 預覽</span>
-            <span class="side-note">{{ hasInput ? '即時預覽' : '輸入內容後顯示' }}</span>
-            <svg
-              class="side-chevron"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              aria-hidden="true"
-            ><path d="m6 9 6 6 6-6" /></svg>
-          </summary>
+        <!-- One panel for audience + LINE preview, always visible (on a phone it sits right under the form) -->
+        <div class="ui-card side-panel">
           <BroadcastAudienceCard
             :preview="broadcastsStore.preview"
             :tag-name="previewTagName"
@@ -54,7 +35,7 @@
             :content="draft.content"
             :image-urls="draft.imageUrls"
           />
-        </details>
+        </div>
       </div>
 
       <div
@@ -110,21 +91,6 @@ const detailBroadcastId = ref<string | null>(null)
 const recipientStatus = ref<BroadcastRecipientStatus | undefined>()
 const recipientPage = ref(1)
 const draft = ref<{ content: string; imageUrls: string[] }>({ content: '', imageUrls: [] })
-const hasInput = computed(() => !!draft.value.content || draft.value.imageUrls.length > 0 || !!broadcastsStore.preview)
-
-// Phone: audience + preview collapse into an accordion (open state is the user's choice)
-const phoneMql = typeof window !== 'undefined' && typeof window.matchMedia === 'function'
-  ? window.matchMedia('(max-width: 768px)')
-  : null
-const isPhone = ref(phoneMql?.matches ?? false)
-const phoneOpen = ref(false)
-// The preview opens by itself as soon as there is something to preview
-watch(hasInput, (value) => { if (value && isPhone.value) { phoneOpen.value = true } })
-const onPhoneChange = (event: { matches: boolean }) => { isPhone.value = event.matches }
-phoneMql?.addEventListener('change', onPhoneChange)
-const onPanelToggle = (event: Event) => {
-  if (isPhone.value) { phoneOpen.value = (event.target as HTMLElement & { open: boolean }).open }
-}
 
 // Recipients the current audience preview would send, per LINE channel (feeds the quota card)
 const pendingByChannel = computed(() =>
@@ -151,7 +117,6 @@ const onWideChange = (event: { matches: boolean }) => {
 }
 onUnmounted(() => {
   wideMql?.removeEventListener('change', onWideChange)
-  phoneMql?.removeEventListener('change', onPhoneChange)
 })
 
 onMounted(async () => {
@@ -239,20 +204,6 @@ async function fetchCurrentRecipients() {
   }
 }
 
-.side-note {
-  margin-left: auto;
-  margin-right: 10px;
-  font: 400 13px var(--ui-font-ui);
-  color: var(--ui-muted);
-}
-
-/* The browser wraps open <details> content in a slot; make it a flex column so the preview can fill the panel */
-.side-panel::details-content {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-}
-
 /* the two cards share one panel: flatten them and separate with one hairline */
 .side-panel :deep(.ui-card) {
   border-radius: 0;
@@ -265,34 +216,13 @@ async function fetchCurrentRecipients() {
   box-shadow: 0 -0.5px 0 var(--ui-sep);
 }
 
-.side-summary {
-  display: none;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16px 20px;
-  font: 600 var(--ui-t-head) var(--ui-font-display);
-  list-style: none;
-  cursor: pointer;
-}
-
-.side-summary::-webkit-details-marker {
-  display: none;
-}
-
-.side-chevron {
-  width: 18px;
-  height: 18px;
-  color: var(--ui-muted);
-  transition: transform var(--ui-dur) var(--ui-ease);
-}
-
-.side-panel[open] .side-chevron {
-  transform: rotate(180deg);
-}
-
 @media (min-width: 1281px) {
   .page-grid {
     grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+  }
+  /* records and recipient detail end on the same line */
+  .page-grid.has-detail {
+    align-items: stretch;
   }
   .page-grid:has(> :only-child) {
     grid-template-columns: minmax(0, 1fr);
@@ -302,11 +232,6 @@ async function fetchCurrentRecipients() {
 @media (max-width: 768px) {
   .side-panel {
     align-self: start;
-  }
-
-  .side-summary {
-    display: flex;
-    min-height: 44px;
   }
 }
 </style>
