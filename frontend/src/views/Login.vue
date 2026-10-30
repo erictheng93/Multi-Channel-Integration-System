@@ -86,6 +86,9 @@
               <svg viewBox="0 0 24 24"><path d="M12 3C6.5 3 2 6.6 2 11c0 2.5 1.4 4.7 3.7 6.2L5 21l4.1-2.3c.9.2 1.9.3 2.9.3 5.5 0 10-3.6 10-8s-4.5-8-10-8Z" /></svg>
             </div>
             <b>全通路客服整合平台</b>
+            <p class="m-sub">
+              LINE 與 Messenger 的客戶對話，集中在同一個工作台。
+            </p>
           </div>
 
           <div class="auth">
@@ -462,7 +465,19 @@ const handleLogin = async (event?: Event) => {
   padding: 44px 56px 40px;
   overflow: hidden;
   border-radius: 32px;
-  background: var(--ui-accent-soft);
+  /* Deep brand blue: white type on it has real figure/ground, and the disc rim reads as light */
+  background: linear-gradient(155deg, #0a4a9e 0%, #0066cc 58%, #1c7ee0 100%);
+  color: #fff;
+  --ui-disc-a: #fff;
+  --ui-disc-b: #9cc8ff;
+}
+
+.brand-side .brand-mark {
+  background: #fff;
+}
+
+.brand-side .brand-mark svg {
+  fill: var(--ui-accent);
 }
 
 .brand-top {
@@ -506,9 +521,9 @@ const handleLogin = async (event?: Event) => {
 .brand-copy p {
   max-width: 34ch;
   margin-top: 14px;
-  font-size: 16px;
+  font-size: 17px;
   line-height: 1.6;
-  color: var(--ui-ink-2);
+  color: rgb(255 255 255 / 0.92);
 }
 
 .channels {
@@ -519,8 +534,10 @@ const handleLogin = async (event?: Event) => {
 }
 
 .channels .ui-chip {
-  height: 32px;
-  padding: 0 12px 0 8px;
+  height: 34px;
+  padding: 0 14px 0 8px;
+  background: #fff;
+  color: var(--ui-ink);
   cursor: default;
 }
 
@@ -529,7 +546,7 @@ const handleLogin = async (event?: Event) => {
   z-index: 1;
   font-size: var(--ui-t-cap);
   font-weight: 500;
-  color: var(--ui-ink-2);
+  color: rgb(255 255 255 / 0.85);
 }
 
 /* The hero disc sits in the panel's lower right and runs off its outer edge on purpose
@@ -547,10 +564,16 @@ const handleLogin = async (event?: Event) => {
 }
 
 .wheel {
-  --ui-disc-weight: 1.7;
+  --ui-disc-weight: 1.9;
 
   width: 100%;
   height: 100%;
+}
+
+/* On the blue panel the rim is light */
+.brand-side .wheel {
+  --ui-disc-a: #fff;
+  --ui-disc-b: #bcd9ff;
 }
 
 /* Dark: the rim turns white for contrast on the black canvas */
@@ -578,6 +601,28 @@ const handleLogin = async (event?: Event) => {
   border-radius: var(--ui-r-lead);
   background: var(--ui-surface);
   box-shadow: var(--ui-shadow-raised);
+}
+
+/* Wide screens: the whole right column is the white sheet, so the form is part of the page rather than a card adrift on grey */
+@media (min-width: 1025px) {
+  .login-page {
+    background: var(--ui-surface);
+  }
+
+  .auth {
+    padding: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .login-page .auth h2 {
+    font-size: 40px;
+  }
+
+  .login-page .lede {
+    font-size: 16px;
+  }
 }
 
 .auth h2 {
@@ -725,7 +770,7 @@ const handleLogin = async (event?: Event) => {
 .m-disc {
   position: absolute;
   left: 50%;
-  top: 46px;
+  top: 54px;
   z-index: -1;
   margin: -180px 0 0 -180px;
   opacity: 0.85;
@@ -763,21 +808,30 @@ const handleLogin = async (event?: Event) => {
   }
 
   .m-brand .brand-mark {
-    width: 44px;
-    height: 44px;
+    width: 60px;
+    height: 60px;
     margin: 0 auto 28px;
-    border-radius: 14px;
+    border-radius: 18px;
   }
 
   .m-brand .brand-mark svg {
-    width: 24px;
-    height: 24px;
+    width: 32px;
+    height: 32px;
   }
 
   .m-brand b {
     display: block;
-    font: 700 20px/1.2 var(--ui-font-display);
-    letter-spacing: -0.02em;
+    font: 700 26px/1.2 var(--ui-font-display);
+    letter-spacing: -0.03em;
+  }
+
+  .m-sub {
+    max-width: 30ch;
+    margin: 8px auto 0;
+    text-wrap: balance;
+    font-size: 15px;
+    line-height: 1.5;
+    color: var(--ui-ink-2);
   }
 
   .m-foot {
