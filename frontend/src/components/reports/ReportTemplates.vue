@@ -45,7 +45,7 @@
             :key="template.name"
             :template="template"
             :selected="selected.name === template.name"
-            @select="selected = $event"
+            @select="onSelect"
           />
         </div>
 
@@ -84,38 +84,64 @@
       </section>
 
       <section
+        ref="outEl"
         class="ui-lead tpl-out"
         :aria-label="`${selected.name}的最近產出`"
       >
-        <header>
-          <h2 class="out-name">
-            {{ selected.name }}
-          </h2>
-          <p class="out-kicker">
-            產出內容預覽
-          </p>
+        <header class="out-head">
+          <div>
+            <p class="out-kicker">
+              目前選擇的模板
+            </p>
+            <h2 class="out-name">
+              {{ selected.name }}
+            </h2>
+          </div>
+          <div class="out-actions">
+            <button
+              type="button"
+              class="btn btn-secondary"
+              :disabled="generating"
+              @click="customizeTemplate(selected)"
+            >
+              調整後產生
+            </button>
+            <button
+              type="button"
+              class="btn btn-primary"
+              :disabled="generating"
+              @click="useTemplate(selected)"
+            >
+              {{ generating ? '產生中...' : '直接產生' }}
+            </button>
+          </div>
         </header>
         <ReportOutputPreview :type="selected.type" />
-        <footer class="out-foot">
-          <button
-            type="button"
-            class="btn btn-secondary"
-            :disabled="generating"
-            @click="customizeTemplate(selected)"
-          >
-            調整後產生
-          </button>
-          <button
-            type="button"
-            class="btn btn-primary"
-            :disabled="generating"
-            @click="useTemplate(selected)"
-          >
-            {{ generating ? '產生中...' : '直接產生' }}
-          </button>
-        </footer>
       </section>
     </div>
+
+    <UiActionBar
+      v-if="selected"
+      class="tpl-bar"
+      label="使用模板"
+    >
+      <button
+        type="button"
+        class="btn btn-secondary"
+        :disabled="generating"
+        @click="customizeTemplate(selected)"
+      >
+        調整後產生
+      </button>
+      <button
+        type="button"
+        class="btn btn-primary"
+        :disabled="generating"
+        @click="useTemplate(selected)"
+      >
+        {{ generating ? '產生中...' : '直接產生' }}
+      </button>
+    </UiActionBar>
   </div>
 </template>
 
@@ -123,7 +149,8 @@
 <script setup lang="ts">
 import UiPageHead from '@/components/ui/UiPageHead.vue'
 import UiSectionNav from '@/components/ui/UiSectionNav.vue'
-import { ref, computed, onMounted, watch } from 'vue';
+import UiActionBar from '@/components/ui/UiActionBar.vue'
+import { ref, computed, nextTick, onMounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import type { ReportTemplate } from '@/types/reports';
 import ReportsAPI from '@/api/reports';
@@ -157,6 +184,17 @@ const generatableTypes = generatable.types.map(option => option.value);
 const isSupported = (template: ReportTemplate) => generatableTypes.includes(template.type);
 const usableTemplates = computed(() => templates.value.filter(isSupported));
 const selected = ref<ReportTemplate | null>(null);
+const outEl = ref<HTMLElement | null>(null);
+
+// In one column the preview sits below the list: bring it into view so a tap visibly does something
+const onSelect = async (template: ReportTemplate) => {
+  const changed = selected.value !== template;
+  selected.value = template;
+  if (changed && window.matchMedia?.('(max-width: 1024px)').matches) {
+    await nextTick();
+    outEl.value?.scrollIntoView?.({ block: 'start', behavior: 'smooth' });
+  }
+};
 watch(usableTemplates, list => {
   if (!selected.value || !list.includes(selected.value)) {
     selected.value = list[0] ?? null;
@@ -310,19 +348,28 @@ onMounted(() => {
   letter-spacing: -0.025em;
 }
 
+.out-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 16px;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
 .out-kicker {
-  margin: 2px 0 0;
+  margin: 0 0 2px;
   font-size: 13px;
+  font-weight: 600;
   color: var(--ui-muted);
 }
 
-.out-foot {
+.out-actions {
   display: flex;
-  flex-wrap: wrap;
   gap: 8px;
-  justify-content: flex-end;
-  padding-top: 16px;
-  box-shadow: 0 -0.5px 0 var(--ui-sep);
+}
+
+.tpl-bar {
+  display: none;
 }
 
 .error-state {
@@ -348,7 +395,15 @@ onMounted(() => {
     font-size: 22px;
   }
 
-  .out-foot .btn {
+  .out-actions {
+    display: none;
+  }
+
+  .tpl-bar {
+    display: flex;
+  }
+
+  .tpl-bar .btn {
     flex: 1;
   }
 }

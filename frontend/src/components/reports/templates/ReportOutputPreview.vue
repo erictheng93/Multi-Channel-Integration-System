@@ -40,6 +40,7 @@
 
     <template v-else>
       <div class="rop-meta">
+        <span class="rop-from">取自最近一份 JSON 報表</span>
         <router-link
           :to="`/reports/${latest.id}`"
           class="rop-title"
@@ -64,11 +65,11 @@
       </div>
 
       <dl
-        v-if="metrics.length"
+        v-if="kpis.length"
         class="rop-kpis"
       >
         <div
-          v-for="metric in metrics"
+          v-for="metric in kpis"
           :key="metric.label"
           class="rop-kpi"
         >
@@ -262,6 +263,12 @@ const split = computed(() => {
   return parts
 })
 
+/** The tiles double as the legend of the bar: the remainder gets its own grey tile so no segment is unlabelled */
+const kpis = computed(() => {
+  const rest = split.value.find(part => part.tone === 'grey')
+  return rest ? [...metrics.value, { label: '其他', value: rest.value, tone: 'grey' as Tone }] : metrics.value
+})
+
 const rowsHead = computed(() =>
   props.type === 'message_statistics' ? ['訊息類型', '則數'] : ['客服', '對話', '訊息']
 )
@@ -357,6 +364,12 @@ const metaLine = computed(() => {
   gap: 2px;
 }
 
+.rop-from {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ui-muted);
+}
+
 .rop-title {
   font: 600 17px / 1.3 var(--ui-font-display);
   color: var(--ui-ink);
@@ -403,7 +416,8 @@ const metaLine = computed(() => {
   background: var(--ui-green);
 }
 
-.rop-split .grey {
+.rop-split .grey,
+.rop-dot.grey {
   background: var(--ui-fill-strong);
 }
 
@@ -526,6 +540,11 @@ const metaLine = computed(() => {
 }
 
 @media (max-width: 768px) {
+  .rop-kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px 24px;
+  }
+
   .rop-kpi dd {
     font-size: 28px;
   }
