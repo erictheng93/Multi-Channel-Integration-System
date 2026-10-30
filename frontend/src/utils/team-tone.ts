@@ -35,6 +35,11 @@ export function teamMarkBackground(teamId: number): string {
   return pastelBackground(toneFor(teamId).token)
 }
 
+/** The tone's own colour (bars, dots): same family as the team's chip and mark. */
+export function teamToneColor(teamId: number): string {
+  return `var(--ui-${toneFor(teamId).token})`
+}
+
 /** Ink for the team mark initial. */
 export function teamMarkInk(teamId: number): string {
   return pastelInk(toneFor(teamId).token)

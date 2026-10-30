@@ -25,6 +25,10 @@
       <div class="team-meta">
         <span class="ui-pill">{{ team.memberCount || 0 }} 成員</span>
         <span
+          v-if="openCount !== null && openCount !== undefined"
+          class="ui-pill ui-pill-blue"
+        >{{ openCount }} 件處理中</span>
+        <span
           v-if="!team.isActive"
           class="ui-pill"
         >已停用</span>
@@ -162,8 +166,10 @@ import { createLogger } from '@/utils/logger'
       loading?: boolean
       /** Up to a few members of this team, for the avatar stack. */
       previewMembers?: TeamMember[]
+      /** Open conversations of this team; null/undefined = unknown, nothing is drawn */
+      openCount?: number | null
     }>(),
-    { loading: false, previewMembers: () => [] }
+    { loading: false, previewMembers: () => [], openCount: null }
   )
   const emit = defineEmits<{
     'toggle-status': [team: Team]
