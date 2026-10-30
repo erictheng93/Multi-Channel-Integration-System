@@ -1,17 +1,16 @@
 <template>
-  <!-- Four peer tiles that take part in the parent grid; the first three open the endpoint list for that status -->
-  <button
-    v-for="tile in tiles"
-    :key="tile.key"
-    type="button"
-    class="ui-card tile"
-    :class="{ 'is-static': !tile.clickable }"
-    @click="$emit('stat-click', tile.key)"
-  >
-    <div class="tile-top">
+  <!-- Four compact status chips under the lead number; the first three open the endpoint list for that status -->
+  <div class="stat-row">
+    <button
+      v-for="tile in tiles"
+      :key="tile.key"
+      type="button"
+      class="tile"
+      :class="[{ 'is-static': !tile.clickable }, tile.tone]"
+      @click="$emit('stat-click', tile.key)"
+    >
       <span
         class="tile-ico"
-        :class="tile.tone"
         aria-hidden="true"
       >
         <!-- eslint-disable vue/no-v-html -->
@@ -26,15 +25,10 @@
         />
         <!-- eslint-enable vue/no-v-html -->
       </span>
-      {{ tile.label }}
-    </div>
-    <div
-      class="tile-value"
-      :class="tile.tone"
-    >
-      {{ tile.value }}<small>{{ tile.unit }}</small>
-    </div>
-  </button>
+      <span class="tile-label">{{ tile.label }}</span>
+      <span class="tile-value">{{ tile.value }}<small>{{ tile.unit }}</small></span>
+    </button>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -91,23 +85,38 @@ const tiles = computed(() => [
 </script>
 
 <style scoped>
+.stat-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .tile {
-  display: block;
-  padding: 18px 20px 16px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0 12px 0 8px;
   border: 0;
+  border-radius: 999px;
+  background: var(--ui-fill);
   font: inherit;
-  text-align: left;
-  color: inherit;
+  font-size: 13px;
+  color: var(--ui-ink-2);
   cursor: pointer;
-  transition: box-shadow var(--ui-dur) var(--ui-ease);
+  transition: background var(--ui-dur) var(--ui-ease);
 }
 
 .tile:hover {
-  box-shadow: var(--ui-shadow-raised);
+  background: var(--ui-fill-strong);
 }
 
 .tile.is-static {
   cursor: default;
+}
+
+.tile.is-static:hover {
+  background: var(--ui-fill);
 }
 
 .tile:focus-visible {
@@ -115,77 +124,52 @@ const tiles = computed(() => [
   outline-offset: 2px;
 }
 
-.tile-top {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 13.5px;
-  font-weight: 600;
-  color: var(--ui-ink-2);
-}
-
 .tile-ico {
   display: grid;
   place-items: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 9px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
 }
 
 .tile-ico svg {
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
 }
 
-.tile-ico.green {
+.green .tile-ico {
   background: var(--ui-green-soft);
   color: var(--ui-green-ink);
 }
 
-.tile-ico.orange {
+.orange .tile-ico {
   background: var(--ui-orange-soft);
   color: var(--ui-orange-ink);
 }
 
-.tile-ico.red {
+.red .tile-ico {
   background: var(--ui-red-soft);
   color: var(--ui-red-ink);
 }
 
-.tile-ico.blue {
+.blue .tile-ico {
   background: var(--ui-accent-soft);
   color: var(--ui-accent);
 }
 
+.tile-label {
+  font-weight: 500;
+}
+
 .tile-value {
-  margin: 12px 0 0;
-  font: 600 34px / 1 var(--ui-font-display);
-  letter-spacing: -0.03em;
+  font: 600 14px var(--ui-font-display);
   font-variant-numeric: tabular-nums;
-}
-
-.tile-value.orange {
-  color: var(--ui-orange-ink);
-}
-
-.tile-value.red {
-  color: var(--ui-red-ink);
+  color: var(--ui-ink);
 }
 
 .tile-value small {
-  margin-left: 4px;
-  font: 500 14px var(--ui-font-ui);
-  letter-spacing: 0;
+  margin-left: 2px;
+  font: 500 13px var(--ui-font-ui);
   color: var(--ui-muted);
-}
-
-@media (max-width: 768px) {
-  .tile {
-    padding: 12px 14px;
-  }
-  .tile-value {
-    margin-top: 8px;
-    font-size: 26px;
-  }
 }
 </style>

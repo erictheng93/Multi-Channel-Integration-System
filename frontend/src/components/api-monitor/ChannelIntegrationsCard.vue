@@ -1,61 +1,57 @@
 <template>
-  <article class="ui-card">
-    <div class="ui-card-head">
-      <div>
-        <h2 class="ui-card-title">
-          頻道整合
-        </h2>
-        <div class="ui-card-sub">
-          Webhook 與發送狀態
-        </div>
-      </div>
-    </div>
-    <div class="list">
-      <div
-        v-for="channel in channels"
-        :key="channel.id"
-        class="chn"
-      >
-        <span
-          class="tile"
-          :class="brand(channel.name)"
-          aria-hidden="true"
+  <section>
+    <h2 class="ui-group-label">
+      頻道整合
+      <span class="label-note">Webhook 與發送狀態</span>
+    </h2>
+    <div class="ui-group">
+      <div class="list">
+        <div
+          v-for="channel in channels"
+          :key="channel.id"
+          class="chn"
         >
-          <svg
-            v-if="brand(channel.name) !== 'other'"
-            viewBox="0 0 24 24"
-          ><path d="M12 3C6.5 3 2 6.6 2 11c0 2.5 1.4 4.7 3.7 6.2L5 21l4.1-2.3c.9.2 1.9.3 2.9.3 5.5 0 10-3.6 10-8s-4.5-8-10-8Z" /></svg>
-          <svg
-            v-else
-            class="stroke"
-            viewBox="0 0 24 24"
-          ><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" /></svg>
-        </span>
-        <div class="main">
-          <b>
-            {{ translateChannelName(channel.id, channel.name) }}
-            <span
-              class="ui-pill ui-pill-dot"
-              :class="pillClass(shownStatus(channel))"
-            >{{ statusLabel(shownStatus(channel)) }}</span>
-          </b>
-          <small :title="channel.details">{{ detailText(channel) }}</small>
+          <span
+            class="tile"
+            :class="brand(channel.name)"
+            aria-hidden="true"
+          >
+            <svg
+              v-if="brand(channel.name) !== 'other'"
+              viewBox="0 0 24 24"
+            ><path d="M12 3C6.5 3 2 6.6 2 11c0 2.5 1.4 4.7 3.7 6.2L5 21l4.1-2.3c.9.2 1.9.3 2.9.3 5.5 0 10-3.6 10-8s-4.5-8-10-8Z" /></svg>
+            <svg
+              v-else
+              class="stroke"
+              viewBox="0 0 24 24"
+            ><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" /></svg>
+          </span>
+          <div class="main">
+            <b>
+              {{ translateChannelName(channel.id, channel.name) }}
+              <span
+                class="ui-pill ui-pill-dot"
+                :class="pillClass(shownStatus(channel))"
+              >{{ statusLabel(shownStatus(channel)) }}</span>
+            </b>
+            <small :title="channel.details">{{ detailText(channel) }}</small>
+          </div>
+          <div
+            v-if="channel.latencyMs > 0"
+            class="lat"
+          >
+            <b>{{ channel.latencyMs }} ms</b>
+          </div>
         </div>
         <div
-          v-if="channel.latencyMs > 0"
-          class="lat"
+          v-if="channels.length === 0"
+          class="none"
         >
-          <b>{{ channel.latencyMs }} ms</b>
+          尚無資料
         </div>
       </div>
-      <div
-        v-if="channels.length === 0"
-        class="none"
-      >
-        尚無資料
-      </div>
     </div>
-  </article>
+  </section>
 </template>
 
 <script setup lang="ts">
@@ -109,8 +105,14 @@ function pillClass(status: ShownStatus): string {
 </script>
 
 <style scoped>
+.label-note {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--ui-muted);
+}
+
 .list {
-  padding-bottom: 8px;
+  padding: 6px 0;
 }
 
 .chn {

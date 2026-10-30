@@ -1,61 +1,59 @@
 <template>
-  <article class="ui-card">
-    <div class="ui-card-head">
-      <div>
-        <h2 class="ui-card-title">
-          近期事件
-        </h2>
+  <section>
+    <h2 class="ui-group-label">
+      近期事件
+    </h2>
+    <div class="ui-group">
+      <ul
+        v-if="events.length > 0"
+        class="ev"
+        :style="{ '--ev-cols': evCols, '--ev-rows': Math.ceil(events.length / evCols) }"
+      >
+        <li
+          v-for="event in events"
+          :key="event.id"
+        >
+          <span
+            class="ic"
+            :class="event.type"
+            aria-hidden="true"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path
+                v-if="event.type === 'recovery'"
+                d="m5 12 5 5L20 7"
+              />
+              <path
+                v-else-if="event.type === 'info'"
+                d="M12 8h.01M11 12h1v5h1"
+              />
+              <path
+                v-else
+                d="M12 7v6M12 17h.01"
+              />
+            </svg>
+          </span>
+          <span class="body">
+            <span class="msg">{{ event.message }}</span>
+            <time :datetime="event.timestamp">{{ relativeTime(event.timestamp) }}</time>
+          </span>
+        </li>
+      </ul>
+      <div
+        v-else
+        class="none"
+      >
+        近 1 小時沒有事件
       </div>
     </div>
-    <ul
-      v-if="events.length > 0"
-      class="ev"
-      :style="{ '--ev-cols': evCols, '--ev-rows': Math.ceil(events.length / evCols) }"
-    >
-      <li
-        v-for="event in events"
-        :key="event.id"
-      >
-        <span
-          class="ic"
-          :class="event.type"
-          aria-hidden="true"
-        >
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <path
-              v-if="event.type === 'recovery'"
-              d="m5 12 5 5L20 7"
-            />
-            <path
-              v-else-if="event.type === 'info'"
-              d="M12 8h.01M11 12h1v5h1"
-            />
-            <path
-              v-else
-              d="M12 7v6M12 17h.01"
-            />
-          </svg>
-        </span>
-        <span class="body">
-          <span class="msg">{{ event.message }}</span>
-          <time :datetime="event.timestamp">{{ relativeTime(event.timestamp) }}</time>
-        </span>
-      </li>
-    </ul>
-    <div
-      v-else
-      class="none"
-    >
-      近 1 小時沒有事件
-    </div>
-  </article>
+  </section>
 </template>
 
 <script setup lang="ts">
@@ -76,9 +74,15 @@ function relativeTime(timestamp: string): string {
 </script>
 
 <style scoped>
+.label-note {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--ui-muted);
+}
+
 .ev {
   margin: 0;
-  padding: 0 0 8px;
+  padding: 6px 0;
   list-style: none;
 }
 
