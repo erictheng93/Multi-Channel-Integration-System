@@ -429,7 +429,9 @@ describe('Conversations Store', () => {
       ['customer sticker after a reply is not a wait', null, { senderType: 'customer', messageType: 'sticker', content: 'sticker' }, null],
       ['customer thanks after a reply is not a wait', null, { senderType: 'customer', messageType: 'text', content: '謝謝！' }, null],
       ['a second customer message keeps the earliest wait', '2026-10-01T00:00:00.000Z', { senderType: 'customer', messageType: 'text', content: '在嗎' }, '2026-10-01T00:00:00.000Z'],
-      ['an agent reply clears the wait', '2026-10-01T00:00:00.000Z', { senderType: 'agent', messageType: 'text', content: '好的' }, null]
+      ['an agent reply clears the wait', '2026-10-01T00:00:00.000Z', { senderType: 'agent', messageType: 'text', content: '好的' }, null],
+      ['an auto-reply does not clear the wait', '2026-10-01T00:00:00.000Z', { senderType: 'agent', senderId: 'auto-reply', messageType: 'text', content: '已收到' }, '2026-10-01T00:00:00.000Z'],
+      ['a delivery receipt (no sender) does not clear the wait', '2026-10-01T00:00:00.000Z', {}, '2026-10-01T00:00:00.000Z']
     ]
     it.each(cases)('%s', async (_label, before, message, expected) => {
       const { useConversationsStore } = await import('./conversations')
