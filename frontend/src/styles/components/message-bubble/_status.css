@@ -10,7 +10,7 @@
   justify-content: center;
   gap: 6px;
   padding: 6px 12px;
-  font-size: 0.75rem;
+  font-size: 13px;
   font-weight: 600;
   letter-spacing: 0.02em;
   border-radius: 20px;
@@ -120,7 +120,7 @@
   bottom: -28px;
   left: 50%;
   transform: translateX(-50%) scale(0.9);
-  font-size: 0.65rem;
+  font-size: 13px;
   color: #dc2626;
   background: rgba(255, 255, 255, 0.95);
   padding: 3px 8px;
@@ -184,7 +184,7 @@
 }
 
 .status-text {
-  font-size: 0.72rem;
+  font-size: 13px;
   line-height: 1;
 }
 
@@ -229,7 +229,7 @@
    ═══════════════════════════════════════════════════════════════ */
 @media (max-width: 480px) {
   .attachment-status-indicator {
-    font-size: 0.68rem;
+    font-size: 13px;
     padding: 5px 10px;
     gap: 4px;
   }
@@ -241,7 +241,7 @@
   }
 
   .status-icon {
-    font-size: 0.8rem;
+    font-size: 13px;
   }
 
   .attachment-status-indicator.status-failed::after {

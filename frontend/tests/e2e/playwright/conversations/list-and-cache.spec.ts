@@ -54,7 +54,7 @@ test.describe('Conversation List & Cache (P0)', () => {
 
     // Verify key navigation items are present
     await expect(page.getByRole('link', { name: '儀表板' })).toBeVisible()
-    await expect(page.getByRole('link', { name: '對話管理' })).toBeVisible()
-    await expect(page.getByRole('link', { name: '團隊管理' })).toBeVisible()
+    await expect(page.getByRole('link', { name: '對話' })).toBeVisible()
+    await expect(page.getByRole('link', { name: '團隊成員' })).toBeVisible()
   })
 })

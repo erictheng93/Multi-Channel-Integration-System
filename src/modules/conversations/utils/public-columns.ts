@@ -21,15 +21,21 @@ export const publicConversationColumns = {
   deletedAt: conversations.deletedAt
 } as const;
 
-// Strips the private LINE reply credentials from a full conversation row that
-// was read for internal use (e.g. before a status change) and is about to be
-// returned to a client.
+// Strips the private LINE reply credentials and internal markers from a full
+// conversation row that was read for internal use (e.g. before a status
+// change) and is about to be returned to a client.
+const PRIVATE_KEYS = [
+  'lineReplyToken',
+  'lineReplyTokenReceivedAt',
+  'awaitingSince',
+  'lastCustomerMessageAt',
+  'lastAgentMessageAt'
+] as const;
+
 export function toPublicConversation<T extends object>(
   row: T
-): Omit<T, 'lineReplyToken' | 'lineReplyTokenReceivedAt'> {
-  const { lineReplyToken: _token, lineReplyTokenReceivedAt: _receivedAt, ...rest } = row as T & {
-    lineReplyToken?: unknown;
-    lineReplyTokenReceivedAt?: unknown;
-  };
-  return rest as Omit<T, 'lineReplyToken' | 'lineReplyTokenReceivedAt'>;
+): Omit<T, (typeof PRIVATE_KEYS)[number]> {
+  const rest: Record<string, unknown> = { ...(row as Record<string, unknown>) };
+  for (const key of PRIVATE_KEYS) delete rest[key];
+  return rest as Omit<T, (typeof PRIVATE_KEYS)[number]>;
 }

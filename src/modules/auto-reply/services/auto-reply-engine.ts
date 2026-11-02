@@ -10,6 +10,7 @@ import { createDbClient } from '@/db/drizzle-factory';
 import { autoReplyRules, autoReplyConditions, autoReplyActions, autoReplyLogs, autoReplyDeliveries, messages, conversations } from '@/db/schema';
 import { eq, and, isNull } from 'drizzle-orm';
 import { WebSocketBroadcastService } from '@/services/websocket-broadcast-service';
+import { AUTO_REPLY_SENDER_ID } from '@shared/api-contracts';
 import { v4 as uuidv4 } from 'uuid';
 import { createContextLogger } from '@/utils/logger';
 import { nowISO, nowMs } from '@/utils/timestamp';
@@ -795,7 +796,7 @@ async function broadcastAutoReply(
         content,
         messageType: 'text',
         senderType: 'agent', // System messages broadcast as 'agent' (closest available type)
-        senderId: 'auto-reply',
+        senderId: AUTO_REPLY_SENDER_ID,
         senderName: 'Auto-Reply',
         platform: 'line',
         timestamp: nowMs(),

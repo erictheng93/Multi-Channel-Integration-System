@@ -5,13 +5,22 @@
       class="quick-replies"
     >
       <button
-        v-for="reply in replies"
+        v-for="reply in visibleReplies"
         :key="reply.id"
         class="quick-reply-btn"
         :disabled="disabled"
         @click="handleSelect(reply)"
       >
         {{ reply.text }}
+      </button>
+      <button
+        v-if="replies.length > MAX_VISIBLE"
+        type="button"
+        class="quick-reply-btn quick-reply-more"
+        :aria-expanded="expanded"
+        @click="expanded = !expanded"
+      >
+        {{ expanded ? '收合' : `更多 ${replies.length - MAX_VISIBLE}` }}
       </button>
     </div>
   </Transition>
@@ -32,6 +41,8 @@
  * />
  * ```
  */
+
+import { computed, ref } from 'vue'
 
 export interface QuickReply {
   /** 唯一标识 */
@@ -57,11 +68,15 @@ interface Props {
   disabled?: boolean
 }
 
-withDefaults(defineProps<Props>(), {
+const props = withDefaults(defineProps<Props>(), {
   disabled: false,
 })
 
 const emit = defineEmits<Emits>()
+// At most three suggestions are shown; the rest sit behind 更多 so the row never needs a scroll to find the end
+const MAX_VISIBLE = 3
+const expanded = ref(false)
+const visibleReplies = computed(() => (expanded.value ? props.replies : props.replies.slice(0, MAX_VISIBLE)))
 
 interface Emits {
   /**
@@ -77,41 +92,45 @@ const handleSelect = (reply: QuickReply) => {
 </script>
 
 <style scoped>
-/* ====== Quick Replies Styles ====== */
+/* Quick replies: one swipeable row of capsule chips */
 .quick-replies {
-  max-width: 1200px;
-  margin: 0 auto;
   display: flex;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-  justify-content: center;
-  padding: 0.5rem 0;
+  gap: 8px;
+  padding: 10px 0 2px;
+  overflow-x: auto;
+  -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 24px), transparent);
+  mask-image: linear-gradient(90deg, #000 calc(100% - 24px), transparent);
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.quick-replies::-webkit-scrollbar {
+  display: none;
 }
 
 .quick-reply-btn {
-  padding: 0.5rem 1rem;
-  background: white;
-  border: 1px solid #e2e8f0;
-  border-radius: 9999px;
-  font-size: 0.8125rem;
+  flex: 0 0 auto;
+  min-height: 32px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--ui-fill);
+  color: var(--ui-ink-2);
+  font-size: 13px;
   font-weight: 500;
-  color: #64748b;
-  cursor: pointer;
-  transition: all 0.2s ease;
   white-space: nowrap;
+  cursor: pointer;
+  transition: background-color var(--ui-dur) var(--ui-ease);
 }
 
 .quick-reply-btn:hover:not(:disabled) {
-  background: #f8fafc;
-  border-color: #6366f1;
-  color: #6366f1;
-  transform: translateY(-1px);
-  box-shadow: 0 2px 4px rgba(99, 102, 241, 0.1);
+  background: var(--ui-fill-strong);
 }
 
-.quick-reply-btn:active:not(:disabled) {
-  transform: translateY(0);
-  box-shadow: 0 1px 2px rgba(99, 102, 241, 0.1);
+.quick-reply-more {
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--ui-sep);
+  color: var(--ui-muted);
 }
 
 .quick-reply-btn:disabled {
@@ -119,7 +138,6 @@ const handleSelect = (reply: QuickReply) => {
   cursor: not-allowed;
 }
 
-/* Fade in animation */
 .fade-in-enter-active {
   animation: fadeIn 0.3s ease-out;
 }
@@ -133,6 +151,7 @@ const handleSelect = (reply: QuickReply) => {
     opacity: 0;
     transform: translateY(-4px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -143,33 +162,32 @@ const handleSelect = (reply: QuickReply) => {
   from {
     opacity: 1;
   }
+
   to {
     opacity: 0;
   }
 }
 
-/* Responsive */
+/* Phone: chips wrap onto a second row instead of clipping at the edge */
 @media (max-width: 768px) {
-  /* One swipeable row instead of up to 3 wrapped rows eating the chat area */
   .quick-replies {
-    flex-wrap: nowrap;
-    justify-content: flex-start;
-    overflow-x: auto;
-    gap: 0.375rem;
-    padding: 0.375rem 0;
-    scrollbar-width: none;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  .quick-replies::-webkit-scrollbar {
-    display: none;
+    flex-wrap: wrap;
+    overflow: visible;
+    -webkit-mask-image: none;
+    mask-image: none;
   }
 
   .quick-reply-btn {
-    flex: 0 0 auto;
-    white-space: nowrap;
-    padding: 0.375rem 0.75rem;
-    font-size: 0.75rem;
+    flex: 0 1 auto;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
+@media (pointer: coarse) {
+  .quick-reply-btn {
+    min-height: 44px;
   }
 }
 </style>

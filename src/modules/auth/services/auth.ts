@@ -1,6 +1,7 @@
-import { eq, and } from 'drizzle-orm';
+import { eq, ne, and } from 'drizzle-orm';
 import { createDbClient } from '@/db/drizzle-factory';
 import { agents, teams, agentTeams } from '@/db/schema';
+import { SYSTEM_AGENT_ID, isSystemAgentId } from '@/constants/system-agent';
 import type { TeamRoleInTeam } from '@/types';
 import { convertAgent } from '@/utils/drizzle-converters';
 import type { JWTPayload } from '@/types';
@@ -389,6 +390,7 @@ export async function getUserById(db: D1Database, userId: number | string): Prom
     .leftJoin(teams, eq(agentTeams.teamId, teams.id))
     .where(and(
       eq(agents.id, userId.toString()),
+      ne(agents.id, SYSTEM_AGENT_ID), // the system actor is never an authenticated user
       eq(agents.isActive, true)
     ))
     .get();
@@ -454,7 +456,7 @@ export async function authenticateUser(
   // 用戶不存在
   // F18: dummy bcrypt verify equalizes timing so attackers can't enumerate
   // valid emails by the ~100ms gap between existing and non-existent users.
-  if (!user) {
+  if (!user || isSystemAgentId(user.id)) {
     await verifyPassword(password, DUMMY_BCRYPT_HASH);
     return { user: null, accountStatus: 'not_found' };
   }

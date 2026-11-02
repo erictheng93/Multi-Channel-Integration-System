@@ -527,7 +527,7 @@ const formatTime = (date: Date | string | number) => {
   gap: 5px;
   padding: 3px 10px 3px 7px;
   border-radius: 100px;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 500;
 }
 
@@ -576,7 +576,7 @@ const formatTime = (date: Date | string | number) => {
 }
 
 .pending-icon {
-  font-size: 12px;
+  font-size: 13px;
   line-height: 1;
 }
 
