@@ -78,6 +78,20 @@ describe('integration credentials are never posted back unless replaced', () => 
     expect(storeCredential).not.toHaveBeenCalled()
   })
 
+  it('還原 discards a typed replacement so a later save cannot store it', async () => {
+    const c = useSystemSettingsController()
+    await c.loadSettings()
+    c.settings.integrations.line.channelSecret = 'typed-then-abandoned'
+    c.settings.integrations.facebook.appSecret = 'other-section-keeps-this'
+
+    c.discardCredentialEdits('line')
+    await c.saveLineSettings()
+
+    expect(c.settings.integrations.line.channelSecret).toBe('')
+    expect(c.settings.integrations.facebook.appSecret).toBe('other-section-keeps-this')
+    expect(storeCredential).not.toHaveBeenCalled()
+  })
+
   it('testing sends only replaced fields (server falls back to stored values)', async () => {
     const c = useSystemSettingsController()
     await c.loadSettings()

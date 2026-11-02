@@ -52,7 +52,7 @@
 }
 
 .video-preview-meta {
-  font-size: 0.8rem;
+  font-size: 13px;
   color: var(--gray-400);
 }
 
@@ -280,7 +280,7 @@
 .playback-rate-btn {
   width: auto;
   padding: 0 var(--space-2);
-  font-size: 0.8rem;
+  font-size: 13px;
   font-weight: 600;
 }
 
@@ -357,7 +357,7 @@
   }
 
   .video-time-display {
-    font-size: 0.75rem;
+    font-size: 13px;
     min-width: 80px;
   }
 }
@@ -373,7 +373,7 @@
   }
 
   .video-preview-meta {
-    font-size: 0.7rem;
+    font-size: 13px;
   }
 
   .video-preview-btn {
@@ -405,7 +405,7 @@
   }
 
   .video-time-display {
-    font-size: 0.7rem;
+    font-size: 13px;
     min-width: 70px;
   }
 }

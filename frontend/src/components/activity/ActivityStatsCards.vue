@@ -2,225 +2,126 @@
   <div
     v-if="loading || overview !== null"
     class="stats-grid"
+    aria-label="活動概覽（管理員）"
   >
-    <template v-if="loading">
-      <div
-        v-for="i in 4"
-        :key="i"
-        class="stat-card stat-card--skeleton"
+    <RingLead
+      kicker="總活動"
+      :value="overview ? overview.totalActivities.toLocaleString('zh-TW') : ''"
+      unit="筆"
+      :meaning="meaning"
+      :busy="loading || overview === null"
+      summary="活動分布"
+      :rings="rings"
+      :size="144"
+    >
+      <span
+        v-if="bars.length > 0 && !loading"
+        class="bars"
+        role="img"
+        :aria-label="barsLabel"
       >
-        <div class="skeleton-label shimmer" />
-        <div class="skeleton-value shimmer" />
-        <div class="skeleton-subtitle shimmer" />
-      </div>
-    </template>
-    <template v-else-if="overview !== null">
-      <div
-        v-for="card in cards"
-        :key="card.key"
-        class="stat-card"
-      >
-        <div class="stat-card__top">
-          <span class="stat-label">{{ card.label }}</span>
-        </div>
-        <div
-          v-if="card.secondaryLabel"
-          class="stat-secondary"
-        >
-          {{ card.secondaryLabel }}
-        </div>
-        <div class="stat-value">
-          {{ card.value }}
-        </div>
-        <div class="stat-subtitle">
-          {{ card.subtitle }}
-        </div>
-      </div>
-    </template>
+        <i
+          v-for="bar in bars"
+          :key="bar.date"
+          :class="{ hi: bar.hi }"
+          :style="{ height: bar.height }"
+        />
+      </span>
+    </RingLead>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { ActivityOverview } from '@/api/activities'
+import { isActivityRestoreEnabled } from '@/config/runtime'
+import RingLead from '@/components/lead/RingLead.vue'
+import type { ServiceRing } from '@/components/ui/ServiceRings.vue'
+import { getActionLabel } from './utils'
 
 const props = defineProps<{
   overview: ActivityOverview | null
   loading: boolean
 }>()
 
-/* eslint-disable camelcase */
-const ACTION_LABEL_MAP: Record<string, string> = {
-  user_login: '\u767b\u5165',
-  user_logout: '\u767b\u51fa',
-  message_send: '\u8a0a\u606f\u767c\u9001',
-  message_recall: '\u8a0a\u606f\u64a4\u56de',
-  conversation_assign: '\u5c0d\u8a71\u6307\u6d3e',
-  conversation_transfer: '\u5c0d\u8a71\u8f49\u79fb',
-  conversation_close: '\u5c0d\u8a71\u95dc\u9589',
-  conversation_reopen: '\u5c0d\u8a71\u91cd\u958b',
-  settings_update: '\u8a2d\u5b9a\u66f4\u65b0',
-  team_invite: '\u5718\u968a\u9080\u8acb',
-  team_member_update: '\u6210\u54e1\u66f4\u65b0',
-  team_member_remove: '\u6210\u54e1\u79fb\u9664',
-}
-/* eslint-enable camelcase */
+/** The restorable count only means something while the restore feature is on. */
+const showRestorable = isActivityRestoreEnabled()
 
 const topAction = computed(() => {
-  if (!props.overview) { return { label: '-', count: 0 } }
-  const stats = props.overview.actionStats
-  const entries = Object.entries(stats)
-  if (entries.length === 0) { return { label: '-', count: 0 } }
+  if (!props.overview) { return null }
+  const entries = Object.entries(props.overview.actionStats)
+  if (entries.length === 0) { return null }
   const [name, count] = entries.reduce((a, b) => (b[1] > a[1] ? b : a))
-  return { label: ACTION_LABEL_MAP[name] || name, count }
+  return { label: getActionLabel(name), count }
 })
 
-const periodLabel = computed(() => {
-  if (!props.overview) {return ''}
-  return `\u8FD1 ${props.overview.period.days} \u5929`
+const periodLabel = computed(() => (props.overview ? `近 ${props.overview.period.days} 天` : ''))
+
+const BAR_MAX_PX = 26
+const bars = computed(() => {
+  const daily = props.overview?.dailyStats ?? []
+  const max = Math.max(0, ...daily.map(d => d.count))
+  if (max === 0) { return [] }
+  return daily.map(d => ({
+    date: d.date,
+    hi: d.count === max,
+    height: `${Math.max(3, Math.round((d.count / max) * BAR_MAX_PX))}px`
+  }))
 })
 
-const cards = computed(() => {
-  if (!props.overview) {return []}
-  return [
-    {
-      key: 'total',
-      label: '\u7E3D\u6D3B\u52D5',
-      secondaryLabel: '',
-      value: props.overview.totalActivities,
-      subtitle: periodLabel.value,
-    },
-    {
-      key: 'users',
-      label: '\u6D3B\u8E8D\u7528\u6236',
-      secondaryLabel: '',
-      value: props.overview.topUsers.length,
-      subtitle: periodLabel.value,
-    },
-    {
-      key: 'action',
-      label: '\u6700\u591A\u64CD\u4F5C',
-      secondaryLabel: topAction.value.label,
-      value: topAction.value.count,
-      subtitle: periodLabel.value,
-    },
-    {
-      key: 'logins',
-      label: '\u767B\u5165\u6B21\u6578',
-      secondaryLabel: '',
-      value: props.overview.actionStats['user_login'] ?? 0,
-      subtitle: periodLabel.value,
-    },
-  ]
+const barsLabel = computed(() => {
+  const daily = props.overview?.dailyStats ?? []
+  const peak = daily.reduce((a, b) => (b.count > a.count ? b : a), { date: '', count: 0 })
+  return `${periodLabel.value}每日活動數，${peak.date.slice(5).replace('-', '/')} 最多 ${peak.count} 筆`
+})
+
+const rings = computed<ServiceRing[]>(() => {
+  const overview = props.overview
+  const total = overview?.totalActivities ?? 0
+  if (!overview || total <= 0) { return [] }
+  const list: ServiceRing[] = []
+  const topUser = overview.topUsers[0]
+  if (topUser) {
+    list.push({ label: `最活躍：${topUser.user_name}`, value: topUser.count, total, of: '筆', hue: 'var(--section-hue)' })
+  }
+  if (topAction.value) {
+    list.push({ label: `最常見：${topAction.value.label}`, value: topAction.value.count, total, of: '筆', hue: 'var(--ui-blue)' })
+  }
+  return list
+})
+
+const meaning = computed(() => {
+  const overview = props.overview
+  if (!overview) { return '' }
+  const parts = [`${periodLabel.value} · ${overview.activeUserCount} 位成員`]
+  if (showRestorable) { parts.push(`${overview.restorableCount} 筆可還原`) }
+  return parts.join(' · ')
 })
 </script>
 
+
 <style scoped>
+/* Reset the legacy global .stats-grid (styles/variables.css) */
 .stats-grid {
-  display: grid;
-  grid-template-columns: repeat(1, minmax(0, 1fr));
-  gap: 16px;
+  display: block;
+  margin: 0;
+  padding: 0;
 }
-
-@media (min-width: 768px) {
-  .stats-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-@media (min-width: 1280px) {
-  .stats-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
-}
-
-.stat-card {
-  background: #FFFFFF;
-  border-radius: 28px;
-  box-shadow: 0 4px 16px rgb(0 0 0 / 0.06);
-  padding: 20px;
-  transition: transform 200ms ease-out, box-shadow 200ms ease-out;
-  cursor: default;
-}
-
-.stat-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 30px rgb(0 0 0 / 0.08);
-}
-
-.stat-card__top {
-  margin-bottom: 16px;
-}
-
-.stat-label {
-  font-size: 13px;
-  font-weight: 500;
-  color: #8E8E93;
-  line-height: 1.3;
-  white-space: nowrap;
-}
-
-.stat-secondary {
-  font-size: 13px;
-  color: #8E8E93;
-  margin-bottom: 4px;
-}
-
-.stat-value {
-  font-size: 32px;
-  font-weight: 700;
-  color: #1C1C1E;
-  line-height: 1.1;
-  margin-bottom: 6px;
-  white-space: nowrap;
-  letter-spacing: -0.02em;
-}
-
-.stat-subtitle {
-  font-size: 12px;
-  color: #AEAEB2;
-}
-
-/* Skeleton */
-.stat-card--skeleton {
-  cursor: default;
-}
-
-.stat-card--skeleton:hover {
-  transform: none;
-  box-shadow: 0 4px 16px rgb(0 0 0 / 0.06);
-}
-
-.skeleton-label {
-  height: 12px;
-  width: 60%;
-  border-radius: 6px;
-  background: #E5E5EA;
-  margin-bottom: 8px;
-}
-
-.skeleton-value {
+.bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  width: 140px;
   height: 28px;
-  width: 40%;
-  border-radius: 6px;
-  background: #E5E5EA;
-  margin-bottom: 6px;
+  margin-top: 14px;
 }
-
-.skeleton-subtitle {
-  height: 12px;
-  width: 50%;
-  border-radius: 6px;
-  background: #E5E5EA;
+.bars i {
+  flex: 1;
+  min-height: 3px;
+  border-radius: 2px 2px 0 0;
+  background: color-mix(in srgb, var(--section-hue) 30%, transparent);
 }
-
-@keyframes shimmer {
-  0% { opacity: 1; }
-  50% { opacity: 0.5; }
-  100% { opacity: 1; }
-}
-
-.shimmer {
-  animation: shimmer 1.5s ease-in-out infinite;
+.bars i.hi {
+  background: var(--section-hue);
 }
 </style>

@@ -7,7 +7,7 @@ import {
   listBroadcasts,
   previewBroadcastAudience,
   sendBroadcast,
-  type BroadcastAudiencePreview,
+  type BroadcastPreviewResult,
   type BroadcastListResult,
   type BroadcastPreviewRequest,
   type BroadcastRecipientListResult,
@@ -20,7 +20,7 @@ import {
 export const useBroadcastsStore = defineStore('broadcasts', () => {
   const broadcasts = ref<BroadcastRecord[]>([])
   const selectedBroadcast = ref<BroadcastRecord | null>(null)
-  const preview = ref<BroadcastAudiencePreview | null>(null)
+  const preview = ref<BroadcastPreviewResult | null>(null)
   const previewTagId = ref<number | null>(null)
   const recipients = ref<BroadcastRecipientListResult | null>(null)
   const lastSendStats = ref<BroadcastSendStats | null>(null)

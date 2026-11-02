@@ -1,5 +1,5 @@
-import Database from 'better-sqlite3';
 import { readFileSync } from 'node:fs';
+import { addConv, addCustomer, addMsg, createDashboardDb, d1Of } from '../../../helpers/sqlite-d1';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
@@ -21,61 +21,9 @@ const NOW = Date.parse('2026-10-29T10:00:00.000Z');
 const admin = { role: 'admin' as const, allowedTeamIds: [] as number[] };
 const agentOfTeam = (...ids: number[]) => ({ role: 'agent' as const, allowedTeamIds: ids });
 
-function d1Of(db: Database.Database): D1Database {
-  return {
-    prepare: (query: string) => ({
-      bind: (...params: unknown[]) => ({
-        first: async () => db.prepare(query).get(...params) ?? null,
-        all: async () => ({ results: db.prepare(query).all(...params) }),
-      }),
-    }),
-  } as unknown as D1Database;
-}
-
-function createDb() {
-  const db = new Database(':memory:');
-  db.exec(`
-    CREATE TABLE customers (
-      id INTEGER PRIMARY KEY, platform TEXT NOT NULL, display_name TEXT, custom_name TEXT, avatar_url TEXT
-    );
-    CREATE TABLE conversations (
-      id TEXT PRIMARY KEY, customer_id INTEGER NOT NULL, status TEXT NOT NULL DEFAULT 'active',
-      assigned_team_id INTEGER, first_response_at TEXT, closed_at TEXT, created_at TEXT, deleted_at TEXT
-    );
-    CREATE TABLE messages (
-      id TEXT PRIMARY KEY, conversation_id TEXT NOT NULL, sender_type TEXT NOT NULL,
-      content TEXT NOT NULL DEFAULT '', message_type TEXT NOT NULL DEFAULT 'text',
-      metadata TEXT, is_recalled INTEGER DEFAULT 0, is_sent INTEGER DEFAULT 1, delivery_status TEXT DEFAULT 'delivered',
-      deleted_at TEXT, created_at TEXT NOT NULL
-    );
-  `);
-  return db;
-}
-
+// Schema = base tables + the real migration 0070 (awaiting_since column, index, triggers)
+const createDb = () => createDashboardDb({ awaiting: true });
 let seq = 0;
-function addCustomer(db: Database.Database, id: number, platform = 'line', name = `Customer ${id}`) {
-  db.prepare('INSERT INTO customers (id, platform, display_name) VALUES (?, ?, ?)').run(id, platform, name);
-}
-function addConv(
-  db: Database.Database,
-  id: string,
-  opts: { customer?: number; status?: string; team?: number | null; createdAt?: string; closedAt?: string | null; firstResponseAt?: string | null } = {}
-) {
-  db.prepare(
-    'INSERT INTO conversations (id, customer_id, status, assigned_team_id, created_at, closed_at, first_response_at) VALUES (?,?,?,?,?,?,?)'
-  ).run(id, opts.customer ?? 1, opts.status ?? 'active', opts.team ?? null, opts.createdAt ?? '2026-01-01T00:00:00.000Z', opts.closedAt ?? null, opts.firstResponseAt ?? null);
-}
-function addMsg(
-  db: Database.Database,
-  conv: string,
-  sender: 'customer' | 'agent' | 'system',
-  at: string,
-  extra: { content?: string; metadata?: string | null; recalled?: number; deleted?: string | null; type?: string } = {}
-) {
-  db.prepare(
-    'INSERT INTO messages (id, conversation_id, sender_type, content, message_type, metadata, is_recalled, deleted_at, created_at) VALUES (?,?,?,?,?,?,?,?,?)'
-  ).run(`m${++seq}`, conv, sender, extra.content ?? 'hi', extra.type ?? 'text', extra.metadata ?? null, extra.recalled ?? 0, extra.deleted ?? null, at);
-}
 
 describe('taipei-time', () => {
   it('finds Taipei midnight as a UTC instant', () => {
