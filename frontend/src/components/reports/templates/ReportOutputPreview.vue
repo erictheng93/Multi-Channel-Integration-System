@@ -41,7 +41,7 @@
 
     <template v-else>
       <div class="rop-meta">
-        <span class="rop-from">{{ compact ? '上一份同類報表' : '此模板上次產出' }} ・ {{ ago }}</span>
+        <span class="rop-from">{{ compact ? '上一份同類報表' : `最近一份${typeLabel}` }} ・ {{ ago }}</span>
         <router-link
           :to="`/reports/${latest.id}`"
           class="rop-title"
@@ -55,39 +55,32 @@
         v-if="lead"
         class="rop-lead"
       >
-        <div class="rop-big">
-          <span class="rop-big-label">{{ lead.label }}</span>
-          <b class="rop-big-num">{{ lead.value.toLocaleString('en-US') }}</b>
-        </div>
+        <ul class="rop-tiles">
+          <li
+            v-for="metric in kpis"
+            :key="metric.label"
+          >
+            <span class="rop-tile-label"><i
+              v-if="metric.tone"
+              class="rop-dot"
+              :class="metric.tone"
+            />{{ metric.label }}</span>
+            <b class="rop-tile-num">{{ metric.value.toLocaleString('en-US') }}</b>
+            <small v-if="share(metric)">佔 {{ share(metric) }}</small>
+          </li>
+        </ul>
         <div
           v-if="split.length"
-          class="rop-shares"
+          class="rop-split"
+          role="img"
+          :aria-label="split.map(part => `${part.label} ${part.value}`).join('，')"
         >
-          <div
-            class="rop-split"
-            role="img"
-            :aria-label="split.map(part => `${part.label} ${part.value}`).join('，')"
-          >
-            <span
-              v-for="part in split"
-              :key="part.label"
-              :class="part.tone"
-              :style="{ flexGrow: part.value }"
-            />
-          </div>
-          <ul class="rop-legend">
-            <li
-              v-for="metric in kpis.slice(1)"
-              :key="metric.label"
-            >
-              <i
-                class="rop-dot"
-                :class="metric.tone"
-              />{{ metric.label }}
-              <b>{{ metric.value.toLocaleString('en-US') }}</b>
-              <small v-if="share(metric)">{{ share(metric) }}</small>
-            </li>
-          </ul>
+          <span
+            v-for="part in split"
+            :key="part.label"
+            :class="part.tone"
+            :style="{ flexGrow: part.value }"
+          />
         </div>
       </div>
 
@@ -174,7 +167,7 @@
 import { computed, ref, watch } from 'vue'
 import ReportsAPI from '@/api/reports'
 import type { ReportBase, ReportType } from '@/types/reports'
-import { REPORT_CONTENTS } from './templateHelpers'
+import { REPORT_CONTENTS, getReportTypeLabel } from './templateHelpers'
 
 const props = defineProps<{ type: ReportType; compact?: boolean }>()
 const emit = defineEmits<{ resolved: [report: ReportBase | null] }>()
@@ -227,6 +220,7 @@ const failed = computed(() => !!state.value?.failed)
 const earlier = computed(() => (state.value?.recent ?? []).filter(item => item.id !== latest.value?.id).slice(0, 3))
 const statusText: Record<string, string> = { completed: '已完成', generating: '生成中', pending: '待處理', failed: '失敗', expired: '已過期' }
 const statusClass = (status: string) => ({ completed: 'ui-pill-green', generating: 'ui-pill-blue', pending: 'ui-pill-blue', failed: 'ui-pill-red' }[status] ?? '')
+const typeLabel = computed(() => getReportTypeLabel(props.type))
 const fields = computed(() => REPORT_CONTENTS[props.type] ?? [])
 
 /** The report file is { reportInfo, data }; data's shape depends on the type */
@@ -405,51 +399,40 @@ const metaLine = computed(() => {
 
 .rop-lead {
   display: grid;
-  gap: 18px;
+  gap: 14px;
 }
 
-.rop-big {
+.rop-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rop-tiles li {
   display: grid;
   gap: 2px;
+  align-content: start;
+  padding: 12px 14px;
+  border-radius: var(--ui-r-inner);
+  background: var(--ui-surface-2);
 }
 
-.rop-big-label {
-  font-size: 14px;
+.rop-tile-label {
+  font-size: 13px;
   font-weight: 600;
   color: var(--ui-ink-2);
 }
 
-.rop-big-num {
-  font: 700 72px / 1 var(--ui-font-display);
-  letter-spacing: -0.04em;
+.rop-tile-num {
+  font: 700 28px / 1.1 var(--ui-font-display);
+  letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
 }
 
-.rop-shares {
-  display: grid;
-  gap: 12px;
-}
-
-.rop-legend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px 28px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  font-size: 14px;
-  color: var(--ui-ink-2);
-}
-
-.rop-legend b {
-  margin-left: 4px;
-  font: 600 18px / 1 var(--ui-font-display);
-  color: var(--ui-ink);
-  font-variant-numeric: tabular-nums;
-}
-
-.rop-legend small {
-  margin-left: 4px;
+.rop-tiles small {
   font-size: 13px;
   color: var(--ui-muted);
 }
@@ -500,7 +483,7 @@ const metaLine = computed(() => {
 .rop-split {
   display: flex;
   gap: 3px;
-  height: 14px;
+  height: 10px;
   overflow: hidden;
   border-radius: 999px;
 }
@@ -581,28 +564,8 @@ const metaLine = computed(() => {
   font-size: 15px;
 }
 
-.compact .rop-big {
-  display: flex;
-  gap: 10px;
-  align-items: baseline;
-}
-
-.compact .rop-big-num {
-  order: -1;
-  font-size: 44px;
-}
-
 .compact .rop-split {
   height: 10px;
-}
-
-.compact .rop-legend {
-  gap: 4px 18px;
-  font-size: 13px;
-}
-
-.compact .rop-legend b {
-  font-size: 15px;
 }
 
 .compact .rop-state,
@@ -615,8 +578,8 @@ const metaLine = computed(() => {
 }
 
 @media (max-width: 768px) {
-  .rop-big-num {
-    font-size: 56px;
+  .rop-tiles {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .rop-hrow {
