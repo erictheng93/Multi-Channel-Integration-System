@@ -5,6 +5,7 @@ import { drizzle } from 'drizzle-orm/d1';
 import type { DrizzleD1Database } from 'drizzle-orm/d1';
 import { eq, desc, and, count, or, sql, inArray } from 'drizzle-orm';
 import { likeEscaped } from '@/utils/sql-like';
+import { assertNotSystemAgent } from '@/constants/system-agent';
 import { teams, agents, agentTeams, conversations, messages, qrCodes, qrCodeScans, customers } from '@/db/schema';
 import { ActivityCapture, ACTIVITY_ACTIONS, RESOURCE_TYPES } from '@modules/activities';
 import type {
@@ -305,6 +306,7 @@ export class TeamService implements TeamServiceInterface {
 
   // Add member to team (via agent_teams junction table)
   async addMember(teamId: number, request: TeamMemberAddRequest): Promise<TeamMember> {
+    assertNotSystemAgent(request.agentId);
     const now = nowISO();
 
     // Check if membership already exists
@@ -372,6 +374,7 @@ export class TeamService implements TeamServiceInterface {
     agentId: string,
     caller: { id: string; displayName?: string; role: string; ipAddress?: string; userAgent?: string }
   ): Promise<boolean> {
+    assertNotSystemAgent(agentId);
     try {
       const membershipResult = await this.dbRaw
         .prepare(
@@ -461,6 +464,7 @@ export class TeamService implements TeamServiceInterface {
     removed: string[];
     failed: { agentId: string; error: string }[];
   }> {
+    assertNotSystemAgent(...agentIds);
     const removed: string[] = [];
     const failed: { agentId: string; error: string }[] = [];
 
@@ -526,6 +530,7 @@ export class TeamService implements TeamServiceInterface {
 
   // Update team member
   async updateMember(_teamId: number, agentId: string, request: TeamMemberUpdateRequest): Promise<TeamMember> {
+    assertNotSystemAgent(agentId);
     const updateData: Partial<typeof agents.$inferInsert> = {
       updatedAt: nowISO()
     };
@@ -678,6 +683,7 @@ export class TeamService implements TeamServiceInterface {
 
   // Transfer members between teams (via agent_teams junction table)
   async transferMembers(request: TeamTransferRequest): Promise<TeamTransferResponse> {
+    assertNotSystemAgent(...request.agentIds);
     try {
       const now = nowISO();
 
