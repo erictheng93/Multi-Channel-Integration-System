@@ -8,6 +8,7 @@ import {
   signOffSql,
   startsWaitSql
 } from '@/modules/dashboard/services/awaiting-rules';
+import { isSignOffMessage } from '@shared/api-contracts';
 import {
   MIGRATION_HYGIENE,
   addConv,
@@ -248,5 +249,17 @@ describe('healAwaitingSince uses the same rule', () => {
     expect(result.corrected).toBe(1);
     expect(['a', 'b', 'c'].map(id => awaitingOf(db, id))).toEqual(before);
     expect((await healAwaitingSince(d1Of(db), NOW)).corrected).toBe(0);
+  });
+});
+
+describe('isSignOffMessage matches signOffSql (realtime list vs backend marker)', () => {
+  it.each([
+    ['sticker', ''], ['text', '謝謝'], ['text', '  謝謝！！ '], ['text', 'Thank You.'], ['text', 'THX~'], ['text', '3Q'],
+    ['text', '謝謝\n'], ['text', '\n謝謝'], ['text', '謝謝\u3000'], ['text', '謝謝 !'], ['text', '謝謝! !'], ['text', '謝謝你喔'],
+    ['text', '好的'], ['text', 'OK'], ['text', ''], ['image', '謝謝']
+  ])('%s %j', (type, content) => {
+    const db = freshDb();
+    const row = db.prepare(`SELECT ${signOffSql('m')} AS s FROM (SELECT ? AS message_type, ? AS content) m`).get(type, content) as { s: number };
+    expect(isSignOffMessage(type, content)).toBe(row.s === 1);
   });
 });

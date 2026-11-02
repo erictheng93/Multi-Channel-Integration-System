@@ -34,17 +34,15 @@ export function blockSystemAgentTarget(): MiddlewareHandler {
       return forbiddenResponse(c, 'The system account cannot be modified');
     }
 
-    // Hono's c.req.json() ignores Content-Type, so inspect every non-multipart body, not just application/json
-    const type = c.req.header('content-type') ?? '';
-    if (!type.includes('multipart/form-data')) {
-      try {
-        const body: unknown = await c.req.raw.clone().json();
-        if (mentionsSystemAgent(body, false)) {
-          return forbiddenResponse(c, 'The system account cannot be modified');
-        }
-      } catch {
-        // Not JSON: nothing to inspect, the handler validates its own input
+    // Every body, whatever its Content-Type: handlers call c.req.json(), which ignores that header. Hono caches the
+    // text, so the handler can still read it. No router using this guard accepts uploads.
+    try {
+      const body: unknown = await c.req.json();
+      if (mentionsSystemAgent(body, false)) {
+        return forbiddenResponse(c, 'The system account cannot be modified');
       }
+    } catch {
+      // Not JSON: nothing to inspect, the handler validates its own input
     }
     return next();
   };
