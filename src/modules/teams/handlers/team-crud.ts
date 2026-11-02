@@ -2,6 +2,7 @@
 // Handles: GET/POST /, GET/PUT/DELETE /:id, GET /:id/stats, GET /stats/all,
 // POST /transfer, GET /search/:query, GET /health, GET /info
 
+import { notSystemAgentSql } from '@/constants/system-agent';
 import { Hono, type Context } from 'hono';
 import { createContextLogger } from '@/utils/logger'
 
@@ -165,7 +166,7 @@ app.get('/stats', jwtAuth, requireAdmin(), async (c) => {
         COALESCE(SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END), 0) as activeMembers,
         COALESCE(SUM(CASE WHEN role = 'admin' THEN 1 ELSE 0 END), 0) as adminCount
       FROM agents
-      WHERE deleted_at IS NULL
+      WHERE deleted_at IS NULL AND ${notSystemAgentSql('id')}
     `).first<{ totalMembers: number; activeMembers: number; adminCount: number }>();
 
     return contractJson(c, teamContracts.getTeamStats, {

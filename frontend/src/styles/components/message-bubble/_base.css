@@ -5,6 +5,9 @@
 
 .message-bubble {
   display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  width: fit-content;
   margin-bottom: var(--space-3);
   max-width: 70%;
   /* Anchor for .message-actions so the hover toolbar is positioned
@@ -14,52 +17,64 @@
 }
 
 .message-incoming {
-  justify-content: flex-start;
   align-self: flex-start;
 }
 
 .message-outgoing {
-  justify-content: flex-end;
   align-self: flex-end;
   margin-left: auto;
 }
 
 .message-content {
-  background: white;
-  border-radius: var(--radius-xl);
-  padding: var(--space-3) var(--space-4);
-  box-shadow: var(--shadow-sm);
-  border: 1px solid var(--gray-200);
+  background: var(--ui-surface);
+  color: var(--ui-ink);
+  border-radius: 18px;
+  padding: 10px 16px;
+  box-shadow: var(--ui-shadow-pill);
+  border: 0;
   position: relative;
 }
 
 .message-outgoing .message-content {
-  background: var(--primary-500);
-  color: white;
-  border-color: var(--primary-600);
+  background: var(--ui-accent);
+  color: #fff;
+  border-color: transparent;
+}
+
+/* White-on-blue renders heavier than it is: keep it regular weight */
+.message-outgoing .message-text {
+  font-weight: 400;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 .message-text {
-  font-size: 0.875rem;
+  font-size: 0.9375rem;
   line-height: 1.5;
   word-wrap: break-word;
-  margin-bottom: var(--space-2);
+  margin-bottom: 0;
 }
 
 .message-meta {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2);
+  gap: 6px;
+  margin-top: 4px;
+  padding: 0 4px;
+}
+
+.message-outgoing .message-meta {
+  justify-content: flex-end;
 }
 
 .message-time {
-  font-size: 0.75rem;
-  opacity: 0.7;
+  font-size: 12px;
+  color: var(--ui-muted);
+  font-variant-numeric: tabular-nums;
 }
 
 .message-outgoing .message-time {
-  color: rgba(255, 255, 255, 0.8);
+  color: var(--ui-muted);
 }
 
 /* ─── Apple-inspired: Links in outgoing bubbles ─── */
@@ -105,7 +120,7 @@
 }
 
 .message-incoming .message-time {
-  color: var(--gray-500);
+  color: var(--ui-muted);
 }
 
 .message-status {
@@ -119,7 +134,7 @@
 }
 
 .status-delivered {
-  color: rgba(255, 255, 255, 0.8);
+  color: var(--ui-accent);
 }
 
 .status-failed {
@@ -135,7 +150,7 @@
 
 /* 已撤回標記：灰色靜態文字 */
 .status-recalled {
-  font-size: 11px;
+  font-size: 13px;
   color: #8E8E93;
   white-space: nowrap;
 }
@@ -186,7 +201,7 @@
   border-radius: 9999px;
   background: #FFF4E5;
   color: #C77700;
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 500;
   line-height: 16px;
   white-space: nowrap;
@@ -216,7 +231,7 @@
   background: rgba(255, 255, 255, 0.15);
   border: 1px solid rgba(255, 255, 255, 0.3);
   border-radius: 4px;
-  font-size: 12px;
+  font-size: 13px;
   cursor: pointer;
   transition: all 0.2s ease;
   color: rgba(255, 255, 255, 0.9);
@@ -237,7 +252,7 @@
   align-items: center;
   gap: var(--space-2);
   margin-left: var(--space-3);
-  font-size: 0.75rem;
+  font-size: 13px;
   color: var(--gray-500);
 }
 
@@ -258,44 +273,26 @@
   font-weight: 500;
 }
 
+/* Signature: once per group, small and upright (no italic) */
 .agent-attribution {
-  font-size: 0.7rem;
-  color: rgba(255, 255, 255, 0.8);
-  margin-left: 4px;
-  font-style: italic;
+  margin: 0 0 4px;
+  padding: 0 4px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ui-muted);
+  font-style: normal;
+  text-align: left;
 }
 
-/* Message bubble tails */
+/* Message bubble tails: removed in the Apple-native design (flat rounded bubbles) */
 .message-content::before {
-  content: '';
-  position: absolute;
-  width: 0;
-  height: 0;
-  border-style: solid;
-}
-
-.message-incoming .message-content::before {
-  left: -8px;
-  top: 12px;
-  border-width: 8px 8px 8px 0;
-  border-color: transparent white transparent transparent;
-}
-
-.message-outgoing .message-content::before {
-  right: -8px;
-  top: 12px;
-  border-width: 8px 0 8px 8px;
-  border-color: transparent transparent transparent var(--primary-500);
+  display: none;
 }
 
 .message-failed .message-content {
-  background: var(--red-50);
-  border-color: var(--red-200);
-  color: var(--red-800);
-}
-
-.message-failed .message-content::before {
-  border-left-color: var(--red-50);
+  background: var(--ui-red-soft);
+  border-color: transparent;
+  color: var(--ui-red-ink);
 }
 
 /* ─── Image messages: strip card wrapper to match LINE native display ─── */

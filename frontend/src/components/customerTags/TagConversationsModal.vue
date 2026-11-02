@@ -1,8 +1,12 @@
 <template>
-  <Teleport to="body">
+  <Teleport
+    to="body"
+    :disabled="inline"
+  >
     <div
       v-if="visible"
       class="modal-overlay"
+      :class="{ 'is-inline': inline }"
       role="dialog"
       aria-modal="true"
       aria-labelledby="tag-conversations-modal-title"
@@ -26,13 +30,33 @@
               {{ pagination.total }} 個對話
             </span>
           </div>
-          <button
-            class="close-btn"
-            aria-label="關閉"
-            @click="$emit('update:visible', false)"
-          >
-            <XIcon />
-          </button>
+          <div class="head-actions">
+            <button
+              type="button"
+              class="head-btn"
+              :aria-label="`編輯標籤 ${tag?.name ?? ''}`"
+              title="編輯標籤"
+              @click="$emit('edit')"
+            >
+              <EditIcon />
+            </button>
+            <button
+              type="button"
+              class="head-btn head-btn-danger"
+              :aria-label="`刪除標籤 ${tag?.name ?? ''}`"
+              title="刪除標籤"
+              @click="$emit('delete')"
+            >
+              <TrashIcon />
+            </button>
+            <button
+              class="close-btn"
+              aria-label="關閉"
+              @click="$emit('update:visible', false)"
+            >
+              <XIcon />
+            </button>
+          </div>
         </div>
 
         <!-- Content -->
@@ -100,7 +124,7 @@
                   </div>
                   <div class="conversation-meta">
                     <span class="platform-badge">{{ platformLabel(conversation.customer_platform) }}</span>
-                    <span class="assigned-at">標記於 {{ formatDate(conversation.assigned_at) }}</span>
+                    <span class="assigned-at">客戶標記於 {{ formatDate(conversation.assigned_at) }}</span>
                   </div>
                 </div>
 
@@ -144,7 +168,7 @@
 <script setup lang="ts">
 import { ref, watch, onUnmounted } from 'vue'
 import { LoadingSpinner } from '@/components/ui'
-import { XIcon, MessageCircleIcon, ExternalLinkIcon } from '@/components/icons'
+import { XIcon, MessageCircleIcon, ExternalLinkIcon, EditIcon, TrashIcon } from '@/components/icons'
 import { getTagConversations } from '@/api/tags'
 import type { Tag } from '@/types/tag'
 import type { TagConversation } from '@/api/tags'
@@ -155,10 +179,14 @@ import { getConversationStatusLabel, type ConversationStatus } from '@/constants
 const props = defineProps<{
   visible: boolean
   tag: Tag | null
+  /** Render in place as a side panel (no overlay, no scroll lock) */
+  inline?: boolean
 }>()
 
 const emit = defineEmits<{
   'update:visible': [value: boolean]
+  edit: []
+  delete: []
 }>()
 
 // ==================== State ====================
@@ -191,14 +219,16 @@ watch(
       pagination.value = { page: 1, limit: 20, total: 0, totalPages: 0 }
       loadPage(1)
     }
-  }
+  },
+  // Inline panel is mounted already open, so it must load on mount
+  { immediate: props.inline }
 )
 
 // Handle Escape key and body scroll lock
 watch(
   () => props.visible,
   (visible) => {
-    if (visible) {
+    if (visible && !props.inline) {
       document.body.style.overflow = 'hidden'
       document.addEventListener('keydown', handleKeydown)
     } else {
@@ -232,11 +262,9 @@ function platformLabel(platform: string): string {
 function formatDate(dateStr: string): string {
   if (!dateStr) { return '' }
   try {
-    return new Date(dateStr).toLocaleDateString('zh-TW', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    })
+    const d = new Date(dateStr)
+    if (Number.isNaN(d.getTime())) { return dateStr }
+    return `${d.getMonth() + 1}/${d.getDate()}`
   } catch {
     return dateStr
   }
@@ -247,144 +275,227 @@ function formatDate(dateStr: string): string {
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgb(0 0 0 / 0.5);
+  z-index: 1000;
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
-  padding: var(--space-4);
+  padding: 16px;
+  background: rgb(0 0 0 / 0.4);
 }
 
 .modal-container {
-  background: white;
-  border-radius: var(--radius-2xl);
-  width: 100%;
-  max-width: 640px;
-  max-height: 80vh;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+  width: 100%;
+  max-width: 560px;
+  max-height: 80vh;
+  max-height: 80dvh;
+  background: var(--ui-surface);
+  border-radius: var(--ui-r-card);
+  box-shadow: var(--ui-shadow-raised);
+  overflow: hidden;
+}
+
+/* Inline: the sticky side panel next to the tag grid */
+.modal-overlay.is-inline {
+  position: sticky;
+  inset: auto;
+  top: 16px;
+  z-index: auto;
+  display: block;
+  padding: 0;
+  background: none;
+}
+
+.is-inline .modal-container {
+  max-width: none;
+  max-height: calc(100vh - 96px);
+  max-height: calc(100dvh - 96px);
+  box-shadow: var(--ui-shadow-card);
 }
 
 .modal-header {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: var(--space-5) var(--space-6);
-  border-bottom: 1px solid var(--gray-100);
   flex-shrink: 0;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 22px 12px;
 }
 
 .modal-title-area {
   display: flex;
-  align-items: center;
-  gap: var(--space-3);
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 10px;
+  min-width: 0;
 }
 
 .tag-color-dot {
-  width: 14px;
-  height: 14px;
-  border-radius: var(--radius-full);
-  flex-shrink: 0;
+  flex: none;
+  width: 10px;
+  height: 10px;
+  align-self: center;
+  border-radius: 50%;
 }
 
 .modal-title {
-  font-size: 1.125rem;
-  font-weight: 600;
-  color: var(--gray-900);
   margin: 0;
+  font: 600 20px var(--ui-font-display);
+  letter-spacing: -0.02em;
+  color: var(--ui-ink);
 }
 
 .conversation-count-badge {
-  font-size: 0.75rem;
-  color: var(--gray-500);
-  background: var(--gray-100);
-  padding: 2px 8px;
-  border-radius: var(--radius-full);
+  font-size: 13px;
+  color: var(--ui-muted);
+  font-variant-numeric: tabular-nums;
 }
 
 .close-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: grid;
+  flex: none;
   width: 32px;
   height: 32px;
-  border: none;
-  background: var(--gray-100);
-  border-radius: var(--radius-md);
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: var(--ui-fill);
+  color: var(--ui-ink-2);
   cursor: pointer;
-  color: var(--gray-600);
-  transition: all var(--transition-fast);
+  transition: background var(--ui-dur) var(--ui-ease);
 }
 
 .close-btn:hover {
-  background: var(--gray-200);
-  color: var(--gray-900);
+  background: var(--ui-fill-strong);
 }
 
 .close-btn svg {
-  width: 16px;
-  height: 16px;
+  width: 15px;
+  height: 15px;
+}
+
+.is-inline .close-btn {
+  display: none;
+}
+
+.head-actions {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 4px;
+}
+
+.head-btn {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: var(--ui-fill);
+  color: var(--ui-ink-2);
+  cursor: pointer;
+  transition: background var(--ui-dur) var(--ui-ease), color var(--ui-dur) var(--ui-ease);
+}
+
+.head-btn:hover {
+  background: var(--ui-fill-strong);
+}
+
+.head-btn-danger:hover {
+  background: var(--ui-red-soft);
+  color: var(--ui-red-ink);
+}
+
+.head-btn svg {
+  width: 15px;
+  height: 15px;
+}
+
+@media (max-width: 768px) {
+  .head-btn,
+  .close-btn {
+    width: 44px;
+    height: 44px;
+  }
 }
 
 .modal-body {
-  overflow-y: auto;
   flex: 1;
-  padding: var(--space-4) var(--space-6);
+  overflow-y: auto;
+  padding: 0;
+}
+
+/* Bottom fade: a cue that the list scrolls on; the padding above lets the last row clear it */
+.modal-body::after {
+  position: sticky;
+  bottom: 0;
+  display: block;
+  height: 40px;
+  margin-top: -40px;
+  background: linear-gradient(rgb(255 255 255 / 0), var(--ui-surface));
+  content: '';
+  pointer-events: none;
 }
 
 .state-container {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--space-4);
-  padding: var(--space-12) 0;
-  color: var(--gray-500);
+  gap: 10px;
+  padding: 44px 24px;
+  font-size: 13.5px;
+  color: var(--ui-muted);
+  text-align: center;
 }
 
 .empty-icon {
-  width: 48px;
-  height: 48px;
-  color: var(--gray-300);
+  width: 40px;
+  height: 40px;
+  color: var(--ui-faint);
 }
 
 .conversation-list {
-  list-style: none;
   margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
+  padding: 0 0 40px;
+  list-style: none;
+}
+
+.conversation-list > li + li .conversation-item::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 22px;
+  left: 72px;
+  height: 0.5px;
+  background: var(--ui-sep);
 }
 
 .conversation-item {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-3) var(--space-4);
-  border-radius: var(--radius-xl);
-  border: 1px solid var(--gray-100);
-  transition: all var(--transition-fast);
-  text-decoration: none;
+  gap: 12px;
+  padding: 12px 22px;
   color: inherit;
-  cursor: pointer;
+  text-decoration: none;
+  transition: background var(--ui-dur) var(--ui-ease);
 }
 
 .conversation-item:hover {
-  background: var(--gray-50);
-  border-color: var(--primary-200);
+  background: color-mix(in srgb, var(--ui-fill) 45%, transparent);
 }
 
 .avatar {
-  width: 40px;
-  height: 40px;
-  border-radius: var(--radius-full);
+  display: grid;
+  flex: none;
+  width: 38px;
+  height: 38px;
+  place-items: center;
   overflow: hidden;
-  flex-shrink: 0;
-  background: var(--gray-200);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  border-radius: 50%;
+  background: var(--ui-fill-strong);
 }
 
 .avatar-img {
@@ -394,9 +505,9 @@ function formatDate(dateStr: string): string {
 }
 
 .avatar-fallback {
-  font-size: 1rem;
+  font-size: 14px;
   font-weight: 600;
-  color: var(--gray-600);
+  color: var(--ui-ink-2);
   text-transform: uppercase;
 }
 
@@ -408,99 +519,97 @@ function formatDate(dateStr: string): string {
 .conversation-top {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
-  margin-bottom: var(--space-1);
+  gap: 8px;
 }
 
 .customer-name {
-  font-weight: 500;
-  color: var(--gray-900);
-  font-size: 0.9375rem;
-  white-space: nowrap;
   overflow: hidden;
+  font-size: 15px;
+  font-weight: 600;
   text-overflow: ellipsis;
-}
-
-.status-badge {
-  font-size: 0.6875rem;
-  padding: 2px 6px;
-  border-radius: var(--radius-full);
-  font-weight: 500;
-  flex-shrink: 0;
-}
-
-.status-active {
-  background: var(--green-100);
-  color: var(--green-700);
-}
-
-.status-closed {
-  background: var(--gray-100);
-  color: var(--gray-600);
+  white-space: nowrap;
 }
 
 .conversation-meta {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
-  font-size: 0.75rem;
-  color: var(--gray-500);
+  gap: 6px;
+  font-size: 13px;
+  color: var(--ui-muted);
 }
 
-.platform-badge {
-  background: var(--blue-50);
-  color: var(--blue-600);
-  padding: 1px 6px;
-  border-radius: var(--radius-full);
-  font-size: 0.6875rem;
+.platform-badge::after {
+  content: ' ·';
+}
+
+.status-badge {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 5px;
+  height: 22px;
+  margin-left: auto;
+  padding: 0 9px;
+  border-radius: 999px;
+  background: var(--ui-fill);
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--ui-ink-2);
+  white-space: nowrap;
+}
+
+.status-badge::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.status-active {
+  background: var(--ui-accent-soft);
+  color: var(--ui-accent);
+}
+
+.status-pending {
+  background: var(--ui-orange-soft);
+  color: var(--ui-orange-ink);
+}
+
+.status-closed {
+  background: var(--ui-green-soft);
+  color: var(--ui-green-ink);
 }
 
 .view-arrow {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  border-radius: var(--radius-md);
-  color: var(--gray-300);
-  transition: all var(--transition-fast);
-  flex-shrink: 0;
-  margin-left: auto;
-}
-
-.conversation-item:hover .view-arrow {
-  color: var(--primary-500);
-}
-
-.view-arrow svg {
-  width: 16px;
-  height: 16px;
+  display: none;
 }
 
 .pagination {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: var(--space-4);
-  margin-top: var(--space-4);
-  padding-top: var(--space-4);
-  border-top: 1px solid var(--gray-100);
+  gap: 8px;
+  padding: 10px 22px 8px;
+  font-size: 13px;
+  color: var(--ui-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.pagination-info {
+  order: -1;
+  margin-right: auto;
 }
 
 .pagination-btn {
-  padding: var(--space-2) var(--space-4);
-  border: 1px solid var(--gray-300);
-  border-radius: var(--radius-md);
-  background: white;
+  height: 30px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--ui-fill);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ui-ink);
   cursor: pointer;
-  font-size: 0.875rem;
-  color: var(--gray-700);
-  transition: all var(--transition-fast);
-}
-
-.pagination-btn:hover:not(:disabled) {
-  background: var(--gray-50);
-  border-color: var(--gray-400);
 }
 
 .pagination-btn:disabled {
@@ -508,18 +617,18 @@ function formatDate(dateStr: string): string {
   cursor: not-allowed;
 }
 
-.pagination-info {
-  font-size: 0.875rem;
-  color: var(--gray-500);
-}
-
-@media (max-width: 640px) {
+@media (max-width: 768px) {
   .modal-overlay {
-    padding: var(--space-2);
+    align-items: flex-end;
+    padding: 0;
   }
-
-  .modal-body {
-    padding: var(--space-3) var(--space-4);
+  .modal-container {
+    max-width: none;
+    border-radius: var(--ui-r-card) var(--ui-r-card) 0 0;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .pagination-btn {
+    height: 44px;
   }
 }
 </style>

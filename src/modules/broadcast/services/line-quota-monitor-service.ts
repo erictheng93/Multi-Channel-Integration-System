@@ -97,7 +97,7 @@ export class LineQuotaMonitorService {
     if (source === 'manual' && previous?.updatedAt) {
       const age = Date.now() - new Date(previous.updatedAt).getTime();
       if (age >= 0 && age < MANUAL_REFRESH_THROTTLE_MS) {
-        return { ...previous, throttled: true };
+        return this.decorate({ ...previous, throttled: true });
       }
     }
 

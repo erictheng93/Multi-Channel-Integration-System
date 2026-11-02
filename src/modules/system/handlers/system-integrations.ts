@@ -13,7 +13,7 @@ import {
   handleApiError
 } from '@/utils/api-response'
 import { getCredentialsFromKV } from './system-crypto-utils'
-import { nowISO } from '@/utils/timestamp'
+import { nowISO, nowMs } from '@/utils/timestamp'
 import { createContextLogger } from '@/utils/logger'
 
 const log = createContextLogger('SystemIntegrations')
@@ -34,13 +34,34 @@ interface FacebookIntegrationTestConfig {
 
 type IntegrationTestConfig = LineIntegrationTestConfig & FacebookIntegrationTestConfig;
 
+// Last test result per platform, shown on the settings page ("上次測試 ... 回應 N ms").
+// Holds no secrets: status, message, latency and timestamp only.
+export const INTEGRATION_TEST_KEY = (platform: string): string => `integration-test:last:${platform}`
+
+export interface IntegrationTestRecord {
+  status: 'success' | 'error'
+  message: string
+  latencyMs: number
+  testedAt: string
+}
+
+export async function readLastIntegrationTest(env: Bindings, platform: string): Promise<IntegrationTestRecord | null> {
+  try {
+    const raw = await env.CACHE?.get(INTEGRATION_TEST_KEY(platform))
+    return raw ? JSON.parse(raw) as IntegrationTestRecord : null
+  } catch {
+    return null
+  }
+}
+
 // Test platform integration
 export const testIntegration = async (c: Context<{ Bindings: Bindings }>) => {
   try {
     const platform = c.req.param('platform')
-    const config = await c.req.json() as IntegrationTestConfig
+    const config = await c.req.json().catch(() => ({})) as IntegrationTestConfig
 
-    let testResult = { status: 'error', message: '測試失敗' }
+    const startedAt = nowMs()
+    let testResult: { status: string; message: string; details?: unknown }
 
     if (platform === 'line') {
       testResult = await testLineIntegration(config, c.env)
@@ -50,7 +71,37 @@ export const testIntegration = async (c: Context<{ Bindings: Bindings }>) => {
       testResult = { status: 'error', message: '不支援的平台' }
     }
 
-    return successResponse(c, testResult, 'Integration test completed')
+    const latencyMs = nowMs() - startedAt
+    const testedAt = nowISO()
+    const ok = testResult.status === 'success'
+    const payload = { ...testResult, latencyMs, testedAt }
+
+    if (platform === 'line' || platform === 'facebook') {
+      const record: IntegrationTestRecord = {
+        status: ok ? 'success' : 'error',
+        message: testResult.message,
+        latencyMs,
+        testedAt
+      }
+      try {
+        await c.env.CACHE?.put(INTEGRATION_TEST_KEY(platform), JSON.stringify(record))
+      } catch (e) {
+        log.warn('Failed to persist integration test result', { error: e instanceof Error ? e.message : String(e) })
+      }
+    }
+
+    if (!ok) {
+      // A failed test is a failure: non-2xx so clients cannot mistake it for success.
+      return c.json({
+        success: false,
+        error: testResult.message,
+        code: 'INTEGRATION_TEST_FAILED',
+        data: payload,
+        timestamp: testedAt
+      }, 422)
+    }
+
+    return successResponse(c, payload, 'Integration test completed')
   } catch (error) {
     return handleApiError(error, c)
   }

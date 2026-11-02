@@ -10,6 +10,7 @@
 import { watch, nextTick, getCurrentScope, onScopeDispose } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUnreadConversationTotal } from './useUnreadConversationTotal'
+import { useUnreadStore } from '@/stores/unread'
 
 const UNREAD_PREFIX_RE = /^\(\d+\+?\)\s/
 
@@ -32,6 +33,10 @@ export function usePageTitleUnread() {
 
   // 單位為「有未讀的對話數」,以後端 /stats 為基準(見 useUnreadConversationTotal)
   const { total: totalUnread } = useUnreadConversationTotal()
+
+  // Mirror into the shared store so the sidebar badge reads the same single poller
+  const unreadStore = useUnreadStore()
+  watch(totalUnread, (value) => unreadStore.setTotal(value), { immediate: true })
 
   const applyTitle = (): void => {
     document.title = formatTitleWithUnread(document.title, totalUnread.value)

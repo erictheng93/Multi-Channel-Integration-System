@@ -15,6 +15,7 @@ import {
 import { translateError } from '@/utils/error-handler'
 import { nowISO } from '@/utils/timestamp'
 import { createLogger } from '@/utils/logger'
+import { createVisibleInterval, type VisibleInterval } from '@/utils/visibleInterval'
 
 const frontendLogger = createLogger('notifications')
 
@@ -49,7 +50,7 @@ export const useNotificationsStore = defineStore('notifications', () => {
   })
 
   // Polling
-  let pollingInterval: ReturnType<typeof setInterval> | null = null
+  let pollingInterval: VisibleInterval | null = null
   const pollingEnabled = ref(false)
 
   // ==================== Computed ====================
@@ -377,18 +378,20 @@ export const useNotificationsStore = defineStore('notifications', () => {
     fetchUnreadCount()
     fetchRecentNotifications()
 
-    pollingInterval = setInterval(() => {
+    // Paused while the tab is hidden; refreshes once when it becomes visible again
+    pollingInterval = createVisibleInterval(() => {
       if (pollingEnabled.value) {
         fetchUnreadCount()
         fetchRecentNotifications()
       }
     }, intervalMs)
+    pollingInterval.start()
   }
 
   // 停止輪詢
   const stopPolling = () => {
     if (pollingInterval) {
-      clearInterval(pollingInterval)
+      pollingInterval.stop()
       pollingInterval = null
     }
     pollingEnabled.value = false
