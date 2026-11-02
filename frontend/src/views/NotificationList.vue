@@ -21,6 +21,43 @@
         @open-settings="showSettings = true"
       />
 
+      <!-- The inbox as a mosaic: each tile is a notification type, sized by how many of it there are, and a filter -->
+      <section
+        v-if="stats && typeRows.length > 0"
+        class="notif-lead ui-lead"
+        aria-label="通知概況"
+      >
+        <div class="lead-fig">
+          <h2 class="lead-label">
+            全部通知
+          </h2>
+          <p class="lead-num">
+            <span class="ui-num">{{ stats.total }}</span><small>則</small>
+          </p>
+          <dl class="lead-time">
+            <div>
+              <dt>未讀</dt>
+              <dd :class="{ 'is-hot': urgentUnread > 0 }">
+                {{ stats.unread }}<small v-if="urgentUnread > 0">含 {{ urgentUnread }} 則緊急</small>
+              </dd>
+            </div>
+            <div>
+              <dt>今天</dt>
+              <dd>{{ stats.timeRange?.today ?? 0 }}</dd>
+            </div>
+            <div>
+              <dt>本週</dt>
+              <dd>{{ stats.timeRange?.thisWeek ?? 0 }}</dd>
+            </div>
+          </dl>
+        </div>
+        <NotificationMosaic
+          :rows="typeRows"
+          :selected="filters.selectedType.value"
+          @toggle="toggleType"
+        />
+      </section>
+
       <div class="notif-grid">
         <div class="notif-main ui-card">
           <NotificationFilters
@@ -31,6 +68,7 @@
             :notification-types="filters.notificationTypes"
             :priorities="filters.priorities"
             :counts="stats ? { total: stats.total, unread: stats.unread } : null"
+            :show-type-select="!stats || typeRows.length === 0"
             @apply-filters="filters.applyFilters"
             @clear-filters="filters.clearFilters"
           />
@@ -113,128 +151,6 @@
             </div>
           </section>
         </div>
-
-        <!-- Rail (wide screens): what is in the inbox, by priority and by period. Real counts from /notifications/stats. -->
-        <aside
-          v-if="stats"
-          class="notif-rail"
-          aria-label="通知概況"
-        >
-          <div class="ui-card rail-card">
-            <section
-              class="rail-lead"
-              aria-labelledby="rail-lead-title"
-            >
-              <h2
-                id="rail-lead-title"
-                class="rail-label"
-              >
-                未讀通知
-              </h2>
-              <p class="rail-num">
-                <span class="ui-num">{{ stats.unread }}</span><small>則</small>
-              </p>
-              <p class="rail-meta">
-                <template v-if="urgentUnread > 0">
-                  其中 <strong class="is-hot">{{ urgentUnread }} 則緊急</strong>
-                </template>
-                <template v-else-if="stats.unread > 0">
-                  沒有緊急通知
-                </template>
-                <template v-else>
-                  全部看完了
-                </template>
-              </p>
-              <dl class="rail-time">
-                <div>
-                  <dt>今天</dt>
-                  <dd>{{ stats.timeRange?.today ?? 0 }}</dd>
-                </div>
-                <div>
-                  <dt>本週</dt>
-                  <dd>{{ stats.timeRange?.thisWeek ?? 0 }}</dd>
-                </div>
-                <div>
-                  <dt>本月</dt>
-                  <dd>{{ stats.timeRange?.thisMonth ?? 0 }}</dd>
-                </div>
-              </dl>
-            </section>
-
-            <section
-              v-if="priorityRows.length > 0"
-              class="rail-sec"
-              aria-labelledby="rail-priority"
-            >
-              <h2
-                id="rail-priority"
-                class="rail-label rail-label-pad"
-              >
-                依優先級
-              </h2>
-              <div
-                class="rail-stack"
-                aria-hidden="true"
-              >
-                <i
-                  v-for="row in priorityRows"
-                  :key="row.value"
-                  :class="`tone-${row.value}`"
-                  :style="{ flexGrow: row.total }"
-                />
-              </div>
-              <button
-                v-for="row in priorityRows"
-                :key="row.value"
-                type="button"
-                class="rail-row"
-                :class="{ 'is-selected': filters.selectedPriority.value === row.value }"
-                :aria-pressed="filters.selectedPriority.value === row.value"
-                @click="togglePriority(row.value)"
-              >
-                <span
-                  class="rail-key"
-                  :class="`tone-${row.value}`"
-                  aria-hidden="true"
-                />
-                <span class="rail-name">{{ row.label }}</span>
-                <span class="rail-total">{{ row.total }}</span>
-              </button>
-            </section>
-
-            <section
-              v-if="typeRows.length > 0"
-              class="rail-sec"
-              aria-labelledby="rail-type"
-            >
-              <h2
-                id="rail-type"
-                class="rail-label rail-label-pad"
-              >
-                依類型
-              </h2>
-              <button
-                v-for="row in typeRows"
-                :key="row.value"
-                type="button"
-                class="rail-row"
-                :class="{ 'is-selected': filters.selectedType.value === row.value }"
-                :aria-pressed="filters.selectedType.value === row.value"
-                @click="toggleType(row.value)"
-              >
-                <span class="rail-name">{{ row.label }}</span>
-                <span
-                  class="rail-bar"
-                  aria-hidden="true"
-                ><i
-                  :class="`bar-${row.value}`"
-                  :style="{ width: `${row.share}%` }"
-                /></span>
-                <span class="rail-total">{{ row.total }}</span>
-              </button>
-            </section>
-          </div>
-        </aside>
       </div>
 
       <!-- Settings Modal -->
@@ -259,6 +175,7 @@ import {
   NotificationCard,
   NotificationEmptyState
 } from '@/components/notification'
+import NotificationMosaic from '@/components/notification/NotificationMosaic.vue'
 import NotificationSettingsModal from '@/components/notification/NotificationSettingsModal.vue'
 import type { Notification } from '@/stores/notifications'
 
@@ -283,41 +200,19 @@ const {
   keyboard
 } = controller
 
-// ==================== Rail ====================
-
-// Each row carries its share of the largest row so the rail reads as a small bar chart, not a number list
-function withShare<T extends { total: number }>(rows: T[]): Array<T & { share: number }> {
-  const max = Math.max(1, ...rows.map((r) => r.total))
-  return rows.map((r) => ({ ...r, share: Math.max(4, Math.round((r.total / max) * 100)) }))
-}
+// ==================== Mosaic ====================
 
 const typeRows = computed(() =>
-  withShare(filters.notificationTypes
+  filters.notificationTypes
     .map((t) => ({
       ...t,
       total: stats.value?.byType?.[t.value as keyof NonNullable<typeof stats.value>['byType']]?.total ?? 0,
       unread: stats.value?.byType?.[t.value as keyof NonNullable<typeof stats.value>['byType']]?.unread ?? 0
     }))
     .filter((row) => row.total > 0)
-    .sort((a, b) => b.total - a.total))
-)
-
-const priorityRows = computed(() =>
-  withShare(filters.priorities
-    .map((p) => ({
-      ...p,
-      total: stats.value?.byPriority?.[p.value as 'low' | 'normal' | 'high' | 'urgent']?.total ?? 0,
-      unread: stats.value?.byPriority?.[p.value as 'low' | 'normal' | 'high' | 'urgent']?.unread ?? 0
-    }))
-    .filter((row) => row.total > 0))
 )
 
 const urgentUnread = computed(() => stats.value?.byPriority?.urgent?.unread ?? 0)
-
-function togglePriority(value: string): void {
-  filters.selectedPriority.value = (filters.selectedPriority.value === value ? '' : value) as typeof filters.selectedPriority.value
-  filters.applyFilters()
-}
 
 function toggleType(value: string): void {
   filters.selectedType.value = (filters.selectedType.value === value ? '' : value) as typeof filters.selectedType.value
@@ -374,56 +269,37 @@ onUnmounted(() => {
 
 <style scoped>
 
-/* Inbox (left) + overview rail (right, wide screens only) */
-.notif-grid {
+/* Lead: the total and the mosaic of types; the inbox list sits under it */
+.notif-lead {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 300px;
-  gap: 20px;
-  align-items: start;
+  grid-template-columns: 220px minmax(0, 1fr);
+  gap: 28px;
+  align-items: stretch;
+  padding: 24px 28px;
 }
 
-.notif-main {
-  min-width: 0;
-  overflow: hidden;
+.lead-fig {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 14px;
 }
 
-.notif-rail {
-  position: sticky;
-  top: 16px;
-  min-width: 0;
-}
-
-.rail-card {
-  display: grid;
-  overflow: hidden;
-  box-shadow: var(--ui-shadow-card);
-}
-
-.rail-lead {
-  display: grid;
-  gap: 4px;
-  padding: 20px 22px 18px;
-}
-
-.rail-label {
+.lead-label {
   margin: 0;
   font-size: 14px;
   font-weight: 600;
   color: var(--ui-ink-2);
 }
 
-.rail-label-pad {
-  padding: 0 10px 4px;
-}
-
-.rail-num {
-  margin: 0;
-  font: 600 48px / 1.05 var(--ui-font-display);
+.lead-num {
+  margin: 2px 0 0;
+  font: 600 56px / 1 var(--ui-font-display);
   letter-spacing: -0.03em;
   font-variant-numeric: tabular-nums;
 }
 
-.rail-num small {
+.lead-num small {
   margin-left: 4px;
   font-size: 16px;
   font-weight: 500;
@@ -431,182 +307,44 @@ onUnmounted(() => {
   color: var(--ui-ink-2);
 }
 
-.rail-meta {
+.lead-time {
+  display: grid;
+  gap: 8px;
   margin: 0;
+  padding-top: 14px;
+  box-shadow: inset 0 0.5px 0 var(--ui-sep);
+}
+
+.lead-time > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.lead-time dt {
   font-size: 14px;
   color: var(--ui-ink-2);
 }
 
-.rail-meta .is-hot {
-  font-weight: 600;
+.lead-time dd small {
+  margin-left: 8px;
+  font: 600 13px var(--ui-font-display);
   color: var(--ui-red-ink);
 }
 
-.rail-sec {
-  display: grid;
-  gap: 2px;
-  padding: 16px 12px 12px;
-  box-shadow: inset 0 0.5px 0 var(--ui-sep);
-}
-
-.rail-stack {
-  display: flex;
-  gap: 3px;
-  height: 10px;
-  margin: 0 10px 6px;
-}
-
-.rail-stack i {
-  flex-basis: 0;
-  min-width: 6px;
-  border-radius: 999px;
-}
-
-.tone-urgent {
-  background: var(--ui-red);
-}
-
-.tone-high {
-  background: var(--ui-orange);
-}
-
-.tone-normal {
-  background: var(--ui-accent);
-}
-
-.tone-low {
-  background: var(--ui-faint);
-}
-
-.rail-key {
-  flex: none;
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-}
-
-.rail-row {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  width: 100%;
-  min-height: 44px;
-  padding: 0 10px;
-  border: 0;
-  border-radius: 12px;
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-
-.rail-row:hover {
-  background: var(--ui-fill);
-}
-
-.rail-row.is-selected {
-  background: var(--ui-sel-tint);
-  box-shadow: var(--ui-sel-ring);
-}
-
-.rail-row:focus-visible {
-  outline: 2px solid var(--ui-accent);
-  outline-offset: -2px;
-}
-
-.rail-name {
-  flex: 1;
-  min-width: 0;
-  font-size: 15px;
-  font-weight: 500;
-}
-
-/* type share: a solid bar against a visible track, so the ranking reads at a glance */
-.rail-bar {
-  flex: none;
-  width: 72px;
-  height: 8px;
-  overflow: hidden;
-  border-radius: 999px;
-  background: var(--ui-fill-strong);
-}
-
-/* each type keeps the colour of its icon tile on the cards, so the rail and the list read as one system */
-.rail-bar i {
-  display: block;
-  height: 100%;
-  border-radius: 999px;
-  background: var(--ui-faint);
-}
-
-.rail-bar i.bar-new_message,
-.rail-bar i.bar-new_conversation,
-.rail-bar i.bar-agent_removed_from_team { background: var(--ui-red); }
-.rail-bar i.bar-customer_responded { background: var(--ui-green); }
-.rail-bar i.bar-conversation_assigned,
-.rail-bar i.bar-customer_followed { background: var(--ui-blue); }
-.rail-bar i.bar-conversation_transferred { background: #8e7cc3; }
-.rail-bar i.bar-mention,
-.rail-bar i.bar-task_reminder { background: var(--ui-orange); }
-
-.rail-total {
-  min-width: 2ch;
-  font-size: 15px;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  color: var(--ui-ink);
-  text-align: right;
-}
-
-.rail-time {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  margin: 12px 0 0;
-  padding: 12px 0 0;
-  box-shadow: inset 0 0.5px 0 var(--ui-sep);
-}
-
-.rail-time > div {
-  display: grid;
-  gap: 2px;
-  padding: 0 10px;
-}
-
-.rail-time > div:first-child {
-  padding-left: 0;
-}
-
-.rail-time > div + div {
-  box-shadow: inset 0.5px 0 0 var(--ui-sep);
-}
-
-.rail-time dt {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--ui-ink-2);
-}
-
-.rail-time dd {
+.lead-time dd {
   margin: 0;
-  font: 600 24px / 1.1 var(--ui-font-display);
+  font: 700 20px / 1.2 var(--ui-font-display);
   font-variant-numeric: tabular-nums;
-  letter-spacing: -0.02em;
-  color: var(--ui-ink);
+}
+
+.notif-main {
+  min-width: 0;
+  overflow: hidden;
 }
 
 .notifications-section {
   min-height: 240px;
-}
-
-@media (max-width: 1024px) {
-  .notif-grid {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .notif-rail {
-    display: none;
-  }
 }
 
 .loading-state {
@@ -682,6 +420,23 @@ onUnmounted(() => {
 }
 
 @media (max-width: 768px) {
+  /* Phone: no card, just the types as a row of chips right above the list */
+  .notif-lead {
+    display: block;
+    padding: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .lead-fig {
+    display: none;
+  }
+
+  .notif-lead :deep(.mosaic) {
+    margin: 0 -16px;
+  }
+
   .day-label {
     padding: 14px 16px 4px;
   }
