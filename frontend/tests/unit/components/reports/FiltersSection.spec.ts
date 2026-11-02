@@ -113,6 +113,21 @@ describe('FiltersSection.vue', () => {
     wrapper.unmount()
   })
 
+  it('date presets count Taipei days, whatever the browser timezone', async () => {
+    vi.useFakeTimers({ now: new Date('2026-10-28T17:00:00.000Z') }) // 01:00 on the 29th in Taipei
+    const wrapper = make()
+    await openPanel(wrapper)
+    const chip = (label: string) => wrapper.findAll('.rf-presets .ui-chip').find(b => b.text() === label)
+
+    await chip('今天')?.trigger('click')
+    await chip('近 7 天')?.trigger('click')
+
+    expect(wrapper.emitted('update:filters')?.[0]?.[0]).toMatchObject({ startDate: '2026-10-29', endDate: '2026-10-29' })
+    expect(wrapper.emitted('update:filters')?.[1]?.[0]).toMatchObject({ startDate: '2026-10-23', endDate: '2026-10-29' })
+    wrapper.unmount()
+    vi.useRealTimers()
+  })
+
   it('a date preset sets both ends at once; 全部時間 clears them', async () => {
     const wrapper = make()
     await openPanel(wrapper)
