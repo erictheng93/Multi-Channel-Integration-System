@@ -7,6 +7,7 @@
       title="匯出對話"
       :subtitle="`選擇檔案格式後開始匯出，單次最多 ${EXPORT_LIMIT.toLocaleString()} 筆。`"
     />
+    <UiSectionNav section="data" />
 
     <!-- Lead: the one task. The chosen format and the single action -->
     <RingLead
@@ -135,6 +136,7 @@
 
 <script setup lang="ts">
 import UiPageHead from '@/components/ui/UiPageHead.vue'
+import UiSectionNav from '@/components/ui/UiSectionNav.vue'
 import RingLead from '@/components/lead/RingLead.vue'
 import { computed, ref } from 'vue'
 import UiActionBar from '@/components/ui/UiActionBar.vue'
