@@ -14,7 +14,7 @@ export function hasConversationChanged(existing: Conversation, updated: Conversa
   const keyFields = [
     'id', 'status', 'unreadCount', 'lastMessageAt', 'lastMessage', 'priority',
     'assignedTeamId', 'assignedTeam', 'customerName', 'platform', 'firstResponseAt',
-    'updatedAt', 'createdAt'
+    'updatedAt', 'createdAt', 'awaitingSince', 'neverReplied'
   ] as const
 
   return keyFields.some(field => {

@@ -34,8 +34,9 @@ export function blockSystemAgentTarget(): MiddlewareHandler {
       return forbiddenResponse(c, 'The system account cannot be modified');
     }
 
+    // Hono's c.req.json() ignores Content-Type, so inspect every non-multipart body, not just application/json
     const type = c.req.header('content-type') ?? '';
-    if (type.includes('application/json')) {
+    if (!type.includes('multipart/form-data')) {
       try {
         const body: unknown = await c.req.raw.clone().json();
         if (mentionsSystemAgent(body, false)) {
