@@ -41,6 +41,7 @@ vi.mock('@/components/icons', () => ({
   AlertIcon: { name: 'AlertIcon', template: '<span class="icon alert-icon"></span>' },
   ClockIcon: { name: 'ClockIcon', template: '<span class="icon clock-icon"></span>' },
   ArrowRightIcon: { name: 'ArrowRightIcon', template: '<span class="icon arrow-right-icon"></span>' },
+  ArrowLeftRightIcon: { name: 'ArrowLeftRightIcon', template: '<span class="icon arrow-left-right-icon"></span>' },
   InboxIcon: { name: 'InboxIcon', template: '<span class="icon inbox-icon"></span>' },
   CalendarIcon: { name: 'CalendarIcon', template: '<span class="icon calendar-icon"></span>' },
   TrendingUpIcon: { name: 'TrendingUpIcon', template: '<span class="icon trending-up-icon"></span>' },

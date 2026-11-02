@@ -47,6 +47,7 @@ const createIcon = (path: string, viewBox = '0 0 24 24') => {
 // Navigation & UI Icons
 export const ArrowLeftIcon = createIcon('m15 18-6-6 6-6')
 export const ArrowRightIcon = createIcon('m9 18 6-6-6-6')
+export const ArrowLeftRightIcon = createIcon('M7 7h13m-3-3 3 3-3 3M17 17H4m3 3-3-3 3-3')
 export const ChevronLeftIcon = createIcon('m15 18-6-6 6-6')
 export const ChevronRightIcon = createIcon('m9 18 6-6-6-6')
 export const ChevronDownIcon = createIcon('m6 9 6 6 6-6')

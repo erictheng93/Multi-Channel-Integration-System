@@ -133,19 +133,78 @@
           </template>
         </button>
       </div>
+      <!-- Phone and touch: one quiet overflow replaces the inline actions, so every row looks the same -->
+      <div
+        ref="moreEl"
+        class="notification-more"
+        @click.stop
+      >
+        <button
+          class="more-btn"
+          type="button"
+          aria-haspopup="menu"
+          :aria-expanded="menuOpen"
+          :aria-label="`更多操作：${notification.title}`"
+          @click="menuOpen = !menuOpen"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            fill="currentColor"
+            aria-hidden="true"
+          >
+            <circle
+              cx="5"
+              cy="12"
+              r="1.8"
+            />
+            <circle
+              cx="12"
+              cy="12"
+              r="1.8"
+            />
+            <circle
+              cx="19"
+              cy="12"
+              r="1.8"
+            />
+          </svg>
+        </button>
+        <div
+          v-if="menuOpen"
+          class="more-menu"
+          role="menu"
+        >
+          <button
+            v-if="!notification.isRead"
+            type="button"
+            role="menuitem"
+            @click="onMenuMarkRead"
+          >
+            <CheckIcon aria-hidden="true" />標記已讀
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            class="is-danger"
+            @click="onDeleteClick"
+          >
+            <TrashIcon aria-hidden="true" />{{ confirmingDelete ? '再按一次刪除' : '刪除' }}
+          </button>
+        </div>
+      </div>
     </div>
   </article>
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import type { Notification, NotificationType } from '@/stores/notifications'
 import {
   CheckIcon,
   TrashIcon,
   MessageIcon,
   UserPlusIcon,
-  ArrowRightIcon,
+  ArrowLeftRightIcon,
   AtSignIcon,
   BellIcon,
   AlertIcon,
@@ -169,7 +228,7 @@ const emit = defineEmits<{
 const iconMap: Record<NotificationType, typeof MessageIcon> = {
   new_message: MessageIcon,
   conversation_assigned: UserPlusIcon,
-  conversation_transferred: ArrowRightIcon,
+  conversation_transferred: ArrowLeftRightIcon,
   mention: AtSignIcon,
   system: BellIcon,
   customer_responded: MessageIcon,
@@ -195,7 +254,22 @@ function onDeleteClick(): void {
   confirmingDelete.value = true
   confirmTimer = setTimeout(() => { confirmingDelete.value = false }, 3000)
 }
-onBeforeUnmount(() => { if (confirmTimer) { clearTimeout(confirmTimer) } })
+
+// Overflow menu (phone): closes on any outside tap
+const menuOpen = ref(false)
+const moreEl = ref<HTMLElement | null>(null)
+function onDocPointer(e: Event): void {
+  if (menuOpen.value && moreEl.value && !moreEl.value.contains(e.target as HTMLElement)) { menuOpen.value = false }
+}
+function onMenuMarkRead(): void {
+  menuOpen.value = false
+  emit('mark-read', props.notification.id)
+}
+onMounted(() => document.addEventListener('pointerdown', onDocPointer))
+onBeforeUnmount(() => {
+  document.removeEventListener('pointerdown', onDocPointer)
+  if (confirmTimer) { clearTimeout(confirmTimer) }
+})
 
 const icon = computed(() => iconMap[props.notification.type] || BellIcon)
 const iconClass = computed(() => `icon-${props.notification.type}`)
@@ -281,16 +355,6 @@ const formattedTime = computed(() => {
 
 .notification-card:hover {
   background: color-mix(in srgb, var(--ui-fill) 45%, transparent);
-}
-
-/* Unread rows carry a faint section wash so the inbox scans by tint, not only by the dot */
-.notification-unread {
-  background: color-mix(in srgb, var(--ui-accent) 7%, transparent);
-  box-shadow: inset 4px 0 0 var(--ui-accent);
-}
-
-.notification-unread:hover {
-  background: color-mix(in srgb, var(--ui-accent) 11%, transparent);
 }
 
 /* Unread: coloured icon tile, bold ink title and a dot by the time. Read: grey tile, receding title. No tinted slab (it read as a selected row). */
@@ -490,6 +554,11 @@ const formattedTime = computed(() => {
   white-space: nowrap;
 }
 
+/* Overflow control: phone and touch only */
+.notification-more {
+  display: none;
+}
+
 /* Row actions live under the time in the trailing column and appear on hover or focus */
 .notification-actions {
   position: absolute;
@@ -567,21 +636,76 @@ const formattedTime = computed(() => {
     margin-top: 8px;
   }
 
+  /* the inline actions are replaced by the overflow control */
   .notification-actions {
-    position: static;
+    display: none;
+  }
+
+  .notification-more {
+    position: relative;
+    display: block;
     grid-area: act;
     align-self: center;
-    margin: -8px -12px -8px 0;
-    opacity: 1;
+    margin: -8px -10px -8px 0;
   }
+}
 
-  .notification-unread .action-btn-danger {
-    display: none;
-  }
+.more-btn {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--ui-ink-2);
+  cursor: pointer;
+}
 
-  .notification-card:not(.notification-unread) .action-btn:not(.action-btn-danger) {
-    display: none;
-  }
+.more-btn svg {
+  width: 20px;
+  height: 20px;
+}
+
+.more-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  z-index: 20;
+  display: grid;
+  min-width: 168px;
+  padding: 6px;
+  border-radius: 14px;
+  background: var(--ui-surface);
+  box-shadow: var(--ui-shadow-raised);
+}
+
+.more-menu button {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--ui-ink);
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.more-menu button:hover {
+  background: var(--ui-fill);
+}
+
+.more-menu button.is-danger {
+  color: var(--ui-red-ink);
+}
+
+.more-menu svg {
+  width: 18px;
+  height: 18px;
 }
 
 .action-btn {
@@ -642,48 +766,4 @@ const formattedTime = computed(() => {
   }
 }
 
-@media (max-width: 768px), (hover: none) {
-  /* 44px touch target, but drawn as quiet glyphs so the row reads as part of the item, not a toolbar */
-  .action-btn {
-    display: inline-flex;
-    gap: 6px;
-    align-items: center;
-    justify-content: center;
-    width: auto;
-    min-width: 44px;
-    height: 44px;
-    padding: 0 12px;
-    border-radius: 999px;
-    background: transparent;
-    color: var(--ui-ink-2);
-  }
-
-  .action-btn:not(.action-btn-danger) {
-    color: var(--ui-accent);
-  }
-
-  /* Named actions: icon plus a short word, so a trash can is never the only cue */
-  .action-btn:not(.is-confirming) {
-    color: var(--ui-ink-2);
-  }
-
-  .action-btn:not(.action-btn-danger):not(.is-confirming) {
-    color: var(--ui-accent);
-  }
-
-  .action-btn:not(.is-confirming):hover {
-    color: var(--ui-ink);
-  }
-
-  .action-btn svg {
-    width: 18px;
-    height: 18px;
-  }
-
-  .action-label {
-    display: inline;
-    font-size: 14px;
-    font-weight: 600;
-  }
-}
 </style>

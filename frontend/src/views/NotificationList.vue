@@ -226,7 +226,10 @@
                 <span
                   class="rail-bar"
                   aria-hidden="true"
-                ><i :style="{ width: `${row.share}%` }" /></span>
+                ><i
+                  :class="`bar-${row.value}`"
+                  :style="{ width: `${row.share}%` }"
+                /></span>
                 <span class="rail-total">{{ row.total }}</span>
               </button>
             </section>
@@ -529,16 +532,23 @@ onUnmounted(() => {
   background: var(--ui-fill-strong);
 }
 
+/* each type keeps the colour of its icon tile on the cards, so the rail and the list read as one system */
 .rail-bar i {
   display: block;
   height: 100%;
   border-radius: 999px;
-  background: var(--ui-ink-2);
+  background: var(--ui-faint);
 }
 
-.rail-row.is-selected .rail-bar i {
-  background: var(--ui-accent);
-}
+.rail-bar i.bar-new_message,
+.rail-bar i.bar-new_conversation,
+.rail-bar i.bar-agent_removed_from_team { background: var(--ui-red); }
+.rail-bar i.bar-customer_responded { background: var(--ui-green); }
+.rail-bar i.bar-conversation_assigned,
+.rail-bar i.bar-customer_followed { background: var(--ui-blue); }
+.rail-bar i.bar-conversation_transferred { background: #8e7cc3; }
+.rail-bar i.bar-mention,
+.rail-bar i.bar-task_reminder { background: var(--ui-orange); }
 
 .rail-total {
   min-width: 2ch;
