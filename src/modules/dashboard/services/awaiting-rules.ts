@@ -12,13 +12,9 @@
 // These SQL fragments are used by migration 0072 (triggers and backfill, generated from
 // them and verified by tests), the nightly heal (awaiting-service.ts) and the tests.
 
-/** Explicit thanks list. Lower-case; compared against LOWER(TRIM(content)) minus trailing punctuation. */
-export const SIGN_OFF_PHRASES = [
-  '謝謝', '謝謝你', '謝謝您', '感謝', '感謝您', '多謝', '3q', 'thx', 'thanks', 'thank you', '謝啦', '感恩'
-] as const;
+import { SIGN_OFF_PHRASES, SIGN_OFF_TRAILING_PUNCTUATION } from '@shared/api-contracts';
 
-/** Characters that may follow a sign-off text (！!～~。.). */
-export const SIGN_OFF_TRAILING_PUNCTUATION = '！!～~。.';
+export { SIGN_OFF_PHRASES, SIGN_OFF_TRAILING_PUNCTUATION };
 
 /** The accepted-human-reply predicate for a message alias (same definition as migration 0070). */
 export function humanReplySql(alias: string): string {

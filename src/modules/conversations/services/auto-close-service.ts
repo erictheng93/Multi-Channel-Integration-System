@@ -9,7 +9,8 @@
 //
 // RULES
 //   - Never closes a conversation that is waiting for a reply (awaiting_since IS NOT NULL), also
-//     re-checked inside the UPDATE so a message that arrives mid-run wins.
+//     re-checked inside the UPDATE together with the idle cutoff, so any message (question, sign-off,
+//     agent reply) that arrives mid-run wins.
 //   - Never touches closed or soft-deleted conversations.
 //   - Idle = no customer message and no agent / system message for the whole window (the trigger
 //     maintained markers last_customer_message_at / last_agent_message_at, migration 0071).
@@ -104,7 +105,7 @@ export async function autoCloseIdleConversations(
     const statuses = await setConversationsClosed(env, AUTO_CLOSE_ACTOR, chunk, true, {
       action: ACTIVITY_ACTIONS.CONVERSATION_AUTO_CLOSE,
       details: { auto: true, idleDays },
-      onlyIfNotAwaiting: true
+      onlyIfIdleSince: cutoff
     });
     closed += Object.keys(statuses).length;
   }
