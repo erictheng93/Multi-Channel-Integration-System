@@ -1,4 +1,4 @@
-<!-- 報表模板：only templates the backend can generate; the chosen one lists what it contains and the real output of its latest report -->
+<!-- 報表模板：only templates the backend can generate. Signature: the chosen template is drawn as a report sheet, its contents as a numbered outline filled with the real figures of the latest report -->
 
 <template>
   <div class="ui-page report-templates ui-rise">
@@ -23,11 +23,11 @@
       </button>
     </div>
 
-    <template v-else-if="selected">
-      <section
-        class="tpl-pick"
-        aria-label="選擇模板"
-      >
+    <div
+      v-else-if="selected"
+      class="tpl-grid"
+    >
+      <aside class="tpl-side">
         <div
           class="tpl-list"
           role="radiogroup"
@@ -41,6 +41,52 @@
             @select="onSelect"
           />
         </div>
+
+        <div class="tpl-actions">
+          <button
+            type="button"
+            class="btn btn-primary"
+            :aria-busy="generating"
+            @click="useTemplate(selected)"
+          >
+            {{ generating ? '產生中...' : '直接產生' }}
+          </button>
+          <button
+            type="button"
+            class="btn btn-secondary"
+            @click="customizeTemplate(selected)"
+          >
+            調整後產生
+          </button>
+        </div>
+
+        <section
+          v-if="earlier.length"
+          class="ui-card tpl-hist"
+          aria-label="更早的產出"
+        >
+          <h3 class="tpl-cap">
+            更早的產出
+          </h3>
+          <ul>
+            <li
+              v-for="item in earlier"
+              :key="item.id"
+            >
+              <router-link
+                :to="`/reports/${item.id}`"
+                class="tpl-hrow"
+              >
+                <span class="tpl-hname">{{ item.title }}</span>
+                <span class="tpl-hmeta">{{ item.format.toUpperCase() }} ・ {{ relativeTime(item.completedAt ?? item.createdAt) }}</span>
+                <span
+                  class="ui-pill"
+                  :class="statusClass(item.status)"
+                >{{ statusText[item.status] ?? item.status }}</span>
+              </router-link>
+            </li>
+          </ul>
+        </section>
 
         <router-link
           to="/reports/generate"
@@ -74,74 +120,24 @@
             aria-hidden="true"
           ><path d="m9 6 6 6-6 6" /></svg>
         </router-link>
-      </section>
+      </aside>
 
-      <section
-        class="ui-lead tpl-out"
-        :aria-label="`${selected.name}的內容與最近產出`"
-      >
-        <header class="out-head">
-          <div class="out-title">
-            <h2 class="out-name">
-              {{ selected.name }}
-            </h2>
-            <p class="out-desc">
-              {{ selected.description }}
-            </p>
-          </div>
-          <div class="out-actions">
-            <button
-              type="button"
-              class="btn btn-secondary"
-              :disabled="generating"
-              @click="customizeTemplate(selected)"
-            >
-              調整後產生
-            </button>
-            <button
-              type="button"
-              class="btn btn-primary"
-              :disabled="generating"
-              @click="useTemplate(selected)"
-            >
-              {{ generating ? '產生中...' : '直接產生' }}
-            </button>
-          </div>
-        </header>
-
-        <div class="out-body">
-          <div class="out-has">
-            <h3 class="out-cap">
-              這份報表包含
-            </h3>
-            <ol class="has-list">
-              <li
-                v-for="(item, index) in contents"
-                :key="item.label"
-              >
-                <span
-                  class="has-n"
-                  aria-hidden="true"
-                >{{ index + 1 }}</span>
-                <span class="has-t"><b>{{ item.label }}</b><span>{{ item.hint }}</span></span>
-              </li>
-            </ol>
-          </div>
-          <div class="out-last">
-            <ReportOutputPreview :type="selected.type" />
-          </div>
-        </div>
-        <dl class="out-foot">
-          <div
-            v-for="chip in presetChips"
-            :key="chip.k"
-          >
-            <dt>{{ chip.k }}</dt>
-            <dd>{{ chip.v }}</dd>
-          </div>
-        </dl>
-      </section>
-    </template>
+      <div class="tpl-stack">
+        <ReportSheet
+          :template="selected"
+          :state="latestState"
+          :loading="latestLoading"
+        />
+        <!-- one paper edge per earlier output of this type: the stack behind the sheet is that history -->
+        <i
+          v-for="n in earlier.length"
+          :key="n"
+          class="tpl-edge"
+          :style="{ '--n': n }"
+          aria-hidden="true"
+        />
+      </div>
+    </div>
 
     <UiActionBar
       v-if="selected"
@@ -151,7 +147,6 @@
       <button
         type="button"
         class="btn btn-secondary"
-        :disabled="generating"
         @click="customizeTemplate(selected)"
       >
         調整後產生
@@ -159,7 +154,7 @@
       <button
         type="button"
         class="btn btn-primary"
-        :disabled="generating"
+        :aria-busy="generating"
         @click="useTemplate(selected)"
       >
         {{ generating ? '產生中...' : '直接產生' }}
@@ -178,8 +173,9 @@ import { useRouter } from 'vue-router';
 import type { ReportTemplate } from '@/types/reports';
 import ReportsAPI from '@/api/reports';
 import TemplateCard from './templates/TemplateCard.vue';
-import ReportOutputPreview from './templates/ReportOutputPreview.vue';
-import { DEFAULT_TEMPLATES, REPORT_CONTENTS, formatEstimatedTime } from './templates/templateHelpers';
+import ReportSheet from './templates/ReportSheet.vue';
+import { useLatestReport, relativeTime } from './templates/latestReport';
+import { DEFAULT_TEMPLATES } from './templates/templateHelpers';
 
 const router = useRouter();
 
@@ -207,13 +203,10 @@ const generatableTypes = generatable.types.map(option => option.value);
 const isSupported = (template: ReportTemplate) => generatableTypes.includes(template.type);
 const usableTemplates = computed(() => templates.value.filter(isSupported));
 const selected = ref<ReportTemplate | null>(null);
-const contents = computed(() => (selected.value ? REPORT_CONTENTS[selected.value.type] ?? [] : []));
-const presetChips = computed(() => {
-  const chips = [{ k: '時間範圍', v: '近 30 天' }, { k: '輸出格式', v: 'JSON' }];
-  const seconds = selected.value?.estimatedTime;
-  if (seconds) { chips.push({ k: '預估耗時', v: `約 ${formatEstimatedTime(seconds)}` }); }
-  return chips;
-});
+const { state: latestState, loading: latestLoading } = useLatestReport(computed(() => selected.value?.type));
+const earlier = computed(() => (latestState.value?.recent ?? []).filter(item => item.id !== latestState.value?.report?.id).slice(0, 3));
+const statusText: Record<string, string> = { completed: '已完成', generating: '生成中', pending: '待處理', failed: '失敗', expired: '已過期' };
+const statusClass = (status: string) => ({ completed: 'ui-pill-green', generating: 'ui-pill-blue', pending: 'ui-pill-blue', failed: 'ui-pill-red' }[status] ?? '');
 
 const onSelect = (template: ReportTemplate) => {
   selected.value = template;
@@ -229,6 +222,7 @@ const templatesSubtitle = computed(() =>
 
 // 使用模板生成報告
 const useTemplate = async (template: ReportTemplate) => {
+  if (generating.value) { return; }
   generating.value = true;
 
   try {
@@ -268,17 +262,112 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.tpl-pick {
+.tpl-grid {
   display: grid;
-  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  grid-template-columns: 360px minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+
+.tpl-stack {
+  min-width: 0;
+}
+
+.tpl-stack > .sheet {
+  position: relative;
+  z-index: 4;
+}
+
+.tpl-edge {
+  position: relative;
+  z-index: calc(4 - var(--n));
+  display: block;
+  height: 24px;
+  margin: -12px calc(var(--n) * 20px) 0;
+  border-radius: 0 0 var(--ui-r-group) var(--ui-r-group);
+  background: var(--ui-surface);
+  box-shadow: var(--ui-shadow-card), 0 0 0 0.5px var(--ui-sep);
+}
+
+.tpl-side {
+  position: sticky;
+  top: calc(var(--ui-topbar-h) + 20px);
+  display: grid;
   gap: 16px;
-  margin-bottom: 16px;
+  min-width: 0;
 }
 
 .tpl-list {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
+  gap: 12px;
+}
+
+.tpl-actions {
+  display: grid;
+  gap: 8px;
+}
+
+.tpl-actions .btn {
+  width: 100%;
+}
+
+.tpl-hist {
+  display: grid;
+  gap: 4px;
+  padding: 18px 20px 10px;
+}
+
+.tpl-cap {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ui-ink-2);
+}
+
+.tpl-hist ul {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tpl-hist li + li {
+  box-shadow: 0 -0.5px 0 var(--ui-sep);
+}
+
+.tpl-hrow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 2px 12px;
+  align-items: center;
+  padding: 10px 0;
+  color: var(--ui-ink);
+  font-size: 14px;
+  text-decoration: none;
+}
+
+.tpl-hname {
+  grid-column: 1;
+  overflow: hidden;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tpl-hrow .ui-pill {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+}
+
+.tpl-hmeta {
+  grid-column: 1;
+  color: var(--ui-muted);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.tpl-hrow:hover .tpl-hname {
+  color: var(--ui-accent);
 }
 
 .custom-row {
@@ -286,7 +375,7 @@ onMounted(() => {
   grid-template-columns: auto minmax(0, 1fr) auto;
   gap: 14px;
   align-items: center;
-  padding: 18px 20px;
+  padding: 16px 20px;
   border-radius: var(--ui-r-group);
   background: var(--ui-surface);
   color: var(--ui-ink);
@@ -338,144 +427,6 @@ onMounted(() => {
   color: var(--ui-muted);
 }
 
-.tpl-out {
-  display: grid;
-  overflow: hidden;
-}
-
-.out-head {
-  display: flex;
-  gap: 16px 24px;
-  align-items: flex-start;
-  justify-content: space-between;
-  padding: 26px 32px 22px;
-}
-
-.out-title {
-  display: grid;
-  gap: 4px;
-  min-width: 0;
-}
-
-.out-name {
-  margin: 0;
-  font: 700 28px / 1.2 var(--ui-font-display);
-  letter-spacing: -0.025em;
-}
-
-.out-desc {
-  margin: 0;
-  font-size: 15px;
-  color: var(--ui-ink-2);
-}
-
-.out-actions {
-  display: flex;
-  flex: none;
-  gap: 8px;
-}
-
-.out-body {
-  display: grid;
-  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
-  box-shadow: 0 -0.5px 0 var(--ui-sep);
-}
-
-.out-has,
-.out-last {
-  min-width: 0;
-  padding: 24px 32px 28px;
-}
-
-.out-last {
-  box-shadow: -0.5px 0 0 var(--ui-sep);
-}
-
-.out-cap {
-  margin: 0 0 10px;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--ui-ink-2);
-}
-
-.has-list {
-  display: grid;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.has-list li {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: 14px;
-  align-items: start;
-  padding: 12px 0;
-}
-
-.has-list li + li {
-  box-shadow: 0 -0.5px 0 var(--ui-sep);
-}
-
-.out-foot {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  margin: 0;
-  background: var(--ui-surface-2);
-  box-shadow: 0 -0.5px 0 var(--ui-sep);
-}
-
-.out-foot div {
-  display: flex;
-  gap: 12px;
-  align-items: baseline;
-  justify-content: space-between;
-  padding: 16px 32px;
-}
-
-.out-foot div + div {
-  box-shadow: -0.5px 0 0 var(--ui-sep);
-}
-
-.out-foot dt {
-  font-size: 14px;
-  color: var(--ui-ink-2);
-}
-
-.out-foot dd {
-  margin: 0;
-  font-size: 15px;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-}
-
-.has-n {
-  display: grid;
-  width: 28px;
-  height: 28px;
-  place-items: center;
-  border-radius: 50%;
-  background: var(--section-hue-soft);
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--section-ink);
-  font-variant-numeric: tabular-nums;
-}
-
-.has-t {
-  display: grid;
-  gap: 2px;
-}
-
-.has-t b {
-  font: 600 16px / 1.3 var(--ui-font-display);
-}
-
-.has-t span {
-  font-size: 14px;
-  color: var(--ui-ink-2);
-}
-
 .tpl-bar {
   display: none;
 }
@@ -489,51 +440,55 @@ onMounted(() => {
 }
 
 @media (max-width: 1024px) {
-  .tpl-pick {
+  .tpl-grid {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .out-body {
-    grid-template-columns: minmax(0, 1fr);
+  .tpl-side {
+    position: static;
   }
 
-  .out-last {
-    box-shadow: 0 -0.5px 0 var(--ui-sep);
-  }
-
-  .out-foot {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .out-foot div {
-    padding: 12px 20px;
-  }
-
-  .out-foot div + div {
-    box-shadow: 0 -0.5px 0 var(--ui-sep);
+  .tpl-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
 @media (max-width: 768px) {
+  .tpl-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    align-items: stretch;
+  }
+
+  /* the side column dissolves: picker first, then the sheet, then the quiet extras */
+  .tpl-side {
+    position: static;
+    display: contents;
+  }
+
   .tpl-list {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 12px;
+    order: 1;
+    gap: 10px;
   }
 
-  .out-head {
-    padding: 20px 20px 16px;
+  .tpl-stack {
+    order: 2;
   }
 
-  .out-has,
-  .out-last {
-    padding: 18px 20px 22px;
+  .tpl-edge {
+    margin-inline: calc(var(--n) * 12px);
   }
 
-  .out-name {
-    font-size: 24px;
+  .tpl-hist {
+    order: 3;
   }
 
-  .out-actions {
+  .custom-row {
+    order: 4;
+  }
+
+  .tpl-actions {
     display: none;
   }
 

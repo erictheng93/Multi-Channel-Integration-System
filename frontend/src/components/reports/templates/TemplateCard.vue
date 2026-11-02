@@ -137,4 +137,21 @@ defineEmits<{
 .is-on .radio {
   box-shadow: inset 0 0 0 6px var(--ui-accent);
 }
+
+@media (max-width: 768px) {
+  .tpl-row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+    padding: 14px;
+  }
+
+  .tpl-row .radio,
+  .tpl-desc {
+    display: none;
+  }
+
+  .tpl-name {
+    font-size: 15px;
+  }
+}
 </style>
