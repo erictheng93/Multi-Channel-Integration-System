@@ -8,17 +8,82 @@
       :subtitle="`選擇格式與範圍後匯出，單次最多 ${EXPORT_LIMIT.toLocaleString()} 筆。`"
     />
 
+    <section
+      class="ui-lead ex-result"
+      :class="{ 'is-over': willTruncate }"
+      aria-label="匯出筆數"
+    >
+      <div
+        class="res-count foot-count"
+        role="status"
+      >
+        <template v-if="count === null">
+          <p class="res-label">
+            將匯出
+          </p>
+          <p class="res-wait">
+            正在計算符合條件的筆數…
+          </p>
+        </template>
+        <template v-else>
+          <p class="res-label">
+            {{ willTruncate ? '本次只會匯出' : '將匯出' }}
+            <span
+              v-if="willTruncate"
+              class="ui-pill ui-pill-orange"
+            >超過上限</span>
+          </p>
+          <p class="res-num">
+            {{ exportCount.toLocaleString() }}<span> 筆</span>
+          </p>
+        </template>
+      </div>
+      <div class="res-note">
+        <template v-if="count !== null">
+          <p
+            v-if="willTruncate"
+            class="res-warn"
+          >
+            <b>符合條件共 {{ count.count.toLocaleString() }} 筆，其餘 {{ (count.count - EXPORT_LIMIT).toLocaleString() }} 筆不會匯出。</b>
+            縮小期間或指定客戶，就能完整匯出。
+          </p>
+          <p
+            v-else
+            class="res-ok"
+          >
+            符合目前條件的全部對話訊息
+          </p>
+        </template>
+      </div>
+      <button
+        type="button"
+        class="btn btn-primary lead-cta"
+        :aria-busy="exporting"
+        @click="runExport"
+      >
+        <DownloadIcon :size="16" />
+        {{ exporting ? '匯出中…' : `開始匯出 ${selectedName}` }}
+      </button>
+    </section>
+
     <div class="ex-grid">
       <div class="ex-left">
         <section
-          class="ex-pick"
+          class="ui-card ex-pick"
           aria-label="選擇格式"
         >
-          <h2 class="ui-group-label">
-            檔案格式
-          </h2>
+          <div class="ui-card-head">
+            <div>
+              <h2 class="ui-card-title">
+                檔案格式
+              </h2>
+              <p class="ui-card-sub">
+                依用途選擇
+              </p>
+            </div>
+          </div>
           <div
-            class="ui-group ex-list"
+            class="ex-list"
             role="radiogroup"
             aria-label="匯出格式"
           >
@@ -157,67 +222,15 @@
               </select>
             </div>
           </div>
+          <ul class="scope-rules">
+            <li>僅含你有權限查看的對話</li>
+            <li>已收回的訊息不匯出</li>
+            <li>單次最多 {{ EXPORT_LIMIT.toLocaleString() }} 筆，超過的部分不會匯出</li>
+          </ul>
         </form>
       </div>
 
       <div class="ex-right">
-        <section
-          class="ui-card ex-result"
-          :class="{ 'is-over': willTruncate }"
-          aria-label="匯出筆數"
-        >
-          <div
-            class="res-count foot-count"
-            role="status"
-          >
-            <template v-if="count === null">
-              <p class="res-label">
-                將匯出
-              </p>
-              <p class="res-wait">
-                正在計算符合條件的筆數…
-              </p>
-            </template>
-            <template v-else>
-              <p class="res-label">
-                {{ willTruncate ? '本次只會匯出' : '將匯出' }}
-                <span
-                  v-if="willTruncate"
-                  class="ui-pill ui-pill-orange"
-                >超過上限</span>
-              </p>
-              <p class="res-num">
-                {{ exportCount.toLocaleString() }}<span> 筆</span>
-              </p>
-              <div
-                v-if="willTruncate"
-                class="res-warn"
-              >
-                <b>符合條件共 {{ count.count.toLocaleString() }} 筆，其餘 {{ (count.count - EXPORT_LIMIT).toLocaleString() }} 筆不會匯出</b>
-                <span>縮小期間或指定客戶，就能完整匯出。</span>
-              </div>
-              <p
-                v-else
-                class="res-ok"
-              >
-                符合目前條件的全部對話訊息
-              </p>
-            </template>
-          </div>
-          <p class="res-scope">
-            僅含你有權限查看的對話，已收回的訊息不匯出。
-          </p>
-          <button
-            type="button"
-            class="btn btn-primary lead-cta"
-            :aria-busy="exporting"
-            @click="runExport"
-          >
-            <DownloadIcon :size="16" />
-            {{ exporting ? '匯出中…' : `開始匯出 ${selectedName}` }}
-          </button>
-        </section>
-
         <section
           class="ui-lead ex-sheet"
           :aria-label="`${selectedName} 匯出設定`"
@@ -423,7 +436,7 @@ const periods: Array<{ id: PeriodId; label: string }> = [
   { id: 'd30', label: '近 30 天' },
   { id: 'custom', label: '自訂' }
 ]
-const period = ref<PeriodId>('all')
+const period = ref<PeriodId>('d30')
 const pad = (n: number) => String(n).padStart(2, '0')
 const ymd = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
 const mdLabel = (d: Date) => `${d.getMonth() + 1}/${d.getDate()}`
@@ -449,6 +462,7 @@ function pickPeriod(id: PeriodId) {
   filters.dateFrom = ymd(from)
   filters.dateTo = ymd(new Date())
 }
+pickPeriod('d30') // start from a valid range (the last 30 days) instead of an over-limit 'all'
 const { showSuccess, showError } = useToast()
 
 /** Date inputs are whole days: the range runs from 00:00 of the first day to the end of the last (local time) */
@@ -535,25 +549,28 @@ async function runExport() {
 <style scoped>
 .ex-grid {
   display: grid;
-  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
-  gap: 20px;
-  align-items: start;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  align-items: stretch;
 }
 
-.ex-left {
-  display: grid;
-  gap: 20px;
-  min-width: 0;
+.ex-left,
+.ex-right {
+  display: contents;
 }
 
 .ex-pick {
+  display: flex;
+  flex-direction: column;
   min-width: 0;
 }
 
 .ex-list {
   display: grid;
+  flex: 1;
+  grid-auto-rows: 1fr;
   gap: 4px;
-  padding: 8px;
+  padding: 4px 10px 12px;
 }
 
 .ex-row {
@@ -622,7 +639,7 @@ async function runExport() {
   flex-wrap: wrap;
   gap: 12px;
   justify-content: space-between;
-  padding: 22px 28px 14px;
+  padding: 20px 22px 14px;
 }
 
 .sheet-file {
@@ -650,8 +667,8 @@ async function runExport() {
 
 .sheet-shape {
   display: block;
-  margin: 0 28px 8px;
-  padding: 12px 18px;
+  margin: 0 22px 8px;
+  padding: 12px 14px;
   overflow-wrap: anywhere;
   border-radius: var(--ui-r-inner);
   background: var(--ui-surface-2);
@@ -661,15 +678,15 @@ async function runExport() {
 
 .sheet-rows {
   display: grid;
-  margin: 0 28px;
-  padding: 2px 0 24px;
+  margin: 0 22px;
+  padding: 2px 0 20px;
 }
 
 .sheet-row {
   display: grid;
-  grid-template-columns: 170px minmax(0, 1fr);
-  gap: 16px;
-  padding: 7px 18px;
+  grid-template-columns: 124px minmax(0, 1fr);
+  gap: 12px;
+  padding: 8px 14px;
   font-size: 14px;
   box-shadow: 0 -0.5px 0 var(--ui-sep);
 }
@@ -696,26 +713,63 @@ async function runExport() {
 }
 
 .ex-scope {
+  display: flex;
+  flex-direction: column;
   padding-bottom: 22px;
 }
 
-.scope-grid {
+.scope-rules {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px 16px;
-  padding: 4px 22px 0;
+  gap: 8px;
+  margin: auto 22px 0;
+  padding: 14px 18px;
+  border-radius: var(--ui-r-inner);
+  background: var(--ui-surface-2);
+  list-style: none;
+  font-size: 14px;
+  color: var(--ui-ink-2);
 }
 
-.ex-right {
+.scope-rules li {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+}
+
+.scope-rules li::before {
+  flex: none;
+  width: 5px;
+  height: 5px;
+  margin-bottom: 3px;
+  border-radius: 50%;
+  background: var(--ui-faint);
+  content: '';
+}
+
+.scope-grid {
+  margin-bottom: 24px;
   display: grid;
-  gap: 20px;
-  min-width: 0;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 26px 16px;
+  padding: 8px 22px 0;
 }
 
 .ex-result {
   display: grid;
-  gap: 16px;
-  padding: 22px 28px 24px;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 16px 40px;
+  align-items: center;
+  padding: 24px 32px;
+}
+
+.res-note {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.res-note > p {
+  margin: 0;
 }
 
 
@@ -754,10 +808,7 @@ async function runExport() {
 }
 
 .res-warn {
-  display: grid;
-  gap: 2px;
-  margin-top: 12px;
-  padding: 12px 16px;
+  padding: 10px 14px;
   border-radius: var(--ui-r-inner);
   background: var(--ui-orange-soft);
   font-size: 14px;
@@ -776,7 +827,7 @@ async function runExport() {
 }
 
 .lead-cta {
-  width: 100%;
+  min-width: 200px;
 }
 
 .period-seg {
@@ -854,9 +905,19 @@ async function runExport() {
 .bar-count {
   flex: 1;
   margin: 0;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 600;
-  color: var(--ui-ink-2);
+  color: var(--ui-ink);
+}
+
+@media (max-width: 1280px) {
+  .ex-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .ex-sheet {
+    grid-column: 1 / -1;
+  }
 }
 
 @media (max-width: 1024px) {
@@ -864,25 +925,12 @@ async function runExport() {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .ex-left,
-  .ex-right {
-    display: contents;
-  }
-
-  .ex-pick {
-    order: 0;
-  }
-
-  .ex-scope {
-    order: 1;
-  }
-
   .ex-result {
-    order: 2;
+    grid-template-columns: auto minmax(0, 1fr);
   }
 
-  .ex-sheet {
-    order: 3;
+  .ex-result .lead-cta {
+    grid-column: 1 / -1;
   }
 }
 
@@ -892,6 +940,8 @@ async function runExport() {
   }
 
   .ex-result {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
     padding: 18px 20px 20px;
   }
 
