@@ -3,7 +3,7 @@
 > **此文件由程式產生，請勿手動編輯。**
 > 重新產生：`bun run db:doc:schema`（正式庫）或 `bun scripts/generate-schema-doc.ts`（本地鏡像）
 >
-> **產生時間**: 2026-11-02T04:16:00.372Z
+> **產生時間**: 2026-11-02T04:49:00.488Z
 > **資料來源**: REMOTE production D1 (mcis-db)
 >
 > 內容直接讀自資料庫的 `sqlite_master` 與 pragma 函式，**不是**讀 `src/db/schema.ts`
@@ -17,8 +17,8 @@
 
 | 項目 | 數量 |
 |---|---|
-| 資料表 | 42 |
-| 索引 | 124 |
+| 資料表 | 45 |
+| 索引 | 131 |
 | 視圖 | 3 |
 | 外鍵關係 | 72 |
 | CHECK 約束 | 0 |
@@ -34,16 +34,7 @@
 
 ## 與 `src/db/schema.ts` 的一致性
 
-> **偵測到漂移。** 以下差異僅回報，不會自動修正。
-
-**只在 `schema.ts` 宣告、資料庫中不存在**：
-
-- `message_daily_stats`
-- `stats_watermarks`
-- `ws_metrics_snapshots`
-
-查詢這些表會在執行期失敗。多半代表某個 migration 沒有套用。
-
+資料庫中的 45 張表與 `src/db/schema.ts` 宣告的表**完全一致**。
 相關檢查：`bun run check:migrations` 會比對「已套用的 migration 宣告了什麼」與
 「資料庫實際有什麼」，涵蓋 table / index / trigger / view 四種物件，比本文件的
 表級比對更細。**但它不檢查 CHECK 約束、欄位型別與外鍵**。
@@ -69,7 +60,7 @@
 - [`conversation_sessions`](#conversation-sessions) — 10 欄；Conversation sessions table - 對話會話管理
 - [`conversation_tags`](#conversation-tags) — 4 欄；Conversation tags junction table - 對話標籤關聯
 - [`conversation_transfers`](#conversation-transfers) — 8 欄；Conversation transfers table - 對話轉移記錄 Note: fromUserId/toUserId removed - only team-based transfers are supported now
-- [`conversations`](#conversations) — 16 欄；Conversations table - 對話
+- [`conversations`](#conversations) — 19 欄；Conversations table - 對話
 - [`cors_events`](#cors-events) — 9 欄；CORS Events table - CORS 事件記錄
 - [`customer_feedback`](#customer-feedback) — 10 欄；Customer Feedback table - 客户满意度反馈 (Migration 0032)
 - [`customer_tags`](#customer-tags) — 4 欄；Customer tags junction table - 客戶標籤關聯
@@ -77,6 +68,7 @@
 - [`customers`](#customers) — 13 欄；Customers table - 平台客戶資訊表 ENCRYPTION NOTE: Consider encrypting email, phone, metadata for PII protection
 - [`delayed_messages`](#delayed-messages) — 12 欄
 - [`file_attachments`](#file-attachments) — 12 欄；File attachments table - 檔案附件表 All columns now use consistent snake_case naming (Migration 0037 applied 2026-02-14)
+- [`message_daily_stats`](#message-daily-stats) — 5 欄；Message count rollup by Asia/Taipei day (Migration 0069). The migration creates the table WITHOUT ROWID (not expressible here); this mirror keeps the column and key shape. team_id: >0 team at aggregation time, 0 = unassigned pool, -1 = all teams (what admins read). day '0000-00-00' = all-time totals (team -1). See migrations/0069 for the full semantics.
 - [`message_recall_logs`](#message-recall-logs) — 5 欄；Message recall logs table - 訊息撤回日誌
 - [`messages`](#messages) — 24 欄；Messages table - 訊息 NOTE: replyToMessageId is a self-reference to messages.id Foreign key constraint is enforced at application layer (see message-crud.ts)
 - [`metrics`](#metrics) — 7 欄；Metrics table - 企業分析指標
@@ -88,12 +80,14 @@
 - [`reports`](#reports) — 26 欄；Reports main table - 報告系統主表
 - [`scheduled_report_executions`](#scheduled-report-executions) — 10 欄；Scheduled report executions table - 排程執行歷史表
 - [`scheduled_reports`](#scheduled-reports) — 24 欄；Scheduled reports table - 排程報告表
+- [`stats_watermarks`](#stats-watermarks) — 3 欄；Key/value watermarks for incremental aggregation jobs (Migration 0069)
 - [`system_settings`](#system-settings) — 4 欄；System settings table - 系統設定表
 - [`tags`](#tags) — 10 欄；Tags table - 標籤系統 SEMANTIC CONTRACT: isActive=false → temporarily disabled (recoverable) deletedAt=set  → soft deleted (logically removed)
 - [`task_reminders`](#task-reminders) — 13 欄；Task Reminders table - 任務提醒 (Migration 0029)
 - [`team_liff_qr_codes`](#team-liff-qr-codes) — 8 欄；Team LIFF QR Codes table - 團隊 LIFF QR Code (Migration 0031 - pending) Stores persistent LIFF URLs and QR Code images for team member onboarding
 - [`teams`](#teams) — 8 欄；Teams table - 團隊 SEMANTIC CONTRACT: isActive=false → temporarily disabled (recoverable) deletedAt=set  → soft deleted (logically removed)
 - [`webhook_security_events`](#webhook-security-events) — 8 欄；Webhook Security Events table - 安全事件記錄
+- [`ws_metrics_snapshots`](#ws-metrics-snapshots) — 8 欄；WebSocket metrics history (Migration 0068). One row per */5 cron run, pruned after 7 days. Rate/latency/error columns are NULL when the broadcaster had no reference sample for a window.
 
 ---
 
@@ -741,6 +735,7 @@ CREATE TABLE `channel_integrations` (
 **索引**:
 
 - `idx_conversation_read_states_conversation` — (conversation_id)
+- `idx_conversation_read_states_marked_unread` *(partial)* — (agent_id, conversation_id) WHERE marked_unread_at IS NOT NULL
 
 <details><summary>CREATE TABLE</summary>
 
@@ -905,6 +900,9 @@ CREATE TABLE `conversation_transfers` (
 | `unread_floor_at` | TEXT | - | - |
 | `line_reply_token` | TEXT | - | - |
 | `line_reply_token_received_at` | INTEGER | - | - |
+| `awaiting_since` | TEXT | - | - |
+| `last_customer_message_at` | TEXT | - | - |
+| `last_agent_message_at` | TEXT | - | - |
 
 **外鍵**:
 
@@ -913,9 +911,13 @@ CREATE TABLE `conversation_transfers` (
 
 **索引**:
 
+- `idx_conversations_auto_close` *(partial)* — (last_customer_message_at, id) WHERE awaiting_since IS NULL AND status <> 'closed' AND deleted_at IS NULL
+- `idx_conversations_awaiting_since` *(partial)* — (awaiting_since, id, status, assigned_team_id, deleted_at) WHERE awaiting_since IS NOT NULL
+- `idx_conversations_customer_after_agent` *(partial)* — (last_customer_message_at, id, status, assigned_team_id, unread_floor_at, last_agent_message_at) WHERE last_customer_message_at > COALESCE(last_agent_message_at, '')
 - `idx_conversations_customer_status` — (customer_id, status)
 - `idx_conversations_deleted_at` *(partial)* — (deleted_at) WHERE deleted_at IS NOT NULL
 - `idx_conversations_last_message` — (last_message_at)
+- `idx_conversations_team_status` — (assigned_team_id, status)
 - `idx_conversations_updated_at` — (updated_at, id)
 
 <details><summary>CREATE TABLE</summary>
@@ -933,7 +935,7 @@ CREATE TABLE `conversations` (
 	`last_read_at` text,
 	`created_at` text DEFAULT CURRENT_TIMESTAMP,
 	`updated_at` text DEFAULT CURRENT_TIMESTAMP,
-	`deleted_at` text, marked_unread_at TEXT, unread_floor_at TEXT, line_reply_token TEXT, line_reply_token_received_at INTEGER,
+	`deleted_at` text, marked_unread_at TEXT, unread_floor_at TEXT, line_reply_token TEXT, line_reply_token_received_at INTEGER, awaiting_since TEXT, last_customer_message_at TEXT, last_agent_message_at TEXT,
 	FOREIGN KEY (`customer_id`) REFERENCES `customers`(`id`) ON UPDATE no action ON DELETE restrict,
 	FOREIGN KEY (`assigned_team_id`) REFERENCES `teams`(`id`) ON UPDATE no action ON DELETE set null
 )
@@ -1291,6 +1293,35 @@ CREATE TABLE `file_attachments` (
 
 </details>
 
+### `message_daily_stats`
+
+> Message count rollup by Asia/Taipei day (Migration 0069). The migration creates the table WITHOUT ROWID (not expressible here); this mirror keeps the column and key shape. team_id: >0 team at aggregation time, 0 = unassigned pool, -1 = all teams (what admins read). day '0000-00-00' = all-time totals (team -1). See migrations/0069 for the full semantics.
+
+| 欄位 | 型別 | 約束 | 預設值 |
+|---|---|---|---|
+| `team_id` | INTEGER | PK(1), NOT NULL | - |
+| `sender_type` | TEXT | PK(2), NOT NULL | - |
+| `day` | TEXT | PK(3), NOT NULL | - |
+| `platform` | TEXT | PK(4), NOT NULL | - |
+| `count` | INTEGER | NOT NULL | `0` |
+
+**複合主鍵**: (`team_id`, `sender_type`, `day`, `platform`)
+
+<details><summary>CREATE TABLE</summary>
+
+```sql
+CREATE TABLE message_daily_stats (
+  team_id INTEGER NOT NULL,
+  sender_type TEXT NOT NULL,
+  day TEXT NOT NULL,
+  platform TEXT NOT NULL,
+  count INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (team_id, sender_type, day, platform)
+) WITHOUT ROWID
+```
+
+</details>
+
 ### `message_recall_logs`
 
 > Message recall logs table - 訊息撤回日誌
@@ -1372,6 +1403,7 @@ CREATE TABLE `message_recall_logs` (
 - `idx_messages_customer_sender_created` *(partial)* — (customer_sender_id, created_at DESC) WHERE customer_sender_id IS NOT NULL
 - `idx_messages_deleted_at` *(partial)* — (deleted_at) WHERE deleted_at IS NOT NULL
 - `idx_messages_reply_to` *(partial)* — (reply_to_message_id) WHERE reply_to_message_id IS NOT NULL
+- `idx_messages_sender_type_created_at` — (sender_type, created_at)
 - `idx_messages_thread_id_sequence` *(partial)* — (thread_id, session_sequence) WHERE thread_id IS NOT NULL
 - `idx_messages_updated_at` *(partial)* — (updated_at DESC) WHERE updated_at IS NOT NULL
 - `messages_platform_message_id_unique` *(UNIQUE)* *(partial)* — (platform_message_id) WHERE platform_message_id IS NOT NULL
@@ -1908,6 +1940,28 @@ CREATE TABLE `scheduled_reports` (
 
 </details>
 
+### `stats_watermarks`
+
+> Key/value watermarks for incremental aggregation jobs (Migration 0069)
+
+| 欄位 | 型別 | 約束 | 預設值 |
+|---|---|---|---|
+| `key` | TEXT | PK | - |
+| `value` | TEXT | NOT NULL | - |
+| `updated_at` | TEXT | NOT NULL | - |
+
+<details><summary>CREATE TABLE</summary>
+
+```sql
+CREATE TABLE stats_watermarks (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+)
+```
+
+</details>
+
 ### `system_settings`
 
 > System settings table - 系統設定表
@@ -2156,6 +2210,42 @@ CREATE TABLE `webhook_security_events` (
 	`details` text,
 	`created_at` text DEFAULT (datetime('now')) NOT NULL,
 	FOREIGN KEY (`integration_id`) REFERENCES `channel_integrations`(`id`) ON UPDATE no action ON DELETE cascade
+)
+```
+
+</details>
+
+### `ws_metrics_snapshots`
+
+> WebSocket metrics history (Migration 0068). One row per */5 cron run, pruned after 7 days. Rate/latency/error columns are NULL when the broadcaster had no reference sample for a window.
+
+| 欄位 | 型別 | 約束 | 預設值 |
+|---|---|---|---|
+| `id` | INTEGER | PK | - |
+| `ts` | INTEGER | NOT NULL | - |
+| `active_connections` | INTEGER | NOT NULL | - |
+| `online_agents` | INTEGER | NOT NULL | - |
+| `events_in_per_s` | REAL | - | - |
+| `events_out_per_s` | REAL | - | - |
+| `avg_processing_ms` | REAL | - | - |
+| `error_rate` | REAL | - | - |
+
+**索引**:
+
+- `idx_ws_metrics_snapshots_ts` — (ts)
+
+<details><summary>CREATE TABLE</summary>
+
+```sql
+CREATE TABLE ws_metrics_snapshots (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  ts INTEGER NOT NULL,
+  active_connections INTEGER NOT NULL,
+  online_agents INTEGER NOT NULL,
+  events_in_per_s REAL,
+  events_out_per_s REAL,
+  avg_processing_ms REAL,
+  error_rate REAL
 )
 ```
 
