@@ -242,11 +242,6 @@ const members = computed(() => {
   opacity: 0.85;
 }
 
-/* members are people, not categories: their own hue so the two lists never read as one */
-.ins-row.is-member .ins-bar i {
-  background: var(--ui-indigo);
-}
-
 .ins-n small {
   display: inline-block;
   min-width: 2.6em;
@@ -274,6 +269,12 @@ const members = computed(() => {
   font-size: 13px;
   font-weight: 600;
   color: var(--ui-ink-2);
+}
+/* same as the log: only the real action is a capsule, the closed states are plain text */
+.ins-legend dt:not(.lg-on) {
+  padding: 0;
+  background: none;
+  color: var(--ui-ink);
 }
 .ins-legend dt.lg-on {
   background: var(--ui-accent-soft);
