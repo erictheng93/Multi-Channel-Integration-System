@@ -34,16 +34,6 @@
     <span class="tpl-main">
       <b class="tpl-name">{{ template.name }}</b>
       <span class="tpl-desc">{{ template.description }}</span>
-      <span class="tpl-meta">{{ meta }}</span>
-      <span
-        v-if="selected && contents.length"
-        class="tpl-has"
-      >
-        <span
-          v-for="item in contents"
-          :key="item.label"
-        ><b>{{ item.label }}</b>{{ item.hint }}</span>
-      </span>
     </span>
     <i
       class="radio"
@@ -53,11 +43,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
 import type { ReportTemplate } from '@/types/reports';
-import { formatEstimatedTime, REPORT_CONTENTS } from './templateHelpers';
 
-const props = defineProps<{
+defineProps<{
   template: ReportTemplate;
   selected: boolean;
 }>();
@@ -65,16 +53,6 @@ const props = defineProps<{
 defineEmits<{
   select: [template: ReportTemplate];
 }>();
-
-const contents = computed(() => REPORT_CONTENTS[props.template.type] ?? []);
-
-const meta = computed(() => {
-  const parts = ['近 30 天', 'JSON'];
-  if (props.template.estimatedTime) {
-    parts.push(`約 ${formatEstimatedTime(props.template.estimatedTime)}`);
-  }
-  return parts.join(' ・ ');
-});
 </script>
 
 <style scoped>
@@ -84,10 +62,10 @@ const meta = computed(() => {
   gap: 14px;
   align-items: start;
   width: 100%;
-  padding: 16px 18px;
+  padding: 18px 20px;
   border: 0;
-  border-radius: var(--ui-r-inner);
-  background: transparent;
+  border-radius: var(--ui-r-group);
+  background: var(--ui-surface);
   color: var(--ui-ink);
   font: inherit;
   text-align: left;
@@ -110,7 +88,7 @@ const meta = computed(() => {
 }
 
 .tpl-row .radio {
-  margin-top: 10px;
+  margin-top: 2px;
 }
 
 .tpl-ico {
@@ -146,36 +124,6 @@ const meta = computed(() => {
 .tpl-desc {
   font-size: 14px;
   color: var(--ui-ink-2);
-}
-
-.tpl-meta {
-  margin-top: 2px;
-  font-size: 13px;
-  color: var(--ui-muted);
-}
-
-.tpl-has {
-  display: grid;
-  gap: 6px;
-  margin-top: 10px;
-  padding-top: 12px;
-  box-shadow: 0 -0.5px 0 var(--ui-sep);
-}
-
-.tpl-has > span {
-  display: flex;
-  gap: 12px;
-  align-items: baseline;
-  font-size: 13px;
-  line-height: 1.4;
-  color: var(--ui-ink-2);
-}
-
-.tpl-has b {
-  flex: none;
-  min-width: 76px;
-  font-size: 14px;
-  color: var(--ui-ink);
 }
 
 .radio {

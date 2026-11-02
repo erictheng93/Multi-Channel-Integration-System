@@ -223,7 +223,7 @@ const canDelete = computed(() => {
 .report-row {
   position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 2.6fr) 110px minmax(120px, 1fr) 84px;
+  grid-template-columns: 96px minmax(0, 1fr) 150px 84px;
   align-items: center;
   gap: 12px;
   padding: 14px 22px;
@@ -360,6 +360,12 @@ const canDelete = computed(() => {
 .action-btn:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+}
+
+@media (min-width: 769px) {
+  .status-cell {
+    order: -1;
+  }
 }
 
 @media (max-width: 768px) {
