@@ -76,7 +76,7 @@
             type="button"
             class="btn btn-secondary"
             :disabled="!dirty || controller.saving.value || controller.loading.value"
-            @click="controller.loadSettings"
+            @click="restore"
           >
             還原
           </button>
@@ -143,6 +143,12 @@ const credentialsTyped = computed(() => {
   }
   return false
 })
+function restore() {
+  const key = section.value?.key
+  if (key === 'line' || key === 'facebook') { controller.discardCredentialEdits(key) }
+  return controller.loadSettings()
+}
+
 const dirty = computed(() => {
   const key = section.value?.key
   if (isValuesSection(key)) {

@@ -356,6 +356,15 @@ export function useSystemSettingsController() {
     }
   }
 
+  /** Drops typed replacements: loadSettings() leaves the credential inputs alone, so 還原 must clear them */
+  function discardCredentialEdits(platform: 'line' | 'facebook'): void {
+    if (platform === 'line') {
+      LINE_FIELDS.forEach((field) => { settings.integrations.line[field] = '' })
+    } else {
+      FACEBOOK_FIELDS.forEach((field) => { settings.integrations.facebook[field] = '' })
+    }
+  }
+
   async function refreshCredentialStatus(): Promise<void> {
     const response = await credentialsApi.getAllCredentials()
     if (response.success && response.data) {credentialStatus.value = response.data}
@@ -841,6 +850,7 @@ export function useSystemSettingsController() {
 
     // Data Loading
     loadSettings,
+    discardCredentialEdits,
 
     // Save Settings
     saveGeneralSettings,
