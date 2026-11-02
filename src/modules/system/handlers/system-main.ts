@@ -1,4 +1,5 @@
 // 系統處理器 - 主要實現
+import { notSystemAgent } from '@/constants/system-agent';
 import { Hono } from 'hono';
 import { HTTP_STATUS } from '@/constants/http-status';
 import type { Bindings } from '@/types';
@@ -185,7 +186,7 @@ systemHandler.get('/stats', jwtAuth, async (c) => {
         drizzleDb.select({ count: count() })
           .from(agents)
           .where(
-            sql`datetime(last_active) >= datetime('now', '-5 minutes')`
+            and(notSystemAgent(agents.id), sql`datetime(last_active) >= datetime('now', '-5 minutes')`)
           ),
         // 平均響應時間 (計算 createdAt 到 firstResponseAt 的平均時間，最近 24 小時)
         drizzleDb.select({

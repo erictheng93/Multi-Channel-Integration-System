@@ -121,7 +121,7 @@ describe('LogTable -- empty state', () => {
 
   it('shows empty state message text', () => {
     const wrapper = mountTable({ logs: [], pagination: { page: 1, limit: 20, total: 0 } })
-    expect(wrapper.find('.empty-title').text()).toContain('尚無回覆記錄')
+    expect(wrapper.find('.empty-state h3').text()).toContain('尚無回覆記錄')
   })
 })
 

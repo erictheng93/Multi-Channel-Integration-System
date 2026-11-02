@@ -75,7 +75,7 @@ export const systemContracts = {
   info: defineApiContract<Record<string, never>, void, unknown>({ method: 'GET', path: () => '/system/info' }),
   settings: defineApiContract<Record<string, never>, void, unknown>({ method: 'GET', path: () => '/system/settings' }),
   updateSettings: defineApiContract<Record<string, never>, unknown, void>({ method: 'PUT', path: () => '/system/settings' }),
-  testIntegration: defineApiContract<{ platform: IntegrationPlatform }, unknown, { status: string; message?: string }>({
+  testIntegration: defineApiContract<{ platform: IntegrationPlatform }, unknown, { status: string; message?: string; latencyMs?: number; testedAt?: string }>({
     method: 'POST',
     path: ({ platform }) => `/system/integrations/${platform}/test`
   }),

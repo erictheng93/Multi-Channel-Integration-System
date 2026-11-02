@@ -22,6 +22,7 @@ import {
 } from '@/utils/api-response';
 import { getConversationVisibilityCondition } from '@/services/conversation-visibility';
 import { nowISO } from '@/utils/timestamp';
+import { taipeiDayStartISO } from '@/utils/taipei-time';
 import {
   autoReplyContracts,
   type AutoReplyLog,
@@ -146,10 +147,8 @@ autoReplyLogsHandler.get('/', async (c) => {
     }
     const listWhere = and(...listConditions);
 
-    // "Today" cut-off for the auxiliary count
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
-    const todayISO = todayStart.toISOString();
+    // "Today" cut-off for the auxiliary count: 00:00 Asia/Taipei (the Worker clock is UTC)
+    const todayISO = taipeiDayStartISO();
     const todayWhere = and(teamCondition, gte(autoReplyLogs.createdAt, todayISO));
 
     // ──────────────────────────────────────────────────────────────────

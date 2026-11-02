@@ -16,11 +16,12 @@ import {
   healthMainHandler
 } from '../handlers';
 
+import dashboardMainHandler from '@modules/dashboard/handlers/dashboard-main';
 import messagingMainHandler from '@modules/messaging/handlers/messaging/index';
 // REMOVED: Old QR Code module - migrated to new LIFF QR Code system
 // import qrCodeRouterSimple from '@modules/qrcode/handlers/qrcode-router-simple';
 import fileMainHandler from '@modules/file-management/handlers/file-main';
-import { autoReplyRulesHandler, autoReplySchedulesHandler, autoReplyLogsHandler } from '../modules/auto-reply/handlers';
+import { autoReplyRulesHandler, autoReplySchedulesHandler, autoReplyLogsHandler, autoReplyStatsHandler } from '../modules/auto-reply/handlers';
 
 // Import additional handlers
 import { analyticsHandler } from '@modules/analytics/handlers/analytics-main';
@@ -89,6 +90,15 @@ const businessLogicGroup = createRouteGroup({
       healthCheck: '/health'
     }),
     createRouteModule({
+      name: 'dashboard',
+      path: '/dashboard',
+      handler: dashboardMainHandler,
+      description: 'Dashboard aggregates (Asia/Taipei days, visibility-scoped)',
+      version: '1.0.0',
+      dependencies: ['auth', 'conversations'],
+      healthCheck: '/health'
+    }),
+    createRouteModule({
       name: 'messages',
       path: '/messages',
       handler: messagingMainHandler,
@@ -150,6 +160,14 @@ const businessLogicGroup = createRouteGroup({
       version: '1.0.0',
       dependencies: ['auth'],
       healthCheck: '/health'
+    }),
+    createRouteModule({
+      name: 'auto-reply-stats',
+      path: '/auto-reply/stats',
+      handler: autoReplyStatsHandler,
+      description: 'Auto-Reply Daily Stats (Read-only)',
+      version: '1.0.0',
+      dependencies: ['auth']
     })
   ]
 });

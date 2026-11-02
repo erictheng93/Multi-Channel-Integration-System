@@ -1,161 +1,232 @@
 <template>
-  <div class="auto-reply-stats">
-    <div class="stats-grid">
-      <div class="stat-card stat-card--rules">
-        <div class="stat-value">
-          {{ activeRules }}
-        </div>
-        <div class="stat-label">
-          啟用規則數
-        </div>
+  <article class="ui-lead lead auto-reply-stats">
+    <div class="lead-main">
+      <div class="lead-kicker">
+        今日自動回覆
+      </div>
+      <div class="lead-num">
+        {{ todayReplies.toLocaleString('en-US') }}<small>則</small>
+      </div>
+      <div
+        v-if="yesterdaySameTime !== null && yesterdaySameTime !== undefined"
+        class="lead-meaning"
+      >
+        <span
+          class="ui-delta"
+          :class="delta >= 0 ? 'ui-delta-up' : 'ui-delta-down'"
+        >{{ deltaText }}</span>
+        比昨天同時段
       </div>
 
-      <div class="stat-card stat-card--replies">
-        <div class="stat-value">
-          {{ todayReplies }}
-        </div>
-        <div class="stat-label">
-          今日回覆數
-        </div>
-      </div>
-
-      <div class="stat-card stat-card--hours">
-        <div
-          class="stat-value"
-          :class="isBusinessHours ? 'text-amber' : 'text-red'"
-        >
-          {{ isBusinessHours ? '營業中' : '非營業時間' }}
-        </div>
-        <div class="stat-label">
-          營業狀態
-        </div>
-      </div>
-
-      <div class="stat-card stat-card--rate">
-        <div class="stat-value">
-          {{ successRate }}%
-        </div>
-        <div class="stat-label">
-          成功率
-        </div>
+      <div
+        class="hours-state"
+        :class="noSchedule ? 'is-none' : isBusinessHours ? 'is-open' : 'is-closed'"
+      >
+        <span class="hours-dot" />
+        <strong class="hours-label">{{ noSchedule ? '未設定' : isBusinessHours ? '營業中' : '非營業時間' }}</strong>
+        <span
+          v-if="hoursNote"
+          class="hours-note"
+        >{{ hoursNote }}</span>
       </div>
     </div>
-  </div>
+
+    <div
+      v-if="rings.length > 0"
+      class="lead-rings"
+    >
+      <ServiceRings
+        summary="自動回覆概況"
+        :rings="rings"
+        :size="148"
+      />
+    </div>
+  </article>
 </template>
 
 <script setup lang="ts">
-defineProps<{
+import { computed } from 'vue'
+import ServiceRings, { type ServiceRing } from '@/components/ui/ServiceRings.vue'
+import type { AutoReplyBusinessHours } from '@/api/autoReply'
+
+const props = defineProps<{
   activeRules: number
   todayReplies: number
   isBusinessHours: boolean
-  successRate: number
+  /** Percent (0-100) from the server; null when nothing was attempted today */
+  successRate: number | null
+  totalRules?: number
+  todayFailed?: number
+  /** Replies sent yesterday up to the same time of day; null when unknown */
+  yesterdaySameTime?: number | null
+  businessHours?: AutoReplyBusinessHours | null
 }>()
+
+// No schedule saved yet: neither open nor closed is true, so say so
+const noSchedule = computed(() => !!props.businessHours && !props.businessHours.hasSchedule)
+
+const delta = computed(() => props.todayReplies - (props.yesterdaySameTime ?? 0))
+const deltaText = computed(() => {
+  if (delta.value === 0) { return '持平' }
+  return `${delta.value > 0 ? '+' : '-'}${Math.abs(delta.value)}`
+})
+
+// Two real ratios: rules switched on / all rules, and replies that succeeded / attempted today
+const rings = computed<ServiceRing[]>(() => {
+  const list: ServiceRing[] = []
+  if (props.totalRules !== undefined && props.totalRules > 0) {
+    list.push({ label: '啟用規則', value: props.activeRules, total: props.totalRules, of: '條規則', hue: 'var(--section-hue)' })
+  }
+  if (props.successRate !== null && props.successRate !== undefined) {
+    const failed = props.todayFailed ?? 0
+    list.push({ label: '今日回覆成功', value: props.todayReplies, total: props.todayReplies + failed, of: '則', hue: 'var(--ui-green)' })
+  }
+  return list
+})
+
+const DAY_LABELS = ['週日', '週一', '週二', '週三', '週四', '週五', '週六']
+
+const hoursNote = computed(() => {
+  const hours = props.businessHours
+  if (!hours) { return '' }
+  if (!hours.hasSchedule) { return '尚未設定營業時間' }
+  if (hours.isOpen) {
+    return hours.closesAt ? `今天營業至 ${hours.closesAt}，之後套用非營業規則` : ''
+  }
+  if (hours.opensAt) {
+    return `下次營業 ${DAY_LABELS[hours.opensAt.dayOfWeek] ?? ''} ${hours.opensAt.time}`
+  }
+  return ''
+})
 </script>
 
 <style scoped>
-.auto-reply-stats {
-  margin-bottom: var(--space-6);
-}
-
-.stats-grid {
+.lead {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: var(--space-4);
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+  gap: 20px 40px;
+  align-items: center;
+  padding: 24px 40px;
 }
 
-.stat-card {
-  background: white;
-  border-radius: var(--radius-lg);
-  padding: var(--space-5) var(--space-6);
-  box-shadow: var(--shadow-sm);
-  border: 1px solid var(--gray-100);
-  text-align: center;
-  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
-  position: relative;
-  overflow: hidden;
+.lead:not(:has(.lead-rings)) {
+  grid-template-columns: minmax(0, 1fr);
 }
 
-.stat-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 3px;
+.lead-main {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
 }
 
-.stat-card--rules::before {
-  background: var(--primary-600);
+.lead-kicker {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--section-ink);
 }
 
-.stat-card--replies::before {
-  background: #22c55e;
+.lead-num {
+  margin-top: 4px;
+  font: 600 56px / 1.05 var(--ui-font-display);
+  letter-spacing: -0.035em;
+  font-variant-numeric: tabular-nums;
+  color: var(--ui-ink);
 }
 
-.stat-card--hours::before {
-  background: #f59e0b;
-}
-
-.stat-card--rate::before {
-  background: #a855f7;
-}
-
-.stat-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 10px 25px -5px rgb(0 0 0 / 0.1);
-}
-
-.stat-value {
-  font-size: 1.75rem;
-  font-weight: 700;
-  line-height: 1.2;
-  margin-bottom: var(--space-1);
-  color: var(--gray-900);
-}
-
-.stat-card--rules .stat-value {
-  color: var(--primary-600);
-}
-
-.stat-card--replies .stat-value {
-  color: #22c55e;
-}
-
-.stat-card--rate .stat-value {
-  color: #a855f7;
-}
-
-.text-amber {
-  color: #f59e0b !important;
-}
-
-.text-red {
-  color: #ef4444 !important;
-}
-
-.stat-label {
-  font-size: 0.875rem;
-  color: var(--gray-600);
+.lead-num small {
+  margin-left: 6px;
+  font-size: 22px;
   font-weight: 500;
+  letter-spacing: 0;
+  color: var(--ui-muted);
+}
+
+.lead-meaning {
+  margin-top: 4px;
+  font-size: 15px;
+  color: var(--ui-ink-2);
+}
+
+.hours-state {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 8px;
+  margin-top: 16px;
+  font-size: 14px;
+}
+
+.hours-dot {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--ui-faint);
+}
+
+.hours-label {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ui-muted);
+}
+
+.hours-note {
+  color: var(--ui-muted);
+}
+
+.hours-state.is-open .hours-dot {
+  background: var(--ui-green);
+}
+
+.hours-state.is-open .hours-label {
+  color: var(--ui-green-ink);
+}
+
+.hours-state.is-closed .hours-dot {
+  background: var(--ui-red);
+}
+
+.hours-state.is-closed .hours-label {
+  color: var(--ui-red-ink);
+}
+
+.lead-rings {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+}
+
+.lead-rings::before {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: -20px;
+  width: 0.5px;
+  background: var(--ui-sep);
+  content: '';
 }
 
 @media (max-width: 1024px) {
-  .stats-grid {
-    grid-template-columns: repeat(2, 1fr);
+  .lead {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 22px 20px;
+  }
+
+  .lead-rings {
+    justify-content: flex-start;
+  }
+
+  .lead-rings::before {
+    display: none;
   }
 }
 
-@media (max-width: 640px) {
-  .stats-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .stat-card {
-    padding: var(--space-4) var(--space-5);
-  }
-
-  .stat-value {
-    font-size: 1.5rem;
+@media (max-width: 768px) {
+  .lead-num {
+    font-size: 48px;
   }
 }
 </style>

@@ -1,6 +1,7 @@
 // Team Member Service
 // 團隊成員業務邏輯服務
 
+import { notSystemAgent } from '@/constants/system-agent';
 import { eq, and, or, desc, sql, isNull, inArray } from 'drizzle-orm';
 import { createDbClient, type Database } from '@/db/drizzle-factory';
 import {
@@ -139,6 +140,8 @@ export class MemberService {
 
     // Filter out soft-deleted members
     conditions.push(isNull(agents.deletedAt));
+    // The built-in system actor is not a member
+    conditions.push(notSystemAgent(agents.id));
 
     // teamId filter is handled via a subquery on agent_teams
     if (query.teamId !== undefined) {
@@ -203,6 +206,7 @@ export class MemberService {
       .from(agents)
       .where(and(
         eq(agents.id, memberId),
+        notSystemAgent(agents.id),
         isNull(agents.deletedAt)
       ))
       .limit(1);

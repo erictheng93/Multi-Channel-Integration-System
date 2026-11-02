@@ -29,6 +29,13 @@ export interface BroadcastAudiencePreview {
   }>;
 }
 
+/** Preview response: audience summary plus the per-channel split and daily cap (POST /broadcasts/preview). */
+export interface BroadcastPreviewResult extends BroadcastAudiencePreview {
+  tokenGroups: Array<{ channelKey: string; recipientCount: number }>;
+  noCredentialsCount: number;
+  dailyCap: { limit: number; used: number; remaining: number } | null;
+}
+
 export interface BroadcastAttachmentInput {
   attachmentId: string;
   previewAttachmentId: string;

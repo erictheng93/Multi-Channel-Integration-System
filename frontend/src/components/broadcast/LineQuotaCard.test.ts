@@ -16,6 +16,8 @@ const channel: LineQuotaChannel = {
   limit: 10000,
   used: 8120,
   remaining: 1880,
+  reserve: 2000,
+  usableRemaining: 0,
   fetchedAt: '2026-10-12T18:00:00.000Z',
   error: null
 }
@@ -49,7 +51,7 @@ describe('LineQuotaCard', () => {
     api.getLineQuota.mockResolvedValue(
       snapshot({
         items: [
-          { channelKey: 'k', label: '系統預設', limited: false, limit: null, used: 4300, remaining: null, fetchedAt: null, error: null }
+          { channelKey: 'k', label: '系統預設', limited: false, limit: null, used: 4300, remaining: null, reserve: null, usableRemaining: null, fetchedAt: null, error: null }
         ]
       })
     )

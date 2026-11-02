@@ -53,6 +53,14 @@ export interface RawConversationData {
   lastMessageContent?: string
   lastMessageAtActual?: string
   unreadCount?: number
+  /** Age anchor of the unread badge: earliest unread customer message for THIS agent (ISO); null when nothing is unread */
+  oldestUnreadAt?: string | null
+  /** Start of the unanswered wait (ISO); null = not waiting (sign-offs after a reply do not count) */
+  awaitingSince?: string | null
+  /** awaiting=stale list only: no human agent ever replied in this conversation */
+  neverReplied?: boolean
+  /** Epoch ms until which the next LINE reply is free (Reply API); null/absent = no free reply available */
+  replyWindowExpiresAt?: number | null
   // Manual unread override timestamp: when set, the backend floors
   // unreadCount at 1 until the conversation is next marked as read
   markedUnreadAt?: string | null
@@ -65,6 +73,8 @@ export interface ConversationListParams {
   page?: number
   pageSize?: number
   scope?: ConversationListScope
+  /** 'stale' = open conversations unanswered for longer than the 待回覆 window (逾期待回覆), never-replied first */
+  awaiting?: 'stale'
   status?: ConversationStatusForApi | ''
   platform?: Platform
   teamId?: number
@@ -107,6 +117,51 @@ export interface ConversationStats {
   unreadCount: number
   /** Number of visible conversations this agent still has to read */
   unreadConversations: number
+  /** Visible conversations that are not closed */
+  open: number
+  /** Visible conversations that are closed (已結案) */
+  closed: number
+  /** Per assigned team split of visible conversations; teamId null = the unassigned shared pool. Sorted by open desc */
+  byTeam: ConversationTeamCount[]
+  /** Earliest unread customer message across the conversations THIS agent has unread (ISO); null when none */
+  oldestUnreadAt: string | null
+}
+
+export interface ConversationTeamCount {
+  teamId: number | null
+  open: number
+  closed: number
+}
+
+/**
+ * A conversation waiting for a human reply: open, and the customer sent at
+ * least one message after the last human agent message (auto-replies, system
+ * messages and broadcasts do not count as a reply).
+ */
+export interface WaitingConversation {
+  conversationId: string
+  customerId: number
+  customerName: string | null
+  avatarUrl: string | null
+  platform: string | null
+  assignedTeamId: number | null
+  /** Earliest customer message after the last human agent message (ISO): the oldest unanswered one */
+  waitingSince: string
+  /** now - waitingSince at generation time */
+  waitingSeconds: number
+  /** Customer messages still unanswered */
+  unansweredCount: number
+  /** Preview of the latest customer message */
+  lastCustomerMessage: string | null
+}
+
+export interface WaitingConversationsData {
+  /** Waiting conversations (wait started within the 待回覆 window) visible to the caller, not just the returned page */
+  total: number
+  /** Older unanswered conversations ("逾期待回覆"), outside `total` */
+  stale?: { count: number; neverRepliedCount: number }
+  items: WaitingConversation[]
+  generatedAt: string
 }
 
 export interface ConversationTag {
@@ -165,6 +220,9 @@ export function buildConversationQuery(params: ConversationListParams | Conversa
   }
   if (listParams.scope) {
     queryParams.append('scope', listParams.scope)
+  }
+  if (listParams.awaiting) {
+    queryParams.append('awaiting', listParams.awaiting)
   }
   if (listParams.status) {
     queryParams.append('status', listParams.status)
@@ -244,6 +302,11 @@ export const conversationContracts = {
   stats: defineApiContract<Record<string, never>, void, ConversationStats>({
     method: 'GET',
     path: () => '/conversations/stats'
+  }),
+
+  waiting: defineApiContract<{ limit?: number }, void, WaitingConversationsData>({
+    method: 'GET',
+    path: ({ limit }) => `/conversations/waiting${limit ? `?limit=${limit}` : ''}`
   }),
 
   get: defineApiContract<{ id: string }, void, RawConversationData>({
@@ -327,3 +390,28 @@ export const conversationContracts = {
     path: ({ conversationId }) => `/conversations/${conversationId}/tags`
   })
 } as const
+
+/** senderId of auto-reply realtime events: broadcast as 'agent', stored as 'system', never a human reply. */
+export const AUTO_REPLY_SENDER_ID = 'auto-reply'
+
+/** Explicit thanks list. Lower-case; compared against the trimmed, lower-cased content minus trailing punctuation. */
+export const SIGN_OFF_PHRASES = [
+  '謝謝', '謝謝你', '謝謝您', '感謝', '感謝您', '多謝', '3q', 'thx', 'thanks', 'thank you', '謝啦', '感恩'
+] as const
+
+/** Characters that may follow a sign-off text. */
+export const SIGN_OFF_TRAILING_PUNCTUATION = '！!～~。.'
+
+/**
+ * Mirror of the backend signOffSql: a sticker, or a text that is exactly one of SIGN_OFF_PHRASES.
+ * Single source for the SQL (awaiting-rules.ts) and the realtime list update.
+ */
+export function isSignOffMessage(messageType: string | undefined, content: string | undefined): boolean {
+  if (messageType === 'sticker') { return true }
+  if (messageType !== 'text' || !content) { return false }
+  // Spaces only, like SQLite TRIM: a sign-off followed by a newline is not one for the backend either
+  const trimSpaces = (value: string): string => value.replace(/^ +| +$/g, '')
+  let text = trimSpaces(content).toLowerCase()
+  while (text && SIGN_OFF_TRAILING_PUNCTUATION.includes(text[text.length - 1] as string)) { text = text.slice(0, -1) }
+  return (SIGN_OFF_PHRASES as readonly string[]).includes(trimSpaces(text))
+}

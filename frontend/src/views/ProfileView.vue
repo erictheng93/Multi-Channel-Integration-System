@@ -2,236 +2,376 @@
   ProfileView.vue
   個人設定頁面 — 客服自助修改 displayName 與密碼（Email/角色由管理員管理）
   遵循 Apple-Native Soft Minimalism (docs/UIUX-Design-System.md)
+  Composition (Service Rings direction): one elevated identity lead, then iOS-Settings style inset groups.
 -->
 
 <template>
   <AppLayout>
-    <div class="profile-page">
+    <div class="ui-page profile-page ui-rise">
       <!-- Page Header -->
-      <header class="profile-header">
-        <h1 class="page-title">
-          個人設定
-        </h1>
-        <p class="page-subtitle">
-          管理您的帳號資訊與安全性設定
-        </p>
-      </header>
+      <UiPageHead
+        title="個人設定"
+        subtitle="修改顯示名稱與密碼，其餘由管理員管理"
+      />
 
-      <!-- Bento Grid -->
-      <div class="profile-grid">
-        <!-- Card 1: 基本資料 -->
-        <section
-          id="basic"
-          class="profile-card"
-          aria-labelledby="basic-title"
+      <!-- Lead: who you are -->
+      <article
+        class="ui-lead identity-lead"
+        aria-label="帳號身分"
+      >
+        <div class="identity">
+          <div class="avatar">
+            {{ initial }}
+          </div>
+          <div class="identity-text">
+            <div class="identity-name">
+              {{ profile.displayName || '—' }}
+            </div>
+            <div
+              class="identity-presence"
+              :class="`presence--${connection.tone}`"
+            >
+              <span
+                class="presence-dot"
+                aria-hidden="true"
+              />
+              {{ identitySub }}
+            </div>
+          </div>
+        </div>
+
+        <div
+          class="admin-line"
+          data-testid="admin-managed"
         >
-          <header class="profile-card-header">
+          <div class="admin-head">
+            <svg
+              class="ico"
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+            ><rect
+              x="4"
+              y="11"
+              width="16"
+              height="9"
+              rx="2"
+            /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></svg>
+            由管理員管理
+          </div>
+          <dl class="admin-list">
+            <div
+              v-for="item in adminItems"
+              :key="item.label"
+              class="admin-item"
+            >
+              <dt class="admin-label">
+                {{ item.label }}
+              </dt>
+              <dd class="admin-value">
+                {{ item.value }}
+              </dd>
+            </div>
+          </dl>
+        </div>
+      </article>
+
+      <div class="profile-cols">
+        <div class="profile-col">
+          <!-- 基本資料 -->
+          <section
+            id="basic"
+            aria-labelledby="basic-title"
+          >
             <h2
               id="basic-title"
-              class="card-title"
+              class="ui-group-label"
             >
               基本資料
             </h2>
-            <p class="card-subtitle">
-              您可以修改顯示名稱；Email、角色與團隊由管理員管理。
+            <form
+              class="ui-group"
+              @submit.prevent="onSaveProfile"
+            >
+              <div class="ui-row form-row">
+                <label
+                  class="row-label"
+                  for="display-name"
+                >顯示名稱</label>
+                <div class="row-control">
+                  <input
+                    id="display-name"
+                    v-model.trim="profile.displayName"
+                    type="text"
+                    maxlength="50"
+                    class="ui-input"
+                    :class="{ 'is-invalid': profileErrors.displayName }"
+                    autocomplete="name"
+                    aria-required="true"
+                    :disabled="profileSaving"
+                  >
+                  <span
+                    v-if="profileErrors.displayName"
+                    class="form-error"
+                  >
+                    {{ profileErrors.displayName }}
+                  </span>
+                </div>
+              </div>
+              <div
+                v-if="profileChanged || profileSaving"
+                class="ui-row form-actions"
+              >
+                <button
+                  type="button"
+                  class="btn btn-ghost"
+                  :disabled="profileSaving"
+                  @click="resetProfile"
+                >
+                  重設
+                </button>
+                <button
+                  type="submit"
+                  class="btn btn-primary"
+                  :disabled="profileSaving"
+                >
+                  {{ profileSaving ? '儲存中…' : '儲存變更' }}
+                </button>
+              </div>
+            </form>
+            <p class="ui-group-foot">
+              顯示名稱會出現在你送出的訊息署名 · {{ profile.displayName.length }} / 50
             </p>
-          </header>
+          </section>
 
-          <form
-            class="form"
-            @submit.prevent="onSaveProfile"
+          <!-- 通知偏好 — the settings already live on the notifications page -->
+          <section
+            id="notification-prefs"
+            aria-labelledby="prefs-title"
           >
-            <div class="form-field">
-              <label
-                for="display-name"
-                class="form-label"
+            <h2
+              id="prefs-title"
+              class="ui-group-label"
+            >
+              通知偏好
+            </h2>
+            <div class="ui-group">
+              <div
+                class="ui-row"
+                :class="`device-${devicePerm.tone}`"
+                data-testid="device-notify"
               >
-                顯示名稱 <span class="required">*</span>
-              </label>
-              <input
-                id="display-name"
-                v-model.trim="profile.displayName"
-                type="text"
-                maxlength="50"
-                class="form-input"
-                :class="{ 'is-invalid': profileErrors.displayName }"
-                autocomplete="name"
-                :disabled="profileSaving"
-              >
-              <span
-                v-if="profileErrors.displayName"
-                class="form-error"
-              >
-                {{ profileErrors.displayName }}
-              </span>
-            </div>
-
-            <div class="form-field">
-              <label class="form-label">
-                Email
-              </label>
-              <div class="readonly-value">
-                {{ profile.email || '—' }}
-                <span class="readonly-hint">（由管理員管理）</span>
+                <span
+                  class="device-dot"
+                  aria-hidden="true"
+                />
+                <div class="ui-row-main row-label-strong">
+                  這台裝置
+                </div>
+                <div class="ui-row-value">
+                  {{ devicePerm.label }}
+                </div>
               </div>
-            </div>
-
-            <div class="form-field">
-              <label class="form-label">
-                角色
-              </label>
-              <div class="readonly-value">
-                {{ roleLabel }}
-                <span class="readonly-hint">（由管理員管理）</span>
-              </div>
-            </div>
-
-            <div class="form-actions">
-              <button
-                type="button"
-                class="btn btn-ghost"
-                :disabled="!profileChanged || profileSaving"
-                @click="resetProfile"
+              <RouterLink
+                class="ui-row is-nav row-link"
+                :to="{ path: '/notifications', query: { settings: '1' } }"
               >
-                重設
-              </button>
-              <button
-                type="submit"
-                class="btn btn-primary"
-                :disabled="!profileChanged || profileSaving"
-              >
-                {{ profileSaving ? '儲存中…' : '儲存變更' }}
-              </button>
+                <div class="ui-row-main row-label-strong">
+                  開啟通知設定
+                </div>
+              </RouterLink>
             </div>
-          </form>
-        </section>
+            <p class="ui-group-foot">
+              {{ devicePerm.hint }}
+            </p>
+          </section>
+        </div>
 
-        <!-- Card 2: 安全性 -->
-        <section
-          id="security"
-          class="profile-card"
-          aria-labelledby="security-title"
-        >
-          <header class="profile-card-header">
+        <div class="profile-col">
+          <!-- 安全性 -->
+          <section
+            id="security"
+            aria-labelledby="security-title"
+          >
             <h2
               id="security-title"
-              class="card-title"
+              class="ui-group-label"
             >
-              安全性
+              修改密碼
             </h2>
-            <p class="card-subtitle">
-              修改密碼後，您將被自動登出並需要重新登入。
-            </p>
-          </header>
-
-          <form
-            class="form"
-            @submit.prevent="onChangePassword"
-          >
-            <div class="form-field">
-              <label
-                for="current-password"
-                class="form-label"
-              >
-                目前密碼 <span class="required">*</span>
-              </label>
-              <input
-                id="current-password"
-                v-model="passwordForm.currentPassword"
-                type="password"
-                class="form-input"
-                :class="{ 'is-invalid': passwordErrors.currentPassword }"
-                autocomplete="current-password"
-                :disabled="passwordSaving"
-              >
-              <span
-                v-if="passwordErrors.currentPassword"
-                class="form-error"
-              >
-                {{ passwordErrors.currentPassword }}
-              </span>
-            </div>
-
-            <div class="form-field">
-              <label
-                for="new-password"
-                class="form-label"
-              >
-                新密碼 <span class="required">*</span>
-              </label>
-              <input
-                id="new-password"
-                v-model="passwordForm.newPassword"
-                type="password"
-                class="form-input"
-                :class="{ 'is-invalid': passwordErrors.newPassword }"
-                autocomplete="new-password"
-                :disabled="passwordSaving"
-              >
-              <div
-                v-if="passwordForm.newPassword"
-                class="strength-bar"
-              >
-                <div
-                  class="strength-fill"
-                  :class="`strength-${passwordStrength.level}`"
-                  :style="{ width: `${passwordStrength.percent}%` }"
-                />
-                <span class="strength-label">{{ passwordStrength.label }}</span>
+            <form
+              class="ui-group"
+              @submit.prevent="onChangePassword"
+            >
+              <div class="ui-row form-row">
+                <label
+                  class="row-label"
+                  for="current-password"
+                >目前密碼</label>
+                <div class="row-control">
+                  <div class="pw">
+                    <input
+                      id="current-password"
+                      v-model="passwordForm.currentPassword"
+                      :type="show.current ? 'text' : 'password'"
+                      class="ui-input"
+                      :class="{ 'is-invalid': passwordErrors.currentPassword }"
+                      placeholder="用來確認是你本人操作"
+                      autocomplete="current-password"
+                      aria-required="true"
+                      :disabled="passwordSaving"
+                    >
+                    <button
+                      type="button"
+                      class="pw-toggle"
+                      :aria-label="show.current ? '隱藏密碼' : '顯示密碼'"
+                      @click="show.current = !show.current"
+                    >
+                      <svg
+                        class="ico"
+                        viewBox="0 0 24 24"
+                      ><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z" /><circle
+                        cx="12"
+                        cy="12"
+                        r="3"
+                      /></svg>
+                    </button>
+                  </div>
+                  <span
+                    v-if="passwordErrors.currentPassword"
+                    class="form-error"
+                  >
+                    {{ passwordErrors.currentPassword }}
+                  </span>
+                </div>
               </div>
-              <span
-                v-if="passwordErrors.newPassword"
-                class="form-error"
-              >
-                {{ passwordErrors.newPassword }}
-              </span>
-            </div>
 
-            <div class="form-field">
-              <label
-                for="confirm-password"
-                class="form-label"
-              >
-                確認新密碼 <span class="required">*</span>
-              </label>
-              <input
-                id="confirm-password"
-                v-model="passwordForm.confirmPassword"
-                type="password"
-                class="form-input"
-                :class="{ 'is-invalid': passwordErrors.confirmPassword }"
-                autocomplete="new-password"
-                :disabled="passwordSaving"
-              >
-              <span
-                v-if="passwordErrors.confirmPassword"
-                class="form-error"
-              >
-                {{ passwordErrors.confirmPassword }}
-              </span>
-            </div>
+              <div class="ui-row form-row">
+                <label
+                  class="row-label"
+                  for="new-password"
+                >新密碼</label>
+                <div class="row-control">
+                  <div class="pw">
+                    <input
+                      id="new-password"
+                      v-model="passwordForm.newPassword"
+                      :type="show.next ? 'text' : 'password'"
+                      class="ui-input"
+                      :class="{ 'is-invalid': passwordErrors.newPassword }"
+                      placeholder="至少 8 個字元"
+                      autocomplete="new-password"
+                      aria-required="true"
+                      :disabled="passwordSaving"
+                    >
+                    <button
+                      type="button"
+                      class="pw-toggle"
+                      :aria-label="show.next ? '隱藏密碼' : '顯示密碼'"
+                      @click="show.next = !show.next"
+                    >
+                      <svg
+                        class="ico"
+                        viewBox="0 0 24 24"
+                      ><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z" /><circle
+                        cx="12"
+                        cy="12"
+                        r="3"
+                      /></svg>
+                    </button>
+                  </div>
+                  <div
+                    v-if="passwordForm.newPassword"
+                    class="strength-bar"
+                  >
+                    <div class="strength-track">
+                      <div
+                        class="strength-fill"
+                        :class="`strength-${passwordStrength.level}`"
+                        :style="{ width: `${passwordStrength.percent}%` }"
+                      />
+                    </div>
+                    <span class="strength-label">{{ passwordStrength.label }}</span>
+                  </div>
+                  <span
+                    v-if="passwordErrors.newPassword"
+                    class="form-error"
+                  >
+                    {{ passwordErrors.newPassword }}
+                  </span>
+                </div>
+              </div>
 
-            <div class="form-actions">
-              <button
-                type="submit"
-                class="btn btn-primary"
-                :disabled="!passwordReady || passwordSaving"
-              >
-                {{ passwordSaving ? '修改中…' : '修改密碼' }}
-              </button>
-            </div>
-          </form>
-        </section>
+              <div class="ui-row form-row">
+                <label
+                  class="row-label"
+                  for="confirm-password"
+                >確認新密碼</label>
+                <div class="row-control">
+                  <div class="pw">
+                    <input
+                      id="confirm-password"
+                      v-model="passwordForm.confirmPassword"
+                      :type="show.confirm ? 'text' : 'password'"
+                      class="ui-input"
+                      :class="{ 'is-invalid': passwordErrors.confirmPassword }"
+                      placeholder="再輸入一次新密碼"
+                      autocomplete="new-password"
+                      aria-required="true"
+                      :disabled="passwordSaving"
+                    >
+                    <button
+                      type="button"
+                      class="pw-toggle"
+                      :aria-label="show.confirm ? '隱藏密碼' : '顯示密碼'"
+                      @click="show.confirm = !show.confirm"
+                    >
+                      <svg
+                        class="ico"
+                        viewBox="0 0 24 24"
+                      ><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z" /><circle
+                        cx="12"
+                        cy="12"
+                        r="3"
+                      /></svg>
+                    </button>
+                  </div>
+                  <span
+                    v-if="passwordErrors.confirmPassword"
+                    class="form-error"
+                  >
+                    {{ passwordErrors.confirmPassword }}
+                  </span>
+                </div>
+              </div>
+
+              <div class="ui-row form-actions">
+                <button
+                  type="submit"
+                  class="btn btn-primary"
+                  :disabled="passwordSaving"
+                >
+                  {{ passwordSaving ? '修改中…' : '修改密碼' }}
+                </button>
+              </div>
+            </form>
+            <p class="ui-group-foot">
+              修改後會自動登出，需用新密碼重新登入。
+            </p>
+          </section>
+        </div>
       </div>
     </div>
   </AppLayout>
 </template>
 
 <script setup lang="ts">
+import UiPageHead from '@/components/ui/UiPageHead.vue'
 import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppLayout from '@/components/ui/AppLayout.vue'
 import { useAuthStore } from '@/stores/auth'
+import { useWebSocketStore } from '@/stores/websocket'
+import { useConnectionStatus } from '@/composables/useConnectionStatus'
 import { useToast } from '@/composables/useToast'
 import { apiClient } from '@/api/base'
 import { authApi } from '@/api/auth'
@@ -246,6 +386,38 @@ const authStore = useAuthStore()
 const { showSuccess, showError } = useToast()
 
 // ============== 基本資料 ==============
+// Presence = own websocket state; teams from /auth/me teams[]
+const connection = useConnectionStatus(useWebSocketStore())
+const teams = computed(() => authStore.currentAgent?.teams ?? [])
+const initial = computed(() => (profile.displayName.trim().charAt(0) || '?').toUpperCase())
+// Avatar caption = presence only; the team lives in the one admin-managed summary line
+const identitySub = computed(() => connection.value.label)
+
+// Email, role and teams are admin-managed: one read-only line instead of three locked fields
+const adminItems = computed(() => {
+  const parts = [
+    { label: '電子郵件', value: profile.email || '—' },
+    { label: '角色', value: roleLabel.value },
+  ]
+  if (teams.value.length > 0) { parts.push({ label: '團隊', value: teams.value.map((t) => t.name).join('、') }) }
+  return parts
+})
+
+// 這台裝置的桌面通知權限（瀏覽器 Notification.permission，只讀）
+const devicePerm = computed(() => {
+  const perm = typeof Notification === 'undefined' ? 'unsupported' : Notification.permission
+  const shared = '桌面通知只套用於這台裝置，其餘跟著你的帳號。'
+  if (perm === 'granted') { return { label: '桌面通知已開啟', tone: 'on', hint: shared } }
+  if (perm === 'denied') {
+    return { label: '桌面通知已被瀏覽器封鎖', tone: 'off', hint: '要接收桌面通知，請點網址列左側的圖示，把「通知」改為允許後重新整理頁面。' }
+  }
+  if (perm === 'unsupported') { return { label: '瀏覽器不支援桌面通知', tone: 'off', hint: shared } }
+  return { label: '桌面通知尚未開啟', tone: 'off', hint: shared }
+})
+
+// 密碼顯示/隱藏（僅本地 UI 狀態）
+const show = reactive({ current: false, next: false, confirm: false })
+
 // Email 與角色由管理員管理，客服僅能修改 displayName
 const profile = reactive({
   displayName: '',
@@ -260,7 +432,7 @@ const profileErrors = reactive<{ displayName?: string }>({})
 const roleLabel = computed(() => {
   const role = authStore.currentAgent?.role
   if (role === 'admin') {return '管理員'}
-  if (role === 'agent') {return '客服人員'}
+  if (role === 'agent') {return '客服'}
   return role ?? '—'
 })
 
@@ -370,16 +542,6 @@ const passwordStrength = computed<StrengthInfo>(() => {
   return { level: 'strong', percent: 100, label: '強' }
 })
 
-const passwordReady = computed(() => {
-  return (
-    passwordForm.currentPassword.length > 0 &&
-    passwordForm.newPassword.length >= 8 &&
-    passwordForm.confirmPassword.length > 0 &&
-    passwordForm.newPassword === passwordForm.confirmPassword &&
-    passwordForm.newPassword !== passwordForm.currentPassword
-  )
-})
-
 function validatePassword(): boolean {
   passwordErrors.currentPassword = undefined
   passwordErrors.newPassword = undefined
@@ -409,7 +571,13 @@ function validatePassword(): boolean {
 }
 
 async function onChangePassword(): Promise<void> {
-  if (!validatePassword()) {return}
+  // The button stays enabled: pressing it explains what is missing and jumps to the first problem
+  if (!validatePassword()) {
+    const first = passwordErrors.currentPassword ? 'current-password' : passwordErrors.newPassword ? 'new-password' : 'confirm-password'
+    await nextTick()
+    document.getElementById(first)?.focus()
+    return
+  }
 
   passwordSaving.value = true
   try {
@@ -482,188 +650,375 @@ watch(
 )
 </script>
 
+
 <style scoped>
-.profile-page {
-  padding: 20px;
-  background: #f2f2f7;
-  min-height: 100%;
+.ico {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
-.profile-header {
-  margin-bottom: 20px;
-}
-
-.page-title {
-  font-size: 28px;
-  font-weight: 600;
-  color: #1c1c1e;
-  margin: 0 0 4px 0;
-}
-
-.page-subtitle {
-  font-size: 15px;
-  color: #8e8e93;
-  margin: 0;
-}
-
-.profile-grid {
+.profile-cols {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px 16px;
+  align-items: start;
+}
+
+.profile-col {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+}
+
+/* ---- lead: identity ---- */
+.identity-lead {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 24px 40px;
+  align-items: center;
+  padding: 26px 36px;
+}
+
+.identity {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+  min-width: 0;
+}
+
+.avatar {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 84px;
+  height: 84px;
+  border-radius: 50%;
+  background: linear-gradient(160deg, #5aa8ff, #1d6fe0);
+  color: #fff;
+  font: 600 34px var(--ui-font-display);
+}
+
+.identity-text {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.identity-name {
+  overflow: hidden;
+  font: 700 34px / 1.15 var(--ui-font-display);
+  letter-spacing: -0.03em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.identity-presence {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 14px;
+  color: var(--ui-muted);
+}
+
+.presence-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--ui-faint);
+}
+
+.presence--online .presence-dot,
+.presence--success .presence-dot,
+.presence--good .presence-dot {
+  background: var(--ui-green);
+}
+
+.presence--warning .presence-dot,
+.presence--connecting .presence-dot {
+  background: var(--ui-orange);
+}
+
+/* admin-managed facts: a quiet definition list with its own hairline */
+.admin-line {
+  position: relative;
+  display: grid;
+  gap: 14px;
+  margin: 0;
+  padding-left: 40px;
+}
+
+.admin-list {
+  display: grid;
   gap: 16px;
-  max-width: 1200px;
-}
-
-.profile-card {
-  background: #ffffff;
-  border-radius: 20px;
-  box-shadow: 0 4px 16px rgb(0 0 0 / 6%);
-  padding: 24px;
-  scroll-margin-top: 80px;
-}
-
-.profile-card-header {
-  margin-bottom: 20px;
-}
-
-.card-title {
-  font-size: 20px;
-  font-weight: 600;
-  color: #1c1c1e;
-  margin: 0 0 4px 0;
-}
-
-.card-subtitle {
-  font-size: 13px;
-  color: #8e8e93;
   margin: 0;
 }
 
-.form {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
+.admin-line::before {
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  left: 0;
+  width: 0.5px;
+  background: var(--ui-sep);
+  content: '';
 }
 
-.form-field {
-  display: flex;
-  flex-direction: column;
+.admin-head {
+  display: inline-flex;
   gap: 6px;
-}
-
-.form-label {
-  margin-bottom: 0; /* spacing comes from the field gap; the global .form-label margin would double it */
+  align-items: center;
   font-size: 13px;
+  font-weight: 600;
+  color: var(--ui-muted);
+}
+
+.admin-item {
+  display: grid;
+  grid-template-columns: 76px minmax(0, 1fr);
+  gap: 12px;
+  align-items: baseline;
+}
+
+.admin-label {
+  font-size: 13px;
+  color: var(--ui-muted);
+}
+
+.admin-value {
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-size: 15px;
   font-weight: 500;
-  color: #1c1c1e;
+  color: var(--ui-ink);
 }
 
-.required {
-  color: #ff3b30;
-  margin-left: 2px;
+/* ---- grouped form rows ---- */
+.form-row {
+  align-items: flex-start;
+  padding-top: 18px;
+  padding-bottom: 18px;
 }
 
-.form-input {
-  width: 100%;
-  padding: 10px 14px;
-  background: #f2f2f7;
-  border: none;
-  border-radius: 12px;
+.row-label {
+  flex: none;
+  width: 104px;
+  padding-top: 10px;
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--ui-ink);
+}
+
+.row-control {
+  display: grid;
+  flex: 1;
+  gap: 6px;
+  min-width: 0;
+}
+
+.row-label-strong {
   font-size: 15px;
-  color: #1c1c1e;
-  outline: none;
-  transition: background 200ms ease-out, box-shadow 200ms ease-out;
+  font-weight: 500;
 }
 
-.form-input:focus {
-  background: #ffffff;
-  box-shadow: 0 0 0 2px #007aff;
+.ui-group .ui-row.form-row + .ui-row::before,
+.ui-group .ui-row + .ui-row::before {
+  left: var(--row-pad-x);
 }
 
-.form-input:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+.ui-row.is-nav {
+  color: var(--section-ink);
+  text-decoration: none;
 }
 
-.form-input.is-invalid {
-  box-shadow: 0 0 0 2px #ff3b30;
+.ui-row.is-nav .row-label-strong {
+  color: var(--section-ink);
 }
 
-.form-error {
-  font-size: 12px;
-  color: #ff3b30;
-}
-
-.readonly-value {
-  padding: 10px 14px;
-  background: #f2f2f7;
-  border-radius: 12px;
-  font-size: 15px;
-  color: #1c1c1e;
-}
-
-.readonly-hint {
-  font-size: 12px;
-  color: #8e8e93;
-  margin-left: 8px;
+.row-link:hover {
+  background: var(--section-hue-soft);
 }
 
 .form-actions {
-  display: flex;
-  gap: 8px;
   justify-content: flex-end;
-  margin-top: 4px;
+  padding-top: 16px;
+  padding-bottom: 18px;
+}
+
+/* placeholders are hints people need to read: secondary ink, not faint */
+.ui-input::placeholder {
+  color: var(--ui-muted);
+  opacity: 1;
+}
+
+.ui-group-foot {
+  margin-top: 8px;
+  color: var(--ui-ink-2);
+}
+
+.form-error {
+  font-size: 13px;
+  color: var(--ui-red-ink);
+}
+
+.ui-input.is-invalid {
+  box-shadow: inset 0 0 0 1.5px var(--ui-red);
+}
+
+.pw {
+  position: relative;
+}
+
+.pw .ui-input {
+  padding-right: 44px;
+}
+
+.pw-toggle {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: 0 var(--ui-r-control) var(--ui-r-control) 0;
+  background: transparent;
+  color: var(--ui-muted);
+  cursor: pointer;
+}
+
+.pw-toggle:hover,
+.pw-toggle:focus-visible {
+  color: var(--ui-ink);
 }
 
 .strength-bar {
-  position: relative;
-  height: 4px;
-  background: #f2f2f7;
-  border-radius: 2px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.strength-track {
+  flex: 1;
+  height: 5px;
   overflow: hidden;
-  margin-top: 6px;
+  border-radius: 999px;
+  background: var(--ui-fill);
 }
 
 .strength-fill {
   height: 100%;
-  border-radius: 2px;
-  transition: width 200ms ease-out, background 200ms ease-out;
+  border-radius: 999px;
+  transition: width var(--ui-dur) var(--ui-ease), background var(--ui-dur) var(--ui-ease);
 }
 
-.strength-fill.strength-weak {
-  background: #ff3b30;
+.strength-weak {
+  background: var(--ui-red);
 }
 
-.strength-fill.strength-fair {
-  background: #ff9500;
+.strength-fair {
+  background: var(--ui-orange);
 }
 
-.strength-fill.strength-good {
-  background: #007aff;
+.strength-good {
+  background: var(--ui-teal);
 }
 
-.strength-fill.strength-strong {
-  background: #34c759;
+.strength-strong {
+  background: var(--ui-green);
 }
 
 .strength-label {
-  position: absolute;
-  right: 0;
-  top: -18px;
-  font-size: 11px;
-  color: #8e8e93;
+  min-width: 2.5em;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ui-ink-2);
 }
 
-@media (max-width: 640px) {
-  .profile-page {
-    padding: 16px;
+/* notification device state */
+.device-dot {
+  flex: none;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--ui-faint);
+}
+
+.device-on .device-dot {
+  background: var(--ui-green);
+}
+
+.device-off .device-dot {
+  background: var(--ui-orange);
+}
+
+@media (max-width: 1024px) {
+  .profile-cols {
+    grid-template-columns: minmax(0, 1fr);
   }
 
-  .profile-grid {
-    grid-template-columns: 1fr;
+  .identity-lead {
+    padding: 28px;
+  }
+}
+
+@media (max-width: 768px) {
+  .identity-lead {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 22px 20px;
   }
 
-  .profile-card {
-    padding: 20px;
+  .identity {
+    gap: 16px;
+  }
+
+  .avatar {
+    width: 72px;
+    height: 72px;
+    font-size: 30px;
+  }
+
+  .identity-name {
+    font-size: 26px;
+  }
+
+  .admin-line {
+    padding-top: 18px;
+    padding-left: 0;
+  }
+
+  .admin-line::before {
+    top: 0;
+    right: 0;
+    bottom: auto;
+    width: auto;
+    height: 0.5px;
+  }
+
+  .form-row {
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .row-label {
+    width: auto;
+    padding-top: 0;
+    font-size: 14px;
+  }
+
+  .row-control {
+    width: 100%;
+  }
+
+  .form-actions .btn-primary {
+    flex: 1;
   }
 }
 </style>
