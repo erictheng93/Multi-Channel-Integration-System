@@ -46,7 +46,7 @@ export interface ChannelStatsJson {
   lastMessageAt?: string
 }
 
-/** Per-platform message activity (all messages on that platform; KV-cached for 5 minutes). */
+/** Per-platform message activity across all teams, admin only (KV-cached for 5 minutes). */
 export interface ChannelActivity {
   customerMessages24h: number
   agentMessages24h: number
@@ -82,7 +82,7 @@ export interface ChannelIntegration {
   configuredBy?: string | null
   /** Optional display name lives in configMetadata.name (max 60 chars) */
   configMetadata?: Record<string, unknown> | null
-  /** Present on the list response only; null when the stats query failed */
+  /** Present on the list response only; null when the stats query failed or the caller is not an admin */
   activity?: ChannelActivity | null
   webhookHealth?: ChannelWebhookHealth
   createdAt: string
