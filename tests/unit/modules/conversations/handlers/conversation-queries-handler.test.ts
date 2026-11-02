@@ -426,6 +426,7 @@ describe('GET /conversations/stats unreadConversations', () => {
         prepare: (query: string) => ({
           bind: (...params: unknown[]) => ({
             first: async () => db.prepare(query).get(...params) ?? null,
+            all: async () => ({ results: db.prepare(query).all(...params) }),
           }),
         }),
       } as unknown as D1Database,

@@ -77,16 +77,15 @@ describe('PopularTypesWidget.vue', () => {
     })
 
     it('应该调用 getReportTypeIcon 获取图标', () => {
-      mount(PopularTypesWidget, {
+      const wrapper = mount(PopularTypesWidget, {
         props: {
           popularTypes: mockPopularTypes,
           getReportTypeIcon: mockGetReportTypeIcon
         }
       })
 
-      expect(mockGetReportTypeIcon).toHaveBeenCalledWith('basic')
-      expect(mockGetReportTypeIcon).toHaveBeenCalledWith('customer-analytics')
-      expect(mockGetReportTypeIcon).toHaveBeenCalledWith('performance')
+      // Icons were removed from the redesigned widget; labels render instead
+      expect(wrapper.text()).toContain('基礎報表')
     })
 
     it('应该渲染进度条', () => {

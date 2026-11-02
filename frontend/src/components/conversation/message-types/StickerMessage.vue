@@ -240,7 +240,7 @@ const handleError = () => {
 .loading-text {
   position: relative;
   z-index: 1;
-  font-size: 12px;
+  font-size: 13px;
   color: #6b7280;
 }
 

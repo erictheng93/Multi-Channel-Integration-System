@@ -32,6 +32,10 @@ export interface ActivityStats {
 
 export interface ActivityOverview {
   totalActivities: number
+  /** Distinct users with at least one activity in the period */
+  activeUserCount: number
+  /** Reversible activities in the period that are not yet restored and whose restore window is still open */
+  restorableCount: number
   actionStats: Record<string, number>
   topUsers: Array<{
     user_name: string

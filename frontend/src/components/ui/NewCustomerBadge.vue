@@ -120,7 +120,7 @@ const joinedTimeText = computed(() => {
 }
 
 .new-customer-wrapper.small .joined-time {
-  font-size: 0.625rem;
+  font-size: 13px;
 }
 
 /* Medium size */
@@ -135,7 +135,7 @@ const joinedTimeText = computed(() => {
 }
 
 .new-customer-wrapper.medium .joined-time {
-  font-size: 0.75rem;
+  font-size: 13px;
 }
 
 .badge-icon {
