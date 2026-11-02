@@ -146,6 +146,10 @@ export const conversations = sqliteTable('conversations', {
   awaitingSinceIdx: index('idx_conversations_awaiting_since')
     .on(table.awaitingSince, table.id, table.status, table.assignedTeamId, table.deletedAt)
     .where(sql`${table.awaitingSince} IS NOT NULL`),
+  // Open, not-waiting conversations by last customer message: the nightly auto-close reads only this (Migration 0072)
+  autoCloseIdx: index('idx_conversations_auto_close')
+    .on(table.lastCustomerMessageAt, table.id)
+    .where(sql`${table.awaitingSince} IS NULL AND ${table.status} <> 'closed' AND ${table.deletedAt} IS NULL`),
   // Covering index for the stats (team, status) counts (Migration 0071)
   teamStatusIdx: index('idx_conversations_team_status').on(table.assignedTeamId, table.status),
   // Conversations where the customer spoke after the last agent/system reply (Migration 0071)
