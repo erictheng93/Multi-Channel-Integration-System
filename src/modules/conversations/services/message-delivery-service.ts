@@ -13,6 +13,7 @@ import type { Bindings } from '@/types';
 import type { LineReplyMessage } from '@/types';
 import { WebSocketBroadcastService } from '@/services/websocket-broadcast-service';
 import { nowISO, nowMs } from '@/utils/timestamp';
+import { stampFirstResponse } from './first-response';
 import { createContextLogger } from '@/utils/logger';
 import { getSignedFileUrl, PERSISTENT_ATTACHMENT_URL_TTL_SECONDS } from '@/utils/file-url';
 import { LINE_PREVIEW_IMAGE_MAX_BYTES, LINE_REPLY_TOKEN_SAFE_WINDOW_MS } from '@/constants/limits';
@@ -383,6 +384,14 @@ export class MessageDeliveryService {
           ...(errorMessage && { error: errorMessage })
         })
       }).where(eq(messages.id, messageId));
+
+      // First human reply: stamped only once the platform accepted the message
+      // (covers the immediate path and the recall-window alarm path). The
+      // message's own createdAt is used so the metric measures when the agent
+      // answered, not the recall-window hold.
+      if (isSent) {
+        await stampFirstResponse(this.db, msg.conversationId, msg.createdAt ?? nowISO());
+      }
 
       // Broadcast Update
       const broadcastService = new WebSocketBroadcastService(this.bindings);

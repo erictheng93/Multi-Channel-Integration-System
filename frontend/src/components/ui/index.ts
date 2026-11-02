@@ -13,6 +13,13 @@ export { default as Dropdown } from './Dropdown.vue'
 export { default as DropdownItem } from './DropdownItem.vue'
 export { default as Tooltip } from './Tooltip.vue'
 
+// Page frame primitives (docs in each component header)
+export { default as UiPageHead } from './UiPageHead.vue'
+export { default as UiEmptyState } from './UiEmptyState.vue'
+export { default as UiActionBar } from './UiActionBar.vue'
+export { default as UiSectionNav } from './UiSectionNav.vue'
+export { default as DiscRing } from './DiscRing.vue'
+
 // Sidebar & Layout Sub-Components
 export { default as SidebarHeader } from './SidebarHeader.vue'
 export { default as SidebarNav } from './SidebarNav.vue'

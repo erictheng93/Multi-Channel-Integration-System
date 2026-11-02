@@ -4,6 +4,7 @@
 import {
   autoReplyContracts,
   type AutoReplyFlatPage,
+  type AutoReplyStats,
   type BulkUpsertScheduleRequest,
   type CreateRuleRequest,
   type PaginatedLogsResponse,
@@ -34,6 +35,8 @@ export const TRIGGER_TYPE_LABELS: Record<string, string> = Object.fromEntries(
 export type {
   ActionType,
   AutoReplyAction,
+  AutoReplyBusinessHours,
+  AutoReplyStats,
   AutoReplyCondition,
   AutoReplyLog,
   AutoReplyRule,
@@ -186,4 +189,15 @@ export const getLogs = async (params?: {
     },
     message: response.message || 'Auto-reply logs retrieved successfully'
   }
+}
+
+/**
+ * Auto-reply stats for today (Asia/Taipei) plus the team's business-hours state.
+ */
+export const getAutoReplyStats = async (params?: { teamId?: number }): Promise<AutoReplyStats> => {
+  const response = await callApiContract(autoReplyContracts.getStats, params)
+  if (!response.success || !response.data) {
+    throw new Error(response.error || 'Failed to fetch auto-reply stats')
+  }
+  return response.data
 }

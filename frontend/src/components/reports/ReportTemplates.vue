@@ -1,130 +1,122 @@
-<!-- 報表模板選擇器組件 -->
-<!-- Report Templates Selector Component with comprehensive preset configurations -->
+<!-- 報表模板：only templates the backend can generate, plus the custom report entry -->
 
 <template>
-  <div class="report-templates">
-    <!-- 標題區 -->
-    <div class="templates-header">
-      <h1 class="page-title">
-        <i class="icon" />
-        報表模板
-      </h1>
-      <p class="page-description">
-        選擇預設模板快速生成報表，或自定義配置
-      </p>
-    </div>
-
-    <!-- 搜尋和篩選 -->
-    <TemplateFilters
-      v-model:search-query="searchQuery"
-      v-model:selected-category="selectedCategory"
-      v-model:selected-time-range="selectedTimeRange"
+  <div class="ui-page report-templates ui-rise">
+    <UiPageHead
+      title="報表模板"
+      :subtitle="templatesSubtitle"
     />
+    <UiSectionNav section="reports" />
 
-    <!-- 載入狀態 -->
     <div
-      v-if="loading"
-      class="loading-state"
+      v-if="error"
+      class="ui-card error-state"
+      role="alert"
     >
-      <div class="loading-spinner" />
-      <p>載入模板中...</p>
-    </div>
-
-    <!-- 錯誤狀態 -->
-    <div
-      v-else-if="error"
-      class="error-state"
-    >
-      <div class="error-icon" />
       <h3>載入失敗</h3>
       <p>{{ error }}</p>
       <button
-        class="retry-btn"
+        class="btn btn-secondary retry-btn"
         @click="loadTemplates"
       >
         重試
       </button>
     </div>
 
-    <!-- 模板網格 -->
-    <div
-      v-else
-      class="templates-grid"
-    >
-      <TemplateCard
-        v-for="template in filteredTemplates"
-        :key="template.name"
-        :template="template"
-        :is-selected="selectedTemplate?.name === template.name"
-        @select="selectTemplate"
-      />
-    </div>
+    <template v-else>
+      <!-- Lead: the free-form entry; the ready-made templates follow as a labelled group -->
+      <section class="ui-lead custom-lead">
+        <span
+          class="custom-ico"
+          aria-hidden="true"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          ><path d="M12 5v14M5 12h14" /></svg>
+        </span>
+        <div class="custom-main">
+          <h2 class="custom-name">
+            自訂報表
+          </h2>
+          <p class="custom-desc">
+            不套用模板，自行選擇報表類型、時間範圍與輸出格式。
+          </p>
+          <ul
+            class="custom-types"
+            aria-label="可選的報表類型"
+          >
+            <li
+              v-for="option in generatable.types"
+              :key="option.value"
+              class="ui-chip"
+            >
+              {{ option.label }}
+            </li>
+          </ul>
+        </div>
+        <dl class="custom-formats">
+          <dt>輸出格式</dt>
+          <dd>{{ generatable.formats.map(f => f.label).join(' / ') }}</dd>
+        </dl>
+        <router-link
+          to="/reports/generate"
+          class="btn btn-primary custom-go"
+        >
+          前往產生報表
+        </router-link>
+      </section>
 
-    <!-- 空狀態 -->
-    <div
-      v-if="!loading && !error && filteredTemplates.length === 0"
-      class="empty-state"
-    >
-      <div class="empty-icon" />
-      <h3>找不到符合條件的模板</h3>
-      <p>請嘗試調整篩選條件或搜尋關鍵字</p>
-    </div>
-
-    <!-- 選中模板詳情 -->
-    <TemplateDetailsPanel
-      v-if="selectedTemplate"
-      :template="selectedTemplate"
-      :generating="generating"
-      @close="selectedTemplate = null"
-      @use="useTemplate"
-      @customize="customizeTemplate"
-    />
-
-    <!-- 快速動作工具列 -->
-    <TemplateQuickActions
-      v-if="!selectedTemplate"
-      :popular-templates="popularTemplates"
-      :generating="generating"
-      @use="useTemplate"
-    />
+      <div
+        v-if="usableTemplates.length > 0"
+        class="catalogue-wrap"
+      >
+        <h2 class="ui-group-label">
+          現成模板
+          <span class="tpl-count">{{ usableTemplates.length }}</span>
+        </h2>
+        <div class="catalogue">
+          <TemplateCard
+            v-for="template in usableTemplates"
+            :key="template.name"
+            :template="template"
+            :generating="generating"
+            @use="useTemplate"
+            @customize="customizeTemplate"
+          />
+        </div>
+      </div>
+    </template>
   </div>
 </template>
 
+
 <script setup lang="ts">
+import UiPageHead from '@/components/ui/UiPageHead.vue'
+import UiSectionNav from '@/components/ui/UiSectionNav.vue'
 import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import type { ReportTemplate } from '@/types/reports';
 import ReportsAPI from '@/api/reports';
-import TemplateFilters from './templates/TemplateFilters.vue';
 import TemplateCard from './templates/TemplateCard.vue';
-import TemplateDetailsPanel from './templates/TemplateDetailsPanel.vue';
-import TemplateQuickActions from './templates/TemplateQuickActions.vue';
 import { DEFAULT_TEMPLATES } from './templates/templateHelpers';
 
-// 路由器
 const router = useRouter();
 
-// 組件狀態
 const loading = ref(false);
 const error = ref<string | null>(null);
 const generating = ref(false);
 const templates = ref<ReportTemplate[]>([]);
-const selectedTemplate = ref<ReportTemplate | null>(null);
 
-// 篩選狀態
-const searchQuery = ref('');
-const selectedCategory = ref('');
-const selectedTimeRange = ref('');
-
-// 載入模板資料
 const loadTemplates = async () => {
   loading.value = true;
   error.value = null;
 
   try {
-    // 模擬 API 調用，實際應該從後端獲取
-    await new Promise(resolve => setTimeout(resolve, 800));
-
     templates.value = DEFAULT_TEMPLATES;
   } catch (err) {
     error.value = err instanceof Error ? err.message : '載入模板失敗';
@@ -133,75 +125,31 @@ const loadTemplates = async () => {
   }
 };
 
-// 篩選模板
-const filteredTemplates = computed(() => {
-  let filtered = templates.value;
-
-  // 搜尋篩選
-  if (searchQuery.value) {
-    const query = searchQuery.value.toLowerCase();
-    filtered = filtered.filter(template =>
-      template.name.toLowerCase().includes(query) ||
-      template.description.toLowerCase().includes(query)
-    );
-  }
-
-  // 類別篩選
-  if (selectedCategory.value) {
-    filtered = filtered.filter(template => template.category === selectedCategory.value);
-  }
-
-  // 時間篩選
-  if (selectedTimeRange.value) {
-    filtered = filtered.filter(template => {
-      switch (selectedTimeRange.value) {
-        case 'fast':
-          return template.estimatedTime < 30;
-        case 'medium':
-          return template.estimatedTime >= 30 && template.estimatedTime <= 120;
-        case 'slow':
-          return template.estimatedTime > 120;
-        default:
-          return true;
-      }
-    });
-  }
-
-  return filtered;
-});
-
-// 熱門模板（用於快速動作）
-const popularTemplates = computed(() =>
-  templates.value
-    .filter(t => ['conversation_summary', 'agent_performance', 'customer_satisfaction'].includes(t.type))
-    .slice(0, 3)
+// Only report types the backend can generate are offered; the roadmap templates stay in the data model, not in the UI
+const generatable = ReportsAPI.getGeneratableOptions();
+const generatableTypes = generatable.types.map(option => option.value);
+const isSupported = (template: ReportTemplate) => generatableTypes.includes(template.type);
+const usableTemplates = computed(() => templates.value.filter(isSupported));
+const templatesSubtitle = computed(() =>
+  usableTemplates.value.length === 0 ? '' : `${usableTemplates.value.length} 組可直接使用的模板，或自訂報表`
 );
-
-// 選擇模板
-const selectTemplate = (template: ReportTemplate) => {
-  selectedTemplate.value = template;
-};
 
 // 使用模板生成報告
 const useTemplate = async (template: ReportTemplate) => {
   generating.value = true;
 
   try {
-    // 構建報表生成參數
     const params = {
       type: template.type,
       title: `${template.name} - ${new Date().toLocaleDateString('zh-TW')}`,
       description: template.description,
-      format: 'pdf' as const,
+      format: 'json' as const,
       timeRange: 'last_30_days' as const,
       options: template.presetOptions,
       filters: {}
     };
 
-    // 調用 API 生成報表
     const report = await ReportsAPI.generateReport(params);
-
-    // 導航到報表查看頁面
     router.push(`/reports/${report.id}`);
   } catch (err) {
     error.value = err instanceof Error ? err.message : '生成報表失敗';
@@ -210,9 +158,8 @@ const useTemplate = async (template: ReportTemplate) => {
   }
 };
 
-// 自定義模板設定
+// 導航到報表生成器，並預填模板設定
 const customizeTemplate = (template: ReportTemplate) => {
-  // 導航到報表生成器，並預填模板設定
   router.push({
     name: 'ReportGenerator',
     query: {
@@ -222,137 +169,143 @@ const customizeTemplate = (template: ReportTemplate) => {
   });
 };
 
-// 組件掛載
 onMounted(() => {
   loadTemplates();
 });
 </script>
 
 <style scoped>
-.report-templates {
-  width: 100%;
-  max-width: 1400px;
-  margin: 0 auto;
-  padding: 2rem;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-}
-
-/* 標題區 */
-.templates-header {
-  text-align: center;
-  margin-bottom: 3rem;
-}
-
-.page-title {
-  font-size: 2.5rem;
-  color: #1a1a1a;
-  margin-bottom: 1rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-}
-
-.page-title .icon {
-  font-size: 2.2rem;
-}
-
-.page-description {
-  font-size: 1.1rem;
-  color: #666;
-  max-width: 600px;
-  margin: 0 auto;
-}
-
-/* 載入和錯誤狀態 */
-.loading-state,
-.error-state {
-  text-align: center;
-  padding: 4rem 2rem;
-}
-
-.loading-spinner {
-  width: 2rem;
-  height: 2rem;
-  border: 3px solid #f3f3f3;
-  border-top: 3px solid #007bff;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-  margin: 0 auto 1rem;
-}
-
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-
-.error-icon {
-  font-size: 3rem;
-  margin-bottom: 1rem;
-}
-
-.retry-btn {
-  padding: 0.75rem 1.5rem;
-  background: #007bff;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 1rem;
-  transition: background-color 0.2s;
-}
-
-.retry-btn:hover {
-  background: #0056b3;
-}
-
-/* 模板網格 */
-.templates-grid {
+.catalogue {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
-  gap: 1.5rem;
-  margin-bottom: 3rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
 }
 
-/* 空狀態 */
-.empty-state {
+.tpl-count {
+  min-width: 20px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: var(--section-hue-soft);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 20px;
   text-align: center;
-  padding: 4rem 2rem;
-  color: #666;
+  color: var(--section-ink);
+  font-variant-numeric: tabular-nums;
 }
 
-.empty-icon {
-  font-size: 4rem;
-  margin-bottom: 1rem;
+.custom-lead {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  gap: 24px;
+  align-items: center;
+  padding: 28px 36px;
 }
 
-.empty-state h3 {
-  color: #333;
-  margin-bottom: 1rem;
+.custom-ico {
+  display: grid;
+  width: 56px;
+  height: 56px;
+  place-items: center;
+  border-radius: 16px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--section-hue) 82%, #fff), var(--section-hue));
+  color: #fff;
 }
 
-/* 響應式設計 */
+.custom-ico svg {
+  width: 26px;
+  height: 26px;
+}
+
+.custom-name {
+  margin: 0;
+  font: 700 28px / 1.2 var(--ui-font-display);
+  letter-spacing: -0.025em;
+}
+
+.custom-desc {
+  margin: 4px 0 14px;
+  font-size: 15px;
+  color: var(--ui-ink-2);
+}
+
+.custom-types {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.custom-formats {
+  margin: 0;
+  padding-left: 24px;
+  border-left: 0.5px solid var(--ui-sep);
+}
+
+.custom-formats dt {
+  font-size: 13px;
+  color: var(--ui-muted);
+}
+
+.custom-formats dd {
+  margin: 2px 0 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.error-state {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  padding: 40px 24px;
+  text-align: center;
+}
+
+@media (max-width: 1024px) {
+  .catalogue {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .custom-lead {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .custom-formats {
+    padding-left: 0;
+    border-left: 0;
+  }
+
+  .custom-formats,
+  .custom-go {
+    grid-column: 1 / -1;
+  }
+
+  .custom-go {
+    justify-content: center;
+  }
+}
+
 @media (max-width: 768px) {
-  .report-templates {
-    padding: 1rem;
+  .catalogue {
+    gap: 12px;
   }
 
-  .page-title {
-    font-size: 2rem;
+  .custom-lead {
+    align-items: start;
+    gap: 16px;
+    padding: 22px 20px;
   }
 
-  .templates-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-@media (max-width: 480px) {
-  .page-title {
-    font-size: 1.8rem;
+  .custom-name {
+    font-size: 24px;
   }
 
-  .templates-grid {
-    gap: 1rem;
+  .custom-ico {
+    width: 44px;
+    height: 44px;
+    border-radius: 13px;
   }
 }
 </style>

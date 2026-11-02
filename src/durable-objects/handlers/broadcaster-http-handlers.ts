@@ -444,48 +444,71 @@ export class BroadcasterHttpHandlers {
     }));
   }
 
+  /**
+   * Users with a registered connection (the global user registry). This is "registered", not
+   * "proven live": an entry can outlive a dropped socket until the next failed delivery prunes it.
+   */
+  async handleGetOnlineUsers(_request: Request): Promise<Response> {
+    const userIds = Array.from(this.ctx.userConnections.keys());
+    return new Response(JSON.stringify({ userIds, count: userIds.length, timestamp: nowMs() }), {
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
+
   async handleGetMetrics(_request: Request): Promise<Response> {
-    this.helpers.updateMetrics();
+    const window = await this.helpers.updateMetrics();
+    const stats = this.ctx.stats;
+    const eventsOut = stats.successfulDeliveries + stats.failedDeliveries;
+    const registeredUsers = this.ctx.userConnections.size;
+    const registeredRooms = this.ctx.conversationRooms.size;
     const metrics = {
-      totalEvents: this.ctx.stats.totalEvents,
-      successfulBroadcasts: this.ctx.stats.successfulDeliveries,
-      successfulDeliveries: this.ctx.stats.successfulDeliveries,
-      failedBroadcasts: this.ctx.stats.failedDeliveries,
-      failedDeliveries: this.ctx.stats.failedDeliveries,
-      averageLatency: this.ctx.stats.averageLatency,
-      eventsPerSecond: this.ctx.stats.eventsPerSecond,
-      lastProcessed: this.ctx.stats.lastProcessed,
-      queueDepth: this.ctx.stats.queueDepth,
-      activeConnections: this.ctx.stats.activeConnections,
-      conversationRooms: this.ctx.conversationRooms.size,
-      userConnections: this.ctx.userConnections.size,
+      // Counters since the DO state was created (cumulative)
+      totalEvents: stats.totalEvents,
+      eventsIn: stats.totalEvents,
+      eventsOut,
+      successfulBroadcasts: stats.successfulDeliveries,
+      successfulDeliveries: stats.successfulDeliveries,
+      failedBroadcasts: stats.failedDeliveries,
+      failedDeliveries: stats.failedDeliveries,
+      // Rates and error rate over the recent window (null when no reference sample existed)
+      windowSeconds: window.windowSeconds,
+      eventsInPerSecond: window.eventsInPerSecond,
+      eventsOutPerSecond: window.eventsOutPerSecond,
+      eventsPerSecond: window.eventsInPerSecond ?? 0,
+      errorRate: window.errorRate,
+      errorRateLifetime: eventsOut > 0 ? stats.failedDeliveries / eventsOut : 0,
+      averageLatency: stats.averageLatency,
+      lastProcessed: stats.lastProcessed,
+      queueDepth: stats.queueDepth,
+      // Registered connections = user registry + conversation rooms (a live size, not a drifting counter)
+      registeredConnections: registeredUsers + registeredRooms,
+      activeConnections: registeredUsers + registeredRooms,
+      onlineAgents: registeredUsers,
+      conversationRooms: registeredRooms,
+      userConnections: registeredUsers,
       eventQueueDepth: this.ctx.eventQueue.length,
       highPriorityQueueDepth: this.ctx.highPriorityQueue.length,
       activeLocks: this.ctx.locks.size,
-      uptime: Date.now() - (this.ctx.stats.lastProcessed - 3600000),
-      memoryUsage: getMemoryUsage()
+      memoryUsage: getMemoryUsage(),
+      timestamp: nowMs()
     };
 
     return new Response(JSON.stringify(metrics));
   }
 
   async handleGetStatus(_request: Request): Promise<Response> {
-    this.helpers.updateMetrics();
+    const window = await this.helpers.updateMetrics();
     const isHealthy = this.ctx.eventQueue.length < this.ctx.config.MAX_QUEUE_SIZE * 0.8;
-    const errorRate = this.ctx.stats.totalEvents > 0
-      ? this.ctx.stats.failedDeliveries / this.ctx.stats.totalEvents
-      : 0;
 
     const status = {
       isHealthy,
       queueDepth: this.ctx.stats.queueDepth,
-      processingRate: this.ctx.stats.eventsPerSecond,
+      processingRate: window.eventsInPerSecond ?? 0,
       lastProcessed: this.ctx.stats.lastProcessed,
-      activeConnections: this.ctx.stats.activeConnections,
+      activeConnections: this.ctx.userConnections.size + this.ctx.conversationRooms.size,
       status: isHealthy ? 'healthy' : 'degraded',
-      uptime: Date.now() - (this.ctx.stats.lastProcessed - 3600000),
-      eventProcessingRate: this.ctx.stats.eventsPerSecond,
-      errorRate: errorRate,
+      eventProcessingRate: window.eventsInPerSecond ?? 0,
+      errorRate: window.errorRate ?? 0,
       averageLatency: this.ctx.stats.averageLatency,
       memoryUsage: getMemoryUsage(),
       timestamp: nowMs()

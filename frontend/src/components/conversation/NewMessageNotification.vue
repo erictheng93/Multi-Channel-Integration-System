@@ -219,7 +219,7 @@ const handleDismiss = () => {
 }
 
 .delivery-status {
-  font-size: 0.75rem;
+  font-size: 13px;
   font-weight: 500;
   color: #059669;
   background: rgba(5, 150, 105, 0.1);
@@ -313,7 +313,7 @@ const handleDismiss = () => {
   }
 
   .delivery-status {
-    font-size: 0.6875rem;
+    font-size: 13px;
     padding: 1px 5px;
   }
 }

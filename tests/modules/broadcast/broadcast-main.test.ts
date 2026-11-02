@@ -96,7 +96,7 @@ describe('broadcast preview route', () => {
     });
 
     expect(response.status).toBe(200);
-    expect(mocks.preview).toHaveBeenCalledWith(123);
+    expect(mocks.preview).toHaveBeenCalledWith(123, expect.objectContaining({ id: expect.anything() }));
   });
 
   it('rejects multiple tags during Phase 1', async () => {

@@ -108,13 +108,13 @@ export interface ReportDetails extends ReportBase {
   errorMessage?: string;
   executionTime?: number; // seconds
   dataSource?: {
-    tables: string[];
     filters: ReportFilters;
-    recordCount: number;
+    recordCount?: number;
   };
   downloadHistory?: Array<{
     downloadedAt: string;
     downloadedBy: string;
+    downloadedByName?: string;
     ipAddress?: string;
   }>;
 }
@@ -198,8 +198,10 @@ export interface ReportListResponse {
   summary: {
     totalReports: number;
     pendingReports: number;
+    generatingReports: number;
     completedReports: number;
     failedReports: number;
+    expiredReports: number;
   };
 }
 

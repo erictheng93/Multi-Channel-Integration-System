@@ -24,7 +24,7 @@ import {
 } from '@/utils/api-response';
 import { createContextLogger } from '@/utils/logger';
 
-import { alertWebhookFailure } from '@/utils/webhook-alert';
+import { alertWebhookFailure, recordWebhookSignatureFailure } from '@/utils/webhook-alert';
 
 // Context logger for webhook handler
 const log = createContextLogger('Webhook');
@@ -91,6 +91,7 @@ export const webhookHandler = {
 
       if (!signatureResult.valid) {
         log.error('LINE Webhook: Signature verification failed', { error: signatureResult.error });
+        c.executionCtx.waitUntil(recordWebhookSignatureFailure(c.env, 'line', signatureResult.error || 'Invalid signature'));
         return unauthorizedResponse(c, signatureResult.error || 'Invalid signature');
       }
 
@@ -202,6 +203,7 @@ export const webhookHandler = {
         log.error('Facebook Webhook: Signature verification failed', {
           error: fbSignatureResult.error
         });
+        c.executionCtx.waitUntil(recordWebhookSignatureFailure(c.env, 'facebook', fbSignatureResult.error || 'Invalid signature'));
         return unauthorizedResponse(c, fbSignatureResult.error || 'Invalid signature');
       }
 

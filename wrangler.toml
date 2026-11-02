@@ -72,6 +72,11 @@ binding = "CACHE"
 id = "a8e949aee74a423bbbf4db713be54b67"
 preview_id = "a8e949aee74a423bbbf4db713be54b67"
 
+# Per-endpoint API metrics (Workers Analytics Engine); queried by /api/system/api-status
+[[analytics_engine_datasets]]
+binding = "API_METRICS"
+dataset = "mcis_api_metrics"
+
 # 生產環境 R2 存儲
 [[r2_buckets]]
 binding = "R2_BUCKET"

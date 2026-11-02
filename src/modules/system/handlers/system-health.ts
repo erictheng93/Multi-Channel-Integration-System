@@ -19,6 +19,8 @@ import { createDbClient } from '@/db/drizzle-factory'
 import { sql } from 'drizzle-orm'
 import { getCredentialsFromKV } from './system-crypto-utils'
 import { nowISO, nowMs } from '@/utils/timestamp'
+import { ROLES } from '@/constants/roles'
+import { getApiMetricsSummary } from '../services/api-metrics-service'
 
 // Public liveness check (unauthenticated: load balancers, CI deploy gate, `health:check`).
 // Cheap and side-effect free by design: one D1 SELECT 1 and one KV read. It makes NO outbound
@@ -106,9 +108,14 @@ async function cachedChannelCheck(
   return fresh
 }
 
-// API monitoring endpoint - get all endpoint statuses (infra probes + channel checks; per-endpoint API metrics were removed, so endpoints is always empty)
+// API monitoring endpoint (admin-only, enforced on the route and again here): infra probes + channel checks
+// + per-endpoint metrics from Workers Analytics Engine
 export const getApiStatus = async (c: Context<{ Bindings: Bindings }>) => {
   try {
+    const user = c.get('user') as { role?: string } | undefined
+    if (user?.role !== ROLES.ADMIN) {
+      return c.json({ success: false, error: 'Admin access required' }, 403)
+    }
     const env = c.env
     const now = nowISO()
 
@@ -217,29 +224,11 @@ export const getApiStatus = async (c: Context<{ Bindings: Bindings }>) => {
 
     const channels = [lineChannel, fbChannel, webhookDelivery]
 
-    // 3. Derive events at read-time
-    const events: Array<{ type: 'error' | 'warning' | 'info'; source: string; message: string; timestamp: string }> = []
-
-    for (const infra of infrastructure) {
-      if (infra.status === 'red') {
-        events.push({ type: 'error', source: infra.name, message: `${infra.name} is unhealthy (latency: ${infra.latencyMs}ms)`, timestamp: now })
-      } else if (infra.status === 'orange') {
-        events.push({ type: 'warning', source: infra.name, message: `${infra.name} has elevated latency (${infra.latencyMs}ms)`, timestamp: now })
-      }
-    }
-
-    for (const ch of channels) {
-      if (ch.status === 'disconnected' || ch.status === 'error') {
-        events.push({ type: 'error', source: ch.name, message: `${ch.name}: ${ch.details}`, timestamp: now })
-      }
-    }
-
-    if (events.length === 0) {
-      events.push({ type: 'info', source: 'system', message: 'All systems operational', timestamp: now })
-    }
-
-    // 4. Aggregated stats (no per-endpoint metrics are collected any more)
-    const stats = { totalEndpoints: 0, healthyCount: 0, warningCount: 0, errorCount: 0, avgResponseTime: 0 }
+    // 3. Per-endpoint metrics + derived events from Analytics Engine (real data only;
+    //    unconfigured -> metrics.configured=false, empty lists, no fake numbers)
+    const metrics = await getApiMetricsSummary(env, now)
+    const events = metrics.events
+    const stats = metrics.stats
 
     // 5. Determine overall status
     const infraRedCount = infrastructure.filter(i => i.status === 'red').length
@@ -254,7 +243,13 @@ export const getApiStatus = async (c: Context<{ Bindings: Bindings }>) => {
 
     return successResponse(c, {
       overallStatus,
-      endpoints: [],
+      endpoints: metrics.endpoints,
+      metrics: {
+        configured: metrics.configured,
+        windowMinutes: metrics.windowMinutes,
+        generatedAt: metrics.generatedAt,
+        ...(metrics.error ? { error: metrics.error } : {}),
+      },
       infrastructure,
       channels,
       events,

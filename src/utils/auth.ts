@@ -1,6 +1,7 @@
-import { eq, and, sql } from 'drizzle-orm';
+import { eq, ne, and, sql } from 'drizzle-orm';
 import { createDbClient } from '../db/drizzle-factory';
 import { agents, teams, agentTeams } from '../db/schema';
+import { SYSTEM_AGENT_ID, isSystemAgentId } from '../constants/system-agent';
 import { convertAgent } from './drizzle-converters';
 import type { DbUser, TeamRoleInTeam } from '../types';
 import { nowISO, nowMs } from '@/utils/timestamp'
@@ -154,6 +155,7 @@ export async function getUserById(db: D1Database, userId: number | string): Prom
     .leftJoin(teams, eq(agentTeams.teamId, teams.id))
     .where(and(
       eq(agents.id, userIdStr),
+      ne(agents.id, SYSTEM_AGENT_ID), // the system actor is never an authenticated user
       eq(agents.isActive, true),
       sql`${agents.deletedAt} IS NULL`
     ))
@@ -231,7 +233,7 @@ export async function authenticateUser(
   // F18: run a dummy bcrypt verify so non-existent and disabled accounts
   // take the same time as a real bcrypt verify path. Otherwise an attacker
   // can enumerate valid emails by the ~100ms timing delta.
-  if (!user) {
+  if (!user || isSystemAgentId(user.id)) {
     await verifyPassword(password, DUMMY_BCRYPT_HASH);
     return { user: null, accountStatus: 'not_found' };
   }
