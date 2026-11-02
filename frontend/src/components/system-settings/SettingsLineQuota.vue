@@ -6,99 +6,104 @@
 -->
 
 <template>
-  <SettingsGroup title="LINE 訊息額度">
-    <div class="ui-card-head">
-      <div>
-        <h3 class="ui-card-title">
-          本月已發送
-        </h3>
-        <div class="ui-card-sub">
-          {{ updatedText }}
+  <section aria-label="LINE 訊息額度">
+    <h2 class="ui-group-label">
+      LINE 訊息額度
+    </h2>
+    <div class="ui-group">
+      <div class="ui-card-head">
+        <div>
+          <h3 class="ui-card-title">
+            本月已發送
+          </h3>
+          <div class="ui-card-sub">
+            {{ updatedText }}
+          </div>
+        </div>
+        <div class="ui-card-end">
+          <button
+            type="button"
+            class="btn btn-secondary btn-sm"
+            :disabled="refreshing"
+            @click="refresh"
+          >
+            {{ refreshing ? '查詢中...' : '立即查詢' }}
+          </button>
         </div>
       </div>
-      <div class="ui-card-end">
-        <button
-          type="button"
-          class="btn btn-secondary btn-sm"
-          :disabled="refreshing"
-          @click="refresh"
-        >
-          {{ refreshing ? '查詢中...' : '立即查詢' }}
-        </button>
-      </div>
-    </div>
 
-    <div
-      v-if="loading"
-      class="state"
-    >
-      載入額度中...
-    </div>
-    <div
-      v-else-if="loadFailed && items.length === 0"
-      class="state"
-    >
-      無法取得額度資料，請點「立即查詢」重試。
-    </div>
-    <div
-      v-else-if="items.length === 0"
-      class="state"
-    >
-      尚未查詢過額度，或尚未設定 LINE 頻道。
-    </div>
-    <ul
-      v-else
-      class="quota-list"
-    >
-      <li
-        v-for="channel in items"
-        :key="channel.channelKey"
-        class="quota"
+      <div
+        v-if="loading"
+        class="state"
       >
-        <div class="quota-name">
-          {{ channel.label }}
-        </div>
-        <div class="quota-top">
-          <div class="quota-big">
-            {{ usedText(channel) }}<small v-if="channel.limited && channel.limit !== null">/ {{ channel.limit.toLocaleString() }} 則</small><small v-else-if="channel.used !== null">則（不限額）</small>
-          </div>
-          <div
-            v-if="channel.limited && channel.remaining !== null"
-            class="quota-rest"
-          >
-            剩餘 <b>{{ channel.remaining.toLocaleString() }}</b> 則
-          </div>
-        </div>
-        <template v-if="channel.limited && channel.limit !== null && channel.used !== null">
-          <div
-            class="qbar"
-            role="progressbar"
-            aria-valuemin="0"
-            :aria-valuemax="channel.limit"
-            :aria-valuenow="Math.min(channel.used, channel.limit)"
-            :aria-label="`${channel.label} 已使用 ${percent(channel)}%`"
-          >
-            <i
-              :class="tone(channel)"
-              :style="{ width: `${percent(channel)}%` }"
-            />
-          </div>
-          <div class="qscale">
-            <span>0</span><span>{{ channel.limit.toLocaleString() }}</span>
-          </div>
-        </template>
-        <p
-          v-if="channel.error"
-          class="quota-warn"
+        載入額度中...
+      </div>
+      <div
+        v-else-if="loadFailed && items.length === 0"
+        class="state"
+      >
+        無法取得額度資料，請點「立即查詢」重試。
+      </div>
+      <div
+        v-else-if="items.length === 0"
+        class="state"
+      >
+        尚未查詢過額度，或尚未設定 LINE 頻道。
+      </div>
+      <ul
+        v-else
+        class="quota-list"
+      >
+        <li
+          v-for="channel in items"
+          :key="channel.channelKey"
+          class="quota"
         >
-          本次查詢失敗（{{ channel.error }}），顯示的是上次成功的數據。
-        </p>
-      </li>
-    </ul>
-    <template #note>
+          <div class="quota-name">
+            {{ channel.label }}
+          </div>
+          <div class="quota-top">
+            <div class="quota-big">
+              {{ usedText(channel) }}<small v-if="channel.limited && channel.limit !== null">/ {{ channel.limit.toLocaleString() }} 則</small><small v-else-if="channel.used !== null">則（不限額）</small>
+            </div>
+            <div
+              v-if="channel.limited && channel.remaining !== null"
+              class="quota-rest"
+            >
+              剩餘 <b>{{ channel.remaining.toLocaleString() }}</b> 則
+            </div>
+          </div>
+          <template v-if="channel.limited && channel.limit !== null && channel.used !== null">
+            <div
+              class="qbar"
+              role="progressbar"
+              aria-valuemin="0"
+              :aria-valuemax="channel.limit"
+              :aria-valuenow="Math.min(channel.used, channel.limit)"
+              :aria-label="`${channel.label} 已使用 ${percent(channel)}%`"
+            >
+              <i
+                :class="tone(channel)"
+                :style="{ width: `${percent(channel)}%` }"
+              />
+            </div>
+            <div class="qscale">
+              <span>0</span><span>{{ channel.limit.toLocaleString() }}</span>
+            </div>
+          </template>
+          <p
+            v-if="channel.error"
+            class="quota-warn"
+          >
+            本次查詢失敗（{{ channel.error }}），顯示的是上次成功的數據。
+          </p>
+        </li>
+      </ul>
+    </div>
+    <p class="ui-group-foot">
       額度依 LINE 官方帳號方案計算。
-    </template>
-  </SettingsGroup>
+    </p>
+  </section>
 </template>
 
 <script setup lang="ts">
@@ -110,7 +115,8 @@ import {
   type LineQuotaChannel,
   type LineQuotaSnapshot
 } from '@/api/broadcasts'
-import SettingsGroup from './SettingsGroup.vue'
+
+const emit = defineEmits<{ snapshot: [items: LineQuotaChannel[]] }>()
 
 const { showError, showSuccess } = useToast()
 
@@ -133,6 +139,7 @@ const updatedText = computed(() => {
 onMounted(async () => {
   try {
     snapshot.value = await getLineQuota()
+    emit('snapshot', snapshot.value.items)
   } catch {
     loadFailed.value = true
   } finally {
@@ -150,6 +157,7 @@ async function refresh() {
   try {
     const next = await refreshLineQuota()
     snapshot.value = next
+    emit('snapshot', next.items)
     loadFailed.value = false
     if (next.throttled) {
       showSuccess('剛剛已更新過，顯示最新數據')
@@ -229,7 +237,7 @@ function formatTime(iso: string): string {
 }
 
 .quota-big {
-  font: 600 34px / 1 var(--ui-font-display);
+  font: 600 24px / 1 var(--ui-font-display);
   letter-spacing: -0.03em;
   font-variant-numeric: tabular-nums;
 }
@@ -281,14 +289,14 @@ function formatTime(iso: string): string {
 .qscale {
   display: flex;
   justify-content: space-between;
-  font-size: 11.5px;
+  font-size: 13px;
   color: var(--ui-muted);
   font-variant-numeric: tabular-nums;
 }
 
 .quota-warn {
   margin: 10px 0 0;
-  font-size: 12.5px;
+  font-size: 13px;
   color: var(--ui-orange-ink);
 }
 </style>

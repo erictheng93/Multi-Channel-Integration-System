@@ -1,7 +1,7 @@
 // Per-platform channel overview: message counts, last activity and webhook failure health.
 // Computed on read and cached in KV so the channels page never re-scans messages on every load.
 
-import type { Bindings } from '@/types';
+import type { Bindings, DbUser } from '@/types';
 import { RowsReadMeter } from '@/utils/d1-rows-read';
 import { taipeiDateString, taipeiDayStartMs } from '@/utils/taipei-time';
 import { readDayCounts, readLastActivity, readWatermark, type DayCount } from '@/modules/dashboard/services/message-rollup-service';
@@ -62,10 +62,10 @@ export async function computeMessageStats(env: Bindings, now: number = nowMs()):
   const watermark = await readWatermark(db, meter);
   const [totals, recent, lastActivity, olderToday] = await Promise.all([
     readDayCounts(db, allTeams, {
-      fromDay: '0000-00-00', toDay: '9999-12-31', senderTypes: senders, nowMs: now, allTime: true, watermark, meter
+      fromDay: '0000-00-00', toDay: '9999-12-31', senderTypes: senders, nowMs: now, allTime: true, meter
     }),
     readDayCounts(db, allTeams, {
-      fromDay: taipeiDateString(cutoffMs), toDay: taipeiDateString(now), senderTypes: senders, nowMs: now, watermark, meter
+      fromDay: taipeiDateString(cutoffMs), toDay: taipeiDateString(now), senderTypes: senders, nowMs: now, meter
     }),
     readLastActivity(db, watermark, now, meter),
     countOlderThanCutoff(db, new Date(cutoffDayStartMs).toISOString(), new Date(cutoffMs).toISOString(), meter)
@@ -210,14 +210,20 @@ export interface ChannelOverview {
   webhookHealth: PlatformWebhookHealth;
 }
 
-/** Build the per-platform overview attached to each channel in the list response. */
+/**
+ * Build the per-platform overview attached to each channel in the list response.
+ *
+ * Message activity spans every team under one shared cache entry, so it is admin-only (agents get
+ * null, the same "unknown" as a failed query). The channels page itself is an admin page.
+ */
 export async function getChannelOverviews(
   env: Bindings,
-  platforms: string[]
+  platforms: string[],
+  viewer: Pick<DbUser, 'role'>
 ): Promise<Record<string, ChannelOverview>> {
   const unique = Array.from(new Set(platforms));
   const [snapshot, health] = await Promise.all([
-    getMessageStats(env),
+    viewer.role === 'admin' ? getMessageStats(env) : null,
     Promise.all(unique.map(async (p) => [p, await getWebhookHealth(env, p)] as const))
   ]);
 

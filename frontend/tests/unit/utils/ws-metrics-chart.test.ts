@@ -35,6 +35,15 @@ describe('ws-metrics-chart', () => {
     expect(series.lines).toHaveLength(2)
     expect(series.count).toBe(2)
     expect(series.areas).toHaveLength(0)
+    // both runs are one point: each is marked with a dot, none is left invisible
+    expect(series.dots).toHaveLength(2)
+  })
+
+  it('marks no dots for runs of two or more points', () => {
+    const points = [point(0, 10, 1), point(50, 20, 2), point(100, 30, null)]
+    const series = buildSeries(points, p => p.eventsInPerS, 0, 100)
+    expect(series.lines).toHaveLength(1)
+    expect(series.dots).toHaveLength(0)
   })
 
   it('reports an empty series without points', () => {
@@ -44,6 +53,8 @@ describe('ws-metrics-chart', () => {
   })
 
   it('labels ticks without rounding noise', () => {
-    expect(yTicks(5).map(t => t.label)).toEqual(['0', '1.25', '2.5', '3.75', '5'])
+    // default steps are whole numbers from a maximum of 5 up; an explicit step count still divides evenly
+    expect(yTicks(5).map(t => t.label)).toEqual(['0', '1', '2', '3', '4', '5'])
+    expect(yTicks(5, 4).map(t => t.label)).toEqual(['0', '1.25', '2.5', '3.75', '5'])
   })
 })

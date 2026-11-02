@@ -170,7 +170,7 @@ describe('SystemSettings Integration Tests', () => {
     await flushPromises()
 
     expect(wrapper.find('.system-settings').exists()).toBe(true)
-    expect(wrapper.findComponent({ name: 'SettingsRail' }).exists()).toBe(true)
+    expect(wrapper.findComponent({ name: 'UiSectionNav' }).exists()).toBe(true)
   })
 
   it('should switch between tabs correctly via router navigation', async () => {
@@ -241,6 +241,27 @@ describe('SystemSettings Integration Tests', () => {
     await flushPromises()
 
     expect(systemApi.updateSettings).toHaveBeenCalled()
+  })
+
+  it('keeps unsaved general edits dirty after saving another section', async () => {
+    const router = createTestRouter()
+    await router.push('/settings/general')
+    await router.isReady()
+    const wrapper = mount(SystemSettings, { global: { plugins: [router] } })
+    await flushPromises()
+
+    await wrapper.find('#systemName').setValue('Edited, not saved')
+    await flushPromises()
+    expect(wrapper.find('.settings-actions').exists()).toBe(true)
+
+    await router.push('/settings/advanced')
+    await flushPromises()
+    wrapper.findComponent({ name: 'AdvancedSettingsForm' }).vm.$emit('save')
+    await flushPromises()
+
+    await router.push('/settings/general')
+    await flushPromises()
+    expect(wrapper.find('.settings-actions').exists()).toBe(true)
   })
 
   it('should navigate to health check page', async () => {

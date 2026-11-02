@@ -1,20 +1,9 @@
 <template>
-  <section class="ui-page-head">
-    <div>
-      <div class="ui-eyebrow">
-        客戶經營
-      </div>
-      <h1 class="ui-page-title">
-        客戶標籤
-      </h1>
-      <p
-        v-if="subtitle"
-        class="ui-page-sub"
-      >
-        {{ subtitle }}
-      </p>
-    </div>
-    <div class="ui-page-actions">
+  <UiPageHead
+    title="客戶標籤"
+    :subtitle="subtitle ? subtitle : ''"
+  >
+    <template #actions>
       <button
         class="btn btn-primary"
         @click="$emit('create-tag')"
@@ -22,11 +11,12 @@
         <PlusIcon class="head-ico" />
         <span>新增標籤</span>
       </button>
-    </div>
-  </section>
+    </template>
+  </UiPageHead>
 </template>
 
 <script setup lang="ts">
+import UiPageHead from '@/components/ui/UiPageHead.vue'
 import { computed } from 'vue'
 import { PlusIcon } from '@/components/icons'
 

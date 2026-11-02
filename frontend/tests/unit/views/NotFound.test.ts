@@ -40,7 +40,7 @@ describe('NotFound.vue', () => {
 
   it('lists only links the role can open', () => {
     const agent = mountPage().findAll('.go').map(a => a.attributes('href'))
-    expect(agent).toEqual(['/dashboard', '/conversations', '/notifications', '/tags'])
+    expect(agent).toEqual(['/conversations', '/notifications', '/tags'])
 
     state.isAdmin.value = true
     const admin = mountPage().findAll('.go').map(a => a.attributes('href'))

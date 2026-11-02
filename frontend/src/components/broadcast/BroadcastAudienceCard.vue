@@ -13,9 +13,12 @@
 
     <div
       v-if="!preview"
-      class="ui-empty compact"
+      class="aud-empty"
     >
-      <div class="ui-empty-art">
+      <span
+        class="aud-ico"
+        aria-hidden="true"
+      >
         <svg
           viewBox="0 0 24 24"
           fill="none"
@@ -28,9 +31,11 @@
           cy="7"
           r="4"
         /><path d="M22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8" /></svg>
+      </span>
+      <div>
+        <b>受眾預覽</b>
+        <span>{{ loading ? '計算受眾中...' : '選擇目標標籤後，會在這裡顯示會收到訊息的人數。' }}</span>
       </div>
-      <h3>受眾預覽</h3>
-      <p>{{ loading ? '計算受眾中...' : '選擇目標標籤後，會在這裡顯示會收到訊息的人數。' }}</p>
     </div>
 
     <template v-else>
@@ -124,8 +129,36 @@ const notes = computed(() => {
   padding: 18px 22px 20px;
 }
 
-.compact {
-  padding: 28px 8px;
+.aud-empty {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+}
+
+.aud-ico {
+  display: grid;
+  flex: none;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  border-radius: 14px;
+  background: var(--ui-fill);
+  color: var(--ui-muted);
+}
+
+.aud-ico svg {
+  width: 22px;
+  height: 22px;
+}
+
+.aud-empty b {
+  display: block;
+  font: 600 var(--ui-t-title) / 1.3 var(--ui-font-display);
+}
+
+.aud-empty span {
+  font-size: 13.5px;
+  color: var(--ui-muted);
 }
 
 .big-row {
@@ -163,7 +196,7 @@ const notes = computed(() => {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 12.5px;
+  font-size: 13px;
   color: var(--ui-muted);
 }
 
@@ -174,7 +207,7 @@ const notes = computed(() => {
 }
 
 .tile small {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--ui-muted);
 }
 
@@ -184,7 +217,7 @@ const notes = computed(() => {
   margin: 14px 0 0;
   padding: 0;
   list-style: none;
-  font-size: 12.5px;
+  font-size: 13px;
   color: var(--ui-muted);
 }
 

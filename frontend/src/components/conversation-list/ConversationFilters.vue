@@ -117,9 +117,13 @@
         </span>
 
         <!-- Stats -->
-        <div class="trigger-stats">
+        <div
+          class="trigger-stats"
+          title="目前列表顯示的對話數"
+        >
+          <span class="stat-label">顯示</span>
           <span class="stat-num">{{ totalConversations }}</span>
-          <span class="stat-label">對話</span>
+          <span class="stat-label">件</span>
         </div>
         <div
           v-if="unreadCount > 0"
@@ -690,7 +694,7 @@ function clearAll() {
   border-radius: 999px;
   background: var(--ui-accent-soft);
   color: var(--ui-accent);
-  font-size: 12px;
+  font-size: 13px;
 }
 
 .pill-label {
@@ -720,8 +724,8 @@ function clearAll() {
   height: 22px;
   padding: 0 8px;
   border-radius: 999px;
-  background: var(--ui-ink);
-  color: var(--ui-surface);
+  background: var(--ui-accent-soft);
+  color: var(--ui-accent);
   font-size: 11.5px;
   font-weight: 600;
   cursor: pointer;
@@ -736,7 +740,7 @@ function clearAll() {
   display: flex;
   align-items: baseline;
   gap: 4px;
-  font-size: 12.5px;
+  font-size: 13px;
   color: var(--ui-muted);
 }
 
@@ -814,7 +818,7 @@ function clearAll() {
 }
 
 .field-label {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--ui-ink-2);
 }
@@ -1023,7 +1027,7 @@ function clearAll() {
   border: 0;
   border-radius: 999px;
   background: transparent;
-  font-size: 12.5px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--ui-red-ink);
   cursor: pointer;
