@@ -119,12 +119,19 @@
             class="activity-log__pagination"
             @page-change="loadPage"
           />
+          <p
+            v-if="isAdmin && activities.length > 0 && !loading"
+            class="al-legend"
+          >
+            還原：仍在期限內，可一鍵復原。已過期：記錄保留但不能復原。不可還原：登入、傳送訊息等操作本質上無法復原。
+          </p>
         </div>
         <ActivityInsights
           v-if="showInsights"
           class="al-aside"
           :overview="overview"
           :active-action="filters.action"
+          :legend="false"
           @filter-action="onInsightAction"
         />
       </div>
@@ -219,8 +226,8 @@ const currentPage = computed(() => pagination.value?.page || 1)
 /** Page header sentence from loaded data only (overview for admins, list total otherwise). */
 const headSummary = computed(() => {
   if (isAdmin.value && overview.value) {
-    const parts = [`近 ${overview.value.period.days} 天共 ${overview.value.totalActivities.toLocaleString('zh-TW')} 筆操作、${overview.value.activeUserCount} 位成員`]
-    return `${parts[0]}。`
+    // the week card under the head already states the period total
+    return ''
   }
   if (!loading.value && pagination.value.total > 0) {
     return `目前篩選條件下共 ${pagination.value.total.toLocaleString('zh-TW')} 筆記錄。`
@@ -496,6 +503,14 @@ onUnmounted(() => {
   display: grid;
   gap: 20px;
   min-width: 0;
+}
+
+.al-legend {
+  margin: 0;
+  padding: 0 6px;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--ui-muted);
 }
 
 .al-aside {
