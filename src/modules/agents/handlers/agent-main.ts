@@ -1,6 +1,7 @@
 // Agent Main Handler - 客服代理主要路由處理器
 // Agent Main Router Handler
 
+import { blockSystemAgentTarget } from '@/middleware/block-system-agent';
 import { Hono } from 'hono';
 import type { Bindings } from '@/types';
 import { HTTP_STATUS } from '@/constants/http-status';
@@ -27,6 +28,7 @@ function asAgentStatus(value: string | undefined): AgentStatusType | undefined {
 // 建立 Agent 路由
 export function createAgentRouter() {
   const router = new Hono<{ Bindings: Bindings }>();
+  router.use('/agents/*', blockSystemAgentTarget());
 
   // 套用全域中介層
   router.use('/agents', agentErrorHandler());

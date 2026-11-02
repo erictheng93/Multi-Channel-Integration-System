@@ -13,6 +13,7 @@
       </template>
       <b
         class="breadcrumb-item"
+        :class="{ 'is-quiet': !titleCollapsed }"
         aria-current="page"
       >{{ pageTitle }}</b>
     </nav>
@@ -22,9 +23,14 @@
       <slot name="stats" />
 
       <!-- Status Indicator -->
-      <div class="status-indicator">
-        <span class="status-dot online" />
-        <span class="status-text">線上</span>
+      <div
+        class="status-indicator"
+        :class="`status-indicator--${connection.tone}`"
+        role="status"
+        :title="connection.hint"
+      >
+        <span class="status-dot" />
+        <span class="status-text">{{ connection.label }}</span>
       </div>
 
       <!-- Notification Center -->
@@ -36,16 +42,30 @@
 <script setup lang="ts">
   import { NotificationCenter } from '@/components/ui'
   import type { Notification } from '@/stores/notifications'
+  import { useWebSocketStore } from '@/stores/websocket'
+  import { useConnectionStatus } from '@/composables/useConnectionStatus'
 
-  defineProps<{
+  withDefaults(defineProps<{
     pageTitle: string
     /** Nav section the page lives in (breadcrumb prefix); omit for pages outside the sidebar groups */
     sectionLabel?: string
-  }>()
+    /**
+     * Phone only: false while the page's own large title is on screen (the bar then stays
+     * quiet so the title is never shown twice); true once it scrolled away. Defaults to true
+     * (always show the title), which is also what desktop does regardless.
+     */
+    titleCollapsed?: boolean
+  }>(), {
+    sectionLabel: '',
+    titleCollapsed: true,
+  })
 
   defineEmits<{
     'notification-click': [notification: Notification]
   }>()
+
+  // Realtime connection pill: bound to the websocket store, never static
+  const connection = useConnectionStatus(useWebSocketStore())
 </script>
 
 <style scoped>
@@ -106,7 +126,7 @@
     border-radius: 999px;
     background: var(--ui-green-soft);
     color: var(--ui-green-ink);
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 600;
   }
 
@@ -117,9 +137,29 @@
     animation: none;
   }
 
-  .status-dot.online {
+  .status-dot {
     background-color: var(--ui-green);
     box-shadow: 0 0 0 3px color-mix(in srgb, var(--ui-green) 25%, transparent);
+  }
+
+  .status-indicator--connecting {
+    background: var(--ui-orange-soft);
+    color: var(--ui-orange-ink);
+  }
+
+  .status-indicator--connecting .status-dot {
+    background-color: var(--ui-orange);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--ui-orange) 25%, transparent);
+  }
+
+  .status-indicator--offline {
+    background: var(--ui-fill);
+    color: var(--ui-muted);
+  }
+
+  .status-indicator--offline .status-dot {
+    background-color: var(--ui-faint);
+    box-shadow: none;
   }
 
   .status-text {
@@ -131,6 +171,26 @@
   @media (max-width: 768px) {
     .top-bar-actions {
       gap: var(--space-2);
+    }
+
+    /* Phone layer: the bar names the page only (no section breadcrumb) */
+    .breadcrumb-section,
+    .breadcrumb-sep {
+      display: none;
+    }
+
+    .breadcrumb-item {
+      font-size: 17px;
+      letter-spacing: -0.01em;
+      transition:
+        opacity var(--ui-dur) var(--ui-ease),
+        transform var(--ui-dur) var(--ui-ease);
+    }
+
+    /* The page's large title is still visible below: keep the bar's copy out of sight */
+    .breadcrumb-item.is-quiet {
+      opacity: 0;
+      transform: translateY(6px);
     }
 
     .top-bar {

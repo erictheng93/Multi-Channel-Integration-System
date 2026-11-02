@@ -173,14 +173,15 @@ const handleClick = () => {
 }
 
 /* Platform-specific colors */
+/* Soft tint + dark ink: white on the LINE brand green is 2.4:1 (fails WCAG AA) */
 .platform-line {
-  background: #00c300;
-  color: white;
+  background: var(--ui-green-soft);
+  color: var(--ui-green-ink);
 }
 
 .platform-facebook {
-  background: #1877f2;
-  color: white;
+  background: rgb(24 119 242 / 0.12);
+  color: #0b5cc4; /* 5.6:1 on the tint; white on #1877F2 was 4.0:1 */
 }
 
 .platform-instagram {

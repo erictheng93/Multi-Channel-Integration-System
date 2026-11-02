@@ -333,7 +333,7 @@ function handleTeamsLoaded(teams: AgentTeamMembership[]) {
   display: flex;
   align-items: center;
   gap: 0.25rem;
-  font-size: 0.75rem;
+  font-size: 13px;
   color: #d97706;
   font-weight: 500;
 }
@@ -453,7 +453,7 @@ function handleTeamsLoaded(teams: AgentTeamMembership[]) {
 }
 
 .error-message {
-  font-size: 0.75rem;
+  font-size: 13px;
   color: #ef4444;
 }
 
@@ -485,7 +485,7 @@ function handleTeamsLoaded(teams: AgentTeamMembership[]) {
   border-radius: 50%;
   background: #0ea5e9;
   color: white;
-  font-size: 0.75rem;
+  font-size: 13px;
   font-weight: 700;
 }
 
