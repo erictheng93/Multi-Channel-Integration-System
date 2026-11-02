@@ -31,6 +31,11 @@ describe('ReportChoiceGroup.vue', () => {
     expect(wrapper.emitted('update:modelValue')?.[1]).toEqual(['b'])
   })
 
+  it('keeps the first tile in the tab order when the value belongs to no option', () => {
+    const wrapper = mount(ReportChoiceGroup, { props: { modelValue: 'other', options, label: '測試' } })
+    expect(wrapper.findAll('[role="radio"]').map(t => t.attributes('tabindex'))).toEqual(['0', '-1', '-1'])
+  })
+
   it('only the selected tile is in the tab order', () => {
     const wrapper = mount(ReportChoiceGroup, { props: { modelValue: 'b', options, label: '測試' } })
     expect(wrapper.findAll('[role="radio"]').map(t => t.attributes('tabindex'))).toEqual(['-1', '0', '-1'])
