@@ -483,7 +483,7 @@ export async function storeMessageInDatabase(
   try {
     const { drizzle } = await import('drizzle-orm/d1');
     const { messages, conversations, agents } = await import('../../db/schema');
-    const { eq } = await import('drizzle-orm');
+    const { eq, and, isNull } = await import('drizzle-orm');
 
     const db = drizzle(env.DB);
     const now = nowISO();
@@ -528,6 +528,17 @@ export async function storeMessageInDatabase(
         .update(conversations)
         .set({ lastMessageAt: now, updatedAt: now })
         .where(eq(conversations.id, message.conversationId)),
+
+      // 3. First human reply (idempotent: only while still unset)
+      db
+        .update(conversations)
+        .set({ firstResponseAt: now })
+        .where(
+          and(
+            eq(conversations.id, message.conversationId),
+            isNull(conversations.firstResponseAt)
+          )
+        ),
     ]);
 
     logger.success('Message stored in database', {

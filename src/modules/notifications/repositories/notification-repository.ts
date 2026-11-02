@@ -3,6 +3,7 @@
 
 import { drizzle } from 'drizzle-orm/d1';
 import { createContextLogger } from '@/utils/logger'
+import { taipeiDayStartMs, taipeiWeekStartMs, DAY_MS } from '@/utils/taipei-time';
 
 const log = createContextLogger('NotificationRepository')
 
@@ -322,7 +323,14 @@ export class NotificationRepository {
    * Restoring real per-priority counts needs a `priority` column on the table
    * first, which is a schema change, not a query change.
    */
-  async getStatsByUserId(userId: string | number) {
+  async getStatsByUserId(userId: string | number, nowMs: number = Date.now()) {
+    // notifications.created_at is written by datetime('now'): UTC, 'YYYY-MM-DD HH:MM:SS'.
+    // "Today" / "this week" are Asia/Taipei calendar ranges (since Taipei midnight today /
+    // since Monday 00:00 Taipei), compared as raw-column range checks against UTC instants.
+    const toStoredUtc = (ms: number): string => new Date(ms).toISOString().slice(0, 19).replace('T', ' ');
+    const todayStart = toStoredUtc(taipeiDayStartMs(nowMs));
+    const weekStart = toStoredUtc(taipeiWeekStartMs(nowMs));
+    const monthStart = toStoredUtc(nowMs - 30 * DAY_MS);
     const result = await this.db.get(sql`
       SELECT
         COUNT(*) as total,
@@ -358,9 +366,9 @@ export class NotificationRepository {
         SUM(CASE WHEN priority = 'urgent' THEN 1 ELSE 0 END) as urgent_total,
         SUM(CASE WHEN priority = 'urgent' AND is_read = FALSE THEN 1 ELSE 0 END) as urgent_unread,
 
-        SUM(CASE WHEN created_at >= date('now', '-24 hours') THEN 1 ELSE 0 END) as today,
-        SUM(CASE WHEN created_at >= date('now', '-7 days') THEN 1 ELSE 0 END) as this_week,
-        SUM(CASE WHEN created_at >= date('now', '-30 days') THEN 1 ELSE 0 END) as this_month
+        SUM(CASE WHEN created_at >= ${todayStart} THEN 1 ELSE 0 END) as today,
+        SUM(CASE WHEN created_at >= ${weekStart} THEN 1 ELSE 0 END) as this_week,
+        SUM(CASE WHEN created_at >= ${monthStart} THEN 1 ELSE 0 END) as this_month
       FROM notifications
       WHERE user_id = ${userId.toString()} AND (expires_at IS NULL OR expires_at > datetime('now'))
     `);

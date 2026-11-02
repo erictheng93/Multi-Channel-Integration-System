@@ -283,3 +283,36 @@ describe('reconcile', () => {
     vi.useRealTimers()
   })
 })
+
+describe('background tab', () => {
+  const setHidden = (hidden: boolean): void => {
+    Object.defineProperty(document, 'hidden', { configurable: true, get: () => hidden })
+    Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => (hidden ? 'hidden' : 'visible') })
+    document.dispatchEvent(new Event('visibilitychange'))
+  }
+
+  it('hidden 時不輪詢 /stats,回到前景只校正一次', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(10_000_000)
+    getStats.mockReset()
+    getStats.mockResolvedValue({ success: true, data: { unreadConversations: 1 } })
+    reactive(store).conversations = []
+    const scope = effectScope()
+    scope.run(() => useUnreadConversationTotal())
+    await vi.advanceTimersByTimeAsync(0)
+    expect(getStats).toHaveBeenCalledTimes(1) // 登入後初次校正
+
+    setHidden(true)
+    await vi.advanceTimersByTimeAsync(10 * 120_000) // 10 個輪詢週期
+    expect(getStats).toHaveBeenCalledTimes(1)
+    expect(vi.getTimerCount()).toBe(0)
+
+    setHidden(false)
+    await vi.advanceTimersByTimeAsync(0)
+    expect(getStats).toHaveBeenCalledTimes(2) // 資料已過期(>30s),回前景校正一次
+
+    scope.stop()
+    setHidden(false)
+    vi.useRealTimers()
+  })
+})

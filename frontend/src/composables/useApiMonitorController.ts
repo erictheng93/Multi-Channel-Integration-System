@@ -52,7 +52,43 @@ export function useApiMonitorController() {
   let refreshTimer: ReturnType<typeof setInterval> | null = null
 
   // ===== Computed =====
-  const systemStatus = computed<SystemStatus>(() => monitorData.value?.status ?? 'operational')
+  /** false = Analytics Engine is not set up: no endpoint metrics, show the setup state. Missing meta = configured. */
+  const metricsConfigured = computed(() => monitorData.value?.metrics?.configured !== false)
+  /** Set when metrics are configured but the last query failed */
+  const metricsError = computed(() => monitorData.value?.metrics?.error ?? null)
+
+  const reportedStatus = computed<SystemStatus>(() => monitorData.value?.overallStatus ?? monitorData.value?.status ?? 'operational')
+
+  /**
+   * Components that are failing right now, from the same payload the page shows. The server's overall
+   * status only counts infrastructure, so a channel in error would otherwise sit next to an
+   * "operational" headline.
+   */
+  const statusCauses = computed<Array<{ kind: 'infrastructure' | 'channel'; text: string }>>(() => {
+    const causes: Array<{ kind: 'infrastructure' | 'channel'; text: string }> = []
+    for (const item of monitorData.value?.infrastructure ?? []) {
+      // The API reports latency bands as colours ('red'); the typed contract says 'error'
+      const status: string = item.status
+      if (status === 'red' || status === 'error' || item.latencyMs < 0) {
+        causes.push({ kind: 'infrastructure', text: `${item.name} 無回應或延遲過高` })
+      }
+    }
+    for (const channel of monitorData.value?.channels ?? []) {
+      if (channel.status === 'error') {
+        causes.push({ kind: 'channel', text: `${channel.name} 連線錯誤` })
+      }
+    }
+    return causes
+  })
+
+  /** Worst of the server's overall status and every infrastructure / channel state on the page. */
+  const systemStatus = computed<SystemStatus>(() => {
+    if (reportedStatus.value === 'outage') { return 'outage' }
+    const failingInfra = statusCauses.value.filter(c => c.kind === 'infrastructure').length
+    if (failingInfra >= 2) { return 'outage' }
+    if (reportedStatus.value === 'degraded' || statusCauses.value.length > 0) { return 'degraded' }
+    return 'operational'
+  })
 
   const endpoints = computed<ApiEndpoint[]>(() => monitorData.value?.endpoints ?? [])
 
@@ -239,6 +275,9 @@ export function useApiMonitorController() {
 
     // Computed
     systemStatus,
+    statusCauses,
+    metricsConfigured,
+    metricsError,
     endpoints,
     infrastructure,
     channels,

@@ -46,7 +46,9 @@ export async function apiMetricsMiddleware(c: Context<{ Bindings: Bindings }>, n
   } finally {
     try {
       const status = c.res?.status ?? 500;
-      const pattern = resolveRoutePattern(routePath(c, -1), status);
+      // After next() the route index points at the handler that responded. routePath(c, -1) would be
+      // the last MATCHING entry, which is a global '*' middleware registered after the routes.
+      const pattern = resolveRoutePattern(routePath(c), status);
       const latencyMs = Math.round((performance.now() - start) * 10) / 10;
       dataset.writeDataPoint({
         blobs: [method, pattern, statusClassOf(status), String(status)],

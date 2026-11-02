@@ -278,7 +278,7 @@ function handleReactivate() {
 }
 
 .member-date {
-  font-size: 0.75rem;
+  font-size: 13px;
   color: #8E8E93;
   margin-top: 2px;
 }

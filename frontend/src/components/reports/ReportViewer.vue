@@ -1,5 +1,5 @@
 <template>
-  <div class="report-viewer">
+  <div class="ui-page report-viewer">
     <!-- 載入狀態 -->
     <div
       v-if="loading"
@@ -387,12 +387,6 @@ watch(() => report.value?.status, (newStatus) => {
 </script>
 
 <style scoped>
-.report-viewer {
-  width: 100%;
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 2rem;
-}
 
 .loading-container,
 .error-container {
@@ -449,8 +443,5 @@ watch(() => report.value?.status, (newStatus) => {
 }
 
 @media (max-width: 768px) {
-  .report-viewer {
-    padding: 1rem;
-  }
 }
 </style>

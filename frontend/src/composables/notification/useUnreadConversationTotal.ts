@@ -16,6 +16,7 @@ import { computed, ref, watch, getCurrentScope, onScopeDispose } from 'vue'
 import { useConversationsStore } from '@/stores/conversations'
 import { useAuthStore } from '@/stores/auth'
 import { conversationApi } from '@/api/conversations'
+import { createVisibleInterval, type VisibleInterval } from '@/utils/visibleInterval'
 
 const CHANNEL_NAME = 'mcis-unread-conversation-total'
 const FOCUS_MAX_AGE_MS = 30_000
@@ -67,7 +68,8 @@ export function useUnreadConversationTotal() {
   let fetchedAt = 0
   let inFlight = false
   let pendingTimer: ReturnType<typeof setTimeout> | null = null
-  let pollTimer: ReturnType<typeof setInterval> | null = null
+  // 定時校正只在前景存在:分頁隱藏時清除計時器,回到前景時校正一次後重啟(取代原本的 setInterval,非第二個輪詢)
+  let poller: VisibleInterval | null = null
   const channel = typeof window.BroadcastChannel === 'undefined' ? null : new window.BroadcastChannel(CHANNEL_NAME)
 
   const unreadMap = computed(() => {
@@ -157,24 +159,22 @@ export function useUnreadConversationTotal() {
     }
   }
 
-  const onVisibilityChange = (): void => {
-    if (document.visibilityState === 'visible') { void reconcile(FOCUS_MAX_AGE_MS) }
-  }
   const onOnline = (): void => { void reconcile() }
 
   const start = (): void => {
     void reconcile()
-    document.addEventListener('visibilitychange', onVisibilityChange)
     window.addEventListener('online', onOnline)
-    pollTimer = setInterval(() => {
-      if (document.visibilityState === 'visible') { void reconcile(POLL_MAX_AGE_MS) }
-    }, POLL_INTERVAL_MS)
+    poller = createVisibleInterval(
+      () => { void reconcile(POLL_MAX_AGE_MS) },
+      POLL_INTERVAL_MS,
+      { onVisible: () => { void reconcile(FOCUS_MAX_AGE_MS) } }
+    )
+    poller.start()
   }
 
   const stop = (): void => {
-    document.removeEventListener('visibilitychange', onVisibilityChange)
     window.removeEventListener('online', onOnline)
-    if (pollTimer) { clearInterval(pollTimer); pollTimer = null }
+    if (poller) { poller.stop(); poller = null }
     if (pendingTimer) { clearTimeout(pendingTimer); pendingTimer = null }
     serverTotal.value = null
     transitions.value = []

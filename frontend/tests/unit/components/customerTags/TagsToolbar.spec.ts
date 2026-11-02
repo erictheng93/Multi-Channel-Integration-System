@@ -35,7 +35,7 @@ describe('TagsToolbar', () => {
       const wrapper = createWrapper()
       const input = wrapper.find('input')
       expect(input.exists()).toBe(true)
-      expect(input.attributes('placeholder')).toBe('搜尋標籤名稱或描述...')
+      expect(input.attributes('placeholder')).toBe('搜尋標籤名稱或描述')
     })
 
     it('does not show clear button when localSearchQuery is empty', () => {
