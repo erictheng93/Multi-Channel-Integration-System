@@ -53,95 +53,16 @@
         </template>
       </UiPageHead>
 
-      <!-- Lead: who is online right now (faces, not a ring), and how each team is covered -->
-      <article
+      <!-- Roster board: team x role, lit by live presence -->
+      <TeamRoster
         v-if="members.length > 0"
-        class="ui-lead tl"
-        aria-label="目前在線"
-      >
-        <div class="tl-main">
-          <div class="tl-kicker">
-            目前在線
-          </div>
-          <div
-            class="tl-num"
-            :class="{ none: onlineCount === null }"
-            :aria-busy="(loading && !presence.available.value) || undefined"
-          >
-            {{ onlineCount === null ? '—' : onlineCount }}<small v-if="onlineCount !== null">/ {{ activeCount }} 位在線</small>
-          </div>
-          <ul
-            v-if="onlineMembers.length > 0"
-            class="tl-faces"
-            aria-label="在線成員"
-          >
-            <li
-              v-for="m in onlineMembers.slice(0, FACES_SHOWN)"
-              :key="m.id"
-            >
-              <TeamAvatar
-                :name="m.name || m.loginId"
-                :seed="m.id"
-                :src="m.avatar"
-              />
-              <span>{{ (m.name || m.loginId).slice(0, 4) }}</span>
-            </li>
-            <li
-              v-if="onlineMembers.length > FACES_SHOWN"
-              class="tl-more"
-            >
-              +{{ onlineMembers.length - FACES_SHOWN }}
-            </li>
-          </ul>
-          <p
-            v-else
-            class="tl-meaning"
-          >
-            {{ onlineMeaning }}
-          </p>
-        </div>
-        <ul
-          v-if="teamOnline.length > 0"
-          class="tl-teams"
-          aria-label="各團隊在線"
-        >
-          <li
-            v-for="row in teamOnline.slice(0, TEAMS_SHOWN)"
-            :key="row.id"
-          >
-            <div class="tl-team-top">
-              <span class="tl-team-name"><i
-                class="tl-dot"
-                :style="{ background: teamToneColor(row.id) }"
-                aria-hidden="true"
-              />{{ row.name }}</span>
-              <span class="tl-team-n"><b>{{ row.online === null ? row.total : row.online }}</b> / {{ row.total }}<small>{{ row.online === null ? ' 位成員' : ' 在線' }}</small></span>
-            </div>
-            <span
-              class="tl-bar"
-              aria-hidden="true"
-            ><i :style="{ background: teamToneColor(row.id), width: (row.online === null ? 100 : row.percent) + '%' }" /></span>
-            <div
-              v-if="row.open !== null"
-              class="tl-team-sub"
-            >
-              {{ row.open }} 件處理中
-            </div>
-          </li>
-          <li
-            v-if="sharedMembers.length > 0"
-            class="tl-note"
-          >
-            {{ sharedMembers.join('、') }} 同時屬於多個團隊，各團隊分別計入
-          </li>
-          <li
-            v-if="teamOnline.length > TEAMS_SHOWN"
-            class="tl-rest"
-          >
-            另有 {{ teamOnline.length - TEAMS_SHOWN }} 個團隊
-          </li>
-        </ul>
-      </article>
+        :teams="teams"
+        :members="members"
+        :online-ids="presence.onlineIds.value"
+        :presence-available="presence.available.value"
+        :open-by-team="openByTeam"
+        :loading="loading"
+      />
 
       <!-- Member Management Section -->
       <MemberListSection
@@ -279,7 +200,6 @@
 
 <script setup lang="ts">
 import UiPageHead from '@/components/ui/UiPageHead.vue'
-import { teamToneColor } from '@/utils/team-tone'
 import { onMounted, onUnmounted, computed, ref } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useTeamManagementController } from '@/composables/team-management'
@@ -289,7 +209,7 @@ import { teamApi } from '@/api/team'
 import { conversationApi } from '@/api/conversations'
 import type { MemberSortField, TeamSortField } from '@/composables/useListSorting'
 import AppLayout from '@/components/ui/AppLayout.vue'
-import TeamAvatar from '@/components/team/TeamAvatar.vue'
+import TeamRoster from '@/components/team/TeamRoster.vue'
 import RefreshButton from '@/components/ui/RefreshButton.vue'
 import MemberListSection from '@/components/team/MemberListSection.vue'
 import TeamListSection from '@/components/team/TeamListSection.vue'
@@ -331,28 +251,6 @@ const headSummary = computed(() => {
   return text
 })
 
-/** Online members; null when presence is unavailable (never a made-up zero) */
-const onlineCount = computed<number | null>(() =>
-  presence.available.value ? members.value.filter(m => presence.onlineIds.value.has(m.id)).length : null
-)
-
-const activeCount = computed(() => members.value.filter(m => m.status !== 'inactive').length)
-
-/** Who is online right now, for the faces under the count */
-const onlineMembers = computed(() =>
-  presence.available.value ? members.value.filter(m => presence.onlineIds.value.has(m.id)) : []
-)
-
-const FACES_SHOWN = 6
-
-const onlineMeaning = computed(() => {
-  if (onlineCount.value === null) {
-    return '目前無法取得在線狀態'
-  }
-  const active = members.value.filter(m => m.status !== 'inactive').length
-  return `共 ${active} 位啟用中的成員`
-})
-
 /** Open conversations per team (GET /conversations/stats byTeam); null until known, never a made-up zero */
 const openByTeam = ref<Map<number, number> | null>(null)
 
@@ -366,37 +264,6 @@ async function loadOpenByTeam() {
     openByTeam.value = null
   }
 }
-
-/** Online / total per team, from the loaded members only */
-const teamOnline = computed(() => {
-  const open = openByTeam.value
-  const maxOpen = open ? Math.max(1, ...open.values()) : 1
-  return teams.value
-    .map((team) => {
-      const people = members.value.filter(
-        m => m.status !== 'inactive' && (m.primaryTeamId === team.id || (m.teams ?? []).some(t => t.teamId === team.id))
-      )
-      const online = presence.available.value ? people.filter(m => presence.onlineIds.value.has(m.id)).length : null
-      return {
-        id: team.id,
-        name: team.name,
-        total: people.length,
-        online,
-        percent: online === null || people.length === 0 ? 0 : Math.round((online / people.length) * 100),
-        open: open ? (open.get(team.id) ?? 0) : null,
-        openWidth: open ? Math.max((open.get(team.id) ?? 0) === 0 ? 0 : 4, Math.round(((open.get(team.id) ?? 0) / maxOpen) * 100)) : 0
-      }
-    })
-    .filter(row => row.total > 0)
-})
-
-const TEAMS_SHOWN = 4
-
-/** Active members counted in more than one team above, so the per-team totals can exceed the overall count */
-const sharedMembers = computed(() =>
-  members.value
-    .filter(m => m.status !== 'inactive' && new Set((m.teams ?? []).map(t => t.teamId)).size > 1)
-    .map(m => m.name || m.loginId))
 
 // Handle select-page: add page member IDs to selection
 function handleSelectPage(memberIds: string[]) {
@@ -514,188 +381,5 @@ onUnmounted(() => {
 .head-ico {
   width: 16px;
   height: 16px;
-}
-
-/* Lead: the count and who is behind it on the left, one meter per team on the right */
-.tl {
-  display: grid;
-  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
-  gap: 24px 48px;
-  align-items: center;
-  padding: 24px 32px;
-}
-
-.tl-kicker {
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--section-ink);
-}
-
-.tl-num {
-  margin-top: 4px;
-  font: 600 56px / 1.05 var(--ui-font-display);
-  letter-spacing: -0.035em;
-  font-variant-numeric: tabular-nums;
-}
-
-.tl-num.none {
-  color: var(--ui-muted);
-}
-
-.tl-num small {
-  margin-left: 8px;
-  font-size: 18px;
-  font-weight: 500;
-  letter-spacing: 0;
-  color: var(--ui-muted);
-}
-
-.tl-faces {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 14px 12px;
-  margin: 18px 0 0;
-  padding: 0;
-  list-style: none;
-}
-
-.tl-faces li {
-  display: grid;
-  justify-items: center;
-  gap: 6px;
-  min-width: 52px;
-  font-size: 13px;
-  color: var(--ui-ink-2);
-}
-
-.tl-faces :deep(.team-avatar) {
-  width: 44px;
-  height: 44px;
-  font-size: 17px;
-}
-
-.tl-more {
-  align-content: center;
-  font-weight: 600;
-}
-
-.tl-meaning {
-  margin: 6px 0 0;
-  font-size: 15px;
-  color: var(--ui-ink-2);
-}
-
-.tl-teams {
-  position: relative;
-  display: grid;
-  gap: 18px;
-  margin: 0;
-  padding: 0 0 0 40px;
-  list-style: none;
-}
-
-.tl-teams::before {
-  position: absolute;
-  top: 4px;
-  bottom: 4px;
-  left: 0;
-  width: 0.5px;
-  background: var(--ui-sep);
-  content: '';
-}
-
-.tl-team-top {
-  display: flex;
-  gap: 12px;
-  align-items: baseline;
-  justify-content: space-between;
-}
-
-.tl-dot {
-  display: inline-block;
-  width: 10px;
-  height: 10px;
-  margin-right: 8px;
-  border-radius: 50%;
-}
-
-.tl-team-name {
-  min-width: 0;
-  overflow: hidden;
-  font-size: 15px;
-  font-weight: 600;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.tl-team-n {
-  flex: none;
-  font-size: 15px;
-  color: var(--ui-muted);
-  font-variant-numeric: tabular-nums;
-}
-
-.tl-team-n b {
-  font: 600 20px var(--ui-font-display);
-  color: var(--ui-ink);
-}
-
-.tl-team-n small {
-  font-size: 13px;
-}
-
-.tl-bar {
-  display: block;
-  height: 8px;
-  margin-top: 8px;
-  overflow: hidden;
-  border-radius: 999px;
-  background: var(--ui-fill);
-}
-
-.tl-bar i {
-  display: block;
-  height: 100%;
-  border-radius: inherit;
-  background: var(--ui-accent);
-  transition: width var(--ui-dur) var(--ui-ease);
-}
-
-.tl-team-sub {
-  margin-top: 6px;
-  font-size: 13px;
-  color: var(--ui-muted);
-  font-variant-numeric: tabular-nums;
-}
-
-.tl-rest,
-.tl-note {
-  font-size: 13px;
-  color: var(--ui-muted);
-}
-
-@media (max-width: 1024px) {
-  .tl {
-    grid-template-columns: minmax(0, 1fr);
-    padding: 22px 24px;
-  }
-
-  .tl-teams {
-    padding-left: 0;
-  }
-
-  .tl-teams::before {
-    display: none;
-  }
-}
-
-@media (max-width: 768px) {
-  .tl {
-    padding: 20px;
-  }
-
-  .tl-num {
-    font-size: 44px;
-  }
 }
 </style>
