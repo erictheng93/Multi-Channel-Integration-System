@@ -59,13 +59,19 @@ export async function fetchBroadcasterMetrics(env: Pick<Bindings, 'MESSAGE_BROAD
   return await response.json() as BroadcasterMetrics;
 }
 
+/** Online user ids, or null when the broadcaster cannot answer (unknown, not "nobody online"). Never throws. */
 export async function fetchOnlineUserIds(env: Pick<Bindings, 'MESSAGE_BROADCASTER'>): Promise<string[] | null> {
   if (!env.MESSAGE_BROADCASTER) return null;
-  const stub = env.MESSAGE_BROADCASTER.get(env.MESSAGE_BROADCASTER.idFromName('global'));
-  const response = await stub.fetch(new Request('https://message-broadcaster/online-users'));
-  if (!response.ok) return null;
-  const body = await response.json() as { userIds?: unknown };
-  return Array.isArray(body.userIds) ? body.userIds.map(String) : null;
+  try {
+    const stub = env.MESSAGE_BROADCASTER.get(env.MESSAGE_BROADCASTER.idFromName('global'));
+    const response = await stub.fetch(new Request('https://message-broadcaster/online-users'));
+    if (!response.ok) return null;
+    const body = await response.json() as { userIds?: unknown };
+    return Array.isArray(body.userIds) ? body.userIds.map(String) : null;
+  } catch (error) {
+    log.warn('online users fetch failed', { error: error instanceof Error ? error.message : String(error) });
+    return null;
+  }
 }
 
 /**
