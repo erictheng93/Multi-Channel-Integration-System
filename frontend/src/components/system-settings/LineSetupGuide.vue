@@ -20,7 +20,10 @@
           aria-readonly="true"
           aria-label="Webhook 網址"
           :title="webhookUrl"
-        >{{ webhookUrl }}</code>
+        ><template
+          v-for="part in urlParts"
+          :key="part"
+        >{{ part }}<wbr></template></code>
         <button
           type="button"
           class="btn btn-secondary btn-sm copy-btn"
@@ -70,6 +73,8 @@ import { ref } from 'vue'
 import { getBackendUrl } from '@/config/runtime'
 
 const webhookUrl = `${getBackendUrl()}/api/webhook`
+/** Break points only at slashes, so a narrow screen wraps the path onto a second line instead of splitting the domain */
+const urlParts = webhookUrl.split(/(?=\/)/)
 const copied = ref(false)
 
 async function copy(): Promise<void> {
@@ -121,15 +126,8 @@ async function copy(): Promise<void> {
   flex: 1;
   min-width: 0;
   padding: 6px 0;
-  overflow-x: auto;
-  font: 13px / 1.5 var(--ui-font-mono);
+  font: 13.5px / 1.55 var(--ui-font-mono);
   color: var(--ui-ink);
-  white-space: nowrap;
-  scrollbar-width: none;
-}
-
-.url::-webkit-scrollbar {
-  display: none;
 }
 
 .copy-btn {
@@ -162,18 +160,18 @@ async function copy(): Promise<void> {
 
 .steps {
   display: grid;
-  gap: 8px;
-  margin: 16px 0 0;
+  gap: 12px;
+  margin: 20px 0 0;
   padding: 0;
-  font-size: 14px;
-  color: var(--ui-ink-2);
+  font-size: 15px;
+  color: var(--ui-ink);
   list-style: none;
   counter-reset: step;
 }
 
 .steps li {
   display: flex;
-  gap: 10px;
+  gap: 12px;
   align-items: center;
   counter-increment: step;
 }
@@ -185,19 +183,20 @@ async function copy(): Promise<void> {
   }
 
   .url {
-    mask-image: linear-gradient(90deg, #000 calc(100% - 28px), transparent);
+    font-size: 12px;
   }
+
 }
 
 .steps li::before {
   display: grid;
   flex: none;
   place-items: center;
-  width: 22px;
-  height: 22px;
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
   background: var(--ui-accent-soft);
-  font: 600 13px var(--ui-font-display);
+  font: 700 15px var(--ui-font-display);
   color: var(--ui-accent-ink, var(--ui-accent));
   content: counter(step);
 }

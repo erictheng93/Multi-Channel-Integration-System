@@ -81,33 +81,44 @@
           </div>
           <template v-if="channel.limited && channel.limit !== null && channel.used !== null">
             <div
-              class="qbar-wrap"
-              :class="{ 'has-reserve': reserveAt(channel) !== null }"
+              class="qbar"
+              role="progressbar"
+              aria-valuemin="0"
+              :aria-valuemax="channel.limit"
+              :aria-valuenow="Math.min(channel.used, channel.limit)"
+              :aria-label="`${channel.label} 已使用 ${percent(channel)}%`"
             >
-              <span
-                v-if="reserveAt(channel) !== null"
-                class="qtick"
-                aria-hidden="true"
-                :style="{ left: `${reserveAt(channel)}%` }"
+              <i
+                class="seg-used"
+                :class="tone(channel)"
+                :style="{ width: `${segments(channel).used}%` }"
               />
-              <div
-                class="qbar"
-                role="progressbar"
-                aria-valuemin="0"
-                :aria-valuemax="channel.limit"
-                :aria-valuenow="Math.min(channel.used, channel.limit)"
-                :aria-label="`${channel.label} 已使用 ${percent(channel)}%`"
-              >
-                <i
+              <i
+                v-if="segments(channel).usable > 0"
+                class="seg-usable"
+                :style="{ width: `${segments(channel).usable}%` }"
+              />
+              <i
+                v-if="segments(channel).reserve > 0"
+                class="seg-reserve"
+                :style="{ width: `${segments(channel).reserve}%` }"
+              />
+            </div>
+            <ul class="qlegend">
+              <li :class="`q-${tone(channel)}`">
+                <span
+                  class="sw seg-used"
                   :class="tone(channel)"
-                  :style="{ width: `${percent(channel)}%` }"
-                />
-              </div>
-            </div>
-            <div class="qscale">
-              <span :class="`q-${tone(channel)}`">已用 {{ percent(channel) }}%{{ tone(channel) === 'danger' ? ' · 即將用完' : tone(channel) === 'warn' ? ' · 額度偏緊' : '' }}</span>
-              <span v-if="channel.reserve !== null && channel.usableRemaining !== null">保留 {{ channel.reserve.toLocaleString() }} 則給客服回覆，群發最多再 {{ channel.usableRemaining.toLocaleString() }} 則</span>
-            </div>
+                />已發送<b>{{ channel.used.toLocaleString() }}</b>
+                <small>{{ percent(channel) }}%{{ tone(channel) === 'danger' ? ' · 即將用完' : tone(channel) === 'warn' ? ' · 額度偏緊' : '' }}</small>
+              </li>
+              <li v-if="channel.usableRemaining !== null">
+                <span class="sw seg-usable" />群發還能用<b>{{ channel.usableRemaining.toLocaleString() }}</b>
+              </li>
+              <li v-if="channel.reserve !== null && channel.reserve > 0">
+                <span class="sw seg-reserve" />留給客服回覆<b>{{ channel.reserve.toLocaleString() }}</b>
+              </li>
+            </ul>
           </template>
           <p
             v-if="channel.error"
@@ -201,12 +212,16 @@ function percent(channel: LineQuotaChannel): number {
   return Math.min(Math.round((channel.used / channel.limit) * 100), 100)
 }
 
-/** Where the broadcast ceiling sits on the bar: everything past it is kept back for support replies */
-function reserveAt(channel: LineQuotaChannel): number | null {
-  if (!channel.limit || channel.reserve === null || channel.reserve <= 0 || channel.reserve >= channel.limit) {
-    return null
+/** The month's limit split in three: sent, still usable for broadcasts, kept back for support replies (percent of the limit) */
+function segments(channel: LineQuotaChannel): { used: number, usable: number, reserve: number } {
+  const limit = channel.limit ?? 0
+  if (limit <= 0 || channel.used === null) {
+    return { used: 0, usable: 0, reserve: 0 }
   }
-  return Math.round(((channel.limit - channel.reserve) / channel.limit) * 100)
+  const used = Math.min(channel.used / limit, 1)
+  const reserve = Math.min(Math.max(channel.reserve ?? 0, 0) / limit, 1 - used)
+  const usable = Math.max(0, 1 - used - reserve)
+  return { used: used * 100, usable: usable * 100, reserve: reserve * 100 }
 }
 
 function tone(channel: LineQuotaChannel): 'ok' | 'warn' | 'danger' {
@@ -254,6 +269,11 @@ function formatTime(iso: string): string {
   font-size: 14px;
 }
 
+/* the legend below already splits what is left into usable and kept back */
+.is-bare .quota-rest {
+  display: none;
+}
+
 .is-bare .quota-big {
   font-size: 40px;
 }
@@ -263,110 +283,84 @@ function formatTime(iso: string): string {
 }
 
 .is-bare .qbar {
-  height: 12px;
-}
-
-.state {
-  padding: 20px 22px 28px;
-  text-align: center;
-  color: var(--ui-muted);
-}
-
-.quota-list {
-  display: grid;
-  gap: 4px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.quota {
-  padding: 4px 22px 20px;
-}
-
-.quota-name {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--ui-ink-2);
-}
-
-.quota-top {
   display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 10px;
-  margin-top: 6px;
-}
-
-.quota-big {
-  font: 600 24px / 1 var(--ui-font-display);
-  letter-spacing: -0.03em;
-  font-variant-numeric: tabular-nums;
-}
-
-.quota-big small {
-  margin-left: 4px;
-  font-size: 15px;
-  font-weight: 500;
-  letter-spacing: 0;
-  color: var(--ui-muted);
-}
-
-.quota-rest {
-  margin-left: auto;
-  font-size: 13px;
-  color: var(--ui-muted);
-  font-variant-numeric: tabular-nums;
-}
-
-.quota-rest b {
-  font-weight: 600;
-  color: var(--ui-ink);
-}
-
-.qbar {
-  height: 8px;
-  margin: 14px 0 8px;
+  gap: 3px;
+  height: 14px;
+  margin: 16px 0 12px;
   overflow: hidden;
   border-radius: 999px;
-  background: var(--ui-fill);
 }
 
 .qbar i {
   display: block;
+  min-width: 4px;
   height: 100%;
-  border-radius: inherit;
-  background: var(--ui-green);
+  border-radius: 4px;
   transition: width 300ms var(--ui-ease);
 }
 
-.qbar i.warn {
+.qbar i:first-child {
+  border-radius: 999px 4px 4px 999px;
+}
+
+.qbar i:last-child {
+  border-radius: 4px 999px 999px 4px;
+}
+
+.seg-used {
+  background: var(--ui-green);
+}
+
+.seg-used.warn {
   background: var(--ui-orange);
 }
 
-.qbar i.danger {
+.seg-used.danger {
   background: var(--ui-red);
 }
 
-.qbar-wrap {
-  position: relative;
-  margin: 14px 0 8px;
+.seg-usable {
+  background: var(--ui-green-soft);
+  box-shadow: inset 0 0 0 1.5px var(--ui-green);
 }
 
-.qbar-wrap .qbar {
+.seg-reserve {
+  background: repeating-linear-gradient(135deg, var(--ui-fill-strong) 0 4px, var(--ui-fill) 4px 8px);
+}
+
+.qlegend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 22px;
   margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13.5px;
+  color: var(--ui-ink-2);
+  font-variant-numeric: tabular-nums;
 }
 
-/* the reserve line: a hairline across the track at the broadcast ceiling */
-.qtick {
-  position: absolute;
-  top: -4px;
-  bottom: -4px;
-  z-index: 1;
-  width: 2px;
-  margin-left: -1px;
-  border-radius: 1px;
-  background: var(--ui-ink-2);
+.qlegend li {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+}
+
+.qlegend b {
+  margin-left: 2px;
+  font-weight: 700;
+  color: var(--ui-ink);
+}
+
+.qlegend small {
+  font-size: 13px;
+}
+
+.qlegend .sw {
+  flex: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 4px;
 }
 
 .q-warn {
@@ -377,16 +371,6 @@ function formatTime(iso: string): string {
 .q-danger {
   color: var(--ui-red-ink);
   font-weight: 600;
-}
-
-.qscale {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 2px 16px;
-  justify-content: space-between;
-  font-size: 13px;
-  color: var(--ui-muted);
-  font-variant-numeric: tabular-nums;
 }
 
 .quota-warn {
