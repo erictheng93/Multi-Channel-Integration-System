@@ -335,7 +335,10 @@ export function useReportDashboard(options: UseReportDashboardOptions = {}) {
   /**
    * 应用筛选
    */
-  function applyFilters() {
+  function applyFilters(next?: ReportListQuery) {
+    if (next) {
+      Object.assign(filters, next)
+    }
     pagination.page = 1 // 重置到第一頁
     loadReports()
   }

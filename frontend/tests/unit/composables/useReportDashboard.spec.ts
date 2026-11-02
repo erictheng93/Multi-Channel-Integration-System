@@ -220,6 +220,20 @@ describe('useReportDashboard', () => {
   })
 
   describe('篩選和排序', () => {
+    it('applyFilters 應該套用篩選列送出的條件', async () => {
+      vi.mocked(ReportsAPI.listReports).mockResolvedValue({
+        reports: [],
+        pagination: { page: 1, pageSize: 20, total: 0, totalPages: 0, hasNext: false, hasPrev: false }
+      })
+      const { applyFilters, filters } = useReportDashboard({ autoLoad: false })
+
+      applyFilters({ ...filters, status: 'failed' })
+      await new Promise(resolve => setTimeout(resolve, 0))
+
+      expect(filters.status).toBe('failed')
+      expect(ReportsAPI.listReports).toHaveBeenLastCalledWith(expect.objectContaining({ status: 'failed' }))
+    })
+
     it('applyFilters 應該重置頁碼並重新加載', async () => {
       const { applyFilters, pagination } = useReportDashboard({ autoLoad: false })
 
