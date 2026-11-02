@@ -16,6 +16,10 @@
 --    generated from src/modules/dashboard/services/awaiting-rules.ts, the single definition, which
 --    the nightly heal (healAwaitingSince) also uses. tests/unit/modules/dashboard/awaiting-signoff.test.ts
 --    fails when this file drifts from that module.
+--    A customer message can commit after a reply with an earlier created_at (the inbound path
+--    stamps it before its duplicate check and insert), so trg_messages_awaiting_customer re-derives
+--    the marker instead of assuming insertion order. It only runs when the new message could
+--    change the marker: none set yet, or the new message is older than the current one.
 -- 2. BACKFILL. awaiting_since is re-derived for every conversation that currently has a marker, so
 --    conversations whose only customer messages since the last human reply are sign-offs are cleared.
 -- 3. AUTO-CLOSE INDEX. The nightly auto-close (autoCloseIdleConversations) looks for open,
@@ -38,22 +42,38 @@ AFTER INSERT ON messages
 WHEN NEW.sender_type = 'customer' AND NEW.deleted_at IS NULL
 BEGIN
   UPDATE conversations
-  SET awaiting_since = NEW.created_at
-  WHERE id = NEW.conversation_id
-    AND awaiting_since IS NULL
-    AND NOT ((NEW.message_type = 'sticker'
-    OR (NEW.message_type = 'text'
-        AND TRIM(RTRIM(LOWER(TRIM(NEW.content)), '！!～~。.')) IN ('謝謝', '謝謝你', '謝謝您', '感謝', '感謝您', '多謝', '3q', 'thx', 'thanks', 'thank you', '謝啦', '感恩')))
+  SET awaiting_since = (
+  SELECT MIN(cm.created_at)
+  FROM messages cm
+  WHERE cm.conversation_id = NEW.conversation_id
+    AND cm.sender_type = 'customer'
+    AND cm.deleted_at IS NULL
+    AND cm.created_at > COALESCE((
+      SELECT MAX(am.created_at)
+      FROM messages am
+      WHERE am.conversation_id = NEW.conversation_id
+        AND am.sender_type = 'agent'
+    AND am.deleted_at IS NULL
+    AND COALESCE(am.is_recalled, 0) = 0
+    AND COALESCE(am.is_sent, 1) = 1
+    AND (am.metadata IS NULL OR am.metadata NOT LIKE '%"broadcastId"%')
+    ), '')
+    AND NOT ((cm.message_type = 'sticker'
+    OR (cm.message_type = 'text'
+        AND TRIM(RTRIM(LOWER(TRIM(cm.content)), '！!～~。.')) IN ('謝謝', '謝謝你', '謝謝您', '感謝', '感謝您', '多謝', '3q', 'thx', 'thanks', 'thank you', '謝啦', '感恩')))
     AND EXISTS (
       SELECT 1 FROM messages hr
-      WHERE hr.conversation_id = NEW.conversation_id
+      WHERE hr.conversation_id = cm.conversation_id
         AND hr.sender_type = 'agent'
     AND hr.deleted_at IS NULL
     AND COALESCE(hr.is_recalled, 0) = 0
     AND COALESCE(hr.is_sent, 1) = 1
     AND (hr.metadata IS NULL OR hr.metadata NOT LIKE '%"broadcastId"%')
-        AND hr.created_at < NEW.created_at
-    ));
+        AND hr.created_at < cm.created_at
+    ))
+)
+  WHERE id = NEW.conversation_id
+    AND (awaiting_since IS NULL OR awaiting_since > NEW.created_at);
 END;
 
 CREATE TRIGGER IF NOT EXISTS trg_messages_awaiting_reply_insert
