@@ -215,6 +215,19 @@ export class ReportsAPI {
   }
 
   /**
+   * Types and formats the backend can actually generate (single source for pickers and quick actions).
+   */
+  static getGeneratableOptions(): {
+    types: Array<{ value: ReportType; label: string; description: string }>
+    formats: Array<{ value: ReportFormat; label: string; icon: string }>
+  } {
+    return {
+      types: ReportsAPI.getAvailableReportTypes(),
+      formats: ReportsAPI.getAvailableFormats()
+    };
+  }
+
+  /**
    * 獲取時間範圍選項
    */
   static getTimeRangeOptions(): Array<{ value: ReportTimeRange; label: string }> {

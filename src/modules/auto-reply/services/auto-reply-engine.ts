@@ -10,6 +10,7 @@ import { createDbClient } from '@/db/drizzle-factory';
 import { autoReplyRules, autoReplyConditions, autoReplyActions, autoReplyLogs, autoReplyDeliveries, messages, conversations } from '@/db/schema';
 import { eq, and, isNull } from 'drizzle-orm';
 import { WebSocketBroadcastService } from '@/services/websocket-broadcast-service';
+import { AUTO_REPLY_SENDER_ID } from '@shared/api-contracts';
 import { v4 as uuidv4 } from 'uuid';
 import { createContextLogger } from '@/utils/logger';
 import { nowISO, nowMs } from '@/utils/timestamp';
@@ -194,6 +195,16 @@ export async function evaluateWelcome(
         }),
         broadcastAutoReply(env, conversationId, responseContentSummary, teamId ?? undefined),
       ]);
+    } else {
+      // Follow events carry no platform message id, so the delivery ledger is never touched for
+      // them. Record the failure here so the success rate on the stats endpoint stays honest.
+      await recordWelcomeFailure(env, {
+        ruleId: rule.id,
+        conversationId,
+        customerId,
+        replyMethod: execResult.replyMethod,
+        error: execResult.error || 'Unknown auto-reply delivery error',
+      });
     }
 
     return {
@@ -209,6 +220,45 @@ export async function evaluateWelcome(
       error: error instanceof Error ? error.message : String(error),
     });
     return { matched: false, error: error instanceof Error ? error.message : 'Unknown error' };
+  }
+}
+
+/**
+ * Persist a failed welcome delivery as a one-off ledger row (unique synthetic message id, never retried).
+ * Non-fatal: recording must not break the follow-event flow.
+ */
+async function recordWelcomeFailure(
+  env: Bindings,
+  data: {
+    ruleId: number;
+    conversationId: string;
+    customerId: number;
+    replyMethod: string;
+    error: string;
+  }
+): Promise<void> {
+  try {
+    const drizzleDb = createDbClient(env.DB);
+    const now = nowISO();
+    await drizzleDb.insert(autoReplyDeliveries).values({
+      platform: 'line',
+      platformMessageId: `welcome:${data.conversationId}:${crypto.randomUUID()}`,
+      ruleId: data.ruleId,
+      conversationId: data.conversationId,
+      customerId: data.customerId,
+      status: 'failed',
+      replyMethod: data.replyMethod,
+      attemptCount: 1,
+      lastError: data.error,
+      lastAttemptAt: now,
+      createdAt: now,
+      updatedAt: now,
+    });
+  } catch (error) {
+    log.error('Failed to record welcome auto-reply failure', {
+      conversationId: data.conversationId,
+      error: error instanceof Error ? error.message : String(error),
+    });
   }
 }
 
@@ -746,7 +796,7 @@ async function broadcastAutoReply(
         content,
         messageType: 'text',
         senderType: 'agent', // System messages broadcast as 'agent' (closest available type)
-        senderId: 'auto-reply',
+        senderId: AUTO_REPLY_SENDER_ID,
         senderName: 'Auto-Reply',
         platform: 'line',
         timestamp: nowMs(),

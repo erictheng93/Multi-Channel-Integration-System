@@ -745,6 +745,43 @@ describe('auto-reply-engine', () => {
       expect(result.replyMethod).toBe('reply_api');
       expect(result.error).toBe('API down');
     });
+
+    it('records a failed delivery row when the welcome reply fails', async () => {
+      const env = createMockEnv();
+      kvStore.set('auto-reply:rules:1', JSON.stringify([
+        createRuleFixture({ triggerType: 'welcome', conditions: [] }),
+      ]));
+      mockExecuteActions.mockResolvedValue({
+        success: false, replyMethod: 'push_api', messageCount: 0, error: 'API down',
+      });
+
+      await evaluateWelcome(1, 'token', 'conv-1', 42, 'U123', env);
+
+      const failure = mockInsertValues.mock.calls.find((call: any[]) => call[0]?.status === 'failed');
+      expect(failure).toBeDefined();
+      expect(failure![0]).toMatchObject({
+        platform: 'line',
+        ruleId: 1,
+        conversationId: 'conv-1',
+        customerId: 42,
+        status: 'failed',
+        replyMethod: 'push_api',
+        lastError: 'API down',
+      });
+      expect(failure![0].platformMessageId).toMatch(/^welcome:conv-1:/);
+    });
+
+    it('does not record a failed delivery when the welcome reply succeeds', async () => {
+      const env = createMockEnv();
+      kvStore.set('auto-reply:rules:1', JSON.stringify([
+        createRuleFixture({ triggerType: 'welcome', conditions: [] }),
+      ]));
+      mockExecuteActions.mockResolvedValue({ success: true, replyMethod: 'reply_api', messageCount: 1 });
+
+      await evaluateWelcome(1, 'token', 'conv-1', 42, 'U123', env);
+
+      expect(mockInsertValues.mock.calls.some((call: any[]) => call[0]?.status === 'failed')).toBe(false);
+    });
   });
 
   // ───────────── Audit Log Details ─────────────

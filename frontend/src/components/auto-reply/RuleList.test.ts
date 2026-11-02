@@ -59,6 +59,7 @@ function mountRuleList(overrides: {
     },
     global: {
       stubs: {
+        UiEmptyState: false,
         RuleEditor: { template: '<div class="stub-rule-editor" />' },
         RuleCard: { template: '<div class="stub-rule-card" />' },
       },

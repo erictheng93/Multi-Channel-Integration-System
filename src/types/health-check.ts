@@ -32,11 +32,30 @@ export interface SystemHealth {
   infrastructure: {
     database: HealthCheckResult;
     cache: HealthCheckResult;
+    r2?: HealthCheckResult;
+    durableObject?: HealthCheckResult;
+    queue?: HealthCheckResult;
   };
+  /** Measured values only; a metric with no source is omitted, never reported as 0. */
   performance: {
-    apiResponseTime: number;
-    databaseQueryTime: number;
-    cacheHitRate: number;
+    apiResponseTime?: number;
+    databaseQueryTime?: number;
+    cacheHitRate?: number;
+  };
+  /** Present only when requested with deep=1 (on-demand probes of external services). */
+  deep?: DeepHealth;
+}
+
+export interface DeepHealth {
+  lineWebhook: {
+    status: 'success' | 'failure' | 'skipped';
+    /** LINE's reported result (statusCode / reason / detail) when available. */
+    statusCode?: number;
+    reason?: string;
+    detail?: string;
+    latencyMs?: number;
+    testedAt: string;
+    message: string;
   };
 }
 

@@ -21,6 +21,9 @@ export interface ApiEndpoint {
   requestCount: number
   errorCount: number
   statusCodes: Record<string, number>
+  statusClasses?: Record<string, number>   // '2xx' | '4xx' | '5xx' ... request counts
+  previousAvgResponseTime?: number | null  // avg latency of the hour before
+  avgResponseTimeDeltaPct?: number | null  // (avg - previous) / previous * 100
   lastCheck: string           // ISO timestamp
 }
 
@@ -61,8 +64,18 @@ export interface ApiStatistics {
 }
 
 // ===== Full Monitor Data (from backend) =====
+export interface ApiMetricsMeta {
+  configured: boolean         // false -> show the setup state, endpoints is empty
+  windowMinutes: number
+  generatedAt: string
+  error?: string
+}
+
 export interface MonitorData {
-  status: SystemStatus
+  metrics?: ApiMetricsMeta
+  /** The API sends `overallStatus`; `status` is the older field name */
+  overallStatus?: SystemStatus
+  status?: SystemStatus
   endpoints: ApiEndpoint[]
   infrastructure: InfrastructureItem[]
   channels: ChannelItem[]

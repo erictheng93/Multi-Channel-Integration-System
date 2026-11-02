@@ -6,7 +6,7 @@ import { nowISO, nowMs } from '@/utils/timestamp'
 export class DatabaseHealthChecker implements HealthChecker {
   name = 'database';
   level = HealthLevel.INFRASTRUCTURE;
-  description = 'Database connectivity and performance check';
+  description = 'D1 connectivity (SELECT 1 round trip)';
 
   constructor(private db: D1Database) {}
 
@@ -45,12 +45,12 @@ export class DatabaseHealthChecker implements HealthChecker {
 
       return {
         status: 'healthy',
-        message: 'Database is accessible and responsive',
+        message: 'D1 query succeeded',
         timestamp: nowISO(),
         responseTime,
+        // Only what was measured: D1 exposes no connection pool or row/size metrics here
         details: {
-          queryType: 'simple_select',
-          connectionPool: 'active'
+          queryType: 'simple_select'
         }
       };
 

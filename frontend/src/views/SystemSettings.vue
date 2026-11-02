@@ -1,45 +1,176 @@
 <!--
   SystemSettings.vue
 
-  Shell layout for System Settings with nested route pages.
+  Shared settings layout: page head (title and actions per section), section rail, content column.
   Instantiates the controller once and provides it to all child routes via inject.
-  Sub-navigation lives in AppLayout sidebar (expandable menu, like Reports).
 -->
 
 <template>
   <AppLayout>
-    <div class="system-settings">
-      <SettingsHeader
-        :loading="controller.loading.value"
-        :message="controller.message.value"
-        :message-type="controller.messageType.value"
-        @refresh="controller.loadSettings"
-      />
-
-      <div class="settings-content">
-        <router-view v-slot="{ Component }">
-          <transition
-            name="settings-fade"
-            mode="out-in"
+    <div class="ui-page system-settings">
+      <UiPageHead
+        :subtitle="section ? section.subtitle : ''"
+      >
+        <template #title>
+          {{ section?.title ?? '系統設定' }}
+        </template>
+        <template
+          v-if="section && section.key === 'health'"
+          #actions
+        >
+          <button
+            type="button"
+            class="btn btn-primary"
+            :disabled="controller.processing.value"
+            @click="controller.healthCheck(true)"
           >
-            <component :is="Component" />
-          </transition>
-        </router-view>
+            <svg
+              class="act-ico"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            ><path d="M22 12h-4l-3 9L9 3l-3 9H2" /></svg>
+            {{ controller.processing.value ? '檢查中...' : '立即檢查' }}
+          </button>
+        </template>
+      </UiPageHead>
+
+      <UiSectionNav section="settings" />
+
+      <div
+        v-if="controller.message.value"
+        class="settings-message"
+        :class="`is-${controller.messageType.value}`"
+        role="status"
+      >
+        {{ controller.message.value }}
       </div>
+
+      <div class="settings">
+        <div
+          class="scontent"
+          :class="{ 'is-narrow': isNarrow }"
+        >
+          <router-view v-slot="{ Component }">
+            <transition
+              name="settings-fade"
+              mode="out-in"
+            >
+              <component :is="Component" />
+            </transition>
+          </router-view>
+        </div>
+      </div>
+
+      <Transition name="settings-bar">
+        <UiActionBar
+          v-if="isForm && (dirty || controller.saving.value)"
+          class="settings-actions"
+          label="儲存設定"
+        >
+          <button
+            type="button"
+            class="btn btn-secondary"
+            :disabled="!dirty || controller.saving.value || controller.loading.value"
+            @click="restore"
+          >
+            還原
+          </button>
+          <button
+            type="submit"
+            class="btn btn-primary"
+            :form="SETTINGS_FORM_ID"
+            :disabled="!dirty || controller.saving.value || controller.testing.value"
+          >
+            {{ controller.saving.value ? '儲存中...' : '儲存變更' }}
+          </button>
+        </UiActionBar>
+      </Transition>
     </div>
   </AppLayout>
 </template>
 
 <script setup lang="ts">
-import { onMounted, onUnmounted, provide } from 'vue'
+import UiPageHead from '@/components/ui/UiPageHead.vue'
+import UiSectionNav from '@/components/ui/UiSectionNav.vue'
+import UiActionBar from '@/components/ui/UiActionBar.vue'
+import { computed, onMounted, onUnmounted, provide, reactive, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import AppLayout from '@/components/ui/AppLayout.vue'
 import { useSystemSettingsController } from '@/composables/useSystemSettingsController'
-import { SettingsHeader } from '@/components/system-settings'
+import { SETTINGS_FORM_ID, findSettingsSection } from '@/components/system-settings/settings-pages'
 import { SETTINGS_CONTROLLER_KEY } from '@/types/system-settings'
 
 // Controller — single instance shared with all child routes
 const controller = useSystemSettingsController()
 provide(SETTINGS_CONTROLLER_KEY, controller)
+
+const route = useRoute()
+const section = computed(() => findSettingsSection(route.name))
+
+// Pages with a form and a save button (everything but the health check)
+const isForm = computed(() => !!section.value && section.value.key !== 'health')
+// Facebook and advanced keep one readable column; general and LINE lay out a context column beside it
+const isNarrow = computed(() => section.value?.key === 'facebook' || section.value?.key === 'advanced')
+
+// Dirty tracking: general/advanced compare against the last loaded or saved values, each on its
+// own because a save only sends its own section; the credential pages are dirty once something
+// has been typed into a credential field.
+type ValuesSection = 'general' | 'advanced'
+function isValuesSection(key: string | undefined): key is ValuesSection {
+  return key === 'general' || key === 'advanced'
+}
+function valuesSnapshot(key: ValuesSection): string {
+  return JSON.stringify(controller.settings[key])
+}
+const baseline = reactive<Record<ValuesSection, string>>({
+  general: valuesSnapshot('general'),
+  advanced: valuesSnapshot('advanced')
+})
+const credentialsTyped = computed(() => {
+  const key = section.value?.key
+  if (key === 'line') {
+    const l = controller.settings.integrations.line
+    return [l.channelId, l.channelSecret, l.accessToken].some(v => !!v)
+  }
+  if (key === 'facebook') {
+    const f = controller.settings.integrations.facebook
+    return [f.appId, f.appSecret, f.pageId, f.pageToken].some(v => !!v)
+  }
+  return false
+})
+function restore() {
+  const key = section.value?.key
+  if (key === 'line' || key === 'facebook') { controller.discardCredentialEdits(key) }
+  return controller.loadSettings()
+}
+
+const dirty = computed(() => {
+  const key = section.value?.key
+  if (isValuesSection(key)) {
+    return valuesSnapshot(key) !== baseline[key]
+  }
+  return credentialsTyped.value
+})
+watch(controller.loading, (now) => {
+  if (!now) {
+    baseline.general = valuesSnapshot('general')
+    baseline.advanced = valuesSnapshot('advanced')
+  }
+})
+// The section being saved, remembered in case the user navigates while the request runs
+let savingKey: string | undefined
+watch(controller.saving, (now) => {
+  if (now) {
+    savingKey = section.value?.key
+  } else if (controller.messageType.value === 'success' && isValuesSection(savingKey)) {
+    baseline[savingKey] = valuesSnapshot(savingKey)
+  }
+})
 
 // Lifecycle
 onMounted(() => controller.initialize())
@@ -47,26 +178,87 @@ onUnmounted(() => controller.cleanup())
 </script>
 
 <style scoped>
-.system-settings {
-  /* .page-content is a flex column: max-width + auto margins alone size to the content, so a long
-     (e.g. English) header pushed the page wider than the phone viewport */
-  width: 100%;
-  max-width: 900px;
-  margin: 0 auto;
+
+.settings {
+  min-width: 0;
 }
 
-.settings-content {
-  background: #ffffff;
-  border-radius: 12px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.06);
-  padding: 1.5rem 2rem;
-  min-height: 400px;
+.scontent {
+  display: grid;
+  gap: 22px;
+  min-width: 0;
+}
+
+@media (min-width: 769px) {
+  .settings-actions {
+    max-width: 720px;
+  }
+}
+
+/* Form pages: one readable column instead of a 500px gap between label and control */
+.scontent.is-narrow {
+  max-width: 720px;
+}
+
+.act-ico {
+  width: 16px;
+  height: 16px;
+}
+
+.act-ico.spinning {
+  animation: settings-spin 0.8s linear infinite;
+}
+
+@keyframes settings-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.settings-message {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  z-index: 40;
+  max-width: calc(100vw - 32px);
+  padding: 10px 18px;
+  border-radius: 999px;
+  box-shadow: var(--ui-shadow-raised);
+  transform: translateX(-50%);
+  background: var(--ui-surface);
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--ui-green-ink);
+}
+
+/* Save bar appears only once something changed */
+.settings-bar-enter-active,
+.settings-bar-leave-active {
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease;
+}
+
+.settings-bar-enter-from,
+.settings-bar-leave-to {
+  opacity: 0;
+  transform: translateY(8px);
+}
+
+.settings-message.is-error {
+  color: var(--ui-red-ink);
+}
+
+.settings-message.is-info {
+  color: var(--ui-accent);
 }
 
 /* Page transition */
 .settings-fade-enter-active,
 .settings-fade-leave-active {
-  transition: opacity 0.2s ease, transform 0.2s ease;
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease;
 }
 
 .settings-fade-enter-from {
@@ -79,10 +271,4 @@ onUnmounted(() => controller.cleanup())
   transform: translateY(-6px);
 }
 
-@media (max-width: 768px) {
-  .settings-content {
-    padding: 1rem;
-    border-radius: 8px;
-  }
-}
 </style>

@@ -18,7 +18,7 @@ test.describe('Renamed Routes (P1)', () => {
     await page.goto('/monitoring/api')
 
     await expect(page).toHaveURL(/\/monitoring\/api/)
-    await expect(page).toHaveTitle(/API監控/)
+    await expect(page).toHaveTitle(/API 監控/)
   })
 
   test('should show API Monitor dashboard content', async ({ page }) => {
@@ -33,7 +33,7 @@ test.describe('Renamed Routes (P1)', () => {
   test('should have API Monitor link in sidebar navigation', async ({ page }) => {
     await page.goto('/dashboard')
 
-    const apiMonitorLink = page.getByRole('link', { name: 'API監控' })
+    const apiMonitorLink = page.getByRole('link', { name: 'API 監控' })
     await expect(apiMonitorLink).toBeVisible()
 
     // Click the link and verify navigation

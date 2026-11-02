@@ -182,6 +182,29 @@ describe('MessageDeliveryService.deliver', () => {
     }));
   });
 
+  it('stamps first_response_at with the message time once the platform accepted the reply', async () => {
+    dbMocks.selectResults = [
+      makeMessage({ deliveryStatus: 'buffered', createdAt: '2026-01-15T11:59:50Z' }),
+      makeConversationData(),
+    ];
+
+    await new MessageDeliveryService(makeEnv()).deliver('msg-1');
+
+    expect(dbMocks.updateSet).toHaveBeenCalledWith({ firstResponseAt: '2026-01-15T11:59:50Z' });
+  });
+
+  it('does not stamp first_response_at when the platform rejected the reply', async () => {
+    dbMocks.pushLineMessage.mockResolvedValue(false);
+    dbMocks.selectResults = [
+      makeMessage({ deliveryStatus: 'buffered', createdAt: '2026-01-15T11:59:50Z' }),
+      makeConversationData(),
+    ];
+
+    await new MessageDeliveryService(makeEnv()).deliver('msg-1');
+
+    expect(dbMocks.updateSet).not.toHaveBeenCalledWith(expect.objectContaining({ firstResponseAt: expect.anything() }));
+  });
+
   it('pushes both text and attachments for buffered LINE messages with mixed content', async () => {
     dbMocks.selectResults = [
       makeMessage({

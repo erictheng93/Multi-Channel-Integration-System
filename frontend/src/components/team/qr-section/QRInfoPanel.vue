@@ -254,7 +254,7 @@ const formatDate = (dateString: string | Date | undefined): string => {
 
 .url-label {
   color: #94a3b8;
-  font-size: 0.6875rem;
+  font-size: 13px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -322,7 +322,7 @@ const formatDate = (dateString: string | Date | undefined): string => {
 
 .qr-stat-label {
   color: #94a3b8;
-  font-size: 0.6875rem;
+  font-size: 13px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.03em;
