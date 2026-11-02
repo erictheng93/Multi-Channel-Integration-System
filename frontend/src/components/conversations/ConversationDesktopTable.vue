@@ -257,7 +257,7 @@ const pillTone = (state: string, conversation: Conversation): string => {
   if (state === 'replied') { return 'ui-pill-green' }
   if (state !== 'waiting') { return '' }
   const since = conversation.awaitingSince ? Date.parse(conversation.awaitingSince) : NaN
-  return !Number.isNaN(since) && (now.value - since) / 1000 >= URGENT_WAIT_SECONDS ? 'ui-pill-red' : 'is-calm'
+  return !Number.isNaN(since) && (now.value - since) / 1000 >= URGENT_WAIT_SECONDS ? 'ui-pill-red' : 'ui-pill-orange'
 }
 
 const getUpdatedAt = (conversation: Conversation) => {
