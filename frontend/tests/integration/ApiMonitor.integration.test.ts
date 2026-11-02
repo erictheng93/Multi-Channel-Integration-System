@@ -110,6 +110,12 @@ const ApiStatsGridStub = defineComponent({
   template: '<div class="api-stats-grid-stub"></div>'
 })
 
+const ApiTopologyStub = defineComponent({
+  name: 'ApiTopology',
+  props: ['channels', 'infrastructure', 'endpoints', 'events', 'verdict', 'tone', 'meaning', 'avgMs', 'busy'],
+  template: '<div class="api-topology-stub"></div>'
+})
+
 const ApiFilterStub = defineComponent({
   name: 'ApiFilter',
   props: ['filters'],
@@ -153,6 +159,7 @@ const childStubs = {
   AppLayout: AppLayoutStub,
   ApiHeader: ApiHeaderStub,
   ApiStatsGrid: ApiStatsGridStub,
+  ApiTopology: ApiTopologyStub,
   ApiFilter: ApiFilterStub,
   ApiCardList: ApiCardListStub,
   ApiModal: ApiModalStub,
@@ -216,12 +223,9 @@ describe('ApiMonitor Integration Tests', () => {
     const wrapper = mountApiMonitor()
     await flushPromises()
 
-    expect(wrapper.find('.api-stats-grid-stub').exists()).toBe(true)
+    expect(wrapper.find('.api-topology-stub').exists()).toBe(true)
     expect(wrapper.find('.api-filter-stub').exists()).toBe(true)
     expect(wrapper.find('.api-card-list-stub').exists()).toBe(true)
-    expect(wrapper.find('.infrastructure-card-stub').exists()).toBe(true)
-    expect(wrapper.find('.channel-integrations-card-stub').exists()).toBe(true)
-    expect(wrapper.find('.recent-events-card-stub').exists()).toBe(true)
   })
 
   it('should pass endpoint data to ApiCardList', async () => {
