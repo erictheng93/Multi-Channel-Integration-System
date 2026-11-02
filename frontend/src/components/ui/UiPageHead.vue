@@ -68,6 +68,7 @@
             :class="{ 'is-open': menuOpen }"
             aria-hidden="true"
           >
+            <span class="ui-page-switch-word">切換</span>
             <svg
               width="12"
               height="12"
@@ -234,19 +235,26 @@ watch(() => route?.path, () => { menuOpen.value = false })
 
 /* iOS large-title menu: a small tinted chevron disc trails the title */
 .ui-page-switch-chev {
-  display: grid;
+  display: inline-flex;
   flex: none;
-  place-items: center;
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
-  background: var(--ui-fill);
-  color: var(--ui-ink-2);
+  gap: 4px;
+  align-items: center;
+  height: 28px;
+  padding: 0 10px 0 12px;
+  border-radius: 999px;
+  background: var(--ui-accent-soft);
+  color: var(--ui-accent);
+  font: 600 13px var(--ui-font-display);
+  letter-spacing: 0;
   transition: transform 200ms ease-out;
 }
 
-.ui-page-switch-chev.is-open {
+.ui-page-switch-chev.is-open svg {
   transform: rotate(180deg);
+}
+
+.ui-page-switch-chev svg {
+  transition: transform 200ms ease-out;
 }
 
 .ui-page-switch-menu {

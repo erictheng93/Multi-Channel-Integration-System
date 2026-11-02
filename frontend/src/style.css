@@ -1036,6 +1036,12 @@
     background: var(--ui-red-soft);
     color: color-mix(in srgb, var(--ui-red-ink) 72%, var(--ui-pill-shade));
   }
+  /* A quiet state: the dot and the text, no capsule (used where only the urgent rows should shout) */
+  .ui-pill.is-calm {
+    padding-left: 0;
+    background: transparent;
+    color: var(--ui-orange-ink);
+  }
   .ui-pill-dot::before {
     content: '';
     width: 6px;
@@ -1121,14 +1127,21 @@
     font-variant-numeric: tabular-nums;
   }
 
-  /* Avatar tones: a stable colour per person (see avatarToneOf). All pass AA with white initials. */
-  .ui-av-0 { background: #5856d6; }
-  .ui-av-1 { background: #0e7490; }
-  .ui-av-2 { background: #a33b2c; }
-  .ui-av-3 { background: #b45309; }
-  .ui-av-4 { background: #b8326b; }
-  .ui-av-5 { background: #2563eb; }
-  .ui-av-6 { background: #5b6577; }
+  /* Avatar tones: a stable pastel tint per person (see avatarToneOf), tinted ink on the wash, AA on every pair. */
+  .ui-av-0 { background: #e4e3fa; color: #3f3da8 !important; }
+  .ui-av-1 { background: #d7eef2; color: #0b5566 !important; }
+  .ui-av-2 { background: #f9e0db; color: #8e2f22 !important; }
+  .ui-av-3 { background: #fbe8cf; color: #8a4509 !important; }
+  .ui-av-4 { background: #f8dde9; color: #8c2253 !important; }
+  .ui-av-5 { background: #dce8fb; color: #1b4fc0 !important; }
+  .ui-av-6 { background: #e6e9ee; color: #465061 !important; }
+  [data-theme='dark'] .ui-av-0 { background: #34336b; color: #cfcdfb !important; }
+  [data-theme='dark'] .ui-av-1 { background: #174652; color: #bfe8f0 !important; }
+  [data-theme='dark'] .ui-av-2 { background: #5a2a22; color: #f6cfc8 !important; }
+  [data-theme='dark'] .ui-av-3 { background: #583514; color: #f6dab3 !important; }
+  [data-theme='dark'] .ui-av-4 { background: #5a2440; color: #f4cadd !important; }
+  [data-theme='dark'] .ui-av-5 { background: #1f3a73; color: #c5d9fa !important; }
+  [data-theme='dark'] .ui-av-6 { background: #3a404c; color: #d5dae3 !important; }
 
   /* Filter chip */
   .ui-chip {
