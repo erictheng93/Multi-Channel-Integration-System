@@ -901,8 +901,18 @@ defineExpose({
 
 @media (max-width: 768px) {
   .conversation-header {
-    gap: 6px;
-    padding: 10px 12px;
+    gap: 4px;
+    padding: 8px 12px 10px;
+  }
+
+  .customer-avatar {
+    width: 36px;
+    height: 36px;
+    font-size: 14px;
+  }
+
+  .customer-badges {
+    margin-top: 2px;
   }
 
   /* Two bands: identity + the two icon tools on top, the labelled actions (assign, tags, close) below */
