@@ -10,7 +10,7 @@ controller once (`useSystemSettingsController`) and provides it to the pages via
 - `CredentialRow.vue` - one stored credential: `已設定 ••••last4` + 更換; secrets are never sent to the browser.
 - `GeneralSettingsForm`, `LineIntegrationForm`, `FacebookIntegrationForm`, `AdvancedSettingsForm` - forms.
   Each renders `<form id="settings-form">`; the page-head 儲存變更 button submits it with the `form` attribute.
-- `IntegrationStatusCard.vue`, `SettingsLineQuota.vue` - connection summary and LINE quota.
+- `IntegrationStatusCard.vue` - connection summary. `LineSignalPath.vue` - LINE message path with the monthly quota.
 - `pages/*` - thin route components that inject the controller.
 
 Tests: `frontend/tests/unit/system-settings/`, `frontend/tests/integration/SystemSettings.integration.test.ts`.

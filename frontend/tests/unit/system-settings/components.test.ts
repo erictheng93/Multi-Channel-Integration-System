@@ -164,7 +164,7 @@ describe('System Settings Components', () => {
     it('should emit clear event when the danger zone clear button is clicked', async () => {
       const wrapper = mount(LineDangerZone)
 
-      await wrapper.find('.btn-danger').trigger('click')
+      await wrapper.find('.dz-btn').trigger('click')
 
       expect(wrapper.emitted('clear')).toBeTruthy()
     })
