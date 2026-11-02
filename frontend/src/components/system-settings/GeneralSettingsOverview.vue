@@ -174,6 +174,10 @@ const healthTile = computed<Tile>(() => {
   const rows = controller.healthCheckResults.value
   let tone: Tone = 'muted'
   let state = controller.processing.value ? '檢查中' : '尚未檢查'
+  if (!overall && !controller.processing.value && controller.healthCheckError.value) {
+    tone = 'orange'
+    state = '檢查失敗'
+  }
   if (overall) {
     const bad = rows.some(r => r.status === 'critical') || overall.status === 'critical' || overall.status === 'unhealthy'
     const warn = rows.some(r => r.status === 'warning') || overall.status === 'warning' || overall.status === 'degraded'
