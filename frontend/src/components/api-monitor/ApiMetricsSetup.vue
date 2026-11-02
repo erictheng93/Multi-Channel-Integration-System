@@ -161,7 +161,7 @@ code {
   padding: 12px 14px;
   border-radius: var(--ui-r-inner);
   background: var(--ui-surface-2);
-  font-size: 12.5px;
+  font-size: 13px;
   line-height: 1.6;
   color: var(--ui-muted);
 }

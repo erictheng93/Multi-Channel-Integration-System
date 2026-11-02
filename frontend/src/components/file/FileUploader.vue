@@ -761,7 +761,7 @@ const uploadSingleFile = async (
 }
 
 .progress-text {
-  font-size: 0.75rem;
+  font-size: 13px;
   font-weight: 600;
   color: var(--primary-600);
   min-width: 40px;

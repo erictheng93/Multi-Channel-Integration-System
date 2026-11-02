@@ -152,6 +152,36 @@ describe('mixed sequences', () => {
   });
 });
 
+describe('customer message committed out of timestamp order', () => {
+  it('does not start a wait when an accepted reply already answered it', async () => {
+    const db = freshDb();
+    addConv(db, 'c');
+    addMsg(db, 'c', 'agent', T(2));
+    addMsg(db, 'c', 'customer', T(1));
+    expect(awaitingOf(db, 'c')).toBeNull();
+    expect((await healAwaitingSince(d1Of(db), NOW)).corrected).toBe(0);
+  });
+
+  it('moves the wait back to the earliest unanswered message', async () => {
+    const db = freshDb();
+    addConv(db, 'c');
+    addMsg(db, 'c', 'agent', T(1));
+    addMsg(db, 'c', 'customer', T(3), { content: '問題' });
+    addMsg(db, 'c', 'customer', T(2), { content: '先問這個' });
+    expect(awaitingOf(db, 'c')).toBe(T(2));
+    expect((await healAwaitingSince(d1Of(db), NOW)).corrected).toBe(0);
+  });
+
+  it('a late sign-off does not move the wait', () => {
+    const db = freshDb();
+    addConv(db, 'c');
+    addMsg(db, 'c', 'agent', T(1));
+    addMsg(db, 'c', 'customer', T(3), { content: '問題' });
+    addMsg(db, 'c', 'customer', T(2), { content: '謝謝' });
+    expect(awaitingOf(db, 'c')).toBe(T(3));
+  });
+});
+
 describe('migration 0072', () => {
   it('re-creates the five awaiting triggers under their 0070 names', () => {
     const db = freshDb();
@@ -171,11 +201,10 @@ describe('migration 0072', () => {
 
   it('embeds exactly the shared SQL fragments (no drift from awaiting-rules.ts)', () => {
     const sql = readMigration(MIGRATION_HYGIENE).replace(/\r\n/g, '\n');
-    expect(sql).toContain(startsWaitSql('NEW'));
     expect(sql).toContain(startsWaitSql('cm'));
     expect(sql).toContain(awaitingExpression('NEW.conversation_id'));
     expect(sql).toContain(awaitingExpression('conversations.id'));
-    expect(sql).toContain(signOffSql('NEW'));
+    expect(sql).toContain(signOffSql('cm'));
   });
 
   it('backfill clears markers whose only unanswered messages are sign-offs and keeps real waits', () => {

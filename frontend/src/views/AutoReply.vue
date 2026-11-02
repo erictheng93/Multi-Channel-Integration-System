@@ -1,23 +1,12 @@
 <template>
   <AppLayout>
-    <div class="auto-reply-page">
+    <div class="ui-page auto-reply-page ui-rise">
       <!-- Page Header -->
-      <div class="ui-page-head">
-        <div>
-          <div class="ui-eyebrow">
-            客戶經營
-          </div>
-          <h1 class="ui-page-title">
-            自動回覆
-          </h1>
-          <p
-            v-if="!loading && headline"
-            class="ui-page-sub"
-          >
-            {{ headline }}
-          </p>
-        </div>
-        <div class="ui-page-actions">
+      <UiPageHead
+        title="自動回覆"
+        :subtitle="!loading && headline ? headline : ''"
+      >
+        <template #actions>
           <button
             class="btn btn-secondary"
             :disabled="loading"
@@ -25,8 +14,8 @@
           >
             重新整理
           </button>
-        </div>
-      </div>
+        </template>
+      </UiPageHead>
 
       <!-- Loading -->
       <div
@@ -158,6 +147,7 @@
 </template>
 
 <script setup lang="ts">
+import UiPageHead from '@/components/ui/UiPageHead.vue'
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import AppLayout from '@/components/ui/AppLayout.vue'
 import LoadingSpinner from '@/components/ui/LoadingSpinner.vue'
@@ -257,15 +247,6 @@ onUnmounted(() => cleanup())
 </script>
 
 <style scoped>
-.auto-reply-page {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  width: 100%;
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 20px;
-}
 
 .loading-container {
   display: flex;
@@ -291,9 +272,6 @@ onUnmounted(() => cleanup())
 }
 
 @media (max-width: 768px) {
-  .auto-reply-page {
-    padding: 16px;
-  }
 
   .tabs-bar {
     align-self: stretch;

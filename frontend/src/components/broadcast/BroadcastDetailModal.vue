@@ -325,16 +325,16 @@ function reasonLabel(reason: BroadcastRecipientErrorReason): string {
 }
 
 .chip-n {
-  font-size: 11.5px;
+  font-size: 13px;
   font-variant-numeric: tabular-nums;
   color: var(--ui-muted);
 }
 
-/* On the selected (dark) chip the count follows the chip's light text */
+/* On the selected (accent wash) chip the count follows the chip ink */
 .ui-chip.is-on .chip-n,
 .ui-chip[aria-pressed="true"] .chip-n {
   color: inherit;
-  opacity: 0.8;
+  opacity: 1;
 }
 
 
@@ -365,7 +365,7 @@ function reasonLabel(reason: BroadcastRecipientErrorReason): string {
 }
 
 .reason {
-  font-size: 12.5px;
+  font-size: 13px;
   color: var(--ui-red-ink);
 }
 
@@ -374,7 +374,7 @@ function reasonLabel(reason: BroadcastRecipientErrorReason): string {
   align-items: center;
   gap: 8px;
   padding: 10px 22px 14px;
-  font-size: 12.5px;
+  font-size: 13px;
   color: var(--ui-muted);
   font-variant-numeric: tabular-nums;
 }

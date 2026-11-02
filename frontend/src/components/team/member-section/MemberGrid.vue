@@ -284,7 +284,7 @@ const getRoleDisplayName = (role: string): string => {
 .btn-remove:disabled {
   opacity: 0.5;
   cursor: not-allowed;
-  font-size: 0.75rem;
+  font-size: 13px;
 }
 
 /* ============================================

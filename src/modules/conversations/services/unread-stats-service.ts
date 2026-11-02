@@ -111,7 +111,9 @@ export function fastUnreadAggregateSql(visibilityClause: string, visibilityClaus
   // Branch 1: the customer spoke after the last agent/system reply AND after the unread floor
   // (both read from the covering partial index, before any read-state lookup); the exact
   // threshold including this agent's last_read_at is applied in the final WHERE.
-  // Branch 2: this agent's manual unread flags that branch 1 did not already pick up.
+  // Branch 2: this agent's manual unread flags that branch 1 did not already pick up. A NULL
+  // last_customer_message_at (no customer message) never matches branch 1, so it is tested
+  // explicitly: NOT (NULL ...) is NULL and would drop the row.
   const customerLast = "c.last_customer_message_at > COALESCE(c.last_agent_message_at, '')";
   return `
     WITH cand AS (
@@ -146,9 +148,12 @@ export function fastUnreadAggregateSql(visibilityClause: string, visibilityClaus
       WHERE rs.agent_id = ? AND rs.marked_unread_at IS NOT NULL
         AND c.status <> 'closed'
         AND ${visibilityClause2}
-        AND NOT (
-          ${customerLast}
-          AND c.last_customer_message_at > COALESCE(c.unread_floor_at, '')
+        AND (
+          c.last_customer_message_at IS NULL
+          OR NOT (
+            ${customerLast}
+            AND c.last_customer_message_at > COALESCE(c.unread_floor_at, '')
+          )
         )
     )
     ${AGGREGATE_SELECT}

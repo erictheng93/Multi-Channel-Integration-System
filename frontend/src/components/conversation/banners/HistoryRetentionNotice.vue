@@ -116,7 +116,7 @@ onBeforeUnmount(() => {
 
 @media (max-width: 768px) {
   .history-retention-notice {
-    font-size: 12px;
+    font-size: 13px;
     margin: 6px 12px;
     padding: 7px 12px;
   }
