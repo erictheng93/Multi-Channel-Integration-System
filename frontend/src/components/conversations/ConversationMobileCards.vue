@@ -88,7 +88,7 @@
             <span
               v-else
               class="ui-pill ui-pill-dot state-text"
-              :class="[pillTone(replyStateOf(conversation, now).state), `state-${replyStateOf(conversation, now).state}`]"
+              :class="[pillTone(replyStateOf(conversation, now).state, conversation), `state-${replyStateOf(conversation, now).state}`]"
               :title="replyStateOf(conversation, now).state === 'waiting' ? WAITING_HINT : undefined"
             >{{ replyStateOf(conversation, now).text }}</span>
             <span
@@ -139,8 +139,13 @@ const emit = defineEmits<{
 
 const { now } = useRowClock(toRef(props, 'conversations'))
 
-const pillTone = (state: string): string =>
-  state === 'waiting' ? 'ui-pill-orange' : state === 'replied' ? 'ui-pill-green' : ''
+// Emphasis follows urgency: a fresh wait is a quiet dot-and-text, only a wait past 30 minutes becomes a red capsule
+const URGENT_WAIT_SECONDS = 1800
+const pillTone = (state: string, conversation: Conversation): string => {
+  if (state !== 'waiting') { return state === 'replied' ? 'ui-pill-green' : '' }
+  const since = conversation.awaitingSince ? Date.parse(conversation.awaitingSince) : NaN
+  return !Number.isNaN(since) && (now.value - since) / 1000 >= URGENT_WAIT_SECONDS ? 'ui-pill-red' : 'is-calm'
+}
 
 // 選取模式下，點擊整張卡片切換選取而非導覽
 const handleCardClick = (id: string) => {
@@ -338,10 +343,9 @@ const getLastMessageText = (conversation: Conversation) => {
   color: var(--ui-muted);
 }
 
-/* Unread: the same faint wash as the desktop list */
-.conversation-card.has-unread {
-  background: color-mix(in srgb, var(--section-hue) 7%, var(--ui-surface));
-  box-shadow: inset 4px 0 0 var(--section-ink);
+/* Unread is one signal, as on desktop: the count badge, with the name set heavier */
+.conversation-card.has-unread .customer-name {
+  font-weight: 700;
 }
 
 .replied-text {
@@ -350,14 +354,14 @@ const getLastMessageText = (conversation: Conversation) => {
   align-items: center;
   font-size: 13px;
   font-weight: 500;
-  color: var(--ui-green-ink);
+  color: var(--ui-muted);
 }
 
 .replied-text svg {
   width: 14px;
   height: 14px;
   fill: none;
-  stroke: currentColor;
+  stroke: var(--ui-green-ink);
   stroke-width: 2.4;
   stroke-linecap: round;
   stroke-linejoin: round;
