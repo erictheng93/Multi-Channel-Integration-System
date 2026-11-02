@@ -9,7 +9,6 @@
     />
     <UiSectionNav section="data" />
 
-    <UiSectionNav section="data" />
 
     <!-- Lead: the one task. The chosen format and the single action -->
     <RingLead

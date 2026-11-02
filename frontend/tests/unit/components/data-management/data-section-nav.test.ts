@@ -19,7 +19,8 @@ describe('資料管理 section nav', () => {
     ['DataExport', DataExport],
     ['DataBackup', DataBackup]
   ])('%s renders the data section nav', (_name, page) => {
-    const wrapper = shallowMount(page)
-    expect(wrapper.find('ui-section-nav-stub').attributes('section')).toBe('data')
+    const navs = shallowMount(page).findAll('ui-section-nav-stub')
+    expect(navs).toHaveLength(1)
+    expect(navs[0]?.attributes('section')).toBe('data')
   })
 })
