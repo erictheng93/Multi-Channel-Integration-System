@@ -110,6 +110,14 @@
                 title="這位客戶從未收到客服回覆"
               >從未回覆</span>
             </template>
+            <!-- Answered rows go quiet (a check and text); only rows that still need a reply carry a coloured pill -->
+            <span
+              v-else-if="replyStateOf(conversation, now).state === 'replied'"
+              class="replied-text state-text"
+            ><svg
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+            ><path d="m5 12.5 4.5 4.5L19 7.5" /></svg>{{ replyStateOf(conversation, now).text }}</span>
             <span
               v-else
               class="ui-pill ui-pill-dot state-text"
@@ -243,13 +251,13 @@ const waitedText = (conversation: Conversation): string => {
   return Number.isNaN(since) ? '' : formatWaitText(Math.max(0, (now.value - since) / 1000))
 }
 
-// Urgency escalates the colour: orange while it is a normal wait, red once a customer has waited over 30 minutes
+// Emphasis follows urgency: a fresh wait is a quiet dot-and-text, only a wait past 30 minutes becomes a red capsule
 const URGENT_WAIT_SECONDS = 1800
 const pillTone = (state: string, conversation: Conversation): string => {
   if (state === 'replied') { return 'ui-pill-green' }
   if (state !== 'waiting') { return '' }
   const since = conversation.awaitingSince ? Date.parse(conversation.awaitingSince) : NaN
-  return !Number.isNaN(since) && (now.value - since) / 1000 >= URGENT_WAIT_SECONDS ? 'ui-pill-red' : 'ui-pill-orange'
+  return !Number.isNaN(since) && (now.value - since) / 1000 >= URGENT_WAIT_SECONDS ? 'ui-pill-red' : 'is-calm'
 }
 
 const getUpdatedAt = (conversation: Conversation) => {
@@ -363,29 +371,30 @@ const getLastMessageText = (conversation: Conversation) => {
   box-shadow: var(--ui-sel-ring);
 }
 
-/* Unread: a faint section wash plus a heavier message line and the count badge (no gutter dot floating outside the row) */
-.conversation-row.has-unread {
-  background: color-mix(in srgb, var(--section-hue) 7%, var(--ui-surface));
-}
-
-/* the accent bar is the unread marker you can scan down the list */
-.conversation-row.has-unread::after {
-  position: absolute;
-  top: 8px;
-  bottom: 8px;
-  left: 0;
-  width: 4px;
-  border-radius: 0 4px 4px 0;
-  background: var(--section-ink);
-  content: '';
-}
-
+/* Unread is ONE signal: the count badge beside the name, with the name and message set heavier. No rail, no wash. */
 .conversation-row.has-unread .customer-name-text {
   font-weight: 700;
 }
 
-.conversation-row.has-unread:hover {
-  background: color-mix(in srgb, var(--section-hue) 11%, var(--ui-surface));
+.replied-text {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  height: 24px;
+  padding: 0 10px 0 0;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ui-muted);
+}
+
+.replied-text svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: var(--ui-green-ink);
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .select-all {
@@ -578,6 +587,7 @@ const getLastMessageText = (conversation: Conversation) => {
 
 /* Free-reply countdown is time-critical: a green capsule under the timestamp */
 .free-pill {
+  padding-left: 10px;
   font-size: 13px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;

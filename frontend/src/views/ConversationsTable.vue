@@ -205,7 +205,7 @@
                   v-if="waitingTop"
                   class="rail-meta"
                 >
-                  最久等 <strong :class="{ 'is-hot': oldestWaitHot }">{{ oldestWaitText }}</strong><template v-if="queueRows.length <= 1">
+                  最久等 <strong :class="{ 'is-hot': oldestWaitHot }">{{ oldestWaitText }}</strong><template v-if="waitingTop.customerName">
                     ・ {{ waitingTop.customerName }}
                   </template>
                 </p>
@@ -240,32 +240,6 @@
                     逾期 {{ staleCount }} 件
                   </button>
                 </div>
-              </section>
-
-              <section
-                v-if="queueRows.length > 1"
-                class="rail-sec"
-                aria-labelledby="rail-queue-title"
-              >
-                <h2
-                  id="rail-queue-title"
-                  class="rail-label"
-                >
-                  等待最久
-                </h2>
-                <button
-                  v-for="q in queueRows"
-                  :key="q.id"
-                  type="button"
-                  class="rail-row"
-                  @click="goToConversation(q.id)"
-                >
-                  <span class="rail-name">{{ q.name }}</span>
-                  <span
-                    class="rail-total"
-                    :class="{ 'is-hot': q.hot }"
-                  >{{ q.text }}</span>
-                </button>
               </section>
 
               <section
@@ -426,14 +400,12 @@ const waitingTotal = ref(0)
 const waitingSince = ref<string | null>(null)
 const staleCount = ref(0)
 const waitingTop = ref<{ conversationId: string; customerName: string } | null>(null)
-// the longest-waiting customers, longest first (the queue the lead number counts)
-const waitingQueue = ref<{ id: string; name: string; since: string }[]>([])
 const clock = ref(Date.now())
 let clockTimer: ReturnType<typeof setInterval> | null = null
 
 async function loadCounts() {
   try {
-    const [statsRes, waitingRes] = await Promise.all([conversationApi.getStats(), conversationApi.getWaiting(4)])
+    const [statsRes, waitingRes] = await Promise.all([conversationApi.getStats(), conversationApi.getWaiting(1)])
     if (statsRes.success && statsRes.data) { counts.value = statsRes.data }
     if (waitingRes.success && waitingRes.data) {
       waitingTotal.value = waitingRes.data.total
@@ -441,7 +413,6 @@ async function loadCounts() {
       staleCount.value = waitingRes.data.stale?.count ?? 0
       const top = waitingRes.data.items[0]
       waitingTop.value = top ? { conversationId: top.conversationId, customerName: top.customerName ?? '客戶' } : null
-      waitingQueue.value = waitingRes.data.items.slice(0, 4).map(i => ({ id: i.conversationId, name: i.customerName ?? '客戶', since: i.waitingSince }))
     }
   } catch (err) {
     console.warn('Failed to load conversation counts:', err)
@@ -450,11 +421,6 @@ async function loadCounts() {
 
 const oldestWaitText = computed(() =>
   waitingSince.value ? formatWaitText(Math.max(0, (clock.value - Date.parse(waitingSince.value)) / 1000)) : '')
-
-const queueRows = computed(() => waitingQueue.value.map(q => {
-  const secs = Math.max(0, (clock.value - Date.parse(q.since)) / 1000)
-  return { ...q, text: formatWaitText(secs), hot: secs >= 1800 }
-}))
 
 const oldestWaitHot = computed(() => waitingSince.value !== null && clock.value - Date.parse(waitingSince.value) >= 30 * 60 * 1000)
 
@@ -1325,9 +1291,22 @@ onUnmounted(() => {
     line-height: 1.25;
   }
 
+  /* Stat tab: the count leads (large), the label sits under it */
   .filter-top > .ui-seg .scope-tab .ui-seg-n {
+    order: -1;
     margin-left: 0;
-    font-size: 13px;
+    font: 700 18px/1.2 var(--ui-font-display);
+  }
+
+  .filter-top > .ui-seg .scope-tab:not(.is-on) .ui-seg-n {
+    color: var(--ui-ink-2);
+  }
+
+  /* The search and filters stay in reach while the list scrolls */
+  .filter-card {
+    position: sticky;
+    top: 8px;
+    z-index: 6;
   }
 
   .scope-tab.is-stale {
