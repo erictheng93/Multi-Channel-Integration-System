@@ -169,7 +169,7 @@
 }
 
 .loading-text {
-  font-size: 0.75rem;
+  font-size: 13px;
   color: var(--gray-500);
   text-align: center;
 }
@@ -248,7 +248,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 10px;
+  font-size: 13px;
   font-weight: 600;
   box-shadow: var(--shadow-sm);
   animation: pulse-glow 2s infinite;
@@ -276,7 +276,7 @@
 .cdn-info {
   color: var(--amber-600);
   font-weight: 600;
-  font-size: 0.6rem;
+  font-size: 13px;
 }
 
 .message-outgoing .sticker-info.enhanced {

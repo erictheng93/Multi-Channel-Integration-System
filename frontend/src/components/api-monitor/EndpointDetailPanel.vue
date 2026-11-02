@@ -130,7 +130,7 @@ const lastCheckText = computed(() => {
 }
 
 .k {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--ui-muted);
 }
 
@@ -142,7 +142,7 @@ const lastCheckText = computed(() => {
 
 .v small {
   margin-left: 2px;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 500;
   color: var(--ui-muted);
 }
@@ -161,7 +161,7 @@ const lastCheckText = computed(() => {
 
 .codes .h {
   margin-bottom: 6px;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--ui-muted);
 }
 
@@ -171,11 +171,11 @@ const lastCheckText = computed(() => {
   gap: 12px;
   align-items: center;
   padding: 3px 0;
-  font-size: 12.5px;
+  font-size: 13px;
 }
 
 .mono {
-  font: 600 12px var(--ui-font-mono);
+  font: 600 13px var(--ui-font-mono);
 }
 
 .n {
@@ -211,7 +211,7 @@ const lastCheckText = computed(() => {
 
 .dfoot {
   margin-top: 14px;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--ui-muted);
 }
 

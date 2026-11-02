@@ -203,7 +203,7 @@ withDefaults(defineProps<Props>(), {
   }
 
   .drag-drop-hint {
-    font-size: 0.75rem;
+    font-size: 13px;
   }
 }
 </style>

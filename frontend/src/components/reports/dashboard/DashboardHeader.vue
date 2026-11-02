@@ -1,38 +1,25 @@
 <template>
-  <section class="header-wrap">
-    <div class="ui-page-head">
-      <div>
-        <div class="ui-eyebrow">
-          報表
-        </div>
-        <h1 class="ui-page-title">
-          報表總覽
-        </h1>
-        <p
-          v-if="subtitle"
-          class="ui-page-sub"
-        >
-          {{ subtitle }}
-        </p>
-      </div>
-      <div class="ui-page-actions">
-        <button
-          class="btn btn-secondary"
-          :disabled="loading"
-          @click="$emit('refresh')"
-        >
-          {{ loading ? '載入中...' : '重新整理' }}
-        </button>
-        <button
-          class="btn btn-primary"
-          @click="$emit('create-report')"
-        >
-          建立報表
-        </button>
-      </div>
-    </div>
-    <ReportsNav />
-  </section>
+  <UiPageHead
+    title="報表總覽"
+    :subtitle="subtitle"
+  >
+    <template #actions>
+      <button
+        class="btn btn-secondary"
+        :disabled="loading"
+        @click="$emit('refresh')"
+      >
+        {{ loading ? '載入中...' : '重新整理' }}
+      </button>
+      <button
+        class="btn btn-primary"
+        @click="$emit('create-report')"
+      >
+        建立報表
+      </button>
+    </template>
+  </UiPageHead>
+  <UiSectionNav section="reports" />
 </template>
 
 <script setup lang="ts">
@@ -42,7 +29,8 @@
  * @emits refresh - 用户点击刷新按钮
  * @emits create-report - 用户点击创建报表按钮
  */
-import ReportsNav from '../ReportsNav.vue'
+import UiPageHead from '@/components/ui/UiPageHead.vue'
+import UiSectionNav from '@/components/ui/UiSectionNav.vue'
 
 export interface DashboardHeaderProps {
   /** 是否正在加载 */
@@ -61,11 +49,3 @@ defineEmits<{
   'create-report': []
 }>()
 </script>
-
-<style scoped>
-.header-wrap {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-</style>

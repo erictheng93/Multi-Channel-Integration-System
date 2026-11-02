@@ -1,19 +1,11 @@
 <template>
-  <header class="ui-page-head">
-    <div>
-      <div class="ui-eyebrow">
-        系統監控
-      </div>
-      <h1 class="ui-page-title">
-        API 監控
-      </h1>
-      <p class="ui-page-sub">
-        {{ subtitle }}
-      </p>
-    </div>
-
-    <div class="ui-page-actions">
+  <UiPageHead
+    title="API 監控"
+    :subtitle="subtitle"
+  >
+    <template #actions>
       <span
+        v-if="showStatus"
         class="ui-pill ui-pill-dot"
         :class="statusPillClass"
       >{{ statusLabel }}</span>
@@ -50,11 +42,12 @@
         ><path d="M21 12a9 9 0 0 1-15.5 6.2L3 16M3 12a9 9 0 0 1 15.5-6.2L21 8M21 3v5h-5M3 21v-5h5" /></svg>
         重新整理
       </button>
-    </div>
-  </header>
+    </template>
+  </UiPageHead>
 </template>
 
 <script setup lang="ts">
+import UiPageHead from '@/components/ui/UiPageHead.vue'
 import { computed } from 'vue'
 import type { ApiStatistics, SystemStatus } from '@/types/api-monitor'
 
@@ -69,6 +62,8 @@ interface Props {
   metricsConfigured?: boolean
   /** Failing components, named in the subtitle (e.g. 「Facebook Messenger 連線錯誤」) */
   causes?: string[]
+  /** Show the status pill; pages that carry the status in a lead metric turn it off */
+  showStatus?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -80,6 +75,7 @@ const props = withDefaults(defineProps<Props>(), {
   stats: null,
   metricsConfigured: true,
   causes: () => [],
+  showStatus: true,
 })
 
 const emit = defineEmits<{
@@ -100,19 +96,19 @@ const subtitle = computed(() => {
     second: '2-digit',
     hour12: false,
   }).format(props.lastUpdated)
-  const checked = `最後檢查 ${time}。`
+  const checked = ` · 最後檢查 ${time}`
   const causeText = props.causes.length > 0 ? `${props.causes.join('、')}。` : ''
   if (!props.metricsConfigured) {
-    return `${causeText}尚未設定端點指標，基礎設施與頻道狀態仍會顯示。${checked}`
+    return `${causeText}尚未設定端點指標${checked}`
   }
   const stats = props.stats
   if (!stats || stats.totalEndpoints === 0) {
-    return `${causeText}目前沒有端點資料。${checked}`
+    return `${causeText}目前沒有端點資料${checked}`
   }
   if (stats.errorCount === 0 && stats.warningCount === 0) {
-    return `${causeText}全部 ${stats.totalEndpoints} 個端點正常。${checked}`
+    return `${causeText}全部 ${stats.totalEndpoints} 個端點正常${checked}`
   }
-  return `${causeText}${stats.errorCount} 個端點異常、${stats.warningCount} 個需留意，其餘 ${stats.healthyCount} 個正常。${checked}`
+  return `${causeText}${stats.errorCount} 個端點異常、${stats.warningCount} 個需留意${checked}`
 })
 
 const statusLabel = computed(() => {
@@ -139,7 +135,7 @@ const statusPillClass = computed(() => {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  font-size: 12.5px;
+  font-size: 13px;
   font-weight: 500;
   color: var(--ui-muted);
 }

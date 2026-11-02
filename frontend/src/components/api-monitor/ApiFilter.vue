@@ -1,7 +1,7 @@
 <template>
   <div class="toolbar">
     <div
-      class="ui-seg"
+      class="chips"
       role="group"
       aria-label="依狀態篩選"
     >
@@ -9,33 +9,31 @@
         v-for="s in statusOptions"
         :key="s.value"
         type="button"
+        class="ui-chip"
         :aria-pressed="filters.status === s.value"
         @click="updateFilter('status', s.value)"
       >
         {{ s.label }}
         <span
           v-if="counts"
-          class="ui-seg-n"
+          class="chip-n"
         >{{ counts[s.value] }}</span>
       </button>
     </div>
-
-    <div
-      class="ui-seg"
-      role="group"
+    <select
+      class="ui-select cat"
       aria-label="依分類篩選"
+      :value="filters.category"
+      @change="updateCategory"
     >
-      <button
+      <option
         v-for="c in categoryOptions"
         :key="c.value"
-        type="button"
-        :aria-pressed="filters.category === c.value"
-        @click="updateFilter('category', c.value)"
+        :value="c.value"
       >
         {{ c.label }}
-      </button>
-    </div>
-
+      </option>
+    </select>
     <label class="find">
       <svg
         viewBox="0 0 24 24"
@@ -83,7 +81,7 @@ const statusOptions = [
 ]
 
 const categoryOptions = [
-  { value: 'all' as const, label: '全部' },
+  { value: 'all' as const, label: '全部分類' },
   { value: 'system' as const, label: '系統' },
   { value: 'auth' as const, label: '驗證' },
   { value: 'conversation' as const, label: '業務' },
@@ -92,6 +90,11 @@ const categoryOptions = [
 
 function updateFilter(key: 'status' | 'category', value: string) {
   emit('update:filters', { ...props.filters, [key]: value })
+}
+
+function updateCategory(e: Event) {
+  const target = e.target as HTMLSelectElement
+  emit('update:filters', { ...props.filters, category: target.value as FilterState['category'] })
 }
 
 function updateSearch(e: Event) {
@@ -109,10 +112,23 @@ function updateSearch(e: Event) {
   padding: 0 22px 14px;
 }
 
-.toolbar .ui-seg {
-  max-width: 100%;
-  overflow-x: auto;
-  scrollbar-width: none;
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chip-n {
+  font-variant-numeric: tabular-nums;
+  opacity: 0.75;
+}
+
+.cat {
+  width: auto;
+  min-width: 112px;
+  height: 34px;
+  border-radius: 999px;
+  font-size: 13px;
 }
 
 .find {
@@ -142,6 +158,10 @@ function updateSearch(e: Event) {
 @media (max-width: 768px) {
   .toolbar {
     padding: 0 16px 14px;
+  }
+
+  .find {
+    flex-basis: 100%;
   }
 }
 </style>

@@ -179,10 +179,11 @@ describe('ActivityTimelineItem', () => {
     expect(toggle.attributes('aria-expanded')).toBe('false')
   })
 
-  it('applies correct icon background for message actions (classes use the green token)', () => {
-    const wrapper = mountItem(makeActivity({ action: 'message_send' }))
-    const iconEl = wrapper.find('.timeline-item__icon')
-    expect(iconEl.classes().join(' ')).toContain('--ui-green-soft')
+  it('tints the tile by the kind of action', () => {
+    const message = mountItem(makeActivity({ action: 'message_send' }))
+    const settings = mountItem(makeActivity({ action: 'settings_update' }))
+    expect(message.find('.timeline-item__icon').classes().join(' ')).toContain('--ui-green-soft')
+    expect(settings.find('.timeline-item__icon').classes().join(' ')).toContain('--ui-indigo-soft')
   })
 
   it('renders relative time (.timeline-item__time exists)', () => {
@@ -312,5 +313,26 @@ describe('ActivityTimelineItem', () => {
     const modal = wrapper.findComponent({ name: 'RestoreConfirmModal' })
     expect(modal.props('open')).toBe(true)
     expect(modal.props('midChanges')).toHaveLength(1)
+  })
+})
+
+describe('system actor', () => {
+  it('renders as 系統 with a neutral tile and no role pill, never as a member', () => {
+    setCurrentAgent('admin-1', 'admin')
+    const wrapper = mountItem(makeActivity({
+      userId: 'system', userName: 'System', userRole: 'system', action: 'conversation_auto_close', resourceType: 'conversation'
+    }))
+    expect(wrapper.find('.timeline-item__user').text()).toBe('系統')
+    expect(wrapper.find('.timeline-item__role').exists()).toBe(false)
+    const tile = wrapper.find('.timeline-item__icon')
+    expect(tile.attributes('data-system-actor')).toBeDefined()
+    expect(tile.classes().join(' ')).toContain('--ui-fill')
+  })
+
+  it('a member keeps their name and role pill', () => {
+    setCurrentAgent('admin-1', 'admin')
+    const wrapper = mountItem(makeActivity())
+    expect(wrapper.find('.timeline-item__user').text()).toBe('Alice Wang')
+    expect(wrapper.find('.timeline-item__role').exists()).toBe(true)
   })
 })

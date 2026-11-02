@@ -693,7 +693,7 @@ defineExpose({
   color: var(--gray-600);
   cursor: pointer;
   border-radius: var(--radius-md);
-  font-size: 0.75rem;
+  font-size: 13px;
   font-weight: 600;
   transition: all var(--transition-fast);
 }
@@ -806,7 +806,7 @@ defineExpose({
 }
 
 .filter-label {
-  font-size: 0.75rem;
+  font-size: 13px;
   font-weight: 500;
   color: var(--gray-700);
 }
@@ -833,7 +833,7 @@ defineExpose({
   border: 1px solid var(--red-200);
   border-radius: var(--radius-md);
   color: var(--red-600);
-  font-size: 0.75rem;
+  font-size: 13px;
   cursor: pointer;
   transition: all var(--transition-fast);
 }
@@ -917,7 +917,7 @@ defineExpose({
   .remote-search-button {
     min-width: auto;
     padding: 0 var(--space-2);
-    font-size: 0.75rem;
+    font-size: 13px;
   }
 
   .search-filters {
@@ -930,14 +930,14 @@ defineExpose({
 
   .filter-select,
   .clear-filters {
-    font-size: 0.75rem;
+    font-size: 13px;
     padding: var(--space-1);
   }
 }
 
 @media (max-width: 640px) {
   .search-button {
-    font-size: 0.75rem;
+    font-size: 13px;
     padding: var(--space-1) var(--space-3);
   }
 

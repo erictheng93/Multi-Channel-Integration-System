@@ -17,7 +17,7 @@ test.describe('Login Flow (P0)', () => {
     await expect(page.getByRole('heading', { name: '全通路客服整合平台' })).toBeVisible()
     await expect(page.getByRole('textbox', { name: '電子郵件' })).toBeVisible()
     await expect(page.getByRole('textbox', { name: '密碼' })).toBeVisible()
-    await expect(page.getByRole('button', { name: '繼續' })).toBeDisabled()
+    await expect(page.getByRole('button', { name: '登入', exact: true })).toBeEnabled()
   })
 
   test('should enable submit button when form is filled', async ({ page }) => {
@@ -26,7 +26,7 @@ test.describe('Login Flow (P0)', () => {
     await page.getByRole('textbox', { name: '電子郵件' }).fill(ADMIN_CREDENTIALS.email)
     await page.getByRole('textbox', { name: '密碼' }).fill(ADMIN_CREDENTIALS.password)
 
-    await expect(page.getByRole('button', { name: '繼續' })).toBeEnabled()
+    await expect(page.getByRole('button', { name: '登入', exact: true })).toBeEnabled()
   })
 
   test('should login successfully with valid admin credentials', async ({ page }) => {
@@ -51,8 +51,7 @@ test.describe('Login Flow (P0)', () => {
     await page.getByRole('textbox', { name: '電子郵件' }).fill('wrong@example.com')
     await page.getByRole('textbox', { name: '密碼' }).fill('wrongpassword')
 
-    // Force click even if button is disabled (validation may prevent enabling)
-    await page.getByRole('button', { name: '繼續' }).click({ force: true })
+    await page.getByRole('button', { name: '登入', exact: true }).click()
 
     // Should stay on login page (wait for the API call to complete)
     await page.waitForTimeout(3000)

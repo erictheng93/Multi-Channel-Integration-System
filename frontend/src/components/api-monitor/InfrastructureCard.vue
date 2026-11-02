@@ -1,63 +1,60 @@
 <template>
-  <article class="ui-card">
-    <div class="ui-card-head">
-      <div>
-        <h2 class="ui-card-title">
-          基礎設施
-        </h2>
-        <div class="ui-card-sub">
-          Cloudflare 服務延遲
-        </div>
-      </div>
-    </div>
-    <div class="list">
-      <div
-        v-for="item in infrastructure"
-        :key="item.id"
-        class="inf"
-      >
-        <span
-          class="t"
-          :class="tone(item)"
-          aria-hidden="true"
+  <section>
+    <h2 class="ui-group-label">
+      基礎設施
+      <span class="label-note">Cloudflare 服務延遲</span>
+    </h2>
+    <div class="ui-group">
+      <div class="list">
+        <div
+          v-for="item in infrastructure"
+          :key="item.id"
+          class="inf"
         >
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
+          <span
+            class="t"
+            :class="tone(item)"
+            aria-hidden="true"
           >
-            <path
-              v-for="(d, pi) in iconPaths(item.id)"
-              :key="pi"
-              :d="d"
-            />
-          </svg>
-        </span>
-        <div class="inf-name">
-          <b>{{ item.name }}</b>
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path
+                v-for="(d, pi) in iconPaths(item.id)"
+                :key="pi"
+                :d="d"
+              />
+            </svg>
+          </span>
+          <div class="inf-name">
+            <b>{{ translateInfraName(item.id, item.name) }}</b>
+          </div>
+          <span
+            class="ms"
+            :class="tone(item)"
+          >
+            <template v-if="item.latencyMs >= 0">{{ item.latencyMs }}<small>ms</small></template>
+            <template v-else>無回應</template>
+          </span>
         </div>
-        <span
-          class="ms"
-          :class="tone(item)"
+        <div
+          v-if="infrastructure.length === 0"
+          class="none"
         >
-          <template v-if="item.latencyMs >= 0">{{ item.latencyMs }}<small>ms</small></template>
-          <template v-else>無回應</template>
-        </span>
-      </div>
-      <div
-        v-if="infrastructure.length === 0"
-        class="none"
-      >
-        尚無資料
+          尚無資料
+        </div>
       </div>
     </div>
-  </article>
+  </section>
 </template>
 
 <script setup lang="ts">
+import { translateInfraName } from '@/utils/monitor-helpers'
 import type { InfrastructureItem } from '@/types/api-monitor'
 
 defineProps<{
@@ -91,8 +88,14 @@ function tone(item: InfrastructureItem): 'ok' | 'mid' | 'bad' {
 </script>
 
 <style scoped>
+.label-note {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--ui-muted);
+}
+
 .list {
-  padding-bottom: 8px;
+  padding: 6px 0;
 }
 
 .inf {
@@ -144,7 +147,7 @@ function tone(item: InfrastructureItem): 'ok' | 'mid' | 'bad' {
 
 .ms small {
   margin-left: 2px;
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 500;
 }
 

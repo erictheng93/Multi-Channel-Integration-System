@@ -1,7 +1,7 @@
 <template>
   <div class="rule-list">
     <!-- Toolbar -->
-    <div class="ui-card rule-list__toolbar">
+    <div class="rule-list__toolbar">
       <div class="rule-list__filters">
         <input
           class="ui-input rule-list__search"
@@ -63,9 +63,16 @@
     </div>
 
     <!-- Rule list -->
+    <h2
+      v-if="rules.length > 0"
+      class="ui-group-label rule-list__label"
+    >
+      規則
+      <span class="rule-list__count">{{ rules.length }}</span>
+    </h2>
     <div
       v-if="rules.length > 0"
-      class="ui-card rule-list__items"
+      class="ui-group rule-list__items"
     >
       <RuleCard
         v-for="rule in rules"
@@ -89,11 +96,13 @@
     </div>
 
     <!-- Empty state -->
-    <div
+    <UiEmptyState
       v-else-if="!isCreating"
-      class="ui-card ui-empty rule-list__empty"
+      class="ui-card rule-list__empty"
+      title="尚未建立自動回覆規則"
+      description="規則會在客戶來訊符合條件時自動回覆。"
     >
-      <div class="ui-empty-art">
+      <template #icon>
         <svg
           viewBox="0 0 24 24"
           fill="none"
@@ -101,23 +110,24 @@
           stroke-width="1.8"
           stroke-linecap="round"
           stroke-linejoin="round"
+          aria-hidden="true"
         ><path d="M13 2 3 14h9l-1 8 10-12h-9Z" /></svg>
-      </div>
-      <p class="rule-list__empty-text">
-        尚未建立自動回覆規則
-      </p>
-      <button
-        class="btn btn-primary"
-        type="button"
-        @click="emit('start-create')"
-      >
-        ＋ 新增規則
-      </button>
-    </div>
+      </template>
+      <template #action>
+        <button
+          class="btn btn-primary"
+          type="button"
+          @click="emit('start-create')"
+        >
+          新增規則
+        </button>
+      </template>
+    </UiEmptyState>
   </div>
 </template>
 
 <script setup lang="ts">
+import UiEmptyState from '@/components/ui/UiEmptyState.vue'
 import { TRIGGER_TYPE_OPTIONS, type AutoReplyRule } from '@/api/autoReply'
 import RuleEditor from './RuleEditor.vue'
 import type { RuleFormData } from './RuleEditor.vue'
@@ -158,6 +168,25 @@ const emit = defineEmits<{
   gap: 16px;
 }
 
+/* the label sits tight on its group, not a full page gap above it */
+.rule-list__label {
+  margin: 4px 0 -8px;
+}
+
+.rule-list__count {
+  min-width: 20px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: var(--section-hue-soft);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 20px;
+  text-align: center;
+  color: var(--section-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+
 .rule-list__toolbar {
   display: flex;
   flex-wrap: wrap;
@@ -178,19 +207,20 @@ const emit = defineEmits<{
 .rule-list__search {
   flex: 1 1 220px;
   max-width: 340px;
-  height: 38px;
+  height: 40px;
   border-radius: 999px;
+  background: var(--ui-surface);
 }
 
 .rule-list__filter-select {
   width: auto;
   min-width: 140px;
-  height: 38px;
+  height: 40px;
   border-radius: 999px;
+  background-color: var(--ui-surface);
 }
 
 .rule-list__items {
-  overflow: hidden;
   padding: 4px 0;
 }
 
@@ -219,5 +249,11 @@ const emit = defineEmits<{
   .rule-list__toolbar > .btn {
     width: 100%;
   }
+}
+
+/* placeholder text must read at AA on the grey field fill */
+.ui-input::placeholder,
+.ui-textarea::placeholder {
+  color: var(--ui-muted);
 }
 </style>

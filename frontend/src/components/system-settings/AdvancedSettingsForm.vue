@@ -140,6 +140,7 @@ const props = defineProps<Props>()
 // Events
 const emit = defineEmits<{
   save: [settings: AdvancedSettings]
+  'update:settings': [settings: AdvancedSettings]
 }>()
 
 // Composables
@@ -203,6 +204,15 @@ watch(
     Object.assign(localSettings, newSettings)
   },
   { immediate: true, deep: true }
+)
+
+// Local -> parent, so the page can tell whether anything changed (save stays disabled until then)
+watch(
+  localSettings,
+  (next) => {
+    emit('update:settings', { ...next })
+  },
+  { deep: true }
 )
 
 // Methods

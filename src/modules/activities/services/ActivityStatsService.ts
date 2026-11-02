@@ -1,6 +1,7 @@
 // Activities Module - Activity Statistics Service
 // 活動模組 - 活動統計分析服務
 
+import { notSystemAgent } from '@/constants/system-agent';
 import { createDbClient } from '@/db/drizzle-factory'
 import { sql, gte, count, countDistinct, desc, and, type SQL } from 'drizzle-orm'
 import { activities } from '@/db/schema'
@@ -39,7 +40,7 @@ export class ActivityStatsService {
   ): Promise<{ activeUserCount: number; restorableCount: number }> {
     const nowStr = nowISO()
     const [active, restorable] = await Promise.all([
-      drizzleDb.select({ count: countDistinct(activities.userId) }).from(activities).where(period),
+      drizzleDb.select({ count: countDistinct(activities.userId) }).from(activities).where(and(period, notSystemAgent(activities.userId))),
       drizzleDb
         .select({ count: count() })
         .from(activities)
@@ -90,7 +91,7 @@ export class ActivityStatsService {
         count: count().as('count')
       })
       .from(activities)
-      .where(gte(activities.createdAt, startDateStr))
+      .where(and(gte(activities.createdAt, startDateStr), notSystemAgent(activities.userId)))
       .groupBy(activities.userId, activities.userName, activities.userRole)
       .orderBy(desc(sql`count`))
       .limit(10)

@@ -116,6 +116,6 @@ const testNavigation = async (path: string) => {
   background: white;
   border-radius: 4px;
   font-family: monospace;
-  font-size: 12px;
+  font-size: 13px;
 }
 </style>

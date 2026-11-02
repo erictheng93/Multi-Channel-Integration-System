@@ -10,6 +10,10 @@
 //   answer yet), is not recalled, not soft-deleted and not a broadcast (broadcast rows carry "broadcastId" in
 //   metadata; a broadcast is not an answer). Auto-reply and other system
 //   messages (sender_type 'system') never end a wait.
+//   Only waits that started within the last WAITING_WINDOW_DAYS days (a rolling window,
+//   awaiting_since >= now - 7 days) are listed and counted; older ones are the "stale" list
+//   (stale-waiting-service.ts). Sign-offs (stickers / thanks after a reply) never start a wait
+//   (awaiting-rules.ts).
 //   Wait time = now - the EARLIEST customer message after that last agent
 //   message, i.e. the oldest unanswered message.
 //
@@ -25,6 +29,8 @@
 
 import { getConversationVisibilitySql, type ConversationVisibilityUser } from '@/services/conversation-visibility';
 import type { WaitingConversation } from '@shared/api-contracts/conversations';
+import { WAITING_WINDOW_DAYS } from '@shared/api-contracts/dashboard';
+import { DAY_MS, isoOf } from '@/utils/taipei-time';
 import type { RowsReadMeter } from '@/utils/d1-rows-read';
 import { getDisplayContent } from '@/modules/conversations/utils/message-helpers';
 
@@ -55,6 +61,11 @@ function truncatePreview(text: string | null): string | null {
   return text.length > PREVIEW_MAX_CHARS ? `${text.slice(0, PREVIEW_MAX_CHARS)}...` : text;
 }
 
+/** ISO instant before which a wait counts as stale (outside the 待回覆 window). */
+export function waitingWindowStartIso(nowMs: number): string {
+  return isoOf(nowMs - WAITING_WINDOW_DAYS * DAY_MS);
+}
+
 export function clampWaitingLimit(raw: number | undefined, fallback = 5): number {
   if (raw === undefined || !Number.isFinite(raw) || raw < 1) { return fallback; }
   return Math.min(Math.floor(raw), WAITING_MAX_LIMIT);
@@ -69,6 +80,7 @@ export async function getWaitingConversations(
 ): Promise<WaitingResult> {
   const visibility = getConversationVisibilitySql(user, 'c.assigned_team_id');
   const totalVisibility = getConversationVisibilitySql(user, 'c2.assigned_team_id');
+  const windowStart = waitingWindowStartIso(nowMs);
 
   // The page is cut inside the CTE so the per-row subqueries below run for at most
   // `limit` conversations, never for every waiting one. The total is a covering-index
@@ -81,6 +93,7 @@ export async function getWaitingConversations(
              c.awaiting_since AS waiting_since
       FROM conversations c
       WHERE c.awaiting_since IS NOT NULL
+        AND c.awaiting_since >= ?
         AND c.status <> 'closed'
         AND c.deleted_at IS NULL
         AND ${visibility.clause}
@@ -105,12 +118,12 @@ export async function getWaitingConversations(
         WHERE lm.conversation_id = p.id AND lm.sender_type = 'customer' AND lm.deleted_at IS NULL
         ORDER BY lm.created_at DESC LIMIT 1) AS lastCustomerType,
       (SELECT COUNT(*) FROM conversations c2
-        WHERE c2.awaiting_since IS NOT NULL AND c2.status <> 'closed' AND c2.deleted_at IS NULL
+        WHERE c2.awaiting_since IS NOT NULL AND c2.awaiting_since >= ? AND c2.status <> 'closed' AND c2.deleted_at IS NULL
           AND ${totalVisibility.clause}) AS total
     FROM page p
     LEFT JOIN customers cu ON cu.id = p.customer_id
     ORDER BY p.waiting_since ASC, p.id ASC
-  `).bind(...visibility.params, limit, ...totalVisibility.params).all<WaitingRow>();
+  `).bind(windowStart, ...visibility.params, limit, windowStart, ...totalVisibility.params).all<WaitingRow>();
   meter?.track(result);
   const results = result.results;
 

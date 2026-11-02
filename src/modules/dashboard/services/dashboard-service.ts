@@ -27,6 +27,7 @@ import {
 import { RowsReadMeter } from '@/utils/d1-rows-read';
 import { countRawMessages, readDayCounts } from './message-rollup-service';
 import { getWaitingConversations } from './waiting-service';
+import { getStaleWaitingSummary } from './stale-waiting-service';
 
 interface ComparisonRow {
   today: number | string | null;
@@ -147,6 +148,7 @@ export async function buildDashboardSummary(
 
   const waiting = await getWaitingConversations(db, user, 5, nowMs, meter);
   const oldest = waiting.items[0] ?? null;
+  const staleWaiting = await getStaleWaitingSummary(db, user, nowMs, meter);
 
   meter.flush({ scope: visibilityScopeKey(user) });
 
@@ -166,6 +168,7 @@ export async function buildDashboardSummary(
       oldestWaitingSeconds: oldest?.waitingSeconds ?? null,
       top: waiting.items
     },
+    staleWaiting,
     firstResponse: {
       today: { count: todayFrCount, avgSeconds: avgOrNull(frRow?.todayAvg, todayFrCount) },
       yesterdaySameTime: { count: yesterdayFrCount, avgSeconds: avgOrNull(frRow?.yesterdayAvg, yesterdayFrCount) }

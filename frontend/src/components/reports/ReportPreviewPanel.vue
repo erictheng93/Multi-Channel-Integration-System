@@ -1,34 +1,35 @@
 <template>
   <aside class="preview-section">
-    <section class="ui-card preview-card">
-      <div class="ui-card-head">
-        <div>
-          <h3 class="ui-card-title">
-            即將產生
-          </h3>
-          <p class="ui-card-sub">
-            依目前設定
-          </p>
-        </div>
+    <section class="ui-lead preview-card">
+      <div class="lead-head">
+        <h3 class="lead-title">
+          即將產生
+        </h3>
+        <p class="lead-sub">
+          依目前設定，必填項目填完即可產生
+        </p>
       </div>
-      <dl
-        v-if="reportType"
-        class="kv"
+      <p
+        v-if="missing.length > 0"
+        class="need"
+        role="status"
       >
-        <div class="kv-row">
+        還需要：{{ missing.join('、') }}
+      </p>
+      <dl class="kv">
+        <div
+          v-if="reportType"
+          class="kv-row"
+        >
           <dt>報表類型</dt>
           <dd>{{ reportTypeLabel }}</dd>
         </div>
         <div
-          v-if="title"
+          v-if="title.trim()"
           class="kv-row"
         >
           <dt>標題</dt>
           <dd>{{ title }}</dd>
-        </div>
-        <div class="kv-row">
-          <dt>格式</dt>
-          <dd>{{ formatLabel }}</dd>
         </div>
         <div
           v-if="timeRange"
@@ -37,13 +38,22 @@
           <dt>時間範圍</dt>
           <dd>{{ timeRangeLabel }}</dd>
         </div>
+        <div class="kv-row">
+          <dt>格式</dt>
+          <dd>{{ formatLabel }}</dd>
+        </div>
+        <div class="kv-row">
+          <dt>內容</dt>
+          <dd>{{ contentLabel }}</dd>
+        </div>
+        <div
+          v-if="options?.maxRecords"
+          class="kv-row"
+        >
+          <dt>筆數上限</dt>
+          <dd>{{ options.maxRecords.toLocaleString('en-US') }}</dd>
+        </div>
       </dl>
-      <p
-        v-else
-        class="hint"
-      >
-        選擇報表類型後會在這裡顯示設定摘要。
-      </p>
       <slot name="action" />
     </section>
 
@@ -74,18 +84,16 @@
       </div>
     </section>
 
-    <section
+    <div
       v-if="recentReports.length > 0"
-      class="ui-card recent-reports"
+      class="recent-wrap"
     >
-      <div class="ui-card-head">
-        <h3 class="ui-card-title">
-          最近報表
-        </h3>
-      </div>
-      <ul class="recent-list">
+      <h3 class="ui-group-label">
+        最近報表
+      </h3>
+      <ul class="ui-group recent-list">
         <li
-          v-for="report in recentReports.slice(0, 3)"
+          v-for="report in recentReports.slice(0, 5)"
           :key="report.id"
         >
           <button
@@ -105,7 +113,7 @@
           </button>
         </li>
       </ul>
-    </section>
+    </div>
   </aside>
 </template>
 
@@ -116,7 +124,8 @@ import type {
   ReportType,
   ReportFormat,
   ReportTimeRange,
-  ReportBase
+  ReportBase,
+  ReportOptions
 } from '@/types/reports';
 
 interface Props {
@@ -127,6 +136,7 @@ interface Props {
   isGenerating: boolean;
   currentStep: string;
   recentReports: ReportBase[];
+  options?: ReportOptions;
 }
 
 const props = defineProps<Props>();
@@ -134,6 +144,21 @@ const props = defineProps<Props>();
 defineEmits<{
   'view-report': [reportId: string];
 }>();
+
+// What the primary action still needs; shown as one line instead of a column of empty rows
+const missing = computed(() => [
+  !props.reportType && '報表類型',
+  !props.title.trim() && '標題'
+].filter((item): item is string => !!item));
+
+// Required fields done / required: the same two the "還需要" line names
+
+const contentLabel = computed(() => {
+  const o = props.options;
+  if (!o) { return '預設' }
+  const parts = [o.includeSummary && '摘要', o.includeCharts && '圖表', o.includeDetails && '明細'].filter(Boolean);
+  return parts.length > 0 ? parts.join('、') : '僅基本資料';
+});
 
 const reportTypeLabel = computed(() => {
   if (!props.reportType) {
@@ -177,6 +202,47 @@ const formatDate = (dateString: string): string => {
   gap: 16px;
 }
 
+.preview-card {
+  padding: 22px 0 0;
+}
+
+.lead-head {
+  padding: 0 24px 12px;
+}
+
+.lead-title {
+  margin: 0;
+  font: 700 20px / 1.2 var(--ui-font-display);
+  letter-spacing: -0.02em;
+}
+
+.lead-sub {
+  margin: 2px 0 0;
+  font-size: 13px;
+  color: var(--ui-muted);
+}
+
+.need {
+  margin: 0 22px 4px;
+  padding: 10px 14px;
+  border-radius: var(--ui-r-inner);
+  background: var(--ui-surface-2);
+  box-shadow: inset 0 0 0 1px var(--ui-sep);
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--ui-ink);
+}
+
+.need::before {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 8px;
+  border-radius: 50%;
+  background: var(--ui-orange);
+  content: '';
+}
+
 .kv {
   margin: 0;
   padding: 0 22px;
@@ -208,10 +274,8 @@ const formatDate = (dateString: string): string => {
   text-align: right;
 }
 
-.hint {
-  margin: 0;
-  padding: 0 22px 18px;
-  font-size: 13.5px;
+.kv-row dd.is-empty {
+  font-weight: 400;
   color: var(--ui-muted);
 }
 
@@ -255,13 +319,13 @@ const formatDate = (dateString: string): string => {
 
 .progress-status {
   margin: 10px 0 0;
-  font-size: 12.5px;
+  font-size: 13px;
   color: var(--ui-muted);
 }
 
 .recent-list {
   margin: 0;
-  padding: 0 8px 10px;
+  padding: 6px 8px;
   list-style: none;
 }
 
@@ -318,7 +382,7 @@ const formatDate = (dateString: string): string => {
 }
 
 .recent-meta {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--ui-muted);
 }
 </style>

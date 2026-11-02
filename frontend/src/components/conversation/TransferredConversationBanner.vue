@@ -229,7 +229,7 @@ const formatTime = (isoTime: string): string => {
 }
 
 .transfer-time {
-  font-size: 12px;
+  font-size: 13px;
   color: #d97706;
   margin-top: 2px;
 }
@@ -345,11 +345,11 @@ const formatTime = (isoTime: string): string => {
   }
 
   .banner-hint {
-    font-size: 12px;
+    font-size: 13px;
   }
 
   .transfer-time {
-    font-size: 11px;
+    font-size: 13px;
   }
 
   .back-btn {

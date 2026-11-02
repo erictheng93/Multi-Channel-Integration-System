@@ -2,7 +2,7 @@
   <span
     class="team-avatar"
     :class="{ 'is-sm': size === 'sm' }"
-    :style="{ background: tone }"
+    :style="{ background: tone.bg, color: tone.ink }"
   >
     <img
       v-if="src"
@@ -22,6 +22,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { pastelBackground, pastelInk } from '@/utils/team-tone'
 
 interface Props {
   name: string
@@ -35,7 +36,7 @@ interface Props {
 
 const props = withDefaults(defineProps<Props>(), { src: undefined, size: 'md', presence: undefined })
 
-const TONES = ['accent', 'indigo', 'green', 'orange', 'teal', 'red'] as const
+const TONES = ['accent', 'indigo', 'green', 'orange', 'red'] as const
 
 const initial = computed(() => (props.name || '?').charAt(0).toUpperCase())
 
@@ -44,8 +45,8 @@ const tone = computed(() => {
   for (const ch of props.seed) {
     hash = (hash * 31 + ch.charCodeAt(0)) >>> 0
   }
-  const token = `var(--ui-${TONES[hash % TONES.length]})`
-  return `linear-gradient(160deg, color-mix(in srgb, ${token} 62%, white), ${token})`
+  const token = TONES[hash % TONES.length] ?? 'accent'
+  return { bg: pastelBackground(token), ink: pastelInk(token) }
 })
 </script>
 
@@ -59,7 +60,6 @@ const tone = computed(() => {
   height: 38px;
   border-radius: 50%;
   font: 600 14px var(--ui-font-display);
-  color: #fff;
 }
 .team-avatar > img {
   width: 100%;
@@ -68,9 +68,9 @@ const tone = computed(() => {
   object-fit: cover;
 }
 .team-avatar.is-sm {
-  width: 22px;
-  height: 22px;
-  font-size: 10px;
+  width: 28px;
+  height: 28px;
+  font-size: 12px;
   box-shadow: 0 0 0 2px var(--ui-surface);
 }
 .presence {
