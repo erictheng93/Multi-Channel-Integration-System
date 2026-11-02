@@ -41,7 +41,7 @@
           class="sr"
           :class="successClass"
         >
-          成功率 {{ endpoint.successRate }}%
+          成功率 {{ endpoint.successRate }}%<span class="sr-n"> · {{ endpoint.requestCount.toLocaleString() }} 次/時</span>
         </div>
       </div>
 
@@ -271,7 +271,17 @@ const successClass = computed(() => {
   transform: rotate(90deg);
 }
 
+/* the request count joins the success line on a phone (its own column is hidden there) */
+.sr-n {
+  display: none;
+  color: var(--ui-muted);
+}
+
 @media (max-width: 768px) {
+  .sr-n {
+    display: inline;
+  }
+
   /* Method pill sits above the path so the path owns the full middle column (no 3-4 line wrap) */
   .ep {
     grid-template-areas:
