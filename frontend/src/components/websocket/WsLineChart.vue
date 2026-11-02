@@ -109,6 +109,29 @@
           stroke-width="2"
         />
       </template>
+      <template
+        v-for="s in drawn"
+        :key="`pk${s.key}`"
+      >
+        <g
+          v-if="s.peak"
+          class="peak"
+        >
+          <circle
+            :cx="s.peak.x"
+            :cy="s.peak.y"
+            r="5"
+            fill="var(--ui-surface)"
+            :stroke="s.color"
+            stroke-width="2.4"
+          />
+          <text
+            :x="s.peak.x"
+            :y="s.peak.y - 12"
+            text-anchor="middle"
+          >{{ s.peak.text }}</text>
+        </g>
+      </template>
       <g v-if="hoverView">
         <line
           class="guide"
@@ -163,6 +186,8 @@ export interface WsChartSeries {
   digits?: number
   /** Unit printed after the tooltip value */
   unit?: string
+  /** Mark and label this series' highest sample on the plot */
+  peak?: boolean
 }
 
 const props = defineProps<{
@@ -196,6 +221,7 @@ const drawn = computed(() => props.series.map((s) => {
   const runs: Array<Array<{ x: number; y: number }>> = []
   let cur: Array<{ x: number; y: number }> = []
   let count = 0
+  let top: { x: number; y: number; v: number } | null = null
   for (const p of props.points) {
     const v = s.pick(p)
     if (v === null || !Number.isFinite(v)) {
@@ -203,7 +229,9 @@ const drawn = computed(() => props.series.map((s) => {
       continue
     }
     count += 1
-    cur.push({ x: r1(xFor(p.ts, props.from, props.to, props.geom)), y: r1(yFor(v, maxValue.value, props.geom)) })
+    const pt = { x: r1(xFor(p.ts, props.from, props.to, props.geom)), y: r1(yFor(v, maxValue.value, props.geom)) }
+    cur.push(pt)
+    if (!top || v > top.v) { top = { ...pt, v } }
   }
   if (cur.length > 0) { runs.push(cur) }
   const path = (run: Array<{ x: number; y: number }>) => run.map((q, i) => `${i === 0 ? 'M' : 'L'}${q.x} ${q.y}`).join(' ')
@@ -212,6 +240,7 @@ const drawn = computed(() => props.series.map((s) => {
     key: s.key,
     color: s.color,
     count,
+    peak: s.peak && top ? { ...top, text: `${s.label ?? ''}峰值 ${top.v.toFixed(s.digits ?? 0)}` } : null,
     lines: runs.filter(r => r.length > 1).map(path),
     areas: s.area
       ? runs.filter(r => r.length > 1).map(r => `${path(r)} L${r[r.length - 1]?.x} ${props.geom.bottom} L${r[0]?.x} ${props.geom.bottom}Z`)
@@ -286,12 +315,17 @@ const refLines = computed(() => (props.refs ?? [])
 
 .ws-chart text {
   fill: var(--ui-muted);
-  font: 500 12px var(--ui-font-ui);
+  font: 500 13px var(--ui-font-ui);
   font-variant-numeric: tabular-nums;
 }
 
 .ws-chart .g line {
   stroke: var(--ui-sep);
+}
+
+.ws-chart .peak text {
+  fill: var(--ui-ink);
+  font-weight: 600;
 }
 
 .ws-chart .ref {
@@ -301,7 +335,7 @@ const refLines = computed(() => (props.refs ?? [])
 
 .ws-chart .ref-label {
   fill: var(--ui-ink-2);
-  font-size: 12px;
+  font-size: 13px;
 }
 </style>
 

@@ -66,7 +66,7 @@
               v-if="metrics"
               class="board-meaning"
             >
-              {{ metrics.onlineAgents }} 位在線客服，多分頁與裝置各算一條
+              多分頁與裝置各算一條連線
             </p>
             <div
               v-if="metrics"
@@ -83,6 +83,19 @@
                 :class="connectionDelta >= 0 ? 'ui-delta-up' : 'ui-delta-down'"
               >{{ connectionDelta > 0 ? '+' : '' }}{{ connectionDelta }} 比上次刷新</span>
             </div>
+            <dl
+              v-if="metrics"
+              class="board-facts"
+            >
+              <div>
+                <dt>在線客服</dt>
+                <dd>{{ metrics.onlineAgents }}<small>位</small></dd>
+              </div>
+              <div v-if="perAgent !== null">
+                <dt>每位平均</dt>
+                <dd>{{ perAgent }}<small>條</small></dd>
+              </div>
+            </dl>
           </div>
           <div class="board-chart">
             <div class="card-head">
@@ -111,8 +124,8 @@
               <WsLineChart
                 v-if="hasHistory"
                 :points="history"
-                :from="histWindow.from"
-                :to="histWindow.to"
+                :from="connWindow.from"
+                :to="connWindow.to"
                 :range="period"
                 :series="CONN_SERIES"
                 :geom="connGeom"
@@ -275,8 +288,8 @@
               <WsLineChart
                 v-if="hasEvents"
                 :points="history"
-                :from="histWindow.from"
-                :to="histWindow.to"
+                :from="eventWindow.from"
+                :to="eventWindow.to"
                 :range="period"
                 :series="EVENT_SERIES"
                 :geom="halfGeom"
@@ -321,8 +334,8 @@
               <WsLineChart
                 v-if="hasLatency"
                 :points="history"
-                :from="histWindow.from"
-                :to="histWindow.to"
+                :from="latencyWindow.from"
+                :to="latencyWindow.to"
                 :range="period"
                 :series="LATENCY_SERIES"
                 :geom="halfGeom"
@@ -484,11 +497,11 @@ const CONN_SERIES: WsChartSeries[] = [
   { key: 'conn', color: 'var(--ui-accent)', pick: p => p.activeConnections, area: true, label: '連線', unit: '條' }
 ]
 const EVENT_SERIES: WsChartSeries[] = [
-  { key: 'in', color: 'var(--ui-indigo)', pick: p => p.eventsInPerS, area: true, label: '入', digits: 2, unit: '/秒' },
+  { key: 'in', color: 'var(--ui-indigo)', pick: p => p.eventsInPerS, area: true, label: '入', digits: 2, unit: '/秒', peak: true },
   { key: 'out', color: 'var(--ui-teal)', pick: p => p.eventsOutPerS, area: true, label: '出', digits: 2, unit: '/秒' }
 ]
 const LATENCY_SERIES: WsChartSeries[] = [
-  { key: 'lat', color: 'var(--ui-accent)', pick: p => p.avgProcessingMs, area: true, label: '延遲', unit: 'ms' }
+  { key: 'lat', color: 'var(--ui-accent)', pick: p => p.avgProcessingMs, area: true, label: '延遲', unit: 'ms', peak: true }
 ]
 /** The same thresholds the live row uses (under 100 ms is excellent, over 500 ms needs work) */
 const LATENCY_REFS = [{ value: 100, label: '優秀 100 ms' }, { value: 500, label: '需改進 500 ms' }]
@@ -544,6 +557,22 @@ const histWindow = computed(() => {
   const points = history.value
   const to = points.length > 0 ? (points[points.length - 1]?.ts ?? historyNow.value) : historyNow.value
   return { from: to - RANGE_MS[period.value], to }
+})
+
+/** Each chart starts at its own first real sample: a series that began later than the range does not leave an empty left of the plot */
+function windowFor(pick: (_p: WsMetricsPointDto) => number | null) {
+  const base = histWindow.value
+  const first = history.value.find(p => pick(p) !== null)
+  const from = first && first.ts > base.from && first.ts < base.to ? first.ts : base.from
+  return { from, to: base.to }
+}
+const connWindow = computed(() => windowFor(p => p.activeConnections))
+const eventWindow = computed(() => windowFor(p => (p.eventsInPerS === null || p.eventsOutPerS === null ? null : 1)))
+const latencyWindow = computed(() => windowFor(p => p.avgProcessingMs))
+
+const perAgent = computed(() => {
+  const m = metrics.value
+  return m && m.onlineAgents > 0 ? (m.registeredConnections / m.onlineAgents).toFixed(1).replace(/\.0$/, '') : null
 })
 
 function lastOf(pick: (_p: WsMetricsPointDto) => number | null): number | null {
@@ -857,6 +886,33 @@ function formatTime(timestamp: number) {
   line-height: 1.45;
   color: var(--ui-ink-2);
   text-wrap: pretty;
+}
+
+.board-facts {
+  display: flex;
+  gap: 28px;
+  margin: 18px 0 0;
+  padding-top: 14px;
+  border-top: 0.5px solid var(--ui-sep);
+  align-self: stretch;
+}
+
+.board-facts dt {
+  font-size: 13px;
+  color: var(--ui-muted);
+}
+
+.board-facts dd {
+  margin: 2px 0 0;
+  font: 600 26px / 1.1 var(--ui-font-display);
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.board-facts small {
+  margin-left: 3px;
+  font: 500 14px var(--ui-font-ui);
+  color: var(--ui-muted);
 }
 
 .board-chart {
