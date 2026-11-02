@@ -319,15 +319,61 @@ const goBack = () => {
   padding: 28px 28px 28px;
 }
 
-/* Wide screens: the message card and the shortcut list sit side by side as one composed bento */
+/* Wide screens: ONE card, two zones. The message on the left, the shortcuts as a 2x2 of tiles on the right,
+   split by a hairline, the whole thing centred in the page. */
 @media (min-width: 1025px) {
   .nf {
-    grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
-    max-width: 980px;
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+    gap: 0;
+    align-items: stretch;
+    max-width: 1000px;
+    overflow: hidden;
+    border-radius: var(--ui-r-lead);
+    background: var(--ui-surface);
+    box-shadow: var(--ui-shadow-raised);
   }
 
   .nf-lead {
-    padding: 40px 40px 36px;
+    padding: 48px 44px 44px;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .list-wrap {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 40px 36px;
+    background: var(--ui-surface-2);
+  }
+
+  .list-wrap .list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    overflow: visible;
+    background: transparent;
+  }
+
+  .list-wrap .go {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+    min-height: 0;
+    padding: 18px 16px 16px;
+    border-radius: var(--ui-r-inner);
+    background: var(--ui-surface);
+  }
+
+  .list-wrap .go + .go::before,
+  .list-wrap .go-chev {
+    display: none;
+  }
+
+  .list-wrap .list-label,
+  .list-wrap .list-note {
+    padding-left: 4px;
   }
 }
 
@@ -344,9 +390,9 @@ const goBack = () => {
   display: flex;
   gap: 0.04em;
   align-items: center;
-  font: 500 132px / 1 var(--ui-font-display);
+  font: 400 132px / 1 var(--ui-font-display);
   letter-spacing: -0.05em;
-  color: var(--ui-ink-2);
+  color: color-mix(in srgb, var(--ui-ink) 62%, var(--ui-surface));
 }
 
 /* The zero is drawn, sized in the numerals' own em so it follows the font size at every width */
@@ -464,6 +510,7 @@ const goBack = () => {
 }
 
 .list-note {
+  text-wrap: balance;
   margin: 12px 0 0;
   padding: 0 16px;
   font-size: 14px;
