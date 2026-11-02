@@ -268,7 +268,12 @@ export const useConversationsStore = defineStore('conversations', () => {
         updatedAt: nowTimestamp,
         deliveryStatus: 'delivered'
       } : conversation.lastMessage,
-      awaitingSince: nextAwaitingSince(conversation.awaitingSince, messageData, nowTimestamp),
+      // message_sent carries sender.role instead of senderType
+      awaitingSince: nextAwaitingSince(conversation.awaitingSince, {
+        ...messageData,
+        senderType: messageData.senderType ??
+          (messageData.sender ? (messageData.sender.role === 'customer' ? 'customer' : 'agent') : undefined)
+      }, nowTimestamp),
       unreadCount: incrementUnread && messageData.senderType === 'customer'
         ? (conversation.unreadCount || 0) + 1
         : conversation.unreadCount || 0
