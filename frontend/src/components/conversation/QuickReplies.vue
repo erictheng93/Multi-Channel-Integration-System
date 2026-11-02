@@ -83,8 +83,8 @@ const handleSelect = (reply: QuickReply) => {
   gap: 8px;
   padding: 10px 0 4px;
   overflow-x: auto;
-  -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 56px), transparent);
-  mask-image: linear-gradient(90deg, #000 calc(100% - 56px), transparent);
+  -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 72px), transparent);
+  mask-image: linear-gradient(90deg, #000 calc(100% - 72px), transparent);
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
 }
@@ -147,19 +147,6 @@ const handleSelect = (reply: QuickReply) => {
 
   to {
     opacity: 0;
-  }
-}
-
-/* Wide screens: every chip is visible and wraps onto a second row instead of being cut off at the edge */
-@media (min-width: 769px) {
-  .quick-replies {
-    flex-wrap: wrap;
-    -webkit-mask-image: none;
-    mask-image: none;
-  }
-
-  .quick-reply-btn {
-    max-width: 100%;
   }
 }
 

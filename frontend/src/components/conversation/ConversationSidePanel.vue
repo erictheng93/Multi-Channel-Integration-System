@@ -82,6 +82,26 @@
         </div>
       </section>
 
+      <!-- Timeline of the loaded messages: when the customer wrote and when the team answered (real times) -->
+      <section
+        v-if="timeline.length > 0"
+        class="block timeline-block"
+      >
+        <h3>
+          往來時間軸<small v-if="hasMore">僅已載入</small>
+        </h3>
+        <ol class="timeline">
+          <li
+            v-for="step in timeline"
+            :key="step.key"
+            :class="step.side"
+          >
+            <span class="t-time">{{ step.time }}</span>
+            <span class="t-label">{{ step.label }}</span>
+          </li>
+        </ol>
+      </section>
+
       <section class="block">
         <h3>對話</h3>
         <dl class="kv">
@@ -164,6 +184,25 @@ const activity = computed(() => {
   return { customer: customer.length, agent: agent.length, firstReply }
 })
 
+const clock = (t: number): string => new Date(t).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', hour12: false })
+
+// First customer message, first reply, latest reply, latest customer message (only the steps that exist, in time order)
+const timeline = computed(() => {
+  const list = props.messages ?? []
+  const of = (sender: string) => list.filter(m => m.senderType === sender).map(timeOf).filter(Number.isFinite).sort((a, b) => a - b)
+  const customer = of('customer')
+  const agent = of('agent')
+  const steps: { key: string; at: number; label: string; side: 'is-customer' | 'is-agent' }[] = []
+  if (customer[0] !== undefined) { steps.push({ key: 'c0', at: customer[0], label: props.hasMore ? '客戶來訊' : '客戶開始來訊', side: 'is-customer' }) }
+  const firstAgent = agent.find(t => t >= (customer[0] ?? 0))
+  if (firstAgent !== undefined) { steps.push({ key: 'a0', at: firstAgent, label: '客服首次回覆', side: 'is-agent' }) }
+  const lastAgent = agent[agent.length - 1]
+  if (lastAgent !== undefined && lastAgent !== firstAgent) { steps.push({ key: 'a1', at: lastAgent, label: '客服最近回覆', side: 'is-agent' }) }
+  const lastCustomer = customer[customer.length - 1]
+  if (lastCustomer !== undefined && lastCustomer !== customer[0]) { steps.push({ key: 'c1', at: lastCustomer, label: '客戶最後來訊', side: 'is-customer' }) }
+  return steps.sort((a, b) => a.at - b.at).map(s => ({ ...s, time: clock(s.at) }))
+})
+
 const lastInboundText = computed(() => {
   const times = (props.messages ?? []).filter(m => m.senderType === 'customer').map(timeOf).filter(Number.isFinite)
   return times.length > 0 ? relativeTime(Math.max(...times), Date.now()) : ''
@@ -244,10 +283,9 @@ const createdAtText = computed(() => {
 }
 
 .block {
-  margin-top: 10px;
-  padding: 14px 16px 16px;
-  border-radius: var(--ui-r-inner);
-  background: var(--ui-canvas);
+  margin-top: 16px;
+  padding: 14px 4px 0;
+  box-shadow: inset 0 0.5px 0 var(--ui-sep);
 }
 
 .block h3 {
@@ -268,11 +306,10 @@ const createdAtText = computed(() => {
   font-variant-numeric: tabular-nums;
 }
 
-/* At a glance: a 2x2 bento of the numbers, the numerals carry the weight */
+/* At a glance: a 2x2 of the numbers split by hairlines (no grey slabs), the numerals carry the weight */
 .glance {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
   margin: 12px 0 0;
 }
 
@@ -282,9 +319,23 @@ const createdAtText = computed(() => {
   gap: 2px;
   justify-content: flex-end;
   min-width: 0;
-  padding: 12px 14px;
-  border-radius: var(--ui-r-inner);
-  background: var(--ui-canvas);
+  padding: 12px 8px 12px 4px;
+}
+
+.glance > div:nth-child(odd) {
+  box-shadow: inset -0.5px 0 0 var(--ui-sep);
+}
+
+.glance > div:nth-child(even) {
+  padding-left: 16px;
+}
+
+.glance > div:nth-child(-n + 2) {
+  box-shadow: inset 0 -0.5px 0 var(--ui-sep);
+}
+
+.glance > div:nth-child(1) {
+  box-shadow: inset -0.5px -0.5px 0 var(--ui-sep);
 }
 
 .glance dd {
@@ -305,6 +356,62 @@ const createdAtText = computed(() => {
   font-size: 13px;
   color: var(--ui-ink-2);
   white-space: nowrap;
+}
+
+/* Timeline: one rail, a dot per step (customer = grey, team = brand) */
+.timeline {
+  position: relative;
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0 0 0 18px;
+  list-style: none;
+}
+
+.timeline::before {
+  position: absolute;
+  top: 8px;
+  bottom: 8px;
+  left: 4px;
+  width: 1.5px;
+  border-radius: 1px;
+  background: var(--ui-sep);
+  content: '';
+}
+
+.timeline li {
+  position: relative;
+  display: flex;
+  gap: 12px;
+  align-items: baseline;
+  font-size: 14px;
+}
+
+.timeline li::before {
+  position: absolute;
+  top: 6px;
+  left: -18px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--ui-faint);
+  box-shadow: 0 0 0 3px var(--ui-surface);
+  content: '';
+}
+
+.timeline li.is-agent::before {
+  background: var(--ui-accent);
+}
+
+.t-time {
+  min-width: 42px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--ui-ink);
+}
+
+.t-label {
+  color: var(--ui-ink-2);
 }
 
 .assign-row {

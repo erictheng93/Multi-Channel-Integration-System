@@ -2,6 +2,9 @@
   <div
     ref="scrollContainer"
     class="virtual-message-list"
+    role="log"
+    aria-label="訊息記錄"
+    tabindex="0"
   >
     <!-- Search Results Header -->
     <div
