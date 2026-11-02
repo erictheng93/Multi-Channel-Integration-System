@@ -9,7 +9,10 @@ function harness() {
     blockConcurrencyWhile(fn: () => Promise<void>) { ready = fn() },
     storage: {
       async get(key: string) { return values.get(key) },
-      async put(key: string, value: unknown) { values.set(key, value) },
+      async put(keyOrEntries: string | Record<string, unknown>, value?: unknown) {
+        if (typeof keyOrEntries === 'string') { values.set(keyOrEntries, structuredClone(value)); return }
+        for (const [key, entry] of Object.entries(keyOrEntries)) values.set(key, structuredClone(entry))
+      },
       async delete(key: string) { values.delete(key) },
       async getAlarm() { return alarm },
       async setAlarm(value: number) { alarm = value },
@@ -132,5 +135,25 @@ describe('MessageBroadcaster metrics', () => {
     const m = await response.json() as Record<string, unknown>
     expect(m.windowSeconds).toBe(300)
     expect(m.eventsInPerSecond).toBe(0)
+  })
+
+  it('keeps the error rate valid when direct broadcast counters outlive a restart with their sample', async () => {
+    const h = harness(); await h.ready()
+    const direct = (b: MessageBroadcaster) => b.fetch(new Request('http://b/broadcast-to-conversations', {
+      method: 'POST',
+      body: JSON.stringify({ event, targets: ['c1'] }),
+    }))
+    h.roomOk.current = false
+    await direct(h.broadcaster)
+    await h.call('/metrics')
+    h.roomOk.current = true
+    vi.setSystemTime(Date.now() + 300_000)
+    const revived = new MessageBroadcaster(h.state as never, h.env as never)
+    await direct(revived)
+    await direct(revived)
+    const response = await revived.fetch(new Request('http://b/metrics'))
+    const m = await response.json() as Record<string, unknown>
+    expect(m.errorRate).toBe(0)
+    expect(m.eventsInPerSecond).toBeCloseTo(2 / 300, 5)
   })
 })
