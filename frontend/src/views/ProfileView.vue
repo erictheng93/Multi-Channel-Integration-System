@@ -14,65 +14,156 @@
       />
 
       <div class="profile-stack">
-        <!-- Lead: who you are, and the session you are signed in with -->
-        <article
-          class="ui-lead profile-hero"
-          aria-label="帳號身分"
-        >
-          <div class="identity">
-            <div class="avatar">
-              {{ initial }}
-            </div>
-            <div class="identity-text">
-              <div class="identity-name">
-                {{ profile.displayName || '—' }}
-              </div>
-              <div class="identity-sub">
-                {{ identitySub }}
-              </div>
-              <ul
-                class="identity-chips"
-                aria-label="角色"
-              >
-                <li><span class="ui-pill ui-pill-blue">{{ roleLabel }}</span></li>
-              </ul>
-            </div>
-          </div>
-
-          <ul
-            class="hero-teams"
-            data-testid="admin-managed"
-            aria-label="所屬團隊與我的角色"
-          >
-            <li
-              v-for="row in teamRows"
-              :key="row.id"
-            >
-              <span class="team-name">{{ row.name }}<em v-if="row.isPrimary">主要</em></span>
-              <span class="team-role">{{ row.role }}</span>
-            </li>
-          </ul>
-
-          <div
-            id="session"
-            class="hero-session"
-          >
-            <div class="session-text">
-              <span class="session-k">登入有效至</span>
-              <span class="session-v">{{ sessionParts.time }}</span>
-              <span class="session-s">{{ sessionParts.date }}</span>
-            </div>
-            <button
-              type="button"
-              class="btn btn-secondary session-out"
-              @click="onSignOut"
-            >
-              登出這個瀏覽器
-            </button>
-          </div>
-        </article>
-
         <div class="profile-cols">
+          <div class="profile-col profile-col-pass">
+            <!-- The pass: who is signed in, what they can do in each team, and how long the session lasts -->
+            <section
+              class="o-pass"
+              aria-labelledby="pass-title"
+            >
+              <h2
+                id="pass-title"
+                class="ui-group-label"
+              >
+                我的帳號
+              </h2>
+              <article
+                class="pass"
+              >
+                <header class="pass-band">
+                  <div class="avatar">
+                    {{ initial }}
+                  </div>
+                  <div class="identity-text">
+                    <div class="identity-name">
+                      {{ profile.displayName || '—' }}
+                    </div>
+                    <div class="identity-sub">
+                      {{ identitySub }}
+                    </div>
+                  </div>
+                  <span class="pass-role">{{ roleLabel }}</span>
+                </header>
+
+                <section
+                  class="pass-access"
+                  data-testid="admin-managed"
+                  aria-labelledby="access-title"
+                >
+                  <h2
+                    id="access-title"
+                    class="pass-k"
+                  >
+                    各團隊中的角色
+                  </h2>
+                  <ul class="ladders">
+                    <li
+                      v-for="row in teamRows"
+                      :key="row.id"
+                      class="ladder"
+                    >
+                      <div class="ladder-head">
+                        <span class="team-name">{{ row.name }}<em v-if="row.isPrimary">主要</em></span>
+                        <span class="team-role">{{ row.role }}</span>
+                      </div>
+                      <ol
+                        v-if="row.rank >= 0"
+                        class="rungs"
+                        :style="{ '--tone': row.tone }"
+                        :aria-label="`${row.name}：${row.role}`"
+                      >
+                        <li
+                          v-for="(label, i) in ROLE_STEPS"
+                          :key="label"
+                          :class="{ 'is-passed': i < row.rank, 'is-here': i === row.rank }"
+                        >
+                          <span class="rung-dot" />
+                          <span class="rung-label">{{ label }}</span>
+                        </li>
+                      </ol>
+                    </li>
+                    <li
+                      v-if="!teamRows.length"
+                      class="ladder-empty"
+                    >
+                      尚未加入任何團隊
+                    </li>
+                  </ul>
+                </section>
+
+                <footer
+                  id="session"
+                  class="pass-session"
+                >
+                  <div class="session-text">
+                    <span class="session-k">登入有效至</span>
+                    <span class="session-v">{{ sessionParts.time }}</span>
+                    <span class="session-s">{{ sessionParts.date }}</span>
+                  </div>
+                  <button
+                    type="button"
+                    class="btn btn-secondary session-out"
+                    @click="onSignOut"
+                  >
+                    登出這個瀏覽器
+                  </button>
+                </footer>
+              </article>
+            </section>
+
+            <!-- 通知偏好 — the settings already live on the notifications page; this is one status row -->
+            <section
+              id="notification-prefs"
+              class="o-notify"
+              aria-labelledby="prefs-title"
+            >
+              <h2
+                id="prefs-title"
+                class="ui-group-label"
+              >
+                通知偏好
+              </h2>
+              <div class="ui-group notify-card">
+                <div
+                  class="notify-head"
+                  data-testid="device-notify"
+                >
+                  <span
+                    class="notify-ico"
+                    aria-hidden="true"
+                  >
+                    <svg
+                      viewBox="0 0 24 24"
+                      class="ico"
+                    ><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" /><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" /></svg>
+                  </span>
+                  <div class="notify-main">
+                    <div class="row-label-strong">
+                      這台裝置的桌面通知
+                    </div>
+                    <p class="notify-hint">
+                      {{ devicePerm.hint }}
+                    </p>
+                  </div>
+                  <span
+                    class="ui-pill ui-pill-dot"
+                    :class="devicePerm.tone === 'on' ? 'ui-pill-green' : ''"
+                  >{{ devicePerm.label }}</span>
+                </div>
+                <RouterLink
+                  class="notify-link"
+                  :to="{ path: '/notifications', query: { settings: '1' } }"
+                >
+                  通知類型與提醒方式
+                  <svg
+                    class="ico"
+                    viewBox="0 0 24 24"
+                    aria-hidden="true"
+                  ><path d="m9 6 6 6-6 6" /></svg>
+                </RouterLink>
+              </div>
+            </section>
+          </div>
           <div class="profile-col">
             <!-- 基本資料 -->
             <section
@@ -153,61 +244,6 @@
               </form>
             </section>
 
-            <!-- 通知偏好 — the settings already live on the notifications page -->
-            <section
-              id="notification-prefs"
-              class="o-notify"
-              aria-labelledby="prefs-title"
-            >
-              <h2
-                id="prefs-title"
-                class="ui-group-label"
-              >
-                通知偏好
-              </h2>
-              <div class="ui-group notify-card">
-                <div
-                  class="notify-head"
-                  data-testid="device-notify"
-                >
-                  <span
-                    class="notify-ico"
-                    aria-hidden="true"
-                  >
-                    <svg
-                      viewBox="0 0 24 24"
-                      class="ico"
-                    ><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" /><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" /></svg>
-                  </span>
-                  <div class="ui-row-main row-label-strong">
-                    這台裝置的桌面通知
-                  </div>
-                  <span
-                    class="ui-pill ui-pill-dot"
-                    :class="devicePerm.tone === 'on' ? 'ui-pill-green' : 'ui-pill-red'"
-                  >{{ devicePerm.label }}</span>
-                </div>
-                <p class="notify-hint">
-                  {{ devicePerm.hint }}
-                </p>
-                <div class="notify-actions">
-                  <span class="notify-actions-k">通知類型與提醒方式</span>
-                  <RouterLink
-                    class="btn btn-primary"
-                    :to="{ path: '/notifications', query: { settings: '1' } }"
-                  >
-                    開啟通知設定
-                    <svg
-                      class="ico"
-                      viewBox="0 0 24 24"
-                      aria-hidden="true"
-                    ><path d="m9 6 6 6-6 6" /></svg>
-                  </RouterLink>
-                </div>
-              </div>
-            </section>
-          </div>
-          <div class="profile-col">
             <!-- 安全性 -->
             <section
               id="security"
@@ -239,7 +275,7 @@
                           :type="show.current ? 'text' : 'password'"
                           class="ui-input"
                           :class="{ 'is-invalid': passwordErrors.currentPassword }"
-                          placeholder="用來確認是你本人操作"
+                          placeholder="輸入目前的密碼"
                           autocomplete="current-password"
                           aria-required="true"
                           :disabled="passwordSaving"
@@ -415,7 +451,7 @@ import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppLayout from '@/components/ui/AppLayout.vue'
 import { useAuthStore } from '@/stores/auth'
-import { teamRoleText } from '@/utils/team-tone'
+import { teamRoleText, teamToneColor } from '@/utils/team-tone'
 import { useToast } from '@/composables/useToast'
 import { apiClient } from '@/api/base'
 import { authApi } from '@/api/auth'
@@ -436,11 +472,23 @@ const initial = computed(() => (profile.displayName.trim().charAt(0) || '?').toU
 // Avatar caption = the sign-in email (a person's profile is not a connection status); role and team sit below
 const identitySub = computed(() => profile.email || '—')
 
-// One row per team with my role in it (admins without a team role show 管理員)
+// The role ladder every team uses, lowest to highest (the same order the team page documents)
+const ROLE_STEPS = ['成員', '組長', '主管'] as const
+const ROLE_KEYS = ['member', 'lead', 'supervisor'] as const
+
+// One row per team with my role in it (admins without a team role show 管理員, without a ladder)
 const teamRows = computed(() =>
   teams.value.map((t) => {
     const role = authStore.currentAgent?.teamRoles?.[t.id]
-    return { id: t.id, name: t.name, isPrimary: t.id === authStore.currentAgent?.primaryTeamId, role: role ? teamRoleText(role) : roleLabel.value }
+    const rank = role ? (ROLE_KEYS as readonly string[]).indexOf(role) : -1
+    return {
+      id: t.id,
+      name: t.name,
+      isPrimary: t.id === authStore.currentAgent?.primaryTeamId,
+      role: role ? teamRoleText(role) : roleLabel.value,
+      rank,
+      tone: teamToneColor(t.id),
+    }
   }),
 )
 
@@ -468,7 +516,7 @@ const devicePerm = computed(() => {
   const shared = '桌面通知只套用於這台裝置，其餘跟著你的帳號。'
   if (perm === 'granted') { return { label: '已開啟', tone: 'on', hint: shared } }
   if (perm === 'denied') {
-    return { label: '被瀏覽器封鎖', tone: 'off', hint: '到瀏覽器網址列左側的網站設定，把「通知」改為允許。' }
+    return { label: '已封鎖', tone: 'off', hint: '到瀏覽器網址列左側的網站設定，把「通知」改為允許。' }
   }
   if (perm === 'unsupported') { return { label: '瀏覽器不支援', tone: 'off', hint: shared } }
   return { label: '尚未開啟', tone: 'off', hint: shared }
@@ -731,13 +779,13 @@ watch(
 .profile-stack {
   display: flex;
   flex-direction: column;
-  gap: 20px;
   min-width: 0;
 }
 
+/* two columns: the pass (+ the device row) beside the two forms; both end on the same line */
 .profile-cols {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(300px, 400px) minmax(0, 1fr);
   gap: 20px;
   align-items: stretch;
 }
@@ -760,95 +808,134 @@ watch(
   flex: 1;
 }
 
-.profile-col > section .ui-group {
+/* in the pass column the pass takes the slack (never less than its own height); the device row keeps its height */
+.profile-col-pass > .o-pass {
+  flex: 1 0 auto;
+}
+
+.profile-col-pass > .o-notify {
+  flex: none;
+}
+
+.profile-col > section .ui-group,
+.profile-col > section .pass {
   flex: 1;
 }
 
-/* ---- lead: identity + session (the one elevated object) ---- */
-.profile-hero {
-  display: grid;
-  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr) minmax(220px, 260px);
-  box-shadow: var(--ui-shadow-card);
+/* ---- the pass: the one elevated object, a wallet-style identity card ---- */
+.pass {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
   overflow: hidden;
+  border-radius: 28px;
+  background: var(--ui-surface);
+  box-shadow: var(--ui-shadow-card);
 }
 
-.identity {
-  display: flex;
-  gap: 22px;
+.pass-band {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 8px 18px;
   align-items: center;
-  min-width: 0;
-  padding: 26px 32px;
+  padding: 28px 28px 26px;
+  background:
+    radial-gradient(120% 90% at 100% 0%, rgb(255 255 255 / 0.16), transparent 60%),
+    linear-gradient(155deg, #1a73e0 0%, #0a4fb0 55%, #2b3f9e 100%);
+  color: #fff;
 }
 
 .avatar {
   display: grid;
-  flex: none;
+  grid-row: span 2;
   place-items: center;
-  width: 80px;
-  height: 80px;
+  width: 72px;
+  height: 72px;
   border-radius: 50%;
-  background: linear-gradient(160deg, #5aa8ff, #1d6fe0);
+  background: rgb(255 255 255 / 0.2);
+  box-shadow: inset 0 0 0 1.5px rgb(255 255 255 / 0.55);
   color: #fff;
-  font: 600 34px var(--ui-font-display);
+  font: 600 32px var(--ui-font-display);
 }
 
 .identity-text {
   display: grid;
-  gap: 4px;
+  gap: 2px;
+  align-self: end;
   min-width: 0;
 }
 
 .identity-name {
   overflow: hidden;
-  font: 700 34px / 1.15 var(--ui-font-display);
-  letter-spacing: -0.03em;
+  font: 700 28px / 1.2 var(--ui-font-display);
+  letter-spacing: -0.025em;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .identity-sub {
   overflow: hidden;
-  font-size: 15px;
-  color: var(--ui-ink-2);
+  font-size: 14px;
+  color: rgb(255 255 255 / 0.92);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.identity-chips {
+.pass-role {
+  align-self: start;
+  justify-self: start;
+  padding: 2px 12px;
+  border-radius: 999px;
+  background: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  color: #0a4fb0;
+}
+
+/* access: one ladder per team, my rung filled (the same three steps for every team) */
+.pass-access {
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin: 10px 0 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 14px;
+  padding: 22px 28px 20px;
+}
+
+.pass-k {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ui-muted);
+}
+
+.ladders {
+  display: grid;
+  flex: 1;
+  align-content: space-evenly;
+  gap: 18px;
+  margin: 0;
   padding: 0;
   list-style: none;
 }
 
-/* teams: a short list, one row per team (name, then the role held there) */
-.hero-teams {
+.ladder {
   display: grid;
-  align-content: center;
-  margin: 0;
-  padding: 18px 28px;
-  list-style: none;
-  box-shadow: inset 0.5px 0 0 var(--ui-sep);
+  gap: 10px;
 }
 
-.hero-teams li {
+.ladder-head {
   display: flex;
-  gap: 16px;
+  gap: 12px;
   align-items: center;
   justify-content: space-between;
-  min-height: 48px;
-}
-
-.hero-teams li + li {
-  box-shadow: inset 0 0.5px 0 var(--ui-sep);
 }
 
 .team-name {
   display: inline-flex;
   gap: 8px;
   align-items: center;
+  min-width: 0;
   font-size: 16px;
   font-weight: 700;
 }
@@ -865,19 +952,108 @@ watch(
 
 .team-role {
   font-size: 14px;
-  font-weight: 600;
-  color: var(--ui-ink-2);
+  font-weight: 700;
+  color: var(--ui-ink);
 }
 
-/* session: a fact with its action, on the same white card (no wash, no hero numeral) */
-.hero-session {
+.rungs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rungs li {
+  position: relative;
+  display: grid;
+  gap: 6px;
+  justify-items: center;
+}
+
+/* the track runs from the middle of one dot to the middle of the next */
+.rungs li + li::before {
+  content: '';
+  position: absolute;
+  top: 6px;
+  right: 50%;
+  width: 100%;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--ui-fill-strong);
+}
+
+.rungs li.is-passed + li::before,
+.rungs li.is-here::before {
+  background: var(--tone);
+}
+
+.rung-dot {
+  position: relative;
+  z-index: 1;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: var(--ui-surface);
+  box-shadow: inset 0 0 0 2.5px var(--ui-fill-strong);
+}
+
+.rungs li.is-passed .rung-dot {
+  background: var(--tone);
+  box-shadow: none;
+}
+
+.rungs li.is-here .rung-dot {
+  background: var(--tone);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--tone) 22%, transparent);
+}
+
+.rung-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ui-muted);
+}
+
+.rungs li.is-here .rung-label {
+  color: var(--ui-ink);
+  font-weight: 700;
+}
+
+.ladder-empty {
+  font-size: 14px;
+  color: var(--ui-muted);
+}
+
+/* session: the tear-off stub of the pass, cut by a perforated line with a notch each side */
+.pass-session {
+  position: relative;
   display: flex;
-  flex-direction: column;
-  gap: 12px;
-  align-items: flex-start;
-  justify-content: center;
-  padding: 24px 32px;
-  box-shadow: inset 0.5px 0 0 var(--ui-sep);
+  gap: 14px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 22px 28px 24px;
+}
+
+.pass-session::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 22px;
+  left: 22px;
+  border-top: 2px dashed var(--ui-fill-strong);
+}
+
+.pass-session::after {
+  content: '';
+  position: absolute;
+  top: -10px;
+  right: 0;
+  left: 0;
+  height: 20px;
+  background:
+    radial-gradient(circle 10px at 0 50%, var(--ui-canvas) 98%, transparent) left / 51% 100% no-repeat,
+    radial-gradient(circle 10px at 100% 50%, var(--ui-canvas) 98%, transparent) right / 51% 100% no-repeat;
+  pointer-events: none;
 }
 
 .session-text {
@@ -888,11 +1064,12 @@ watch(
 .session-k {
   font-size: 13px;
   font-weight: 600;
-  color: var(--ui-ink-2);
+  color: var(--ui-muted);
 }
 
 .session-v {
-  font: 700 22px / 1.2 var(--ui-font-display);
+  font: 700 28px / 1.15 var(--ui-font-display);
+  letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
 }
 
@@ -1079,7 +1256,7 @@ watch(
   opacity: 1;
 }
 
-/* notification card: status, instruction, one primary action */
+/* device notification: one status row and one link, nothing to learn here */
 .notify-card {
   display: flex;
   flex-direction: column;
@@ -1089,15 +1266,15 @@ watch(
   display: flex;
   gap: 12px;
   align-items: center;
-  padding: 18px var(--row-pad-x) 6px 20px;
+  padding: 16px 20px;
 }
 
 .notify-ico {
   display: grid;
   flex: none;
   place-items: center;
-  width: 34px;
-  height: 34px;
+  width: 36px;
+  height: 36px;
   border-radius: 10px;
   background: var(--ui-surface-2);
   color: var(--ui-ink-2);
@@ -1108,33 +1285,37 @@ watch(
   height: 18px;
 }
 
+.notify-main {
+  flex: 1;
+  min-width: 0;
+}
+
 .notify-hint {
   text-wrap: pretty;
-  margin: 0;
-  padding: 8px 20px 14px;
+  margin: 2px 0 0;
   font-size: 14px;
-  line-height: 21px;
-  color: var(--ui-ink-2);
+  line-height: 20px;
+  color: var(--ui-muted);
 }
 
-.notify-actions {
+.notify-link {
   display: flex;
-  gap: 12px;
+  gap: 4px;
   align-items: center;
   justify-content: space-between;
+  min-height: 48px;
   margin-top: auto;
-  padding: 14px 20px 18px;
+  padding: 0 20px;
   box-shadow: inset 0 0.5px 0 var(--ui-sep);
-}
-
-.notify-actions-k {
-  font-size: 14px;
-  color: var(--ui-ink-2);
-}
-
-.notify-actions .btn {
-  gap: 4px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ui-accent);
   text-decoration: none;
+}
+
+.notify-link:focus-visible {
+  outline: 2px solid var(--ui-accent);
+  outline-offset: -2px;
 }
 
 .pw-rules {
@@ -1202,71 +1383,72 @@ watch(
   color: var(--ui-ink-2);
 }
 
-@media (max-width: 1024px) {
+@media (max-width: 768px) {
+  /* one column in the order a person acts in: the pass, the name, the password, the device */
   .profile-cols {
-    grid-template-columns: minmax(0, 1fr);
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
   }
 
-  .profile-hero {
-    grid-template-columns: minmax(0, 1fr);
+  .profile-col {
+    display: contents;
   }
 
+  .o-pass {
+    order: 1;
+  }
+
+  #basic {
+    order: 2;
+  }
+
+  #security {
+    order: 3;
+  }
+
+  #notification-prefs {
+    order: 4;
+  }
+
+  .pass-access,
+  .ladders {
+    flex: none;
+  }
 }
 
-/* Phone: condensed identity, one column in the order a person acts in */
+/* Phone: a condensed pass */
 @media (max-width: 768px) {
-  .profile-hero {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .identity {
-    gap: 14px;
+  .pass-band {
+    gap: 4px 14px;
     padding: 20px;
   }
 
   .avatar {
-    width: 60px;
-    height: 60px;
-    font-size: 26px;
+    width: 56px;
+    height: 56px;
+    font-size: 24px;
   }
 
   .identity-name {
     font-size: 24px;
   }
 
-  .identity-chips {
-    margin-top: 8px;
+  .pass-access {
+    gap: 12px;
+    padding: 18px 20px 16px;
   }
 
-  .notify-actions {
-    flex-direction: column;
-    align-items: stretch;
+  .ladders {
+    gap: 16px;
   }
 
-  .notify-actions-k {
-    display: none;
-  }
-
-  .hero-teams {
-    padding: 2px 20px;
-  }
-
-  .hero-session {
-    padding: 14px 20px;
-  }
-
-  .session-text {
-    grid-template-columns: auto auto;
-    column-gap: 8px;
-    align-items: baseline;
-  }
-
-  .session-k {
-    grid-column: 1 / -1;
+  .pass-session {
+    padding: 20px;
   }
 
   .session-v {
-    font-size: 20px;
+    font-size: 24px;
   }
 
   .form-actions {
