@@ -2,67 +2,32 @@
   <div
     v-if="loading || overview !== null"
     class="stats-grid"
-    :class="{ 'stats-grid--three': !showRestorable }"
     aria-label="活動概覽（管理員）"
   >
-    <template v-if="loading">
-      <div
-        v-for="i in skeletonCount"
-        :key="i"
-        class="ui-card ui-kpi stat-card stat-card--skeleton"
+    <RingLead
+      kicker="總活動"
+      :value="overview ? overview.totalActivities.toLocaleString('zh-TW') : ''"
+      unit="筆"
+      :meaning="meaning"
+      :busy="loading || overview === null"
+      summary="活動分布"
+      :rings="rings"
+      :size="144"
+    >
+      <span
+        v-if="bars.length > 0 && !loading"
+        class="bars"
+        role="img"
+        :aria-label="barsLabel"
       >
-        <div class="skeleton-label shimmer" />
-        <div class="skeleton-value shimmer" />
-        <div class="skeleton-subtitle shimmer" />
-      </div>
-    </template>
-    <template v-else-if="overview !== null">
-      <article
-        v-for="card in cards"
-        :key="card.key"
-        class="ui-card ui-kpi stat-card"
-      >
-        <div class="ui-kpi-top stat-card__top">
-          <span
-            class="ui-kpi-ico"
-            :style="{ background: card.soft, color: card.ink }"
-          >
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              aria-hidden="true"
-            ><path :d="card.icon" /></svg>
-          </span>
-          <span class="stat-label">{{ card.label }}</span>
-        </div>
-        <div
-          class="stat-value"
-          :class="card.compact ? 'stat-value--text' : 'ui-kpi-value'"
-        >
-          {{ card.value }}<small v-if="card.unit">{{ card.unit }}</small>
-        </div>
-        <div class="ui-kpi-foot stat-subtitle">
-          <span>{{ card.subtitle }}</span>
-          <span
-            v-if="card.key === 'total' && bars.length > 0"
-            class="bars"
-            role="img"
-            :aria-label="barsLabel"
-          >
-            <i
-              v-for="bar in bars"
-              :key="bar.date"
-              :class="{ hi: bar.hi }"
-              :style="{ height: bar.height }"
-            />
-          </span>
-        </div>
-      </article>
-    </template>
+        <i
+          v-for="bar in bars"
+          :key="bar.date"
+          :class="{ hi: bar.hi }"
+          :style="{ height: bar.height }"
+        />
+      </span>
+    </RingLead>
   </div>
 </template>
 
@@ -70,7 +35,9 @@
 import { computed } from 'vue'
 import type { ActivityOverview } from '@/api/activities'
 import { isActivityRestoreEnabled } from '@/config/runtime'
-import { getActionLabel, getRoleLabel } from './utils'
+import RingLead from '@/components/lead/RingLead.vue'
+import type { ServiceRing } from '@/components/ui/ServiceRings.vue'
+import { getActionLabel } from './utils'
 
 const props = defineProps<{
   overview: ActivityOverview | null
@@ -79,7 +46,6 @@ const props = defineProps<{
 
 /** The restorable count only means something while the restore feature is on. */
 const showRestorable = isActivityRestoreEnabled()
-const skeletonCount = showRestorable ? 4 : 3
 
 const topAction = computed(() => {
   if (!props.overview) { return null }
@@ -109,170 +75,53 @@ const barsLabel = computed(() => {
   return `${periodLabel.value}每日活動數，${peak.date.slice(5).replace('-', '/')} 最多 ${peak.count} 筆`
 })
 
-interface StatCard {
-  key: string
-  label: string
-  value: string | number
-  unit?: string
-  compact?: boolean
-  subtitle: string
-  soft: string
-  ink: string
-  icon: string
-}
-
-const cards = computed<StatCard[]>(() => {
+const rings = computed<ServiceRing[]>(() => {
   const overview = props.overview
-  if (!overview) { return [] }
+  const total = overview?.totalActivities ?? 0
+  if (!overview || total <= 0) { return [] }
+  const list: ServiceRing[] = []
   const topUser = overview.topUsers[0]
-  const total = overview.totalActivities
-  const list: StatCard[] = [
-    {
-      key: 'total',
-      label: '總活動',
-      value: total.toLocaleString('zh-TW'),
-      subtitle: periodLabel.value,
-      soft: 'var(--ui-accent-soft)',
-      ink: 'var(--ui-accent)',
-      icon: 'M22 12h-4l-3 9L9 3l-3 9H2'
-    },
-    {
-      key: 'users',
-      label: '最活躍成員',
-      value: topUser ? topUser.user_name : '—',
-      compact: true,
-      subtitle: topUser
-        ? `${topUser.count.toLocaleString('zh-TW')} 筆 · ${getRoleLabel(topUser.user_role)}`
-        : '此期間沒有活動',
-      soft: 'var(--ui-green-soft)',
-      ink: 'var(--ui-green-ink)',
-      icon: 'M2 21v-1a6 6 0 0 1 12 0v1M17 11a3 3 0 1 0 0-6M22 21v-1a5 5 0 0 0-4-4.9M9 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z'
-    },
-    {
-      key: 'action',
-      label: '最常見操作',
-      value: topAction.value ? topAction.value.label : '—',
-      compact: true,
-      subtitle: topAction.value && total > 0
-        ? `${topAction.value.count.toLocaleString('zh-TW')} 筆，佔 ${Math.round((topAction.value.count / total) * 100)}%`
-        : '此期間沒有活動',
-      soft: 'var(--ui-indigo-soft)',
-      ink: 'var(--ui-indigo)',
-      icon: 'm22 2-7 20-4-9-9-4Z'
-    }
-  ]
-  if (showRestorable) {
-    list.push({
-      key: 'restorable',
-      label: '可還原',
-      value: overview.restorableCount,
-      unit: '筆',
-      subtitle: '期限內、尚未還原的操作',
-      soft: 'var(--ui-orange-soft)',
-      ink: 'var(--ui-orange-ink)',
-      icon: 'M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5'
-    })
+  if (topUser) {
+    list.push({ label: `最活躍：${topUser.user_name}`, value: topUser.count, total, of: '筆', hue: 'var(--section-hue)' })
+  }
+  if (topAction.value) {
+    list.push({ label: `最常見：${topAction.value.label}`, value: topAction.value.count, total, of: '筆', hue: 'var(--ui-blue)' })
   }
   return list
 })
+
+const meaning = computed(() => {
+  const overview = props.overview
+  if (!overview) { return '' }
+  const parts = [`${periodLabel.value} · ${overview.activeUserCount} 位成員`]
+  if (showRestorable) { parts.push(`${overview.restorableCount} 筆可還原`) }
+  return parts.join(' · ')
+})
 </script>
 
+
 <style scoped>
-/* Reset the legacy global .stats-grid / .stat-card (styles/variables.css) */
+/* Reset the legacy global .stats-grid (styles/variables.css) */
 .stats-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 16px;
-  margin-bottom: 0;
+  display: block;
+  margin: 0;
+  padding: 0;
 }
-.stat-card {
-  align-items: stretch;
-  gap: 10px;
-  padding: 18px 20px 16px;
-  border: 0;
-  border-radius: var(--ui-r-card);
-  background: var(--ui-surface);
-  box-shadow: var(--ui-shadow-card);
-  text-align: left;
-}
-.stat-card:hover {
-  transform: none;
-  box-shadow: var(--ui-shadow-card);
-}
-.stats-grid--three {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-.stat-value--text {
-  display: flex;
-  align-items: center;
-  min-height: 34px;
-  overflow: hidden;
-  font: 600 22px / 1.15 var(--ui-font-display);
-  letter-spacing: -0.02em;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .bars {
   display: flex;
   align-items: flex-end;
   gap: 3px;
-  width: 84px;
-  height: 26px;
-  margin-left: auto;
+  width: 140px;
+  height: 28px;
+  margin-top: 14px;
 }
 .bars i {
   flex: 1;
   min-height: 3px;
   border-radius: 2px 2px 0 0;
-  background: color-mix(in srgb, var(--ui-accent) 30%, transparent);
+  background: color-mix(in srgb, var(--section-hue) 30%, transparent);
 }
 .bars i.hi {
-  background: var(--ui-accent);
-}
-
-/* Skeleton */
-.skeleton-label,
-.skeleton-value,
-.skeleton-subtitle {
-  border-radius: 6px;
-  background: var(--ui-fill);
-}
-.skeleton-label {
-  width: 60%;
-  height: 12px;
-}
-.skeleton-value {
-  width: 40%;
-  height: 28px;
-}
-.skeleton-subtitle {
-  width: 50%;
-  height: 12px;
-}
-
-@keyframes shimmer {
-  0% { opacity: 1; }
-  50% { opacity: 0.5; }
-  100% { opacity: 1; }
-}
-.shimmer {
-  animation: shimmer 1.5s ease-in-out infinite;
-}
-
-@media (max-width: 1280px) {
-  .stats-grid,
-  .stats-grid--three {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-@media (max-width: 480px) {
-  .bars {
-    display: none;
-  }
-  .stat-value--text {
-    font-size: 18px;
-  }
+  background: var(--section-hue);
 }
 </style>

@@ -150,6 +150,14 @@
               >
             </label>
           </li>
+          <li
+            v-for="slot in emptySlots"
+            :key="`slot-${slot}`"
+            class="image-slot"
+            aria-hidden="true"
+          >
+            {{ slot }}
+          </li>
         </ul>
         <div
           role="status"
@@ -185,21 +193,25 @@
 
       <div class="compose-foot">
         <p class="foot-note">
-          <template v-if="currentPreview">
+          <template v-if="currentPreview && !missing.length">
             將發送給 <b>{{ currentPreview.sendable }}</b> 位 LINE 客戶，送出時會凍結名單。
           </template>
-          <template v-else-if="selectedTagId">
-            尚未取得受眾預覽，請按「更新預覽」。
+          <template v-else-if="missing.length">
+            還需要：<b class="missing">{{ missing.join('、') }}</b>
+          </template>
+          <template v-else-if="imagesBusy">
+            圖片上傳完成後即可發送。
           </template>
           <template v-else>
-            選擇目標標籤後會顯示受眾預覽。
+            尚未取得受眾預覽，請按「更新預覽」。
           </template>
         </p>
         <div class="actions">
           <button
+            v-if="selectedTagId"
             type="button"
             class="btn btn-secondary"
-            :disabled="previewLoading || !selectedTagId"
+            :disabled="previewLoading"
             @click="emitPreview"
           >
             {{ previewLoading ? '預覽中...' : '更新預覽' }}
@@ -207,7 +219,7 @@
           <button
             type="submit"
             class="btn btn-primary"
-            :disabled="sending || !canSubmit"
+            :disabled="sending"
           >
             {{ sending ? '發送中...' : '建立並發送' }}
           </button>
@@ -408,6 +420,20 @@
     props.previewTagId === selectedTagId.value ? props.preview : null
   )
 
+  // What still blocks sending, in form order (shown beside the primary action)
+  const missing = computed(() => {
+    const items: string[] = []
+    if (!title.value) {items.push('活動名稱')}
+    if (!selectedTagId.value) {items.push('目標標籤')}
+    if (!content.value && !images.value.length) {items.push('文字或圖片')}
+    return items
+  })
+  // The unused slots after the add tile, numbered, so the 4-image limit reads as a row
+  const emptySlots = computed(() =>
+    Array.from({ length: Math.max(MAX_IMAGES - images.value.length - 1, 0) }, (_, i) => images.value.length + i + 2)
+  )
+  const imagesBusy = computed(() => !imagesReady.value)
+
   const canSubmit = computed(
     () =>
       title.value.length > 0 &&
@@ -424,7 +450,24 @@
     }
   }
 
+  // Pressing the primary action with something missing takes the user to the first missing field
+  function focusFirstMissing() {
+    const root = composeRoot.value
+    if (!root) {return}
+    const target = !title.value
+      ? root.querySelector<HTMLElement>('input[type="text"]')
+      : !selectedTagId.value
+        ? root.querySelector<HTMLElement>('select')
+        : root.querySelector<HTMLElement>('textarea')
+    target?.scrollIntoView?.({ block: 'center', behavior: 'smooth' })
+    target?.focus({ preventScroll: true })
+  }
+
   function handleSubmit() {
+    if (missing.value.length > 0) {
+      focusFirstMissing()
+      return
+    }
     if (selectedTagId.value > 0 && props.previewTagId !== selectedTagId.value) {
       emitPreview()
       return
@@ -485,7 +528,7 @@
 
   .lbl small {
     margin-left: 6px;
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 400;
     color: var(--ui-muted);
   }
@@ -511,6 +554,18 @@
     margin: 0;
     padding: 0;
     list-style: none;
+  }
+
+  .image-slot {
+    display: grid;
+    aspect-ratio: 1;
+    place-items: center;
+    border: 1.5px dashed rgba(60, 60, 67, 0.22);
+    border-radius: var(--ui-r-inner);
+    background: transparent;
+    font-size: var(--ui-t-meta);
+    font-variant-numeric: tabular-nums;
+    color: var(--ui-muted);
   }
 
   .image-tile,
@@ -542,7 +597,7 @@
     place-items: center;
     border-radius: 7px;
     background: rgb(0 0 0 / 0.5);
-    font-size: 11.5px;
+    font-size: 13px;
     font-weight: 600;
     color: #fff;
   }
@@ -553,7 +608,7 @@
     display: grid;
     place-items: center;
     background: rgb(255 255 255 / 0.7);
-    font-size: 12.5px;
+    font-size: 13px;
     font-weight: 600;
   }
 
@@ -588,7 +643,7 @@
     border: 0;
     border-radius: 999px;
     background: rgb(255 255 255 / 0.92);
-    font-size: 11.5px;
+    font-size: 13px;
     font-weight: 600;
     color: var(--ui-ink);
     cursor: pointer;
@@ -610,7 +665,7 @@
     place-content: center;
     justify-items: center;
     gap: 4px;
-    font-size: 12.5px;
+    font-size: 13px;
     font-weight: 600;
     color: var(--ui-ink-2);
     cursor: pointer;
@@ -643,7 +698,7 @@
     display: flex;
     flex-wrap: wrap;
     gap: 4px 12px;
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 400;
     color: var(--ui-muted);
   }
@@ -679,6 +734,11 @@
     color: var(--ui-muted);
   }
 
+  .foot-note b.missing {
+    font-weight: 600;
+    color: var(--ui-orange-ink);
+  }
+
   .foot-note b {
     color: var(--ui-ink);
     font-variant-numeric: tabular-nums;
@@ -695,7 +755,7 @@
       grid-template-columns: 1fr;
     }
     .image-grid {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
     }
     .actions {
       width: 100%;
@@ -703,5 +763,10 @@
     .actions .btn {
       flex: 1;
     }
+  }
+
+  .ui-input::placeholder,
+  .ui-textarea::placeholder {
+    color: var(--ui-muted);
   }
 </style>

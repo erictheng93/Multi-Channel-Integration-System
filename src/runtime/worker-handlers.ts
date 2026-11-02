@@ -10,6 +10,7 @@ import { createDbClient } from '@/db/drizzle-factory';
 import { aggregateMessageRollup, healRecentMessageRollup } from '@modules/dashboard/services/message-rollup-service';
 import { healMessageMarkers } from '@modules/conversations/services/message-markers-service';
 import { healAwaitingSince } from '@modules/dashboard/services/awaiting-service';
+import { autoCloseIdleConversations } from '@modules/conversations/services/auto-close-service';
 import { checkSchemaTriggers } from '@/health-checkers/schema-integrity';
 import { RowsReadMeter } from '@/utils/d1-rows-read';
 import type { Bindings } from '../types';
@@ -74,6 +75,7 @@ export async function scheduled(
  * Recompute derived dashboard data that triggers and the incremental rollup cannot keep exact:
  *  - message_daily_stats for the last 2 Taipei days (recalls, soft deletes, late rows, reassignment)
  *  - conversations.awaiting_since where it disagrees with messages (recalled replies, deleted messages)
+ *  - then closes idle, not-waiting conversations (auto-close-service.ts)
  */
 async function runNightlyHeal(env: Bindings): Promise<void> {
   const meter = new RowsReadMeter('cron.nightly-heal', 20_000);
@@ -95,12 +97,19 @@ async function runNightlyHeal(env: Bindings): Promise<void> {
   } catch (error) {
     log.error('Message marker heal failed', {}, error instanceof Error ? error : new Error(String(error)));
   }
+  // Close idle conversations that are not waiting for a reply. After the heals so awaiting_since is exact.
+  // One bounded pass (max 200), no alarm; env AUTO_CLOSE_IDLE_DAYS=0 disables it.
+  try {
+    await autoCloseIdleConversations(env, Date.now(), meter);
+  } catch (error) {
+    log.error('Idle conversation auto-close failed', {}, error instanceof Error ? error : new Error(String(error)));
+  }
   // A rebuild or restore can silently drop migration-only triggers (it happened on 2026-06-17). The heals above
   // repair the data either way; this makes the lost trigger visible instead of silently degrading.
   try {
     const missing = await checkSchemaTriggers(env.DB, env.CACHE);
     if (missing.length > 0) {
-      log.error('Required database triggers are missing; re-run the CREATE TRIGGER statements from migrations 0070/0071', { missing });
+      log.error('Required database triggers are missing; re-run the CREATE TRIGGER statements from migrations 0072 (awaiting) and 0071 (markers)', { missing });
     }
   } catch (error) {
     log.error('Schema trigger check failed', {}, error instanceof Error ? error : new Error(String(error)));

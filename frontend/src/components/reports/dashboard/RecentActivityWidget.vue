@@ -150,7 +150,7 @@ function iconPath(status: string): string {
 
 <style scoped>
 .widget-content {
-  max-height: 420px;
+  max-height: 640px;
   overflow-y: auto;
 }
 
@@ -231,7 +231,7 @@ function iconPath(status: string): string {
 }
 
 .activity-time {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--ui-muted);
 }
 </style>

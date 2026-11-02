@@ -17,6 +17,7 @@ const frontendLogger = createLogger('App')
 import { computed, onMounted, watch, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { useWebSocketStore } from '@/stores/websocket'
 import { useActivityTracker } from '@/composables/useActivityTracker'
 import { useTokenRefresh } from '@/composables/useTokenRefresh'
 import { useAccountStatusMonitor } from '@/composables/useAccountStatusMonitor'
@@ -37,10 +38,16 @@ const { start: startDesktopNotifications, stop: stopDesktopNotifications } = use
 usePageTitleUnread()
 
 watch(() => authStore.isAuthenticated, (authenticated) => {
+  const wsStore = useWebSocketStore()
   if (authenticated) {
+    // main.ts only connects when the session was already valid at startup. connect() is
+    // idempotent and handles its own failures through the store's retry.
+    void wsStore.connect()
     startDesktopNotifications()
   } else {
     stopDesktopNotifications()
+    // connect() no-ops on a live socket, so the next user in this tab would inherit this one
+    wsStore.disconnect()
   }
 }, { immediate: true })
 

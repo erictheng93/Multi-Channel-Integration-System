@@ -245,7 +245,7 @@ const calculatePercentage = (value: number, total: number): string => {
 }
 
 .stat-label {
-  font-size: 0.75rem;
+  font-size: 13px;
   font-weight: 600;
   color: var(--gray-600);
   text-transform: uppercase;
@@ -315,7 +315,7 @@ const calculatePercentage = (value: number, total: number): string => {
 }
 
 .platform-percentage {
-  font-size: 0.75rem;
+  font-size: 13px;
   font-weight: 500;
   color: var(--gray-500);
   margin-left: var(--space-1);

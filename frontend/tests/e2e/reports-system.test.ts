@@ -274,7 +274,7 @@ describe('報表系統端到端測試', () => {
       expect(navItems.length).toBeGreaterThan(0);
 
       // 檢查導航項目內容
-      const expectedNavItems = ['儀表板', '模板', '生成報表'];
+      const expectedNavItems = ['報表總覽', '報表模板', '產生報表'];
       const navTexts = navItems.map(item => item.text().trim());
 
       expectedNavItems.forEach(expectedText => {
@@ -300,10 +300,8 @@ describe('報表系統端到端測試', () => {
 
       await wrapper.vm.$nextTick();
       await new Promise(resolve => setTimeout(resolve, 100));
-
-      // 檢查統計卡片
-      const statCards = wrapper.findAll('.stat-card');
-      expect(statCards.length).toBeGreaterThan(0);
+      // The lead object shows this month's figure and the status rings
+      expect(wrapper.find('.ui-lead').exists()).toBe(true);
     });
 
     it('應該正確顯示報表列表', async () => {
