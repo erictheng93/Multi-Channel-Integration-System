@@ -191,6 +191,44 @@ describe('aggregateMessageRollup', () => {
   });
 });
 
+describe('readDayCounts while the aggregation cron commits', () => {
+  /** A D1 whose first read round trip is followed by `cron`, as if it committed between the reader's queries. */
+  function cronAfterFirstRead(d1: D1Database, cron: () => Promise<unknown>): D1Database {
+    let fired = false;
+    const fire = async <T>(result: T): Promise<T> => {
+      if (!fired) { fired = true; await cron(); }
+      return result;
+    };
+    const wrap = (stmt: D1PreparedStatement) => ({ ...stmt, all: () => stmt.all().then(fire) });
+    return {
+      ...d1,
+      prepare: (query: string) => {
+        const stmt = d1.prepare(query);
+        return { ...wrap(stmt), bind: (...params: unknown[]) => wrap(stmt.bind(...params)) };
+      },
+      batch: (statements: D1PreparedStatement[]) => d1.batch(statements).then(fire),
+    } as unknown as D1Database;
+  }
+
+  it('counts a message once when it is folded into the rollup in the middle of the read', async () => {
+    const db = rollupDb();
+    addCustomer(db, 1);
+    addConv(db, 'a');
+    addMsg(db, 'a', 'customer', '2026-10-29T01:00:00.000Z');
+    const d1 = d1Of(db);
+    await aggregateMessageRollup(d1, Date.parse('2026-10-29T02:00:00.000Z'));
+    addMsg(db, 'a', 'customer', '2026-10-29T05:00:00.000Z'); // only the live delta knows this one
+
+    const racing = cronAfterFirstRead(d1, () => aggregateMessageRollup(d1, NOW));
+    const counts = await readDayCounts(racing, admin, {
+      fromDay: '2026-10-29', toDay: '2026-10-29', senderTypes: ['customer'], nowMs: NOW,
+    });
+
+    expect(rollupTotal(db)).toBe(2); // the cron really did fold it in
+    expect(counts.reduce((sum, row) => sum + row.n, 0)).toBe(2);
+  });
+});
+
 describe('healRecentMessageRollup (nightly self-heal)', () => {
   it('re-derives the last 2 Taipei days: soft deletes, late rows and reassignments converge; older days stay', async () => {
     const db = rollupDb();

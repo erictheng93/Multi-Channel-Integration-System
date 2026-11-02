@@ -62,10 +62,10 @@ export async function computeMessageStats(env: Bindings, now: number = nowMs()):
   const watermark = await readWatermark(db, meter);
   const [totals, recent, lastActivity, olderToday] = await Promise.all([
     readDayCounts(db, allTeams, {
-      fromDay: '0000-00-00', toDay: '9999-12-31', senderTypes: senders, nowMs: now, allTime: true, watermark, meter
+      fromDay: '0000-00-00', toDay: '9999-12-31', senderTypes: senders, nowMs: now, allTime: true, meter
     }),
     readDayCounts(db, allTeams, {
-      fromDay: taipeiDateString(cutoffMs), toDay: taipeiDateString(now), senderTypes: senders, nowMs: now, watermark, meter
+      fromDay: taipeiDateString(cutoffMs), toDay: taipeiDateString(now), senderTypes: senders, nowMs: now, meter
     }),
     readLastActivity(db, watermark, now, meter),
     countOlderThanCutoff(db, new Date(cutoffDayStartMs).toISOString(), new Date(cutoffMs).toISOString(), meter)
