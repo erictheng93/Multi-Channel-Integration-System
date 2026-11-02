@@ -109,6 +109,11 @@ function handleSave() {
   flex-direction: column;
 }
 
+/* rows share the card's height so a taller webhook card never leaves a gap above the footnote */
+.integration-form .ui-group :deep(.srow) {
+  flex: 1;
+}
+
 /* the footnote sits inside the card, pushed to its bottom edge so both columns end together */
 .cred-note {
   margin: auto 0 0;
