@@ -24,7 +24,12 @@ import { getConversationVisibilitySql } from '@/services/conversation-visibility
 import { rowsReadOf } from '@/utils/d1-rows-read';
 import type { Bindings } from '@/types';
 import { fastUnreadAggregate, legacyUnreadAggregate } from '@/modules/conversations/services/unread-stats-service';
-import { MIGRATION_AWAITING, MIGRATION_MARKERS, MIGRATION_ROLLUP, readMigration } from '../helpers/sqlite-d1';
+import { MIGRATION_AWAITING, MIGRATION_HYGIENE, MIGRATION_MARKERS, MIGRATION_ROLLUP, readMigration } from '../helpers/sqlite-d1';
+import { autoCloseIdleConversations } from '@/modules/conversations/services/auto-close-service';
+import { healAwaitingSince } from '@/modules/dashboard/services/awaiting-service';
+import { getStaleWaitingSummary, getNeverRepliedIds } from '@/modules/dashboard/services/stale-waiting-service';
+import { waitingWindowStartIso } from '@/modules/dashboard/services/waiting-service';
+import { neverRepliedSql } from '@/modules/dashboard/services/awaiting-rules';
 
 const enabled = process.env.MEASURE_ROWS_READ === '1';
 const DAY = 24 * 3600_000;
@@ -112,7 +117,9 @@ describe.skipIf(!enabled)('dashboard rows_read, before vs after (local D1 engine
     for (const ddl of [
       'CREATE TABLE customers (id INTEGER PRIMARY KEY, platform TEXT NOT NULL, display_name TEXT, custom_name TEXT, avatar_url TEXT)',
       `CREATE TABLE conversations (id TEXT PRIMARY KEY, customer_id INTEGER NOT NULL, status TEXT NOT NULL DEFAULT 'active',
-        assigned_team_id INTEGER, first_response_at TEXT, closed_at TEXT, created_at TEXT, deleted_at TEXT, unread_floor_at TEXT)`,
+        assigned_team_id INTEGER, first_response_at TEXT, closed_at TEXT, created_at TEXT, deleted_at TEXT, unread_floor_at TEXT, updated_at TEXT)`,
+      `CREATE TABLE agents (id TEXT PRIMARY KEY, email TEXT, password_hash TEXT, display_name TEXT, role TEXT, is_active INTEGER, created_at TEXT, updated_at TEXT)`,
+      `CREATE TABLE activities (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id TEXT, user_name TEXT, user_role TEXT, action TEXT, resource_type TEXT, resource_id TEXT, details TEXT, ip_address TEXT, user_agent TEXT, created_at TEXT)`,
       'CREATE TABLE conversation_read_states (agent_id TEXT NOT NULL, conversation_id TEXT NOT NULL, last_read_at TEXT, marked_unread_at TEXT, PRIMARY KEY (agent_id, conversation_id))',
       `CREATE TABLE messages (id TEXT PRIMARY KEY, conversation_id TEXT NOT NULL, sender_type TEXT NOT NULL,
         content TEXT NOT NULL DEFAULT '', message_type TEXT NOT NULL DEFAULT 'text', metadata TEXT,
@@ -161,7 +168,7 @@ describe.skipIf(!enabled)('dashboard rows_read, before vs after (local D1 engine
     await insertBatch(raw, 'INSERT INTO conversation_read_states (agent_id, conversation_id, last_read_at, marked_unread_at) VALUES (?,?,?,?)', readStates);
 
     // Apply the migrations exactly like production would: backfill from existing data
-    for (const file of [MIGRATION_ROLLUP, MIGRATION_AWAITING, MIGRATION_MARKERS]) {
+    for (const file of [MIGRATION_ROLLUP, MIGRATION_AWAITING, MIGRATION_MARKERS, MIGRATION_HYGIENE]) {
       for (const statement of statementsOf(readMigration(file))) { await run(raw, statement); }
     }
     await aggregateMessageRollup(raw, NOW); // the cron catches up the last minute
@@ -340,6 +347,47 @@ describe.skipIf(!enabled)('dashboard rows_read, before vs after (local D1 engine
       },
       d1 => d1.prepare(sql).all());
     expect(afterRows).toBeLessThanOrEqual(beforeRows);
+  });
+
+  it('GET /conversations?awaiting=stale (admin, page of 20) and the summary stale counts', async () => {
+    const meter = counting(raw);
+    meter.reset();
+    const summary = await getStaleWaitingSummary(meter.d1, admin, NOW);
+    const summaryRows = meter.get();
+    results.push({ endpoint: 'stale waiting summary (admin)', before: 0, after: summaryRows });
+    expect(summary.count).toBeGreaterThan(50);
+    expect(summaryRows).toBeLessThan(2000);
+
+    meter.reset();
+    const page = await meter.d1.prepare(`
+      SELECT c.id FROM conversations c
+      WHERE c.awaiting_since IS NOT NULL AND c.awaiting_since < ? AND c.status <> 'closed' AND c.deleted_at IS NULL
+      ORDER BY CASE WHEN ${neverRepliedSql('c.id')} THEN 0 ELSE 1 END, c.awaiting_since ASC, c.id ASC LIMIT 20
+    `).bind(waitingWindowStartIso(NOW)).all<{ id: string }>();
+    await getNeverRepliedIds(meter.d1, (page.results ?? []).map(r => r.id));
+    results.push({ endpoint: 'GET /conversations?awaiting=stale (page 20)', before: 0, after: meter.get() });
+    expect(meter.get()).toBeLessThan(2000);
+  });
+
+  it('nightly heal of awaiting_since with the sign-off rule (steady state)', async () => {
+    const meter = counting(raw);
+    const healed = await healAwaitingSince(meter.d1, NOW);
+    results.push({ endpoint: 'cron nightly healAwaitingSince', before: 0, after: meter.get() });
+    expect(healed.corrected).toBe(0);
+    expect(meter.get()).toBeLessThan(20_000);
+  });
+
+  it('nightly auto-close: select + close a batch of at most 200', async () => {
+    const meter = counting(raw);
+    const result = await autoCloseIdleConversations({ DB: meter.d1 } as unknown as Bindings, NOW);
+    results.push({ endpoint: `cron nightly auto-close (closed ${result.closed})`, before: 0, after: meter.get() });
+    expect(result.closed).toBeLessThanOrEqual(200);
+    expect(meter.get()).toBeLessThan(5000);
+    // converged: the next run selects nothing it can still close
+    const again = counting(raw);
+    const second = await autoCloseIdleConversations({ DB: again.d1 } as unknown as Bindings, NOW);
+    results.push({ endpoint: `cron nightly auto-close, second run (closed ${second.closed})`, before: 0, after: again.get() });
+    expect(again.get()).toBeLessThan(500);
   });
 
   it('*/5 cron: aggregateMessageRollup with nothing new', async () => {

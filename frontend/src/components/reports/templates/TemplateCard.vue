@@ -1,293 +1,258 @@
-<!-- 報表模板卡片 -->
-<!-- Individual template card displayed in the grid -->
-
 <template>
-  <div
-    class="template-card"
-    :class="{ selected: isSelected }"
-    @click="$emit('select', template)"
-  >
-    <!-- 模板圖標和基本資訊 -->
-    <div class="template-header">
-      <div class="template-icon">
-        {{ template.icon }}
-      </div>
-      <div class="template-basic-info">
-        <h3 class="template-name">
+  <article class="ui-card template-card">
+    <header class="tc-head">
+      <span
+        class="tpl-ico"
+        aria-hidden="true"
+      >
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        ><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z" /><path d="M14 3v5h5M9 13h6M9 17h6" /></svg>
+      </span>
+      <div class="tc-title">
+        <h2 class="template-name">
           {{ template.name }}
-        </h3>
+        </h2>
         <p class="template-description">
           {{ template.description }}
         </p>
       </div>
-      <div class="template-category">
-        <span
-          class="category-badge"
-          :class="template.category"
-        >
-          {{ getCategoryLabel(template.category) }}
-        </span>
-      </div>
-    </div>
+      <span class="ui-tag category-badge">{{ getCategoryLabel(template.category) }}</span>
+    </header>
 
-    <!-- 模板詳細資訊 -->
-    <div class="template-details">
-      <div class="template-type">
-        <strong>報表類型：</strong>
-        <span class="type-label">{{ getReportTypeLabel(template.type) }}</span>
-      </div>
-
-      <div class="template-time">
-        <strong>預估時間：</strong>
-        <span class="time-estimate">{{ formatEstimatedTime(template.estimatedTime) }}</span>
-      </div>
-
-      <div class="template-filters">
-        <strong>必需篩選：</strong>
-        <div class="required-filters">
-          <span
-            v-for="filter in template.requiredFilters"
-            :key="filter"
-            class="filter-tag required"
-          >
-            {{ getFilterLabel(filter) }}
-          </span>
-          <span
-            v-if="template.requiredFilters.length === 0"
-            class="no-filters"
-          >
-            無必需篩選
-          </span>
-        </div>
-      </div>
-
-      <div
-        v-if="template.optionalFilters.length > 0"
-        class="template-optional-filters"
-      >
-        <strong>可選篩選：</strong>
-        <div class="optional-filters">
-          <span
-            v-for="filter in template.optionalFilters"
-            :key="filter"
-            class="filter-tag optional"
-          >
-            {{ getFilterLabel(filter) }}
-          </span>
-        </div>
-      </div>
-    </div>
-
-    <!-- 選擇指示器 -->
-    <div
-      v-if="isSelected"
-      class="selection-indicator"
+    <section
+      class="tc-contents"
+      :aria-label="`${template.name}的報表內容`"
     >
-      <i class="check-icon" />
-    </div>
-  </div>
+      <h3 class="tc-h">
+        報表內容
+      </h3>
+      <ul class="tc-list">
+        <li
+          v-for="item in contents"
+          :key="item.label"
+        >
+          <span class="tc-text">
+            <b>{{ item.label }}</b>
+            <span>{{ item.hint }}</span>
+          </span>
+        </li>
+      </ul>
+    </section>
+
+    <dl class="tc-meta">
+      <div>
+        <dt>預設範圍</dt>
+        <dd>近 30 天</dd>
+      </div>
+      <div>
+        <dt>輸出格式</dt>
+        <dd>JSON</dd>
+      </div>
+      <div v-if="template.presetOptions.maxRecords">
+        <dt>筆數上限</dt>
+        <dd>{{ template.presetOptions.maxRecords.toLocaleString('en-US') }}</dd>
+      </div>
+      <div v-if="template.estimatedTime">
+        <dt>預估時間</dt>
+        <dd>約 {{ formatEstimatedTime(template.estimatedTime) }}</dd>
+      </div>
+    </dl>
+
+    <footer class="tc-foot">
+      <button
+        type="button"
+        class="btn btn-ghost"
+        :disabled="generating"
+        @click="$emit('customize', template)"
+      >
+        調整後產生
+      </button>
+      <button
+        type="button"
+        class="btn btn-primary"
+        :disabled="generating"
+        @click="$emit('use', template)"
+      >
+        {{ generating ? '產生中...' : '直接產生' }}
+      </button>
+    </footer>
+  </article>
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue';
 import type { ReportTemplate } from '@/types/reports';
-import {
-  getCategoryLabel,
-  getReportTypeLabel,
-  getFilterLabel,
-  formatEstimatedTime
-} from './templateHelpers';
+import { REPORT_CONTENTS, formatEstimatedTime, getCategoryLabel } from './templateHelpers';
 
-defineProps<{
+const props = withDefaults(defineProps<{
   template: ReportTemplate;
-  isSelected: boolean;
-}>();
+  generating?: boolean;
+}>(), {
+  generating: false
+});
 
 defineEmits<{
-  select: [template: ReportTemplate];
+  use: [template: ReportTemplate];
+  customize: [template: ReportTemplate];
 }>();
+
+const contents = computed(() => REPORT_CONTENTS[props.template.type] ?? []);
 </script>
 
 <style scoped>
 .template-card {
-  background: white;
-  border: 2px solid #e1e5e9;
-  border-radius: 12px;
-  padding: 1.5rem;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  position: relative;
-  overflow: hidden;
-}
-
-.template-card:hover {
-  border-color: #007bff;
-  box-shadow: 0 4px 12px rgba(0, 123, 255, 0.15);
-  transform: translateY(-2px);
-}
-
-.template-card.selected {
-  border-color: #007bff;
-  background: #f8f9ff;
-  box-shadow: 0 4px 12px rgba(0, 123, 255, 0.2);
-}
-
-.template-header {
   display: flex;
-  align-items: flex-start;
-  gap: 1rem;
-  margin-bottom: 1.5rem;
+  flex-direction: column;
+  gap: 22px;
+  padding: 24px;
 }
 
-.template-icon {
-  font-size: 2.5rem;
-  flex-shrink: 0;
+.tc-head {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: start;
 }
 
-.template-basic-info {
-  flex: 1;
+.tpl-ico {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  border-radius: 12px;
+  background: var(--section-hue-soft);
+  color: var(--section-ink);
+}
+
+.tpl-ico svg {
+  width: 22px;
+  height: 22px;
 }
 
 .template-name {
-  font-size: 1.3rem;
-  font-weight: 600;
-  color: #1a1a1a;
-  margin-bottom: 0.5rem;
+  margin: 0;
+  font: 600 19px / 1.25 var(--ui-font-display);
+  letter-spacing: -0.01em;
 }
 
 .template-description {
-  color: #666;
-  font-size: 0.95rem;
-  line-height: 1.4;
+  margin: 4px 0 0;
+  font-size: 13.5px;
+  line-height: 1.45;
+  color: var(--ui-muted);
 }
 
 .category-badge {
-  padding: 0.25rem 0.75rem;
-  border-radius: 20px;
-  font-size: 0.8rem;
-  font-weight: 500;
-  white-space: nowrap;
+  background: var(--ui-p-sky);
+  color: var(--ui-p-sky-ink);
+  font-weight: 600;
 }
 
-.category-badge.basic {
-  background: #e3f2fd;
-  color: #1565c0;
+.tc-h {
+  margin: 0 0 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ui-ink-2);
 }
 
-.category-badge.enterprise {
-  background: #fff3e0;
-  color: #e65100;
+.tc-contents {
+  flex: 1;
 }
 
-.category-badge.business_intelligence {
-  background: #f3e5f5;
-  color: #7b1fa2;
+.tc-list {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
-.category-badge.advanced_analytics {
-  background: #e8f5e8;
-  color: #2e7d32;
-}
-
-.template-details {
+.tc-list li {
   display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.template-type,
-.template-time {
-  display: flex;
+  gap: 12px;
   align-items: center;
-  gap: 0.5rem;
-  font-size: 0.9rem;
+  justify-content: space-between;
+  padding: 10px 0;
+  box-shadow: 0 -0.5px 0 var(--ui-sep);
 }
 
-.template-type strong,
-.template-time strong {
-  color: #333;
-  min-width: 80px;
+.tc-list li:first-child {
+  box-shadow: none;
 }
 
-.type-label {
-  background: #f0f4f8;
-  padding: 0.25rem 0.5rem;
-  border-radius: 4px;
-  font-size: 0.85rem;
+.tc-text {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
 }
 
-.time-estimate {
-  color: #007bff;
-  font-weight: 500;
+.tc-text b {
+  font-size: 14px;
+  font-weight: 600;
 }
 
-.template-filters,
-.template-optional-filters {
-  font-size: 0.9rem;
+.tc-text span {
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: var(--ui-muted);
 }
 
-.template-filters strong,
-.template-optional-filters strong {
-  color: #333;
-  display: block;
-  margin-bottom: 0.5rem;
-}
-
-.required-filters,
-.optional-filters {
+.tc-meta {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
+  gap: 8px 28px;
+  margin: 0;
+  padding-top: 16px;
+  border-top: 0.5px solid var(--ui-sep);
 }
 
-.filter-tag {
-  padding: 0.25rem 0.5rem;
-  border-radius: 4px;
-  font-size: 0.8rem;
-  font-weight: 500;
+.tc-meta dt {
+  font-size: 12px;
+  color: var(--ui-muted);
 }
 
-.filter-tag.required {
-  background: #ffebee;
-  color: #c62828;
-  border: 1px solid #ffcdd2;
+.tc-meta dd {
+  margin: 2px 0 0;
+  font-size: 14px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
 }
 
-.filter-tag.optional {
-  background: #e8f5e8;
-  color: #2e7d32;
-  border: 1px solid #c8e6c9;
-}
-
-.no-filters {
-  color: #999;
-  font-style: italic;
-}
-
-.selection-indicator {
-  position: absolute;
-  top: 1rem;
-  right: 1rem;
-  width: 2rem;
-  height: 2rem;
-  background: #007bff;
-  border-radius: 50%;
+.tc-foot {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  font-weight: bold;
+  gap: 10px;
+  justify-content: flex-end;
 }
 
 @media (max-width: 768px) {
-  .template-header {
-    flex-direction: column;
-    text-align: center;
-  }
-}
-
-@media (max-width: 480px) {
   .template-card {
-    padding: 1rem;
+    gap: 16px;
+    padding: 18px;
+  }
+
+  .tc-head {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .category-badge {
+    grid-column: 1 / -1;
+    grid-row: 1;
+    justify-self: start;
+  }
+
+  .tc-list li {
+    flex-wrap: wrap;
+    gap: 4px 12px;
+  }
+
+  .tc-foot .btn {
+    flex: 1;
+    justify-content: center;
   }
 }
 </style>

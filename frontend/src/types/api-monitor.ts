@@ -73,7 +73,9 @@ export interface ApiMetricsMeta {
 
 export interface MonitorData {
   metrics?: ApiMetricsMeta
-  status: SystemStatus
+  /** The API sends `overallStatus`; `status` is the older field name */
+  overallStatus?: SystemStatus
+  status?: SystemStatus
   endpoints: ApiEndpoint[]
   infrastructure: InfrastructureItem[]
   channels: ChannelItem[]

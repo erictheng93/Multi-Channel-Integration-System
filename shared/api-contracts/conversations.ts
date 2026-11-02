@@ -55,6 +55,10 @@ export interface RawConversationData {
   unreadCount?: number
   /** Age anchor of the unread badge: earliest unread customer message for THIS agent (ISO); null when nothing is unread */
   oldestUnreadAt?: string | null
+  /** Start of the unanswered wait (ISO); null = not waiting (sign-offs after a reply do not count) */
+  awaitingSince?: string | null
+  /** awaiting=stale list only: no human agent ever replied in this conversation */
+  neverReplied?: boolean
   /** Epoch ms until which the next LINE reply is free (Reply API); null/absent = no free reply available */
   replyWindowExpiresAt?: number | null
   // Manual unread override timestamp: when set, the backend floors
@@ -69,6 +73,8 @@ export interface ConversationListParams {
   page?: number
   pageSize?: number
   scope?: ConversationListScope
+  /** 'stale' = open conversations unanswered for longer than the 待回覆 window (逾期待回覆), never-replied first */
+  awaiting?: 'stale'
   status?: ConversationStatusForApi | ''
   platform?: Platform
   teamId?: number
@@ -150,8 +156,10 @@ export interface WaitingConversation {
 }
 
 export interface WaitingConversationsData {
-  /** All waiting conversations visible to the caller (not just the returned page) */
+  /** Waiting conversations (wait started within the 待回覆 window) visible to the caller, not just the returned page */
   total: number
+  /** Older unanswered conversations ("逾期待回覆"), outside `total` */
+  stale?: { count: number; neverRepliedCount: number }
   items: WaitingConversation[]
   generatedAt: string
 }
@@ -212,6 +220,9 @@ export function buildConversationQuery(params: ConversationListParams | Conversa
   }
   if (listParams.scope) {
     queryParams.append('scope', listParams.scope)
+  }
+  if (listParams.awaiting) {
+    queryParams.append('awaiting', listParams.awaiting)
   }
   if (listParams.status) {
     queryParams.append('status', listParams.status)
@@ -379,3 +390,28 @@ export const conversationContracts = {
     path: ({ conversationId }) => `/conversations/${conversationId}/tags`
   })
 } as const
+
+/** senderId of auto-reply realtime events: broadcast as 'agent', stored as 'system', never a human reply. */
+export const AUTO_REPLY_SENDER_ID = 'auto-reply'
+
+/** Explicit thanks list. Lower-case; compared against the trimmed, lower-cased content minus trailing punctuation. */
+export const SIGN_OFF_PHRASES = [
+  '謝謝', '謝謝你', '謝謝您', '感謝', '感謝您', '多謝', '3q', 'thx', 'thanks', 'thank you', '謝啦', '感恩'
+] as const
+
+/** Characters that may follow a sign-off text. */
+export const SIGN_OFF_TRAILING_PUNCTUATION = '！!～~。.'
+
+/**
+ * Mirror of the backend signOffSql: a sticker, or a text that is exactly one of SIGN_OFF_PHRASES.
+ * Single source for the SQL (awaiting-rules.ts) and the realtime list update.
+ */
+export function isSignOffMessage(messageType: string | undefined, content: string | undefined): boolean {
+  if (messageType === 'sticker') { return true }
+  if (messageType !== 'text' || !content) { return false }
+  // Spaces only, like SQLite TRIM: a sign-off followed by a newline is not one for the backend either
+  const trimSpaces = (value: string): string => value.replace(/^ +| +$/g, '')
+  let text = trimSpaces(content).toLowerCase()
+  while (text && SIGN_OFF_TRAILING_PUNCTUATION.includes(text[text.length - 1] as string)) { text = text.slice(0, -1) }
+  return (SIGN_OFF_PHRASES as readonly string[]).includes(trimSpaces(text))
+}

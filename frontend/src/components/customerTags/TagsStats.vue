@@ -1,201 +1,133 @@
 <template>
-  <div class="stats-overview">
-    <div class="stats-grid">
-      <!-- Total Tags -->
-      <div class="stat-card tags">
-        <div class="stat-content">
-          <div class="stat-number">
-            {{ stats.totalTags }}
-          </div>
-          <div class="stat-label">
-            標籤總數
-          </div>
-        </div>
-        <div class="stat-icon">
-          <TagIcon />
-        </div>
+  <article class="ui-lead lead">
+    <div class="lead-main">
+      <div class="lead-kicker">
+        已標記對話
       </div>
-
-      <!-- Total Conversations -->
-      <div class="stat-card conversations">
-        <div class="stat-content">
-          <div class="stat-number">
-            {{ stats.totalConversations }}
-          </div>
-          <div class="stat-label">
-            標記對話數
-          </div>
-        </div>
-        <div class="stat-icon">
-          <MessageCircleIcon />
-        </div>
+      <div class="lead-num">
+        {{ stats.totalConversations.toLocaleString('en-US') }}<small>個</small>
       </div>
-
-      <!-- Active Tags -->
-      <div class="stat-card active">
-        <div class="stat-content">
-          <div class="stat-number">
-            {{ stats.activeTags }}
-          </div>
-          <div class="stat-label">
-            啟用標籤數
-          </div>
-        </div>
-        <div class="stat-icon">
-          <CheckCircleIcon />
-        </div>
+      <div class="lead-meaning">
+        共 {{ stats.totalTags }} 個標籤；同一對話可套用多個標籤
       </div>
     </div>
-  </div>
+
+    <div class="lead-rings">
+      <ServiceRings
+        summary="標籤使用概況"
+        :rings="rings"
+        :size="136"
+        center-label="使用中"
+        :center-value="stats.activeTags"
+      />
+    </div>
+  </article>
 </template>
 
 <script setup lang="ts">
-import { TagIcon, MessageCircleIcon, CheckCircleIcon } from '@/components/icons'
+import { computed } from 'vue'
+import ServiceRings from '@/components/ui/ServiceRings.vue'
 
-defineProps<{
+const props = defineProps<{
   stats: {
     totalTags: number
     totalConversations: number
     activeTags: number
   }
 }>()
+
+const unusedCount = computed(() => Math.max(0, props.stats.totalTags - props.stats.activeTags))
+
+// One real ratio: tags that are applied to at least one conversation / all tags
+const rings = computed(() => [
+  {
+    label: unusedCount.value > 0 ? `使用中標籤（${unusedCount.value} 個尚未套用）` : '使用中標籤（皆已套用）',
+    value: props.stats.activeTags,
+    total: props.stats.totalTags,
+    of: '個標籤',
+    hue: 'var(--section-hue)',
+  },
+])
 </script>
 
 <style scoped>
-/* Stats Overview */
-.stats-overview {
-  margin-bottom: var(--space-12);
-}
-
-.stats-grid {
+.lead {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(clamp(240px, 20vw, 300px), 1fr));
-  gap: clamp(1rem, 2vw, 2rem);
-}
-
-.stat-card {
-  background: white;
-  border-radius: var(--radius-2xl);
-  padding: var(--space-8);
-  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1);
-  border: 1px solid var(--gray-100);
-  display: flex;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+  gap: 20px 40px;
   align-items: center;
-  justify-content: space-between;
-  transition: all var(--transition-fast);
-  position: relative;
-  overflow: hidden;
+  padding: 24px 40px;
 }
 
-.stat-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 4px;
-  height: 100%;
-  background: var(--gray-200);
-  transition: background-color var(--transition-fast);
+.lead-main {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
 }
 
-.stat-card.tags::before {
-  background: linear-gradient(180deg, #3b82f6, #2563eb);
+.lead-kicker {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--section-ink);
 }
 
-.stat-card.conversations::before {
-  background: linear-gradient(180deg, #8b5cf6, #7c3aed);
+.lead-num {
+  margin-top: 4px;
+  font: 600 56px / 1.05 var(--ui-font-display);
+  letter-spacing: -0.035em;
+  font-variant-numeric: tabular-nums;
+  color: var(--ui-ink);
 }
 
-.stat-card.active::before {
-  background: linear-gradient(180deg, #f59e0b, #d97706);
-}
-
-.stat-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 10px 25px -5px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
-}
-
-.stat-content {
-  flex: 1;
-}
-
-.stat-number {
-  font-size: 2.5rem;
-  font-weight: 800;
-  color: var(--gray-900);
-  margin-bottom: var(--space-1);
-  line-height: 1;
-}
-
-.stat-label {
-  font-size: 0.875rem;
+.lead-num small {
+  margin-left: 6px;
+  font-size: 22px;
   font-weight: 500;
-  color: var(--gray-600);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0;
+  color: var(--ui-muted);
 }
 
-.stat-icon {
-  width: 56px;
-  height: 56px;
-  border-radius: var(--radius-xl);
-  background: var(--gray-50);
+.lead-meaning {
+  margin-top: 6px;
+  font-size: 15px;
+  color: var(--ui-ink-2);
+}
+
+.lead-rings {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--gray-600);
-  flex-shrink: 0;
-  transition: all var(--transition-fast);
+  min-width: 0;
 }
 
-.stat-card.tags .stat-icon {
-  background: rgba(59, 130, 246, 0.1);
-  color: var(--blue-600);
+.lead-rings::before {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: -20px;
+  width: 0.5px;
+  background: var(--ui-sep);
+  content: '';
 }
 
-.stat-card.conversations .stat-icon {
-  background: rgba(139, 92, 246, 0.1);
-  color: var(--purple-600);
-}
-
-.stat-card.active .stat-icon {
-  background: rgba(245, 158, 11, 0.1);
-  color: var(--yellow-600);
-}
-
-.stat-icon svg {
-  width: 28px;
-  height: 28px;
-}
-
-/* Responsive Design */
 @media (max-width: 768px) {
-  .stats-grid {
-    grid-template-columns: repeat(2, 1fr);
+  .lead {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 22px 20px;
   }
 
-  .stat-card {
-    padding: var(--space-6);
+  .lead-num {
+    font-size: 48px;
   }
 
-  .stat-number {
-    font-size: 2rem;
+  .lead-rings {
+    justify-content: flex-start;
   }
 
-  .stat-icon {
-    width: 48px;
-    height: 48px;
-  }
-
-  .stat-icon svg {
-    width: 24px;
-    height: 24px;
-  }
-}
-
-@media (max-width: 480px) {
-  .stats-grid {
-    grid-template-columns: 1fr;
+  .lead-rings::before {
+    display: none;
   }
 }
 </style>

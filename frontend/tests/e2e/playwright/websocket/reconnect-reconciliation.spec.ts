@@ -296,7 +296,7 @@ async function login(page: Page) {
   const loginResponsePromise = page.waitForResponse((response) =>
     response.url().includes('/api/auth/login')
   )
-  await page.getByRole('button', { name: '繼續' }).click()
+  await page.getByRole('button', { name: '登入', exact: true }).click()
   await expect((await loginResponsePromise).status()).toBe(200)
   await expect
     .poll(() => page.evaluate(() => sessionStorage.getItem('sessionExpiry')), { timeout: 5000 })

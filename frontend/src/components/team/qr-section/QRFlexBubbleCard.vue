@@ -232,7 +232,7 @@ const handleImageError = () => {
   }
 
   .bubble-subtitle {
-    font-size: 12px;
+    font-size: 13px;
     margin-top: 6px;
   }
 
@@ -268,7 +268,7 @@ const handleImageError = () => {
   }
 
   .bubble-subtitle {
-    font-size: 11px;
+    font-size: 13px;
   }
 
   .bubble-btn {

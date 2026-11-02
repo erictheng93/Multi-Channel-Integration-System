@@ -227,9 +227,10 @@ export const useTeamStore = defineStore('team', () => {
     selectedMemberIds.value = new Set(selectedMemberIds.value)
   }
 
-  const selectAllMembers = (excludeIds: string[] = []) => {
+  // onlyIds narrows the selection to a filtered view; the result replaces the previous selection
+  const selectAllMembers = (excludeIds: string[] = [], onlyIds?: string[]) => {
     const allIds = members.value
-      .filter(m => !excludeIds.includes(m.id))
+      .filter(m => !excludeIds.includes(m.id) && (!onlyIds || onlyIds.includes(m.id)))
       .map(m => m.id)
     selectedMemberIds.value = new Set(allIds)
   }

@@ -8,6 +8,7 @@ vi.mock('drizzle-orm/d1', () => ({
 
 vi.mock('drizzle-orm', () => ({
   eq: (...args: any[]) => ({ type: 'eq', args }),
+  ne: (...args: any[]) => ({ type: 'ne', args }),
   and: (...args: any[]) => ({ type: 'and', args }),
   or: (...args: any[]) => ({ type: 'or', args }),
   desc: (...args: any[]) => ({ type: 'desc', args }),
