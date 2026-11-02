@@ -43,6 +43,17 @@ describe('blockSystemAgentTarget', () => {
     expect((await json('POST', '/bulk-update', { updates: { displayName: 'system' } })).status).toBe(200);
   });
 
+  it('inspects a JSON body sent with a non-JSON Content-Type (c.req.json() ignores the header)', async () => {
+    const res = await app().request('/bulk-delete', {
+      method: 'POST',
+      headers: { 'content-type': 'text/plain' },
+      body: JSON.stringify({ memberIds: ['system'] })
+    });
+    expect(res.status).toBe(403);
+    const noType = await app().request('/bulk-update', { method: 'POST', body: JSON.stringify({ memberIds: ['system'] }) });
+    expect(noType.status).toBe(403);
+  });
+
   it('does not interfere with reads', async () => {
     expect((await app().request('/system')).status).toBe(200);
   });
