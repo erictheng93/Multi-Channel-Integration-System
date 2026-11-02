@@ -197,7 +197,7 @@
               type="button"
               class="btn btn-ghost"
               :disabled="!hasActiveFilters"
-              @click="$emit('reset-filters')"
+              @click="resetFilters"
             >
               重設
             </button>
@@ -243,7 +243,7 @@
         <button
           type="button"
           class="ui-link rf-clear"
-          @click="$emit('reset-filters')"
+          @click="resetFilters"
         >
           清除全部
         </button>
@@ -325,10 +325,10 @@ function presetDates(days: number): { start: string; end: string } {
 }
 
 const range = computed<RangeKey>(() => {
+  // An explicit 自訂 wins over dates that happen to match a preset
+  if (customPicked.value) { return 'custom' }
   const { startDate, endDate } = props.filters
-  if (!startDate && !endDate) {
-    return customPicked.value ? 'custom' : 'all'
-  }
+  if (!startDate && !endDate) { return 'all' }
   for (const preset of PRESETS) {
     if (preset.days === null) { continue }
     const dates = presetDates(preset.days)
@@ -354,6 +354,11 @@ function pickPreset(key: Exclude<RangeKey, 'custom'>) {
 
 function pickCustom() {
   customPicked.value = true
+}
+
+function resetFilters() {
+  customPicked.value = false
+  emit('reset-filters')
 }
 
 function handleFilterChange(key: keyof ReportListQuery, value: string) {
