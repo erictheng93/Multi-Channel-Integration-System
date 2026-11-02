@@ -1,6 +1,7 @@
 // Messaging Export Routes
 // 訊息匯出功能端點
 
+import { notSystemAgent } from '@/constants/system-agent';
 import { Hono } from 'hono';
 import { createContextLogger } from '@/utils/logger'
 
@@ -91,7 +92,7 @@ exportRoutes.get('/export/agents', jwtAuth, async (c) => {
         role: agents.role
       })
       .from(agents)
-      .where(eq(agents.isActive, true))
+      .where(and(eq(agents.isActive, true), notSystemAgent(agents.id)))
       .orderBy(agents.displayName)
       .limit(200);
 

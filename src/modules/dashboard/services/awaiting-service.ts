@@ -7,32 +7,18 @@
 // direct SQL edit converges within a day.
 //
 // The expression below is the single definition of the marker. It is the same
-// definition the 0070 backfill and the triggers implement (see that file's header).
+// definition the 0072 backfill and triggers implement (generated from awaiting-rules.ts);
+// sign-offs (a sticker or a thanks text after a human reply) never start a wait.
 
 import { isoOf, DAY_MS } from '@/utils/taipei-time';
 import type { RowsReadMeter } from '@/utils/d1-rows-read';
+import { awaitingExpression } from './awaiting-rules';
 
 /** Conversations with messages newer than this many days are re-checked by the nightly heal. */
 export const AWAITING_HEAL_WINDOW_DAYS = 2;
 
 /** Correlated expression: the marker for the conversation row aliased `conversations`. */
-export const AWAITING_EXPRESSION = `(
-  SELECT MIN(cm.created_at)
-  FROM messages cm
-  WHERE cm.conversation_id = conversations.id
-    AND cm.sender_type = 'customer'
-    AND cm.deleted_at IS NULL
-    AND cm.created_at > COALESCE((
-      SELECT MAX(am.created_at)
-      FROM messages am
-      WHERE am.conversation_id = conversations.id
-        AND am.sender_type = 'agent'
-        AND am.deleted_at IS NULL
-        AND COALESCE(am.is_recalled, 0) = 0
-        AND COALESCE(am.is_sent, 1) = 1
-        AND (am.metadata IS NULL OR am.metadata NOT LIKE '%"broadcastId"%')
-    ), '')
-)`;
+export const AWAITING_EXPRESSION = awaitingExpression('conversations.id');
 
 export interface AwaitingHealResult {
   /** Rows whose stored marker disagreed with the messages and were rewritten. */

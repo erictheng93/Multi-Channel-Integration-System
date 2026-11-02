@@ -9,10 +9,12 @@ import {
   getRules,
   getSchedules,
   getLogs,
+  getAutoReplyStats,
   updateRule,
   type AutoReplyRule,
   type AutoReplySchedule,
-  type AutoReplyLog
+  type AutoReplyLog,
+  type AutoReplyStats
 } from '@/api/autoReply'
 
 export const useAutoReplyStore = defineStore('autoReply', () => {
@@ -31,6 +33,8 @@ export const useAutoReplyStore = defineStore('autoReply', () => {
     total: 0
   })
   const todayReplyCount = ref(0)
+  // Server-computed stats for today (Asia/Taipei) and the team's business-hours state
+  const statsSnapshot = ref<AutoReplyStats | null>(null)
   const loading = ref(false)
   const error = ref<string | null>(null)
   // Track in-flight toggle requests to prevent double-clicks
@@ -170,6 +174,15 @@ export const useAutoReplyStore = defineStore('autoReply', () => {
     }
   }
 
+  /** Stats are secondary: a failure keeps the previous snapshot instead of breaking the page */
+  async function fetchStats(params?: { teamId?: number }) {
+    try {
+      statsSnapshot.value = await getAutoReplyStats(params)
+    } catch {
+      // keep last snapshot
+    }
+  }
+
   async function silentFetchLogs(params?: {
     teamId?: number
     page?: number
@@ -196,6 +209,7 @@ export const useAutoReplyStore = defineStore('autoReply', () => {
     rulesPagination.value = { page: 1, limit: 20, total: 0 }
     logsPagination.value = { page: 1, limit: 20, total: 0 }
     todayReplyCount.value = 0
+    statsSnapshot.value = null
     loading.value = false
     error.value = null
     togglingRuleIds.clear()
@@ -209,6 +223,7 @@ export const useAutoReplyStore = defineStore('autoReply', () => {
     rulesPagination,
     logsPagination,
     todayReplyCount,
+    statsSnapshot,
     loading,
     error,
     togglingRuleIds,
@@ -219,6 +234,7 @@ export const useAutoReplyStore = defineStore('autoReply', () => {
     fetchLogs,
     silentFetchRules,
     silentFetchLogs,
+    fetchStats,
     upsertRule,
     toggleRuleActive,
     isToggling,

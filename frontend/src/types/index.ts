@@ -76,6 +76,8 @@ export interface AppState {
 export interface ConversationFilters {
   /** 列表分頁籤：open = 處理中、closed = 已結案、all = 全部（未指定 = 舊行為，不過濾） */
   scope?: 'open' | 'closed' | 'all';
+  /** 'stale' = 逾期待回覆: open conversations unanswered for longer than the 待回覆 window */
+  awaiting?: 'stale';
   status?: 'active' | 'assigned' | 'pending' | '' | undefined;
   // Note: assignedTo removed - only team-based filtering is supported now
   teamId?: number | undefined; // 團隊篩選

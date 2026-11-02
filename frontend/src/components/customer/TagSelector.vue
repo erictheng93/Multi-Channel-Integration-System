@@ -6,6 +6,7 @@
       ref="triggerBtnRef"
       class="tag-trigger-btn"
       :class="{ 'has-tags': selectedTags.length > 0 }"
+      :aria-label="selectedTags.length > 0 ? `${buttonLabel || ''}已選 ${selectedTags.length}` : (buttonLabel || '新增標籤')"
       @click="togglePanel"
     >
       <svg
@@ -674,7 +675,7 @@ onBeforeUnmount(() => {
 
 .tag-description {
   color: var(--gray-500, #6b7280);
-  font-size: 0.75rem;
+  font-size: 13px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

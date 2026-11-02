@@ -35,6 +35,8 @@ export const TRIGGER_TYPE_LABELS: Record<string, string> = Object.fromEntries(
 export type {
   ActionType,
   AutoReplyAction,
+  AutoReplyBusinessHours,
+  AutoReplyStats,
   AutoReplyCondition,
   AutoReplyLog,
   AutoReplyRule,

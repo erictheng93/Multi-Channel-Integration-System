@@ -88,7 +88,7 @@ export interface UseMemberOperationsReturn {
   selectedCount: ComputedRef<number>
   toggleSelectionMode: () => void
   toggleMemberSelection: (_memberId: string) => void
-  selectAllMembers: (_currentUserId: string) => void
+  selectAllMembers: (_currentUserId: string, _memberIds?: string[]) => void
   deselectAllMembers: () => void
 
   // Bulk Operations
@@ -472,8 +472,8 @@ export function useMemberOperations(): UseMemberOperationsReturn {
   /**
    * 選擇所有成員（排除當前用戶）
    */
-  function selectAllMembers(currentUserId: string) {
-    teamStore.selectAllMembers([currentUserId])
+  function selectAllMembers(currentUserId: string, memberIds?: string[]) {
+    teamStore.selectAllMembers([currentUserId], memberIds)
   }
 
   /**

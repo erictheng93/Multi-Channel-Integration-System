@@ -433,7 +433,7 @@ const fileTypeInfo = computed(() => {
 }
 
 .card-hint {
-  font-size: 0.75rem;
+  font-size: 13px;
   color: #aaa;
   text-align: center;
 }

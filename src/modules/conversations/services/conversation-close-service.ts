@@ -28,11 +28,27 @@ export function reopenedStatus(assignedTeamId: number | null): 'assigned' | 'act
  * Returns the new status of every conversation this call actually changed
  * (targets that lost a race with a concurrent update are omitted).
  */
+const IDLE_GUARD_SQL = ' AND awaiting_since IS NULL AND last_customer_message_at <= ? AND (last_agent_message_at IS NULL OR last_agent_message_at <= ?)';
+
+export interface SetClosedOptions {
+  /** Activity action to record instead of conversation_close / conversation_reopen (e.g. the nightly auto-close) */
+  action?: string;
+  /** Extra fields merged into the activity details */
+  details?: Record<string, unknown>;
+  /**
+   * Idle cutoff (ISO) the targets were selected with. The UPDATE re-checks it atomically: close only a conversation that is
+   * not waiting for a reply and has had no customer or agent message after the cutoff, so any message that arrived
+   * since selection (question, sign-off or reply) wins.
+   */
+  onlyIfIdleSince?: string;
+}
+
 export async function setConversationsClosed(
   env: Bindings,
   actor: ActivityActor,
   targets: CloseTarget[],
-  closed: boolean
+  closed: boolean,
+  options: SetClosedOptions = {}
 ): Promise<Record<string, string>> {
   const changing = targets.filter(t => (t.status === 'closed') !== closed);
   if (changing.length === 0) {
@@ -51,17 +67,17 @@ export async function setConversationsClosed(
       // 結案時記下未讀下限（unread_floor_at），重新開啟時保留，結案前累積的訊息不會再算未讀
       closed
         ? env.DB
-          .prepare("UPDATE conversations SET status = ?, closed_at = ?, unread_floor_at = ?, updated_at = ? WHERE id = ? AND status <> 'closed'")
-          .bind(status, timestamp, timestamp, timestamp, target.id)
+          .prepare(`UPDATE conversations SET status = ?, closed_at = ?, unread_floor_at = ?, updated_at = ? WHERE id = ? AND status <> 'closed'${options.onlyIfIdleSince ? IDLE_GUARD_SQL : ''}`)
+          .bind(status, timestamp, timestamp, timestamp, target.id, ...(options.onlyIfIdleSince ? [options.onlyIfIdleSince, options.onlyIfIdleSince] : []))
         : env.DB
           .prepare("UPDATE conversations SET status = ?, closed_at = NULL, updated_at = ? WHERE id = ? AND status = 'closed'")
           .bind(status, timestamp, target.id),
       capture.buildIrreversibleLog({
         ...actor,
-        action: closed ? ACTIVITY_ACTIONS.CONVERSATION_CLOSE : ACTIVITY_ACTIONS.CONVERSATION_REOPEN,
+        action: options.action ?? (closed ? ACTIVITY_ACTIONS.CONVERSATION_CLOSE : ACTIVITY_ACTIONS.CONVERSATION_REOPEN),
         resourceType: RESOURCE_TYPES.CONVERSATION,
         resourceId: target.id,
-        details: { previousStatus: target.status, status },
+        details: { previousStatus: target.status, status, ...options.details },
         reason: closed ? 'Undo by reopening the conversation' : 'Undo by closing the conversation'
       }, { onlyIfPreviousChanged: true })
     ];

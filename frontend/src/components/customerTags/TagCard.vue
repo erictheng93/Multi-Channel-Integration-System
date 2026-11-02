@@ -1,97 +1,114 @@
 <template>
   <div
     class="tag-card"
-    :class="{ 'tag-selected': isSelected }"
+    :class="{ 'tag-selected': isSelected, 'tag-active': isActive, 'tag-unused': !(tag.conversationCount || 0) }"
+    :style="{ '--tag-c': tag.color }"
     @click="$emit('view-conversations')"
   >
-    <!-- Selection Checkbox -->
-    <div
-      class="tag-checkbox"
-      @click.stop
-    >
-      <input
-        :id="`tag-${tag.id}`"
-        type="checkbox"
-        :checked="isSelected"
-        class="checkbox-input"
-        @change="$emit('select')"
+    <div class="t-top">
+      <span class="tag-chip">
+        <span
+          class="tag-color-indicator"
+          :style="{ background: tag.color }"
+        />
+        <h3 class="tag-name">{{ tag.name }}</h3>
+      </span>
+      <div
+        class="tag-checkbox"
+        @click.stop
       >
-      <label
-        :for="`tag-${tag.id}`"
-        class="checkbox-label"
-      />
+        <input
+          :id="`tag-${tag.id}`"
+          type="checkbox"
+          :checked="isSelected"
+          class="checkbox-input"
+          :aria-label="`選取 ${tag.name}`"
+          @change="$emit('select')"
+        >
+        <label
+          :for="`tag-${tag.id}`"
+          class="checkbox-label"
+        />
+      </div>
     </div>
 
-    <!-- Color Indicator -->
+    <p
+      v-if="tag.description"
+      class="tag-description"
+    >
+      {{ tag.description }}
+    </p>
     <div
-      class="tag-color-indicator"
-      :style="{ background: tag.color }"
+      v-else
+      class="tag-description-spacer"
     />
 
-    <!-- Tag Content -->
-    <div class="tag-content">
-      <h3 class="tag-name">
-        {{ tag.name }}
-      </h3>
-      <p
-        v-if="tag.description"
-        class="tag-description"
-      >
-        {{ tag.description }}
-      </p>
-
-      <!-- Stats -->
+    <div class="t-foot">
       <div class="tag-stats">
         <button
           class="stat-item stat-item-clickable"
           :title="`查看 ${tag.conversationCount || 0} 個對話`"
           @click.stop="$emit('view-conversations')"
         >
-          <MessageCircleIcon />
-          <span>{{ tag.conversationCount || 0 }} 對話</span>
+          <span class="t-count">{{ tag.conversationCount || 0 }}</span>
+          <small>個對話</small>
         </button>
       </div>
-    </div>
+      <span
+        v-if="!(tag.conversationCount || 0)"
+        class="ui-pill"
+      >尚未套用</span>
+      <span
+        class="meter"
+        aria-hidden="true"
+      ><i :style="{ width: meterWidth }" /></span>
 
-    <!-- Actions -->
-    <div class="tag-actions">
-      <button
-        class="action-btn action-btn-info"
-        title="查看統計"
-        @click.stop="$emit('view-stats')"
-      >
-        <BarChartIcon />
-      </button>
-      <button
-        class="action-btn action-btn-primary"
-        title="編輯標籤"
-        @click.stop="$emit('edit')"
-      >
-        <EditIcon />
-      </button>
-      <button
-        class="action-btn action-btn-danger"
-        title="刪除標籤"
-        @click.stop="$emit('delete')"
-      >
-        <TrashIcon />
-      </button>
+      <div class="tag-actions">
+        <button
+          class="action-btn action-btn-info"
+          title="查看統計"
+          aria-label="查看統計"
+          @click.stop="$emit('view-stats')"
+        >
+          <BarChartIcon />
+        </button>
+        <button
+          class="action-btn action-btn-primary"
+          title="編輯標籤"
+          aria-label="編輯標籤"
+          @click.stop="$emit('edit')"
+        >
+          <EditIcon />
+        </button>
+        <button
+          class="action-btn action-btn-danger"
+          title="刪除標籤"
+          aria-label="刪除標籤"
+          @click.stop="$emit('delete')"
+        >
+          <TrashIcon />
+        </button>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
 import {
-  MessageCircleIcon,
   BarChartIcon,
   EditIcon,
   TrashIcon
 } from '@/components/icons'
 import type { Tag } from '@/types/tag'
 
-defineProps<{
+const props = defineProps<{
   tag: Tag
   isSelected: boolean
+  /** Tag whose conversations are open in the side panel */
+  isActive?: boolean
+  /** Largest conversationCount among the listed tags (scales the usage bar) */
+  maxCount?: number
 }>()
 
 defineEmits<{
@@ -101,215 +118,336 @@ defineEmits<{
   'view-stats': []
   'view-conversations': []
 }>()
+
+const meterWidth = computed(() => {
+  const max = props.maxCount ?? 0
+  const n = props.tag.conversationCount || 0
+  if (max <= 0 || n <= 0) { return '0%' }
+  return `${Math.max(6, Math.round((n / max) * 100))}%`
+})
 </script>
 
 <style scoped>
+/* One row of an inset-grouped list: [select] [chip + description] [usage bar] [count] [actions].
+   .t-top / .t-foot only group the markup, their children are placed on the row grid. */
 .tag-card {
   position: relative;
-  background: white;
-  border-radius: var(--radius-2xl);
-  padding: var(--space-6);
-  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1);
-  border: 2px solid var(--gray-100);
-  transition: all var(--transition-fast);
-  overflow: hidden;
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr) minmax(72px, 150px) 96px 100px;
+  grid-template-areas:
+    'check chip meter count actions'
+    'check desc meter count actions';
+  align-items: center;
+  column-gap: 14px;
+  row-gap: 3px;
+  padding: 12px 14px 12px 18px;
   cursor: pointer;
+  transition: background var(--ui-dur) var(--ui-ease);
+}
+
+.t-top,
+.t-foot,
+.tag-stats {
+  display: contents;
+}
+
+.tag-card + .tag-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 18px;
+  left: 54px;
+  height: 0.5px;
+  background: var(--ui-sep);
 }
 
 .tag-card:hover {
-  border-color: var(--gray-300);
-  box-shadow: 0 10px 25px -5px rgb(0 0 0 / 0.1);
-  transform: translateY(-2px);
+  background: color-mix(in srgb, var(--ui-fill) 45%, transparent);
+}
+
+/* Selection reads as a tint, never as a hard outline */
+.tag-card.tag-active {
+  background: color-mix(in srgb, var(--tag-c) 10%, var(--ui-surface));
 }
 
 .tag-card.tag-selected {
-  border-color: var(--primary-400);
-  background: linear-gradient(135deg, var(--primary-50), white);
-  box-shadow: 0 0 0 3px var(--primary-100);
+  background: color-mix(in srgb, var(--ui-accent-soft) 70%, var(--ui-surface));
 }
 
+.tag-chip {
+  grid-area: chip;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  justify-self: start;
+  min-width: 0;
+  max-width: 100%;
+  height: 26px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--tag-c) 16%, var(--ui-surface));
+  color: color-mix(in srgb, var(--tag-c) 62%, #000);
+}
+
+.tag-color-indicator {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.tag-name {
+  margin: 0;
+  overflow: hidden;
+  font-size: 13.5px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Selection checkbox: revealed on hover/focus/selection, always on touch */
 .tag-checkbox {
-  position: absolute;
-  top: var(--space-4);
-  left: var(--space-4);
-  z-index: 1;
+  position: relative;
+  grid-area: check;
+  display: grid;
+  opacity: 0;
+  transition: opacity var(--ui-dur) var(--ui-ease);
+}
+
+.tag-card:hover .tag-checkbox,
+.tag-card:focus-within .tag-checkbox,
+.tag-card.tag-selected .tag-checkbox {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .tag-checkbox {
+    opacity: 1;
+  }
 }
 
 .checkbox-input {
   position: absolute;
-  opacity: 0;
   width: 0;
   height: 0;
+  opacity: 0;
 }
 
 .checkbox-label {
-  display: block;
+  display: grid;
   width: 20px;
   height: 20px;
-  border: 2px solid var(--gray-300);
-  border-radius: var(--radius-sm);
-  background: white;
+  place-items: center;
+  border-radius: 7px;
+  background: var(--ui-surface);
+  box-shadow: inset 0 0 0 1.5px var(--ui-faint);
   cursor: pointer;
-  transition: all var(--transition-fast);
-  position: relative;
+  transition:
+    background var(--ui-dur) var(--ui-ease),
+    box-shadow var(--ui-dur) var(--ui-ease);
+}
+
+.checkbox-input:focus-visible + .checkbox-label {
+  box-shadow:
+    inset 0 0 0 1.5px var(--ui-accent),
+    0 0 0 3px var(--ui-accent-soft);
 }
 
 .checkbox-input:checked + .checkbox-label {
-  background: var(--primary-500);
-  border-color: var(--primary-500);
+  background: var(--ui-accent);
+  box-shadow: none;
 }
 
 .checkbox-label::after {
   content: '';
-  position: absolute;
   display: none;
-  left: 6px;
-  top: 2px;
-  width: 4px;
-  height: 8px;
-  border: solid white;
-  border-width: 0 2px 2px 0;
-  transform: rotate(45deg);
+  width: 9px;
+  height: 5px;
+  border-bottom: 2px solid #fff;
+  border-left: 2px solid #fff;
+  transform: rotate(-45deg) translate(1px, -1px);
 }
 
 .checkbox-input:checked + .checkbox-label::after {
   display: block;
 }
 
-.tag-color-indicator {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 4px;
-  border-radius: var(--radius-2xl) var(--radius-2xl) 0 0;
-}
-
-.tag-content {
-  margin-top: var(--space-2);
-  margin-bottom: var(--space-4);
-}
-
-.tag-name {
-  font-size: 1.125rem;
-  font-weight: 600;
-  color: var(--gray-900);
-  margin: 0 0 var(--space-2);
-}
-
 .tag-description {
-  font-size: 0.875rem;
-  color: var(--gray-600);
-  margin: 0 0 var(--space-4);
-  line-height: 1.5;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
+  grid-area: desc;
+  margin: 0;
   overflow: hidden;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--ui-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.tag-stats {
-  display: flex;
-  gap: var(--space-4);
+.tag-description-spacer {
+  display: none;
 }
 
 .stat-item {
-  display: flex;
-  align-items: center;
-  gap: var(--space-1-5);
-  font-size: 0.8125rem;
-  color: var(--gray-600);
-}
-
-.stat-item svg {
-  width: 14px;
-  height: 14px;
-  color: var(--gray-400);
-}
-
-.stat-item-clickable {
-  background: none;
-  border: none;
+  grid-area: count;
+  display: inline-flex;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 4px;
   padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
   font: inherit;
   cursor: pointer;
-  text-decoration: underline dotted var(--gray-400);
-  transition: color var(--transition-fast);
 }
 
-.stat-item-clickable:hover:not(:disabled) {
-  color: var(--primary-600);
+.t-count {
+  font: 600 22px var(--ui-font-display);
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
 }
 
-.stat-item-clickable:hover:not(:disabled) svg {
-  color: var(--primary-500);
+.tag-unused .t-count {
+  color: var(--ui-muted);
 }
 
-.stat-item-clickable:disabled {
-  cursor: pointer;
-  text-decoration: underline dotted var(--gray-400);
+.stat-item small {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ui-muted);
+}
+
+/* the "not applied yet" note sits where the usage bar would be */
+.t-foot > .ui-pill {
+  grid-area: meter;
+  justify-self: start;
+}
+
+.meter {
+  grid-area: meter;
+  height: 6px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--ui-fill);
+}
+
+.tag-unused .meter {
+  display: none;
+}
+
+.meter i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--section-hue);
 }
 
 .tag-actions {
+  grid-area: actions;
   display: flex;
-  gap: var(--space-2);
   justify-content: flex-end;
+  gap: 2px;
   opacity: 0;
-  transition: opacity var(--transition-fast);
+  transition: opacity var(--ui-dur) var(--ui-ease);
 }
 
-.tag-card:hover .tag-actions {
+.tag-card:hover .tag-actions,
+.tag-card:focus-within .tag-actions,
+.tag-card.tag-active .tag-actions {
   opacity: 1;
 }
 
+@media (hover: none) {
+  .tag-actions {
+    opacity: 1;
+  }
+}
+
 .action-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  border: none;
-  border-radius: var(--radius-md);
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--ui-muted);
   cursor: pointer;
-  transition: all var(--transition-fast);
+  transition:
+    background var(--ui-dur) var(--ui-ease),
+    color var(--ui-dur) var(--ui-ease);
 }
 
 .action-btn svg {
-  width: 16px;
-  height: 16px;
+  width: 15px;
+  height: 15px;
 }
 
-.action-btn-info {
-  background: var(--blue-100);
-  color: var(--blue-600);
-}
-
-.action-btn-info:hover {
-  background: var(--blue-200);
-}
-
-.action-btn-primary {
-  background: var(--gray-100);
-  color: var(--gray-600);
-}
-
-.action-btn-primary:hover {
-  background: var(--gray-200);
-  color: var(--gray-900);
-}
-
-.action-btn-danger {
-  background: var(--red-100);
-  color: var(--red-600);
+.action-btn:hover {
+  background: var(--ui-fill);
+  color: var(--ui-ink);
 }
 
 .action-btn-danger:hover {
-  background: var(--red-200);
+  background: var(--ui-red-soft);
+  color: var(--ui-red-ink);
 }
 
+/* The detail panel takes the right column on wide screens: drop the usage bar to keep names readable */
+@media (max-width: 1280px) {
+  .tag-card {
+    grid-template-columns: 22px minmax(0, 1fr) minmax(72px, 130px) 96px 100px;
+  }
+}
+
+@media (max-width: 1024px) {
+  .tag-card {
+    grid-template-columns: 22px minmax(0, 1fr) minmax(60px, 120px) 96px 100px;
+  }
+}
+
+/* Phone: name, description and count; edit and delete live in the detail sheet */
 @media (max-width: 768px) {
-  .tag-actions {
-    opacity: 1;
+  .tag-card {
+    grid-template-columns: 22px minmax(0, 1fr) auto;
+    grid-template-areas:
+      'check chip count'
+      'check desc count';
+    column-gap: 12px;
+    padding: 12px 14px;
+  }
+
+  .tag-card + .tag-card::before {
+    right: 14px;
+    left: 48px;
+  }
+
+  .meter,
+  .tag-actions,
+  .t-foot > .ui-pill {
+    display: none;
+  }
+
+  /* the whole name stays readable: the chip grows to two lines instead of cutting it */
+  .tag-chip {
+    height: auto;
+    min-height: 26px;
+    padding: 4px 10px;
+    border-radius: 14px;
+  }
+
+  .tag-name {
+    overflow: visible;
+    line-height: 1.3;
+    white-space: normal;
+  }
+
+  /* the count doubles as the entry to the tag's conversations */
+  .stat-item-clickable::after {
+    margin-left: 2px;
+    color: var(--ui-faint);
+    font-size: 18px;
+    content: '›';
   }
 }
 </style>

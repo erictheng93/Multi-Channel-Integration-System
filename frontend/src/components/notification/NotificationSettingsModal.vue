@@ -399,7 +399,7 @@ const sendTestNotification = (): void => {
 }
 
 .settings-group-title {
-  font-size: 0.75rem;
+  font-size: 13px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;

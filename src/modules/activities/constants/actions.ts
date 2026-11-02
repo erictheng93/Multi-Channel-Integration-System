@@ -7,6 +7,7 @@ export const ACTIVITY_ACTIONS = {
   CONVERSATION_TRANSFER: 'conversation_transfer',
   CONVERSATION_CLOSE: 'conversation_close',
   CONVERSATION_REOPEN: 'conversation_reopen',
+  CONVERSATION_AUTO_CLOSE: 'conversation_auto_close', // nightly: idle conversation closed by the system
 
   // 訊息相關 (Message)
   MESSAGE_SEND: 'message_send',
