@@ -62,15 +62,20 @@ const bars = computed<LeadBar[]>(() => {
   const daily = props.overview?.dailyStats ?? []
   const max = Math.max(0, ...daily.map(d => d.count))
   if (max === 0) { return [] }
+  const average = daily.reduce((sum, d) => sum + d.count, 0) / daily.length
+  const today = new Date()
+  const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
   return daily.map((d) => {
     const day = new Date(`${d.date}T00:00:00`)
     const weekday = Number.isNaN(day.getTime()) ? '' : `週${WEEKDAYS[day.getDay()]}`
     return {
       key: d.date,
-      label: weekday || d.date.slice(5).replace('-', '/'),
+      label: d.date === todayKey ? '今天' : (weekday || d.date.slice(5).replace('-', '/')),
       value: d.count,
       display: d.count.toLocaleString('en-US'),
-      current: d.count === max
+      current: d.count === max,
+      // a day far below the average is a state worth a colour (the caption names it); the rest stay in the section hue
+      ...(d.count < average * 0.4 ? { tone: 'warn' as const } : {})
     }
   })
 })

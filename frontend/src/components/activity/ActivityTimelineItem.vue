@@ -325,11 +325,11 @@ onUnmounted(() => {
   color: var(--ui-ink-2);
   white-space: nowrap;
 }
-/* the closed state is a quiet grey capsule of the same size as the action, so the column reads as one rhythm */
+/* the closed state is plain centred text in the action's slot: one capsule (還原) per column, never three kinds */
 .timeline-item__restore-zone .timeline-item__chip {
   padding: 6px 0;
-  border-radius: 999px;
-  background: var(--ui-fill);
+  color: var(--ui-ink-2);
+  text-align: center;
 }
 /* the one real action is the accent one */
 .timeline-item__restore-zone .btn {

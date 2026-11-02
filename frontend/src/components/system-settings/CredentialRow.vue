@@ -154,7 +154,10 @@ function cancelReplace() {
 }
 
 .cred-last4 {
-  font: 600 17px var(--ui-font-mono);
+  padding: 6px 12px;
+  border-radius: 10px;
+  background: var(--ui-fill);
+  font: 600 16px var(--ui-font-mono);
   letter-spacing: 0.06em;
   color: var(--ui-ink);
 }
@@ -163,7 +166,8 @@ function cancelReplace() {
 /* a replace action in the accent colour, not a pale grey capsule */
 .cred-replace {
   min-height: 40px;
-  background: var(--ui-fill);
+  padding-inline: 12px;
+  background: transparent;
   color: var(--ui-accent-ink, var(--ui-accent));
   font-weight: 600;
 }
@@ -196,6 +200,7 @@ function cancelReplace() {
   }
 
   .cred-last4 {
+    padding: 5px 10px;
     font-size: 15px;
   }
 

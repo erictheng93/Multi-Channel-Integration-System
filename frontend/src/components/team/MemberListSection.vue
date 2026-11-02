@@ -217,7 +217,8 @@
           >
             <span v-if="isSelectionMode" />
             <span>成員</span>
-            <span>角色與團隊</span>
+            <span>權限</span>
+            <span>團隊與職務</span>
             <span>最後登入</span>
             <span />
           </div>
@@ -534,11 +535,11 @@ function handleSelectPage() {
 
 <style scoped>
 .member-section {
-  --member-cols: minmax(220px, 1.3fr) minmax(280px, 1fr) 140px 40px;
+  --member-cols: minmax(260px, 1.1fr) 108px minmax(260px, 1.1fr) minmax(120px, 0.5fr) 40px;
   padding-bottom: 6px;
 }
 .member-section:has(.selection-mode) {
-  --member-cols: 24px minmax(220px, 1.3fr) minmax(280px, 1fr) 140px 40px;
+  --member-cols: 24px minmax(260px, 1.1fr) 108px minmax(260px, 1.1fr) minmax(120px, 0.5fr) 40px;
 }
 
 .legend {

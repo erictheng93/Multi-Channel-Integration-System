@@ -25,18 +25,10 @@
           v-if="mixed"
           class="ui-pill ui-pill-orange hl-badge"
         >{{ counts.unchecked }} 項待檢查</span>
-        <ul
-          v-if="rows.length > 0"
-          class="hl-seg"
-          aria-hidden="true"
+        <p
+          v-if="!mixed"
+          class="hl-meaning"
         >
-          <li
-            v-for="row in rows"
-            :key="row.key"
-            :class="row.tone"
-          />
-        </ul>
-        <p class="hl-meaning">
           {{ heroSubtitle }}
         </p>
         <ul
@@ -170,25 +162,16 @@
             ><i
               v-if="row.latencyMs !== null"
               :style="{ width: barWidth(row.latencyMs) }"
-            /></span>
+            /><em v-else-if="row.label === '未檢查'">尚未測試</em></span>
             <span
               class="lat-n"
               :class="row.tone"
             >
               <template v-if="row.latencyMs !== null">{{ row.latencyMs.toLocaleString() }}<small>ms</small></template>
             </span>
-            <button
-              v-if="row.key === 'lineWebhook' && row.label === '未檢查'"
-              type="button"
-              class="btn btn-primary btn-sm hrow-test"
-              @click="!controller.processing.value && controller.healthCheck(true)"
-            >
-              立即測試
-            </button>
             <span
-              v-else
               class="ui-pill ui-pill-dot"
-              :class="pillClass(row.tone)"
+              :class="pillClass(row)"
             >{{ row.label }}</span>
           </li>
           <li class="hnote">
@@ -263,11 +246,6 @@ function toneOf(status: string): Tone {
 
 const TONE_LABEL: Record<Tone, string> = { ok: '正常', warn: '警告', bad: '異常', unknown: '未知' }
 
-const checkedClock = computed(() => {
-  const iso = controller.healthCheckedAt.value
-  return iso ? formatChecked(iso).replace('今天 ', '') : undefined
-})
-
 const serviceRows = computed<Row[]>(() =>
   controller.healthCheckResults.value.map((item) => {
     const tone = toneOf(item.status)
@@ -277,8 +255,7 @@ const serviceRows = computed<Row[]>(() =>
       sub: tone === 'ok' ? (SERVICE_DESCRIPTIONS[item.key] ?? item.message) : item.message,
       tone,
       label: TONE_LABEL[tone],
-      latencyMs: item.responseTime ?? null,
-      at: checkedClock.value
+      latencyMs: item.responseTime ?? null
     }
   })
 )
@@ -292,7 +269,7 @@ const webhookRow = computed<Row | null>(() => {
     return {
       key: 'lineWebhook',
       name: 'LINE webhook',
-      sub: '尚未檢查，按「立即檢查」才會測試',
+      sub: '簽章驗證與回應時間',
       tone: 'unknown',
       label: '未檢查',
       latencyMs: null
@@ -432,7 +409,11 @@ function formatChecked(iso: string): string {
   return `今天 ${time}`
 }
 
-function pillClass(tone: Tone): string {
+function pillClass(row: Row): string {
+  const tone = row.tone
+  if (row.label === '未檢查') {
+    return 'ui-pill-orange'
+  }
   if (tone === 'ok') {
     return 'ui-pill-green'
   }
@@ -494,38 +475,8 @@ onMounted(() => {
 }
 
 .hl-big.mixed {
-  font-size: 46px;
+  font-size: 52px;
   color: var(--ui-ink);
-}
-
-/* one segment per service: the whole system as a strip you read at a glance */
-.hl-seg {
-  display: flex;
-  gap: 5px;
-  max-width: 340px;
-  margin: 14px 0 0;
-  padding: 0;
-  list-style: none;
-}
-
-.hl-seg li {
-  flex: 1;
-  height: 8px;
-  border-radius: 999px;
-  background: var(--ui-green);
-}
-
-.hl-seg li.warn {
-  background: var(--ui-orange);
-}
-
-.hl-seg li.bad {
-  background: var(--ui-red);
-}
-
-.hl-seg li.unknown {
-  background: none;
-  box-shadow: inset 0 0 0 1.5px var(--ui-orange);
 }
 
 .hl-badge {
@@ -692,6 +643,14 @@ onMounted(() => {
   background: transparent;
 }
 
+.lat-bar em {
+  display: block;
+  padding: 0 14px;
+  font-size: 13px;
+  font-style: normal;
+  color: var(--ui-muted);
+}
+
 .lat-bar i {
   display: block;
   height: 100%;
@@ -738,10 +697,6 @@ onMounted(() => {
   font-variant-numeric: tabular-nums;
 }
 
-.hrow-test {
-  min-width: 62px;
-}
-
 /* a footnote under the list, not a grey box inside it */
 .hnote {
   display: flex;
@@ -771,7 +726,7 @@ onMounted(() => {
 
 .hscale::before {
   content: '';
-  flex: 0 0 calc(30px + 14px + 260px);
+  flex: 0 0 calc(30px + 14px + 230px);
 }
 
 .hscale-ruler {
@@ -811,13 +766,14 @@ onMounted(() => {
   color: var(--ui-accent);
 }
 
-.hrow.is-unchecked .lat-bar:empty {
+.hrow.is-unchecked .lat-bar {
+  height: 28px;
   background: none;
   box-shadow: inset 0 0 0 1.5px var(--ui-fill-strong);
 }
 
-.hrow .hrow-test {
-  font-weight: 600;
+.hrow.is-unchecked .lat-bar em {
+  line-height: 28px;
 }
 
 .hnote-ico {
@@ -839,7 +795,7 @@ onMounted(() => {
 }
 
 .hrow .ui-row-main {
-  flex: 0 0 260px;
+  flex: 0 0 230px;
 }
 
 @media (max-width: 1024px) {

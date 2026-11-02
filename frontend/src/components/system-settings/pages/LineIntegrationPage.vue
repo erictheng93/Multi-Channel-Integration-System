@@ -52,6 +52,10 @@
             <dt>回應時間</dt>
             <dd>{{ lastTest.latencyMs.toLocaleString() }} ms</dd>
           </div>
+          <div v-if="credentialFields.length > 0">
+            <dt>憑證</dt>
+            <dd>{{ credentialFields.filter(f => f.configured).length }} / {{ credentialFields.length }} 已儲存</dd>
+          </div>
         </dl>
         <p
           v-else
@@ -153,7 +157,7 @@ const testMeta = computed(() => {
 <style scoped>
 .line-page {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 460px);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 520px);
   gap: 22px;
   align-items: stretch;
   min-width: 0;
@@ -212,10 +216,17 @@ const testMeta = computed(() => {
   color: var(--ui-ink);
 }
 
+/* a footer row pinned to the card's bottom edge, level with the quota legend beside it */
 .hero-stats {
   display: flex;
   gap: 28px;
-  margin: 18px 0 0;
+  margin: auto 0 0;
+  padding-top: 16px;
+  box-shadow: inset 0 0.5px 0 var(--ui-sep);
+}
+
+.hero-bigrow {
+  padding-bottom: 18px;
 }
 
 .hero-stats dt {
