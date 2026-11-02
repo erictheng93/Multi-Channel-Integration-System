@@ -1,150 +1,69 @@
 <!--
   LineIntegrationForm.vue
 
-  LINE integration configuration form component
-  Manages LINE OA credentials and connection testing
+  LINE Messaging API credentials (the danger zone is LineDangerZone, placed last by the page). Test and save live in the page head
+  (the save button submits this form by id). Stored values are never shown: only 已設定 ••••last4.
 -->
 
 <template>
-  <div class="line-integration-form">
-    <div class="form-header">
-      <div>
-        <h3 class="integration-title">
-          {{ t('systemSettings.integrations.line.title') }}
-        </h3>
-        <p class="integration-description">
-          {{ t('systemSettings.integrations.line.description') }}
-        </p>
-      </div>
-      <div
-        class="status-badge"
-        :class="statusClass"
-      >
-        <span class="status-dot" />
-        {{ statusText }}
-      </div>
+  <form
+    :id="SETTINGS_FORM_ID"
+    class="integration-form"
+    @submit.prevent="handleSave"
+  >
+    <h2 class="ui-group-label">
+      Messaging API 憑證
+    </h2>
+    <div class="ui-group">
+      <CredentialRow
+        v-for="field in FIELDS"
+        :key="field.key"
+        v-model="localSettings[field.key]"
+        :label="field.label"
+        :hint="field.hint"
+        :input-id="field.id"
+        :configured="credentials?.[field.key]?.configured ?? false"
+        :last4="credentials?.[field.key]?.last4 ?? null"
+        :secret="field.secret"
+        :placeholder="field.placeholder"
+        :icon="field.icon"
+        :disabled="saving || testing"
+      />
     </div>
-
-    <form
-      class="integration-form"
-      @submit.prevent="handleSave"
-    >
-      <div class="form-group">
-        <label
-          for="lineChannelId"
-          class="form-label"
-        >
-          {{ t('systemSettings.integrations.line.channelId') }}
-        </label>
-        <input
-          id="lineChannelId"
-          v-model="localSettings.channelId"
-          type="text"
-          class="form-input"
-          :placeholder="t('systemSettings.integrations.line.channelIdPlaceholder')"
-          required
-        >
-      </div>
-
-      <div class="form-group">
-        <label
-          for="lineChannelSecret"
-          class="form-label"
-        >
-          {{ t('systemSettings.integrations.line.channelSecret') }}
-        </label>
-        <input
-          id="lineChannelSecret"
-          v-model="localSettings.channelSecret"
-          type="text"
-          class="form-input"
-          :placeholder="t('systemSettings.integrations.line.channelSecretPlaceholder')"
-          required
-        >
-      </div>
-
-      <div class="form-group">
-        <label
-          for="lineAccessToken"
-          class="form-label"
-        >
-          {{ t('systemSettings.integrations.line.accessToken') }}
-        </label>
-        <textarea
-          id="lineAccessToken"
-          v-model="localSettings.accessToken"
-          class="form-textarea"
-          rows="3"
-          :placeholder="t('systemSettings.integrations.line.accessTokenPlaceholder')"
-          required
-        />
-      </div>
-
-      <div class="form-actions">
-        <button
-          type="button"
-          class="btn btn-secondary"
-          :disabled="testing || saving"
-          @click="handleTest"
-        >
-          <span
-            v-if="testing"
-            class="spinner"
-          />
-          {{ testing ? t('common.testing') : t('common.testConnection') }}
-        </button>
-
-        <button
-          type="button"
-          class="btn btn-danger"
-          :disabled="saving || testing"
-          @click="handleClear"
-        >
-          {{ t('common.clearCredentials') }}
-        </button>
-
-        <button
-          type="submit"
-          class="btn btn-primary"
-          :disabled="saving || testing"
-        >
-          <span
-            v-if="saving"
-            class="spinner"
-          />
-          {{ saving ? t('common.saving') : t('common.save') }}
-        </button>
-      </div>
-    </form>
-  </div>
+    <p class="ui-group-foot">
+      更換憑證後請按「測試連線」確認新憑證可用，再儲存變更。
+    </p>
+  </form>
 </template>
 
 <script setup lang="ts">
-import { reactive, computed, watch } from 'vue'
-import { useI18n } from 'vue-i18n'
+import { reactive, watch } from 'vue'
+import type { MaskedCredential } from '@shared/api-contracts/system'
 import type { LineIntegration } from '@/types/system-settings'
+import CredentialRow from './CredentialRow.vue'
+import { SETTINGS_FORM_ID } from './settings-pages'
 
-// Props
 interface Props {
   settings: LineIntegration
+  /** Server-reported credential state (configured / last4) */
+  credentials?: Record<'channelId' | 'channelSecret' | 'accessToken', MaskedCredential>
   saving: boolean
   testing: boolean
 }
 
 const props = defineProps<Props>()
 
-// Events
 const emit = defineEmits<{
   save: []
-  test: []
-  clear: []
   'update:settings': [value: LineIntegration]
 }>()
 
-// Composables
-const { t } = useI18n()
+const FIELDS = [
+  { id: 'lineChannelId', key: 'channelId', label: 'Channel ID', hint: 'Basic settings 分頁，頻道的識別碼', secret: false, placeholder: '輸入 LINE Channel ID', icon: '<rect x="3" y="5" width="18" height="14" rx="3"/><path d="M8 11h4M8 15h8"/>' },
+  { id: 'lineChannelSecret', key: 'channelSecret', label: 'Channel Secret', hint: 'Basic settings 分頁，驗證 Webhook 簽章用', secret: true, placeholder: '輸入 LINE Channel Secret', icon: '<path d="M12 3 4 6v6c0 4.4 3.4 8 8 9 4.6-1 8-4.6 8-9V6l-8-3Z"/><path d="m9 12 2 2 4-4"/>' },
+  { id: 'lineAccessToken', key: 'accessToken', label: 'Access Token', hint: 'Messaging API 分頁，長效 Channel access token', secret: true, placeholder: '輸入 LINE Access Token', icon: '<circle cx="8" cy="15" r="4"/><path d="m11 12 9-9M16 7l3 3"/>' }
+] as const
 
-// Local state
 const localSettings = reactive<LineIntegration>({
   channelId: '',
   channelSecret: '',
@@ -152,193 +71,32 @@ const localSettings = reactive<LineIntegration>({
   status: 'disconnected'
 })
 
-// Watch for prop changes (parent → child)
+// Parent -> local
 watch(
   () => props.settings,
-  (newSettings) => {
-    Object.assign(localSettings, newSettings)
+  (next) => {
+    Object.assign(localSettings, next)
   },
   { immediate: true, deep: true }
 )
 
-// Sync local changes back to parent (child → parent)
+// Local -> parent
 watch(
   localSettings,
-  (newVal) => {
-    emit('update:settings', { ...newVal })
+  (next) => {
+    emit('update:settings', { ...next })
   },
   { deep: true }
 )
 
-// Computed
-const statusClass = computed(() => ({
-  'status-connected': props.settings.status === 'connected',
-  'status-disconnected': props.settings.status === 'disconnected',
-  'status-error': props.settings.status === 'error'
-}))
-
-const statusText = computed(() => {
-  switch (props.settings.status) {
-    case 'connected':
-      return t('systemSettings.integrations.status.connected')
-    case 'disconnected':
-      return t('systemSettings.integrations.status.disconnected')
-    case 'error':
-      return t('systemSettings.integrations.status.error')
-    default:
-      return t('systemSettings.integrations.status.disconnected')
-  }
-})
-
-// Methods
 function handleSave() {
   emit('save')
 }
 
-function handleTest() {
-  emit('test')
-}
-
-function handleClear() {
-  emit('clear')
-}
 </script>
 
 <style scoped>
-.line-integration-form {
-  background: white;
-  border-radius: 0.5rem;
-  padding: 1.5rem;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  margin-bottom: 1.5rem;
-}
-
-.form-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 1.5rem;
-}
-
-.integration-title {
-  font-size: 1.125rem;
-  font-weight: 600;
-  color: #1a202c;
-  margin: 0 0 0.25rem 0;
-}
-
-.integration-description {
-  font-size: 0.875rem;
-  color: #718096;
-  margin: 0;
-}
-
-.status-badge {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.375rem 0.75rem;
-  border-radius: 0.375rem;
-  font-size: 0.8125rem;
-  font-weight: 500;
-}
-
-.status-dot {
-  width: 0.5rem;
-  height: 0.5rem;
-  border-radius: 50%;
-}
-
-.status-connected {
-  background: #c6f6d5;
-  color: #22543d;
-}
-
-.status-connected .status-dot {
-  background: #38a169;
-}
-
-.status-disconnected {
-  background: #e2e8f0;
-  color: #4a5568;
-}
-
-.status-disconnected .status-dot {
-  background: #a0aec0;
-}
-
-.status-error {
-  background: #fed7d7;
-  color: #742a2a;
-}
-
-.status-error .status-dot {
-  background: #e53e3e;
-}
-
 .integration-form {
-  display: flex;
-  flex-direction: column;
-  gap: 1.25rem;
-}
-
-.form-group {
-  /* spacing comes from gap; the global .form-group margin would double it */
-  margin-bottom: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.form-label {
-  margin-bottom: 0;
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: #2d3748;
-}
-
-.form-input,
-.form-textarea {
-  padding: 0.625rem 0.875rem;
-  border: 1px solid #cbd5e0;
-  border-radius: 0.375rem;
-  font-size: 0.875rem;
-  font-family: inherit;
-  transition: border-color 0.2s;
-}
-
-.form-input:focus,
-.form-textarea:focus {
-  outline: none;
-  border-color: #4299e1;
-  box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.1);
-}
-
-.form-textarea {
-  resize: vertical;
-  min-height: 80px;
-}
-
-.form-actions {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 0.75rem;
-  margin-top: 1rem;
-}
-
-.spinner {
-  width: 1rem;
-  height: 1rem;
-  border: 2px solid #ffffff;
-  border-top-color: transparent;
-  border-radius: 50%;
-  animation: spin 0.6s linear infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
+  min-width: 0;
 }
 </style>

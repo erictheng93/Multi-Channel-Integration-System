@@ -23,6 +23,14 @@ export interface BroadcastAudiencePreview {
   }>
 }
 
+export interface BroadcastPreviewResult extends BroadcastAudiencePreview {
+  /** Sendable LINE recipients per channel; channelKey matches LineQuotaChannel.channelKey */
+  tokenGroups: Array<{ channelKey: string; recipientCount: number }>
+  noCredentialsCount: number
+  /** Per-agent daily recipient cap; null for admins (exempt) */
+  dailyCap: { limit: number; used: number; remaining: number } | null
+}
+
 export interface BroadcastAttachmentInput {
   attachmentId: string
   previewAttachmentId: string
@@ -114,6 +122,10 @@ export interface LineQuotaChannel {
   limit: number | null
   used: number | null
   remaining: number | null
+  /** messages kept back for support replies; null when unlimited */
+  reserve: number | null
+  /** what a broadcast may still use (remaining minus reserve, floor 0); null when unlimited */
+  usableRemaining: number | null
   /** last successful fetch (kept across failures) */
   fetchedAt: string | null
   /** set when the latest attempt failed */
@@ -195,7 +207,7 @@ async function unwrap<T>(promise: ReturnType<typeof apiClient.get<T>>): Promise<
 }
 
 export const previewBroadcastAudience = (data: BroadcastPreviewRequest) =>
-  unwrap<BroadcastAudiencePreview>(apiClient.post('/broadcasts/preview', data))
+  unwrap<BroadcastPreviewResult>(apiClient.post('/broadcasts/preview', data))
 
 export const createBroadcast = (data: CreateBroadcastRequest) =>
   unwrap<BroadcastRecord>(apiClient.post('/broadcasts', data))

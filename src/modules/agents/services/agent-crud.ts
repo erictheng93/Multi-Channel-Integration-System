@@ -1,6 +1,7 @@
 // Agent CRUD Service - 客服代理 CRUD 操作服務
 // Agent CRUD Operations Service
 
+import { notSystemAgent } from '@/constants/system-agent';
 import { eq, and, desc, sql } from 'drizzle-orm';
 import type { DrizzleD1Database } from 'drizzle-orm/d1';
 import {
@@ -144,7 +145,7 @@ export class AgentService implements AgentServiceInterface {
         .from(agents)
         .leftJoin(agentTeams, and(eq(agentTeams.agentId, agents.id), eq(agentTeams.isPrimary, true)))
         .leftJoin(teams, eq(agentTeams.teamId, teams.id))
-        .where(eq(agents.id, id))
+        .where(and(eq(agents.id, id), notSystemAgent(agents.id)))
         .get();
 
       if (!result) {
@@ -309,7 +310,7 @@ export class AgentService implements AgentServiceInterface {
       const offset = (page - 1) * limit;
 
       // 建立基本查詢條件
-      const conditions = [];
+      const conditions = [notSystemAgent(agents.id)];
 
       if (!includeInactive) {
         conditions.push(eq(agents.isActive, true));
@@ -389,7 +390,7 @@ export class AgentService implements AgentServiceInterface {
 
   async searchAgents(query: AgentSearchQuery): Promise<AgentWithDetails[]> {
     try {
-      const conditions = [];
+      const conditions = [notSystemAgent(agents.id)];
 
       if (query.keyword) {
         conditions.push(

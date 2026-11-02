@@ -8,10 +8,11 @@ import {
   customerNameSql,
   fileAttachments,
 } from '@/db/schema';
-import type { Bindings } from '@/types';
+import type { Bindings, DbUser } from '@/types';
 import { getSignedFileUrl, PERSISTENT_ATTACHMENT_URL_TTL_SECONDS } from '@/utils/file-url';
 import { nowISO } from '@/utils/timestamp';
-import { BroadcastAudienceService } from '@modules/broadcast/services/audience-service';
+import { BroadcastSenderService } from '@modules/broadcast/services/broadcast-sender-service';
+import { BroadcastAudienceService, summarizeAudience } from '@modules/broadcast/services/audience-service';
 import {
   BroadcastServiceError,
   type BroadcastAttachmentView,
@@ -34,8 +35,11 @@ export class BroadcastService {
     this.audienceService = new BroadcastAudienceService(db);
   }
 
-  async preview(tagId: number) {
-    return this.audienceService.previewSingleTagAudience(tagId);
+  async preview(tagId: number, actor: DbUser) {
+    const audience = await this.audienceService.resolveSingleTagAudience(tagId);
+    const lineAudience = audience.filter((member) => member.platform === 'line');
+    const delivery = await new BroadcastSenderService(this.db, this.env).previewDelivery(lineAudience, actor);
+    return { ...summarizeAudience(audience), ...delivery };
   }
 
   async create(input: CreateBroadcastInput, createdBy: string): Promise<BroadcastRecord> {

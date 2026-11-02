@@ -11,10 +11,25 @@ export interface BackupItem {
   tier: string
 }
 
+/**
+ * Schedule and retention are CONFIGURATION CONSTANTS mirrored from the backup workflow and R2
+ * lifecycle rules (source === 'configuration-constants'); they are not a live reading.
+ */
+export interface BackupPolicy {
+  source: 'configuration-constants'
+  note: string
+  schedule: { cron: string; timezone: string; localTime: string; description: string }
+  retentionDays: Record<'daily' | 'monthly' | 'manual' | 'members' | 'tags' | 'assignments', number>
+}
+
 export interface BackupList {
   items: BackupItem[]
   lastAuto: BackupItem | null
   count: number
+  countsByTier: Record<string, number>
+  /** Prefixes where paging hit the safety bound, so the list for them may be incomplete */
+  incompletePrefixes: string[]
+  policy: BackupPolicy
 }
 
 async function apiBase(): Promise<string> {

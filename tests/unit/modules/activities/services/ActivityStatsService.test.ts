@@ -8,6 +8,7 @@ vi.mock('drizzle-orm/d1', () => ({
 
 vi.mock('drizzle-orm', () => ({
   eq: (...args: any[]) => ({ type: 'eq', args }),
+  ne: (...args: any[]) => ({ type: 'ne', args }),
   and: (...args: any[]) => ({ type: 'and', args }),
   or: (...args: any[]) => ({ type: 'or', args }),
   desc: (...args: any[]) => ({ type: 'desc', args }),
@@ -17,6 +18,7 @@ vi.mock('drizzle-orm', () => ({
     raw: (..._args: any[]) => ({ type: 'sql_raw' }),
   }),
   count: (...args: any[]) => ({ type: 'count', args, as: (_alias: string) => ({ type: 'count_alias' }) }),
+  countDistinct: (...args: any[]) => ({ type: 'countDistinct', args }),
   gte: (...args: any[]) => ({ type: 'gte', args }),
   lte: (...args: any[]) => ({ type: 'lte', args }),
   lt: (...args: any[]) => ({ type: 'lt', args }),
@@ -100,17 +102,21 @@ describe('ActivityStatsService', () => {
   // =========================================================================
   describe('getOverview', () => {
     it('should return correct structure with populated stats', async () => {
-      // getOverview makes 4 select queries: total, actionStats, userStats, dailyStats
+      // getOverview makes 6 select queries: total, actionStats, userStats, dailyStats, activeUsers, restorable
       selectResultsQueue = [
         [{ count: 50 }],
         [{ action: 'team_create', count: 30 }, { action: 'user_login', count: 20 }],
         [{ userName: 'Alice', userRole: 'admin', count: 35 }, { userName: 'Bob', userRole: 'agent', count: 15 }],
         [{ date: '2026-03-27', count: 25 }, { date: '2026-03-26', count: 25 }],
+        [{ count: 4 }], // activeUserCount
+        [{ count: 2 }], // restorableCount
       ];
 
       const result = await service.getOverview(7);
 
       expect(result.totalActivities).toBe(50);
+      expect(result.activeUserCount).toBe(4);
+      expect(result.restorableCount).toBe(2);
       expect(result.actionStats).toEqual({ team_create: 30, user_login: 20 });
       expect(result.topUsers).toHaveLength(2);
       expect(result.topUsers[0].userName).toBe('Alice');
