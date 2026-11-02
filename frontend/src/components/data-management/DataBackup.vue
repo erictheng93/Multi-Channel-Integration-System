@@ -4,6 +4,8 @@
       title="資料備份"
       subtitle="整個資料庫備份在雲端儲存（Cloudflare R2），可隨時下載備份檔。"
     />
+    <UiSectionNav section="data" />
+
 
     <!-- Lead: the newest automatic backup, the 30-day coverage arc and the one primary action -->
     <RingLead
@@ -325,6 +327,7 @@
 <script setup lang="ts">
 import UiEmptyState from '@/components/ui/UiEmptyState.vue'
 import UiPageHead from '@/components/ui/UiPageHead.vue'
+import UiSectionNav from '@/components/ui/UiSectionNav.vue'
 import RingLead from '@/components/lead/RingLead.vue'
 import { computed, onMounted, ref } from 'vue'
 import { listBackups, runBackup, downloadBackup, type BackupItem, type BackupList } from '@/api/backup'

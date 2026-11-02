@@ -122,6 +122,9 @@ export function useSystemSettingsController() {
   /** ISO time of the last completed health check */
   const healthCheckedAt = ref<string | null>(null)
 
+  /** Why the latest health check produced no result; null once a check succeeds */
+  const healthCheckError = ref<string | null>(null)
+
   /** Active settings tab */
   const activeTab = ref<SettingsTab>('general')
 
@@ -350,6 +353,15 @@ export function useSystemSettingsController() {
       message: d.message ?? '',
       latencyMs: d.latencyMs,
       testedAt: d.testedAt
+    }
+  }
+
+  /** Drops typed replacements: loadSettings() leaves the credential inputs alone, so 還原 must clear them */
+  function discardCredentialEdits(platform: 'line' | 'facebook'): void {
+    if (platform === 'line') {
+      LINE_FIELDS.forEach((field) => { settings.integrations.line[field] = '' })
+    } else {
+      FACEBOOK_FIELDS.forEach((field) => { settings.integrations.facebook[field] = '' })
     }
   }
 
@@ -668,6 +680,18 @@ export function useSystemSettingsController() {
   }
 
   /**
+   * The last verdict says nothing about a system that could not be checked, so it must not stay on
+   * screen after the toast is gone. Empty results also make the pages re-check on the next visit.
+   */
+  function recordHealthCheckFailure(reason: string): void {
+    healthCheckError.value = reason
+    healthOverall.value = null
+    healthCheckResults.value = []
+    healthLineWebhook.value = null
+    healthCheckedAt.value = null
+  }
+
+  /**
    * Perform health check using the full /health/system endpoint
    *
    * @param deep also run the on-demand LINE webhook test (admin only)
@@ -681,6 +705,8 @@ export function useSystemSettingsController() {
       const data = response.data
 
       if (data?.overall) {
+        healthCheckError.value = null
+
         // Map overall status
         healthOverall.value = {
           status: data.overall.status,
@@ -719,11 +745,13 @@ export function useSystemSettingsController() {
           showMessage(`系統狀態: ${statusText}`, msgType as MessageType)
         }
       } else {
+        recordHealthCheckFailure(response.message || '健康檢查失敗')
         showMessage(response.message || '健康檢查失敗', 'error')
       }
     } catch (error) {
       console.error('Health check failed:', error)
       const errorMessage = error instanceof Error ? error.message : '健康檢查失敗'
+      recordHealthCheckFailure(errorMessage)
       showMessage(`健康檢查失敗: ${errorMessage}`, 'error')
     } finally {
       processing.value = false
@@ -822,6 +850,7 @@ export function useSystemSettingsController() {
 
     // Data Loading
     loadSettings,
+    discardCredentialEdits,
 
     // Save Settings
     saveGeneralSettings,
@@ -843,6 +872,7 @@ export function useSystemSettingsController() {
     healthOverall,
     healthLineWebhook,
     healthCheckedAt,
+    healthCheckError,
 
     // Utilities
     showMessage,

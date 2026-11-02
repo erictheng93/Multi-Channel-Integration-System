@@ -20,7 +20,7 @@
       class="choice-tile"
       :class="{ selected: modelValue === option.value }"
       :aria-checked="modelValue === option.value"
-      :tabindex="modelValue === option.value || (modelValue === null && option === options[0]) ? 0 : -1"
+      :tabindex="option.value === tabStop ? 0 : -1"
       @click="$emit('update:modelValue', option.value)"
       @keydown="onKey($event, option.value)"
     >
@@ -40,6 +40,8 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
+
 export interface ChoiceOption {
   value: string
   label: string
@@ -62,6 +64,14 @@ const props = withDefaults(defineProps<{
 const emit = defineEmits<{
   'update:modelValue': [value: string]
 }>()
+
+// One tile is always tabbable: the value can belong to no option here (the time range splits its
+// choices over two groups), and a group without a tab stop is unreachable by keyboard
+const tabStop = computed(() =>
+  props.options.some(option => option.value === props.modelValue)
+    ? props.modelValue
+    : props.options[0]?.value
+)
 
 // Arrow keys move the selection like a native radio group
 function onKey(event: KeyboardEvent, current: string) {

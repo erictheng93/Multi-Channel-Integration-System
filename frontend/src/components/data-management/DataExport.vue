@@ -7,6 +7,8 @@
       title="匯出對話"
       :subtitle="`選擇格式與範圍後匯出，單次最多 ${EXPORT_LIMIT.toLocaleString()} 筆。`"
     />
+    <UiSectionNav section="data" />
+
 
     <section
       class="ui-lead ex-result"
@@ -292,6 +294,7 @@
 
 <script setup lang="ts">
 import UiPageHead from '@/components/ui/UiPageHead.vue'
+import UiSectionNav from '@/components/ui/UiSectionNav.vue'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import UiActionBar from '@/components/ui/UiActionBar.vue'
 import { DownloadIcon } from '@/components/icons'

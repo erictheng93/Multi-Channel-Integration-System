@@ -101,7 +101,9 @@ const emit = defineEmits<{
 const KEY_ICON = '<circle cx="8" cy="15" r="4"/><path d="m11 12 9-9M16 7l3 3"/>'
 const replacing = ref(false)
 
-const showMasked = computed(() => props.configured && !replacing.value)
+// The pending value lives in the settings controller and outlives this row, which remounts on
+// every section change: a typed replacement must stay visible, or Save would send a hidden value.
+const showMasked = computed(() => props.configured && !replacing.value && !props.modelValue)
 
 const maskedText = computed(() =>
   props.last4 ? `••••${props.last4}` : '••••••••'

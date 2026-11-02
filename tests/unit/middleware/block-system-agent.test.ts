@@ -43,6 +43,28 @@ describe('blockSystemAgentTarget', () => {
     expect((await json('POST', '/bulk-update', { updates: { displayName: 'system' } })).status).toBe(200);
   });
 
+  it.each([
+    ['text/plain'],
+    ['multipart/form-data; boundary=x'],
+    ['application/x-www-form-urlencoded'],
+    ['']
+  ])('inspects the body whatever the Content-Type (%s): c.req.json() ignores the header', async (type) => {
+    const res = await app().request('/bulk-delete', {
+      method: 'POST',
+      headers: type ? { 'content-type': type } : {},
+      body: JSON.stringify({ memberIds: ['system'] })
+    });
+    expect(res.status).toBe(403);
+  });
+
+  it('leaves the body readable by the handler', async () => {
+    const a = new Hono();
+    a.use('*', blockSystemAgentTarget());
+    a.post('/bulk-delete', async c => c.json(await c.req.json()));
+    const res = await a.request('/bulk-delete', { method: 'POST', body: JSON.stringify({ memberIds: ['m1'] }) });
+    expect(await res.json()).toEqual({ memberIds: ['m1'] });
+  });
+
   it('does not interfere with reads', async () => {
     expect((await app().request('/system')).status).toBe(200);
   });

@@ -4,7 +4,7 @@
     role="row"
     tabindex="0"
     @click="$emit('view-report', report.id)"
-    @keydown.enter="$emit('view-report', report.id)"
+    @keydown.enter.self="$emit('view-report', report.id)"
   >
     <div
       role="cell"

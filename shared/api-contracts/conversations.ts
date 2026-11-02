@@ -390,3 +390,28 @@ export const conversationContracts = {
     path: ({ conversationId }) => `/conversations/${conversationId}/tags`
   })
 } as const
+
+/** senderId of auto-reply realtime events: broadcast as 'agent', stored as 'system', never a human reply. */
+export const AUTO_REPLY_SENDER_ID = 'auto-reply'
+
+/** Explicit thanks list. Lower-case; compared against the trimmed, lower-cased content minus trailing punctuation. */
+export const SIGN_OFF_PHRASES = [
+  '謝謝', '謝謝你', '謝謝您', '感謝', '感謝您', '多謝', '3q', 'thx', 'thanks', 'thank you', '謝啦', '感恩'
+] as const
+
+/** Characters that may follow a sign-off text. */
+export const SIGN_OFF_TRAILING_PUNCTUATION = '！!～~。.'
+
+/**
+ * Mirror of the backend signOffSql: a sticker, or a text that is exactly one of SIGN_OFF_PHRASES.
+ * Single source for the SQL (awaiting-rules.ts) and the realtime list update.
+ */
+export function isSignOffMessage(messageType: string | undefined, content: string | undefined): boolean {
+  if (messageType === 'sticker') { return true }
+  if (messageType !== 'text' || !content) { return false }
+  // Spaces only, like SQLite TRIM: a sign-off followed by a newline is not one for the backend either
+  const trimSpaces = (value: string): string => value.replace(/^ +| +$/g, '')
+  let text = trimSpaces(content).toLowerCase()
+  while (text && SIGN_OFF_TRAILING_PUNCTUATION.includes(text[text.length - 1] as string)) { text = text.slice(0, -1) }
+  return (SIGN_OFF_PHRASES as readonly string[]).includes(trimSpaces(text))
+}

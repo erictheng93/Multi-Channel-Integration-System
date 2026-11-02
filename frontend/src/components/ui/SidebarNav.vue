@@ -117,11 +117,13 @@
   const expandedMenus = reactive<Record<string, boolean>>({})
 
   // Accordion: only the section you are in shows its children. Another section's parent row
-  // navigates to that section's first child (the route watcher then opens it).
+  // navigates to that section's first child (the route watcher then opens it); the current
+  // section's row just reopens, since no navigation means the watcher never runs.
   const toggleSubmenu = (path: string, firstChild?: string) => {
+    const inSection = route.path === path || route.path.startsWith(`${path}/`)
     if (expandedMenus[path]) {
       expandedMenus[path] = false
-    } else if (firstChild) {
+    } else if (firstChild && !inSection) {
       void router.push(firstChild)
     } else {
       expandedMenus[path] = true

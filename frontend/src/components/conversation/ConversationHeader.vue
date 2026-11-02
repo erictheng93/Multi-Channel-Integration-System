@@ -935,8 +935,15 @@ defineExpose({
     display: none;
   }
 
+  /* One row keeps the message area usable with the keyboard open, so the team name gives way, not 結案 */
+  .assign-action-wrapper {
+    min-width: 0;
+  }
+
   .assign-action-btn {
+    width: 100%;
     max-width: 128px;
+    min-width: 0;
     gap: 6px;
     padding-right: 8px;
     padding-left: 8px;

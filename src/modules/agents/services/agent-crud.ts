@@ -310,7 +310,7 @@ export class AgentService implements AgentServiceInterface {
       const offset = (page - 1) * limit;
 
       // 建立基本查詢條件
-      const conditions = [];
+      const conditions = [notSystemAgent(agents.id)];
 
       if (!includeInactive) {
         conditions.push(eq(agents.isActive, true));
@@ -390,7 +390,7 @@ export class AgentService implements AgentServiceInterface {
 
   async searchAgents(query: AgentSearchQuery): Promise<AgentWithDetails[]> {
     try {
-      const conditions = [];
+      const conditions = [notSystemAgent(agents.id)];
 
       if (query.keyword) {
         conditions.push(

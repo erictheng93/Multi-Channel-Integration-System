@@ -3,7 +3,7 @@
     class="ui-card report-card"
     tabindex="0"
     @click="$emit('view-report', report.id)"
-    @keydown.enter="$emit('view-report', report.id)"
+    @keydown.enter.self="$emit('view-report', report.id)"
   >
     <div class="card-top">
       <span class="ui-tag report-type-badge">{{ typeLabel }}</span>
