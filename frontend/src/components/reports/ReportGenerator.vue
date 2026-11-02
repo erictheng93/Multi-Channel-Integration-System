@@ -19,35 +19,15 @@
     </UiPageHead>
     <UiSectionNav section="reports" />
 
-    <ol
-      class="ui-card stepper"
-      aria-label="填寫進度"
-    >
-      <li
-        v-for="step in steps"
-        :key="step.n"
-        :class="{ done: step.done }"
-      >
-        <span
-          class="stepper-n"
-          aria-hidden="true"
-        >
-          <svg
-            v-if="step.done"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="3.5"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          ><path d="m5 12 5 5 9-10" /></svg>
-        </span>
-        <span class="stepper-t">
-          <span class="stepper-k">{{ step.label }}<span class="stepper-state">{{ step.done ? '已完成' : '待填寫' }}</span></span>
-          <b>{{ step.value }}</b>
-        </span>
-      </li>
-    </ol>
+    <ReportCoverage
+      :type-label="formData.type ? ReportsAPI.formatReportType(formData.type) : ''"
+      :time-range="formData.timeRange"
+      :start-date="formData.startDate"
+      :end-date="formData.endDate"
+      :range-label="rangeLabel"
+      :format-label="formatLabel"
+      @jump="jumpToStep"
+    />
 
     <div class="generator-container">
       <div class="form-section">
@@ -151,6 +131,7 @@ import UiActionBar from '@/components/ui/UiActionBar.vue'
 import { ref, reactive, computed, nextTick, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import ReportsAPI from '@/api/reports';
+import ReportCoverage from './ReportCoverage.vue';
 import ReportTypeSelector from './ReportTypeSelector.vue';
 import ReportParameterForm from './ReportParameterForm.vue';
 import ReportPreviewPanel from './ReportPreviewPanel.vue';
@@ -245,17 +226,27 @@ const missingHint = computed(() => {
   return missing.length > 0 ? `還需要：${missing.join('、')}` : '';
 });
 
-// Fill-in progress: one entry per step card, with what was chosen so far
-const steps = computed(() => {
-  const range = ReportsAPI.getTimeRangeOptions().find(option => option.value === formData.timeRange)?.label ?? '';
-  const format = ReportsAPI.getAvailableFormats().find(option => option.value === formData.format)?.label ?? formData.format;
-  const rangeOk = !!formData.timeRange && (formData.timeRange !== 'custom' || !!(formData.startDate && formData.endDate));
-  return [
-    { n: 1, label: '報表類型', value: formData.type ? ReportsAPI.formatReportType(formData.type) : '尚未選擇', done: !!formData.type },
-    { n: 2, label: '時間範圍', value: formData.title.trim() && rangeOk ? range : '待填寫', done: !!formData.title.trim() && rangeOk },
-    { n: 3, label: '輸出格式', value: format, done: !!formData.format }
-  ];
+// The period and format as the lead sentence words them ('' while the period is still incomplete)
+const rangeLabel = computed(() => {
+  if (formData.timeRange === 'custom') {
+    return formData.startDate && formData.endDate ? `${formData.startDate} 至 ${formData.endDate}` : '';
+  }
+  return ReportsAPI.getTimeRangeOptions().find(option => option.value === formData.timeRange)?.label ?? '';
 });
+const formatLabel = computed(() =>
+  ReportsAPI.getAvailableFormats().find(option => option.value === formData.format)?.label ?? formData.format
+);
+
+// A lead-sentence word takes the person to its step and puts the keyboard there
+const jumpToStep = async (step: 'type' | 'range' | 'format') => {
+  const card = step === 'type'
+    ? document.querySelector<HTMLElement>('.report-type-selector')
+    : document.querySelectorAll<HTMLElement>('.report-generator-form .step-card')[step === 'range' ? 1 : 2];
+  if (!card) { return; }
+  card.scrollIntoView?.({ block: 'center', behavior: 'smooth' });
+  await nextTick();
+  card.querySelector<HTMLElement>('[role="radio"][tabindex="0"], input, button')?.focus({ preventScroll: true });
+};
 
 // What the phone action bar says it will make: type, range and format at a glance
 const selectionLine = computed(() => {
@@ -462,78 +453,6 @@ onMounted(() => {
 
 <style scoped>
 
-.stepper {
-  position: sticky;
-  top: 12px;
-  z-index: 4;
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.stepper li {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  min-width: 0;
-  padding: 16px 22px;
-}
-
-.stepper li + li {
-  box-shadow: -0.5px 0 0 var(--ui-sep);
-}
-
-.stepper-n {
-  display: grid;
-  flex: none;
-  width: 28px;
-  height: 28px;
-  place-items: center;
-  border-radius: 50%;
-  box-shadow: inset 0 0 0 2px var(--ui-field-edge);
-  color: #fff;
-}
-
-.stepper-n svg {
-  width: 16px;
-  height: 16px;
-}
-
-.stepper-state {
-  margin-left: 8px;
-  font-weight: 600;
-  color: var(--ui-muted);
-}
-
-.stepper .done .stepper-state {
-  color: var(--ui-green-ink);
-}
-
-.stepper .done .stepper-n {
-  background: var(--ui-green-ink);
-  box-shadow: none;
-}
-
-.stepper-t {
-  display: grid;
-  min-width: 0;
-}
-
-.stepper-k {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--ui-ink-2);
-}
-
-.stepper-t b {
-  overflow: hidden;
-  font: 600 16px / 1.3 var(--ui-font-display);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .generator-container {
   display: grid;
   grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
@@ -613,26 +532,6 @@ onMounted(() => {
     font-size: 15px;
     font-weight: 600;
     color: var(--ui-ink);
-  }
-
-  .stepper-state {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip-path: inset(50%);
-    white-space: nowrap;
-  }
-
-  .stepper li {
-    flex-direction: column;
-    gap: 6px;
-    align-items: flex-start;
-    padding: 12px 14px;
-  }
-
-  .stepper-t b {
-    font-size: 15px;
   }
 
   .generate-bar .btn {
