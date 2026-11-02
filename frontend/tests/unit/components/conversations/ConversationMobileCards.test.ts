@@ -117,9 +117,9 @@ describe('ConversationMobileCards.vue', () => {
       expect(wrapper.find('.last-message').text()).toBe('Hello World')
     })
 
-    it('prefixes agent messages with 你：', () => {
+    it('prefixes agent messages with 客服：', () => {
       const wrapper = mountCards([createConversation({ lastMessage: lastMessage('agent', 'Done') })])
-      expect(wrapper.find('.last-message').text()).toMatch(/^你：\s*Done$/)
+      expect(wrapper.find('.last-message').text()).toMatch(/^客服：\s*Done$/)
     })
   })
 
