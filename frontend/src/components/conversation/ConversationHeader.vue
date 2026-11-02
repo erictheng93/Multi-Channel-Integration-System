@@ -58,77 +58,80 @@
     </div>
 
     <div class="header-actions">
-      <!-- 指派管理按鈕 - Redesigned -->
-      <div
-        v-if="conversation"
-        class="assign-action-wrapper"
-      >
-        <!-- Note: Individual assignment (assignedUserId) removed - only team-based assignment is supported now -->
-        <button
-          class="assign-action-btn"
-          :class="{
-            'has-assignment': conversation.assignedTeamId,
-            'opened': showAssignPanel
-          }"
-          @click="toggleAssignPanel"
-        >
-          <!-- Status Indicator Dot -->
-          <span
-            class="status-dot"
-            :class="{ 'active': conversation.assignedTeamId }"
-          />
-
-          <!-- User Icon with Animation Container -->
-          <span class="icon-container">
-            <UserPlusIcon class="action-icon" />
-          </span>
-
-          <!-- Text with Truncation -->
-          <span class="button-text">
-            <span v-if="conversation.assignedTeamId && conversation.assignedTeam?.name">
-              {{ conversation.assignedTeam.name }}
-            </span>
-            <span v-else>指派管理</span>
-          </span>
-
-          <!-- Dropdown Icon with Smooth Rotation -->
-          <span class="chevron-container">
-            <ChevronDownIcon
-              :class="showAssignPanel ? 'dropdown-icon rotated' : 'dropdown-icon'"
-            />
-          </span>
-        </button>
-      </div>
-
-      <!-- 指派面板 - 使用 Teleport 移到 body 層級 -->
-      <Teleport to="body">
+      <!-- Routing tools (team + tags) read as one grouped control -->
+      <div class="action-group">
+        <!-- 指派管理按鈕 - Redesigned -->
         <div
-          v-if="showAssignPanel && conversation"
-          ref="assignPanelRef"
-          class="assign-panel-dropdown"
-          :style="assignPanelStyle"
-          @click.stop
+          v-if="conversation"
+          class="assign-action-wrapper"
         >
-          <AdvancedAssignActions
-            :conversation="conversation"
-            @assigned="handleAssigned"
-            @unassigned="handleUnassigned"
-            @error="handleAssignError"
+          <!-- Note: Individual assignment (assignedUserId) removed - only team-based assignment is supported now -->
+          <button
+            class="assign-action-btn"
+            :class="{
+              'has-assignment': conversation.assignedTeamId,
+              'opened': showAssignPanel
+            }"
+            @click="toggleAssignPanel"
+          >
+            <!-- Status Indicator Dot -->
+            <span
+              class="status-dot"
+              :class="{ 'active': conversation.assignedTeamId }"
+            />
+
+            <!-- User Icon with Animation Container -->
+            <span class="icon-container">
+              <UserPlusIcon class="action-icon" />
+            </span>
+
+            <!-- Text with Truncation -->
+            <span class="button-text">
+              <span v-if="conversation.assignedTeamId && conversation.assignedTeam?.name">
+                {{ conversation.assignedTeam.name }}
+              </span>
+              <span v-else>指派管理</span>
+            </span>
+
+            <!-- Dropdown Icon with Smooth Rotation -->
+            <span class="chevron-container">
+              <ChevronDownIcon
+                :class="showAssignPanel ? 'dropdown-icon rotated' : 'dropdown-icon'"
+              />
+            </span>
+          </button>
+        </div>
+
+        <!-- 指派面板 - 使用 Teleport 移到 body 層級 -->
+        <Teleport to="body">
+          <div
+            v-if="showAssignPanel && conversation"
+            ref="assignPanelRef"
+            class="assign-panel-dropdown"
+            :style="assignPanelStyle"
+            @click.stop
+          >
+            <AdvancedAssignActions
+              :conversation="conversation"
+              @assigned="handleAssigned"
+              @unassigned="handleUnassigned"
+              @error="handleAssignError"
+            />
+          </div>
+        </Teleport>
+
+        <!-- 客戶標籤管理按鈕 -->
+        <div
+          v-if="conversation?.customer?.id && customerIdNumber"
+          class="tag-selector-wrapper"
+        >
+          <TagSelector
+            v-model="selectedTagIds"
+            :customer-id="customerIdNumber"
+            button-label="標籤"
+            @change="handleTagsChange"
           />
         </div>
-      </Teleport>
-
-      <!-- 客戶標籤管理按鈕 -->
-      <div
-        v-if="conversation?.customer?.id && customerIdNumber"
-        class="tag-selector-wrapper"
-      >
-        <TagSelector
-          v-model="selectedTagIds"
-          :customer-id="customerIdNumber"
-          button-label="標籤"
-          @change="handleTagsChange"
-        />
       </div>
       <span
         class="actions-spacer"
@@ -614,6 +617,31 @@ defineExpose({
   gap: 6px;
 }
 
+/* One grouped capsule for the routing tools (team + tags) */
+.action-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 999px;
+  background: var(--ui-fill);
+}
+
+.action-group .assign-action-btn,
+.action-group .tag-selector-wrapper :deep(.tag-trigger-btn) {
+  background: transparent;
+}
+
+.action-group .assign-action-btn:hover,
+.action-group .tag-selector-wrapper :deep(.tag-trigger-btn:hover) {
+  background: var(--ui-fill-strong);
+}
+
+.action-group .assign-action-btn.has-assignment,
+.action-group .tag-selector-wrapper :deep(.tag-trigger-btn.has-tags) {
+  background: var(--ui-accent-soft);
+}
+
 /* Pushes 更多 and 結案 to the far right edge */
 .actions-spacer {
   flex: 1 1 8px;
@@ -894,12 +922,8 @@ defineExpose({
     order: 3;
   }
 
-  .assign-action-wrapper {
+  .action-group {
     order: 4;
-  }
-
-  .tag-selector-wrapper {
-    order: 5;
   }
 
   .close-toggle-btn {
