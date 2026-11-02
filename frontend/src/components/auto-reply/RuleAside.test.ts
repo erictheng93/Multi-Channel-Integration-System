@@ -65,9 +65,9 @@ describe('RuleAside', () => {
     expect(wrapper.emitted('open-rule')?.[0]).toEqual([1])
   })
 
-  it('lists at most five recent triggers and links to the log tab', async () => {
+  it('lists at most four recent triggers and links to the log tab', async () => {
     const wrapper = mountAside([1, 2, 3, 4, 5, 6, 7].map(log))
-    expect(wrapper.findAll('.recent-list li')).toHaveLength(5)
+    expect(wrapper.findAll('.recent-list li')).toHaveLength(4)
     await wrapper.find('.aside-link').trigger('click')
     expect(wrapper.emitted('open-logs')).toHaveLength(1)
   })
