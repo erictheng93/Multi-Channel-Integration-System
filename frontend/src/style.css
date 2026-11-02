@@ -89,8 +89,8 @@
     --ui-ink-2: #3a3a3c;
     /* Hero / lead numbers default to ink: colour is for STATE only (overdue red, healthy green). Use var(--ui-num-ink) or .ui-num */
     --ui-num-ink: var(--ui-ink);
-    /* WCAG AA: iOS #8E8E93 is 3.3:1 on white; #636366 is 6.0:1 (5.0:1 on the grey fills) */
-    --ui-muted: #636366;
+    /* WCAG AA: iOS #8E8E93 is 3.3:1 on white; #58585d is 7.1:1 (5.9:1 on the grey fills), so secondary labels stay readable at 14px */
+    --ui-muted: #58585d;
     --ui-faint: #aeaeb2;
     --ui-placeholder: #6c6c70; /* 4.9:1 on --ui-surface-2: placeholder text is text */
     --ui-field-edge: #8e8e93; /* 3.3:1 on white: an input boundary a user can see */
@@ -194,7 +194,7 @@
     --ui-sep: rgba(84, 84, 88, 0.45);
     --ui-ink: #f2f2f7;
     --ui-ink-2: #d1d1d6;
-    --ui-muted: #98989f;
+    --ui-muted: #a6a6ad;
     --ui-faint: #636366;
     --ui-placeholder: #9a9aa1;
     --ui-field-edge: #6e6e73;
@@ -844,7 +844,7 @@
   }
   /* the quiet note after a group label stays secondary, still AA */
   .ui-group-label .label-note {
-    font-size: 13px;
+    font-size: 14px;
     font-weight: var(--ui-w-mid);
     color: var(--ui-muted);
   }
@@ -855,8 +855,8 @@
   .ui-group-foot {
     margin: 8px 0 0;
     padding: 0 16px;
-    font-size: 13px;
-    line-height: 18px;
+    font-size: 14px;
+    line-height: 20px;
     color: var(--ui-muted);
     font-weight: var(--ui-w-mid);
   }
@@ -877,7 +877,7 @@
   }
   .ui-card-head .ui-card-sub {
     margin-top: 2px;
-    font-size: var(--ui-t-foot);
+    font-size: 14px;
     font-weight: var(--ui-w-mid);
     color: var(--ui-muted);
   }
@@ -1350,7 +1350,7 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 500;
     color: var(--ui-ink-2);
   }
@@ -1381,7 +1381,7 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    font-size: 13px;
+    font-size: 14px;
     color: var(--ui-muted);
   }
   .ui-delta {
@@ -1482,7 +1482,7 @@
   .ui-empty p {
     max-width: 40ch;
     margin: 0;
-    font-size: 13px;
+    font-size: 14px;
     line-height: 1.5;
     color: var(--ui-muted);
   }
