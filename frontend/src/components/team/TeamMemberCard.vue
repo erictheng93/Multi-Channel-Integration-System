@@ -82,37 +82,53 @@
         <span
           class="m-last"
           :title="lastLoginTitle"
-        ><template v-if="phoneTeams">{{ phoneTeams }}・</template><template v-if="member.status !== 'active'">{{ getStatusText(member.status) }}・</template>最後登入 {{ lastLogin }}</span>
+        ><template v-if="phoneTeams">{{ phoneTeams }}・</template><template v-if="member.status !== 'active'">{{ getStatusText(member.status) }}・</template>{{ lastLogin }}</span>
       </div>
     </div>
 
     <div class="roles">
-      <span
-        v-if="member.role === 'admin'"
-        class="ui-pill ui-pill-blue"
-      >{{ getRoleText(member.role) }}</span>
-      <template v-if="visibleTeams.length > 0">
+      <div class="rank">
         <span
-          v-for="t in visibleTeams"
-          :key="t.teamId"
+          v-if="member.role === 'admin'"
+          class="ui-pill ui-pill-blue"
+        >{{ getRoleText(member.role) }}</span>
+        <span
+          v-else
+          class="rank-agent"
+        >{{ getRoleText(member.role) }}</span>
+      </div>
+      <div class="memberships">
+        <template v-if="visibleTeams.length > 0">
+          <span
+            v-for="t in visibleTeams"
+            :key="t.teamId"
+            class="tg"
+          ><i
+            class="tg-dot"
+            :style="{ background: teamToneColor(t.teamId) }"
+            aria-hidden="true"
+          /><span class="tg-name">{{ t.teamName || `團隊 ${t.teamId}` }}</span><span
+            class="rl"
+            :class="`rl-${t.roleInTeam}`"
+          >{{ teamRoleText(t.roleInTeam) }}</span></span>
+          <span
+            v-if="hiddenTeamCount > 0"
+            class="tr"
+          >+{{ hiddenTeamCount }}</span>
+        </template>
+        <span
+          v-else-if="member.primaryTeamName"
           class="tg"
-        ><span class="ui-tag">{{ t.teamName || `團隊 ${t.teamId}` }}</span><span
-          class="rl"
-          :class="`rl-${t.roleInTeam}`"
-        >{{ teamRoleText(t.roleInTeam) }}</span></span>
+        ><i
+          class="tg-dot"
+          :style="{ background: teamToneColor(member.primaryTeamId ?? 0) }"
+          aria-hidden="true"
+        /><span class="tg-name">{{ member.primaryTeamName }}</span></span>
         <span
-          v-if="hiddenTeamCount > 0"
+          v-else
           class="tr"
-        >+{{ hiddenTeamCount }}</span>
-      </template>
-      <span
-        v-else-if="member.primaryTeamName"
-        class="ui-tag"
-      >{{ member.primaryTeamName }}</span>
-      <span
-        v-else
-        class="tr"
-      >未加入團隊</span>
+        >未加入團隊</span>
+      </div>
     </div>
 
     <div
@@ -198,7 +214,7 @@ import MemberEditModal from '@/components/team/member-edit/MemberEditModal.vue'
 import Dropdown from '@/components/ui/Dropdown.vue'
 import DropdownItem from '@/components/ui/DropdownItem.vue'
 import TeamAvatar from '@/components/team/TeamAvatar.vue'
-import { formatLastLogin, teamRoleText } from '@/utils/team-tone'
+import { formatLastLogin, teamRoleText, teamToneColor } from '@/utils/team-tone'
 import type { TeamMember, Team } from '@/types'
 
 interface Props {
@@ -463,23 +479,50 @@ const getRoleText = (role: string) => {
   font-weight: 600;
   color: var(--ui-muted);
 }
+/* desktop: the two cells sit in the grid themselves; below 1280 they travel together on one line */
 .roles {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px 8px;
+  display: contents;
+}
+.rank {
   min-width: 0;
+}
+.rank-agent {
+  font-size: 13.5px;
+  color: var(--ui-ink-2);
+}
+/* team is plain text with its colour dot; the role beside it is the filled chip, so rank reads before team */
+.memberships {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-start;
+  min-width: 0;
+  padding: 10px 0;
 }
 .tg {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
+}
+.tg-dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+.tg-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--ui-ink);
 }
 /* role ramp: admin blue, supervisor indigo, lead green, member plain text (colour follows rank, not decoration) */
 .rl {
   font-size: 13px;
   font-weight: 600;
   color: var(--ui-ink-2);
+}
+.rl-member {
+  font-weight: 500;
 }
 .rl-lead,
 .rl-supervisor,
@@ -506,7 +549,6 @@ const getRoleText = (role: string) => {
   border-radius: 999px;
   background: var(--ui-fill);
   line-height: 1.4;
-  font-weight: 600;
   color: var(--ui-ink-2);
 }
 .m-last {
@@ -586,8 +628,18 @@ const getRoleText = (role: string) => {
     order: 2;
   }
   .roles {
+    display: flex;
     flex: 1 1 0;
+    flex-wrap: wrap;
+    gap: 6px 16px;
+    align-items: center;
     min-width: 55%;
+  }
+  .memberships {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 6px 14px;
+    padding: 0;
   }
   .last {
     flex: none;

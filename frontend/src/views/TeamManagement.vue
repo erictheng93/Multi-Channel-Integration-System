@@ -129,6 +129,12 @@
             </div>
           </li>
           <li
+            v-if="sharedMembers.length > 0"
+            class="tl-note"
+          >
+            {{ sharedMembers.join('、') }} 同時屬於多個團隊，各團隊分別計入
+          </li>
+          <li
             v-if="teamOnline.length > TEAMS_SHOWN"
             class="tl-rest"
           >
@@ -385,6 +391,12 @@ const teamOnline = computed(() => {
 })
 
 const TEAMS_SHOWN = 4
+
+/** Active members counted in more than one team above, so the per-team totals can exceed the overall count */
+const sharedMembers = computed(() =>
+  members.value
+    .filter(m => m.status !== 'inactive' && new Set((m.teams ?? []).map(t => t.teamId)).size > 1)
+    .map(m => m.name || m.loginId))
 
 // Handle select-page: add page member IDs to selection
 function handleSelectPage(memberIds: string[]) {
@@ -656,7 +668,8 @@ onUnmounted(() => {
   font-variant-numeric: tabular-nums;
 }
 
-.tl-rest {
+.tl-rest,
+.tl-note {
   font-size: 13px;
   color: var(--ui-muted);
 }

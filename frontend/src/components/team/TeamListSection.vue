@@ -330,9 +330,14 @@ function handlePageChange(page: number) {
 </script>
 
 <style scoped>
+/* no outer card: the section title sits on the page and each team is its own card (no card inside a card) */
 .team-section {
   min-width: 0;
-  padding-bottom: 22px;
+  padding-bottom: 0;
+  background: transparent;
+}
+.team-section > .section-head {
+  padding: 0 6px 12px;
 }
 .section-head {
   flex-wrap: wrap;
@@ -411,44 +416,54 @@ function handlePageChange(page: number) {
 
 .content-body {
   min-width: 0;
-  padding: 0 22px;
+  padding: 0;
 }
-/* Team tiles sit inside the card as plain rows: no tile, no second surface, a hairline between them. */
 .team-section :deep(.team-card) {
-  background: transparent;
-  border-radius: var(--ui-r-inner);
-  box-shadow: none;
-  transition: background var(--ui-dur) var(--ui-ease);
-}
-.team-section :deep(.team-card:hover) {
-  background: var(--ui-fill);
+  background: var(--ui-surface);
+  border-radius: var(--ui-r-group);
+  transition: box-shadow var(--ui-dur) var(--ui-ease);
 }
 .teams-list {
   display: grid;
-  gap: 2px;
+  gap: 12px;
   padding-bottom: 4px;
 }
-/* desktop: teams are tiles side by side (mark, who runs it, menu, then the faces), not rows with an empty middle */
+/* desktop: two cards side by side. Top block = mark, name, description, who runs it; footer row = faces left, counts right */
 @media (min-width: 769px) {
   .teams-list {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 16px;
-    padding-bottom: 8px;
   }
   .team-section :deep(.team-card) {
     grid-template-columns: 56px minmax(0, 1fr) auto;
-    grid-template-areas: 'mark main acts' 'mark avs avs';
+    grid-template-areas:
+      'mark name acts'
+      'mark desc desc'
+      'mark lead lead'
+      'foot foot foot';
     align-items: start;
-    row-gap: 12px;
-    padding: 18px 18px 18px 20px;
-    background: var(--ui-fill);
+    column-gap: 16px;
+    row-gap: 2px;
+    padding: 20px 20px 18px;
   }
-  .team-section :deep(.team-card:hover) {
-    background: var(--ui-fill-strong);
-  }
+  .team-section :deep(.team-main) { display: contents; }
   .team-section :deep(.team-mark) { grid-area: mark; width: 56px; height: 56px; }
-  .team-section :deep(.team-main) { grid-area: main; }
-  .team-section :deep(.avs) { grid-area: avs; padding: 0; }
+  .team-section :deep(.team-name) { grid-area: name; align-self: center; }
+  .team-section :deep(.team-desc) { grid-area: desc; }
+  .team-section :deep(.team-leaders) { grid-area: lead; }
+  .team-section :deep(.team-meta) {
+    grid-area: foot;
+    justify-self: end;
+    align-self: center;
+    margin: 14px 0 0;
+  }
+  .team-section :deep(.avs) {
+    grid-area: foot;
+    align-self: center;
+    justify-self: start;
+    margin-top: 14px;
+    padding: 0;
+  }
   .team-section :deep(.avs .team-avatar) { width: 32px; height: 32px; font-size: 13px; }
   .team-section :deep(.avs-more) { min-width: 32px; height: 32px; border-radius: 16px; }
   .team-section :deep(.team-acts) { grid-area: acts; margin: -4px -6px 0 0; }
@@ -470,9 +485,6 @@ function handlePageChange(page: number) {
 }
 
 @media (max-width: 768px) {
-  .content-body {
-    padding: 0 16px;
-  }
   .section-end {
     width: 100%;
   }
