@@ -43,92 +43,14 @@
         </template>
       </UiPageHead>
 
-      <!-- Lead: how much came through in the last 24 h, and which channel carried it -->
-      <article
+      <!-- Signature: customer messages vs agent replies per channel, one shared axis -->
+      <ChannelBalance
         v-if="!isLoading && !loadFailed && channels.length > 0"
-        class="ui-lead cl"
-        aria-label="近 24 小時訊息量"
-      >
-        <div class="cl-main">
-          <div class="cl-kicker">
-            近 24 小時訊息
-          </div>
-          <div
-            class="cl-num"
-            :class="{ none: leadVolume.total === null }"
-          >
-            {{ leadVolume.total === null ? '—' : formatCount(leadVolume.total) }}<small v-if="leadVolume.total !== null">則</small>
-          </div>
-          <p class="cl-meaning">
-            {{ leadVolume.meaning }}
-          </p>
-          <div
-            v-if="leadVolume.total !== null && leadVolume.total > 0"
-            class="cl-split"
-            aria-hidden="true"
-          >
-            <i
-              class="in"
-              :style="{ flexGrow: leadVolume.inN }"
-            /><i
-              class="out"
-              :style="{ flexGrow: leadVolume.outN }"
-            />
-          </div>
-          <ul
-            v-if="leadVolume.total !== null"
-            class="cl-legend"
-            aria-label="圖例"
-          >
-            <li><i class="in" />客戶來訊 <b>{{ leadPercent(leadVolume.inN) }}%</b></li>
-            <li><i class="out" />客服發送 <b>{{ leadPercent(leadVolume.outN) }}%</b></li>
-          </ul>
-        </div>
-        <ul
-          v-if="leadRows.length > 0"
-          class="cl-rows"
-          aria-label="各頻道訊息量"
-        >
-          <li
-            v-for="row in leadRows"
-            :key="row.key"
-          >
-            <div class="cl-row-top">
-              <span class="cl-name">{{ row.label }}</span>
-              <span
-                v-if="row.off"
-                class="cl-off"
-              >已停用</span>
-              <span
-                v-else
-                class="cl-total"
-              >{{ formatCount(row.total) }}<small> 則</small></span>
-            </div>
-            <div
-              class="cl-bar"
-              :class="{ off: row.off }"
-              aria-hidden="true"
-            >
-              <span
-                v-if="!row.off"
-                class="cl-bar-fill"
-                :style="{ width: row.width }"
-              >
-                <i
-                  class="in"
-                  :style="{ flexGrow: row.inN }"
-                /><i
-                  class="out"
-                  :style="{ flexGrow: row.outN }"
-                />
-              </span>
-            </div>
-            <div class="cl-row-sub">
-              {{ row.off ? '已停用，不計入訊息量' : `來訊 ${formatCount(row.inN)} · 發送 ${formatCount(row.outN)}` }}
-            </div>
-          </li>
-        </ul>
-      </article>
+        :rows="balanceRows"
+        :total="leadVolume.total"
+        :in-n="leadVolume.inN"
+        :out-n="leadVolume.outN"
+      />
 
       <!-- Platform Filter -->
       <div class="toolbar">
@@ -410,43 +332,6 @@
           </div>
 
 
-          <!-- Activity: platform totals, so a disabled channel shows none of it -->
-          <div class="activity">
-            <div
-              v-if="channel.isActive"
-              class="stats"
-            >
-              <div class="stat-i">
-                <div class="l">
-                  客戶來訊 · 24 小時
-                </div>
-                <div class="n">
-                  {{ activityValue(channel, 'customerMessages24h') }}
-                </div>
-                <div class="s">
-                  累計 {{ activityValue(channel, 'customerMessagesTotal') }}
-                </div>
-              </div>
-              <div class="stat-i">
-                <div class="l">
-                  客服發送 · 24 小時
-                </div>
-                <div class="n">
-                  {{ activityValue(channel, 'agentMessages24h') }}
-                </div>
-                <div class="s">
-                  累計 {{ activityValue(channel, 'agentMessagesTotal') }}
-                </div>
-              </div>
-            </div>
-            <div
-              class="last"
-              :class="{ 'is-off-note': !channel.isActive }"
-            >
-              {{ activityCaption(channel) }}
-            </div>
-          </div>
-
           <!-- Card Footer: the on/off switch with its label, and the one action -->
           <div class="chfoot">
             <label class="toggle">
@@ -499,15 +384,10 @@ import { computed } from 'vue'
 import AppLayout from '@/components/ui/AppLayout.vue'
 import ChannelConfigDialog from '@/components/channels/ChannelConfigDialog.vue'
 import ChannelDetailsModal from '@/components/channels/ChannelDetailsModal.vue'
+import ChannelBalance, { type BalanceRow } from '@/components/channels/ChannelBalance.vue'
 import { formatLastLogin } from '@/utils/team-tone'
 import { useChannelManagement } from '@/composables/useChannelManagement'
 import type { ChannelIntegration, ChannelPlatform } from '@/api/channels'
-
-/** Share of the 24 h total, whole percent */
-function leadPercent(n: number): number {
-  const t = leadVolume.value.inN + leadVolume.value.outN
-  return t > 0 ? Math.round((n / t) * 100) : 0
-}
 
 const {
   activeDropdown,
@@ -608,34 +488,23 @@ function hasWebhookProblem(channel: ChannelIntegration): boolean {
 
 const problemChannels = computed(() => channels.value.filter(hasWebhookProblem))
 
-type ActivityKey = 'customerMessages24h' | 'customerMessagesTotal' | 'agentMessages24h' | 'agentMessagesTotal'
-
-/** Real counters only: a disabled channel or one without activity data shows a dash, never a made-up zero */
-function activityValue(channel: ChannelIntegration, key: ActivityKey): string {
-  if (!channel.isActive || !channel.activity) { return '—' }
-  return formatCount(channel.activity[key])
-}
-
-function activityCaption(channel: ChannelIntegration): string {
-  if (!channel.isActive) { return '已停用 · 啟用後才會顯示訊息量' }
-  if (!channel.activity) { return '暫時無法取得訊息量' }
-  const at = channel.activity.lastActivityAt
-  return `平台合計 · 最後活動 ${at ? formatLastLogin(at) : '尚無活動'}`
-}
-
-/** One row per active channel with activity data: the same real 24 h counters the cards show; bars share one scale */
-const leadRows = computed(() => {
-  const rows = channels.value.filter(c => c.isActive && c.activity).map(c => {
-    const inN = c.activity?.customerMessages24h ?? 0
-    const outN = c.activity?.agentMessages24h ?? 0
-    return { key: String(c.id), label: channelTitle(c), inN, outN, total: inN + outN, off: false }
-  })
-  const max = Math.max(1, ...rows.map(r => r.total))
-  const scaled = rows.map(r => ({ ...r, width: `${r.total === 0 ? 0 : Math.max(3, Math.round((r.total / max) * 100))}%` }))
-  // every channel is listed, so the lead and the cards below agree; a disabled one is named, not charted
-  const off = channels.value.filter(c => !c.isActive).map(c => ({ key: String(c.id), label: channelTitle(c), inN: 0, outN: 0, total: 0, off: true, width: '0%' }))
-  return [...scaled, ...off]
-})
+/** One row per channel for the balance board: the same real counters the lead totals use (disabled channels are listed, not charted) */
+const balanceRows = computed<BalanceRow[]>(() =>
+  channels.value.map((c) => {
+    const act = c.isActive ? c.activity : undefined
+    return {
+      key: String(c.id),
+      label: channelTitle(c),
+      platform: c.platform,
+      off: !c.isActive,
+      inN: act?.customerMessages24h ?? 0,
+      outN: act?.agentMessages24h ?? 0,
+      inTotal: act?.customerMessagesTotal ?? 0,
+      outTotal: act?.agentMessagesTotal ?? 0,
+      lastAt: act ? `最後活動 ${act.lastActivityAt ? formatLastLogin(act.lastActivityAt) : '尚無活動'}` : '暫時無法取得訊息量',
+      problem: hasWebhookProblem(c)
+    }
+  }))
 
 /** 24 h totals over the active channels that report activity; null when none does (never a made-up zero) */
 const leadVolume = computed(() => {
@@ -663,145 +532,11 @@ const selectedPlatformLabel = computed(() =>
   width: 16px;
   height: 16px;
 }
-
-/* Lead: the total on the left, one labelled stacked bar per channel on the right */
-.cl {
-  display: grid;
-  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
-  gap: 24px 48px;
-  align-items: center;
-  padding: 24px 32px;
-}
-.cl-kicker {
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--section-ink);
-}
-.cl-num {
-  margin-top: 4px;
-  font: 600 56px / 1.05 var(--ui-font-display);
-  letter-spacing: -0.035em;
-  font-variant-numeric: tabular-nums;
-}
-.cl-num.none {
-  color: var(--ui-muted);
-}
-.cl-num small {
-  margin-left: 6px;
-  font-size: 20px;
-  font-weight: 500;
-  letter-spacing: 0;
-  color: var(--ui-muted);
-}
-.cl-meaning {
-  margin: 6px 0 0;
-  font-size: 15px;
-  color: var(--ui-ink-2);
-}
-.cl-legend {
-  display: flex;
-  gap: 16px;
-  margin: 14px 0 0;
-  padding: 0;
-  font-size: 13px;
-  color: var(--ui-ink-2);
-  list-style: none;
-}
-.cl-legend li {
-  display: inline-flex;
-  gap: 7px;
-  align-items: center;
-}
-.cl-legend i {
-  width: 10px;
-  height: 10px;
-  border-radius: 3px;
-}
 i.in {
   background: var(--ui-blue);
 }
 i.out {
   background: var(--ui-indigo);
-}
-.cl-rows {
-  position: relative;
-  display: grid;
-  gap: 20px;
-  margin: 0;
-  padding: 0 0 0 40px;
-  list-style: none;
-}
-.cl-rows::before {
-  position: absolute;
-  top: 4px;
-  bottom: 4px;
-  left: 0;
-  width: 0.5px;
-  background: var(--ui-sep);
-  content: '';
-}
-.cl-row-top {
-  display: flex;
-  gap: 12px;
-  align-items: baseline;
-  justify-content: space-between;
-}
-.cl-name {
-  min-width: 0;
-  overflow: hidden;
-  font-size: 15px;
-  font-weight: 600;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.cl-total {
-  flex: none;
-  font: 600 20px var(--ui-font-display);
-  font-variant-numeric: tabular-nums;
-}
-.cl-total small {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--ui-muted);
-}
-.cl-bar {
-  height: 10px;
-  margin-top: 8px;
-  overflow: hidden;
-  border-radius: 999px;
-  background: var(--ui-fill);
-}
-.cl-bar.off {
-  background: var(--ui-fill);
-}
-.cl-split {
-  display: flex;
-  gap: 2px;
-  height: 12px;
-  margin-top: 16px;
-  overflow: hidden;
-  border-radius: 999px;
-}
-.cl-split i {
-  flex-basis: 0;
-  min-width: 0;
-}
-.cl-bar-fill {
-  display: flex;
-  height: 100%;
-  gap: 2px;
-  border-radius: inherit;
-  overflow: hidden;
-}
-.cl-bar-fill i {
-  flex-basis: 0;
-  min-width: 0;
-}
-.cl-row-sub {
-  margin-top: 6px;
-  font-size: 13px;
-  color: var(--ui-muted);
-  font-variant-numeric: tabular-nums;
 }
 
 .toolbar {
@@ -853,10 +588,6 @@ i.out {
   color: #fff;
   font-weight: 600;
 }
-.cl-legend b {
-  font-weight: 700;
-  color: var(--ui-ink);
-}
 .name-it {
   display: block;
   margin-top: 2px;
@@ -882,7 +613,6 @@ i.out {
 }
 /* Disabled channel: muted text, not opacity (opacity drops text below WCAG AA contrast) */
 .chcard.off .chhead,
-.chcard.off .stats,
 .chcard.off .meta,
 .chcard.off .toggle {
   color: var(--ui-muted);
@@ -1024,12 +754,6 @@ i.out {
   gap: 6px;
   padding: 12px 20px 12px;
 }
-.cl-off {
-  flex: none;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--ui-muted);
-}
 .chverify {
   min-height: 40px;
   padding-inline: 14px;
@@ -1040,73 +764,8 @@ i.out {
 .chverify:hover {
   background: var(--ui-accent-soft);
 }
-.activity {
-  min-width: 0;
-}
-.activity {
-  margin-top: 16px;
-}
 .chfoot {
   margin-top: auto;
-}
-.stats {
-  position: relative;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  margin: 16px 20px 0;
-  padding: 14px 0 10px;
-  box-shadow: inset 0 0.5px 0 var(--ui-sep);
-}
-.stat-i + .stat-i {
-  position: relative;
-  padding-left: 16px;
-}
-.stat-i + .stat-i::before {
-  content: '';
-  position: absolute;
-  top: 2px;
-  bottom: 2px;
-  left: 0;
-  width: 0.5px;
-  background: var(--ui-sep);
-}
-.stat-i .l {
-  font-size: 13px;
-  color: var(--ui-ink-2);
-}
-.stat-i .n {
-  font: 600 22px / 1.2 var(--ui-font-display);
-  letter-spacing: -0.02em;
-  font-variant-numeric: tabular-nums;
-}
-.stat-i .s {
-  font-size: 13px;
-  color: var(--ui-muted);
-  font-variant-numeric: tabular-nums;
-}
-.last {
-  padding: 0 20px 14px;
-  font-size: 13px;
-  color: var(--ui-muted);
-  font-variant-numeric: tabular-nums;
-}
-.last.is-off-note {
-  margin: 16px 20px 0;
-  padding: 16px;
-  border-radius: 14px;
-  background: var(--ui-fill);
-  font-size: 14px;
-  line-height: 1.5;
-  color: var(--ui-ink-2);
-}
-.chcard.off .stat-i .s {
-  visibility: hidden;
-}
-.chcard.off .stat-i .l {
-  color: var(--ui-muted);
-}
-.chcard.off .stat-i .n {
-  color: var(--ui-muted);
 }
 .chfoot {
   display: flex;
@@ -1135,10 +794,8 @@ i.out {
   }
   .chcard {
     display: grid;
-    grid-template-columns: 270px minmax(0, 1.1fr) minmax(0, 1.1fr) 120px;
-    grid-template-areas:
-      'head warn stats foot'
-      'head meta stats foot';
+    grid-template-columns: 250px minmax(0, 1fr) minmax(0, 1fr) 120px;
+    grid-template-areas: 'head warn meta foot';
     align-items: start;
     column-gap: 28px;
     padding: 20px 22px;
@@ -1147,31 +804,15 @@ i.out {
   .pills { display: none; }
   .hd-pill { display: inline-flex; margin-top: 8px; }
   .chname { display: grid; justify-items: start; }
-  .stat-i .l { white-space: nowrap; }
-  .chwarn { grid-area: warn; margin: 0 0 12px; }
+  .chwarn { grid-area: warn; margin: 0; }
   .meta { grid-area: meta; padding: 0; align-self: start; }
-  .chcard:not(:has(.chwarn)) .meta { grid-row: 1 / 3; }
+  .chcard:not(:has(.chwarn)) .meta { grid-column: 2 / 4; }
   .chfoot .toggle { justify-self: end; }
-  .activity { grid-area: stats; margin: 0; }
-  .stats { margin: 0; padding: 0 0 0 28px; box-shadow: inset 0.5px 0 0 var(--ui-sep); gap: 0; }
-  .stat-i + .stat-i { padding-left: 20px; }
-  .last { padding: 10px 0 0 28px; }
-  .last.is-off-note { margin: 0 0 0 28px; padding: 14px 16px; }
   .chfoot { grid-area: foot; display: grid; justify-items: end; align-content: space-between; gap: 12px; margin: 0; padding: 0; height: 100%; }
   .chfoot:not(:has(.chverify)) { align-content: start; }
 }
 
 @media (max-width: 1024px) {
-  .cl {
-    grid-template-columns: minmax(0, 1fr);
-    padding: 22px 24px;
-  }
-  .cl-rows {
-    padding-left: 0;
-  }
-  .cl-rows::before {
-    display: none;
-  }
 }
 @media (max-width: 1280px) {
   .chgrid {
@@ -1179,16 +820,6 @@ i.out {
   }
 }
 @media (max-width: 768px) {
-  .cl {
-    padding: 20px;
-  }
-  .cl-num {
-    font-size: 44px;
-  }
-  /* the per-channel bars repeat the cards right below; the phone keeps the total and the legend */
-  .cl-rows {
-    display: none;
-  }
   .toolbar .ui-seg button {
     min-height: 44px;
   }
@@ -1209,19 +840,12 @@ i.out {
   .pills {
     padding-top: 10px;
   }
-  .activity {
-    margin-top: 4px;
-  }
-  .stats {
-    margin-top: 8px;
-  }
   .chgrid {
     grid-template-columns: minmax(0, 1fr);
   }
   /* a disabled channel is one slim row: who it is and its switch */
   .chcard.off .pills,
-  .chcard.off .meta,
-  .chcard.off .activity {
+  .chcard.off .meta {
     display: none;
   }
   .chcard.off .chfoot {
