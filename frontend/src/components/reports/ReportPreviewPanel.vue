@@ -19,40 +19,40 @@
         </p>
       </div>
 
-      <dl class="kv">
-        <div
-          v-if="timeRange"
-          class="kv-row"
-        >
-          <dt>時間範圍</dt>
-          <dd>{{ timeRangeLabel }}</dd>
-        </div>
-        <div class="kv-row">
-          <dt>格式</dt>
-          <dd>{{ formatLabel }}</dd>
-        </div>
-        <div class="kv-row">
-          <dt>內容</dt>
-          <dd>{{ contentLabel }}</dd>
-        </div>
-        <div
-          v-if="options?.maxRecords"
-          class="kv-row"
-        >
-          <dt>筆數上限</dt>
-          <dd>{{ options.maxRecords.toLocaleString('en-US') }}</dd>
-        </div>
-      </dl>
-
       <div
         v-if="reportType"
         class="sample"
       >
-        <ReportOutputPreview
-          :type="reportType"
-          compact
-        />
+        <h4 class="sample-cap">
+          報表會包含
+        </h4>
+        <ul class="sample-list">
+          <li
+            v-for="item in contents"
+            :key="item.label"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="3"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            ><path d="m5 12 5 5 9-10" /></svg>
+            <span class="sample-t"><b>{{ item.label }}</b><span>{{ item.hint }}</span></span>
+          </li>
+        </ul>
+        <p class="sample-opts">
+          {{ optionsLine }}
+        </p>
       </div>
+      <p
+        v-else
+        class="sample-empty"
+      >
+        選擇類型後，這裡會列出報表包含的內容。
+      </p>
 
       <slot name="action" />
     </section>
@@ -120,7 +120,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import ReportsAPI from '@/api/reports';
-import ReportOutputPreview from './templates/ReportOutputPreview.vue';
+import { REPORT_CONTENTS } from './templates/templateHelpers';
 import type {
   ReportType,
   ReportFormat,
@@ -152,11 +152,14 @@ const shownRecent = computed(() => {
   return same.slice(0, 4)
 });
 
-const contentLabel = computed(() => {
+const contents = computed(() => (props.reportType ? REPORT_CONTENTS[props.reportType] ?? [] : []));
+
+const optionsLine = computed(() => {
   const o = props.options;
-  if (!o) { return '預設' }
+  if (!o) { return '' }
   const parts = [o.includeSummary && '摘要', o.includeCharts && '圖表', o.includeDetails && '明細'].filter(Boolean);
-  return parts.length > 0 ? parts.join('、') : '僅基本資料';
+  const body = parts.length > 0 ? parts.join('、') : '僅基本資料';
+  return o.maxRecords ? `${body} ・ 上限 ${o.maxRecords.toLocaleString('en-US')} 筆` : body;
 });
 
 const reportTypeLabel = computed(() => {
@@ -164,18 +167,6 @@ const reportTypeLabel = computed(() => {
     return '';
   }
   return ReportsAPI.formatReportType(props.reportType);
-});
-
-const formatLabel = computed(() => {
-  const formats = ReportsAPI.getAvailableFormats() || [];
-  const found = formats.find(f => f.value === props.format);
-  return found?.label || props.format;
-});
-
-const timeRangeLabel = computed(() => {
-  const ranges = ReportsAPI.getTimeRangeOptions() || [];
-  const found = ranges.find(r => r.value === props.timeRange);
-  return found?.label || props.timeRange;
 });
 
 const statusLabel = (status: string): string => ReportsAPI.formatReportStatus(status).label;
@@ -238,36 +229,70 @@ const formatDate = (dateString: string): string => {
   color: var(--ui-ink-2);
 }
 
-.kv {
-  margin: 0;
-  padding: 0 24px;
-}
-
-.kv-row {
-  display: flex;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 11px 0;
-  font-size: 14px;
+.sample {
+  padding: 4px 24px 0;
   box-shadow: 0 -0.5px 0 var(--ui-sep);
 }
 
-.kv-row dt {
-  flex: none;
+.sample-cap {
+  margin: 14px 0 6px;
+  font-size: 14px;
+  font-weight: 600;
   color: var(--ui-ink-2);
 }
 
-.kv-row dd {
+.sample-list {
+  display: grid;
   margin: 0;
-  font-size: 15px;
-  min-width: 0;
-  overflow-wrap: anywhere;
-  font-weight: 600;
-  text-align: right;
+  padding: 0;
+  list-style: none;
 }
 
-.sample {
-  padding: 16px 24px 4px;
+.sample-list li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+  padding: 9px 0;
+}
+
+.sample-list svg {
+  width: 20px;
+  height: 20px;
+  padding: 4px;
+  border-radius: 50%;
+  background: var(--ui-green-soft);
+  color: var(--ui-green-ink);
+}
+
+.sample-t {
+  display: grid;
+  gap: 1px;
+}
+
+.sample-t b {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.sample-t span {
+  font-size: 13px;
+  color: var(--ui-ink-2);
+}
+
+.sample-opts {
+  margin: 4px 0 0;
+  padding: 12px 0 14px;
+  font-size: 14px;
+  font-weight: 600;
+  box-shadow: 0 -0.5px 0 var(--ui-sep);
+}
+
+.sample-empty {
+  margin: 0;
+  padding: 16px 24px 8px;
+  font-size: 14px;
+  color: var(--ui-muted);
   box-shadow: 0 -0.5px 0 var(--ui-sep);
 }
 

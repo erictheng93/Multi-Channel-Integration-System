@@ -5,7 +5,7 @@
   >
     <p class="pv-head">
       <b id="broadcast-line-preview-title">LINE 預覽</b>
-      <span>{{ hasContent ? `客戶看到的順序：${order}` : '即時顯示客戶端的樣子' }}</span>
+      <span>{{ hasContent ? `客戶看到的順序：${order}` : lastSent ? '輸入內容後，這裡改顯示你的草稿' : '即時顯示客戶端的樣子' }}</span>
     </p>
 
     <div class="phone">
@@ -35,6 +35,23 @@
             :src="url"
             :alt="`預覽圖片 ${index + 1}`"
           >
+        </div>
+        <div
+          v-else-if="lastSent"
+          class="thread is-last"
+        >
+          <p class="last-cap">
+            上次群發・{{ lastSent.title }}
+          </p>
+          <div class="bubble">
+            {{ lastSent.content }}
+          </div>
+          <p
+            v-if="lastSent.mixed"
+            class="last-note"
+          >
+            這則另含圖片
+          </p>
         </div>
         <div
           v-else
@@ -68,6 +85,8 @@ import { getLineQuota } from '@/api/broadcasts'
 const props = defineProps<{
   content: string
   imageUrls: string[]
+  /** The newest sent broadcast with text: shown until the draft has content, so the phone is never an empty frame */
+  lastSent?: { title: string; content: string; mixed: boolean } | null
 }>()
 
 // The official account name comes from the same quota snapshot the quota card shows
@@ -112,7 +131,7 @@ const order = computed(() => {
 }
 
 .pv-head b {
-  font: 600 var(--ui-t-title) / 1.3 var(--ui-font-display);
+  font: 600 15px / 1.3 var(--ui-font-display);
   color: var(--ui-ink);
 }
 
@@ -121,11 +140,10 @@ const order = computed(() => {
   display: flex;
   flex: 0 1 auto;
   flex-direction: column;
-  flex: 1 1 auto;
   width: min(100% - 44px, 320px);
   min-height: 0;
   max-height: 640px;
-  margin: 0 auto;
+  margin: auto;
   overflow: hidden;
   border-radius: 28px;
   background: var(--ui-surface);
@@ -178,6 +196,7 @@ const order = computed(() => {
   display: flex;
   flex: 1;
   flex-direction: column;
+  min-height: 220px;
   padding: 16px;
   overflow-y: auto;
   background: #e8edf5;
@@ -218,6 +237,19 @@ const order = computed(() => {
   max-width: 200px;
   font-size: 13px;
   line-height: 1.5;
+}
+
+.last-cap {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: #3a3a3c;
+}
+
+.last-note {
+  margin: 0;
+  font-size: 13px;
+  color: #3a3a3c;
 }
 
 .bubble {
