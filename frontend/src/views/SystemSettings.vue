@@ -228,6 +228,7 @@ onUnmounted(() => controller.cleanup())
   .system-settings :deep(.ui-page-head) {
     grid-template-columns: minmax(0, 1fr) auto;
     grid-template-areas:
+      'crumb crumb'
       'title actions'
       'sub sub';
   }
