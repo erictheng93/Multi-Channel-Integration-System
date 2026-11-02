@@ -1040,10 +1040,11 @@ defineExpose({
 }
 
 @media (max-width: 768px) {
-  /* Phone: the chat fills the screen edge to edge (cancels .page-content padding 16px) */
+  /* Phone: the chat fills the screen edge to edge. The -16px margin already cancels the
+     .page-content padding, so the height takes off only the top bar and the safe areas. */
   .detail-layout {
-    height: calc(100vh - 60px - env(safe-area-inset-top));
-    height: calc(100dvh - 60px - env(safe-area-inset-top));
+    height: calc(100vh - 60px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+    height: calc(100dvh - 60px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
     margin: -16px;
     gap: 0;
   }

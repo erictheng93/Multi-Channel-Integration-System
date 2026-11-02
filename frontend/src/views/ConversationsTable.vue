@@ -570,7 +570,8 @@ const conversations = computed(() => conversationsStore.conversations)
 // 分頁籤也在前端套用：結案 / 重新開啟後列即時滑出，不必等重新抓取
 const scopedConversations = computed(() =>
   effectiveScope.value === 'open'
-    ? conversations.value.filter(c => c.status !== 'closed')
+    // A realtime reply clears the marker: that row leaves the stale view at once, so it cannot be bulk-closed
+    ? conversations.value.filter(c => c.status !== 'closed' && (scope.value !== 'stale' || Boolean(c.awaitingSince)))
     : effectiveScope.value === 'closed'
       ? conversations.value.filter(c => c.status === 'closed')
       : conversations.value

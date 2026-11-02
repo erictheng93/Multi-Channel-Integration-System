@@ -197,7 +197,7 @@
               type="button"
               class="btn btn-ghost"
               :disabled="!hasActiveFilters"
-              @click="$emit('reset-filters')"
+              @click="resetFilters"
             >
               重設
             </button>
@@ -243,7 +243,7 @@
         <button
           type="button"
           class="ui-link rf-clear"
-          @click="$emit('reset-filters')"
+          @click="resetFilters"
         >
           清除全部
         </button>
@@ -266,6 +266,7 @@
 
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import type { ReportListQuery, ReportType } from '@/types/reports'
+import { taipeiDateString } from '@/utils/taipei-date'
 
 export interface FiltersSectionProps {
   /** 筛选条件 */
@@ -312,23 +313,16 @@ const open = ref(false)
 const customPicked = ref(false)
 const wrap = ref<HTMLElement | null>(null)
 
-function toIso(date: Date): string {
-  const pad = (n: number) => String(n).padStart(2, '0')
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
-}
-
 function presetDates(days: number): { start: string; end: string } {
-  const end = new Date()
-  const start = new Date()
-  start.setDate(end.getDate() - (days - 1))
-  return { start: toIso(start), end: toIso(end) }
+  const now = Date.now()
+  return { start: taipeiDateString(now, days - 1), end: taipeiDateString(now) }
 }
 
 const range = computed<RangeKey>(() => {
+  // An explicit 自訂 wins over dates that happen to match a preset
+  if (customPicked.value) { return 'custom' }
   const { startDate, endDate } = props.filters
-  if (!startDate && !endDate) {
-    return customPicked.value ? 'custom' : 'all'
-  }
+  if (!startDate && !endDate) { return 'all' }
   for (const preset of PRESETS) {
     if (preset.days === null) { continue }
     const dates = presetDates(preset.days)
@@ -354,6 +348,11 @@ function pickPreset(key: Exclude<RangeKey, 'custom'>) {
 
 function pickCustom() {
   customPicked.value = true
+}
+
+function resetFilters() {
+  customPicked.value = false
+  emit('reset-filters')
 }
 
 function handleFilterChange(key: keyof ReportListQuery, value: string) {

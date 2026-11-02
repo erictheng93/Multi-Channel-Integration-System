@@ -3,7 +3,7 @@
 > **此文件由程式產生，請勿手動編輯。**
 > 重新產生：`bun run db:doc:schema`（正式庫）或 `bun scripts/generate-schema-doc.ts`（本地鏡像）
 >
-> **產生時間**: 2026-10-28T01:51:51.774Z
+> **產生時間**: 2026-11-02T04:16:00.372Z
 > **資料來源**: REMOTE production D1 (mcis-db)
 >
 > 內容直接讀自資料庫的 `sqlite_master` 與 pragma 函式，**不是**讀 `src/db/schema.ts`
@@ -34,7 +34,16 @@
 
 ## 與 `src/db/schema.ts` 的一致性
 
-資料庫中的 42 張表與 `src/db/schema.ts` 宣告的表**完全一致**。
+> **偵測到漂移。** 以下差異僅回報，不會自動修正。
+
+**只在 `schema.ts` 宣告、資料庫中不存在**：
+
+- `message_daily_stats`
+- `stats_watermarks`
+- `ws_metrics_snapshots`
+
+查詢這些表會在執行期失敗。多半代表某個 migration 沒有套用。
+
 相關檢查：`bun run check:migrations` 會比對「已套用的 migration 宣告了什麼」與
 「資料庫實際有什麼」，涵蓋 table / index / trigger / view 四種物件，比本文件的
 表級比對更細。**但它不檢查 CHECK 約束、欄位型別與外鍵**。

@@ -169,7 +169,7 @@
         @custom-order-change="memberSortMode.updateCustomOrder"
         @toggle-selection-mode="controller.member.toggleSelectionMode"
         @toggle-member-selection="controller.member.toggleMemberSelection"
-        @select-all="() => controller.member.selectAllMembers(currentUserId || '')"
+        @select-all="(ids: string[]) => controller.member.selectAllMembers(currentUserId || '', ids)"
         @select-page="handleSelectPage"
         @bulk-edit="controller.member.openBulkEditModal"
         @bulk-delete="() => controller.member.bulkDeleteMembers(currentUserId || '')"

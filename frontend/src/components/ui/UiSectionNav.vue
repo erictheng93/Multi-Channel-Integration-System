@@ -3,7 +3,8 @@
 
   The in-page fallback for sections whose children live in the sidebar (報表 / 資料管理 /
   系統設定). One navigation per section:
-  - above 1024px the sidebar shows the children and this component renders nothing visible
+  - above 1024px the sidebar shows the children and this component renders nothing visible,
+    unless the sidebar is collapsed, which hides them too
   - at 769-1024px the sidebar is an icon rail, so this segmented control appears under the
     page head. It scrolls horizontally with an edge fade and never clips a label mid-word.
   - on a phone (<= 768px) nothing renders here: the page title is the switcher (UiPageHead)
@@ -20,7 +21,7 @@
 <template>
   <nav
     class="ui-section-nav"
-    :class="{ 'is-overflowing': overflowing }"
+    :class="{ 'is-overflowing': overflowing, 'is-sidebar-collapsed': sidebarCollapsed }"
     :aria-label="SECTION_NAV[section].ariaLabel"
   >
     <div
@@ -46,12 +47,14 @@ import { useRoute } from 'vue-router'
 import { getActivePinia } from 'pinia'
 import { useAuthStore } from '@/stores/auth'
 import { SECTION_NAV, sectionNavItems, type SectionNavKey } from '@/config/section-nav'
+import { useSidebarState } from '@/composables/useSidebarState'
 
 const props = defineProps<{
   section: SectionNavKey
 }>()
 
 const route = useRoute()
+const { sidebarCollapsed } = useSidebarState()
 // Admin-only items (資料備份) are hidden from agents. Outside an app with pinia (isolated
 // component tests) nobody is an admin.
 const authStore = getActivePinia() ? useAuthStore() : null
@@ -149,6 +152,12 @@ onBeforeUnmount(() => observer?.disconnect())
 .ui-section-nav-track > a:focus-visible {
   outline: 2px solid var(--ui-accent);
   outline-offset: -2px;
+}
+
+@media (min-width: 1025px) {
+  .ui-section-nav.is-sidebar-collapsed {
+    display: block;
+  }
 }
 
 @media (max-width: 1024px) {

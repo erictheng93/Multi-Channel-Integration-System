@@ -127,7 +127,7 @@
           </button>
           <button
             class="btn btn-secondary btn-sm"
-            @click="emit('select-all')"
+            @click="handleSelectAll"
           >
             全選全部
           </button>
@@ -135,7 +135,7 @@
         <button
           v-else
           class="btn btn-secondary btn-sm"
-          @click="emit('select-all')"
+          @click="handleSelectAll"
         >
           全選
         </button>
@@ -336,7 +336,7 @@ interface Emits {
   // Selection mode emits
   (_e: 'toggle-selection-mode'): void
   (_e: 'toggle-member-selection', _memberId: string): void
-  (_e: 'select-all'): void
+  (_e: 'select-all', _memberIds: string[]): void
   (_e: 'select-page', _memberIds: string[]): void
   (_e: 'bulk-edit'): void
   (_e: 'bulk-delete'): void
@@ -524,6 +524,11 @@ function handlePageChange(page: number) {
   nextTick(() => {
     sectionRef.value?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   })
+}
+
+// Select everyone the filters show, never members they hide: bulk delete acts on this selection
+function handleSelectAll() {
+  emit('select-all', filteredMembers.value.map(m => m.id))
 }
 
 // Select all members on current page

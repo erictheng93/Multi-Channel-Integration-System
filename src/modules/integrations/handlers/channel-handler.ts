@@ -422,7 +422,7 @@ channelHandler.get('/', async (c: Context) => {
     const channelService = new ChannelService(c.env as Bindings);
     const channels = await channelService.getChannelsByTeam(teamId, platform);
 
-    const overviews = await getChannelOverviews(c.env as Bindings, channels.map(ch => ch.platform));
+    const overviews = await getChannelOverviews(c.env as Bindings, channels.map(ch => ch.platform), user);
 
     return contractJson(c, channelContracts.list, {
       success: true,

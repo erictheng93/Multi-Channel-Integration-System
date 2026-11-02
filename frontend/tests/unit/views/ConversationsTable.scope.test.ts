@@ -213,6 +213,18 @@ describe('ConversationsTable scope tabs', () => {
       expect(wrapper.find('.scope-tab.is-on').text()).toContain('逾期待回覆')
     })
 
+    it('drops a row from the stale view as soon as a realtime reply clears its marker', async () => {
+      store.conversations = [
+        { ...conv('waiting', 'active'), awaitingSince: '2026-10-01T00:00:00.000Z' },
+        { ...conv('answered', 'active'), awaitingSince: null }
+      ] as Conversation[]
+      routeState.query = { view: 'stale' }
+      const wrapper = mountView()
+      await flushPromises()
+
+      expect(shownIds(wrapper)).toEqual(['waiting'])
+    })
+
     it('leaving the stale view stops sending awaiting', async () => {
       routeState.query = { view: 'stale' }
       const wrapper = mountView()

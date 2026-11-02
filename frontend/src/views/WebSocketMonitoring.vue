@@ -685,11 +685,17 @@ async function refreshData() {
   }
 }
 
+/** Only the latest request may write: a slower response for a superseded range must not replace it */
+let historyRequest = 0
+
 async function loadHistory() {
+  const request = ++historyRequest
+  const isLatest = () => request === historyRequest
   historyLoading.value = true
   historyError.value = null
   try {
     const res = await presenceApi.getWsMetricsHistory(period.value)
+    if (!isLatest()) { return }
     if (res.success && res.data) {
       history.value = res.data.points
     } else {
@@ -697,12 +703,15 @@ async function loadHistory() {
       historyError.value = '無法載入歷史資料'
     }
   } catch (err) {
+    console.error('Failed to fetch metrics history:', err)
+    if (!isLatest()) { return }
     history.value = []
     historyError.value = '無法載入歷史資料'
-    console.error('Failed to fetch metrics history:', err)
   } finally {
-    historyNow.value = Date.now()
-    historyLoading.value = false
+    if (isLatest()) {
+      historyNow.value = Date.now()
+      historyLoading.value = false
+    }
   }
 }
 

@@ -204,6 +204,7 @@ onBeforeUnmount(() => { window.cancelAnimationFrame(frame) })
 <style scoped>
 .service-rings {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 28px;
   margin: 0;
@@ -263,9 +264,10 @@ onBeforeUnmount(() => { window.cancelAnimationFrame(frame) })
   color: var(--ui-muted);
 }
 
+/* Below 140px beside the graphic the legend drops under it, so a narrow card never squeezes the figures out */
 .sr-legend {
   display: grid;
-  flex: 1;
+  flex: 1 1 140px;
   gap: 14px;
   min-width: 0;
   margin: 0;
@@ -303,6 +305,7 @@ onBeforeUnmount(() => { window.cancelAnimationFrame(frame) })
 .sr-num {
   grid-area: num;
   display: flex;
+  flex-wrap: wrap;
   align-items: baseline;
   gap: 6px;
   flex-wrap: wrap;

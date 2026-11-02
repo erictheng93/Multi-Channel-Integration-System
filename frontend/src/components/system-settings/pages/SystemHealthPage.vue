@@ -78,8 +78,8 @@
       <div class="ui-group">
         <UiEmptyState
           v-if="rows.length === 0"
-          :title="controller.processing.value ? '檢查中...' : '尚無檢查結果'"
-          :description="controller.processing.value ? '正在逐項檢查服務。' : '按右上角「立即檢查」開始。'"
+          :title="emptyState.title"
+          :description="emptyState.description"
         >
           <template #icon>
             <svg
@@ -333,10 +333,20 @@ const overallTone = computed<'ok' | 'warn' | 'bad' | 'unknown'>(() => {
 /** Everything measured is fine but something was never checked: the headline must not read "all normal" */
 const mixed = computed(() =>
   Boolean(controller.healthOverall.value) && counts.value.critical === 0 && counts.value.warning === 0 && counts.value.unchecked > 0)
+const checkFailed = computed(() => !controller.processing.value && !!controller.healthCheckError.value)
+
+const emptyState = computed(() => {
+  if (controller.processing.value) {
+    return { title: '檢查中...', description: '正在逐項檢查服務。' }
+  }
+  return checkFailed.value
+    ? { title: '無法完成檢查', description: '最近一次檢查沒有取得結果，按右上角「立即檢查」重試。' }
+    : { title: '尚無檢查結果', description: '按右上角「立即檢查」開始。' }
+})
 
 const heroValue = computed<string | null>(() => {
   if (!controller.healthOverall.value) {
-    return null
+    return checkFailed.value ? '狀態不明' : null
   }
   if (counts.value.critical > 0) {
     return '異常'
@@ -381,7 +391,9 @@ const latencyFacts = computed(() => {
 
 const heroSubtitle = computed(() => {
   if (!controller.healthOverall.value) {
-    return '正在取得各項服務的狀態。'
+    return checkFailed.value
+      ? `最近一次檢查失敗：${controller.healthCheckError.value}`
+      : '正在取得各項服務的狀態。'
   }
   const attention = rows.value.filter(row => row.tone === 'warn' || row.tone === 'bad')
   const unchecked = rows.value.filter(row => row.tone === 'unknown')
