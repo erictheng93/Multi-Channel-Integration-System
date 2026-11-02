@@ -111,7 +111,7 @@ describe('RecentActivityWidget.vue', () => {
     })
 
     it('应该调用 getStatusIcon 获取状态图标', () => {
-      mount(RecentActivityWidget, {
+      const wrapper = mount(RecentActivityWidget, {
         props: {
           activities: mockActivities,
           getStatusIcon: mockGetStatusIcon,
@@ -119,9 +119,9 @@ describe('RecentActivityWidget.vue', () => {
         }
       })
 
-      expect(mockGetStatusIcon).toHaveBeenCalledWith('completed')
-      expect(mockGetStatusIcon).toHaveBeenCalledWith('generating')
-      expect(mockGetStatusIcon).toHaveBeenCalledWith('failed')
+      // Status is now an SVG glyph keyed by class; wording comes from the real status
+      expect(wrapper.findAll('.activity-icon.completed').length).toBeGreaterThan(0)
+      expect(wrapper.text()).toContain('產生失敗')
     })
 
     it('应该调用 formatRelativeTime 格式化时间', () => {
@@ -161,9 +161,8 @@ describe('RecentActivityWidget.vue', () => {
         }
       })
 
-      const arrows = wrapper.findAll('.activity-arrow')
-      expect(arrows).toHaveLength(3)
-      expect(arrows[0].text()).toBe('→')
+      // The arrow glyph was dropped; each row is a clickable button instead
+      expect(wrapper.findAll('.activity-item')).toHaveLength(3)
     })
   })
 

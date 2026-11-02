@@ -8,9 +8,9 @@
 <template>
   <AppLayout>
     <div
-      class="notification-page ui-rise"
+      class="ui-page notification-page ui-rise"
       role="main"
-      aria-label="通知中心頁面"
+      aria-label="通知頁面"
     >
       <!-- Page Header: subtitle from /notifications/stats -->
       <NotificationHeader
@@ -94,7 +94,7 @@
             class="load-more-section"
           >
             <button
-              class="btn btn-secondary"
+              class="btn btn-secondary btn-sm"
               :disabled="loadingMore"
               @click="actions.handleLoadMore"
             >
@@ -123,6 +123,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted } from 'vue'
+import { useRoute } from 'vue-router'
 import { useNotificationController } from '@/composables/notification/useNotificationController'
 import AppLayout from '@/components/ui/AppLayout.vue'
 import { LoadingSpinner } from '@/components/ui'
@@ -192,8 +193,11 @@ const groups = computed<DayGroup[]>(() => {
 
 // ==================== Lifecycle ====================
 
+// /notifications?settings=1 (linked from 個人設定) opens the settings dialog straight away
+const route = useRoute()
 onMounted(async () => {
   await controller.initialize()
+  if (route.query.settings === '1') { showSettings.value = true }
 })
 
 onUnmounted(() => {
@@ -202,12 +206,6 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-.notification-page {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  width: 100%;
-}
 
 .notifications-section {
   min-height: 240px;
@@ -235,17 +233,21 @@ onUnmounted(() => {
 .day-label {
   margin: 0;
   padding: 16px 22px 6px;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 600;
-  color: var(--ui-muted);
+  color: var(--ui-ink-2);
 }
 
+/* A footer strip, not a lone pill in an empty card: the count on the left, the action on the right */
 .load-more-section {
   display: flex;
-  flex-direction: column;
+  flex-direction: row-reverse;
   align-items: center;
-  gap: 10px;
-  padding: 20px 24px 22px;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 6px;
+  padding: 12px 22px;
+  box-shadow: inset 0 0.5px 0 var(--ui-sep);
 }
 
 .load-more-info {
@@ -276,6 +278,10 @@ onUnmounted(() => {
 @media (max-width: 768px) {
   .day-label {
     padding: 14px 16px 4px;
+  }
+
+  .load-more-section {
+    padding: 10px 16px;
   }
 }
 </style>

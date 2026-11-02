@@ -68,7 +68,7 @@
     expanded: boolean
     sidebarCollapsed: boolean
     isMobile: boolean
-    items: SubmenuItem[]
+    items: readonly SubmenuItem[]
   }>()
 
   defineEmits<{
@@ -92,7 +92,7 @@
     align-items: center;
     gap: 10px;
     width: 100%;
-    height: 34px;
+    height: 32px;
     padding: 0 10px;
     border: none;
     border-radius: 9px;
@@ -124,7 +124,7 @@
 
   /* A group holds no page of its own, so the active state is quiet: ink + weight, no pill */
   .nav-item.active {
-    color: var(--ui-ink);
+    color: var(--section-ink);
     font-weight: 600;
   }
 
@@ -140,7 +140,7 @@
   }
 
   .nav-item.active .nav-icon {
-    color: var(--ui-accent);
+    color: var(--section-hue);
   }
 
   .nav-text {
@@ -165,13 +165,13 @@
   .submenu {
     display: grid;
     gap: 1px;
-    padding: 2px 0 4px 37px;
+    padding: 2px 0 3px 37px;
     overflow: hidden;
   }
 
   .submenu-item {
     display: block;
-    padding: 6px 10px;
+    padding: 5px 10px;
     border-radius: 8px;
     color: var(--ui-muted);
     font-size: 13px;
@@ -187,8 +187,8 @@
   }
 
   .submenu-item.active {
-    background: var(--ui-accent-soft);
-    color: var(--ui-accent);
+    background: color-mix(in srgb, var(--section-hue) 15%, transparent);
+    color: var(--section-ink);
     font-weight: 600;
   }
 

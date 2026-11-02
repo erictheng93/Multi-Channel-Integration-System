@@ -116,6 +116,19 @@ describe('GET /conversations/stats unread aggregate: fast path equals the full q
     expect(await fastUnreadAggregate(d1Of(db), user)).toEqual(await legacyUnreadAggregate(d1Of(db), user));
   });
 
+  it('counts a manually unread conversation that has no customer message (NULL marker)', async () => {
+    const db = createDashboardDb({ markers: true });
+    addCustomer(db, 1);
+    addConv(db, 'agent-only');
+    addMsg(db, 'agent-only', 'agent', '2026-10-29T01:00:00.000Z');
+    db.prepare("INSERT INTO conversation_read_states VALUES ('a1','agent-only',NULL,'2026-10-29T03:00:00.000Z')").run();
+    const user = { id: 'a1', role: 'agent' as const, allowedTeamIds: [] as number[] };
+    const row = await fastUnreadAggregate(d1Of(db), user);
+    expect(Number(row?.unreadCount)).toBe(1);
+    expect(Number(row?.unreadConversations)).toBe(1);
+    expect(row).toEqual(await legacyUnreadAggregate(d1Of(db), user));
+  });
+
   it('falls back to the full query when migration 0071 is not applied', async () => {
     const db = createDashboardDb();
     addCustomer(db, 1);

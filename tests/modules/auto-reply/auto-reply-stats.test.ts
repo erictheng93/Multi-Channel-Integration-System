@@ -52,10 +52,10 @@ describe('GET /auto-reply/stats', () => {
     sqlite
       .prepare('INSERT INTO auto_reply_logs (rule_id, conversation_id, platform, reply_method, created_at) VALUES (?, ?, ?, ?, ?)')
       .run(opts.rule ?? 1, opts.conv ?? 'c-mine', 'line', 'reply_api', at);
-  const addDelivery = (id: string, status: string, at: string, opts: { rule?: number; conv?: string } = {}) =>
+  const addDelivery = (id: string, status: string, at: string, opts: { rule?: number; conv?: string; lastAttemptAt?: string } = {}) =>
     sqlite
-      .prepare('INSERT INTO auto_reply_deliveries (platform, platform_message_id, rule_id, conversation_id, status, attempt_count, created_at) VALUES (?, ?, ?, ?, ?, 1, ?)')
-      .run('line', id, opts.rule ?? 1, opts.conv ?? 'c-mine', status, at);
+      .prepare('INSERT INTO auto_reply_deliveries (platform, platform_message_id, rule_id, conversation_id, status, attempt_count, created_at, last_attempt_at) VALUES (?, ?, ?, ?, ?, 1, ?, ?)')
+      .run('line', id, opts.rule ?? 1, opts.conv ?? 'c-mine', status, at, opts.lastAttemptAt ?? at);
 
   beforeEach(() => {
     vi.useFakeTimers({ toFake: ['Date'] });
@@ -126,6 +126,16 @@ describe('GET /auto-reply/stats', () => {
 
     expect(body.data.todayFailed).toBe(1);
     expect(body.data.successRate).toBe(0.75);
+  });
+
+  it('counts a failure on the day of its latest attempt, not the day the ledger row was created', async () => {
+    addLog('2026-10-28T17:00:00.000Z');
+    addDelivery('retried-today', 'failed', '2026-10-28T15:00:00.000Z', { lastAttemptAt: '2026-10-28T18:00:00.000Z' });
+
+    const { body } = await get();
+
+    expect(body.data.todayFailed).toBe(1);
+    expect(body.data.successRate).toBe(0.5);
   });
 
   it('scopes to the team plus global rules and to conversations the agent can see', async () => {

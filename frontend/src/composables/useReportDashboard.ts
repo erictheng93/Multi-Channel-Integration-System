@@ -20,6 +20,7 @@
  */
 
 import { ref, reactive, computed, watch } from 'vue'
+import { taipeiDayEndIso, taipeiDayStartIso } from '@/utils/taipei-date'
 import ReportsAPI from '@/api/reports'
 import { createLogger } from '@/utils/logger'
 import type {
@@ -127,7 +128,7 @@ export function useReportDashboard(options: UseReportDashboardOptions = {}) {
   const sortBy = ref(defaultSortBy)
   const sortOrder = ref<'asc' | 'desc'>(defaultSortOrder)
   const searchQuery = ref('')
-  const viewMode = ref<'grid' | 'list'>('grid')
+  const viewMode = ref<'grid' | 'list'>('list')
 
   // ========================================
   // Computed
@@ -259,7 +260,11 @@ export function useReportDashboard(options: UseReportDashboardOptions = {}) {
         pageSize: pagination.pageSize,
         sortBy: sortBy.value,
         sortOrder: sortOrder.value,
-        ...filters
+        ...filters,
+        // The filter holds Taipei calendar days; the API takes full timestamps and compares them
+        // as text against reports.createdAt, so a date-only bound would be rejected or cut the day
+        startDate: filters.startDate ? taipeiDayStartIso(filters.startDate) : undefined,
+        endDate: filters.endDate ? taipeiDayEndIso(filters.endDate) : undefined
       }
 
       // 添加搜尋查詢
@@ -271,6 +276,14 @@ export function useReportDashboard(options: UseReportDashboardOptions = {}) {
       const response = await ReportsAPI.listReports(query)
 
       reports.value = response.reports
+
+      // Header counts come from the list summary (covers generating / pending / expired too)
+      if (response.summary) {
+        stats.totalReports = response.summary.totalReports
+        stats.pendingReports = (response.summary.pendingReports || 0) + (response.summary.generatingReports || 0)
+        stats.completedReports = response.summary.completedReports || 0
+        stats.failedReports = response.summary.failedReports || 0
+      }
 
       // 更新分頁資料
       Object.assign(pagination, response.pagination)
@@ -290,46 +303,17 @@ export function useReportDashboard(options: UseReportDashboardOptions = {}) {
       const statistics = await ReportsAPI.getReportStatistics('last_30_days')
 
       // 更新統計資料
-      stats.totalReports = statistics.totalReports
-      stats.pendingReports = statistics.reportsByStatus.pending || 0
-      stats.completedReports = statistics.reportsByStatus.completed || 0
-      stats.failedReports = statistics.reportsByStatus.failed || 0
-
       // 計算熱門類型
       stats.popularTypes = Object.entries(statistics.reportsByType)
+        .filter(([, count]) => count > 0)
         .map(([type, count]) => ({
           type: type as ReportType,
           label: getReportTypeLabel(type as ReportType),
           count,
-          percentage: Math.round((count / statistics.totalReports) * 100)
+          percentage: statistics.totalReports > 0 ? Math.round((count / statistics.totalReports) * 100) : 0
         }))
         .sort((a, b) => b.count - a.count)
         .slice(0, 5)
-
-      // 模擬最近活動（在實際實現中應該從API獲取）
-      stats.recentActivity = [
-        {
-          id: '1',
-          action: '已生成',
-          reportTitle: '客服績效報告',
-          timestamp: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
-          user: '張小明'
-        },
-        {
-          id: '2',
-          action: '已下載',
-          reportTitle: '對話摘要報告',
-          timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
-          user: '李小華'
-        },
-        {
-          id: '3',
-          action: '已刪除',
-          reportTitle: '系統健康報告',
-          timestamp: new Date(Date.now() - 1000 * 60 * 60 * 4).toISOString(),
-          user: '王小美'
-        }
-      ]
 
       // 計算本月生成數量
       const thisMonth = new Date().getMonth()
@@ -356,7 +340,10 @@ export function useReportDashboard(options: UseReportDashboardOptions = {}) {
   /**
    * 应用筛选
    */
-  function applyFilters() {
+  function applyFilters(next?: ReportListQuery) {
+    if (next) {
+      Object.assign(filters, next)
+    }
     pagination.page = 1 // 重置到第一頁
     loadReports()
   }

@@ -62,6 +62,7 @@ export function readMigration(file: string): string {
 export const MIGRATION_ROLLUP = '0069_add_message_daily_stats.sql';
 export const MIGRATION_AWAITING = '0070_add_conversation_awaiting_since.sql';
 export const MIGRATION_MARKERS = '0071_add_conversation_message_markers.sql';
+export const MIGRATION_HYGIENE = '0072_signoff_not_awaiting_and_auto_close_index.sql';
 
 /** Base tables as they exist before migrations 0069/0070 (only the columns the dashboard reads). */
 export function createBaseSchema(db: Database.Database): void {
@@ -93,6 +94,8 @@ export interface SchemaOptions {
   rollup?: boolean;
   awaiting?: boolean;
   markers?: boolean;
+  /** 0072: sign-off rule in the awaiting triggers + auto-close index (needs awaiting; markers for auto-close) */
+  hygiene?: boolean;
 }
 
 /** Fresh in-memory database; migrations are applied on top of the base schema when requested. */
@@ -101,7 +104,11 @@ export function createDashboardDb(options: SchemaOptions = {}): Database.Databas
   createBaseSchema(db);
   if (options.rollup) { db.exec(readMigration(MIGRATION_ROLLUP)); }
   if (options.awaiting) { db.exec(readMigration(MIGRATION_AWAITING)); }
-  if (options.markers) { db.exec(readMigration(MIGRATION_MARKERS)); }
+  if (options.markers || options.hygiene) { db.exec(readMigration(MIGRATION_MARKERS)); }
+  if (options.hygiene) {
+    db.exec('CREATE TABLE IF NOT EXISTS agents (id TEXT PRIMARY KEY, email TEXT, password_hash TEXT, display_name TEXT, role TEXT, is_active INTEGER, created_at TEXT, updated_at TEXT)');
+    db.exec(readMigration(MIGRATION_HYGIENE));
+  }
   return db;
 }
 

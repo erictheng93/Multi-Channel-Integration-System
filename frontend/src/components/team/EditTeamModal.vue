@@ -361,7 +361,7 @@ function toggleSelectAll() {
 }
 
 .member-meta {
-  font-size: 0.75rem;
+  font-size: 13px;
   color: #6b7280;
   white-space: nowrap;
   overflow: hidden;
@@ -374,7 +374,7 @@ function toggleSelectAll() {
   color: #dc2626;
   border: none;
   border-radius: 6px;
-  font-size: 0.75rem;
+  font-size: 13px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s;

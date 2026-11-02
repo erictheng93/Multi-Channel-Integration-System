@@ -108,7 +108,7 @@ describe('ReportsSection.vue', () => {
       })
 
       expect(wrapper.find('.sort-control').exists()).toBe(true)
-      expect(wrapper.text()).toContain('排序：')
+      expect(wrapper.find('.sort-control select').exists()).toBe(true)
     })
 
     it('应该渲染视图模式切换按钮', () => {
@@ -319,13 +319,11 @@ describe('ReportsSection.vue', () => {
 
       const header = wrapper.find('.list-header')
       expect(header.exists()).toBe(true)
-      expect(header.text()).toContain('類型')
-      expect(header.text()).toContain('標題')
+      expect(header.text()).toContain('報表')
       expect(header.text()).toContain('狀態')
       expect(header.text()).toContain('格式')
       expect(header.text()).toContain('建立時間')
       expect(header.text()).toContain('大小')
-      expect(header.text()).toContain('操作')
     })
 
     it('列表视图应该为每个报表渲染 ReportRow', () => {
