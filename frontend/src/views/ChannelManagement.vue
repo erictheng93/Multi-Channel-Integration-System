@@ -461,6 +461,7 @@ import AppLayout from '@/components/ui/AppLayout.vue'
 import ChannelConfigDialog from '@/components/channels/ChannelConfigDialog.vue'
 import ChannelDetailsModal from '@/components/channels/ChannelDetailsModal.vue'
 import { formatLastLogin } from '@/utils/team-tone'
+import { platformVolume24h } from '@/utils/channel-volume'
 import { useChannelManagement } from '@/composables/useChannelManagement'
 import type { ChannelIntegration, ChannelPlatform } from '@/api/channels'
 
@@ -580,13 +581,14 @@ const volumeRows = computed(() => {
   })
 })
 
-/** 24 h totals over the active channels that report activity; null when none does (never a made-up zero) */
+/** Never a made-up zero: no total when no active channel reports activity */
 const leadVolume = computed(() => {
-  const rows = channels.value.filter(c => c.isActive && c.activity)
-  if (rows.length === 0) { return { total: null, meaning: '沒有啟用中的頻道提供訊息量' } }
-  const inN = rows.reduce((sum, c) => sum + (c.activity?.customerMessages24h ?? 0), 0)
-  const outN = rows.reduce((sum, c) => sum + (c.activity?.agentMessages24h ?? 0), 0)
-  return { total: inN + outN, meaning: `客戶來訊 ${formatCount(inN)} · 客服發送 ${formatCount(outN)}` }
+  const volume = platformVolume24h(channels.value)
+  if (!volume) { return { total: null, meaning: '沒有啟用中的頻道提供訊息量' } }
+  return {
+    total: volume.customer + volume.agent,
+    meaning: `客戶來訊 ${formatCount(volume.customer)} · 客服發送 ${formatCount(volume.agent)}`
+  }
 })
 
 const channelRings = computed<ServiceRing[]>(() => {
