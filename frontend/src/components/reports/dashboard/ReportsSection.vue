@@ -136,15 +136,15 @@
       >
         <div
           role="columnheader"
-          class="header-cell title-cell"
-        >
-          報表
-        </div>
-        <div
-          role="columnheader"
           class="header-cell"
         >
           狀態
+        </div>
+        <div
+          role="columnheader"
+          class="header-cell title-cell"
+        >
+          報表
         </div>
         <div
           role="columnheader"
@@ -380,7 +380,7 @@ defineEmits<{
 
 .list-header {
   display: grid;
-  grid-template-columns: minmax(0, 2.6fr) 110px minmax(120px, 1fr) 84px;
+  grid-template-columns: 96px minmax(0, 1fr) 150px 84px;
   gap: 12px;
   padding: 10px 22px;
   box-shadow: inset 0 -0.5px 0 var(--ui-sep);
