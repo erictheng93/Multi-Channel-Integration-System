@@ -147,17 +147,21 @@ const onWideChange = (event: { matches: boolean }) => {
     void openDetail(first.id)
   }
 }
+let unmounted = false
 onUnmounted(() => {
+  unmounted = true
   wideMql?.removeEventListener('change', onWideChange)
   phoneMql?.removeEventListener('change', onPhoneChange)
 })
 
 onMounted(async () => {
+  // Before the await: onUnmounted cannot remove a listener that is added after it ran
+  wideMql?.addEventListener('change', onWideChange)
   await Promise.all([
     tagsStore.fetchTags({ pageSize: 100, includeGlobal: true }),
     broadcastsStore.fetchBroadcasts()
   ])
-  wideMql?.addEventListener('change', onWideChange)
+  if (unmounted) { return }
   // Wide layout shows the newest broadcast's recipients by default
   const first = broadcastsStore.broadcasts[0]
   if (isWide.value && first) {
