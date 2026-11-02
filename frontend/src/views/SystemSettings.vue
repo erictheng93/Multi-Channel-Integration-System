@@ -98,7 +98,7 @@
 import UiPageHead from '@/components/ui/UiPageHead.vue'
 import UiSectionNav from '@/components/ui/UiSectionNav.vue'
 import UiActionBar from '@/components/ui/UiActionBar.vue'
-import { computed, onMounted, onUnmounted, provide, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, provide, reactive, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import AppLayout from '@/components/ui/AppLayout.vue'
 import { useSystemSettingsController } from '@/composables/useSystemSettingsController'
@@ -117,12 +117,20 @@ const isForm = computed(() => !!section.value && section.value.key !== 'health')
 // Facebook and advanced keep one readable column; general and LINE lay out a context column beside it
 const isNarrow = computed(() => section.value?.key === 'facebook' || section.value?.key === 'advanced')
 
-// Dirty tracking: general/advanced compare against the last loaded or saved values;
-// the credential pages are dirty once something has been typed into a credential field.
-function valuesSnapshot(): string {
-  return JSON.stringify({ g: controller.settings.general, a: controller.settings.advanced })
+// Dirty tracking: general/advanced compare against the last loaded or saved values, each on its
+// own because a save only sends its own section; the credential pages are dirty once something
+// has been typed into a credential field.
+type ValuesSection = 'general' | 'advanced'
+function isValuesSection(key: string | undefined): key is ValuesSection {
+  return key === 'general' || key === 'advanced'
 }
-const baseline = ref(valuesSnapshot())
+function valuesSnapshot(key: ValuesSection): string {
+  return JSON.stringify(controller.settings[key])
+}
+const baseline = reactive<Record<ValuesSection, string>>({
+  general: valuesSnapshot('general'),
+  advanced: valuesSnapshot('advanced')
+})
 const credentialsTyped = computed(() => {
   const key = section.value?.key
   if (key === 'line') {
@@ -137,16 +145,25 @@ const credentialsTyped = computed(() => {
 })
 const dirty = computed(() => {
   const key = section.value?.key
-  if (key === 'general' || key === 'advanced') {
-    return valuesSnapshot() !== baseline.value
+  if (isValuesSection(key)) {
+    return valuesSnapshot(key) !== baseline[key]
   }
   return credentialsTyped.value
 })
 watch(controller.loading, (now) => {
-  if (!now) { baseline.value = valuesSnapshot() }
+  if (!now) {
+    baseline.general = valuesSnapshot('general')
+    baseline.advanced = valuesSnapshot('advanced')
+  }
 })
+// The section being saved, remembered in case the user navigates while the request runs
+let savingKey: string | undefined
 watch(controller.saving, (now) => {
-  if (!now && controller.messageType.value === 'success') { baseline.value = valuesSnapshot() }
+  if (now) {
+    savingKey = section.value?.key
+  } else if (controller.messageType.value === 'success' && isValuesSection(savingKey)) {
+    baseline[savingKey] = valuesSnapshot(savingKey)
+  }
 })
 
 // Lifecycle
