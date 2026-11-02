@@ -234,6 +234,24 @@ describe('useReportDashboard', () => {
       expect(ReportsAPI.listReports).toHaveBeenLastCalledWith(expect.objectContaining({ status: 'failed' }))
     })
 
+    it('日期條件以台北整天的時間戳送出', async () => {
+      vi.mocked(ReportsAPI.listReports).mockResolvedValue({
+        reports: [],
+        pagination: { page: 1, pageSize: 20, total: 0, totalPages: 0, hasNext: false, hasPrev: false }
+      })
+      const { applyFilters, filters } = useReportDashboard({ autoLoad: false })
+
+      applyFilters({ ...filters, startDate: '2026-10-23', endDate: '2026-10-29' })
+      await new Promise(resolve => setTimeout(resolve, 0))
+
+      expect(ReportsAPI.listReports).toHaveBeenLastCalledWith(expect.objectContaining({
+        startDate: '2026-10-22T16:00:00.000Z',
+        endDate: '2026-10-29T15:59:59.999Z'
+      }))
+      // The filter itself stays on calendar days: the date inputs and the chips read it
+      expect(filters.startDate).toBe('2026-10-23')
+    })
+
     it('applyFilters 應該重置頁碼並重新加載', async () => {
       const { applyFilters, pagination } = useReportDashboard({ autoLoad: false })
 

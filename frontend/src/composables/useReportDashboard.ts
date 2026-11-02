@@ -20,6 +20,7 @@
  */
 
 import { ref, reactive, computed, watch } from 'vue'
+import { taipeiDayEndIso, taipeiDayStartIso } from '@/utils/taipei-date'
 import ReportsAPI from '@/api/reports'
 import { createLogger } from '@/utils/logger'
 import type {
@@ -259,7 +260,11 @@ export function useReportDashboard(options: UseReportDashboardOptions = {}) {
         pageSize: pagination.pageSize,
         sortBy: sortBy.value,
         sortOrder: sortOrder.value,
-        ...filters
+        ...filters,
+        // The filter holds Taipei calendar days; the API takes full timestamps and compares them
+        // as text against reports.createdAt, so a date-only bound would be rejected or cut the day
+        startDate: filters.startDate ? taipeiDayStartIso(filters.startDate) : undefined,
+        endDate: filters.endDate ? taipeiDayEndIso(filters.endDate) : undefined
       }
 
       // 添加搜尋查詢
