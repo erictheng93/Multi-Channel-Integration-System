@@ -21,8 +21,9 @@ import { loginRateLimiter, loginAccountCeiling, rememberLoginIp, authRateLimiter
 import { ActivityCapture, ActivityService, ACTIVITY_ACTIONS, RESOURCE_TYPES } from '@modules/activities';
 import { createDbClient } from '@/db/drizzle-factory';
 import { withD1Retry } from '@/utils/db-retry';
-import { agents, agentTeams } from '@/db/schema';
-import { eq, and, sql, isNull } from 'drizzle-orm';
+import { agents, agentTeams, teams as teamsTable } from '@/db/schema';
+import { SYSTEM_AGENT_ID } from '@/constants/system-agent';
+import { eq, ne, and, sql, isNull } from 'drizzle-orm';
 import { createContextLogger } from '@/utils/logger';
 import { authContracts } from '@shared/api-contracts';
 import { contractJson } from '@/utils/api-contract-response';
@@ -721,6 +722,27 @@ authHandler.get('/me', jwtAuth, async (c) => {
   try {
     const user = c.get('user');
 
+    // Memberships with team names. Read from agent_teams (source of truth) rather
+    // than the JWT-cached ids so a rename or a removal shows up without re-login.
+    const membershipRows = await createDbClient(c.env.DB)
+      .select({
+        id: teamsTable.id,
+        name: teamsTable.name,
+        roleInTeam: agentTeams.roleInTeam,
+        isPrimary: agentTeams.isPrimary
+      })
+      .from(agentTeams)
+      .innerJoin(teamsTable, eq(agentTeams.teamId, teamsTable.id))
+      .where(and(eq(agentTeams.agentId, String(user.id)), isNull(teamsTable.deletedAt)))
+      .orderBy(teamsTable.id)
+      .all();
+    const teamMemberships = membershipRows.map(row => ({
+      id: row.id,
+      name: row.name,
+      roleInTeam: (row.roleInTeam === 'lead' || row.roleInTeam === 'supervisor' ? row.roleInTeam : 'member') as TeamRoleInTeam,
+      isPrimary: Boolean(row.isPrimary)
+    }));
+
     return contractJson(c, authContracts.me, {
       success: true,
       data: {
@@ -732,6 +754,7 @@ authHandler.get('/me', jwtAuth, async (c) => {
         primaryTeamId: user.primaryTeamId || undefined,
         allowedTeamIds: user.allowedTeamIds || [],
         teamRoles: user.teamRoles || {},
+        teams: teamMemberships,
         isActive: user.isActive,
         createdAt: new Date(user.createdAt).getTime()
       },
@@ -777,7 +800,7 @@ authHandler.put('/me', jwtAuth, async (c) => {
         updatedAt: agents.updatedAt,
       })
       .from(agents)
-      .where(eq(agents.id, userId))
+      .where(and(eq(agents.id, userId), ne(agents.id, SYSTEM_AGENT_ID)))
       .limit(1);
 
     if (!current) {
@@ -1029,6 +1052,7 @@ authHandler.post('/refresh', authRateLimiter, async (c) => {
         .from(agents)
         .where(and(
           eq(agents.id, payload.userId),
+          ne(agents.id, SYSTEM_AGENT_ID), // a token can never be refreshed for the system actor
           eq(agents.isActive, true),
           isNull(agents.deletedAt)
         ))

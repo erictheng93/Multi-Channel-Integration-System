@@ -84,6 +84,74 @@ export async function isWithinBusinessHours(
   }
 }
 
+export interface BusinessHoursStatus {
+  /** false when no schedule is configured at all (treated as always open, like isWithinBusinessHours). */
+  hasSchedule: boolean;
+  isOpen: boolean;
+  timezone: string;
+  /** 'HH:mm' in `timezone` when open and a closing time applies today; otherwise null. */
+  closesAt: string | null;
+  /** Next opening, in `timezone`, when closed: { dayOfWeek, time }; otherwise null. */
+  opensAt: { dayOfWeek: number; time: string } | null;
+}
+
+/**
+ * Business-hours state evaluated server-side in the schedule's own timezone (default Asia/Taipei),
+ * with the closing / next opening time for display.
+ */
+export function evaluateBusinessHours(schedules: ScheduleData[], now: Date = new Date()): BusinessHoursStatus {
+  const active = schedules.filter((s) => s.isActive);
+  const timezone = schedules[0]?.timezone || 'Asia/Taipei';
+  if (active.length === 0) {
+    return { hasSchedule: schedules.length > 0, isOpen: schedules.length === 0, timezone, closesAt: null, opensAt: null };
+  }
+
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: timezone,
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+    weekday: 'short',
+  }).formatToParts(now);
+  // hour12:false can render midnight as "24" in some engines
+  const hour = parseInt(parts.find((p) => p.type === 'hour')?.value || '0') % 24;
+  const minute = parseInt(parts.find((p) => p.type === 'minute')?.value || '0');
+  const day = weekdayToNumber(parts.find((p) => p.type === 'weekday')?.value || 'Sun');
+  const current = hour * 60 + minute;
+
+  const today = active.find((s) => s.dayOfWeek === day);
+  if (today) {
+    const start = parseTimeToMinutes(today.startTime);
+    const end = parseTimeToMinutes(today.endTime);
+    const open = end <= start ? current >= start || current <= end : current >= start && current <= end;
+    if (open) {
+      return { hasSchedule: true, isOpen: true, timezone, closesAt: today.endTime, opensAt: null };
+    }
+    if (current < start) {
+      return { hasSchedule: true, isOpen: false, timezone, closesAt: null, opensAt: { dayOfWeek: day, time: today.startTime } };
+    }
+  }
+
+  for (let offset = 1; offset <= 7; offset++) {
+    const candidate = active.find((s) => s.dayOfWeek === (day + offset) % 7);
+    if (candidate) {
+      return {
+        hasSchedule: true,
+        isOpen: false,
+        timezone,
+        closesAt: null,
+        opensAt: { dayOfWeek: candidate.dayOfWeek, time: candidate.startTime },
+      };
+    }
+  }
+  return { hasSchedule: true, isOpen: false, timezone, closesAt: null, opensAt: null };
+}
+
+/** Load the team's schedules (KV cached) and evaluate them now. */
+export async function getBusinessHoursStatus(teamId: number, env: Bindings): Promise<BusinessHoursStatus> {
+  return evaluateBusinessHours(await getTeamSchedules(teamId, env));
+}
+
 /**
  * Load any available schedule (for global off_hours rules without team context).
  * Picks the first team's schedules found in D1.

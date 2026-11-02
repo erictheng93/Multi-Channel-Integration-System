@@ -702,7 +702,7 @@ const {
   padding: 2px var(--space-2);
   background: var(--green-100);
   color: var(--green-700);
-  font-size: 0.625rem;
+  font-size: 13px;
   font-weight: 500;
   border-radius: var(--radius-full);
 }

@@ -138,6 +138,21 @@ bunx wrangler r2 object put "mcis-backups/daily/mcis-db-$(date +%F).sql.gz" \
 4. **Partial restore** (e.g., just members or tags): import only that focused dump
    (`members-*.sql` / `tags-*.sql`) instead of the full file.
 5. Verify: log in, open a conversation, check `/team` and `/tags`.
+6. **Verify migration-only objects survived** (required after every rebuild, restore or recreate).
+   Triggers, partial indexes and CHECK constraints live only in `migrations/*.sql`, not in
+   `src/db/schema.ts`; the 2026-06-17 rebuild silently dropped all of them. Missing triggers do not
+   fail any query — the dashboard just shows stale 待回覆 / unread data.
+   ```bash
+   bun run check:migrations     # tables / indexes / triggers / views vs migrations
+   node node_modules/wrangler/bin/wrangler.js d1 execute mcis-db --remote --command \
+     "SELECT name FROM sqlite_master WHERE type='trigger' ORDER BY name"
+   ```
+   The 9 triggers listed in `src/health-checkers/schema-integrity.ts` (`REQUIRED_TRIGGERS`) must
+   all be present. If any are missing, re-run only the `CREATE TRIGGER IF NOT EXISTS ...` statements
+   from migrations 0070 and 0071 (do NOT re-run the whole files: their `ALTER TABLE ... ADD COLUMN`
+   fails when the column already exists), then let the nightly heal (daily cron) re-converge `awaiting_since` and the unread markers.
+   The admin page 系統設定 › 健康檢查 shows a `schema_integrity` row, and the daily cron logs an
+   error and sets the KV key `alert:schema_trigger_missing` while any trigger is missing.
 
 ## Notes
 

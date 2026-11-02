@@ -1,198 +1,231 @@
 <template>
   <div
     class="login-page"
-    :class="{ 'light-mode': isLightMode }"
+    :data-theme="isLightMode ? 'light' : 'dark'"
   >
-    <!-- Theme Toggle -->
-    <ThemeToggle
-      :is-light-mode="isLightMode"
-      @toggle="toggleTheme"
-    />
-
-    <!-- Ambient Background -->
-    <div class="ambient-bg">
-      <div class="ambient-orb orb-1" />
-      <div class="ambient-orb orb-2" />
-      <div class="ambient-orb orb-3" />
-      <div class="noise-overlay" />
-    </div>
-
-    <!-- Glass Card -->
-    <div class="glass-card">
-      <!-- Header -->
-      <div class="card-header">
-        <h1 class="headline">
-          全通路客服整合平台
-        </h1>
-      </div>
-
-      <!-- Form -->
-      <form
-        class="auth-form"
-        @submit.prevent="handleLogin"
-      >
-        <!-- Email Field -->
-        <FormField
-          id="email"
-          v-model="formData.email"
-          type="email"
-          label="電子郵件"
-          autocomplete="email"
-          :error="errors.email"
-          :touched="emailTouched"
-          :submitted="formSubmitted"
-          :disabled="loading"
-          required
-          @focus="emailFocused = true"
-          @blur="emailFocused = false; emailTouched = true"
-        />
-
-        <!-- Password Field -->
-        <FormField
-          id="password"
-          v-model="formData.password"
-          type="password"
-          label="密碼"
-          autocomplete="current-password"
-          :error="errors.password"
-          :touched="passwordTouched"
-          :submitted="formSubmitted"
-          :disabled="loading"
-          required
-          @focus="passwordFocused = true"
-          @blur="passwordFocused = false; passwordTouched = true"
-        />
-
-        <!-- Submit Button -->
-        <button
-          type="submit"
-          class="submit-btn"
-          :class="{ 'is-loading': loading }"
-          :disabled="loading || !isValid"
-        >
-          <span class="btn-text">繼續</span>
-          <span class="btn-icon">
-            <svg
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-            >
-              <path d="M5 12h14M12 5l7 7-7 7" />
-            </svg>
-          </span>
-          <span
-            v-if="loading"
-            class="btn-loader"
-          />
-        </button>
-
-        <!-- Error Alert -->
-        <Transition name="alert-reveal">
-          <div
-            v-if="error && !loading"
-            class="error-banner"
-            role="alert"
-            aria-live="assertive"
-          >
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-            >
-              <circle
-                cx="12"
-                cy="12"
-                r="10"
-              />
-              <line
-                x1="12"
-                y1="8"
-                x2="12"
-                y2="12"
-              />
-              <line
-                x1="12"
-                y1="16"
-                x2="12.01"
-                y2="16"
-              />
-            </svg>
-            <span>{{ error }}</span>
-          </div>
-        </Transition>
-
-        <!-- Debug (仅开发环境) -->
-        <div
-          v-if="isDev && $route.query.debug === '1'"
-          class="debug-info"
-        >
-          <code>Loading: {{ loading }} | Valid: {{ isValid }} | Theme: {{ isLightMode ? 'light' : 'dark' }}</code>
-        </div>
-      </form>
-
-      <!-- Footer Links -->
-      <div class="login-footer">
-        <router-link
-          to="/register"
-          class="footer-link"
-        >
-          建立帳號
-        </router-link>
-        <span class="footer-divider" />
-        <router-link
-          to="/forgot-password"
-          class="footer-link"
-        >
-          忘記密碼
-        </router-link>
-      </div>
-
-      <!-- Social Divider -->
-      <div class="social-section">
-        <div class="section-divider">
-          <span class="divider-line" />
-          <span class="divider-text">或</span>
-          <span class="divider-line" />
-        </div>
-
-        <button
-          type="button"
-          class="social-btn"
-          disabled
-        >
-          <svg
-            width="18"
-            height="18"
-            viewBox="0 0 24 24"
-            fill="currentColor"
-          >
-            <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-            <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-            <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
-            <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
-          </svg>
-          <span>使用 Google 登入</span>
-        </button>
-      </div>
-    </div>
-
-    <!-- Brand -->
-    <div class="brand-mark">
+    <button
+      type="button"
+      class="theme-btn"
+      :aria-label="isLightMode ? '切換至深色模式' : '切換至淺色模式'"
+      @click="toggleTheme"
+    >
       <svg
-        width="24"
-        height="24"
+        v-if="isLightMode"
+        class="ico"
         viewBox="0 0 24 24"
-        fill="currentColor"
       >
-        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+        <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z" />
       </svg>
-      <span>Daiwan Abrasives Corp</span>
+      <svg
+        v-else
+        class="ico"
+        viewBox="0 0 24 24"
+      >
+        <circle
+          cx="12"
+          cy="12"
+          r="4"
+        />
+        <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
+      </svg>
+    </button>
+
+    <div class="stage">
+      <div class="wrap">
+        <!-- Brand side (desktop only) -->
+        <section class="brand-side">
+          <!-- The abrasive disc anchors the brand panel and bleeds off its outer edge (the panel clips it) -->
+          <div
+            class="zone"
+            aria-hidden="true"
+          >
+            <DiscRing
+              class="wheel"
+              variant="hero"
+              :spin-seconds="180"
+              spin
+            />
+          </div>
+
+          <div class="brand-top">
+            <div class="brand-mark">
+              <svg viewBox="0 0 24 24"><path d="M12 3C6.5 3 2 6.6 2 11c0 2.5 1.4 4.7 3.7 6.2L5 21l4.1-2.3c.9.2 1.9.3 2.9.3 5.5 0 10-3.6 10-8s-4.5-8-10-8Z" /></svg>
+            </div>
+            <div class="brand-name">
+              多渠道客服
+            </div>
+          </div>
+
+          <div class="brand-copy">
+            <h1>全通路客服整合平台</h1>
+            <p>LINE 官方帳號與 Messenger 的客戶對話，集中在同一個工作台回覆與追蹤。</p>
+            <div class="channels">
+              <span class="ui-chip"><span class="ui-ch ui-ch-line"><svg viewBox="0 0 24 24"><path d="M12 3C6.5 3 2 6.6 2 11c0 2.5 1.4 4.7 3.7 6.2L5 21l4.1-2.3c.9.2 1.9.3 2.9.3 5.5 0 10-3.6 10-8s-4.5-8-10-8Z" /></svg></span>LINE 官方帳號</span>
+              <span class="ui-chip"><span class="ui-ch ui-ch-fb"><svg viewBox="0 0 24 24"><path d="M12 3C6.5 3 2 6.6 2 11c0 2.5 1.4 4.7 3.7 6.2L5 21l4.1-2.3c.9.2 1.9.3 2.9.3 5.5 0 10-3.6 10-8s-4.5-8-10-8Z" /></svg></span>Facebook Messenger</span>
+            </div>
+          </div>
+
+          <div class="brand-foot">
+            Daiwan Abrasives Corp
+          </div>
+        </section>
+
+        <!-- Form side -->
+        <section class="form-side">
+          <div class="m-brand">
+            <div
+              class="m-disc"
+              aria-hidden="true"
+            >
+              <DiscRing
+                variant="hero"
+                :size="360"
+              />
+            </div>
+            <div class="brand-mark">
+              <svg viewBox="0 0 24 24"><path d="M12 3C6.5 3 2 6.6 2 11c0 2.5 1.4 4.7 3.7 6.2L5 21l4.1-2.3c.9.2 1.9.3 2.9.3 5.5 0 10-3.6 10-8s-4.5-8-10-8Z" /></svg>
+            </div>
+            <b>全通路客服整合平台</b>
+          </div>
+
+          <div class="auth">
+            <h2>登入</h2>
+            <p class="lede">
+              使用公司帳號繼續進入客服工作台。
+            </p>
+
+            <form
+              novalidate
+              @submit.prevent="handleLogin"
+            >
+              <div
+                class="ui-field"
+                :class="{ invalid: emailError }"
+              >
+                <label for="email">電子郵件</label>
+                <input
+                  id="email"
+                  v-model="formData.email"
+                  class="ui-input"
+                  type="email"
+                  autocomplete="email"
+                  placeholder="name@dacit.net"
+                  required
+                  :disabled="loading"
+                  :aria-invalid="!!emailError"
+                  @focus="emailFocused = true"
+                  @blur="emailFocused = false; emailTouched = true"
+                >
+                <span
+                  v-if="emailError"
+                  class="ui-hint field-error"
+                >{{ emailError }}</span>
+              </div>
+
+              <div
+                class="ui-field"
+                :class="{ invalid: passwordError }"
+              >
+                <label for="password">密碼</label>
+                <div class="pw">
+                  <input
+                    id="password"
+                    v-model="formData.password"
+                    class="ui-input"
+                    :type="showPassword ? 'text' : 'password'"
+                    autocomplete="current-password"
+                    required
+                    :disabled="loading"
+                    :aria-invalid="!!passwordError"
+                    @focus="passwordFocused = true"
+                    @blur="passwordFocused = false; passwordTouched = true"
+                  >
+                  <button
+                    type="button"
+                    class="pw-toggle"
+                    :aria-label="showPassword ? '隱藏密碼' : '顯示密碼'"
+                    :disabled="loading"
+                    @click="showPassword = !showPassword"
+                  >
+                    <svg
+                      v-if="!showPassword"
+                      class="ico"
+                      viewBox="0 0 24 24"
+                    >
+                      <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z" />
+                      <circle
+                        cx="12"
+                        cy="12"
+                        r="3"
+                      />
+                    </svg>
+                    <svg
+                      v-else
+                      class="ico"
+                      viewBox="0 0 24 24"
+                    >
+                      <path d="M9.9 5.2A9.7 9.7 0 0 1 12 5c6.4 0 10 7 10 7a17 17 0 0 1-3.2 4M6.6 6.6C3.7 8.4 2 12 2 12s3.6 7 10 7a9.8 9.8 0 0 0 5.4-1.6M3 3l18 18" />
+                    </svg>
+                  </button>
+                </div>
+                <span
+                  v-if="passwordError"
+                  class="ui-hint field-error"
+                >{{ passwordError }}</span>
+              </div>
+
+              <Transition name="alert-reveal">
+                <div
+                  v-if="error && !loading"
+                  class="alert"
+                  role="alert"
+                  aria-live="assertive"
+                >
+                  <svg
+                    class="ico"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      cx="12"
+                      cy="12"
+                      r="10"
+                    />
+                    <path d="M12 8v4M12 16h.01" />
+                  </svg>
+                  <span>{{ error }}</span>
+                </div>
+              </Transition>
+
+              <button
+                type="submit"
+                class="btn btn-primary submit-btn"
+                :class="{ 'is-loading': loading }"
+                :disabled="loading"
+              >
+                <span class="btn-text">{{ submitLabel }}</span>
+                <svg
+                  class="ico"
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+                >
+                  <path d="M5 12h14M13 6l6 6-6 6" />
+                </svg>
+              </button>
+
+              <div
+                v-if="isDev && $route.query.debug === '1'"
+                class="debug-info"
+              >
+                <code>Loading: {{ loading }} | Valid: {{ isValid }} | Theme: {{ isLightMode ? 'light' : 'dark' }}</code>
+              </div>
+            </form>
+          </div>
+
+          <div class="m-foot">
+            Daiwan Abrasives Corp
+          </div>
+        </section>
+      </div>
     </div>
 
     <!-- Forced Password Change Modal -->
@@ -206,7 +239,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuth } from '@/composables/useAuth'
 import { useAuthStore } from '@/stores/auth'
@@ -214,8 +247,7 @@ import { useI18n } from '@/composables/useI18n'
 import { useModernForm } from '@/composables/useModernVue'
 import { useLoginAttempts } from '@/composables/useLoginAttempts'
 import ForcedPasswordChange from '@/components/auth/ForcedPasswordChange.vue'
-import FormField from '@/components/auth/FormField.vue'
-import ThemeToggle from '@/components/auth/ThemeToggle.vue'
+import DiscRing from '@/components/ui/DiscRing.vue'
 import { ROLES } from '@/constants/roles'
 import { validateLoginEmail, validateLoginPassword } from '@/utils/login-validation'
 
@@ -257,6 +289,16 @@ const passwordFocused = ref(false)
 const emailTouched = ref(false)
 const passwordTouched = ref(false)
 const formSubmitted = ref(false)
+const showPassword = ref(false)
+
+// Errors show once the field was touched or the form was submitted
+const emailError = computed(() => (emailTouched.value || formSubmitted.value) ? errors.value.email : null)
+const passwordError = computed(() => (passwordTouched.value || formSubmitted.value) ? errors.value.password : null)
+
+// The button always reads 「登入」; what is still missing is explained under the field itself
+const submitLabel = computed(() => {
+  return loading.value ? '登入中' : '登入'
+})
 
 // ===== Form Validators =====
 setValidator('email', (value) => validateLoginEmail(value))
@@ -296,8 +338,14 @@ const handleLogin = async (event?: Event) => {
   // Mark form as submitted
   formSubmitted.value = true
 
-  // Validate form
-  if (!isValid.value) {return}
+  // Validate form: the button stays enabled, the fields explain what is missing
+  validateForm()
+  if (!isValid.value) {
+    const firstInvalid = errors.value.email ? 'email' : 'password'
+    await nextTick()
+    document.getElementById(firstInvalid)?.focus()
+    return
+  }
 
   clearError()
 
@@ -349,5 +397,404 @@ const handleLogin = async (event?: Event) => {
 </script>
 
 <style scoped>
-@import '@/assets/styles/login.css';
+.login-page {
+  position: relative;
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: var(--ui-canvas);
+  color: var(--ui-ink);
+  font-family: var(--ui-font-ui);
+}
+
+.ico {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.stage {
+  /* Desktop: a full-height split. Brand panel (inset, tinted, clips the disc) beside the form column */
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(440px, 1fr);
+  min-height: 100vh;
+  min-height: 100dvh;
+  overflow: hidden;
+}
+
+.wrap {
+  display: contents;
+}
+
+.theme-btn {
+  position: fixed;
+  top: 20px;
+  right: 24px;
+  z-index: 5;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--ui-surface);
+  box-shadow: var(--ui-shadow-pill);
+  color: var(--ui-ink-2);
+  cursor: pointer;
+  transition: box-shadow var(--ui-dur) var(--ui-ease);
+}
+
+.theme-btn:hover {
+  box-shadow: var(--ui-shadow-raised);
+}
+
+/* Brand side: the inset panel */
+.brand-side {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  margin: 16px 0 16px 16px;
+  padding: 44px 56px 40px;
+  overflow: hidden;
+  border-radius: 32px;
+  background: var(--ui-accent-soft);
+}
+
+.brand-top {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.brand-mark {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  background: var(--ui-accent);
+}
+
+.brand-mark svg {
+  width: 18px;
+  height: 18px;
+  fill: #fff;
+}
+
+.brand-name {
+  font: 600 15px var(--ui-font-display);
+}
+
+.brand-copy {
+  position: relative;
+  z-index: 1;
+  max-width: 460px;
+}
+
+.brand-copy h1 {
+  font: 700 52px/1.12 var(--ui-font-display);
+  letter-spacing: -0.04em;
+}
+
+.brand-copy p {
+  max-width: 34ch;
+  margin-top: 14px;
+  font-size: 16px;
+  line-height: 1.6;
+  color: var(--ui-ink-2);
+}
+
+.channels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 26px;
+}
+
+.channels .ui-chip {
+  height: 32px;
+  padding: 0 12px 0 8px;
+  cursor: default;
+}
+
+.brand-foot {
+  position: relative;
+  z-index: 1;
+  font-size: var(--ui-t-cap);
+  font-weight: 500;
+  color: var(--ui-ink-2);
+}
+
+/* The hero disc sits in the panel's lower right and runs off its outer edge on purpose
+   (the panel clips it); a mask fades it before it reaches the copy. */
+.zone {
+  position: absolute;
+  right: -240px;
+  bottom: -200px;
+  width: 760px;
+  height: 760px;
+  pointer-events: none;
+  -webkit-mask-image: linear-gradient(to left, #000 0%, #000 55%, transparent 92%);
+  mask-image: linear-gradient(to left, #000 0%, #000 55%, transparent 92%);
+}
+
+.wheel {
+  width: 100%;
+  height: 100%;
+}
+
+/* Dark: the rim turns white for contrast on the black canvas */
+.login-page[data-theme='dark'] .wheel,
+.login-page[data-theme='dark'] .m-disc {
+  --ui-disc-a: #fff;
+  --ui-disc-b: var(--ui-accent);
+}
+
+/* Form side */
+.form-side {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  width: min(480px, 100%);
+  margin: 0 auto;
+  padding: 40px 24px;
+}
+
+.auth {
+  width: 100%;
+  padding: 40px 36px 34px;
+  border-radius: var(--ui-r-lead);
+  background: var(--ui-surface);
+  box-shadow: var(--ui-shadow-raised);
+}
+
+.auth h2 {
+  font: 700 34px/1.15 var(--ui-font-display);
+  letter-spacing: -0.035em;
+}
+
+.lede {
+  margin-top: 8px;
+  font-size: 15px;
+  color: var(--ui-ink-2);
+}
+
+.auth :deep(.ui-field > label) {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ui-ink-2);
+}
+
+.auth .ui-input::placeholder {
+  color: var(--ui-muted);
+  opacity: 1;
+}
+
+.auth form {
+  display: grid;
+  gap: 16px;
+  margin-top: 24px;
+}
+
+.auth .ui-input {
+  height: 46px;
+  border-radius: 14px;
+  font-size: 15px;
+}
+
+.pw {
+  position: relative;
+}
+
+.pw .ui-input {
+  padding-right: 48px;
+}
+
+.pw-toggle {
+  position: absolute;
+  top: 50%;
+  right: 4px;
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--ui-muted);
+  transform: translateY(-50%);
+  cursor: pointer;
+}
+
+.pw-toggle:hover:not(:disabled) {
+  color: var(--ui-ink-2);
+  background: var(--ui-fill);
+}
+
+.ui-field.invalid .ui-input {
+  box-shadow: inset 0 0 0 1px var(--ui-red), 0 0 0 4px var(--ui-red-soft);
+}
+
+.field-error {
+  color: var(--ui-red-ink);
+}
+
+.alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--ui-red-soft);
+  color: var(--ui-red-ink);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.alert .ico {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  margin-top: 2px;
+}
+
+.alert-reveal-enter-active,
+.alert-reveal-leave-active {
+  transition: opacity var(--ui-dur) var(--ui-ease), transform var(--ui-dur) var(--ui-ease);
+}
+
+.alert-reveal-enter-from,
+.alert-reveal-leave-to {
+  opacity: 0;
+  transform: translateY(-4px);
+}
+
+/* Disabled "繼續" reads as an iOS grey control until the form is valid */
+.auth .submit-btn {
+  height: 48px;
+  margin-top: 4px;
+  border-radius: 14px;
+  font-size: 15.5px;
+}
+
+.submit-btn .ico {
+  transition: transform var(--ui-dur) var(--ui-ease);
+}
+
+.submit-btn:hover:not(:disabled) .ico {
+  transform: translateX(3px);
+}
+
+/* Disabled colours come from the global .btn:disabled (neutral iOS fill). While submitting we
+   keep the brand blue so the spinner state still reads as in progress. */
+.submit-btn.is-loading:disabled {
+  background: var(--ui-accent);
+  color: #fff;
+  opacity: 0.75;
+}
+
+.debug-info {
+  font-size: 13px;
+  color: var(--ui-muted);
+}
+
+.m-brand,
+.m-foot {
+  display: none;
+}
+
+.m-brand {
+  position: relative;
+  isolation: isolate;
+}
+
+/* Phone: the disc is centred on the logo and fades out below it (decorative, never behind
+   the card or the form text) */
+.m-disc {
+  position: absolute;
+  left: 50%;
+  top: 46px;
+  z-index: -1;
+  margin: -180px 0 0 -180px;
+  opacity: 0.85;
+  pointer-events: none;
+  /* radial fade: the whole disc dissolves into the canvas instead of being cut by the screen top */
+  -webkit-mask-image: radial-gradient(circle at center, #000 14%, transparent 34%);
+  mask-image: radial-gradient(circle at center, #000 14%, transparent 34%);
+}
+
+@media (max-width: 1024px) {
+  .stage {
+    display: block;
+    padding: 0 16px;
+  }
+
+  .wrap {
+    display: block;
+  }
+
+  .form-side {
+    min-height: 100vh;
+    min-height: 100dvh;
+    padding: 24px 0;
+  }
+
+  .brand-side {
+    display: none;
+  }
+
+  .m-brand {
+    display: block;
+    margin-bottom: 24px;
+    padding-top: 24px;
+    text-align: center;
+  }
+
+  .m-brand .brand-mark {
+    width: 44px;
+    height: 44px;
+    margin: 0 auto 28px;
+    border-radius: 14px;
+  }
+
+  .m-brand .brand-mark svg {
+    width: 24px;
+    height: 24px;
+  }
+
+  .m-brand b {
+    display: block;
+    font: 700 20px/1.2 var(--ui-font-display);
+    letter-spacing: -0.02em;
+  }
+
+  .m-foot {
+    display: flex;
+    justify-content: center;
+    margin-top: 24px;
+    font-size: var(--ui-t-cap);
+    font-weight: 500;
+    color: var(--ui-muted);
+  }
+
+  .theme-btn {
+    top: 14px;
+    right: 14px;
+  }
+}
+
+@media (max-width: 480px) {
+  .auth {
+    padding: 28px 22px 24px;
+    border-radius: 24px;
+  }
+}
 </style>

@@ -15,8 +15,10 @@ import {
 } from '@/middleware/auth';
 import { ActivityService, ACTIVITY_ACTIONS, RESOURCE_TYPES } from '@/modules/activities';
 import { createDbClient } from '@/db/drizzle-factory';
+import { blockSystemAgentTarget } from '@/middleware/block-system-agent';
 import { agents } from '@/db/schema';
-import { desc, sql, isNull } from 'drizzle-orm';
+import { notSystemAgent } from '@/constants/system-agent';
+import { and, desc, sql, isNull } from 'drizzle-orm';
 import { HTTP_STATUS } from '@/constants/http-status';
 import { globalErrorHandler } from '@/core/error-handler';
 import { teamContracts, type ContractResponse, type TeamMemberApiDto } from '@shared/api-contracts';
@@ -38,6 +40,9 @@ import type { TeamRoleInTeam } from '@/types';
 import { nowISO, nowMs } from '@/utils/timestamp'
 
 const membersHandler = new Hono<{ Bindings: Bindings }>();
+
+// The system actor is not a member: no activate / edit / role / delete / bulk action may target it
+membersHandler.use('*', blockSystemAgentTarget());
 
 function normalizeTeamRoleInTeam(role: string | null | undefined): TeamRoleInTeam {
   switch (role) {
@@ -120,7 +125,7 @@ membersHandler.get('/', jwtAuth, async (c) => {
         lastActive: agents.lastLoginAt
       })
       .from(agents)
-      .where(isNull(agents.deletedAt))
+      .where(and(isNull(agents.deletedAt), notSystemAgent(agents.id)))
       .orderBy(desc(agents.createdAt));
 
     // Fetch multi-team membership information

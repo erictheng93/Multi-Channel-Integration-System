@@ -4,6 +4,7 @@
     class="dropdown"
   >
     <div
+      role="button"
       :tabindex="disabled ? -1 : 0"
       :aria-haspopup="true"
       :aria-expanded="isOpen"

@@ -60,6 +60,33 @@ export interface AutoReplyLog {
   created_at: string
 }
 
+export interface AutoReplyBusinessHours {
+  hasSchedule: boolean
+  isOpen: boolean
+  /** IANA timezone of the schedule (default Asia/Taipei) */
+  timezone: string
+  /** 'HH:mm' in `timezone` when open; otherwise null */
+  closesAt: string | null
+  /** next opening in `timezone` when closed; dayOfWeek 0=Sunday */
+  opensAt: { dayOfWeek: number; time: string } | null
+}
+
+export interface AutoReplyStats {
+  /** auto replies sent since 00:00 Asia/Taipei */
+  todaySuccess: number
+  /** failed deliveries since 00:00 Asia/Taipei */
+  todayFailed: number
+  /** replies sent yesterday between 00:00 and the current time of day */
+  yesterdaySameTimeSuccess: number
+  /** todaySuccess / (todaySuccess + todayFailed); null when there were no attempts */
+  successRate: number | null
+  businessHours: AutoReplyBusinessHours
+}
+
+export interface AutoReplyStatsParams {
+  teamId?: number
+}
+
 export interface CreateRuleRequest {
   name: string
   triggerType: TriggerType
@@ -197,6 +224,11 @@ export const autoReplyContracts = {
   saveSchedules: defineApiContract<Record<string, never>, BulkUpsertScheduleRequest, AutoReplySchedule[]>({
     method: 'POST',
     path: () => '/auto-reply/schedules'
+  }),
+
+  getStats: defineApiContract<AutoReplyStatsParams | undefined, void, AutoReplyStats>({
+    method: 'GET',
+    path: params => `/auto-reply/stats${buildAutoReplyQuery(params)}`
   }),
 
   getLogs: defineApiContract<AutoReplyLogParams | undefined, void, AutoReplyFlatPage<AutoReplyLog>>({

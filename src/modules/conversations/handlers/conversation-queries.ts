@@ -4,7 +4,7 @@
 import { Hono } from 'hono';
 import { HTTP_STATUS } from '@/constants/http-status';
 import { globalErrorHandler } from '@/core/error-handler';
-import { eq, desc, and, or, like, sql, count, type SQL } from 'drizzle-orm';
+import { eq, desc, asc, and, or, like, sql, count, type SQL } from 'drizzle-orm';
 import { createDbClient } from '@/db/drizzle-factory';
 import { conversations, customers, teams } from '@/db/schema';
 import type { Bindings } from '@/types';
@@ -17,11 +17,38 @@ import { jwtAuth } from '@/middleware/auth';
 import { createContextLogger } from '@/utils/logger';
 import { getDisplayContent } from '../utils/message-helpers';
 import { publicConversationColumns } from '../utils/public-columns';
-import { nowISO } from '@/utils/timestamp'
+import { nowISO, nowMs } from '@/utils/timestamp'
+import { readThrough, DASHBOARD_SUMMARY_TTL_SECONDS } from '@/modules/dashboard/services/kv-cache';
+import { RowsReadMeter } from '@/utils/d1-rows-read';
+import { getUnreadAggregate } from '@/modules/conversations/services/unread-stats-service';
+import { clampWaitingLimit, getWaitingConversations, waitingWindowStartIso } from '@/modules/dashboard/services/waiting-service';
+import { getNeverRepliedIds, getStaleWaitingSummary } from '@/modules/dashboard/services/stale-waiting-service';
+import { neverRepliedSql } from '@/modules/dashboard/services/awaiting-rules';
+import { visibilityScopeKey } from '@/modules/dashboard/services/dashboard-service';
 import { conversationContracts, type ConversationStats } from '@shared/api-contracts/conversations';
+import { getRecallWindowSeconds } from '@/services/recall-window-config';
+import { LINE_REPLY_TOKEN_SAFE_WINDOW_MS } from '@/constants/limits';
 import { contractJson } from '@/utils/api-contract-response';
 
 const log = createContextLogger('ConversationQueriesHandler');
+
+// receivedAt of the stored LINE replyToken, or NULL when there is no token.
+// Selected next to the public columns so the token itself is never read.
+const replyTokenReceivedAtSql = sql<number | null>`CASE WHEN ${conversations.lineReplyToken} IS NOT NULL THEN ${conversations.lineReplyTokenReceivedAt} END`;
+
+// When the free LINE Reply API stops being usable for a reply sent now (epoch
+// ms): same formula as GET /customer-conversations/:id/reply-window, token
+// receive time + safe window - recall window (delivery is delayed by that long).
+// null = no token or already expired.
+export function computeReplyWindowExpiresAt(
+  receivedAt: number | null | undefined,
+  recallWindowSeconds: number,
+  now: number = Date.now()
+): number | null {
+  if (receivedAt === null || receivedAt === undefined) { return null; }
+  const expiresAt = receivedAt + LINE_REPLY_TOKEN_SAFE_WINDOW_MS - recallWindowSeconds * 1000;
+  return expiresAt > now ? expiresAt : null;
+}
 
 interface LatestConversationMessageRow {
   messageId: string;
@@ -33,6 +60,7 @@ interface LatestConversationMessageRow {
 
 interface UnreadCountRow {
   unreadCount: number;
+  oldestUnreadAt?: string | null;
 }
 
 interface ConversationListLatestMessageRow extends LatestConversationMessageRow {
@@ -44,12 +72,15 @@ interface ConversationUnreadCountRow extends UnreadCountRow {
   // 1 when this agent has manually flagged the conversation unread
   // (conversation_read_states.marked_unread_at IS NOT NULL).
   manuallyUnread: number | string | null;
+  // Earliest unread customer message (null when none)
+  oldestUnreadAt: string | null;
 }
 
 // Per-agent unread state for one conversation, as returned by the batch query.
 interface ConversationUnreadState {
   unreadCount: number;
   manuallyUnread: boolean;
+  oldestUnreadAt: string | null;
 }
 
 // Applies the manual unread override: a conversation an agent flagged unread
@@ -60,16 +91,10 @@ function applyManualUnreadFloor(derivedUnreadCount: number, manuallyUnread: bool
   return manuallyUnread ? Math.max(derivedUnreadCount, 1) : derivedUnreadCount;
 }
 
-interface ConversationStatsAggregateRow {
-  total: number | string | null;
-  active: number | string | null;
-  assigned: number | string | null;
-  pending: number | string | null;
-}
-
-interface ConversationUnreadAggregateRow {
-  unreadCount: number | string | null;
-  unreadConversations: number | string | null;
+interface ConversationStatsGroupRow {
+  teamId: number | null;
+  status: string | null;
+  n: number | string | null;
 }
 
 const D1_SAFE_ID_CHUNK_SIZE = 90;
@@ -96,7 +121,8 @@ export function createConversationUnreadCountQuery(conversationIds: string[]): s
         SELECT
           threshold.id as conversationId,
           threshold.manuallyUnread as manuallyUnread,
-          COUNT(customer_message.id) as unreadCount
+          COUNT(customer_message.id) as unreadCount,
+          MIN(customer_message.created_at) as oldestUnreadAt
         FROM (
           SELECT
             c.id as id,
@@ -147,6 +173,20 @@ export function conversationScopeOrderBy(scope: string): SQL[] {
   return [desc(conversations.updatedAt), desc(conversations.id)];
 }
 
+// awaiting=stale: waits older than the 待回覆 window. The literal IS NOT NULL keeps the partial
+// index idx_conversations_awaiting_since usable.
+export function staleViewConditions(now: number): SQL[] {
+  return [sql`${conversations.awaitingSince} IS NOT NULL AND ${conversations.awaitingSince} < ${waitingWindowStartIso(now)}
+    AND ${conversations.status} <> 'closed' AND ${conversations.deletedAt} IS NULL`];
+}
+
+// Stale review order: conversations no human ever answered first, then the oldest wait.
+export function staleReviewOrderBy(): SQL[] {
+  // eslint-disable-next-line no-unsafe-sql-raw -- the argument is a compile-time constant column reference, never request input
+  const neverReplied = sql.raw(neverRepliedSql('conversations.id'));
+  return [sql`CASE WHEN ${neverReplied} THEN 0 ELSE 1 END`, asc(conversations.awaitingSince), asc(conversations.id)];
+}
+
 function parsePositiveInt(value: string | undefined, fallback: number): number {
   const parsed = Number.parseInt(value ?? '', 10);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
@@ -163,7 +203,11 @@ function createEmptyConversationStats(): ConversationStats {
     assigned: 0,
     pending: 0,
     unreadCount: 0,
-    unreadConversations: 0
+    unreadConversations: 0,
+    open: 0,
+    closed: 0,
+    byTeam: [],
+    oldestUnreadAt: null
   };
 }
 
@@ -183,81 +227,41 @@ conversationQueriesHandler.get('/stats', jwtAuth, async (c) => {
     const visibility = getConversationVisibilitySql(user, 'assigned_team_id');
     const stats = createEmptyConversationStats();
 
-    const aggregateRow = await c.env.DB.prepare(`
-      SELECT
-        COUNT(*) as total,
-        COALESCE(SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END), 0) as active,
-        COALESCE(SUM(CASE WHEN status = 'assigned' THEN 1 ELSE 0 END), 0) as assigned,
-        COALESCE(SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END), 0) as pending
+    // One grouped scan yields every count: legacy status buckets, open/closed
+    // and the per-team split. Team 'null' = the unassigned shared pool.
+    const groupResult = await c.env.DB.prepare(`
+      SELECT assigned_team_id AS teamId, status, COUNT(*) AS n
       FROM conversations
       WHERE ${visibility.clause}
-    `).bind(...visibility.params).first<ConversationStatsAggregateRow>();
+      GROUP BY assigned_team_id, status
+    `).bind(...visibility.params).all<ConversationStatsGroupRow>();
 
-    stats.total = toCount(aggregateRow?.total);
-    stats.active = toCount(aggregateRow?.active);
-    stats.assigned = toCount(aggregateRow?.assigned);
-    stats.pending = toCount(aggregateRow?.pending);
+    const byTeam = new Map<number | null, { teamId: number | null; open: number; closed: number }>();
+    for (const row of groupResult.results ?? []) {
+      const n = toCount(row.n);
+      const isClosed = row.status === 'closed';
+      stats.total += n;
+      if (row.status === 'active') { stats.active += n; }
+      if (row.status === 'assigned') { stats.assigned += n; }
+      if (row.status === 'pending') { stats.pending += n; }
+      if (isClosed) { stats.closed += n; } else { stats.open += n; }
+      const teamId = row.teamId ?? null;
+      const bucket = byTeam.get(teamId) ?? { teamId, open: 0, closed: 0 };
+      if (isClosed) { bucket.closed += n; } else { bucket.open += n; }
+      byTeam.set(teamId, bucket);
+    }
+    stats.byTeam = [...byTeam.values()].sort((a, b) => b.open - a.open);
 
     // Read state is per-agent (Migration 0060): join this agent's row so the
     // badge total reflects what THIS agent has yet to read. The
     // last-agent-reply term below stays global by design (decision A-1).
-    const unreadRow = await c.env.DB.prepare(`
-      WITH visible AS (
-        SELECT
-          conversation.id AS id,
-          conversation.status AS status,
-          conversation.unread_floor_at AS unread_floor_at,
-          read_state.last_read_at AS last_read_at,
-          read_state.marked_unread_at AS marked_unread_at
-        FROM conversations AS conversation
-        LEFT JOIN conversation_read_states AS read_state
-          ON read_state.conversation_id = conversation.id
-          AND read_state.agent_id = ?
-        WHERE ${visibility.clause}
-      )
-      SELECT COALESCE(SUM(
-        CASE WHEN per.manuallyUnread = 1 AND per.unreadCount = 0
-          THEN 1 ELSE per.unreadCount END
-      ), 0) as unreadCount,
-      COALESCE(SUM(
-        CASE WHEN per.manuallyUnread = 1 OR per.unreadCount > 0 THEN 1 ELSE 0 END
-      ), 0) as unreadConversations
-      FROM (
-        SELECT
-          threshold.id,
-          threshold.manuallyUnread,
-          COUNT(customer_message.id) as unreadCount
-        FROM (
-          SELECT
-            visible.id,
-            -- 已結案的對話不計入未讀總數（與列表一致）
-            CASE WHEN visible.status <> 'closed' AND visible.marked_unread_at IS NOT NULL THEN 1 ELSE 0 END as manuallyUnread,
-            CASE WHEN visible.status = 'closed' THEN '9999-12-31' ELSE MAX(
-              COALESCE(last_agent.last_agent_at, '1970-01-01'),
-              COALESCE(visible.last_read_at, '1970-01-01'),
-              COALESCE(visible.unread_floor_at, '1970-01-01')
-            ) END as unread_threshold
-          FROM visible
-          LEFT JOIN (
-            SELECT message.conversation_id, MAX(message.created_at) as last_agent_at
-            FROM messages AS message
-            INNER JOIN visible ON visible.id = message.conversation_id
-            WHERE message.sender_type IN ('agent', 'system')
-              AND message.deleted_at IS NULL
-            GROUP BY message.conversation_id
-          ) AS last_agent ON last_agent.conversation_id = visible.id
-        ) AS threshold
-        LEFT JOIN messages AS customer_message
-          ON customer_message.conversation_id = threshold.id
-          AND customer_message.sender_type = 'customer'
-          AND customer_message.deleted_at IS NULL
-          AND customer_message.created_at > threshold.unread_threshold
-        GROUP BY threshold.id, threshold.manuallyUnread
-      ) AS per
-    `).bind(user.id, ...visibility.params).first<ConversationUnreadAggregateRow>();
+    const unreadMeter = new RowsReadMeter('conversations.stats');
+    const unreadRow = await getUnreadAggregate(c.env.DB, user, unreadMeter);
+    unreadMeter.flush({ scope: visibilityScopeKey(user) });
 
     stats.unreadCount = toCount(unreadRow?.unreadCount);
     stats.unreadConversations = toCount(unreadRow?.unreadConversations);
+    stats.oldestUnreadAt = unreadRow?.oldestUnreadAt ?? null;
 
     return contractJson(c, conversationContracts.stats, {
       success: true,
@@ -266,6 +270,35 @@ conversationQueriesHandler.get('/stats', jwtAuth, async (c) => {
     });
 
 
+  } catch (error) {
+    return globalErrorHandler.handleError(c, error);
+  }
+});
+
+// 等待回覆的對話（定義見 dashboard/services/waiting-service.ts）
+// MUST stay above GET /:id so 'waiting' is not parsed as a conversation id.
+conversationQueriesHandler.get('/waiting', jwtAuth, async (c) => {
+  try {
+    const user = c.get('user');
+    const limit = clampWaitingLimit(Number.parseInt(c.req.query('limit') ?? '', 10));
+    const data = await readThrough(
+      c.env.CACHE,
+      `dashboard:v2:waiting:${visibilityScopeKey(user)}:${limit}`,
+      DASHBOARD_SUMMARY_TTL_SECONDS,
+      async () => {
+        const generatedAt = nowMs();
+        const meter = new RowsReadMeter('conversations.waiting');
+        const waiting = await getWaitingConversations(c.env.DB, user, limit, generatedAt, meter);
+        const stale = await getStaleWaitingSummary(c.env.DB, user, generatedAt, meter);
+        meter.flush({ scope: visibilityScopeKey(user), limit });
+        return { ...waiting, stale, generatedAt: new Date(generatedAt).toISOString() };
+      }
+    );
+    return contractJson(c, conversationContracts.waiting, {
+      success: true,
+      data,
+      timestamp: nowISO()
+    });
   } catch (error) {
     return globalErrorHandler.handleError(c, error);
   }
@@ -300,7 +333,12 @@ conversationQueriesHandler.get('/:id', jwtAuth, async (c) => {
 
     // FIX: 使用完整的 JOIN 查詢，返回與 assign/unassign API 相同的數據結構
     const [result] = await drizzleDb
-      .select({ conversations: publicConversationColumns, teams, customers })
+      .select({
+        conversations: publicConversationColumns,
+        teams,
+        customers,
+        replyTokenReceivedAt: replyTokenReceivedAtSql
+      })
       .from(conversations)
       .leftJoin(teams, eq(conversations.assignedTeamId, teams.id))
       .leftJoin(customers, eq(conversations.customerId, customers.id))
@@ -345,6 +383,7 @@ conversationQueriesHandler.get('/:id', jwtAuth, async (c) => {
     // "Unread" = customer messages after
     // MAX(last_agent_reply, this agent's last_read_at).
     let unreadCount = 0;
+    let oldestUnreadAt: string | null = null;
     // Per-agent manual unread override (Migration 0060). Read separately from
     // the count so a failure in either query cannot silently zero the other.
     let manuallyUnread = false;
@@ -364,7 +403,7 @@ conversationQueriesHandler.get('/:id', jwtAuth, async (c) => {
       // Threshold subqueries reference the bound id (not m.conversation_id) so
       // they are uncorrelated and evaluated once, not per message row.
       const unreadResult = await c.env.DB.prepare(`
-        SELECT COUNT(*) as unreadCount
+        SELECT COUNT(*) as unreadCount, MIN(m.created_at) as oldestUnreadAt
         FROM messages m
         WHERE m.conversation_id = ?
           AND m.sender_type = 'customer'
@@ -387,6 +426,7 @@ conversationQueriesHandler.get('/:id', jwtAuth, async (c) => {
 
       if (unreadResult) {
         unreadCount = Number(unreadResult.unreadCount) || 0;
+        oldestUnreadAt = unreadResult.oldestUnreadAt ?? null;
       }
     } catch (unreadError) {
       log.warn('Failed to fetch unread count for conversation', { conversationId, error: unreadError });
@@ -400,6 +440,15 @@ conversationQueriesHandler.get('/:id', jwtAuth, async (c) => {
     if (result.conversations.status === 'closed') {
       unreadCount = 0;
     }
+    // Same rule as the unread count: nothing is unread when the count is 0 (a
+    // manual flag with no customer message after the last reply has no age).
+    if (unreadCount === 0) {
+      oldestUnreadAt = null;
+    }
+
+    const replyWindowExpiresAt = result.replyTokenReceivedAt === null || result.replyTokenReceivedAt === undefined
+      ? null
+      : computeReplyWindowExpiresAt(result.replyTokenReceivedAt, await getRecallWindowSeconds(c.env));
 
     const displayContent = lastMessageData ? getDisplayContent(lastMessageData.content, lastMessageData.messageType) : null;
 
@@ -437,7 +486,9 @@ conversationQueriesHandler.get('/:id', jwtAuth, async (c) => {
       lastMessageAtActual: lastMessageData?.createdAt || null,
       lastMessageType: lastMessageData?.messageType || null,
       // Unread count: customer messages awaiting agent response
-      unreadCount
+      unreadCount,
+      oldestUnreadAt,
+      replyWindowExpiresAt
     };
 
     return c.json({
@@ -470,6 +521,8 @@ conversationQueriesHandler.get('/', jwtAuth, async (c) => {
     // 分頁籤：open = 處理中、closed = 已結案、all / 未指定 = 全部（未指定維持舊行為，相容舊前端）
     const scopeQuery = c.req.query('scope')?.trim() || '';
     const platformQuery = c.req.query('platform')?.trim() || '';
+    // awaiting=stale: open conversations unanswered for longer than the 待回覆 window ("逾期待回覆")
+    const staleView = c.req.query('awaiting')?.trim() === 'stale';
     const teamIdParam = c.req.query('teamId');
     const teamIdQuery = teamIdParam ? Number.parseInt(teamIdParam, 10) : undefined;
 
@@ -510,6 +563,7 @@ conversationQueriesHandler.get('/', jwtAuth, async (c) => {
       ...(updatedBefore ? [sql`${conversations.updatedAt} <= ${updatedBefore}`] : []),
       ...(statusQuery ? [sql`${conversations.status} = ${statusQuery}`] : []),
       ...conversationScopeConditions(scopeQuery),
+      ...(staleView ? staleViewConditions(nowMs()) : []),
       ...(platformQuery ? [sql`${customers.platform} = ${platformQuery}`] : []),
       ...(teamIdQuery !== undefined && Number.isFinite(teamIdQuery)
         ? [sql`${conversations.assignedTeamId} = ${teamIdQuery}`]
@@ -525,7 +579,13 @@ conversationQueriesHandler.get('/', jwtAuth, async (c) => {
     // "USE TEMP B-TREE FOR ORDER BY", which reads and sorts every visible row
     // before the LIMIT can discard any of them.
     const listQuery = drizzleDb
-      .select({ conversations: publicConversationColumns, customers, teams })
+      .select({
+        conversations: publicConversationColumns,
+        customers,
+        teams,
+        replyTokenReceivedAt: replyTokenReceivedAtSql,
+        awaitingSince: conversations.awaitingSince
+      })
       .from(conversations)
       .leftJoin(customers, eq(conversations.customerId, customers.id))
       .leftJoin(teams, eq(conversations.assignedTeamId, teams.id))
@@ -535,7 +595,7 @@ conversationQueriesHandler.get('/', jwtAuth, async (c) => {
       // 已結案分頁依結案時間排序；全部分頁未結案在前，避免「按結案反而跳到最上面」
       // (結案會更新 updated_at)。處理中分頁仍走 idx_conversations_updated_at。
       // ponytail: closed / all 會用 temp B-tree 排序（目前數百筆無感），量大再加 (status, closed_at) 索引
-      .orderBy(...conversationScopeOrderBy(scopeQuery));
+      .orderBy(...(staleView ? staleReviewOrderBy() : conversationScopeOrderBy(scopeQuery)));
 
     let total: number;
     let pagedConversationResults: Awaited<typeof listQuery>;
@@ -568,6 +628,12 @@ conversationQueriesHandler.get('/', jwtAuth, async (c) => {
     // 構建完整的對話對象數組，包含嵌套的 customer 和 assignedTeam 對象
     const conversationData = pagedConversationResults.map(result => ({
       ...result.conversations,
+      // Epoch ms until the next LINE reply is free (Reply API); resolved below
+      // once the recall window is known. Never the token itself.
+      replyTokenReceivedAt: result.replyTokenReceivedAt ?? null,
+      // Start of the unanswered wait (null = not waiting); additive. The list uses it instead of guessing from the last sender,
+      // because sign-offs after a reply are not a wait.
+      awaitingSince: result.awaitingSince ?? null,
       // 完整的 customer 對象 (匹配前端類型定義)
       customer: result.customers ? {
         id: result.customers.id,
@@ -597,6 +663,7 @@ conversationQueriesHandler.get('/', jwtAuth, async (c) => {
     // Phase B: 直接 DB 查詢獲取最新訊息（移除 KV 快取層以保證數據一致性）
     // 使用單一批量查詢獲取所有對話的最新訊息
     const conversationIds = conversationData.map(c => c.id);
+    const neverRepliedIds = staleView ? await getNeverRepliedIds(c.env.DB, conversationIds) : null;
 
     let lastMessagesMap = new Map<string, {
       messageId: string;
@@ -728,7 +795,8 @@ conversationQueriesHandler.get('/', jwtAuth, async (c) => {
           for (const row of unreadResult.results as unknown as ConversationUnreadCountRow[]) {
             unreadStateMap.set(row.conversationId, {
               unreadCount: Number(row.unreadCount) || 0,
-              manuallyUnread: Number(row.manuallyUnread) === 1
+              manuallyUnread: Number(row.manuallyUnread) === 1,
+              oldestUnreadAt: row.oldestUnreadAt ?? null
             });
           }
         }
@@ -745,7 +813,12 @@ conversationQueriesHandler.get('/', jwtAuth, async (c) => {
     }
 
     // 結合數據并統一為camelCase格式
-    const combinedData = conversationData.map(conv => {
+    // Recall window is only needed when some row holds a usable reply token.
+    const recallWindowSeconds = conversationData.some(conv => conv.replyTokenReceivedAt !== null)
+      ? await getRecallWindowSeconds(c.env)
+      : 0;
+
+    const combinedData = conversationData.map(({ replyTokenReceivedAt, ...conv }) => {
       const lastMsg = lastMessagesMap.get(conv.id);
       const displayContent = lastMsg ? getDisplayContent(lastMsg.content, lastMsg.messageType) : null;
       const unreadState = unreadStateMap.get(conv.id);
@@ -772,7 +845,12 @@ conversationQueriesHandler.get('/', jwtAuth, async (c) => {
         unreadCount: applyManualUnreadFloor(
           unreadState?.unreadCount ?? 0,
           unreadState?.manuallyUnread ?? false
-        )
+        ),
+        // Age of the oldest unread customer message; null when nothing is unread
+        oldestUnreadAt: (unreadState?.unreadCount ?? 0) > 0 ? unreadState?.oldestUnreadAt ?? null : null,
+        replyWindowExpiresAt: computeReplyWindowExpiresAt(replyTokenReceivedAt, recallWindowSeconds),
+        // Stale view only: no human agent ever replied in this conversation
+        ...(neverRepliedIds ? { neverReplied: neverRepliedIds.has(conv.id) } : {})
       };
     });
 

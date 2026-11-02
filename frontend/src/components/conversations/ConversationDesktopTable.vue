@@ -1,142 +1,168 @@
 <template>
   <div class="desktop-table">
-    <table class="conversations-table">
-      <thead>
-        <tr>
-          <th
-            v-if="selectionMode"
-            class="select-col"
-          >
-            <label class="select-hit">
-              <input
-                ref="selectAllRef"
-                type="checkbox"
-                class="select-checkbox"
-                aria-label="全選本頁對話"
-                :checked="allSelected"
-                @change="$emit('toggle-select-all')"
-              >
-            </label>
-          </th>
-          <!-- 讀取狀態欄：表頭視覺留白（Apple Mail 慣例），保留螢幕閱讀器文字 -->
-          <th class="read-col">
-            <span class="sr-only">讀取狀態</span>
-          </th>
-          <th class="customer-col">
-            客戶
-          </th>
-          <th class="platform-col">
-            平台
-          </th>
-          <th class="status-col">
-            狀態
-          </th>
-          <th class="message-col">
-            最後訊息
-          </th>
-          <th class="agent-col">
-            負責人
-          </th>
-          <th class="time-col">
-            更新時間
-          </th>
-        </tr>
-      </thead>
-      <TransitionGroup
-        name="conversation-list"
-        tag="tbody"
-        appear
+    <!-- Selection mode: one "select all" row heads the group -->
+    <label
+      v-if="selectionMode"
+      class="select-all"
+    >
+      <input
+        ref="selectAllRef"
+        type="checkbox"
+        class="select-checkbox"
+        aria-label="全選本頁對話"
+        :checked="allSelected"
+        @change="$emit('toggle-select-all')"
       >
-        <tr
-          v-for="(conversation, index) in conversations"
-          :key="conversation.id"
-          class="conversation-row"
-          :class="{
-            'has-unread': conversation.status !== 'closed' && conversation.unreadCount > 0,
-            'is-selected': selectionMode && selectedIds.has(conversation.id)
-          }"
-          :style="{ animationDelay: `${index * 50}ms` }"
-          @click="handleRowClick(conversation.id)"
+      全選本頁
+    </label>
+    <!-- Column heads share the row grid, so every value sits under its label -->
+    <div
+      class="col-head"
+      :class="{ 'has-select': selectionMode }"
+      aria-hidden="true"
+    >
+      <span>客戶</span>
+      <span>最後訊息</span>
+      <span>狀態</span>
+      <span>負責人</span>
+      <span class="col-end">更新</span>
+    </div>
+    <TransitionGroup
+      name="conversation-list"
+      tag="ul"
+      class="conv-list"
+      appear
+    >
+      <li
+        v-for="conversation in conversations"
+        :key="conversation.id"
+        class="conversation-row"
+        :class="{
+          'has-unread': unreadOf(conversation) > 0,
+          'is-selected': selectionMode && selectedIds.has(conversation.id)
+        }"
+        tabindex="0"
+        @click="handleRowClick(conversation.id)"
+        @keydown.enter.self="handleRowClick(conversation.id)"
+      >
+        <label
+          v-if="selectionMode"
+          class="select-hit"
+          @click.stop
         >
-          <td
-            v-if="selectionMode"
-            class="select-cell"
+          <input
+            type="checkbox"
+            class="select-checkbox"
+            :aria-label="`選取 ${getCustomerName(conversation)} 的對話`"
+            :checked="selectedIds.has(conversation.id)"
+            @change="$emit('toggle-select', conversation.id)"
           >
-            <label
-              class="select-hit"
-              @click.stop
-            >
-              <input
-                type="checkbox"
-                class="select-checkbox"
-                :aria-label="`選取 ${getCustomerName(conversation)} 的對話`"
-                :checked="selectedIds.has(conversation.id)"
-                @change="$emit('toggle-select', conversation.id)"
-              >
-            </label>
-          </td>
-          <td class="read-cell">
+        </label>
+        <div class="customer-info">
+          <div class="avatar">
+            {{ initialOf(getCustomerName(conversation)) }}
             <span
-              class="read-badge"
-              :class="readBadge(conversation).cls"
-              :aria-label="readBadge(conversation).aria"
-            >
-              {{ readBadge(conversation).text }}
-            </span>
-          </td>
-          <td class="customer-cell">
-            <div class="customer-info">
-              <div>
-                <div class="customer-name">
-                  {{ getCustomerName(conversation) }}
-                </div>
-                <div class="customer-id">
-                  ID: {{ conversation.userId }}
-                </div>
-              </div>
+              v-if="platformOf(conversation) === 'line' || platformOf(conversation) === 'facebook'"
+              class="ui-ch ch"
+              :class="platformOf(conversation) === 'line' ? 'ui-ch-line' : 'ui-ch-fb'"
+            ><svg viewBox="0 0 24 24"><path d="M12 3C6.5 3 2 6.6 2 11c0 2.5 1.4 4.7 3.7 6.2L5 21l4.1-2.3c.9.2 1.9.3 2.9.3 5.5 0 10-3.6 10-8s-4.5-8-10-8Z" /></svg></span>
+          </div>
+          <div class="customer-text">
+            <div class="customer-name">
+              <span
+                class="customer-name-text"
+                :title="getCustomerName(conversation)"
+              >{{ getCustomerName(conversation) }}</span>
+              <span
+                v-if="unreadOf(conversation) > 0"
+                class="unread-badge"
+                :title="UNREAD_HINT"
+                :aria-label="`未讀 ${unreadOf(conversation)} 則訊息（${UNREAD_HINT}）`"
+              >{{ unreadOf(conversation) }}</span>
             </div>
-          </td>
-          <td class="platform-cell">
-            <div
-              class="platform-badge"
-              :class="conversation.platform || conversation.user?.platform"
-            >
-              {{ getPlatformText(conversation.platform || conversation.user?.platform || 'line') }}
+            <div class="customer-id">
+              {{ platformName(platformOf(conversation)) }}{{ sinceText(conversation) }}
             </div>
-          </td>
-          <td class="status-cell">
-            <div
-              class="status-badge"
-              :class="conversation.status"
-            >
-              {{ getStatusText(conversation.status) }}
-            </div>
-          </td>
-          <td class="message-cell">
-            <div class="last-message">
-              {{ getLastMessageText(conversation) }}
-            </div>
-          </td>
-          <td class="agent-cell">
-            <div class="assigned-agent">
-              {{ getAssignedTo(conversation) }}
-            </div>
-          </td>
-          <td class="time-cell">
-            <div class="timestamp">
-              {{ formatTime(getUpdatedAt(conversation)) }}
-            </div>
-          </td>
-        </tr>
-      </TransitionGroup>
-    </table>
+          </div>
+        </div>
+        <div
+          class="last-message"
+          :class="{ 'from-agent': conversation.lastMessage?.senderType === 'agent' }"
+        >
+          <template v-if="conversation.lastMessage?.senderType === 'agent'">
+            客服：
+          </template>{{ getLastMessageText(conversation) }}
+        </div>
+        <div class="status-cell">
+          <!-- A pill only for the exceptions that need an agent (waiting / stale); every other state is quiet text -->
+          <div class="status-line">
+            <template v-if="replyStateOf(conversation, now).state === 'stale'">
+              <span
+                class="ui-pill"
+                :title="STALE_HINT"
+              >{{ replyStateOf(conversation, now).text }}</span>
+              <span
+                v-if="conversation.neverReplied"
+                class="ui-pill ui-pill-red never-pill"
+                title="這位客戶從未收到客服回覆"
+              >從未回覆</span>
+            </template>
+            <span
+              v-else-if="replyStateOf(conversation, now).state === 'waiting'"
+              class="ui-pill ui-pill-orange"
+              :title="WAITING_HINT"
+            >{{ replyStateOf(conversation, now).text }}</span>
+            <span
+              v-else
+              class="state-text"
+              :class="`state-${replyStateOf(conversation, now).state}`"
+            >{{ replyStateOf(conversation, now).text }}</span>
+          </div>
+        </div>
+        <div class="owner-cell">
+          <span
+            v-if="conversation.assignedTeam?.name"
+            class="team-text"
+          >{{ conversation.assignedTeam.name }}</span>
+          <span
+            v-else
+            class="team-text unassigned"
+          >未指派</span>
+        </div>
+        <div
+          class="time-cell"
+          :title="formatFull(getUpdatedAt(conversation))"
+        >
+          <span class="time-text">{{ relativeTime(getUpdatedAt(conversation), now) }}</span>
+          <span
+            v-if="freeReplySeconds(conversation, now) !== null"
+            class="free-pill"
+            title="Reply API 免費回覆時間"
+          >免費回覆 {{ freeReplySeconds(conversation, now) }} 秒</span>
+        </div>
+      </li>
+    </TransitionGroup>
+    <span class="sr-only">{{ LEGEND_TEXT }}</span>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watchEffect } from 'vue'
+import { computed, ref, toRef, watchEffect } from 'vue'
 import type { Conversation } from '@/types'
 import { convertEmojiForConversationList } from '@/utils/layered-emoji-processor'
+import {
+  LEGEND_TEXT,
+  UNREAD_HINT,
+  WAITING_HINT,
+  freeReplySeconds,
+  initialOf,
+  STALE_HINT,
+  replyStateOf,
+  platformName,
+  relativeTime,
+  unreadOf,
+  useRowClock
+} from '@/composables/conversation/useConversationRowMeta'
 
 const props = withDefaults(defineProps<{
   conversations: Conversation[]
@@ -152,6 +178,8 @@ const emit = defineEmits<{
   'toggle-select': [id: string]
   'toggle-select-all': []
 }>()
+
+const { now } = useRowClock(toRef(props, 'conversations'))
 
 const selectAllRef = ref<HTMLInputElement | null>(null)
 
@@ -194,248 +222,362 @@ const getCustomerName = (conversation: Conversation) => {
   return conversation.customer?.name || conversation.user?.name || legacyConversation.customer_name || '未知用戶'
 }
 
+const platformOf = (conversation: Conversation): string =>
+  conversation.platform || conversation.user?.platform || 'line'
+
+// Secondary identity line: the channel plus when the conversation began (real createdAt)
+const sinceText = (conversation: Conversation): string => {
+  const created = conversation.createdAt
+  if (!created) { return '' }
+  const text = relativeTime(created, now.value)
+  return text ? ` · ${text}開始` : ''
+}
+
 const getUpdatedAt = (conversation: Conversation) => {
   const legacyConversation = withLegacyFields(conversation)
   return conversation.updatedAt || legacyConversation.updated_at
 }
 
-const getPlatformText = (platform: string) => {
-  const platformMap = {
-    line: 'LINE',
-    facebook: 'Facebook',
-    instagram: 'Instagram',
-    whatsapp: 'WhatsApp'
-  }
-  return platformMap[platform as keyof typeof platformMap] || platform
-}
-
-const readBadge = (conversation: Conversation) => {
-  // 已結案優先：結案的對話對所有客服都算 0 未讀（新訊息會自動重新開啟）
-  if (conversation.status === 'closed') {
-    return { cls: 'closed', text: '結案', aria: '已結案' }
-  }
-  const unread = conversation.unreadCount
-  if (unread > 0) {
-    return { cls: 'unread', text: unread > 1 ? `未讀 ${unread}` : '未讀', aria: `未讀 ${unread} 則訊息` }
-  }
-  return { cls: 'read', text: '已讀', aria: '已讀' }
-}
-
-const getStatusText = (status: string) => {
-  const statusMap: Record<string, string> = {
-    active: '進行中',
-    assigned: '已指派',
-    pending: '待處理',
-    'in-progress': '處理中',
-    waiting: '等待中',
-    closed: '已結案'
-  }
-  return statusMap[status] || status
-}
-
-const formatTime = (date?: Date | number | string) => {
-  if (!date) {
-    return ''
-  }
-  const dateObj = typeof date === 'number' || typeof date === 'string' ? new Date(date) : date
-  if (Number.isNaN(dateObj.getTime())) {
-    return ''
-  }
-  return dateObj.toLocaleString('zh-TW')
+const formatFull = (date?: Date | number | string) => {
+  if (!date) { return '' }
+  const dateObj = new Date(date)
+  return Number.isNaN(dateObj.getTime()) ? '' : dateObj.toLocaleString('zh-TW')
 }
 
 const getLastMessageText = (conversation: Conversation) => {
   const content = conversation.lastMessage?.content || '暫無訊息'
   return convertEmojiForConversationList(content)
 }
-
-const getAssignedTo = (conversation: Conversation) => {
-  if (conversation.assignedTeam?.name) {
-    return ` ${conversation.assignedTeam.name}`
-  }
-  return '未指派'
-}
 </script>
 
 <style scoped>
 .desktop-table {
+  --conv-cols: minmax(200px, 0.9fr) minmax(0, 1.3fr) 104px 104px 132px;
   display: block;
-  overflow-x: auto;
 }
 
-.conversations-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 14px;
-}
-
-.conversations-table thead {
-  background-color: #f8f9fa;
-}
-
-.conversations-table th {
-  padding: 1rem;
-  text-align: left;
+/* Column heads: grouped-list header strip above the first row */
+.col-head {
+  display: grid;
+  grid-template-columns: var(--conv-cols);
+  gap: 8px 20px;
+  padding: 10px 20px 8px 28px;
+  box-shadow: inset 0 -0.5px 0 var(--ui-sep);
+  font-size: 13px;
   font-weight: 600;
-  color: #555;
-  border-bottom: 2px solid #e9ecef;
-  white-space: nowrap;
+  line-height: 18px;
+  color: var(--ui-muted);
 }
 
-.conversations-table td {
-  padding: 1rem;
-  border-bottom: 1px solid #e9ecef;
-  vertical-align: top;
+.col-head.has-select {
+  padding-left: 68px;
 }
 
-/* TransitionGroup Animation */
+.col-head .col-end {
+  text-align: right;
+}
+
+.conv-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
 .conversation-list-enter-active,
 .conversation-list-leave-active {
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: opacity 0.3s var(--ui-ease), transform 0.3s var(--ui-ease);
 }
 
 .conversation-list-enter-from {
   opacity: 0;
-  transform: translateY(20px) scale(0.95);
+  transform: translateY(8px);
 }
 
 .conversation-list-leave-to {
   opacity: 0;
-  transform: translateY(-10px) scale(0.95);
+  transform: translateY(-4px);
 }
 
 .conversation-list-move {
-  transition: transform 0.3s ease;
+  transition: transform 0.3s var(--ui-ease);
 }
 
+/* One inset-grouped row: identity | last message | state + team | time (+ free reply) */
 .conversation-row {
-  cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
-  animation: slideInFromBottom var(--animation-duration, 0.4s) cubic-bezier(0.4, 0, 0.2, 1) backwards;
+  display: grid;
+  grid-template-columns: var(--conv-cols);
+  gap: 8px 20px;
+  align-items: center;
+  padding: 13px 20px 13px 28px;
+  cursor: pointer;
+  transition: background var(--ui-dur) var(--ui-ease);
+}
+
+.conversation-row + .conversation-row::before {
+  position: absolute;
+  top: 0;
+  right: 20px;
+  left: 86px;
+  height: 0.5px;
+  background: var(--ui-sep);
+  content: '';
 }
 
 .conversation-row:hover {
-  background-color: #f8f9fa;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  background: color-mix(in srgb, var(--section-hue) 5%, var(--ui-surface));
 }
 
-.conversation-row:active {
-  transform: translateY(0);
-  transition-duration: 0.1s;
+.conversation-row:focus-visible {
+  outline: none;
+  background: color-mix(in srgb, var(--section-hue) 7%, var(--ui-surface));
+  box-shadow: inset 3px 0 0 var(--section-hue);
 }
 
-@keyframes slideInFromBottom {
-  0% {
-    opacity: 0;
-    transform: translateY(20px) scale(0.98);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
+.conversation-row.is-selected {
+  background: color-mix(in srgb, var(--section-hue) 8%, var(--ui-surface));
+  box-shadow: var(--ui-sel-ring);
 }
 
-/* Animation duration per row */
-.conversation-row:nth-child(1) { --animation-duration: 0.3s; }
-.conversation-row:nth-child(2) { --animation-duration: 0.4s; }
-.conversation-row:nth-child(3) { --animation-duration: 0.5s; }
-.conversation-row:nth-child(4) { --animation-duration: 0.6s; }
-.conversation-row:nth-child(5) { --animation-duration: 0.7s; }
+/* Unread: a section-hue dot in the gutter (Mail style) plus a heavier message line */
+.conversation-row.has-unread::after {
+  position: absolute;
+  top: 50%;
+  left: 11px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--section-hue);
+  transform: translateY(-50%);
+  content: '';
+}
 
-/* Selection column */
-.select-col,
-.select-cell {
-  width: 56px;
-  padding-right: 0 !important;
+.select-all {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 20px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--ui-ink-2);
+  box-shadow: inset 0 -0.5px 0 var(--ui-sep);
+  cursor: pointer;
 }
 
 .select-hit {
+  position: absolute;
+  top: 50%;
+  left: 14px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   width: 44px;
   height: 44px;
-  margin: -12px 0;
+  transform: translateY(-50%);
   cursor: pointer;
+}
+
+.conversation-row:has(.select-hit) {
+  padding-left: 68px;
+}
+
+.conversation-row:has(.select-hit)::before {
+  left: 126px !important;
 }
 
 .select-checkbox {
   width: 20px;
   height: 20px;
-  accent-color: #007AFF;
+  accent-color: var(--ui-accent);
   cursor: pointer;
 }
 
-.conversation-row.is-selected {
-  background: #EAF3FF;
-}
-
-/* Table Column Widths */
-.read-col { width: 72px; }
-.read-col,
-.read-cell { padding-right: 0 !important; }
-.read-cell .read-badge { margin-top: 2px; }
-.customer-col { width: 20%; }
-.platform-col { width: 10%; }
-.status-col { width: 10%; }
-.message-col { width: 35%; }
-.agent-col { width: 15%; }
-.time-col { width: 10%; }
-
-/* Cell Content Styles */
 .customer-info {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 14px;
+  min-width: 0;
 }
 
-.read-badge {
+.avatar {
+  position: relative;
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: linear-gradient(160deg, #b9b6f5, #6e6bd8);
+  color: #fff;
+  font: 600 16px var(--ui-font-display);
+}
+
+.avatar .ch {
+  position: absolute;
+  right: -4px;
+  bottom: -4px;
+  width: 17px;
+  height: 17px;
+  border-radius: 6px;
+  box-shadow: 0 0 0 2px var(--ui-surface);
+}
+
+.avatar .ch svg {
+  width: 10px;
+  height: 10px;
+}
+
+.customer-text {
+  min-width: 0;
+}
+
+.customer-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-size: 15px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* Long names truncate with an ellipsis (full name in the title); the unread badge always stays visible */
+.customer-name-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.unread-badge {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--section-ink);
+  color: #fff;
+  font: 600 11px var(--ui-font-display);
+  font-variant-numeric: tabular-nums;
+}
+
+.customer-id {
+  overflow: hidden;
+  font-size: 13px;
+  color: var(--ui-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.last-message {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  line-clamp: 2;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--ui-ink-2);
+  word-break: break-word;
+}
+
+.has-unread .last-message {
+  font-weight: 600;
+  color: var(--ui-ink);
+}
+
+.last-message.from-agent {
+  color: var(--ui-muted);
+}
+
+.status-cell,
+.owner-cell {
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.owner-cell .team-text {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.status-line .ui-pill-orange {
+  font-weight: 600;
+}
+
+.status-line {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+/* Quiet states: a dot and plain text instead of a pill on every row */
+.state-text,
+.team-text {
+  font-size: 13px;
+  color: var(--ui-muted);
+}
+
+.state-text {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  min-width: 44px;
-  padding: 2px 10px;
-  border-radius: 9999px;
-  font-size: 11px;
+  gap: 6px;
+}
+
+.state-text::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ui-faint);
+}
+
+.state-text.state-replied::before {
+  background: var(--ui-green);
+}
+
+.team-text:not(.unassigned) {
+  color: var(--ui-ink-2);
+}
+
+/* Free-reply countdown is time-critical: a green capsule under the timestamp */
+.free-pill {
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--ui-green-soft);
+  font-size: 13px;
   font-weight: 600;
-  line-height: 1.6;
+  font-variant-numeric: tabular-nums;
+  color: var(--ui-green-ink);
+}
+
+.time-cell {
+  display: grid;
+  gap: 4px;
+  justify-items: end;
+  font-size: 13px;
+  color: var(--ui-muted);
+  text-align: right;
   white-space: nowrap;
-  flex-shrink: 0;
-  letter-spacing: 0.02em;
 }
 
-.read-badge.unread {
-  background: #FF3B30;
-  color: #FFFFFF;
+@media (max-width: 1024px) {
+  .desktop-table {
+    --conv-cols: minmax(150px, 1fr) minmax(0, 1.1fr) 92px 84px 118px;
+  }
+
+  .conversation-row,
+  .col-head {
+    gap: 8px 14px;
+  }
 }
 
-.read-badge.read {
-  background: #F2F2F7;
-  color: #8E8E93;
-  font-weight: 500;
-}
-
-/* 已結案：同尺寸但更淡，不搶注意力 */
-.read-badge.closed {
-  background: #F7F7FA;
-  color: #C7C7CC;
-  font-weight: 500;
-}
-
-.conversation-row.has-unread {
-  background: #F8FAFF;
-}
-
-.conversation-row.has-unread .customer-name {
-  font-weight: 700;
-  color: #1C1C1E;
-}
-
-.conversation-row.has-unread .last-message {
-  font-weight: 600;
-  color: #1C1C1E;
+@media (max-width: 768px) {
+  .desktop-table {
+    display: none;
+  }
 }
 
 .sr-only {
@@ -447,134 +589,6 @@ const getAssignedTo = (conversation: Conversation) => {
   overflow: hidden;
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
-  border-width: 0;
-}
-
-.customer-name {
-  font-weight: 500;
-  color: #333;
-}
-
-.customer-id {
-  font-size: 0.85rem;
-  color: #666;
-}
-
-.platform-badge {
-  display: inline-block;
-  padding: 0.25rem 0.5rem;
-  border-radius: 12px;
-  font-size: 0.75rem;
-  font-weight: 500;
-  color: white;
-  text-align: center;
-}
-
-.platform-badge.line {
-  background-color: #00c300;
-}
-
-.platform-badge.facebook {
-  background-color: #1877f2;
-}
-
-.platform-badge.instagram {
-  background-color: #e4405f;
-}
-
-.platform-badge.whatsapp {
-  background-color: #25d366;
-}
-
-.status-badge {
-  display: inline-block;
-  padding: 0.25rem 0.5rem;
-  border-radius: 12px;
-  font-size: 0.75rem;
-  font-weight: 500;
-  color: white;
-  text-align: center;
-}
-
-.status-badge.active {
-  background-color: #27ae60;
-}
-
-.status-badge.assigned {
-  background-color: #3498db;
-}
-
-.status-badge.pending {
-  background-color: #f39c12;
-}
-
-.status-badge.in-progress {
-  background-color: #2980b9;
-}
-
-.status-badge.waiting {
-  background-color: #e67e22;
-}
-
-.status-badge.closed {
-  background-color: #E5E5EA;
-  color: #8E8E93;
-}
-
-.last-message {
-  color: #555;
-  line-height: 1.4;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  /* line-clamp does not ellipsize an unbreakable string (URL, long ID); wrap it instead of cutting it */
-  overflow-wrap: anywhere;
-  max-width: 350px;
-}
-
-.assigned-agent {
-  color: #3498db;
-  font-weight: 500;
-}
-
-.timestamp {
-  color: #666;
-  font-size: 0.85rem;
-}
-
-/* Performance */
-.conversation-row {
-  contain: layout style paint;
-  will-change: transform, opacity;
-}
-
-/* Reduced motion */
-@media (prefers-reduced-motion: reduce) {
-  .conversation-row {
-    animation: none;
-  }
-}
-
-/* Responsive */
-@media (max-width: 1024px) {
-  .conversations-table {
-    font-size: 13px;
-  }
-
-  .conversations-table th,
-  .conversations-table td {
-    padding: 0.75rem 0.5rem;
-  }
-
-  .last-message {
-    max-width: 250px;
-  }
-}
-
-@media (max-width: 768px) {
-  .desktop-table {
-    display: none;
-  }
+  border: 0;
 }
 </style>

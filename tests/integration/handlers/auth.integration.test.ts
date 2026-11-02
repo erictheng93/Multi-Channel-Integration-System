@@ -43,6 +43,18 @@ vi.mock('@/utils/auth', () => ({
 
 vi.mock('@/db/drizzle-factory', () => ({
   createDbClient: vi.fn(() => ({
+    // GET /auth/me team memberships: select().from().innerJoin().where().orderBy().all()
+    select: vi.fn(() => {
+      const chain: Record<string, unknown> = {};
+      for (const method of ['from', 'innerJoin', 'where', 'orderBy']) {
+        chain[method] = vi.fn(() => chain);
+      }
+      chain.all = vi.fn().mockResolvedValue([
+        { id: 1, name: 'Support', roleInTeam: 'lead', isPrimary: 1 },
+        { id: 2, name: 'Sales', roleInTeam: null, isPrimary: 0 }
+      ]);
+      return chain;
+    }),
     update: vi.fn(() => ({
       set: vi.fn(() => ({
         where: vi.fn().mockResolvedValue(undefined)
@@ -301,6 +313,11 @@ describe('Auth Handler - Integration Tests', () => {
         allowedTeamIds: [1, 2],
         teamRoles: { 1: 'lead', 2: 'member' },
       });
+      // Named memberships; a missing role_in_team falls back to member
+      expect(result.data.teams).toEqual([
+        { id: 1, name: 'Support', roleInTeam: 'lead', isPrimary: true },
+        { id: 2, name: 'Sales', roleInTeam: 'member', isPrimary: false }
+      ]);
     });
   });
 
