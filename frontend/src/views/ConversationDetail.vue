@@ -1,219 +1,271 @@
 <template>
   <AppLayout>
-    <div
-      class="conversation-detail"
-      @dragenter="dragDrop.onDragEnter"
-      @dragleave="dragDrop.onDragLeave"
-      @dragover="dragDrop.onDragOver"
-      @drop="dragDrop.onDrop"
-    >
-      <!--  Drag-and-Drop Overlay Component -->
-      <DragDropOverlay
-        :is-visible="dragDrop.isDragging.value"
-      />
+    <div class="detail-layout">
+      <div
+        class="conversation-detail ui-card"
+        @dragenter="dragDrop.onDragEnter"
+        @dragleave="dragDrop.onDragLeave"
+        @dragover="dragDrop.onDragOver"
+        @drop="dragDrop.onDrop"
+      >
+        <!--  Drag-and-Drop Overlay Component -->
+        <DragDropOverlay
+          :is-visible="dragDrop.isDragging.value"
+        />
 
-      <!-- Simplified Header Component -->
-      <ConversationHeader
-        :conversation="conversation"
-        :loading="loading"
-        @back="goBack"
-        @refresh="handleRefreshMessages"
-        @search="searchPanel.toggle"
-        @export="showExportDialog = true"
-        @mark-unread="handleMarkUnread"
-      />
+        <!-- Simplified Header Component -->
+        <ConversationHeader
+          :conversation="conversation"
+          :loading="loading"
+          @back="goBack"
+          @tags-change="customerTags = $event"
+          @refresh="handleRefreshMessages"
+          @search="searchPanel.toggle"
+          @export="showExportDialog = true"
+          @mark-unread="handleMarkUnread"
+          @info="showInfoSheet = true"
+        />
 
-      <!--  Transferred Conversation Banner Component (轉出本團隊) -->
-      <TransferredConversationBanner
-        :is-visible="isCurrentConversationTransferred"
-        :team-name="transferredConversation?.toTeamName"
-        :transferred-at="transferredConversation?.transferredAt"
-        @back="handleTransferredBack"
-      />
+        <!--  Transferred Conversation Banner Component (轉出本團隊) -->
+        <TransferredConversationBanner
+          :is-visible="isCurrentConversationTransferred"
+          :team-name="transferredConversation?.toTeamName"
+          :transferred-at="transferredConversation?.transferredAt"
+          @back="handleTransferredBack"
+        />
 
-      <!--  Received Conversation Banner (轉入本團隊) -->
-      <TransferredConversationBanner
-        :is-visible="isCurrentConversationReceived"
-        variant="info"
-        title="此對話已轉入"
-        message="此對話由其他團隊轉入："
-        back-button-text="知道了"
-        :team-name="receivedConversation?.fromTeamName"
-        :transferred-at="receivedConversation?.receivedAt"
-        @back="handleReceivedDismiss"
-      />
+        <!--  Received Conversation Banner (轉入本團隊) -->
+        <TransferredConversationBanner
+          :is-visible="isCurrentConversationReceived"
+          variant="info"
+          title="此對話已轉入"
+          message="此對話由其他團隊轉入："
+          back-button-text="知道了"
+          :team-name="receivedConversation?.fromTeamName"
+          :transferred-at="receivedConversation?.receivedAt"
+          @back="handleReceivedDismiss"
+        />
 
-      <!-- Enhanced Search Panel (toggleable from header) -->
-      <Transition name="search-slide">
+        <!-- Enhanced Search Panel (toggleable from header) -->
+        <Transition name="search-slide">
+          <div
+            v-if="searchPanel.isOpen.value"
+            class="message-search-panel"
+          >
+            <Suspense>
+              <MessageSearch
+                ref="searchPanel.searchRef.value"
+                :messages="messages"
+                :conversation-id="conversationId"
+                :auto-expand="true"
+                @search-results="searchPanel.handleSearchResults"
+                @search-clear="searchPanel.handleSearchClear"
+              />
+            </Suspense>
+          </div>
+        </Transition>
+
+        <!-- LINE 6-month history retention notice (informational, no DB record) -->
+        <HistoryRetentionNotice :platform="conversation?.platform" />
+
+        <!-- High Performance Virtual Message List with WebSocket -->
+        <div class="messages-container-wrapper">
+          <!--  優化的加載狀態：動態骨架屏 with Progressive Loading -->
+          <!--  FIX: 骨架屏保持顯示直到滾動完成，確保平滑過渡 -->
+          <MessageListSkeleton
+            v-show="!isScrollReady"
+            :count="skeletonCount"
+            :loading-text="skeletonLoadingText"
+            class="skeleton-layer"
+          />
+
+          <!-- Empty State -->
+          <!--  FIX: 增加 isEmptyStateConfirmed 條件，避免訊息同步期間閃爍 -->
+          <div
+            v-show="hasLoadedInitially && displayedMessages.length === 0 && !isInitialLoading && isEmptyStateConfirmed"
+            class="empty-state-wrapper empty-layer"
+          >
+            <EmptyState
+              :title="isSearchActive ? '未找到匹配的訊息' : '暫無訊息'"
+              :description="isSearchActive ? '嘗試調整搜索條件' : '這個對話還沒有任何訊息'"
+            >
+              <template #icon>
+                <MessageCircleIcon />
+              </template>
+            </EmptyState>
+          </div>
+
+          <!-- Virtual Message List -->
+          <!--  FIX Phase 2: 使用 CSS visibility 而非 v-show -->
+          <!-- v-show 會導致 display:none，使 scrollHeight=0，滾動失敗 -->
+          <!-- visibility:hidden 保留佈局，scrollHeight 正常，滾動可以正確執行 -->
+          <VirtualMessageList
+            ref="virtualMessageListRef"
+            :class="{ 'invisible-until-ready': !isScrollReady }"
+            :messages="messages"
+            :displayed-messages="displayedMessages"
+            :is-search-active="isSearchActive"
+            :loading="httpMessages.loading.value"
+            :has-more="httpMessages.hasMore.value"
+            :loading-history="loadingHistory"
+            :is-updating="isUpdating"
+            :is-typing="false"
+            :typing-users="[]"
+            :animation-classes="animationClasses"
+            :enable-animations="true"
+            :websocket-enabled="isWebSocketEnabled"
+            :is-history-prepending="httpMessages.isHistoryPrepending?.value ?? false"
+            :history-prepend-count="httpMessages.historyPrependCount?.value ?? 0"
+            class="messages-layer"
+            @message-copy="handleMessageCopy"
+            @message-reply="handleMessageReply"
+            @message-forward="handleMessageForward"
+            @message-recall="handleMessageRecall"
+            @message-select="handleMessageSelect"
+            @search-clear="searchPanel.handleSearchClear"
+            @load-more="loadMoreMessages"
+            @scroll="handleVirtualScroll"
+            @new-message-while-scrolled="notification.show"
+            @retry="retryFailedMessage"
+            @initial-scroll-complete="handleInitialScrollComplete"
+          />
+        </div>
+
+        <!-- 新消息提醒 Component with WebSocket enhancements -->
+        <NewMessageNotification
+          :is-visible="notification.isVisible.value"
+          :count="newMessageCount ?? 0"
+          :is-realtime="currentProtocol === 'websocket'"
+          @click="notification.scrollToNewest"
+          @dismiss="notification.dismiss"
+        />
+
+        <!-- Enhanced Message Input with WebSocket features -->
+        <!--  UX: Hide input when conversation is transferred to non-member team -->
         <div
-          v-if="searchPanel.isOpen.value"
-          class="message-search-panel"
+          v-if="!isCurrentConversationTransferred"
+          class="input-section"
         >
-          <Suspense>
-            <MessageSearch
-              ref="searchPanel.searchRef.value"
-              :messages="messages"
-              :conversation-id="conversationId"
-              :auto-expand="true"
-              @search-results="searchPanel.handleSearchResults"
-              @search-clear="searchPanel.handleSearchClear"
+          <div
+            v-if="replyWindow.visible.value"
+            class="reply-window-chip"
+          >
+            免費回覆 {{ replyWindow.secondsLeft.value }} 秒
+          </div>
+
+          <MessageInput
+            ref="messageInputRef"
+            :conversation-id="conversationId"
+            :disabled="false"
+            :websocket-enabled="isWebSocketEnabled"
+            :connection-quality="connectionQuality"
+            @message-sent="handleMessageSent"
+            @message-pending="handleMessagePending"
+            @upload-progress="handleUploadProgress"
+            @message-confirmed="handleMessageConfirmed"
+            @message-failed="handleMessageFailed"
+            @typing-start="handleTypingStart"
+            @typing-stop="handleTypingStop"
+            @attachment-upload="handleAttachmentUpload"
+          />
+
+          <!-- Quick Replies Component -->
+          <QuickReplies
+            :replies="quickRepliesComposable.filteredReplies.value"
+            @select="handleQuickReplySelect"
+          />
+
+          <!--  Connection Status Bar Component - 僅在調試模式下顯示 -->
+          <ConnectionStatusBar
+            :is-visible="isDevDebugMode && (unifiedIsConnected || unifiedConnectionState === 'error' || isWebSocketEnabled)"
+            :status-text="connectionStatusText"
+            :status-class="statusBarClass"
+            :reconnect-attempts="0"
+            :typing-users="presence.typingUsers.length"
+          />
+        </div>
+
+        <!-- Transferred State - Show when conversation is transferred -->
+
+
+        <!--  Transferred State - Input disabled with informative message -->
+        <div
+          v-else-if="isCurrentConversationTransferred"
+          class="transferred-state"
+        >
+          <div class="transferred-input-message">
+            <svg
+              class="transferred-icon"
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <line
+                x1="5"
+                y1="12"
+                x2="19"
+                y2="12"
+              />
+              <polyline points="12 5 19 12 12 19" />
+            </svg>
+            <span>此對話已轉移至其他團隊，您無法再發送訊息</span>
+          </div>
+        </div>
+      </div>
+
+      <ConversationSidePanel
+        class="detail-side"
+        :conversation="conversation"
+        :tags="customerTags"
+        :message-count="messages.length > 0 ? messages.length : null"
+        :has-more="httpMessages.hasMore.value"
+      />
+    </div>
+
+    <!-- Customer panel as a bottom sheet below 1281px, where the side column is hidden -->
+    <Teleport to="body">
+      <Transition name="info-sheet">
+        <div
+          v-if="showInfoSheet"
+          class="info-sheet-root"
+          @keydown.esc="showInfoSheet = false"
+        >
+          <div
+            class="info-sheet-backdrop"
+            @click="showInfoSheet = false"
+          />
+          <div
+            class="info-sheet"
+            role="dialog"
+            aria-modal="true"
+            aria-label="客戶資訊"
+          >
+            <div class="info-sheet-grip" />
+            <button
+              ref="infoSheetClose"
+              type="button"
+              class="info-sheet-close"
+              aria-label="關閉客戶資訊"
+              @click="showInfoSheet = false"
+            >
+              <XIcon :size="18" />
+            </button>
+            <ConversationSidePanel
+              class="info-sheet-panel"
+              :conversation="conversation"
+              :tags="customerTags"
+              :message-count="messages.length > 0 ? messages.length : null"
+              :has-more="httpMessages.hasMore.value"
             />
-          </Suspense>
+          </div>
         </div>
       </Transition>
-
-      <!-- LINE 6-month history retention notice (informational, no DB record) -->
-      <HistoryRetentionNotice :platform="conversation?.platform" />
-
-      <!-- High Performance Virtual Message List with WebSocket -->
-      <div class="messages-container-wrapper">
-        <!--  優化的加載狀態：動態骨架屏 with Progressive Loading -->
-        <!--  FIX: 骨架屏保持顯示直到滾動完成，確保平滑過渡 -->
-        <MessageListSkeleton
-          v-show="!isScrollReady"
-          :count="skeletonCount"
-          :loading-text="skeletonLoadingText"
-          class="skeleton-layer"
-        />
-
-        <!-- Empty State -->
-        <!--  FIX: 增加 isEmptyStateConfirmed 條件，避免訊息同步期間閃爍 -->
-        <div
-          v-show="hasLoadedInitially && displayedMessages.length === 0 && !isInitialLoading && isEmptyStateConfirmed"
-          class="empty-state-wrapper empty-layer"
-        >
-          <EmptyState
-            :title="isSearchActive ? '未找到匹配的訊息' : '暫無訊息'"
-            :description="isSearchActive ? '嘗試調整搜索條件' : '這個對話還沒有任何訊息'"
-          >
-            <template #icon>
-              <MessageCircleIcon />
-            </template>
-          </EmptyState>
-        </div>
-
-        <!-- Virtual Message List -->
-        <!--  FIX Phase 2: 使用 CSS visibility 而非 v-show -->
-        <!-- v-show 會導致 display:none，使 scrollHeight=0，滾動失敗 -->
-        <!-- visibility:hidden 保留佈局，scrollHeight 正常，滾動可以正確執行 -->
-        <VirtualMessageList
-          ref="virtualMessageListRef"
-          :class="{ 'invisible-until-ready': !isScrollReady }"
-          :messages="messages"
-          :displayed-messages="displayedMessages"
-          :is-search-active="isSearchActive"
-          :loading="httpMessages.loading.value"
-          :has-more="httpMessages.hasMore.value"
-          :loading-history="loadingHistory"
-          :is-updating="isUpdating"
-          :is-typing="isTyping"
-          :typing-users="typingUsers"
-          :animation-classes="animationClasses"
-          :enable-animations="true"
-          :websocket-enabled="isWebSocketEnabled"
-          :is-history-prepending="httpMessages.isHistoryPrepending?.value ?? false"
-          :history-prepend-count="httpMessages.historyPrependCount?.value ?? 0"
-          class="messages-layer"
-          @message-copy="handleMessageCopy"
-          @message-reply="handleMessageReply"
-          @message-forward="handleMessageForward"
-          @message-recall="handleMessageRecall"
-          @message-select="handleMessageSelect"
-          @search-clear="searchPanel.handleSearchClear"
-          @load-more="loadMoreMessages"
-          @scroll="handleVirtualScroll"
-          @new-message-while-scrolled="notification.show"
-          @retry="retryFailedMessage"
-          @initial-scroll-complete="handleInitialScrollComplete"
-        />
-      </div>
-
-      <!-- 新消息提醒 Component with WebSocket enhancements -->
-      <NewMessageNotification
-        :is-visible="notification.isVisible.value"
-        :count="newMessageCount ?? 0"
-        :is-realtime="currentProtocol === 'websocket'"
-        @click="notification.scrollToNewest"
-        @dismiss="notification.dismiss"
-      />
-
-      <!-- Enhanced Message Input with WebSocket features -->
-      <!--  UX: Hide input when conversation is transferred to non-member team -->
-      <div
-        v-if="!isCurrentConversationTransferred"
-        class="input-section"
-      >
-        <div
-          v-if="replyWindow.visible.value"
-          class="reply-window-chip"
-        >
-          免費回覆 {{ replyWindow.secondsLeft.value }} 秒
-        </div>
-
-        <MessageInput
-          ref="messageInputRef"
-          :conversation-id="conversationId"
-          :disabled="false"
-          :websocket-enabled="isWebSocketEnabled"
-          :connection-quality="connectionQuality"
-          @message-sent="handleMessageSent"
-          @message-pending="handleMessagePending"
-          @upload-progress="handleUploadProgress"
-          @message-confirmed="handleMessageConfirmed"
-          @message-failed="handleMessageFailed"
-          @typing-start="handleTypingStart"
-          @typing-stop="handleTypingStop"
-          @attachment-upload="handleAttachmentUpload"
-        />
-
-        <!-- Quick Replies Component -->
-        <QuickReplies
-          :replies="quickRepliesComposable.filteredReplies.value"
-          @select="handleQuickReplySelect"
-        />
-
-        <!--  Connection Status Bar Component - 僅在調試模式下顯示 -->
-        <ConnectionStatusBar
-          :is-visible="isDevDebugMode && (unifiedIsConnected || unifiedConnectionState === 'error' || isWebSocketEnabled)"
-          :status-text="connectionStatusText"
-          :status-class="statusBarClass"
-          :reconnect-attempts="0"
-          :typing-users="presence.typingUsers.length"
-        />
-      </div>
-
-      <!-- Transferred State - Show when conversation is transferred -->
-
-
-      <!--  Transferred State - Input disabled with informative message -->
-      <div
-        v-else-if="isCurrentConversationTransferred"
-        class="transferred-state"
-      >
-        <div class="transferred-input-message">
-          <svg
-            class="transferred-icon"
-            width="20"
-            height="20"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <line
-              x1="5"
-              y1="12"
-              x2="19"
-              y2="12"
-            />
-            <polyline points="12 5 19 12 12 19" />
-          </svg>
-          <span>此對話已轉移至其他團隊，您無法再發送訊息</span>
-        </div>
-      </div>
-    </div>
+    </Teleport>
 
     <!-- Lazy loaded keyboard shortcuts -->
     <Suspense>
@@ -235,7 +287,7 @@
 import { createLogger } from '@/utils/logger'
 
 const frontendLogger = createLogger('ConversationDetail')
-import { ref, computed, watch, onMounted, onUnmounted, defineAsyncComponent } from 'vue'
+import { ref, computed, watch, nextTick, onMounted, onUnmounted, defineAsyncComponent } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useToast } from '@/composables/useToast'
@@ -273,9 +325,11 @@ import MessageListSkeleton from '@/components/conversation/MessageListSkeleton.v
 import VirtualMessageList from '@/components/conversation/VirtualMessageList.vue'
 import MessageInput from '@/components/conversation/MessageInput.vue'
 import ConversationHeader from '@/components/conversation/ConversationHeader.vue'
+import ConversationSidePanel from '@/components/conversation/ConversationSidePanel.vue'
+import type { Tag } from '@/api/tags'
 import ExportDialog from '@/components/conversation/ExportDialog.vue'
 import HistoryRetentionNotice from '@/components/conversation/banners/HistoryRetentionNotice.vue'
-import { MessageCircleIcon } from '@/components/icons'
+import { MessageCircleIcon, XIcon } from '@/components/icons'
 
 // Extracted sub-components
 import {
@@ -297,6 +351,19 @@ const router = useRouter()
 const { showSuccess, showError } = useToast()
 const { showConfirm } = useConfirmDialog()
 const conversationId = computed(() => route.params.id as string)
+
+// Customer tags (owned by the header's tag editor, shown read-only in the side panel)
+const customerTags = ref<Tag[]>([])
+
+// Customer info bottom sheet (shown below 1281px where the side column is hidden)
+const showInfoSheet = ref(false)
+const infoSheetClose = ref<HTMLButtonElement | null>(null)
+watch(showInfoSheet, async open => {
+  if (open) {
+    await nextTick()
+    infoSheetClose.value?.focus()
+  }
+})
 
 // Export dialog state
 const showExportDialog = ref(false)
@@ -345,7 +412,7 @@ const {
   conversation, messages, displayedMessages, loading, skeletonCount, loadingText,
   isInitialLoading, hasLoadedInitially, loadingHistory, isUpdating, isSearchActive,
   setSearchResults, clearSearch, isWebSocketEnabled, isConnected, connectionState, connectionProtocol,
-  connectionQuality, connectionText, connectionStatusClass, newMessageCount, isTyping, typingUsers,
+  connectionQuality, connectionText, connectionStatusClass, newMessageCount, typingUsers,
   scrollToBottom, setScrollTarget,
   _internals
 } = controller
@@ -647,15 +714,26 @@ defineExpose({
 
 <style scoped>
 /* ====== Minimal, Spacious Design System ====== */
+/* Chat card + read-only customer panel. Height = viewport - top bar - .page-content vertical padding (2 x --ui-gutter) */
+.detail-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+  height: calc(100vh - var(--ui-topbar-h) - 2 * var(--ui-gutter));
+  height: calc(100dvh - var(--ui-topbar-h) - 2 * var(--ui-gutter));
+  min-height: 420px;
+}
+
+.detail-side {
+  display: none;
+}
+
 .conversation-detail {
   position: relative;
-  height: calc(100vh - 48px);
-  height: calc(100dvh - 48px);
   display: flex;
   flex-direction: column;
+  min-height: 0;
   overflow: hidden;
-  /* cancels .page-content padding: 24px vertical, 20px (--space-5) horizontal */
-  margin: -24px -20px;
 }
 
 /* Closed Conversation Banner Styles */
@@ -666,15 +744,15 @@ defineExpose({
 }
 
 .websocket-status-topbar {
-  font-size: 0.75rem;
+  font-size: 13px;
 }
 
 /* Enhanced Search Panel */
 .message-search-panel {
   position: relative;
   z-index: 10;
-  background: white;
-  border-bottom: 1px solid #e5e7eb;
+  background: var(--ui-surface);
+  box-shadow: inset 0 -0.5px 0 var(--ui-sep);
   overflow: hidden;
 }
 
@@ -749,9 +827,8 @@ defineExpose({
 /* Input Section Styles */
 .input-section {
   flex-shrink: 0;
-  background: white;
-  border-top: 1px solid #e5e7eb;
-  padding: 12px;
+  background: var(--ui-surface);
+  padding: 8px 16px 14px;
   /* Fix: Ensure input section creates a stacking context above messages */
   position: relative;
   z-index: 50;
@@ -759,15 +836,26 @@ defineExpose({
 
 /* LINE free-reply countdown capsule */
 .reply-window-chip {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   margin-bottom: 8px;
-  padding: 2px 10px;
+  padding: 0 10px;
+  height: 22px;
   border-radius: 9999px;
-  background: rgba(52, 199, 89, 0.12);
-  color: #34C759;
-  font-size: 12px;
-  line-height: 18px;
+  background: var(--ui-green-soft);
+  color: var(--ui-green-ink);
+  font-size: 11.5px;
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
+}
+
+.reply-window-chip::before {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  content: '';
 }
 
 /* Closed State */
@@ -822,13 +910,150 @@ defineExpose({
 }
 
 /* Responsive */
+/* Customer info sheet */
+.info-sheet-root {
+  position: fixed;
+  inset: 0;
+  z-index: 10050;
+}
+
+.info-sheet-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgb(0 0 0 / 28%);
+  backdrop-filter: blur(2px);
+}
+
+.info-sheet {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  max-height: 82vh;
+  max-height: 82dvh;
+  margin: 0 auto;
+  padding-bottom: env(safe-area-inset-bottom);
+  overflow-y: auto;
+  border-radius: 24px 24px 0 0;
+  background: var(--ui-surface);
+  box-shadow: var(--ui-shadow-raised);
+}
+
+@media (min-width: 641px) {
+  .info-sheet {
+    max-width: 420px;
+    margin: 0 20px 20px auto;
+    border-radius: 24px;
+  }
+}
+
+.info-sheet-grip {
+  width: 36px;
+  height: 5px;
+  margin: 8px auto 0;
+  border-radius: 999px;
+  background: var(--ui-fill-strong);
+}
+
+.info-sheet-close {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--ui-ink-2);
+  cursor: pointer;
+}
+
+.info-sheet-close:hover {
+  background: var(--ui-fill);
+}
+
+.info-sheet-panel {
+  display: flex;
+  box-shadow: none;
+  background: transparent;
+  border-radius: 0;
+}
+
+.info-sheet-enter-active,
+.info-sheet-leave-active {
+  transition: opacity var(--ui-dur) var(--ui-ease);
+}
+
+.info-sheet-enter-active .info-sheet,
+.info-sheet-leave-active .info-sheet {
+  transition: transform 0.3s var(--ui-ease);
+}
+
+.info-sheet-enter-from,
+.info-sheet-leave-to {
+  opacity: 0;
+}
+
+.info-sheet-enter-from .info-sheet,
+.info-sheet-leave-to .info-sheet {
+  transform: translateY(24px);
+}
+
+@media (min-width: 1281px) {
+  .info-sheet-root {
+    display: none;
+  }
+}
+
+@media (min-width: 1281px) {
+  /* One surface: chat and customer rail share a single card, the rail is a tinted column inside it,
+     so there is never a second card ending early */
+  .detail-layout {
+    grid-template-columns: minmax(0, 1fr) 296px;
+    gap: 0;
+    overflow: hidden;
+    border-radius: var(--ui-r-lead);
+    background: var(--ui-surface);
+    box-shadow: var(--ui-shadow-raised);
+  }
+
+  .detail-layout > .conversation-detail,
+  .detail-layout > .detail-side {
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .detail-layout > .detail-side {
+    background: var(--ui-surface-2);
+    box-shadow: inset 0.5px 0 0 var(--ui-sep);
+  }
+
+  .detail-side {
+    display: flex;
+    align-self: stretch;
+    max-height: 100%;
+  }
+}
+
 @media (max-width: 768px) {
-  .conversation-detail {
+  /* Phone: the chat fills the screen edge to edge. The -16px margin already cancels the
+     .page-content padding, so the height takes off only the top bar and the safe areas. */
+  .detail-layout {
+    height: calc(100vh - 60px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+    height: calc(100dvh - 60px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
     margin: -16px;
+    gap: 0;
+  }
+
+  .conversation-detail {
+    border-radius: 0;
+    box-shadow: none;
   }
 
   .input-section {
-    padding: 8px;
+    padding: 8px 12px;
   }
 
   .closed-state {

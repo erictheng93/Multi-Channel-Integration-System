@@ -1,142 +1,87 @@
 <!--
   GeneralSettingsForm.vue
 
-  General system settings form component
-  Manages basic system configuration
+  General system settings: identity and region. Saved through the page-head 儲存變更 button
+  (a submit button pointing at this form by id).
 -->
 
 <template>
-  <div class="general-settings-form">
-    <h2 class="form-title">
-      {{ t('systemSettings.general.title') }}
-    </h2>
-    <p class="form-description">
-      {{ t('systemSettings.general.description') }}
-    </p>
-
-    <form
-      class="settings-form"
-      @submit.prevent="handleSave"
-    >
-      <div class="form-group">
-        <label
-          for="systemName"
-          class="form-label"
-        >
-          {{ t('systemSettings.general.systemName') }}
-        </label>
+  <form
+    :id="SETTINGS_FORM_ID"
+    class="general-form"
+    @submit.prevent="handleSave"
+  >
+    <SettingsGroup title="系統識別">
+      <SettingsRow
+        label="系統名稱"
+        :hint="`顯示在側邊欄與登入頁，最多 40 字元（已輸入 ${localSettings.systemName.length}）`"
+        for-id="systemName"
+      >
         <input
           id="systemName"
           v-model="localSettings.systemName"
           type="text"
-          class="form-input"
+          class="ui-input"
+          maxlength="40"
           :placeholder="t('systemSettings.general.systemNamePlaceholder')"
           required
         >
-      </div>
-
-      <div class="form-group">
-        <label
-          for="contactEmail"
-          class="form-label"
-        >
-          {{ t('systemSettings.general.contactEmail') }}
-        </label>
+      </SettingsRow>
+      <SettingsRow
+        label="聯絡信箱"
+        hint="系統管理員的聯絡窗口"
+        for-id="contactEmail"
+      >
         <input
           id="contactEmail"
           v-model="localSettings.contactEmail"
           type="email"
-          class="form-input"
+          class="ui-input"
           :placeholder="t('systemSettings.general.contactEmailPlaceholder')"
           required
         >
-      </div>
+      </SettingsRow>
+    </SettingsGroup>
 
-      <div class="form-group">
-        <label
-          for="timezone"
-          class="form-label"
-        >
-          {{ t('systemSettings.general.timezone') }}
-        </label>
+    <SettingsGroup title="地區與語言">
+      <SettingsRow
+        label="時區"
+        :hint="clockHint"
+        for-id="timezone"
+      >
         <select
           id="timezone"
           v-model="localSettings.timezone"
-          class="form-select"
+          class="ui-select"
           required
         >
-          <option value="Asia/Taipei">
-            Asia/Taipei (UTC+8)
-          </option>
-          <option value="Asia/Tokyo">
-            Asia/Tokyo (UTC+9)
-          </option>
-          <option value="Asia/Shanghai">
-            Asia/Shanghai (UTC+8)
-          </option>
-          <option value="Asia/Hong_Kong">
-            Asia/Hong Kong (UTC+8)
-          </option>
-          <option value="Asia/Singapore">
-            Asia/Singapore (UTC+8)
-          </option>
-          <option value="UTC">
-            UTC (UTC+0)
+          <option
+            v-for="zone in TIMEZONES"
+            :key="zone.value"
+            :value="zone.value"
+          >
+            {{ zone.label }}
           </option>
         </select>
-      </div>
-
-      <div class="form-group">
-        <label
-          for="language"
-          class="form-label"
-        >
-          {{ t('systemSettings.general.language') }}
-        </label>
-        <select
-          id="language"
-          v-model="localSettings.language"
-          class="form-select"
-          required
-        >
-          <option value="zh-TW">
-            繁體中文
-          </option>
-          <option value="zh-CN">
-            简体中文
-          </option>
-          <option value="en">
-            English
-          </option>
-          <option value="ja">
-            日本語
-          </option>
-        </select>
-      </div>
-
-      <div class="form-actions">
-        <button
-          type="submit"
-          class="btn btn-primary"
-          :disabled="saving"
-        >
-          <span
-            v-if="saving"
-            class="spinner"
-          />
-          {{ saving ? t('common.saving') : t('common.save') }}
-        </button>
-      </div>
-    </form>
-  </div>
+      </SettingsRow>
+      <SettingsRow
+        label="介面語言"
+        hint="目前僅支援繁體中文"
+      >
+        <span class="lang-value">繁體中文</span>
+      </SettingsRow>
+    </SettingsGroup>
+  </form>
 </template>
 
 <script setup lang="ts">
-import { reactive, watch } from 'vue'
+import { computed, reactive, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { GeneralSettings } from '@/types/system-settings'
+import SettingsGroup from './SettingsGroup.vue'
+import SettingsRow from './SettingsRow.vue'
+import { SETTINGS_FORM_ID } from './settings-pages'
 
-// Props
 interface Props {
   settings: GeneralSettings
   saving: boolean
@@ -144,15 +89,22 @@ interface Props {
 
 const props = defineProps<Props>()
 
-// Events
 const emit = defineEmits<{
   save: []
+  'update:settings': [value: GeneralSettings]
 }>()
 
-// Composables
 const { t } = useI18n()
 
-// Local state
+const TIMEZONES = [
+  { value: 'Asia/Taipei', label: 'Asia/Taipei (UTC+8)' },
+  { value: 'Asia/Tokyo', label: 'Asia/Tokyo (UTC+9)' },
+  { value: 'Asia/Shanghai', label: 'Asia/Shanghai (UTC+8)' },
+  { value: 'Asia/Hong_Kong', label: 'Asia/Hong Kong (UTC+8)' },
+  { value: 'Asia/Singapore', label: 'Asia/Singapore (UTC+8)' },
+  { value: 'UTC', label: 'UTC (UTC+0)' }
+]
+
 const localSettings = reactive<GeneralSettings>({
   systemName: '',
   contactEmail: '',
@@ -160,97 +112,68 @@ const localSettings = reactive<GeneralSettings>({
   language: ''
 })
 
-// Watch for prop changes
+// Parent -> local
 watch(
   () => props.settings,
-  (newSettings) => {
-    Object.assign(localSettings, newSettings)
+  (next) => {
+    Object.assign(localSettings, next)
   },
   { immediate: true, deep: true }
 )
 
-// Methods
+// Local -> parent, so the controller saves what the user typed
+watch(
+  localSettings,
+  (next) => {
+    emit('update:settings', { ...next })
+  },
+  { deep: true }
+)
+
+/** Live hint: the current time in the chosen zone, read once per selection (no ticking timer) */
+const clockHint = computed(() => {
+  try {
+    const at = new Intl.DateTimeFormat('zh-TW', {
+      timeZone: localSettings.timezone || 'Asia/Taipei',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    }).format(new Date())
+    return `所選時區的目前時間：${at}`
+  } catch {
+    return '用於顯示時間與報表日期'
+  }
+})
+
 function handleSave() {
   emit('save')
 }
 </script>
 
 <style scoped>
-.general-settings-form {
-  background: white;
-  border-radius: 0.5rem;
-  padding: 1.5rem;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+.general-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px 16px;
+  align-items: start;
 }
 
-.form-title {
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: #1a202c;
-  margin: 0 0 0.5rem 0;
+.lang-value {
+  width: 100%;
+  font-size: 15px;
+  color: var(--ui-muted);
+  text-align: right;
 }
 
-.form-description {
-  font-size: 0.875rem;
-  color: #718096;
-  margin: 0 0 1.5rem 0;
-}
+@media (max-width: 1024px) {
+  .general-form {
+    grid-template-columns: minmax(0, 1fr);
+  }
 
-.settings-form {
-  display: flex;
-  flex-direction: column;
-  gap: 1.25rem;
-}
-
-.form-group {
-  /* spacing comes from gap; the global .form-group margin would double it */
-  margin-bottom: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.form-label {
-  margin-bottom: 0;
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: #2d3748;
-}
-
-.form-input,
-.form-select {
-  padding: 0.625rem 0.875rem;
-  border: 1px solid #cbd5e0;
-  border-radius: 0.375rem;
-  font-size: 0.875rem;
-  transition: border-color 0.2s;
-}
-
-.form-input:focus,
-.form-select:focus {
-  outline: none;
-  border-color: #4299e1;
-  box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.1);
-}
-
-.form-actions {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 1rem;
-}
-
-.spinner {
-  width: 1rem;
-  height: 1rem;
-  border: 2px solid #ffffff;
-  border-top-color: transparent;
-  border-radius: 50%;
-  animation: spin 0.6s linear infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
+  .lang-value {
+    text-align: left;
   }
 }
 </style>

@@ -69,6 +69,7 @@ export interface Bindings {
   LINE_CHANNEL_SECRET: string;
   LINE_BOT_BASIC_ID: string;
   LINE_BOT_ID?: string; // LINE OA Basic ID for QR Code generation (e.g., @110xsqef)
+  AUTO_CLOSE_IDLE_DAYS?: string; // nightly auto-close idle days (default 14, 0 disables); see auto-close-service.ts
   BROADCAST_DAILY_RECIPIENT_LIMIT_PER_AGENT?: string; // overrides src/constants/limits.ts
   BROADCAST_QUOTA_RESERVE_RATIO?: string; // overrides src/constants/limits.ts
   LINE_LIFF_ID?: string; // LIFF App ID for team QR Code system
@@ -297,6 +298,15 @@ export interface LineWebhookEventPayload {
 }
 
 /**
+ * Health probe enqueued by GET /api/health/system to time a queue send.
+ * The consumer acks and ignores it (no side effects).
+ */
+export interface HealthProbePayload {
+  type: 'health_probe';
+  enqueuedAt: number;
+}
+
+/**
  * Union type for all queue message payloads.
  * The queue consumer uses the `type` field to route to the correct handler.
  * Messages without a `type` field are treated as outbound messages (backward compat).
@@ -304,7 +314,8 @@ export interface LineWebhookEventPayload {
 export type LineQueuePayload =
   | (LineMessageQueuePayload & { type?: 'outbound_message' })
   | MediaProcessingPayload
-  | LineWebhookEventPayload;
+  | LineWebhookEventPayload
+  | HealthProbePayload;
 
 /**
  * LINE Message Queue Result

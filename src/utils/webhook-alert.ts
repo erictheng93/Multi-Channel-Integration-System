@@ -16,6 +16,51 @@ interface WebhookFailureDetails {
   eventTypes?: string[];
 }
 
+// KV key scheme shared with the channel health read side
+// (modules/integrations/services/channel-overview-stats-service.ts). Keys end in an epoch-ms suffix.
+export const WEBHOOK_PROCESSING_PREFIX = (platform: string): string => `alert:webhook_failure:${platform}:`;
+export const WEBHOOK_SIGNATURE_PREFIX = (platform: string): string => `alert:webhook_signature_failure:${platform}:`;
+
+const SIGNATURE_WINDOW_MS = 60_000;
+
+/** Newest bucket each platform has claimed in this isolate. Read and set before the first await. */
+const claimedSignatureBucket = new Map<string, number>();
+
+/**
+ * Record a rejected webhook signature in KV (7-day TTL), at most one record per platform per minute
+ * from each isolate.
+ *
+ * Signature failures come from unauthenticated callers, so every request must not cost a KV write,
+ * and no external alert is sent. A KV read cannot enforce that by itself: concurrent requests all miss
+ * before the first put lands. The in-memory claim is what stops a burst.
+ * ponytail: the cap is per isolate, so a burst across N isolates writes up to N times a minute (the
+ * KV get catches most of those). Real serialization would mean a Durable Object request per rejected
+ * webhook, which costs more than the writes it saves. Revisit only if KV write volume shows it.
+ * Fire-and-forget: never throws and must never change the webhook response.
+ */
+export async function recordWebhookSignatureFailure(
+  env: Bindings,
+  platform: 'line' | 'facebook',
+  reason: string
+): Promise<void> {
+  try {
+    const bucket = Math.floor(Date.now() / SIGNATURE_WINDOW_MS) * SIGNATURE_WINDOW_MS;
+    if (claimedSignatureBucket.get(platform) === bucket) return;
+    claimedSignatureBucket.set(platform, bucket);
+    const key = `${WEBHOOK_SIGNATURE_PREFIX(platform)}${bucket}`;
+    if (await env.CACHE.get(key)) return;
+    await env.CACHE.put(
+      key,
+      JSON.stringify({ platform, kind: 'signature', timestamp: nowISO(), reason: reason.slice(0, 200) }),
+      { expirationTtl: 7 * 24 * 60 * 60 }
+    );
+  } catch (error) {
+    log.error('Failed to record signature failure', {
+      error: error instanceof Error ? error.message : String(error)
+    });
+  }
+}
+
 /**
  * Alert on webhook processing failures.
  *
@@ -30,7 +75,7 @@ export async function alertWebhookFailure(
   details: WebhookFailureDetails
 ): Promise<void> {
   const timestamp = nowISO();
-  const alertId = `webhook_failure:${details.platform}:${Date.now()}`;
+  const alertId = `webhook_failure:${details.platform}:${Date.now()}`; // stored as alert:<alertId>, see WEBHOOK_PROCESSING_PREFIX
 
   const alertPayload = {
     id: alertId,

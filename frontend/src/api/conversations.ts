@@ -113,6 +113,8 @@ function adaptConversationData(rawData: RawConversationData): Conversation {
     } : undefined,
     unreadCount: rawData.unreadCount || 0,
     oldestUnreadAt: rawData.oldestUnreadAt ?? null,
+    ...(rawData.awaitingSince !== undefined ? { awaitingSince: rawData.awaitingSince } : {}),
+    ...(rawData.neverReplied !== undefined ? { neverReplied: rawData.neverReplied } : {}),
     replyWindowExpiresAt: rawData.replyWindowExpiresAt ?? null,
     createdAt: new Date(rawData.createdAt).getTime(),
     updatedAt: new Date(rawData.updatedAt).getTime()

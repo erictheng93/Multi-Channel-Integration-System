@@ -25,7 +25,7 @@ dashboardHandler.get('/summary', jwtAuth, async (c) => {
     const user = c.get('user');
     const data = await readThrough(
       c.env.CACHE,
-      `dashboard:v1:summary:${visibilityScopeKey(user)}`,
+      `dashboard:v2:summary:${visibilityScopeKey(user)}`,
       DASHBOARD_SUMMARY_TTL_SECONDS,
       () => buildDashboardSummary(c.env.DB, user, nowMs())
     );

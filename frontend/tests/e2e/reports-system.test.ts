@@ -98,6 +98,16 @@ vi.mock('@/api/reports', () => {
         { value: 'pdf', label: 'PDF 文件', icon: '' },
         { value: 'excel', label: 'Excel 檔案', icon: '' }
       ]),
+      getGeneratableOptions: vi.fn().mockReturnValue({
+        types: [
+          { value: 'conversation_summary', label: '對話摘要報告', description: '對話統計和摘要分析' },
+          { value: 'agent_performance', label: '客服績效報告', description: '客服人員績效評估' }
+        ],
+        formats: [
+          { value: 'pdf', label: 'PDF 文件', icon: '' },
+          { value: 'excel', label: 'Excel 檔案', icon: '' }
+        ]
+      }),
       getTimeRangeOptions: vi.fn().mockReturnValue([
         { value: 'last_7_days', label: '過去7天' },
         { value: 'last_30_days', label: '過去30天' }
@@ -264,7 +274,7 @@ describe('報表系統端到端測試', () => {
       expect(navItems.length).toBeGreaterThan(0);
 
       // 檢查導航項目內容
-      const expectedNavItems = ['儀表板', '模板', '生成報表'];
+      const expectedNavItems = ['報表總覽', '報表模板', '產生報表'];
       const navTexts = navItems.map(item => item.text().trim());
 
       expectedNavItems.forEach(expectedText => {
@@ -290,10 +300,8 @@ describe('報表系統端到端測試', () => {
 
       await wrapper.vm.$nextTick();
       await new Promise(resolve => setTimeout(resolve, 100));
-
-      // 檢查統計卡片
-      const statCards = wrapper.findAll('.stat-card');
-      expect(statCards.length).toBeGreaterThan(0);
+      // The lead object shows this month's figure and the status rings
+      expect(wrapper.find('.ui-lead').exists()).toBe(true);
     });
 
     it('應該正確顯示報表列表', async () => {

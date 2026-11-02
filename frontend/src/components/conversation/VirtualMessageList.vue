@@ -62,14 +62,14 @@
           top: 0,
           left: 0,
           width: '100%',
-          minHeight: `${virtualItem.size}px`,
           transform: `translateY(${virtualItem.start}px)`
         }"
       >
         <div
           :class="{
             'date-separator-item': virtualItems[virtualItem.index]?.type === 'date',
-            'message-item': virtualItems[virtualItem.index]?.type === 'message'
+            'message-item': virtualItems[virtualItem.index]?.type === 'message',
+            'is-continuation': continuesGroup(virtualItem.index)
           }"
         >
           <!-- Date Separator -->
@@ -94,6 +94,8 @@
               ]"
               :message="virtualItems[virtualItem.index]?.data as Message"
               :delivered="true"
+              :show-attribution="!continuesGroup(virtualItem.index)"
+              :show-meta="!continuesGroup(virtualItem.index + 1)"
               @copy="$emit('messageCopy', $event)"
               @reply="$emit('messageReply', $event)"
               @forward="$emit('messageForward', $event)"
@@ -327,6 +329,20 @@ const scrollToMessage = async (messageId: string, retries = 3, delay = 100) => {
   await scrollToMessageByIndex(index, retries, delay)
 }
 
+// Thread grouping: consecutive messages from the same sender within 5 minutes read as one group
+// (4px apart inside a group, 16px between groups; the agent signature shows once above the first bubble; time and state once below the last)
+const GROUP_WINDOW_MS = 5 * 60 * 1000
+const continuesGroup = (index: number): boolean => {
+  const cur = virtualItems.value[index]
+  const prev = virtualItems.value[index - 1]
+  if (cur?.type !== 'message' || prev?.type !== 'message') { return false }
+  const a = prev.data as Message
+  const b = cur.data as Message
+  if (a.senderType !== b.senderType || (a.senderName ?? '') !== (b.senderName ?? '')) { return false }
+  const gap = new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  return Number.isFinite(gap) && gap >= 0 && gap <= GROUP_WINDOW_MS
+}
+
 // Handle retry event from MessageBubble
 const handleRetry = (messageId: string) => {
   frontendLogger.debug('[VirtualMessageList] Retry event received for message:', messageId)
@@ -537,12 +553,19 @@ defineExpose({
 
 /* Spacious Message Item Container */
 .message-item {
-  padding: 0.375rem 1rem;
+  padding: 1rem 1rem 0;
   display: flex;
   flex-direction: column;
   position: relative;
-  /* More breathing room between messages */
-  margin: 0.125rem 0;
+}
+
+/* Same sender, same moment: tight 4px inside a group */
+.message-item.is-continuation {
+  padding-top: 4px;
+}
+
+.message-item :deep(.message-bubble) {
+  margin-bottom: 0;
 }
 
 /* Modern Typing Indicator */
@@ -715,7 +738,7 @@ defineExpose({
 
   .clear-search-btn {
     padding: 0.3125rem 0.875rem;
-    font-size: 0.75rem;
+    font-size: 13px;
   }
 
   .typing-indicator {

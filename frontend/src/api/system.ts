@@ -22,6 +22,8 @@ interface SystemInfo {
   };
 }
 
+import type { IntegrationLastTest } from '@/types/system-settings'
+
 interface SystemSettings {
   general?: {
     systemName: string;
@@ -35,6 +37,7 @@ interface SystemSettings {
       channelSecret?: string;
       accessToken?: string;
       status: 'connected' | 'disconnected' | 'error';
+      lastTest?: IntegrationLastTest | null;
     };
     facebook?: {
       appId?: string;
@@ -42,6 +45,7 @@ interface SystemSettings {
       pageId?: string;
       pageToken?: string;
       status: 'connected' | 'disconnected' | 'error';
+      lastTest?: IntegrationLastTest | null;
     };
   };
   advanced?: {
@@ -116,7 +120,7 @@ export const systemApi = {
   testIntegration: async (
     platform: 'line' | 'facebook', 
     config: IntegrationTestRequest
-  ): Promise<ApiResponse<{ status: string; message?: string }>> => {
+  ): Promise<ApiResponse<{ status: string; message?: string; latencyMs?: number; testedAt?: string }>> => {
     return callApiContract(systemContracts.testIntegration, { platform }, config)
   },
 
@@ -168,7 +172,7 @@ export const systemApi = {
   // 完整健康檢查 (使用統一健康檢查系統)
   // Uses raw fetch: backend returns 503 when components are critical, but the response body
   // still contains valid health data. apiClient would retry on 5xx and discard the data.
-  healthCheck: async (): Promise<{
+  healthCheck: async (deep = false): Promise<{
     success: boolean;
     data?: {
       overall: { status: string; message: string; timestamp: string };
@@ -180,14 +184,26 @@ export const systemApi = {
         checkInterval: number;
       }>;
       infrastructure: Record<string, { status: string; message: string; timestamp: string; responseTime?: number }>;
-      performance: { apiResponseTime: number; databaseQueryTime: number; cacheHitRate: number };
+      performance: { apiResponseTime?: number; databaseQueryTime?: number; cacheHitRate?: number };
+      /** Present only for ?deep=1 (admin): on-demand LINE webhook test */
+      deep?: {
+        lineWebhook: {
+          status: 'success' | 'failure' | 'skipped';
+          statusCode?: number;
+          reason?: string;
+          detail?: string;
+          latencyMs?: number;
+          testedAt: string;
+          message: string;
+        };
+      };
     };
     message?: string;
   }> => {
     try {
       const { getBackendUrl } = await import('@/config/runtime')
       const baseUrl = import.meta.env.DEV ? '/api' : `${getBackendUrl()}/api`
-      const response = await authenticatedFetch(`${baseUrl}/health/system`, {
+      const response = await authenticatedFetch(`${baseUrl}/health/system${deep ? '?deep=1' : ''}`, {
         headers: {
           'Content-Type': 'application/json'
         }

@@ -264,7 +264,7 @@ function formatTime(date: string): string {
   gap: 6px;
   padding: 4px 12px;
   border-radius: 20px;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 500;
 }
 
@@ -327,7 +327,7 @@ function formatTime(date: string): string {
 
 .error-text {
   font-family: 'Courier New', monospace;
-  font-size: 12px;
+  font-size: 13px;
 }
 
 .empty-stat-detail {

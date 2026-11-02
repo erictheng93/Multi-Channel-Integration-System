@@ -208,7 +208,7 @@ const hiddenUserCount = computed(() => {
   padding: var(--space-3);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-lg);
-  font-size: 0.75rem;
+  font-size: 13px;
   white-space: nowrap;
   position: relative;
   max-width: 250px;
@@ -280,7 +280,7 @@ const hiddenUserCount = computed(() => {
   padding-top: var(--space-1);
   margin-top: var(--space-1);
   border-top: 1px solid rgba(255, 255, 255, 0.2);
-  font-size: 0.625rem;
+  font-size: 13px;
   color: rgba(255, 255, 255, 0.7);
   text-align: center;
 }
@@ -336,7 +336,7 @@ const hiddenUserCount = computed(() => {
   }
 
   .tooltip-content {
-    font-size: 0.625rem;
+    font-size: 13px;
     padding: var(--space-2);
     max-width: 200px;
   }
