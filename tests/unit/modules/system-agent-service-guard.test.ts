@@ -9,6 +9,10 @@ import { MemberService } from '@/modules/teams/services/member-service';
 import { AgentTeamsService } from '@/modules/teams/services/agent-teams-service';
 import { TeamService } from '@/modules/teams/services/team-service';
 import { AgentService } from '@/modules/agents/services/agent-crud';
+import { createUser } from '@/utils/auth';
+import {
+  addTeamMembership, restoreField, restoreFields, restoreSoftDeleted, softDelete
+} from '@/modules/activities/services/restore-helpers';
 
 const REFUSED = 'The system account cannot be modified';
 
@@ -33,7 +37,7 @@ function d1Over(sqlite: Database.Database): D1Database {
 function seed(): Database.Database {
   const db = new Database(':memory:');
   db.exec(`
-    CREATE TABLE agents (id TEXT PRIMARY KEY, email TEXT, password_hash TEXT, display_name TEXT, role TEXT DEFAULT 'agent',
+    CREATE TABLE agents (id TEXT PRIMARY KEY, email TEXT UNIQUE, password_hash TEXT, display_name TEXT, role TEXT DEFAULT 'agent',
       is_active INTEGER DEFAULT 1, password_policy TEXT DEFAULT 'changeable', last_active TEXT, last_login_at TEXT,
       created_at TEXT, updated_at TEXT, deleted_at TEXT);
     INSERT INTO agents (id, email, password_hash, display_name, role, is_active, created_at, updated_at) VALUES
@@ -97,4 +101,29 @@ it('batchTransferAgents reports the system actor as an error and never touches i
   };
   const result = await new AgentService(db as never).batchTransferAgents({ agentIds: ['system'], toTeamId: 2 } as never);
   expect(result).toEqual({ success: false, errors: [{ agentId: 'system', error: REFUSED }] });
+});
+
+describe('activity restore refuses to write the system actor', () => {
+  // prepare() is reached only after the guard, so the control proves the handler would otherwise build a write.
+  const db = { prepare: () => ({ bind: () => 'statement' }) } as unknown as D1Database;
+
+  it.each<[string, (id: string) => unknown]>([
+    ['restoreFields(agents)', (id) => restoreFields('agents').buildMutation(db, { id, role: 'admin' })],
+    ['restoreField(agents.role)', (id) => restoreField('agents', 'role').buildMutation(db, { id, role: 'admin' })],
+    ['restoreSoftDeleted(agents)', (id) => restoreSoftDeleted('agents').buildMutation(db, { id })],
+    ['softDelete(agents)', (id) => softDelete('agents').buildMutation(db, { id })],
+    ['addTeamMembership', (id) => addTeamMembership.buildMutation(db, { agent_id: id, team_id: 1, role_in_team: 'member', is_primary: 0 })]
+  ])('%s', (_name, build) => {
+    expect(() => build('system')).toThrow(REFUSED);
+    expect(build('a1')).toBe('statement');
+  });
+});
+
+it('createUser never reactivates a soft-deleted system row with the registrant password', async () => {
+  const db = seed();
+  db.exec("UPDATE agents SET deleted_at = '2026-01-02' WHERE id = 'system'");
+  await createUser(d1Over(db), { email: 'system@internal', password: 'Pw-123456', displayName: 'x', role: 'admin' })
+    .catch(() => undefined); // the UNIQUE email then refuses the insert, which is the point
+  expect(db.prepare("SELECT password_hash, role, deleted_at FROM agents WHERE id = 'system'").get())
+    .toEqual({ password_hash: 'SYSTEM_NO_LOGIN', role: 'agent', deleted_at: '2026-01-02' });
 });
