@@ -6,6 +6,8 @@
     />
     <UiSectionNav section="data" />
 
+    <UiSectionNav section="data" />
+
     <!-- Lead: the newest automatic backup, the 30-day coverage arc and the one primary action -->
     <RingLead
       kicker="最近自動備份"
