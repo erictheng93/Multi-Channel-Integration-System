@@ -34,6 +34,12 @@ export function d1Of(db: Database.Database, log?: QueryLog[]): D1Database {
       run: async () => {
         log?.push({ sql: query });
         return { success: true, ...run() };
+      },
+      // Drizzle reads UPDATE ... RETURNING rows through raw().
+      raw: async () => {
+        log?.push({ sql: query });
+        const stmt = db.prepare(query);
+        return stmt.reader ? stmt.raw().all(...params) : (stmt.run(...params), []);
       }
     };
   };
