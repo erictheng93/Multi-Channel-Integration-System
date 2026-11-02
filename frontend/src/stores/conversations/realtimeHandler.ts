@@ -34,6 +34,7 @@ export interface RealtimeHandlerDeps {
       timestamp?: string | number
       sender?: { id?: string; name?: string; role?: string }
       senderType?: 'customer' | 'agent'
+      senderId?: string
       platform?: string
     },
     _options?: { incrementUnread?: boolean; moveToTop?: boolean }
@@ -177,6 +178,7 @@ export function createRealtimeHandler(deps: RealtimeHandlerDeps) {
           const timestamp = message.timestamp || data?.timestamp as string | number
           const sender = data?.sender as { id?: string; name?: string; role?: string } | undefined
           const senderType = data?.senderType as 'customer' | 'agent' | undefined
+          const senderId = data?.senderId as string | undefined
           const platform = data?.platform as string | undefined
 
           const updated = updateConversationFromWebSocketMessage(
@@ -187,6 +189,7 @@ export function createRealtimeHandler(deps: RealtimeHandlerDeps) {
               timestamp,
               sender,
               senderType,
+              senderId,
               platform
             },
             {
