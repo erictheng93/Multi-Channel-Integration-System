@@ -370,6 +370,11 @@ onUnmounted(() => cleanup())
   .rules-grid {
     grid-template-columns: minmax(0, 1fr);
   }
+
+  /* the tester sits above the rules it tries, not under a long list */
+  .rules-grid > :deep(.rule-aside) {
+    order: -1;
+  }
 }
 
 @media (max-width: 768px) {
