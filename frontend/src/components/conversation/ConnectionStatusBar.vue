@@ -132,7 +132,7 @@ withDefaults(defineProps<Props>(), {
   backdrop-filter: blur(10px);
   border-bottom: 1px solid #e5e7eb;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-  font-size: 0.75rem;
+  font-size: 13px;
 }
 
 .connection-status-bar.connected {
@@ -237,7 +237,7 @@ withDefaults(defineProps<Props>(), {
   align-items: center;
   gap: 4px;
   color: #6b7280;
-  font-size: 0.6875rem;
+  font-size: 13px;
 }
 
 .detail-item svg {
@@ -280,7 +280,7 @@ withDefaults(defineProps<Props>(), {
 @media (max-width: 768px) {
   .connection-status-bar {
     padding: 6px 12px;
-    font-size: 0.6875rem;
+    font-size: 13px;
   }
 
   .status-content {
@@ -294,7 +294,7 @@ withDefaults(defineProps<Props>(), {
   }
 
   .detail-item {
-    font-size: 0.625rem;
+    font-size: 13px;
   }
 
   .detail-item svg {

@@ -99,7 +99,7 @@ function dateMeta(group: ActivityDateGroup): string {
 }
 
 .timeline__date-meta {
-  font-size: 12.5px;
+  font-size: 13px;
   color: var(--ui-muted);
   font-variant-numeric: tabular-nums;
 }

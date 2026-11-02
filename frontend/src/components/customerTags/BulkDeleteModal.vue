@@ -166,7 +166,7 @@ const remainingCount = computed(() => Math.max(0, props.selectedCount - 5))
   display: inline-flex;
   align-items: center;
   padding: var(--space-1) var(--space-2);
-  font-size: 0.75rem;
+  font-size: 13px;
   font-weight: 500;
   background: white;
   border: 1px solid;
@@ -177,7 +177,7 @@ const remainingCount = computed(() => Math.max(0, props.selectedCount - 5))
   display: inline-flex;
   align-items: center;
   padding: var(--space-1) var(--space-2);
-  font-size: 0.75rem;
+  font-size: 13px;
   font-weight: 500;
   color: var(--gray-600);
   background: white;

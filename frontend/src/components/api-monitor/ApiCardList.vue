@@ -6,7 +6,7 @@
       aria-hidden="true"
     >
       <span />
-      <span>方法</span>
+      <span class="hide-m">方法</span>
       <span>端點</span>
       <span>P95</span>
       <span class="hide-m">成功率</span>
@@ -58,7 +58,7 @@ defineEmits<{
   gap: 12px;
   padding: 8px 22px;
   box-shadow: inset 0 -0.5px 0 var(--ui-sep);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--ui-muted);
 }
@@ -75,7 +75,7 @@ defineEmits<{
 
 @media (max-width: 768px) {
   .ep-head {
-    grid-template-columns: 10px 48px minmax(0, 1fr) 76px 16px;
+    grid-template-columns: 10px minmax(0, 1fr) 76px 16px;
     gap: 10px;
     padding: 8px 16px;
   }

@@ -117,9 +117,13 @@
         </span>
 
         <!-- Stats -->
-        <div class="trigger-stats">
+        <div
+          class="trigger-stats"
+          title="目前列表顯示的對話數"
+        >
+          <span class="stat-label">顯示</span>
           <span class="stat-num">{{ totalConversations }}</span>
-          <span class="stat-label">對話</span>
+          <span class="stat-label">件</span>
         </div>
         <div
           v-if="unreadCount > 0"
@@ -163,8 +167,12 @@
           </div>
 
           <div class="panel-field">
-            <label class="field-label">平台</label>
+            <label
+              class="field-label"
+              for="conv-filter-platform"
+            >平台</label>
             <select
+              id="conv-filter-platform"
               :value="filters.platform"
               class="field-select"
               @change="onFilterChange('platform', ($event.target as HTMLSelectElement).value)"
@@ -188,8 +196,12 @@
           </div>
 
           <div class="panel-field">
-            <label class="field-label">狀態</label>
+            <label
+              class="field-label"
+              for="conv-filter-status"
+            >狀態</label>
             <select
+              id="conv-filter-status"
               :value="filters.status"
               class="field-select"
               @change="onFilterChange('status', ($event.target as HTMLSelectElement).value)"
@@ -210,8 +222,12 @@
           </div>
 
           <div class="panel-field">
-            <label class="field-label">負責人</label>
+            <label
+              class="field-label"
+              for="conv-filter-team"
+            >負責人</label>
             <select
+              id="conv-filter-team"
               :value="filters.teamId ?? ''"
               class="field-select"
               @change="onFilterChange('teamId', ($event.target as HTMLSelectElement).value ? Number(($event.target as HTMLSelectElement).value) : undefined)"
@@ -655,7 +671,7 @@ function clearAll() {
 .trigger-placeholder {
   overflow: hidden;
   font-size: 14px;
-  color: var(--ui-faint);
+  color: var(--ui-muted);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -678,7 +694,7 @@ function clearAll() {
   border-radius: 999px;
   background: var(--ui-accent-soft);
   color: var(--ui-accent);
-  font-size: 12px;
+  font-size: 13px;
 }
 
 .pill-label {
@@ -708,8 +724,8 @@ function clearAll() {
   height: 22px;
   padding: 0 8px;
   border-radius: 999px;
-  background: var(--ui-ink);
-  color: var(--ui-surface);
+  background: var(--ui-accent-soft);
+  color: var(--ui-accent);
   font-size: 11.5px;
   font-weight: 600;
   cursor: pointer;
@@ -724,7 +740,7 @@ function clearAll() {
   display: flex;
   align-items: baseline;
   gap: 4px;
-  font-size: 12.5px;
+  font-size: 13px;
   color: var(--ui-muted);
 }
 
@@ -802,7 +818,7 @@ function clearAll() {
 }
 
 .field-label {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--ui-ink-2);
 }
@@ -1011,7 +1027,7 @@ function clearAll() {
   border: 0;
   border-radius: 999px;
   background: transparent;
-  font-size: 12.5px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--ui-red-ink);
   cursor: pointer;
