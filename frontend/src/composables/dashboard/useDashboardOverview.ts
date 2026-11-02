@@ -40,11 +40,17 @@ function section<T>(): Section<T> {
   return { data: ref(null) as Ref<T | null>, loading: ref(true), error: ref(false) }
 }
 
-async function load<T>(target: Section<T>, fetcher: () => Promise<{ success: boolean; data?: T }>): Promise<void> {
+async function load<T>(
+  target: Section<T>,
+  fetcher: () => Promise<{ success: boolean; data?: T }>,
+  isStale: () => boolean = () => false
+): Promise<void> {
   // Only the first load shows a skeleton; refreshes replace data silently
   if (target.data.value === null) { target.loading.value = true }
   try {
     const response = await fetcher()
+    // A newer request owns the section now; it will settle loading/error itself
+    if (isStale()) { return }
     if (response.success && response.data !== undefined) {
       target.data.value = response.data
       target.error.value = false
@@ -52,10 +58,10 @@ async function load<T>(target: Section<T>, fetcher: () => Promise<{ success: boo
       target.error.value = true
     }
   } catch {
+    if (isStale()) { return }
     if (target.data.value === null) { target.error.value = true }
-  } finally {
-    target.loading.value = false
   }
+  target.loading.value = false
 }
 
 /** Seconds -> compact Chinese duration for wait times: 45 秒 / 42 分 / 3 小時 5 分 */
@@ -99,7 +105,12 @@ export function useDashboardOverview() {
   const now = ref(Date.now())
 
   const loadSummary = () => load(summary, () => dashboardApi.getSummary())
-  const loadVolume = () => load(volume, () => dashboardApi.getMessageVolume(volumeDays.value))
+  // Only the latest volume request may write the chart (responses can arrive out of order)
+  let volumeRequestId = 0
+  const loadVolume = () => {
+    const requestId = ++volumeRequestId
+    return load(volume, () => dashboardApi.getMessageVolume(volumeDays.value), () => requestId !== volumeRequestId)
+  }
   const loadStats = () => load(stats, () => conversationApi.getStats())
   const loadPresence = () => load(presence, () => presenceApi.getTeamPresence())
   const loadMembers = () => load(members, () => teamApi.getMembers())
