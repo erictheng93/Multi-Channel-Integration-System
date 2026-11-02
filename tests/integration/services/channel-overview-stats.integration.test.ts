@@ -84,7 +84,7 @@ describe('channel overview stats (real SQLite)', () => {
     const env = { CACHE: kv, DB: d1Of(sqlite) } as unknown as Bindings;
     const snapshot = await getMessageStats(env);
     expect(snapshot?.platforms).toEqual({});
-    const overviews = await getChannelOverviews(env, ['line']);
+    const overviews = await getChannelOverviews(env, ['line'], { role: 'admin' });
     expect(overviews.line?.activity).toEqual({
       customerMessages24h: 0, agentMessages24h: 0, customerMessagesTotal: 0, agentMessagesTotal: 0, lastActivityAt: null,
     });
@@ -102,10 +102,24 @@ describe('channel overview stats (real SQLite)', () => {
     expect(kv.put).toHaveBeenCalledWith(expect.any(String), expect.any(String), { expirationTtl: 300 });
   });
 
+  test('activity spans every team, so a non-admin never receives it, even when an admin cached it', async () => {
+    seedConv('c-other-team', 1, 'line');
+    msg('c-other-team', 'customer', new Date().toISOString());
+    const { kv } = makeKv();
+    const env = { CACHE: kv, DB: d1Of(sqlite) } as unknown as Bindings;
+
+    const admin = await getChannelOverviews(env, ['line'], { role: 'admin' });
+    const agent = await getChannelOverviews(env, ['line'], { role: 'agent' });
+
+    expect(admin.line?.activity?.customerMessagesTotal).toBe(1);
+    expect(agent.line?.activity).toBeNull();
+    expect(agent.line?.webhookHealth).toBeDefined();
+  });
+
   test('a failing stats query yields null activity, not zeros', async () => {
     sqlite.exec('DROP TABLE messages');
     const { kv } = makeKv();
-    const overviews = await getChannelOverviews({ CACHE: kv, DB: d1Of(sqlite) } as unknown as Bindings, ['line']);
+    const overviews = await getChannelOverviews({ CACHE: kv, DB: d1Of(sqlite) } as unknown as Bindings, ['line'], { role: 'admin' });
     expect(overviews.line?.activity).toBeNull();
   });
 });
