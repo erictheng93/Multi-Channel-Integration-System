@@ -1,8 +1,9 @@
 <!--
   GeneralSettingsForm.vue
 
-  General system settings: identity and region. Saved through the page-head 儲存變更 button
-  (a submit button pointing at this form by id).
+  General system settings: name, contact and language. The time zone select lives in the day ribbon above
+  (it is attached to this form by id), so a change anywhere counts as one dirty form. Saved through the
+  floating 儲存變更 bar (a submit button pointing at this form by id).
 -->
 
 <template>
@@ -14,7 +15,7 @@
     <SettingsGroup title="系統識別">
       <SettingsRow
         label="系統名稱"
-        :hint="`顯示在側邊欄與登入頁，${localSettings.systemName.length} / 40 字`"
+        :hint="`系統的顯示名稱，${localSettings.systemName.length} / 40 字`"
         for-id="systemName"
       >
         <input
@@ -41,31 +42,7 @@
           required
         >
       </SettingsRow>
-    </SettingsGroup>
-
-    <SettingsGroup title="地區與語言">
       <SettingsRow
-        label="時區"
-        :hint="`用於顯示時間與報表日期，現在 ${clock.time}`"
-        for-id="timezone"
-      >
-        <select
-          id="timezone"
-          v-model="localSettings.timezone"
-          class="ui-select"
-          required
-        >
-          <option
-            v-for="zone in TIMEZONES"
-            :key="zone.value"
-            :value="zone.value"
-          >
-            {{ zone.label }}
-          </option>
-        </select>
-      </SettingsRow>
-      <SettingsRow
-        class="lang-row"
         label="介面語言"
         hint="目前僅提供繁體中文"
         for-id="language"
@@ -84,7 +61,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, watch } from 'vue'
+import { reactive, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { GeneralSettings } from '@/types/system-settings'
 import SettingsGroup from './SettingsGroup.vue'
@@ -104,15 +81,6 @@ const emit = defineEmits<{
 }>()
 
 const { t } = useI18n()
-
-const TIMEZONES = [
-  { value: 'Asia/Taipei', label: 'Asia/Taipei (UTC+8)' },
-  { value: 'Asia/Tokyo', label: 'Asia/Tokyo (UTC+9)' },
-  { value: 'Asia/Shanghai', label: 'Asia/Shanghai (UTC+8)' },
-  { value: 'Asia/Hong_Kong', label: 'Asia/Hong Kong (UTC+8)' },
-  { value: 'Asia/Singapore', label: 'Asia/Singapore (UTC+8)' },
-  { value: 'UTC', label: 'UTC (UTC+0)' }
-]
 
 const localSettings = reactive<GeneralSettings>({
   systemName: '',
@@ -139,19 +107,6 @@ watch(
   { deep: true }
 )
 
-/** The chosen zone's wall time (read once per selection, no ticking timer) */
-const clock = computed(() => {
-  const timeZone = localSettings.timezone || 'Asia/Taipei'
-  try {
-    const now = new Date()
-    return {
-      time: new Intl.DateTimeFormat('zh-TW', { timeZone, hour: '2-digit', minute: '2-digit', hour12: false }).format(now),
-    }
-  } catch {
-    return { time: '--:--' }
-  }
-})
-
 function handleSave() {
   emit('save')
 }
@@ -160,8 +115,6 @@ function handleSave() {
 <style scoped>
 .general-form {
   display: grid;
-  gap: 20px;
-  align-items: stretch;
   min-width: 0;
 }
 
@@ -171,9 +124,24 @@ function handleSave() {
   background-color: var(--ui-surface);
 }
 
-/* both cards share the column's leftover height: rows spread evenly so no card ends in blank space */
-.general-form :deep(.settings-group:last-child .ui-card),
-.general-form :deep(.settings-group:first-child .ui-card) {
+/* controls stay a readable width so hints keep one line */
+.general-form :deep(.srow-c) {
+  width: min(300px, 100%);
+}
+
+@media (max-width: 768px) {
+  .general-form :deep(.srow-c) {
+    width: 100%;
+  }
+}
+
+/* the card takes the column's height and its rows share it, so it ends level with the list beside it */
+.general-form :deep(.settings-group) {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+.general-form :deep(.ui-card) {
   display: flex;
   flex-direction: column;
 }

@@ -41,7 +41,6 @@ describe('System Settings Components', () => {
 
       expect(wrapper.find('#systemName').exists()).toBe(true)
       expect(wrapper.find('#contactEmail').exists()).toBe(true)
-      expect(wrapper.find('#timezone').exists()).toBe(true)
       expect(wrapper.text()).toContain('繁體中文')
     })
 
