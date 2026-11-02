@@ -1,7 +1,7 @@
 <template>
   <div
     class="rule-card"
-    :class="{ 'rule-card--expanded': isExpanded, 'rule-card--off': !rule.isActive }"
+    :class="{ 'rule-card--expanded': isExpanded, 'rule-card--off': !rule.isActive, 'is-first': first, 'is-last': last }"
   >
     <!-- Collapsed header (always visible) -->
     <div
@@ -9,6 +9,14 @@
       @click="emit('toggle-expand')"
     >
       <div class="rule-card__left">
+        <!-- Priority rung: rules are tried in this order, the first match answers -->
+        <span
+          class="rule-card__rung"
+          role="img"
+          :aria-label="`優先序 ${rule.priority}`"
+          :title="`優先序 ${rule.priority}：數字越小越先比對；${rule.conditions.length} 個條件、${rule.actions.length} 個動作`"
+        >{{ rule.priority }}</span>
+
         <!-- Active toggle -->
         <div
           class="rule-card__toggle"
@@ -73,27 +81,20 @@
       </div>
 
       <div class="rule-card__right">
-        <!-- How often it fired in the newest logs: the bar is scaled to the busiest rule -->
+        <!-- How often it fired in the newest logs -->
         <span
           v-if="hits !== null && hits !== undefined"
           class="rule-card__hits"
           :class="{ 'is-zero': hits === 0 }"
           :title="`最近 ${hitsWindow} 筆日誌中觸發 ${hits} 次`"
         >
-          <span
-            class="rule-card__hits-bar"
-            aria-hidden="true"
-          ><i :style="{ width: hitsPct + '%' }" /></span>
           <b>{{ hits }}</b> 次
         </span>
-
-        <!-- Priority: the lower the number, the earlier it is tried -->
         <span
-          class="rule-card__meta"
-          :title="`優先序：數字越小越先比對；${rule.conditions.length} 個條件、${rule.actions.length} 個動作`"
-        >
-          優先 {{ rule.priority }}
-        </span>
+          v-else
+          class="rule-card__none"
+          aria-hidden="true"
+        />
 
         <!-- Expand arrow -->
         <span
@@ -153,7 +154,10 @@ const props = withDefaults(defineProps<{
   hitsMax?: number
   /** How many log rows the hit counts were taken from */
   hitsWindow?: number
-}>(), { hits: null, hitsMax: 0, hitsWindow: 50 })
+  /** Position in the list, for the rail that joins the priority rungs */
+  first?: boolean
+  last?: boolean
+}>(), { hits: null, hitsMax: 0, hitsWindow: 50, first: false, last: false })
 
 const emit = defineEmits<{
   'toggle-expand': []
@@ -198,8 +202,6 @@ const replyOutcome = computed(() => {
   }
   return ACTION_LABELS[first.actionType] ?? ''
 })
-
-const hitsPct = computed(() => (props.hits && props.hitsMax > 0 ? Math.max(8, Math.round((props.hits / props.hitsMax) * 100)) : 0))
 
 const triggerTypeLabel = computed(() => {
   return TRIGGER_TYPE_LABELS[props.rule.triggerType] || props.rule.triggerType
@@ -252,7 +254,7 @@ const triggerTypeLabel = computed(() => {
 
 .rule-card__right {
   display: grid;
-  grid-template-columns: 112px 64px 18px;
+  grid-template-columns: 56px 18px;
   align-items: center;
   column-gap: 12px;
   flex-shrink: 0;
@@ -402,15 +404,55 @@ const triggerTypeLabel = computed(() => {
   display: none;
 }
 
-/* Priority: plain tabular text in a fixed column, so every row's right edge lines up */
-.rule-card__meta {
+/* Priority rung: a numbered stop on the rail that runs down the list */
+.rule-card__rung {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  flex: none;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--ui-accent-soft);
   font-size: 13px;
   font-weight: 600;
-  line-height: 24px;
-  color: var(--ui-ink-2);
-  text-align: right;
+  color: var(--ui-accent);
   font-variant-numeric: tabular-nums;
-  white-space: nowrap;
+}
+
+.rule-card--off .rule-card__rung {
+  background: var(--ui-fill-strong);
+  color: var(--ui-muted);
+}
+
+/* the rail: one line through every rung, starting and ending at the first and last */
+.rule-card::after {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 38px;
+  width: 2px;
+  background: var(--ui-fill-strong);
+  content: '';
+}
+
+.rule-card.is-first::after {
+  top: 31px;
+}
+
+.rule-card.is-last::after {
+  bottom: auto;
+  height: 31px;
+}
+
+.rule-card.is-first.is-last::after {
+  display: none;
+}
+
+.rule-card--expanded.is-last::after {
+  bottom: 0;
+  height: auto;
 }
 
 .rule-card__hits {
@@ -432,21 +474,6 @@ const triggerTypeLabel = computed(() => {
 
 .rule-card__hits.is-zero b {
   color: var(--ui-muted);
-}
-
-.rule-card__hits-bar {
-  width: 56px;
-  height: 6px;
-  overflow: hidden;
-  border-radius: 999px;
-  background: var(--ui-fill-strong);
-}
-
-.rule-card__hits-bar i {
-  display: block;
-  height: 100%;
-  border-radius: 999px;
-  background: var(--ui-accent);
 }
 
 /* Arrow */
@@ -479,8 +506,9 @@ const triggerTypeLabel = computed(() => {
     padding: 14px 16px;
   }
 
-  .rule-card__meta,
-  .rule-card__hits {
+  .rule-card__hits,
+  .rule-card__rung,
+  .rule-card::after {
     display: none;
   }
 
