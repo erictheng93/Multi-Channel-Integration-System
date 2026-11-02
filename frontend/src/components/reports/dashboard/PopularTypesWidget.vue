@@ -154,7 +154,7 @@ defineEmits<{
 
 .percentage-text {
   margin-left: 6px;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 500;
   color: var(--ui-muted);
 }

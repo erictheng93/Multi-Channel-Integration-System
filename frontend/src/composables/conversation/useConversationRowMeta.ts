@@ -26,6 +26,21 @@ export function statusOf(conversation: Conversation): { text: string; tone: Stat
   return { text: '待處理', tone: 'pending' }
 }
 
+export type ReplyState = 'closed' | 'waiting' | 'stale' | 'replied' | 'open'
+
+/**
+ * The single status shown in the list: one value per row (已結案 / 待回覆 / 逾期 / 已回覆), so the row never
+ * carries a reply column and a separate status column that can disagree. `open` = nothing to say yet.
+ */
+export function replyStateOf(conversation: Conversation, nowMs: number): { state: ReplyState; text: string } {
+  if (isClosed(conversation)) { return { state: 'closed', text: '已結案' } }
+  const kind = awaitingKind(conversation, nowMs)
+  if (kind === 'waiting') { return { state: 'waiting', text: '待回覆' } }
+  if (kind === 'stale') { return { state: 'stale', text: staleWaitText(conversation.awaitingSince, nowMs) || '逾期' } }
+  if (isReplied(conversation, nowMs)) { return { state: 'replied', text: '已回覆' } }
+  return { state: 'open', text: statusOf(conversation).text }
+}
+
 export function isClosed(conversation: Conversation): boolean {
   return conversation.status === 'closed'
 }

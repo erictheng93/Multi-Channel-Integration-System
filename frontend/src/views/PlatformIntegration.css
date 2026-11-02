@@ -134,7 +134,7 @@
 }
 
 .option-status {
-  font-size: 0.75rem;
+  font-size: 13px;
   color: var(--red-600);
   font-weight: 500;
   margin-top: var(--space-1);

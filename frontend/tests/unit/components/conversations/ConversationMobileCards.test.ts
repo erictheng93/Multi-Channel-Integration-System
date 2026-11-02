@@ -87,7 +87,8 @@ describe('ConversationMobileCards.vue', () => {
   })
 
   describe('Status pill', () => {
-    const pills = (wrapper: ReturnType<typeof mountCards>) => wrapper.findAll('.card-pills .ui-pill').map(p => p.text())
+    // Pills are reserved for 待回覆 / 逾期; every other state and the team are quiet text
+    const pills = (wrapper: ReturnType<typeof mountCards>) => wrapper.findAll('.card-pills .ui-pill, .card-pills .state-text, .card-pills .team-text').map(p => p.text())
 
     it('closed -> 已結案', () => {
       expect(pills(mountCards([createConversation({ status: 'closed' })]))).toContain('已結案')
@@ -116,9 +117,9 @@ describe('ConversationMobileCards.vue', () => {
       expect(wrapper.find('.last-message').text()).toBe('Hello World')
     })
 
-    it('prefixes agent messages with 你：', () => {
+    it('prefixes agent messages with 客服：', () => {
       const wrapper = mountCards([createConversation({ lastMessage: lastMessage('agent', 'Done') })])
-      expect(wrapper.find('.last-message').text()).toMatch(/^你：\s*Done$/)
+      expect(wrapper.find('.last-message').text()).toMatch(/^客服：\s*Done$/)
     })
   })
 
@@ -131,7 +132,7 @@ describe('ConversationMobileCards.vue', () => {
     })
 
     it('shows 已回覆 when an agent replied last', () => {
-      expect(mountCards([createConversation({ lastMessage: lastMessage('agent') })]).find('.replied').text()).toBe('已回覆')
+      expect(mountCards([createConversation({ lastMessage: lastMessage('agent') })]).findAll('.card-pills .state-text').map(p => p.text())).toContain('已回覆')
     })
 
     it('shows the free-reply countdown only while the window is open', () => {

@@ -126,7 +126,7 @@ const createdAtText = computed(() => {
   display: flex;
   flex-direction: column;
   min-height: 0;
-  padding: 24px 20px;
+  padding: 28px 22px 22px;
   overflow-y: auto;
 }
 
@@ -143,13 +143,13 @@ const createdAtText = computed(() => {
   position: relative;
   display: grid;
   place-items: center;
-  width: 64px;
-  height: 64px;
-  margin-bottom: 8px;
+  width: 80px;
+  height: 80px;
+  margin-bottom: 10px;
   border-radius: 50%;
   background: linear-gradient(160deg, #5aa8ff, #1d6fe0);
   color: #fff;
-  font: 600 24px var(--ui-font-display);
+  font: 600 30px var(--ui-font-display);
 }
 
 .avatar .ch {
@@ -170,26 +170,27 @@ const createdAtText = computed(() => {
 .name {
   max-width: 100%;
   overflow: hidden;
-  font: 600 17px var(--ui-font-display);
+  font: 700 20px var(--ui-font-display);
+  letter-spacing: -0.02em;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .sub {
-  font-size: 12.5px;
+  font-size: 13px;
   color: var(--ui-muted);
 }
 
 .block {
-  padding: 16px 0;
+  padding: 20px 0;
   box-shadow: inset 0 0.5px 0 var(--ui-sep);
 }
 
 .block h3 {
   margin: 0 0 10px;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 600;
-  color: var(--ui-muted);
+  color: var(--ui-ink-2);
 }
 
 .tag-row {
@@ -207,7 +208,7 @@ const createdAtText = computed(() => {
   border-radius: 999px;
   background: color-mix(in srgb, var(--tag, var(--ui-muted)) 14%, var(--ui-surface));
   color: var(--ui-ink-2);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 500;
 }
 
@@ -220,9 +221,9 @@ const createdAtText = computed(() => {
 
 .kv {
   display: grid;
-  gap: 10px;
+  gap: 14px;
   margin: 0;
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .kv > div {

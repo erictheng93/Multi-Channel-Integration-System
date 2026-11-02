@@ -28,7 +28,7 @@ export async function login(
   await page.goto('/login')
   await page.getByRole('textbox', { name: '電子郵件' }).fill(credentials.email)
   await page.getByRole('textbox', { name: '密碼' }).fill(credentials.password)
-  await page.getByRole('button', { name: '繼續' }).click()
+  await page.getByRole('button', { name: '登入', exact: true }).click()
 
   // Wait for navigation away from login page
   await page.waitForURL(/^(?!.*\/login)/, { timeout: 15000 })

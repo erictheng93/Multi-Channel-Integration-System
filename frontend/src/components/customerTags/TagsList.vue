@@ -1,26 +1,24 @@
 <template>
   <div class="tags-section">
     <!-- Empty State -->
-    <div
+    <UiEmptyState
       v-if="tags.length === 0 && !loading"
-      class="ui-card ui-empty"
+      class="ui-card"
+      :title="isSearching ? '找不到符合的標籤' : '暫無標籤'"
+      :description="isSearching ? '換個關鍵字，或直接新增這個標籤。' : '點擊「新增標籤」開始創建您的第一個標籤'"
     >
-      <div class="ui-empty-art">
+      <template #icon>
         <TagIcon />
-      </div>
-      <template v-if="isSearching">
-        <h3>找不到符合的標籤</h3>
-        <p>換個關鍵字，或直接新增這個標籤。</p>
       </template>
-      <template v-else>
-        <h3>暫無標籤</h3>
-        <p>點擊「新增標籤」開始創建您的第一個標籤</p>
-      </template>
-    </div>
+    </UiEmptyState>
 
     <!-- Tags Grid (paginated) -->
     <template v-else>
-      <div class="tags-grid">
+      <h2 class="ui-group-label">
+        {{ isSearching ? '搜尋結果' : '全部標籤' }}
+        <span class="count">{{ tags.length }}</span>
+      </h2>
+      <div class="ui-group tags-grid">
         <TagCard
           v-for="tag in paginatedTags"
           :key="tag.id"
@@ -38,6 +36,7 @@
 
       <!-- Pagination Controls -->
       <PaginationControls
+        v-if="paginationInfo.totalPages > 1"
         :pagination="paginationInfo"
         :visible-pages="pagination.pageRange.value"
         @change-page="pagination.setPage"
@@ -48,6 +47,7 @@
 
 
 <script setup lang="ts">
+import UiEmptyState from '@/components/ui/UiEmptyState.vue'
 import { computed, watch } from 'vue'
 import { TagIcon } from '@/components/icons'
 import TagCard from './TagCard.vue'
@@ -107,14 +107,20 @@ watch(
 }
 
 .tags-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 12px;
+  display: flex;
+  flex-direction: column;
 }
 
-@media (max-width: 480px) {
-  .tags-grid {
-    grid-template-columns: 1fr;
-  }
+.ui-group-label .count {
+  min-width: 20px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: var(--section-hue-soft);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 20px;
+  text-align: center;
+  color: var(--section-ink);
+  font-variant-numeric: tabular-nums;
 }
 </style>

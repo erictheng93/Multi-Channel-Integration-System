@@ -1,89 +1,133 @@
 <template>
-  <section class="ui-grid ui-cols-3 tag-kpis">
-    <article class="ui-card ui-kpi">
-      <div class="ui-kpi-top">
-        <span class="ui-kpi-ico ico-blue"><TagIcon /></span>
-        標籤總數
+  <article class="ui-lead lead">
+    <div class="lead-main">
+      <div class="lead-kicker">
+        已標記對話
       </div>
-      <div class="ui-kpi-value">
-        {{ stats.totalTags }}
+      <div class="lead-num">
+        {{ stats.totalConversations.toLocaleString('en-US') }}<small>個</small>
       </div>
-    </article>
-    <article class="ui-card ui-kpi">
-      <div class="ui-kpi-top">
-        <span class="ui-kpi-ico ico-indigo"><MessageCircleIcon /></span>
-        標記對話數
+      <div class="lead-meaning">
+        共 {{ stats.totalTags }} 個標籤；同一對話可套用多個標籤
       </div>
-      <div class="ui-kpi-value">
-        {{ stats.totalConversations }}
-      </div>
-      <div class="ui-kpi-foot hide-phone">
-        同一對話可套用多個標籤
-      </div>
-    </article>
-    <article class="ui-card ui-kpi">
-      <div class="ui-kpi-top">
-        <span class="ui-kpi-ico ico-green"><CheckCircleIcon /></span>
-        使用中標籤
-      </div>
-      <div class="ui-kpi-value">
-        {{ stats.activeTags }}<small>/ {{ stats.totalTags }}</small>
-      </div>
-      <div
-        v-if="stats.totalTags - stats.activeTags > 0"
-        class="ui-kpi-foot hide-phone"
-      >
-        {{ stats.totalTags - stats.activeTags }} 個標籤尚未被使用
-      </div>
-    </article>
-  </section>
+    </div>
+
+    <div class="lead-rings">
+      <ServiceRings
+        summary="標籤使用概況"
+        :rings="rings"
+        :size="136"
+        center-label="使用中"
+        :center-value="stats.activeTags"
+      />
+    </div>
+  </article>
 </template>
 
 <script setup lang="ts">
-import { TagIcon, MessageCircleIcon, CheckCircleIcon } from '@/components/icons'
+import { computed } from 'vue'
+import ServiceRings from '@/components/ui/ServiceRings.vue'
 
-defineProps<{
+const props = defineProps<{
   stats: {
     totalTags: number
     totalConversations: number
     activeTags: number
   }
 }>()
+
+const unusedCount = computed(() => Math.max(0, props.stats.totalTags - props.stats.activeTags))
+
+// One real ratio: tags that are applied to at least one conversation / all tags
+const rings = computed(() => [
+  {
+    label: unusedCount.value > 0 ? `使用中標籤（${unusedCount.value} 個尚未套用）` : '使用中標籤（皆已套用）',
+    value: props.stats.activeTags,
+    total: props.stats.totalTags,
+    of: '個標籤',
+    hue: 'var(--section-hue)',
+  },
+])
 </script>
 
 <style scoped>
-.ico-blue {
-  background: var(--ui-accent-soft);
-  color: var(--ui-accent);
-}
-.ico-indigo {
-  background: var(--ui-indigo-soft);
-  color: var(--ui-indigo);
-}
-.ico-green {
-  background: var(--ui-green-soft);
-  color: var(--ui-green-ink);
+.lead {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+  gap: 20px 40px;
+  align-items: center;
+  padding: 24px 40px;
 }
 
-/* Three tiles stay in one row on phones (compact), the foot lines are hidden */
+.lead-main {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
+}
+
+.lead-kicker {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--section-ink);
+}
+
+.lead-num {
+  margin-top: 4px;
+  font: 600 56px / 1.05 var(--ui-font-display);
+  letter-spacing: -0.035em;
+  font-variant-numeric: tabular-nums;
+  color: var(--ui-ink);
+}
+
+.lead-num small {
+  margin-left: 6px;
+  font-size: 22px;
+  font-weight: 500;
+  letter-spacing: 0;
+  color: var(--ui-muted);
+}
+
+.lead-meaning {
+  margin-top: 6px;
+  font-size: 15px;
+  color: var(--ui-ink-2);
+}
+
+.lead-rings {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+}
+
+.lead-rings::before {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: -20px;
+  width: 0.5px;
+  background: var(--ui-sep);
+  content: '';
+}
+
 @media (max-width: 768px) {
-  .tag-kpis {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 10px;
+  .lead {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 22px 20px;
   }
-  .tag-kpis .ui-kpi {
-    padding: 14px 14px 12px;
-    gap: 8px;
+
+  .lead-num {
+    font-size: 48px;
   }
-  .tag-kpis .ui-kpi-top {
-    font-size: 12px;
+
+  .lead-rings {
+    justify-content: flex-start;
   }
-  .tag-kpis .ui-kpi-ico,
-  .hide-phone {
+
+  .lead-rings::before {
     display: none;
-  }
-  .tag-kpis .ui-kpi-value {
-    font-size: 26px;
   }
 }
 </style>
