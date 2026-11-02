@@ -8,24 +8,15 @@
       @create-report="handleCreateReport"
     />
 
-    <!-- Lead: this month's reports + rings of completed / processing / failed -->
-    <StatsLead
+    <!-- Lead: every report as a bar from creation to download expiry on one day axis -->
+    <RetentionShelf
       :stats="stats"
       :reports="reports"
       :loaded="loaded"
+      :get-report-type-label="getReportTypeLabel"
       @show-failed-reports="showFailedReports"
+      @open="handleViewReport"
     />
-
-    <!-- Phone: what needs a look comes before the long list (the rail is below it) -->
-    <div
-      v-if="attention.length > 0"
-      class="ui-card attn-top"
-    >
-      <AttentionList
-        :items="attention"
-        @open="handleViewReport"
-      />
-    </div>
 
     <!-- 主要內容區域 -->
     <div class="main-content">
@@ -130,7 +121,7 @@ import type { PopularType } from './dashboard/PopularTypesWidget.vue'
 
 // 导入子组件
 import DashboardHeader from './dashboard/DashboardHeader.vue'
-import StatsLead from './dashboard/StatsLead.vue'
+import RetentionShelf from './dashboard/RetentionShelf.vue'
 import FiltersSection from './dashboard/FiltersSection.vue'
 import ReportsSection from './dashboard/ReportsSection.vue'
 import PaginationControls from '@/components/ui/PaginationControls.vue'
@@ -339,10 +330,6 @@ function handleFilterByType(type: string) {
   gap: 16px;
 }
 
-.attn-top {
-  display: none;
-}
-
 @media (max-width: 1280px) {
   .main-content {
     grid-template-columns: minmax(0, 1fr);
@@ -350,17 +337,6 @@ function handleFilterByType(type: string) {
 
   .content-right {
     position: static;
-  }
-}
-
-@media (max-width: 768px) {
-  .attn-top {
-    display: block;
-  }
-
-  /* the phone shows this block above the list instead */
-  .content-right :deep(.widget-wrapper:has(.rail-attn)) {
-    display: none;
   }
 }
 </style>
