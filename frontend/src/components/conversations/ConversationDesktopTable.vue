@@ -93,7 +93,7 @@
           :class="{ 'from-agent': conversation.lastMessage?.senderType === 'agent' }"
         >
           <template v-if="conversation.lastMessage?.senderType === 'agent'">
-            你：
+            客服：
           </template>{{ getLastMessageText(conversation) }}
         </div>
         <div class="status-cell">

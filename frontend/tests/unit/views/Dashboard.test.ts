@@ -64,6 +64,8 @@ vi.mock('@/composables/useAuth', () => ({
     isAdmin: ref(true)
   })
 }))
+// useDashboardOverview picks the member endpoint from the auth store
+vi.mock('@/stores/auth', () => ({ useAuthStore: () => ({ isAdmin: true, allowedTeamIds: [] }) }))
 vi.mock('@/composables/useTokenRefresh', () => ({ useTokenRefresh: () => ({ startTokenRefreshCheck: vi.fn(), stopTokenRefreshCheck: vi.fn() }) }))
 vi.mock('@/composables/useActivityTracker', () => ({ useActivityTracker: () => ({ startTracking: vi.fn(), stopTracking: vi.fn() }) }))
 

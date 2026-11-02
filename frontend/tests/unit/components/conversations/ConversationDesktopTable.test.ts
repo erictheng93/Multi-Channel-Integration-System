@@ -144,9 +144,9 @@ describe('ConversationDesktopTable.vue', () => {
       expect(wrapper.find('.last-message').text()).toBe('Hello World')
     })
 
-    it('prefixes agent messages with 你：and mutes them', () => {
+    it('prefixes agent messages with 客服：and mutes them', () => {
       const wrapper = mountTable([createConversation({ lastMessage: lastMessage('agent', 'Done') })])
-      expect(wrapper.find('.last-message').text()).toMatch(/^你：\s*Done$/)
+      expect(wrapper.find('.last-message').text()).toMatch(/^客服：\s*Done$/)
       expect(wrapper.find('.last-message').classes()).toContain('from-agent')
     })
   })
