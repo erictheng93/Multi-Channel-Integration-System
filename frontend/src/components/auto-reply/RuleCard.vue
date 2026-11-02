@@ -251,9 +251,10 @@ const triggerTypeLabel = computed(() => {
 }
 
 .rule-card__right {
-  display: flex;
+  display: grid;
+  grid-template-columns: 112px 64px 18px;
   align-items: center;
-  gap: 12px;
+  column-gap: 12px;
   flex-shrink: 0;
 }
 
@@ -401,15 +402,13 @@ const triggerTypeLabel = computed(() => {
   display: none;
 }
 
-/* Meta: one muted line, no pills and no separate edit link: the row itself is the edit affordance */
+/* Priority: plain tabular text in a fixed column, so every row's right edge lines up */
 .rule-card__meta {
-  padding: 0 10px;
-  border-radius: 999px;
-  background: var(--ui-fill);
   font-size: 13px;
   font-weight: 600;
   line-height: 24px;
   color: var(--ui-ink-2);
+  text-align: right;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
@@ -417,6 +416,7 @@ const triggerTypeLabel = computed(() => {
 .rule-card__hits {
   display: inline-flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 8px;
   font-size: 13px;
   color: var(--ui-muted);
@@ -435,7 +435,7 @@ const triggerTypeLabel = computed(() => {
 }
 
 .rule-card__hits-bar {
-  width: 48px;
+  width: 56px;
   height: 6px;
   overflow: hidden;
   border-radius: 999px;
@@ -484,6 +484,10 @@ const triggerTypeLabel = computed(() => {
     display: none;
   }
 
+  .rule-card__right {
+    display: block;
+  }
+
   .rule-card__left {
     align-items: flex-start;
   }
@@ -513,18 +517,20 @@ const triggerTypeLabel = computed(() => {
 
   .rule-card__prio-line {
     display: flex;
-    gap: 10px;
+    flex-wrap: wrap;
+    gap: 2px 10px;
     margin-top: 2px;
     font-size: 13px;
     color: var(--ui-muted);
     font-variant-numeric: tabular-nums;
   }
 
+  /* the condition keeps its own line and wraps: a cut-off keyword cannot be checked by eye */
   .rule-card__prio-when {
+    flex: 1 0 100%;
     min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    overflow-wrap: anywhere;
+    color: var(--ui-ink-2);
   }
 
   .rule-card__prio-n {

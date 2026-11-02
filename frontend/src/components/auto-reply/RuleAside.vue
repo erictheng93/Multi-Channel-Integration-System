@@ -161,6 +161,16 @@ function replyText(rule: AutoReplyRule): string {
   padding-bottom: 6px;
 }
 
+/* the tester is the page's one hands-on tool: tinted so it is found, not scrolled past */
+.tester {
+  background: color-mix(in srgb, var(--ui-accent) 11%, var(--ui-surface));
+}
+
+.tester .ui-input {
+  height: 44px;
+  background: var(--ui-surface);
+}
+
 .aside-head {
   display: flex;
   align-items: center;
@@ -352,6 +362,11 @@ function replyText(rule: AutoReplyRule): string {
 @media (max-width: 768px) {
   .rule-aside {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* with a result the hint is redundant, and without one the input says what it does */
+  .tester-hint {
+    display: none;
   }
 
   /* the log tab is one tap away; the phone keeps the tester only */
