@@ -80,8 +80,8 @@
             class="cl-legend"
             aria-label="圖例"
           >
-            <li><i class="in" />客戶來訊</li>
-            <li><i class="out" />客服發送</li>
+            <li><i class="in" />客戶來訊 <b>{{ leadPercent(leadVolume.inN) }}%</b></li>
+            <li><i class="out" />客服發送 <b>{{ leadPercent(leadVolume.outN) }}%</b></li>
           </ul>
         </div>
         <ul
@@ -253,6 +253,10 @@
             <div class="chname">
               <b>{{ channelHeading(channel) }}</b>
               <span>{{ PLATFORM_KIND[channel.platform] }}</span>
+              <span
+                class="ui-pill hd-pill"
+                :class="channel.isVerified ? 'ui-pill-green' : 'ui-pill-orange'"
+              >{{ channel.isVerified ? '已驗證' : '未驗證' }}</span>
               <button
                 v-if="isUnnamed(channel)"
                 type="button"
@@ -457,6 +461,7 @@
               <span>{{ channel.isActive ? '啟用中' : '已停用' }}</span>
             </label>
             <button
+              v-if="!problemIds.has(channel.id)"
               type="button"
               class="btn btn-secondary btn-sm chverify"
               @click="verifyChannel(channel)"
@@ -497,6 +502,12 @@ import ChannelDetailsModal from '@/components/channels/ChannelDetailsModal.vue'
 import { formatLastLogin } from '@/utils/team-tone'
 import { useChannelManagement } from '@/composables/useChannelManagement'
 import type { ChannelIntegration, ChannelPlatform } from '@/api/channels'
+
+/** Share of the 24 h total, whole percent */
+function leadPercent(n: number): number {
+  const t = leadVolume.value.inN + leadVolume.value.outN
+  return t > 0 ? Math.round((n / t) * 100) : 0
+}
 
 const {
   activeDropdown,
@@ -838,7 +849,13 @@ i.out {
 }
 .chwarn .btn {
   min-height: 36px;
-  background: var(--ui-surface);
+  background: var(--ui-orange-ink);
+  color: #fff;
+  font-weight: 600;
+}
+.cl-legend b {
+  font-weight: 700;
+  color: var(--ui-ink);
 }
 .name-it {
   display: block;
@@ -1107,6 +1124,43 @@ i.out {
   color: var(--ui-ink-2);
 }
 
+/* the verified pill lives under the name on desktop rows, in its own line on cards */
+.hd-pill { display: none; }
+
+/* desktop: one wide row per channel (identity | webhook state and ids | 24 h numbers | switch), so a short card never leaves a void and a disabled channel is simply a shorter row */
+@media (min-width: 1025px) {
+  .chgrid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 14px;
+  }
+  .chcard {
+    display: grid;
+    grid-template-columns: 270px minmax(0, 1.1fr) minmax(0, 1.1fr) 120px;
+    grid-template-areas:
+      'head warn stats foot'
+      'head meta stats foot';
+    align-items: start;
+    column-gap: 28px;
+    padding: 20px 22px;
+  }
+  .chhead { grid-area: head; align-items: flex-start; padding: 0; align-self: start; }
+  .pills { display: none; }
+  .hd-pill { display: inline-flex; margin-top: 8px; }
+  .chname { display: grid; justify-items: start; }
+  .stat-i .l { white-space: nowrap; }
+  .chwarn { grid-area: warn; margin: 0 0 12px; }
+  .meta { grid-area: meta; padding: 0; align-self: start; }
+  .chcard:not(:has(.chwarn)) .meta { grid-row: 1 / 3; }
+  .chfoot .toggle { justify-self: end; }
+  .activity { grid-area: stats; margin: 0; }
+  .stats { margin: 0; padding: 0 0 0 28px; box-shadow: inset 0.5px 0 0 var(--ui-sep); gap: 0; }
+  .stat-i + .stat-i { padding-left: 20px; }
+  .last { padding: 10px 0 0 28px; }
+  .last.is-off-note { margin: 0 0 0 28px; padding: 14px 16px; }
+  .chfoot { grid-area: foot; display: grid; justify-items: end; align-content: space-between; gap: 12px; margin: 0; padding: 0; height: 100%; }
+  .chfoot:not(:has(.chverify)) { align-content: start; }
+}
+
 @media (max-width: 1024px) {
   .cl {
     grid-template-columns: minmax(0, 1fr);
@@ -1163,6 +1217,15 @@ i.out {
   }
   .chgrid {
     grid-template-columns: minmax(0, 1fr);
+  }
+  /* a disabled channel is one slim row: who it is and its switch */
+  .chcard.off .pills,
+  .chcard.off .meta,
+  .chcard.off .activity {
+    display: none;
+  }
+  .chcard.off .chfoot {
+    padding-top: 0;
   }
   .chwarn {
     margin: 4px 16px 0;

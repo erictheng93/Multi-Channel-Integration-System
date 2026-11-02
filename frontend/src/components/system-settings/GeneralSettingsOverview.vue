@@ -25,7 +25,10 @@
         class="ov-big"
         :class="headline.tone"
       >
-        {{ headline.text }}
+        {{ headline.text }}<span
+          v-if="webhookPending"
+          class="ui-pill ui-pill-orange ov-pill"
+        >1 項待檢查</span>
       </div>
       <p class="ov-meaning">
         {{ meaning }}
@@ -50,6 +53,13 @@
       >
         <span class="ov-svc-n">{{ svc.ms }}<small>ms</small></span>
         <span class="ov-svc-l">{{ svc.name }}</span>
+      </li>
+      <li
+        v-if="webhookPending"
+        class="ov-svc pending"
+      >
+        <span class="ov-svc-n">待測</span>
+        <span class="ov-svc-l">Webhook</span>
       </li>
     </ul>
   </section>
@@ -233,6 +243,10 @@ const backupTile = computed<Tile>(() => {
 })
 
 
+/** Every measured service passed but the LINE webhook is only tested on demand: say so, like the health page does */
+const webhookPending = computed(() =>
+  healthTile.value.state === '正常' && controller.healthCheckResults.value.length > 0 && !controller.healthLineWebhook.value)
+
 /**
  * The lead answers "does anything need me?": a service fault is the headline; a disconnected channel is a warning chip,
  * not a headline, so a settings page does not open on an error.
@@ -241,7 +255,7 @@ const headline = computed<{ text: string, tone: Tone }>(() => {
   const state = healthTile.value.state
   if (state === '異常') { return { text: '服務異常', tone: 'red' } }
   if (state === '降級') { return { text: '服務降級', tone: 'orange' } }
-  if (state === '正常') { return { text: '系統運作正常', tone: 'ink' as Tone } }
+  if (state === '正常') { return { text: webhookPending.value ? `${controller.healthCheckResults.value.length} 項正常` : '系統運作正常', tone: 'ink' as Tone } }
   return { text: state, tone: 'muted' }
 })
 
@@ -250,6 +264,7 @@ const meaning = computed(() => {
   const state = healthTile.value.state
   if (state === '尚未檢查' || state === '檢查中') { return state }
   const when = healthTile.value.sub.split(' · ').pop()
+  if (webhookPending.value) { return `LINE webhook 還沒有測試結果 · ${when}` }
   return state === '正常' && rows > 0 ? `${rows} 項服務皆通過 · ${when}` : `服務${state}${rows > 0 ? ` · ${rows} 項檢查` : ''} · ${when}`
 })
 
@@ -323,7 +338,7 @@ const tiles = computed<Tile[]>(() => [
 
 .ov-svcs {
   display: grid;
-  grid-template-columns: repeat(5, auto);
+  grid-template-columns: repeat(6, auto);
   gap: 0;
   margin: 0;
   padding: 0;
@@ -352,6 +367,19 @@ const tiles = computed<Tile[]>(() => [
   font-size: 13px;
   font-weight: 500;
   color: var(--ui-muted);
+}
+
+.ov-pill {
+  margin-left: 12px;
+  font-size: 13px;
+  vertical-align: middle;
+}
+
+.ov-svc.pending .ov-svc-n {
+  font-size: 19px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--ui-orange-ink);
 }
 
 .ov-svc.warn .ov-svc-n {
