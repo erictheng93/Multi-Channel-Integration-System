@@ -29,6 +29,16 @@ describe('apiMetricsMiddleware', () => {
     expect(dp.doubles[0]).toBeGreaterThanOrEqual(0);
   });
 
+  it('resolves the responding route when wildcard middleware is registered after it (production order)', async () => {
+    const ds = { writeDataPoint: vi.fn() };
+    const { app, env } = makeApp(ds);
+    app.use('*', async (_c, next) => { await next(); });
+    await app.request('/api/conversations/123', {}, env);
+    await app.request('/api/nothing/here', {}, env);
+    expect(ds.writeDataPoint.mock.calls[0][0].blobs[1]).toBe('/api/conversations/:id');
+    expect(ds.writeDataPoint.mock.calls[1][0].blobs[1]).toBe('unmatched');
+  });
+
   it('records 5xx for failing handlers', async () => {
     const ds = { writeDataPoint: vi.fn() };
     const { app, env } = makeApp(ds);
