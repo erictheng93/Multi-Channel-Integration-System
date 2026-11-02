@@ -84,6 +84,35 @@ describe('FiltersSection.vue', () => {
     wrapper.unmount()
   })
 
+  it('自訂 opens the date inputs even when the dates match a preset', async () => {
+    const wrapper = make()
+    await openPanel(wrapper)
+    const chip = (label: string) => wrapper.findAll('.rf-presets .ui-chip').find(b => b.text() === label)
+    await chip('今天')?.trigger('click')
+    await wrapper.setProps({ filters: wrapper.emitted('update:filters')?.[0]?.[0] as ReportListQuery })
+    expect(wrapper.find('.rf-dates').exists()).toBe(false)
+
+    await chip('自訂')?.trigger('click')
+
+    expect(wrapper.find('.rf-dates').exists()).toBe(true)
+    expect(chip('自訂')?.attributes('aria-pressed')).toBe('true')
+    expect(chip('今天')?.attributes('aria-pressed')).toBe('false')
+    wrapper.unmount()
+  })
+
+  it('reset leaves 自訂 and returns to 全部時間', async () => {
+    const wrapper = make(noFilters, { hasActiveFilters: true })
+    await openPanel(wrapper)
+    const chip = (label: string) => wrapper.findAll('.rf-presets .ui-chip').find(b => b.text() === label)
+    await chip('自訂')?.trigger('click')
+
+    await wrapper.find('.rf-foot .btn-ghost').trigger('click')
+
+    expect(wrapper.emitted('reset-filters')).toHaveLength(1)
+    expect(chip('全部時間')?.attributes('aria-pressed')).toBe('true')
+    wrapper.unmount()
+  })
+
   it('a date preset sets both ends at once; 全部時間 clears them', async () => {
     const wrapper = make()
     await openPanel(wrapper)
