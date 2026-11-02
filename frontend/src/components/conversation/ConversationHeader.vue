@@ -865,11 +865,19 @@ defineExpose({
 
   .header-actions {
     width: 100%;
+    flex-wrap: nowrap;
     justify-content: flex-start;
   }
 
+  /* One row keeps the message area usable with the keyboard open, so the team name gives way, not 結案 */
+  .assign-action-wrapper {
+    min-width: 0;
+  }
+
   .assign-action-btn {
+    width: 100%;
     max-width: 170px;
+    min-width: 0;
   }
 
   .assign-panel-dropdown {
