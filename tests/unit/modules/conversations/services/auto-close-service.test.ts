@@ -199,6 +199,38 @@ describe('autoCloseIdleConversations', () => {
     expect(db.prepare('SELECT COUNT(*) AS n FROM activities').get()).toEqual({ n: 0 });
   });
 
+  it.each([
+    ['a customer sign-off (sticker)', 'customer'],
+    ['an agent reply', 'agent']
+  ] as const)('does not close when %s lands after selection (idle cutoff re-checked in the UPDATE)', async (_label, sender) => {
+    const { db, env } = setup();
+    answered(db, 'racy', 20 * DAY);
+    const d1 = env.DB as unknown as { prepare: (q: string) => unknown };
+    const realPrepare = d1.prepare.bind(d1);
+    let raced = false;
+    d1.prepare = (q: string) => {
+      const stmt = realPrepare(q) as { bind: (...a: unknown[]) => { all: () => Promise<unknown> } };
+      if (q.includes('ORDER BY last_customer_message_at')) {
+        return {
+          bind: (...a: unknown[]) => ({
+            all: async () => {
+              const result = await stmt.bind(...a).all();
+              if (!raced) {
+                raced = true;
+                addMsg(db, 'racy', sender, ago(1000), sender === 'customer' ? { type: 'sticker' } : undefined);
+              }
+              return result;
+            }
+          })
+        };
+      }
+      return stmt;
+    };
+    const result = await autoCloseIdleConversations(env, NOW);
+    expect(result).toMatchObject({ candidates: 1, closed: 0 });
+    expect(statusOf(db, 'racy')).toBe('active');
+  });
+
   it('an inbound message after the auto-close starts a wait and the conversation reopens as before', async () => {
     const { db, env } = setup();
     answered(db, 'back', 20 * DAY, { team: 3 });
