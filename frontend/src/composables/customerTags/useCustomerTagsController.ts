@@ -86,7 +86,7 @@ export function useCustomerTagsController() {
   const stats = computed(() => ({
     totalTags: allTags.value.length,
     totalConversations: allTags.value.reduce((sum: number, tag: Tag) => sum + (tag.conversationCount || 0), 0),
-    activeTags: allTags.value.filter((tag: Tag) => tag.isActive).length
+    activeTags: allTags.value.filter((tag: Tag) => (tag.conversationCount || 0) > 0).length
   }))
 
   // CRUD actions (create, update, delete, bulk delete)
@@ -274,6 +274,7 @@ export function useCustomerTagsController() {
     // State
     loading,
     tags,
+    allTags,
     stats,
 
     // Modal visibility

@@ -1,19 +1,14 @@
 <template>
   <AppLayout>
-    <div class="activity-log">
+    <div class="ui-page rl-page activity-log ui-rise">
       <!-- Header -->
-      <div class="activity-log__header">
-        <div>
-          <h1 class="activity-log__title">
-            活動記錄
-          </h1>
-          <p class="activity-log__subtitle">
-            查看系統操作記錄和用戶活動
-          </p>
-        </div>
-        <div class="activity-log__actions">
+      <UiPageHead
+        title="活動記錄"
+        :subtitle="headSummary ? headSummary : ''"
+      >
+        <template #actions>
           <button
-            class="activity-log__action-btn"
+            class="btn btn-secondary"
             :disabled="loading"
             @click="exportActivities"
           >
@@ -21,7 +16,7 @@
             <span>匯出記錄</span>
           </button>
           <button
-            class="activity-log__action-btn"
+            class="btn btn-secondary"
             :disabled="loading"
             @click="refreshData"
           >
@@ -31,8 +26,8 @@
             />
             <span>刷新</span>
           </button>
-        </div>
-      </div>
+        </template>
+      </UiPageHead>
 
       <!-- Stats Cards (admin only) -->
       <ActivityStatsCards
@@ -47,6 +42,7 @@
         :date-range="dateRange"
         :custom-date-range="customDateRange"
         :users="users"
+        :summary="rangeSummary"
         @update:filters="onFiltersUpdate"
         @update:date-range="dateRange = $event"
         @update:custom-date-range="Object.assign(customDateRange, $event)"
@@ -96,6 +92,7 @@
 </template>
 
 <script setup lang="ts">
+import UiPageHead from '@/components/ui/UiPageHead.vue'
 import { ref, reactive, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
@@ -159,6 +156,27 @@ const activitySubscriptionId = ref<string | null>(null)
 // --- Computed ---
 const isAdmin = computed(() => authStore.currentAgent?.role === ROLES.ADMIN)
 const currentPage = computed(() => pagination.value?.page || 1)
+
+/** Page header sentence from loaded data only (overview for admins, list total otherwise). */
+const headSummary = computed(() => {
+  if (isAdmin.value && overview.value) {
+    const parts = [`近 ${overview.value.period.days} 天共 ${overview.value.totalActivities.toLocaleString('zh-TW')} 筆操作、${overview.value.activeUserCount} 位成員`]
+    return `${parts[0]}。`
+  }
+  if (!loading.value && pagination.value.total > 0) {
+    return `目前篩選條件下共 ${pagination.value.total.toLocaleString('zh-TW')} 筆記錄。`
+  }
+  return ''
+})
+
+/** "顯示 1–50 / 1,284 筆" */
+const rangeSummary = computed(() => {
+  const total = pagination.value.total
+  if (loading.value || total === 0 || activities.value.length === 0) { return '' }
+  const from = (pagination.value.page - 1) * pagination.value.pageSize + 1
+  const to = from + activities.value.length - 1
+  return `顯示 ${from}–${to} / ${total.toLocaleString('zh-TW')} 筆`
+})
 const totalPages = computed(() => pagination.value?.totalPages || 0)
 const totalRecords = computed(() => pagination.value?.total || 0)
 
@@ -389,96 +407,18 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-.activity-log {
-  width: 100%;
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 20px;
-}
-
-.activity-log__header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  margin-bottom: 28px;
-}
-
-.activity-log__title {
-  font-size: 28px;
-  font-weight: 700;
-  color: #1C1C1E;
-  letter-spacing: -0.02em;
-}
-
-.activity-log__subtitle {
-  font-size: 14px;
-  color: #8E8E93;
-  margin-top: 4px;
-}
-
-.activity-log__actions {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.activity-log__action-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 16px;
-  background: #FFFFFF;
-  color: #1C1C1E;
-  border: none;
-  border-radius: 9999px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  box-shadow: 0 4px 16px rgb(0 0 0 / 0.06);
-  transition: background-color 200ms ease-out, box-shadow 200ms ease-out;
-}
-
-.activity-log__action-btn:hover:not(:disabled) {
-  background: #F2F2F7;
-  box-shadow: 0 4px 16px rgb(0 0 0 / 0.08);
-}
-
-.activity-log__action-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.activity-log__pagination {
-  margin-top: 0;
-}
 
 .activity-log__error {
-  background: #FFF2F2;
-  color: #FF3B30;
-  padding: 16px;
-  border-radius: 20px;
-  margin-top: 16px;
+  padding: 14px 16px;
+  border-radius: var(--ui-r-inner);
+  background: var(--ui-red-soft);
   font-size: 14px;
+  color: var(--ui-red-ink);
 }
 
-/* Responsive */
-@media (max-width: 640px) {
-  .activity-log {
-    padding: 20px 16px;
-  }
-
-  .activity-log__header {
-    flex-direction: column;
-    gap: 16px;
-  }
-
-  .activity-log__title {
-    font-size: 22px;
-  }
-
-  .activity-log__actions {
-    align-self: stretch;
-    justify-content: flex-end;
+@media (max-width: 768px) {
+  .ui-page-actions > .btn {
+    flex: 1;
   }
 }
 </style>

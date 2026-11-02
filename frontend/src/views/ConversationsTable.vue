@@ -1,25 +1,12 @@
 <template>
   <AppLayout>
     <ErrorBoundary>
-      <div class="conversations ui-rise">
-        <section class="ui-page-head">
-          <div>
-            <div class="ui-eyebrow">
-              客服收件匣
-            </div>
-            <h1 class="ui-page-title">
-              對話
-            </h1>
-            <p class="ui-page-sub">
-              <template v-if="counts">
-                {{ subtitle }}
-              </template>
-              <template v-else>
-                &nbsp;
-              </template>
-            </p>
-          </div>
-          <div class="ui-page-actions">
+      <div class="ui-page conversations ui-rise">
+        <UiPageHead
+          title="對話"
+          :subtitle="subtitle"
+        >
+          <template #actions>
             <button
               type="button"
               class="btn btn-secondary btn-sm selection-toggle"
@@ -34,131 +21,149 @@
               :loading="loading || isUpdating"
               @refresh="refreshConversations"
             />
-          </div>
-        </section>
+          </template>
+        </UiPageHead>
 
         <!-- 分頁籤：預設「處理中」，已結案的對話不佔據最顯眼的位置 -->
-        <section class="ui-card filter-card">
-          <div class="filter-top">
-            <div
-              class="ui-seg"
-              role="tablist"
-              aria-label="對話分類"
-            >
-              <button
-                v-for="tab in SCOPE_TABS"
-                :key="tab.value"
-                type="button"
-                role="tab"
-                class="scope-tab"
-                :class="{ 'is-on': scope === tab.value }"
-                :aria-selected="scope === tab.value"
-                @click="scope = tab.value"
+        <div class="conv-stack">
+          <section class="ui-group filter-card">
+            <div class="filter-top">
+              <div
+                ref="scopeTabsEl"
+                class="ui-seg"
+                :class="{ 'is-overflowing': scopeTabsOverflow }"
+                role="tablist"
+                aria-label="對話分類"
               >
-                {{ tab.label }}
-                <span
-                  v-if="tabCount(tab.value) !== null"
-                  class="ui-seg-n"
-                >{{ tabCount(tab.value) }}</span>
-              </button>
+                <button
+                  v-for="tab in visibleTabs"
+                  :key="tab.value"
+                  type="button"
+                  role="tab"
+                  class="scope-tab"
+                  :class="{ 'is-on': scope === tab.value, 'is-stale': tab.value === 'stale' }"
+                  :aria-selected="scope === tab.value"
+                  :title="tab.value === 'stale' ? `已含在處理中：客戶來訊後超過 ${WAITING_WINDOW_DAYS} 天仍未回覆，不計入待回覆` : undefined"
+                  :data-testid="`scope-tab-${tab.value}`"
+                  @click="selectView(tab.value)"
+                >
+                  {{ tab.label }}
+                  <span
+                    v-if="tabCount(tab.value) !== null"
+                    class="ui-seg-n"
+                  >{{ tabCount(tab.value) }}</span>
+                </button>
+              </div>
+              <p
+                v-if="isSearching && scope !== 'stale'"
+                class="scope-hint"
+                role="status"
+              >
+                搜尋時會一併顯示已結案的對話
+              </p>
             </div>
+            <ConversationFilters
+              :filters="filterComposable.filters.value"
+              :available-tags="availableTags"
+              :total-conversations="conversations.length"
+              :unread-count="0"
+              @update:filter="handleFilterUpdate"
+              @toggle:tag="filterComposable.toggleTagFilter"
+              @clear:tags="filterComposable.clearTagFilter"
+              @clear:all="filterComposable.clearAllFilters"
+            />
+          </section>
+
+          <div class="ui-group conv-group">
+            <!-- 逾期待回覆：說明結案是可逆的 -->
             <p
-              v-if="isSearching"
-              class="scope-hint"
-              role="status"
+              v-if="scope === 'stale'"
+              class="stale-note"
+              role="note"
+              data-testid="stale-note"
             >
-              搜尋時會一併顯示已結案的對話
+              這些對話的客戶已超過 {{ WAITING_WINDOW_DAYS }} 天沒有收到回覆，不計入待回覆。從未獲得回覆的排在最前面，其餘依等待時間由久到近。
+              按「選取」勾選後可批量結案；結案不會刪除任何內容，客戶下次來訊時會自動重新開啟同一個對話。
             </p>
-          </div>
-          <ConversationFilters
-            :filters="filterComposable.filters.value"
-            :available-tags="availableTags"
-            :total-conversations="conversations.length"
-            :unread-count="0"
-            @update:filter="handleFilterUpdate"
-            @toggle:tag="filterComposable.toggleTagFilter"
-            @clear:tags="filterComposable.clearTagFilter"
-            @clear:all="filterComposable.clearAllFilters"
-          />
-        </section>
 
-        <!-- SSE 更新指示器 -->
-        <ConversationSyncIndicator :visible="isUpdating" />
+            <!-- SSE 更新指示器 -->
+            <ConversationSyncIndicator :visible="isUpdating" />
 
-        <div class="conversations-content">
-          <div
-            v-if="loading && displayedConversations.length === 0"
-            class="ui-card loading-overlay"
-          >
-            <HamsterLoader message="載入對話列表中..." />
-          </div>
-          <div
-            v-else-if="loadError && displayedConversations.length === 0"
-            class="ui-card conversations-error"
-            role="alert"
-          >
-            <div class="conversations-error-content">
-              <div class="conversations-error-title">
-                無法載入對話列表
-              </div>
-              <div class="conversations-error-text">
-                {{ loadError }}
-              </div>
-              <button
-                type="button"
-                class="btn btn-primary"
-                :disabled="isUpdating"
-                @click="refreshConversations"
+            <div class="conversations-content">
+              <div
+                v-if="loading && displayedConversations.length === 0"
+                class="loading-overlay"
               >
-                重試
-              </button>
-            </div>
-          </div>
-          <div
-            v-else-if="displayedConversations.length === 0"
-            class="ui-card no-data"
-          >
-            <div class="ui-empty">
-              <div class="ui-empty-art">
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="1.8"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                ><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20.5l1.4-4.6A8 8 0 1 1 21 12Z" /></svg>
+                <HamsterLoader message="載入對話列表中..." />
               </div>
-              <h3>{{ emptyText }}</h3>
+              <div
+                v-else-if="loadError && displayedConversations.length === 0"
+                class="conversations-error"
+                role="alert"
+              >
+                <div class="conversations-error-content">
+                  <div class="conversations-error-title">
+                    無法載入對話列表
+                  </div>
+                  <div class="conversations-error-text">
+                    {{ loadError }}
+                  </div>
+                  <button
+                    type="button"
+                    class="btn btn-primary"
+                    :disabled="isUpdating"
+                    @click="refreshConversations"
+                  >
+                    重試
+                  </button>
+                </div>
+              </div>
+              <UiEmptyState
+                v-else-if="displayedConversations.length === 0"
+                class="no-data"
+                :title="emptyText"
+              >
+                <template #icon>
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.8"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    aria-hidden="true"
+                  ><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20.5l1.4-4.6A8 8 0 1 1 21 12Z" /></svg>
+                </template>
+              </UiEmptyState>
+              <div
+                v-else
+                class="conversations-table-container"
+                :class="{ updating: isUpdating }"
+              >
+                <!-- Desktop Table View -->
+                <ConversationDesktopTable
+                  :conversations="displayedConversations"
+                  :selection-mode="selectionMode"
+                  :selected-ids="selectedIds"
+                  @select="goToConversation"
+                  @toggle-select="toggleSelect"
+                  @toggle-select-all="toggleSelectAll"
+                />
+
+                <!-- Mobile Card View -->
+                <ConversationMobileCards
+                  :conversations="displayedConversations"
+                  :selection-mode="selectionMode"
+                  :selected-ids="selectedIds"
+                  @select="goToConversation"
+                  @toggle-select="toggleSelect"
+                />
+
+                <p class="list-foot">
+                  {{ LEGEND_TEXT }}
+                </p>
+              </div>
             </div>
-          </div>
-          <div
-            v-else
-            class="ui-card conversations-table-container"
-            :class="{ updating: isUpdating }"
-          >
-            <!-- Desktop Table View -->
-            <ConversationDesktopTable
-              :conversations="displayedConversations"
-              :selection-mode="selectionMode"
-              :selected-ids="selectedIds"
-              @select="goToConversation"
-              @toggle-select="toggleSelect"
-              @toggle-select-all="toggleSelectAll"
-            />
-
-            <!-- Mobile Card View -->
-            <ConversationMobileCards
-              :conversations="displayedConversations"
-              :selection-mode="selectionMode"
-              :selected-ids="selectedIds"
-              @select="goToConversation"
-              @toggle-select="toggleSelect"
-            />
-
-            <p class="list-foot">
-              {{ LEGEND_TEXT }}
-            </p>
           </div>
         </div>
 
@@ -208,11 +213,13 @@
 </template>
 
 <script setup lang="ts">
+import UiEmptyState from '@/components/ui/UiEmptyState.vue'
+import UiPageHead from '@/components/ui/UiPageHead.vue'
 import { createLogger } from '@/utils/logger'
 
 const frontendLogger = createLogger('ConversationsTable')
 import { ref, onMounted, onUnmounted, computed, watch, nextTick } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useConversationsStore } from '@/stores/conversations'
 import { useConversationFilters } from '@/composables/conversation/useConversationFilters'
 import { useDebounce } from '@/composables/useDebounce'
@@ -222,7 +229,7 @@ import { conversationApi } from '@/api/conversations'
 import { useUnreadStore } from '@/stores/unread'
 import { formatWaitText } from '@/composables/dashboard/useDashboardOverview'
 import { LEGEND_TEXT } from '@/composables/conversation/useConversationRowMeta'
-import type { ConversationStats } from '@shared/api-contracts'
+import { WAITING_WINDOW_DAYS, type ConversationStats } from '@shared/api-contracts'
 import { tagCacheService } from '@/services/tagCacheService'
 import type { ConversationFilters as ConversationFiltersType } from '@/types'
 
@@ -236,6 +243,7 @@ import ConversationMobileCards from '@/components/conversations/ConversationMobi
 import { ConversationFilters } from '@/components/conversation-list'
 
 const router = useRouter()
+const route = useRoute()
 const unreadStore = useUnreadStore()
 
 // ==================== Tab counts + subtitle (real stats) ====================
@@ -243,6 +251,7 @@ const unreadStore = useUnreadStore()
 const counts = ref<ConversationStats | null>(null)
 const waitingTotal = ref(0)
 const waitingSince = ref<string | null>(null)
+const staleCount = ref(0)
 const clock = ref(Date.now())
 let clockTimer: ReturnType<typeof setInterval> | null = null
 
@@ -253,6 +262,7 @@ async function loadCounts() {
     if (waitingRes.success && waitingRes.data) {
       waitingTotal.value = waitingRes.data.total
       waitingSince.value = waitingRes.data.items[0]?.waitingSince ?? null
+      staleCount.value = waitingRes.data.stale?.count ?? 0
     }
   } catch (err) {
     console.warn('Failed to load conversation counts:', err)
@@ -262,14 +272,17 @@ async function loadCounts() {
 const oldestWaitText = computed(() =>
   waitingSince.value ? formatWaitText(Math.max(0, (clock.value - Date.parse(waitingSince.value)) / 1000)) : '')
 
+// One line (<= 60 chars); the 未讀 / 待回覆 definitions live in the table header tooltip
 const subtitle = computed(() => {
   if (!counts.value) { return '' }
-  const waitPart = oldestWaitText.value ? `，最久已等 ${oldestWaitText.value}` : ''
-  const unreadPart = unreadStore.total > 0 ? `我的未讀 ${unreadStore.total} 件。` : ''
-  return `${counts.value.open} 件處理中，${waitingTotal.value} 件待回覆${waitPart}。${unreadPart}`
+  const parts = [`${counts.value.open} 件處理中`, `${waitingTotal.value} 件待回覆`]
+  if (oldestWaitText.value) { parts.push(`最久等 ${oldestWaitText.value}`) }
+  if (unreadStore.total > 0) { parts.push(`我的未讀 ${unreadStore.total}`) }
+  return parts.join(' · ')
 })
 
-function tabCount(value: 'open' | 'closed' | 'all'): number | null {
+function tabCount(value: ListView): number | null {
+  if (value === 'stale') { return staleCount.value }
   if (!counts.value) { return null }
   return value === 'open' ? counts.value.open : value === 'closed' ? counts.value.closed : counts.value.total
 }
@@ -290,12 +303,30 @@ async function loadAvailableTags() {
 
 // 分頁籤（處理中 / 已結案 / 全部）。不放進 filterComposable：「清除篩選」不應該切換分頁
 type ConversationScope = NonNullable<ConversationFiltersType['scope']>
-const SCOPE_TABS: ReadonlyArray<{ value: ConversationScope; label: string; empty: string }> = [
+// 'stale' (逾期待回覆) is a view over open conversations, sent to the API as awaiting=stale
+type ListView = ConversationScope | 'stale'
+const SCOPE_TABS: ReadonlyArray<{ value: ListView; label: string; empty: string }> = [
   { value: 'open', label: '處理中', empty: '沒有處理中的對話' },
   { value: 'closed', label: '已結案', empty: '沒有已結案的對話' },
-  { value: 'all', label: '全部', empty: '暫無對話記錄' }
+  { value: 'all', label: '全部', empty: '暫無對話記錄' },
+  // Its own scope, listed last: a review view over open conversations, not a status
+  { value: 'stale', label: '逾期待回覆', empty: '沒有逾期未回覆的對話' }
 ]
-const scope = ref<ConversationScope>('open')
+// ?view=stale deep-links the review list (dashboard link)
+const scope = ref<ListView>(route.query.view === 'stale' ? 'stale' : 'open')
+// The 逾期 tab appears only when there is something to review (or while it is open)
+const visibleTabs = computed(() => SCOPE_TABS.filter(t => t.value !== 'stale' || staleCount.value > 0 || scope.value === 'stale'))
+
+function selectView(value: ListView) {
+  scope.value = value
+  const query = { ...route.query }
+  if (value === 'stale') { query.view = 'stale' } else { delete query.view }
+  void router.replace({ query })
+}
+watch(() => route.query.view, (view) => {
+  const next: ListView = view === 'stale' ? 'stale' : (scope.value === 'stale' ? 'open' : scope.value)
+  if (next !== scope.value) { scope.value = next }
+})
 
 // 有搜尋字時一律搜「全部」：找舊客戶不該因為對話已結案而查無結果（未結案仍排在前面）
 // lastMessageSearch 只在前端篩選已載入的列，伺服器端無法涵蓋已結案，故不納入
@@ -303,8 +334,11 @@ const isSearching = computed(() => {
   const f = filterComposable.filters.value
   return Boolean(f.customerName?.trim() || f.search?.trim())
 })
-const effectiveScope = computed<ConversationScope>(() => (isSearching.value ? 'all' : scope.value))
-const emptyText = computed(() => isSearching.value
+const effectiveScope = computed<ConversationScope>(() => {
+  if (scope.value === 'stale') { return 'open' }
+  return isSearching.value ? 'all' : scope.value
+})
+const emptyText = computed(() => isSearching.value && scope.value !== 'stale'
   ? '找不到符合的對話（已包含已結案）'
   : SCOPE_TABS.find(t => t.value === scope.value)?.empty ?? '暫無對話記錄')
 
@@ -313,6 +347,7 @@ const apiFilters = computed(() => {
   const base: ConversationFiltersType = { ...filterComposable.getApiFilters(), scope: effectiveScope.value }
   // 後端把 status 與 scope 取交集：已結案分頁不能再帶 active/assigned/pending，否則永遠是空的
   if (base.scope === 'closed') { delete base.status }
+  if (scope.value === 'stale') { base.awaiting = 'stale'; delete base.status }
   return base
 })
 const debouncedApiFilters = useDebounce(apiFilters, 300)
@@ -331,7 +366,8 @@ const conversations = computed(() => conversationsStore.conversations)
 // 分頁籤也在前端套用：結案 / 重新開啟後列即時滑出，不必等重新抓取
 const scopedConversations = computed(() =>
   effectiveScope.value === 'open'
-    ? conversations.value.filter(c => c.status !== 'closed')
+    // A realtime reply clears the marker: that row leaves the stale view at once, so it cannot be bulk-closed
+    ? conversations.value.filter(c => c.status !== 'closed' && (scope.value !== 'stale' || Boolean(c.awaitingSince)))
     : effectiveScope.value === 'closed'
       ? conversations.value.filter(c => c.status === 'closed')
       : conversations.value
@@ -555,8 +591,26 @@ onMounted(async () => {
   conversationsStore.initializeRealtime()
 })
 
+// Phone: the scope tabs share the row; the edge fade only shows when they really overflow (320px)
+const scopeTabsEl = ref<HTMLElement | null>(null)
+const scopeTabsOverflow = ref(false)
+const measureScopeTabs = () => {
+  const el = scopeTabsEl.value
+  scopeTabsOverflow.value = !!el && el.scrollWidth > el.clientWidth + 1
+}
+let scopeTabsObserver: globalThis.ResizeObserver | null = null
+onMounted(() => {
+  measureScopeTabs()
+  if (scopeTabsEl.value && typeof window.ResizeObserver !== 'undefined') {
+    scopeTabsObserver = new window.ResizeObserver(measureScopeTabs)
+    scopeTabsObserver.observe(scopeTabsEl.value)
+  }
+})
+watch(() => visibleTabs.value.length, () => { void nextTick(measureScopeTabs) })
+
 // 清理实时同步资源
 onUnmounted(() => {
+  scopeTabsObserver?.disconnect()
   frontendLogger.debug('[ConversationsTable] Component unmounting, cleaning up...')
   if (refillTimer) { clearTimeout(refillTimer) }
   if (clockTimer) { clearInterval(clockTimer) }
@@ -566,18 +620,22 @@ onUnmounted(() => {
 
 <style scoped>
 .conversations {
+  position: relative;
+}
+
+/* One group holds the controls and the list: the filter block heads it, a hairline divides them */
+.conv-stack {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  position: relative;
-  width: 100%;
+  gap: 12px;
 }
 
 .filter-card {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  padding: 16px 18px 18px;
+  padding: 14px 16px;
+  overflow: visible;
 }
 
 .filter-top {
@@ -587,8 +645,38 @@ onUnmounted(() => {
   gap: 10px 16px;
 }
 
+.filter-top > .ui-seg {
+  max-width: 100%;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.filter-top > .ui-seg::-webkit-scrollbar {
+  display: none;
+}
+
+.scope-tab {
+  flex: none;
+  white-space: nowrap;
+}
+
+/* The review scope sits apart from the status tabs */
+.scope-tab.is-stale {
+  margin-left: 10px;
+}
+
 .scope-tab .ui-seg-n {
   margin-left: 2px;
+}
+
+.stale-note {
+  margin: 0;
+  padding: 14px 20px;
+  box-shadow: inset 0 -0.5px 0 var(--ui-sep);
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--ui-muted);
 }
 
 .scope-hint {
@@ -648,7 +736,7 @@ onUnmounted(() => {
 .list-foot {
   margin: 0;
   padding: 12px 22px 14px;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--ui-muted);
   text-align: center;
   box-shadow: inset 0 0.5px 0 var(--ui-sep);
@@ -688,7 +776,7 @@ onUnmounted(() => {
 }
 
 .bulk-limit {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--ui-red-ink);
   white-space: nowrap;
 }
@@ -706,7 +794,25 @@ onUnmounted(() => {
 
 @media (max-width: 768px) {
   .filter-card {
-    padding: 14px;
+    padding: 12px;
+  }
+
+  /* One row on phone: the labels fit at 390, so they share the track evenly.
+     Narrower than that the row scrolls with its edge fade instead of wrapping into a grid. */
+  .filter-top > .ui-seg {
+    width: 100%;
+  }
+
+  .filter-top > .ui-seg .scope-tab {
+    flex: 1 0 auto;
+    justify-content: center;
+    padding-right: 4px;
+    padding-left: 4px;
+    font-size: 13px;
+  }
+
+  .scope-tab.is-stale {
+    margin-left: 0;
   }
 
   .scope-tab {

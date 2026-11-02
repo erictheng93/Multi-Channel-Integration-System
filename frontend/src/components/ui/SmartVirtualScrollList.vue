@@ -579,7 +579,7 @@ defineExpose({
   top: 8px;
   left: 50%;
   transform: translateX(-50%);
-  font-size: 0.75rem;
+  font-size: 13px;
   color: #6b7280;
   background: rgba(255, 255, 255, 0.9);
   padding: 2px 8px;

@@ -9,6 +9,7 @@ import { bumpTokensValidAfter } from '@/utils/auth-jwt';
 import { revokeUserWebSocketSessions } from '@/services/websocket-access-revocation';
 import { createDbClient } from '@/db/drizzle-factory';
 import { eq } from 'drizzle-orm';
+import { blockSystemAgentTarget } from '@/middleware/block-system-agent';
 import { agents } from '@/db/schema';
 import { hashPassword, verifyPassword } from '@/modules/auth/services/auth';
 import { HTTP_STATUS } from '@/constants/http-status';
@@ -23,6 +24,7 @@ import { teamContracts, type ContractResponse } from '@shared/api-contracts';
 import { contractJson } from '@/utils/api-contract-response';
 
 const passwordHandler = new Hono<{ Bindings: Bindings }>();
+passwordHandler.use('*', blockSystemAgentTarget());
 type PasswordContext = Context<{ Bindings: Bindings }>;
 
 function getBearerToken(authHeader: string | undefined): string | null {

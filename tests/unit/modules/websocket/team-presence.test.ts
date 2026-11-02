@@ -139,4 +139,14 @@ describe('GET /api/team/presence', () => {
     expect(body.data).toMatchObject({ onlineAgentIds: [], available: false })
     expect(kv.put).not.toHaveBeenCalled()
   })
+
+  it('reports available=false when the broadcaster fetch rejects', async () => {
+    holder.user = { id: 'admin1', role: 'admin' }
+    const { env, fetch, kv } = makeEnv([])
+    fetch.mockRejectedValueOnce(new Error('Network connection lost'))
+    const { status, body } = await getPresence(env)
+    expect(status).toBe(200)
+    expect(body.data).toMatchObject({ onlineAgentIds: [], available: false })
+    expect(kv.put).not.toHaveBeenCalled()
+  })
 })
