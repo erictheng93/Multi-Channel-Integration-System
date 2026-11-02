@@ -129,7 +129,7 @@ const meterWidth = computed(() => {
 .tag-card {
   position: relative;
   display: grid;
-  grid-template-columns: 22px minmax(0, 1fr) 120px 80px;
+  grid-template-columns: 22px minmax(0, 1fr) 150px 80px;
   grid-template-areas:
     'check chip count actions'
     'check desc meter actions';
@@ -173,7 +173,7 @@ const meterWidth = computed(() => {
 
 /* Selection reads as a tint, never as a hard outline */
 .tag-card.tag-active {
-  background: color-mix(in srgb, var(--tag-c) 9%, var(--ui-surface));
+  background: color-mix(in srgb, var(--tag-c) 5%, var(--ui-fill));
 }
 
 .tag-card.tag-selected {
@@ -341,8 +341,8 @@ const meterWidth = computed(() => {
 .meter {
   grid-area: meter;
   justify-self: end;
-  width: 96px;
-  height: 6px;
+  width: 112px;
+  height: 8px;
   overflow: hidden;
   border-radius: 999px;
   background: var(--ui-fill-strong);
