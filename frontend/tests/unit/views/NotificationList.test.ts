@@ -10,6 +10,7 @@ import type { Notification } from '@/stores/notifications'
 // Mock router
 const mockPush = vi.fn()
 vi.mock('vue-router', () => ({
+  useRoute: () => ({ query: {} }),
   useRouter: () => ({
     push: mockPush
   })
@@ -143,8 +144,8 @@ describe('NotificationList.vue', () => {
       const sub = wrapper.find('.ui-page-sub').text()
       expect(sub).toContain('23 則未讀')
       expect(sub).toContain('其中 2 則為緊急')
-      expect(sub).toContain('今天新增 8 則')
-      expect(sub).toContain('本週共 45 則')
+      expect(sub).toContain('今天 8 則')
+      expect(sub).toContain('本週 45 則')
 
       const counts = wrapper.findAll('.filter-tab .ui-seg-n').map(n => n.text())
       expect(counts).toEqual(['150', '23', '127'])

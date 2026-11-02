@@ -343,7 +343,7 @@ withDefaults(defineProps<Props>(), {
   }
   
   .wheel-and-hamster {
-    font-size: 12px;
+    font-size: 13px;
     width: 10em;
     height: 10em;
   }
@@ -355,7 +355,7 @@ withDefaults(defineProps<Props>(), {
 
 @media (max-width: 480px) {
   .wheel-and-hamster {
-    font-size: 10px;
+    font-size: 13px;
     width: 8em;
     height: 8em;
   }

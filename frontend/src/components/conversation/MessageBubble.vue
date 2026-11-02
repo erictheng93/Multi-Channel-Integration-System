@@ -17,6 +17,14 @@
     @touchend="handleTouchEnd"
     @touchmove.passive="handleTouchMove"
   >
+    <!-- Agent signature: once, above the first bubble of a run, left-aligned to the bubble -->
+    <div
+      v-if="isOutgoing && message.senderName && showAttribution"
+      class="agent-attribution"
+    >
+      {{ message.senderName }}
+    </div>
+
     <div class="message-content">
       <!-- 已撤回：不論原始類型，一律以灰色占位文字取代內容
            （DB 端 content 可能已被改寫為英文占位字串，不直接顯示） -->
@@ -311,92 +319,6 @@
         :html="processedMessageContent"
         class="message-text"
       />
-      <div class="message-meta">
-        <time class="message-time">
-          {{ formatTime(message.timestamp || message.createdAt) }}
-        </time>
-        <!-- Agent attribution for internal QA -->
-        <span
-          v-if="isOutgoing && message.senderName"
-          class="agent-attribution"
-        >
-          {{ message.senderName }}
-        </span>
-
-        <!--  Enhanced Message Status with Optimistic UI -->
-        <div
-          v-if="isOutgoing"
-          class="message-status"
-        >
-          <!-- 已撤回：訊息從未（或不再）送達客戶 -->
-          <span
-            v-if="isRecalledMessage"
-            class="status-recalled"
-            title="已撤回"
-          >↶ 已撤回</span>
-
-          <!-- 撤回窗口倒數：訊息暫存中，尚未送出給客戶 -->
-          <div
-            v-else-if="isRecallable"
-            class="status-buffered"
-            :title="`可撤回，${countdownLabel} 後送出`"
-          >
-            <span class="buffered-chip">⏱ 可撤回 {{ countdownLabel }}</span>
-          </div>
-
-          <!-- 倒數歸零、等待送達確認（以 WS 事件為準，不假顯示已送達） -->
-          <div
-            v-else-if="isAwaitingDelivery"
-            class="status-sending"
-            title="傳送中..."
-          >
-            <div class="spinner-small" />
-          </div>
-
-          <!--  Sending状态 -->
-          <div
-            v-else-if="messageStatus === 'sending' || messageStatus === MESSAGE_STATUS.PENDING"
-            class="status-sending"
-            title="发送中..."
-          >
-            <div class="spinner-small" />
-          </div>
-
-          <!--  Sent/Delivered状态 -->
-          <CheckIcon
-            v-else-if="
-              messageStatus === MESSAGE_STATUS.SENT ||
-                messageStatus === MESSAGE_STATUS.DELIVERED ||
-                delivered
-            "
-            class="status-delivered"
-            title="已送达"
-          />
-
-          <!--  Failed状态 with重试按钮 -->
-          <div
-            v-else-if="messageStatus === MESSAGE_STATUS.FAILED"
-            class="status-failed-wrapper"
-          >
-            <XIcon
-              class="status-failed"
-              title="发送失败"
-            />
-            <button
-              class="retry-btn"
-              title="重试发送"
-              @click.stop="handleRetry"
-            />
-          </div>
-
-          <!-- Default状态 -->
-          <CheckIcon
-            v-else
-            class="status-delivered"
-          />
-        </div>
-      </div>
-
       <!--
         Message Actions: a minimal hover toolbar (one-click 複製 + a single
         ⋯ entry) plus a popover menu. The menu opens via the ⋯ button, a
@@ -492,6 +414,87 @@
       </div>
     </div>
 
+    <div
+      v-if="metaVisible"
+      class="message-meta"
+    >
+      <time class="message-time">
+        {{ formatTime(message.timestamp || message.createdAt) }}
+      </time>
+      <!--  Enhanced Message Status with Optimistic UI -->
+      <div
+        v-if="isOutgoing"
+        class="message-status"
+      >
+        <!-- 已撤回：訊息從未（或不再）送達客戶 -->
+        <span
+          v-if="isRecalledMessage"
+          class="status-recalled"
+          title="已撤回"
+        >↶ 已撤回</span>
+
+        <!-- 撤回窗口倒數：訊息暫存中，尚未送出給客戶 -->
+        <div
+          v-else-if="isRecallable"
+          class="status-buffered"
+          :title="`可撤回，${countdownLabel} 後送出`"
+        >
+          <span class="buffered-chip">⏱ 可撤回 {{ countdownLabel }}</span>
+        </div>
+
+        <!-- 倒數歸零、等待送達確認（以 WS 事件為準，不假顯示已送達） -->
+        <div
+          v-else-if="isAwaitingDelivery"
+          class="status-sending"
+          title="傳送中..."
+        >
+          <div class="spinner-small" />
+        </div>
+
+        <!--  Sending状态 -->
+        <div
+          v-else-if="messageStatus === 'sending' || messageStatus === MESSAGE_STATUS.PENDING"
+          class="status-sending"
+          title="发送中..."
+        >
+          <div class="spinner-small" />
+        </div>
+
+        <!--  Sent/Delivered状态 -->
+        <CheckIcon
+          v-else-if="
+            messageStatus === MESSAGE_STATUS.SENT ||
+              messageStatus === MESSAGE_STATUS.DELIVERED ||
+              delivered
+          "
+          class="status-delivered"
+          title="已送达"
+        />
+
+        <!--  Failed状态 with重试按钮 -->
+        <div
+          v-else-if="messageStatus === MESSAGE_STATUS.FAILED"
+          class="status-failed-wrapper"
+        >
+          <XIcon
+            class="status-failed"
+            title="发送失败"
+          />
+          <button
+            class="retry-btn"
+            title="重试发送"
+            @click.stop="handleRetry"
+          />
+        </div>
+
+        <!-- Default状态 -->
+        <CheckIcon
+          v-else
+          class="status-delivered"
+        />
+      </div>
+    </div>
+
     <!-- Sender info for incoming messages -->
     <div
       v-if="!isOutgoing && showSender"
@@ -568,6 +571,10 @@
     message: Message
     delivered?: boolean
     showSender?: boolean
+    /** Agent signature on an outgoing bubble; the list passes false inside a group so it shows once */
+    showAttribution?: boolean
+    /** Time and delivery state sit outside the bubble; the list passes false inside a run so only the last shows it */
+    showMeta?: boolean
     attachmentUrl?: string
     attachmentName?: string
     attachmentSize?: number
@@ -576,6 +583,8 @@
   const props = withDefaults(defineProps<Props>(), {
     delivered: true,
     showSender: false,
+    showAttribution: true,
+    showMeta: true,
     attachmentUrl: '',
     attachmentName: '',
     attachmentSize: 0,
@@ -816,6 +825,16 @@
     }
     // Both agent messages and system messages (e.g. auto-replies) are outgoing
     return props.message.senderType === 'agent' || props.message.senderType === 'system'
+  })
+
+  // Inside a run only the last bubble shows time + state, but a state that needs attention
+  // (recalled, recall countdown, sending, failed) always shows on its own bubble.
+  const metaVisible = computed(() => {
+    if (props.showMeta) { return true }
+    if (!isOutgoing.value) { return false }
+    const st = messageStatus.value
+    return isRecalledMessage.value || isRecallable.value || isAwaitingDelivery.value
+      || st === 'sending' || st === MESSAGE_STATUS.PENDING || st === MESSAGE_STATUS.FAILED
   })
 
   const senderName = computed(() => {

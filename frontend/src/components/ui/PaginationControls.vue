@@ -95,7 +95,7 @@ const endItem = computed(() => {
 }
 
 .pagination-info {
-  font-size: 12.5px;
+  font-size: 13px;
   color: var(--ui-muted);
   font-variant-numeric: tabular-nums;
 }
@@ -131,8 +131,8 @@ const endItem = computed(() => {
 }
 
 .page-btn.active {
-  background: var(--ui-ink);
-  color: var(--ui-surface);
+  background: var(--ui-accent-soft);
+  color: var(--ui-accent);
   font-weight: 600;
 }
 

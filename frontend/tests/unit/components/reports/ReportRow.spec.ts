@@ -112,7 +112,7 @@ describe('ReportRow.vue', () => {
         }
       })
 
-      expect(wrapper.text()).toContain('-')
+      expect(wrapper.text()).toContain('—')
     })
   })
 

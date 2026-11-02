@@ -13,6 +13,7 @@
       </template>
       <b
         class="breadcrumb-item"
+        :class="{ 'is-quiet': !titleCollapsed }"
         aria-current="page"
       >{{ pageTitle }}</b>
     </nav>
@@ -44,11 +45,20 @@
   import { useWebSocketStore } from '@/stores/websocket'
   import { useConnectionStatus } from '@/composables/useConnectionStatus'
 
-  defineProps<{
+  withDefaults(defineProps<{
     pageTitle: string
     /** Nav section the page lives in (breadcrumb prefix); omit for pages outside the sidebar groups */
     sectionLabel?: string
-  }>()
+    /**
+     * Phone only: false while the page's own large title is on screen (the bar then stays
+     * quiet so the title is never shown twice); true once it scrolled away. Defaults to true
+     * (always show the title), which is also what desktop does regardless.
+     */
+    titleCollapsed?: boolean
+  }>(), {
+    sectionLabel: '',
+    titleCollapsed: true,
+  })
 
   defineEmits<{
     'notification-click': [notification: Notification]
@@ -116,7 +126,7 @@
     border-radius: 999px;
     background: var(--ui-green-soft);
     color: var(--ui-green-ink);
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 600;
   }
 
@@ -161,6 +171,26 @@
   @media (max-width: 768px) {
     .top-bar-actions {
       gap: var(--space-2);
+    }
+
+    /* Phone layer: the bar names the page only (no section breadcrumb) */
+    .breadcrumb-section,
+    .breadcrumb-sep {
+      display: none;
+    }
+
+    .breadcrumb-item {
+      font-size: 17px;
+      letter-spacing: -0.01em;
+      transition:
+        opacity var(--ui-dur) var(--ui-ease),
+        transform var(--ui-dur) var(--ui-ease);
+    }
+
+    /* The page's large title is still visible below: keep the bar's copy out of sight */
+    .breadcrumb-item.is-quiet {
+      opacity: 0;
+      transform: translateY(6px);
     }
 
     .top-bar {

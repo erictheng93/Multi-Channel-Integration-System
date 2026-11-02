@@ -30,6 +30,7 @@ const summaryFixture = () => ({
       { conversationId: 'c2', customerId: 2, customerName: '林志明', avatarUrl: null, platform: 'facebook', assignedTeamId: 1, waitingSince: minutesAgo(5.5), waitingSeconds: 300, unansweredCount: 1, lastCustomerMessage: '好的' }
     ]
   },
+  staleWaiting: { count: 119, neverRepliedCount: 24 },
   firstResponse: { today: { count: 14, avgSeconds: 190 }, yesterdaySameTime: { count: 11, avgSeconds: 240 } }
 })
 
@@ -53,6 +54,7 @@ const unreadTotal = ref(0)
 vi.mock('@/stores/unread', () => ({ useUnreadStore: () => ({ get total() { return unreadTotal.value } }) }))
 
 vi.mock('vue-router', () => ({
+  useRoute: () => ({ path: '/dashboard' }),
   useRouter: () => ({ push: vi.fn(), currentRoute: ref({ path: '/dashboard' }) })
 }))
 
@@ -62,6 +64,8 @@ vi.mock('@/composables/useAuth', () => ({
     isAdmin: ref(true)
   })
 }))
+// useDashboardOverview picks the member endpoint from the auth store
+vi.mock('@/stores/auth', () => ({ useAuthStore: () => ({ isAdmin: true, allowedTeamIds: [] }) }))
 vi.mock('@/composables/useTokenRefresh', () => ({ useTokenRefresh: () => ({ startTokenRefreshCheck: vi.fn(), stopTokenRefreshCheck: vi.fn() }) }))
 vi.mock('@/composables/useActivityTracker', () => ({ useActivityTracker: () => ({ startTracking: vi.fn(), stopTracking: vi.fn() }) }))
 
@@ -121,33 +125,34 @@ describe('Dashboard.vue', () => {
     expect(wrapper.find('.ui-page-sub').text()).toContain('我的未讀 4 件')
   })
 
-  it('shows the KPI row from real numbers with the 待回覆 definition', async () => {
+  it('shows the numbers from the summary as Service Rings plus the today group', async () => {
     const wrapper = mountDashboard()
     await flushPromises()
-    const kpis = wrapper.findAll('.ui-kpi')
-    expect(kpis).toHaveLength(4)
-    expect(kpis[0].text()).toContain('待回覆')
-    expect(kpis[0].find('.ui-kpi-value').text()).toBe('9')
-    expect(kpis[0].text()).toContain('客戶來訊後尚無客服回覆')
-    expect(kpis[1].find('.ui-kpi-value').text()).toBe('23')
-    expect(kpis[1].text()).toContain('客服一組 15')
-    expect(kpis[1].text()).toContain('未指派 8')
-    expect(kpis[2].find('.ui-kpi-value').text()).toBe('248')
-    expect(kpis[2].text()).toContain('+13%')
-    expect(kpis[3].find('.ui-kpi-value').text()).toContain('1')
+    const label = wrapper.find('.service-rings').attributes('aria-label') ?? ''
+    expect(label).toContain('待回覆 9，共 23')
+    expect(label).toContain('今日已結案')
+    expect(label).toContain('線上客服 1，共 2')
+    const stats = wrapper.findAll('.stat')
+    expect(stats).toHaveLength(5)
+    expect(stats[0].text()).toContain('處理中')
+    expect(stats[0].find('.v').text()).toBe('23')
+    expect(stats[0].text()).toContain('客服一組 15')
+    expect(stats[0].text()).toContain('未指派 8')
+    expect(stats[1].find('.v').text()).toBe('248')
+    expect(stats[1].text()).toContain('+13%')
   })
 
   it('lists the longest-waiting conversations with live wait times', async () => {
     const wrapper = mountDashboard()
     await flushPromises()
-    const rows = wrapper.findAll('.focus .ui-row')
+    const rows = wrapper.findAll('.waiting-list .ui-row')
     expect(rows).toHaveLength(2)
     expect(rows[0].text()).toContain('黃建國')
     expect(rows[0].text()).toContain('未指派')
     expect(rows[0].find('.wait').text()).toBe('42 分')
     expect(rows[0].find('.wait').classes()).toContain('hot')
     expect(rows[1].find('.wait').text()).toBe('5 分')
-    expect(wrapper.find('.focus-lead .big').text()).toContain('42')
+    expect(wrapper.find('.lead-num').text()).toContain('42')
   })
 
   it('does not show satisfaction, per-agent load or away state', async () => {
@@ -188,17 +193,65 @@ describe('Dashboard.vue', () => {
     }))
     const wrapper = mountDashboard()
     await flushPromises()
-    expect(wrapper.find('.ui-page-sub').text()).toContain('目前沒有待回覆的客戶')
-    expect(wrapper.find('.focus .ui-empty').text()).toContain('目前沒有待回覆的客戶')
+    expect(wrapper.find('.ui-page-sub').text()).toContain('近 7 天內沒有待回覆的客戶')
+    expect(wrapper.find('.bento .ui-empty').text()).toContain('目前沒有待回覆的客戶')
+  })
+
+  it('states the 7-day window on the 待回覆 KPI and the focus card', async () => {
+    const wrapper = mountDashboard()
+    await flushPromises()
+    expect(wrapper.find('.ui-group-label[title^="待回覆"]').attributes('title')).toContain('近 7 天內')
+    expect(wrapper.find('.lead .info-tip').text()).toContain('近 7 天內')
+  })
+
+  it('points to the stale list under the 等待最久 card, with the never-replied count', async () => {
+    const wrapper = mountDashboard()
+    await flushPromises()
+    const link = wrapper.find('[data-testid="stale-waiting-link"]')
+    expect(link.exists()).toBe(true)
+    expect(link.text()).toBe('另有 119 件超過 7 天未回覆，其中 24 位從未獲得回覆 →')
+  })
+
+  it('omits the never-replied clause when everyone got a reply, and hides the line at zero', async () => {
+    api.getSummary.mockImplementation(() => ok({ ...summaryFixture(), staleWaiting: { count: 3, neverRepliedCount: 0 } }))
+    const some = mountDashboard()
+    await flushPromises()
+    expect(some.find('[data-testid="stale-waiting-link"]').text()).toBe('另有 3 件超過 7 天未回覆 →')
+
+    api.getSummary.mockImplementation(() => ok({ ...summaryFixture(), staleWaiting: { count: 0, neverRepliedCount: 0 } }))
+    const none = mountDashboard()
+    await flushPromises()
+    expect(none.find('[data-testid="stale-waiting-link"]').exists()).toBe(false)
+  })
+
+  it('does not break on a cached summary without staleWaiting', async () => {
+    const { staleWaiting: _omitted, ...legacy } = summaryFixture()
+    api.getSummary.mockImplementation(() => ok(legacy))
+    const wrapper = mountDashboard()
+    await flushPromises()
+    expect(wrapper.find('[data-testid="stale-waiting-link"]').exists()).toBe(false)
+  })
+
+  it('shows system-initiated activity as 系統, not as a member name', async () => {
+    api.listActivities.mockImplementation(() => ok({
+      items: [{ id: 1, userId: 'system', userName: 'System', userRole: 'system', action: 'conversation_auto_close', resourceType: 'conversation', createdAt: minutesAgo(5) }],
+      total: 1, page: 1, pageSize: 5, totalPages: 1
+    }))
+    const wrapper = mountDashboard()
+    await flushPromises()
+    const row = wrapper.find('.feed .ui-row')
+    expect(row.text()).toContain('系統')
+    expect(row.text()).not.toContain('System')
+    expect(row.find('.ico-tile').classes()).toContain('tone-system')
   })
 
   it('shows an error state with retry when the summary fails', async () => {
     api.getSummary.mockImplementation(() => Promise.resolve({ success: false, error: 'boom' }))
     const wrapper = mountDashboard()
     await flushPromises()
-    expect(wrapper.find('.focus .ui-empty').text()).toContain('無法載入待回覆清單')
+    expect(wrapper.find('.bento .ui-empty').text()).toContain('無法載入待回覆清單')
     const callsBefore = api.getSummary.mock.calls.length
-    await wrapper.find('.focus .ui-empty button').trigger('click')
+    await wrapper.find('.bento .ui-empty button').trigger('click')
     await flushPromises()
     expect(api.getSummary.mock.calls.length).toBeGreaterThan(callsBefore)
   })

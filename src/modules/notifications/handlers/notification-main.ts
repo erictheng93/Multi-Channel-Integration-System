@@ -1,6 +1,7 @@
 // src/modules/notifications/handlers/notification-main.ts
 // 統一通知處理器 - 模組化的主要 API 端點
 
+import { notSystemAgent } from '@/constants/system-agent';
 import { Context } from 'hono';
 import type { Bindings } from '@/types';
 import {
@@ -30,7 +31,7 @@ import {
 import { triggerSystemNotification } from '@/utils/notification-trigger';
 import { createDbClient } from '@/db/drizzle-factory';
 import { agents } from '@/db/schema';
-import { isNull } from 'drizzle-orm';
+import { and, isNull } from 'drizzle-orm';
 import { nowISO } from '@/utils/timestamp'
 
 type NotificationSettingsPatch = Partial<Omit<SharedNotificationSettings, 'userId'>>;
@@ -651,7 +652,7 @@ export class NotificationHandler {
         const activeAgents = await db
           .select({ id: agents.id })
           .from(agents)
-          .where(isNull(agents.deletedAt));
+          .where(and(isNull(agents.deletedAt), notSystemAgent(agents.id)));
 
         targetUserIds = activeAgents.map(agent => agent.id);
       }
@@ -755,7 +756,7 @@ export class NotificationHandler {
       const activeAgents = await db
         .select({ id: agents.id })
         .from(agents)
-        .where(isNull(agents.deletedAt));
+        .where(and(isNull(agents.deletedAt), notSystemAgent(agents.id)));
 
       const targetUserIds = activeAgents.map(agent => agent.id);
 

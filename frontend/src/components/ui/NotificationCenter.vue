@@ -27,24 +27,19 @@
       }"
       :aria-expanded="isOpen"
       aria-haspopup="true"
-      :aria-label="unreadCount > 0 ? `通知中心 (${unreadCount} 則未讀)` : '通知中心'"
-      :title="unreadCount > 0 ? `${unreadCount} 則未讀通知` : '通知中心'"
+      :aria-label="unreadCount > 0 ? `通知 (${unreadCount} 則未讀)` : '通知'"
+      :title="unreadCount > 0 ? `${unreadCount} 則未讀通知` : '通知'"
       @click="toggle"
     >
       <BellIcon
-        :class="unreadCount > 0 ? 'notification-icon notification-icon-pulse' : 'notification-icon'"
+        class="notification-icon"
       />
-      <NotificationBadge
-        v-if="unreadCount > 0"
-        :count="unreadCount"
-        size="sm"
-        :pulse="hasUrgent"
-        class="notification-trigger-badge"
-      />
-      <!-- 紅點指示器 -->
+      <!-- Unread: one solid 8px red dot with a 2px surface ring, attached to the bell.
+           The count lives in the aria-label, the panel header and the sidebar badge. -->
       <span
         v-if="unreadCount > 0"
         class="notification-trigger-dot"
+        aria-hidden="true"
       />
     </button>
 
@@ -187,7 +182,6 @@ const emit = defineEmits<{
 const frontendLogger = createLogger('NotificationCenter')
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useNotificationsStore, type Notification } from '@/stores/notifications'
-import NotificationBadge from './NotificationBadge.vue'
 import NotificationItem from './NotificationItem.vue'
 import LoadingSpinner from './LoadingSpinner.vue'
 import { BellIcon, BellOffIcon, CheckAllIcon, RefreshIcon } from '@/components/icons'
@@ -212,10 +206,6 @@ const unreadCount = computed(() => store.unreadCount)
 const loading = computed(() => store.loading)
 const loadingMore = computed(() => store.loadingMore)
 const canLoadMore = computed(() => store.canLoadMore)
-
-const hasUrgent = computed(() =>
-  store.urgentNotifications.length > 0
-)
 
 const filteredNotifications = computed(() => {
   const list = notifications.value.length > 0 ? notifications.value : recentNotifications.value
@@ -392,7 +382,7 @@ defineExpose({ open, close, toggle, isOpen })
   /* iOS 系統橘 #FF9500 淡底:暫停是需要被注意到的狀態,--warning-50 在白色頂部列上幾乎看不見 */
   background: rgb(255 149 0 / 0.14);
   color: #A64B00;
-  font-size: 0.75rem;
+  font-size: 13px;
   font-weight: 500;
   white-space: nowrap;
 }
@@ -463,22 +453,6 @@ defineExpose({ open, close, toggle, isOpen })
   transition: all var(--transition-fast);
 }
 
-/* 鈴鐺圖標脈動動畫 */
-.notification-icon-pulse {
-  animation: bellPulse 2s ease-in-out infinite;
-}
-
-@keyframes bellPulse {
-  0%, 100% {
-    transform: scale(1);
-    opacity: 1;
-  }
-  50% {
-    transform: scale(1.05);
-    opacity: 0.9;
-  }
-}
-
 /* 搖鈴動畫 */
 .notification-trigger-ring .notification-icon {
   animation: bellRing 0.5s ease-in-out;
@@ -496,34 +470,18 @@ defineExpose({ open, close, toggle, isOpen })
   }
 }
 
-.notification-trigger-badge {
-  position: absolute;
-  top: 4px;
-  right: 4px;
-  pointer-events: none;
-}
-
-/* 紅點指示器 */
+/* Unread dot: solid, 8px, with a 2px ring in the surface colour so it reads as attached to
+   the bell. No pulse and no hollow ring (urgent only adds a one-shot attention nudge). */
 .notification-trigger-dot {
   position: absolute;
-  top: 6px;
-  right: 6px;
+  top: 8px;
+  right: 9px;
   width: 8px;
   height: 8px;
-  background: var(--red-500);
-  border: 2px solid white;
+  background: var(--ui-red);
   border-radius: 50%;
+  box-shadow: 0 0 0 2px var(--ui-surface);
   pointer-events: none;
-  animation: dotPulse 2s ease-in-out infinite;
-}
-
-@keyframes dotPulse {
-  0%, 100% {
-    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
-  }
-  50% {
-    box-shadow: 0 0 0 4px rgba(239, 68, 68, 0);
-  }
 }
 
 /* 面板 */
