@@ -155,7 +155,7 @@ defineProps<{
 }
 
 .sync-secondary-text {
-  font-size: 0.8rem;
+  font-size: 13px;
   font-weight: 400;
   color: #666;
   opacity: 0.85;
@@ -320,7 +320,7 @@ defineProps<{
   }
 
   .sync-secondary-text {
-    font-size: 0.75rem;
+    font-size: 13px;
   }
 
   .dot {
@@ -351,11 +351,11 @@ defineProps<{
   }
 
   .sync-primary-text {
-    font-size: 0.8rem;
+    font-size: 13px;
   }
 
   .sync-secondary-text {
-    font-size: 0.7rem;
+    font-size: 13px;
   }
 
   .sync-progress-dots {

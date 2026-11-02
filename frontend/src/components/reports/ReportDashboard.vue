@@ -1,15 +1,17 @@
 <template>
-  <div class="report-dashboard">
+  <div class="ui-page report-dashboard ui-rise">
     <!-- 頁面標題和快速動作 -->
     <DashboardHeader
       :loading="loading"
+      :subtitle="subtitle"
       @refresh="refreshData"
       @create-report="handleCreateReport"
     />
 
-    <!-- 統計卡片區域 -->
-    <StatsGrid
+    <!-- Lead: this month's reports + rings of completed / processing / failed -->
+    <StatsLead
       :stats="stats"
+      :loaded="loaded"
       @show-failed-reports="showFailedReports"
     />
 
@@ -35,6 +37,8 @@
           :loading="loading"
           :view-mode="viewMode"
           :sort-order="sortOrder"
+          :total="pagination.total"
+          :get-report-type-label="getReportTypeLabel"
           :get-type-badge-class="getTypeBadgeClass"
           :get-report-type-icon="getReportTypeIcon"
           :get-status-icon="getStatusIcon"
@@ -51,30 +55,24 @@
           @create-report="handleCreateReport"
           @update:view-mode="viewMode = $event"
           @update:sort-order="sortOrder = $event"
-        />
-
-        <!-- 分頁控制 -->
-        <PaginationControls
-          :pagination="pagination"
-          :visible-pages="visiblePages"
-          @change-page="changePage"
-        />
+          @export-all="exportAllReports"
+        >
+          <template
+            v-if="pagination.totalPages > 1"
+            #footer
+          >
+            <PaginationControls
+              :pagination="pagination"
+              :visible-pages="visiblePages"
+              @change-page="changePage"
+            />
+          </template>
+        </ReportsSection>
       </div>
 
       <!-- 右側：統計圖表和活動 -->
       <div class="content-right">
         <SidebarWidgets>
-          <!-- 快速操作小部件 -->
-          <template #quick-actions>
-            <QuickActionsWidget
-              :loading="loading"
-              :total-reports="stats.totalReports"
-              @create-report="handleCreateReport"
-              @refresh="refreshData"
-              @export-all="exportAllReports"
-            />
-          </template>
-
           <!-- 熱門報表類型小部件 -->
           <template #popular-types>
             <PopularTypesWidget
@@ -83,9 +81,11 @@
               @filter-by-type="handleFilterByType"
             />
           </template>
-
-          <!-- 最近活動小部件 -->
-          <template #recent-activity>
+          <!-- 最近活動：由報表列表的真實狀態推導 -->
+          <template
+            v-if="recentActivities.length > 0"
+            #recent-activity
+          >
             <RecentActivityWidget
               :activities="recentActivities"
               :get-status-icon="getStatusIcon"
@@ -115,18 +115,16 @@ import { ref, computed } from 'vue'
 import { useReportDashboard } from '@/composables/useReportDashboard'
 import type { ReportBase, ReportType, ReportStatus } from '@/types/reports'
 import type { PopularType } from './dashboard/PopularTypesWidget.vue'
-import type { RecentActivity } from './dashboard/RecentActivityWidget.vue'
 
 // 导入子组件
 import DashboardHeader from './dashboard/DashboardHeader.vue'
-import StatsGrid from './dashboard/StatsGrid.vue'
+import StatsLead from './dashboard/StatsLead.vue'
 import FiltersSection from './dashboard/FiltersSection.vue'
 import ReportsSection from './dashboard/ReportsSection.vue'
 import PaginationControls from '@/components/ui/PaginationControls.vue'
 import SidebarWidgets from './dashboard/SidebarWidgets.vue'
-import QuickActionsWidget from './dashboard/QuickActionsWidget.vue'
 import PopularTypesWidget from './dashboard/PopularTypesWidget.vue'
-import RecentActivityWidget from './dashboard/RecentActivityWidget.vue'
+import RecentActivityWidget, { type RecentActivity } from './dashboard/RecentActivityWidget.vue'
 import ConfirmDialog from '@/components/ui/ConfirmDialog.vue'
 
 // Emits
@@ -215,45 +213,45 @@ const reportToDelete = ref<ReportBase | null>(null)
 // ========================================
 
 /**
- * 热门报表类型数据（用于 PopularTypesWidget）
+ * 熱門報表類型（近 30 天統計，來自 /reports/stats）
  */
-const popularTypes = computed<PopularType[]>(() => {
-  // 统计每种类型的报表数量
-  const typeCounts: Record<string, number> = {}
-  reports.value.forEach((report) => {
-    typeCounts[report.type] = (typeCounts[report.type] || 0) + 1
-  })
+// The lead metric stays a skeleton until the first list response has arrived
+const loaded = computed(() => !loading.value || reports.value.length > 0 || stats.totalReports > 0)
 
-  // 转换为数组并排序
-  const types = Object.entries(typeCounts)
-    .map(([type, count]) => ({
-      type,
-      label: getReportTypeLabel(type as ReportType),
-      count,
-      percentage: stats.totalReports > 0 ? Math.round((count / stats.totalReports) * 100) : 0
-    }))
-    .sort((a, b) => b.count - a.count)
-    .slice(0, 5) // 只显示前5个
-
-  return types
-})
-
-/**
- * 最近活动数据（用于 RecentActivityWidget）
- */
-const recentActivities = computed<RecentActivity[]>(() => {
-  // 取最近10个报表作为活动记录，过滤掉已过期的报表
-  return reports.value
-    .filter((report) => report.status !== 'expired')
-    .slice(0, 10)
-    .map((report) => ({
+// Feed derived from the loaded report rows (newest first); the status is the row's own
+const recentActivities = computed<RecentActivity[]>(() =>
+  reports.value
+    .filter(report => report.status === 'completed' || report.status === 'generating' || report.status === 'failed')
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    .slice(0, 8)
+    .map(report => ({
       id: report.id,
       reportId: report.id,
       title: report.title,
       typeLabel: getReportTypeLabel(report.type),
-      status: report.status as 'completed' | 'generating' | 'failed' | 'pending',
+      status: report.status === 'completed' || report.status === 'failed' ? report.status : 'generating',
       time: report.createdAt
     }))
+)
+
+const popularTypes = computed<PopularType[]>(() =>
+  stats.popularTypes.map(item => ({
+    type: item.type,
+    label: item.label,
+    count: item.count,
+    percentage: item.percentage
+  }))
+)
+
+/**
+ * One line under the title, from the list summary only
+ */
+const subtitle = computed(() => {
+  if (stats.totalReports === 0) { return '' }
+  const parts = [`已產生 ${stats.totalReports} 份報表`]
+  if (stats.failedReports > 0) { parts.push(`其中 ${stats.failedReports} 份失敗`) }
+  if (stats.pendingReports > 0) { parts.push(`${stats.pendingReports} 份正在處理`) }
+  return `${parts.join('，')}。`
 })
 
 // ========================================
@@ -295,44 +293,46 @@ function handleFilterByType(type: string) {
 </script>
 
 <style scoped>
-.report-dashboard {
-  width: 100%;
-  max-width: 1600px;
-  margin: 0 auto;
-  padding: 2rem;
-}
 
 .main-content {
   display: grid;
   grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
-  gap: 2rem;
+  gap: 16px;
+  align-items: stretch;
 }
 
 .content-left {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 16px;
+  min-width: 0;
 }
 
+/* Both columns end on the same line; the last widget absorbs the difference (capped for long lists) */
 .content-right {
   display: flex;
   flex-direction: column;
 }
 
-/* 響應式設計 */
+.content-right :deep(.sidebar-widgets),
+.content-right :deep(.widgets-container) {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
+
+.content-right :deep(.widget-wrapper:last-child) {
+  flex: 1;
+  max-height: 720px;
+}
+
 @media (max-width: 1280px) {
   .main-content {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .content-right {
-    order: -1;
-  }
-}
-
-@media (max-width: 768px) {
-  .report-dashboard {
-    padding: 1rem;
+  .content-right :deep(.widget-wrapper:last-child) {
+    max-height: none;
   }
 }
 </style>

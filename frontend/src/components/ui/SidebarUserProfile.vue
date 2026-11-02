@@ -6,11 +6,20 @@
         collapsed: sidebarCollapsed && !isMobile,
         'user-profile--mobile': isMobile,
       }"
-      @click="handleUserProfileClick"
+      :role="iconOnly ? 'button' : undefined"
+      :tabindex="iconOnly ? 0 : undefined"
+      :aria-label="iconOnly ? '用戶菜單' : undefined"
+      :aria-expanded="iconOnly ? showUserMenu : undefined"
+      @click="toggleUserMenu"
+      @keydown.enter="iconOnly && toggleUserMenu()"
     >
       <div class="user-avatar">
         {{ userInitials }}
-        <span class="user-presence" />
+        <span
+          class="user-presence"
+          :class="`user-presence--${connection.tone}`"
+          :title="connection.label"
+        />
       </div>
       <div
         v-if="!sidebarCollapsed || isMobile"
@@ -20,7 +29,7 @@
           {{ authStore.currentAgent?.name }}
         </div>
         <div class="user-role">
-          {{ authStore.currentAgent?.role }}
+          {{ roleSubtitle }}
         </div>
       </div>
       <button
@@ -34,17 +43,18 @@
       </button>
     </div>
 
-    <!-- User Dropdown Menu -->
-    <!-- BUG FIX: Original condition was `showUserMenu && (!sidebarCollapsed || isMobile) && !isMobile`
-         which simplified to `showUserMenu && !sidebarCollapsed && !isMobile` — making it impossible
-         to open on mobile. Fixed to: `showUserMenu && !sidebarCollapsed` (desktop only, sidebar expanded) -->
+    <!-- User Dropdown Menu. The icon-only rail opens it too: on tablet the rail is the only sidebar
+         there is, and 個人設定 / 登出 have no other entry point. -->
     <div
-      v-if="showUserMenu && !sidebarCollapsed"
+      v-if="showUserMenu"
       class="user-menu modern-menu"
     >
       <div
         class="user-menu-item"
+        role="button"
+        tabindex="0"
         @click="viewProfile"
+        @keydown.enter="viewProfile"
       >
         <UserIcon />
         <span>個人設定</span>
@@ -52,7 +62,10 @@
       <div class="user-menu-divider" />
       <div
         class="user-menu-item logout"
+        role="button"
+        tabindex="0"
         @click="handleLogout"
+        @keydown.enter="handleLogout"
       >
         <LogoutIcon />
         <span>登出</span>
@@ -72,6 +85,8 @@ const props = defineProps<{
   import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
   import { useRoute, useRouter } from 'vue-router'
   import { useAuthStore } from '@/stores/auth'
+  import { useWebSocketStore } from '@/stores/websocket'
+  import { useConnectionStatus } from '@/composables/useConnectionStatus'
   import { useToast } from '@/composables/useToast'
   import { useConfirmDialog } from '@/composables/useConfirmDialog'
   import ChevronUpIcon from '@/components/icons/ChevronUpIcon.vue'
@@ -85,6 +100,19 @@ const props = defineProps<{
   const { showInfo } = useConfirmDialog()
 
   const showUserMenu = ref(false)
+  const iconOnly = computed(() => props.sidebarCollapsed && !props.isMobile)
+
+  // Own presence dot = own websocket state (see docs/architecture/REALTIME_PRESENCE.md)
+  const connection = useConnectionStatus(useWebSocketStore())
+
+  // 「角色 · 主要團隊」 from /auth/me teams[] (isPrimary); team omitted when none
+  const roleSubtitle = computed(() => {
+    const agent = authStore.currentAgent
+    if (!agent) { return '' }
+    const roleLabel = agent.role === 'admin' ? '管理員' : '客服'
+    const primary = agent.teams?.find((t) => t.isPrimary) ?? agent.teams?.[0]
+    return primary?.name ? `${roleLabel} · ${primary.name}` : roleLabel
+  })
 
   const userInitials = computed(() => {
     const agent = authStore?.currentAgent
@@ -108,12 +136,6 @@ const props = defineProps<{
       .toUpperCase()
     return initials || 'U'
   })
-
-  const handleUserProfileClick = () => {
-    if (!props.sidebarCollapsed) {
-      toggleUserMenu()
-    }
-  }
 
   const toggleUserMenu = () => {
     showUserMenu.value = !showUserMenu.value
@@ -169,8 +191,11 @@ const props = defineProps<{
 </script>
 
 <style scoped>
+  /* Pinned under the scrolling nav (never shrinks, never scrolls away) */
   .sidebar-footer {
+    flex: none;
     padding: 8px 10px 12px;
+    box-shadow: inset 0 0.5px 0 var(--ui-sep);
   }
 
   .user-profile {
@@ -191,11 +216,12 @@ const props = defineProps<{
   .user-profile.collapsed {
     justify-content: center;
     padding: 8px 0;
-    cursor: default;
   }
 
-  .user-profile.collapsed:hover {
-    background-color: transparent;
+  .user-profile:focus-visible,
+  .user-menu-item:focus-visible {
+    outline: 2px solid var(--ui-accent);
+    outline-offset: -2px;
   }
 
   /* Prop-driven mobile style (replaces .sidebar-mobile .user-profile) */
@@ -231,6 +257,14 @@ const props = defineProps<{
     box-shadow: 0 0 0 2px var(--ui-canvas);
   }
 
+  .user-presence--connecting {
+    background: var(--ui-orange);
+  }
+
+  .user-presence--offline {
+    background: var(--ui-faint);
+  }
+
   .user-info {
     flex: 1;
     min-width: 0;
@@ -249,7 +283,6 @@ const props = defineProps<{
   .user-role {
     font-size: var(--ui-t-cap);
     color: var(--ui-muted);
-    text-transform: capitalize;
   }
 
   .user-menu-btn {

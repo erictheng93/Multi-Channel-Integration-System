@@ -1,6 +1,7 @@
 // System settings and management handlers
 // getSystemInfo, getSettings, updateSettings, getMetrics
 
+import { notSystemAgent } from '@/constants/system-agent';
 import { Context } from 'hono'
 import type { Bindings } from '@/types'
 import {
@@ -11,7 +12,7 @@ import {
 } from '@/utils/api-response'
 import { ActivityService, ACTIVITY_ACTIONS, RESOURCE_TYPES } from '@modules/activities'
 import { createDbClient } from '@/db/drizzle-factory'
-import { gte, count } from 'drizzle-orm'
+import { and, gte, count } from 'drizzle-orm'
 import { systemSettings, agents, conversations, messages } from '@/db/schema'
 import { nowISO } from '@/utils/timestamp'
 import { readLastIntegrationTest, type IntegrationTestRecord } from './system-integrations'
@@ -314,7 +315,7 @@ export const getMetrics = async (c: Context<{ Bindings: Bindings }>) => {
     const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
 
     const [activeUsers, totalConversations, messagesToday] = await Promise.all([
-      drizzleDb.select({ count: count() }).from(agents).where(gte(agents.lastLoginAt, oneHourAgo)),
+      drizzleDb.select({ count: count() }).from(agents).where(and(notSystemAgent(agents.id), gte(agents.lastLoginAt, oneHourAgo))),
       drizzleDb.select({ count: count() }).from(conversations),
       drizzleDb.select({ count: count() }).from(messages)
     ])

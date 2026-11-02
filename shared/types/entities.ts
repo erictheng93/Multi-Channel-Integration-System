@@ -84,6 +84,10 @@ export interface Conversation {
   unreadCount: number
   /** Earliest unread customer message for the current agent (ISO); null when nothing is unread */
   oldestUnreadAt?: string | null
+  /** Start of the team-wide unanswered wait (ISO); null = not waiting; undefined = not provided by the API */
+  awaitingSince?: string | null
+  /** 逾期待回覆 list only: no human agent ever replied */
+  neverReplied?: boolean
   /** Epoch ms until which the next LINE reply is free (Reply API); null = none */
   replyWindowExpiresAt?: number | null
   firstResponseAt?: Timestamp | null // 首次回應時間（用於判斷處理狀態）

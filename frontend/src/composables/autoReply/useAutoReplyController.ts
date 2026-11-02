@@ -48,24 +48,31 @@ export function useAutoReplyController() {
 
     const activeRules = store.rules.filter(r => r.isActive).length
 
-    // Check if currently within business hours
+    // Business hours: the server answers for the team (timezone-aware); until it has,
+    // fall back to the loaded schedules in the browser's clock
+    const snapshot = store.statsSnapshot ?? null
     const now = new Date()
     const dayOfWeek = now.getDay()
     const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
     const todaySchedule = store.schedules.find(s => s.dayOfWeek === dayOfWeek)
-    const isBusinessHours = todaySchedule
+    const localOpen = todaySchedule
       ? todaySchedule.isActive && currentTime >= todaySchedule.startTime && currentTime <= todaySchedule.endTime
       : false
+    const isBusinessHours = snapshot ? snapshot.businessHours.isOpen : localOpen
 
-    // Success rate from today's logs (still use store.logs for visible items)
-    const todayLogs = store.logs.length
-    const successLogs = store.logs.filter(l => l.reply_method === 'reply_api').length
-    const successRate = todayLogs > 0 ? Math.round((successLogs / todayLogs) * 100) : 0
+    // Success rate comes from the server (sent / attempted today); null when nothing was attempted
+    const successRate = snapshot && snapshot.successRate !== null
+      ? Math.round(snapshot.successRate * 1000) / 10
+      : null
 
     return {
       activeRules,
-      todayReplies: store.todayReplyCount,
+      totalRules: store.rules.length,
+      todayReplies: snapshot ? snapshot.todaySuccess : store.todayReplyCount,
+      todayFailed: snapshot ? snapshot.todayFailed : 0,
+      yesterdaySameTime: snapshot ? snapshot.yesterdaySameTimeSuccess : null,
       isBusinessHours,
+      businessHours: snapshot ? snapshot.businessHours : null,
       successRate
     }
   })
@@ -95,6 +102,7 @@ export function useAutoReplyController() {
         store.fetchRules({ scope: 'global' }),
         store.fetchSchedules({ teamId }),
         store.fetchLogs({ teamId, pageSize: 50 }),
+        store.fetchStats({ teamId }),
       ])
       scheduleEditor.loadFromSchedules(store.schedules)
       startPolling()
@@ -123,6 +131,7 @@ export function useAutoReplyController() {
       const teamId = resolveTeamId()
       store.silentFetchRules({ scope: 'global' })
       store.silentFetchLogs({ teamId, pageSize: 50 })
+      store.fetchStats({ teamId })
     }, 30000)
 
     // Logs tab polling: refresh with filters every 15s when logs tab is active

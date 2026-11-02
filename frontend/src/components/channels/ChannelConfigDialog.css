@@ -182,7 +182,7 @@
 }
 
 .form-hint {
-  font-size: 0.75rem;
+  font-size: 13px;
   color: var(--gray-500);
 }
 
@@ -256,7 +256,7 @@
   padding: 0.5rem;
   border: 1px solid var(--gray-300);
   border-radius: var(--radius-md);
-  font-size: 0.75rem;
+  font-size: 13px;
   font-family: monospace;
   background: white;
 }
@@ -283,7 +283,7 @@
 }
 
 .webhook-hint {
-  font-size: 0.75rem;
+  font-size: 13px;
   color: var(--gray-600);
   margin: 0;
 }
