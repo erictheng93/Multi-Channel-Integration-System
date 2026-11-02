@@ -174,6 +174,19 @@ describe('webhook health from KV alert keys (CH2)', () => {
     expect(health.processingFailures24h).toBe(0);
   });
 
+  test('a concurrent burst of signature failures costs one KV write', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(NOW);
+    try {
+      const { kv } = makeKv();
+      const env = { CACHE: kv } as unknown as Bindings;
+      await Promise.all(Array.from({ length: 100 }, () => recordWebhookSignatureFailure(env, 'line', 'Invalid signature')));
+      expect(kv.put).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   test('recording never throws when KV is down', async () => {
     const env = { CACHE: { get: async () => { throw new Error('x'); }, put: async () => undefined } } as unknown as Bindings;
     await expect(recordWebhookSignatureFailure(env, 'facebook', 'bad')).resolves.toBeUndefined();
