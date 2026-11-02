@@ -194,7 +194,7 @@
   onMounted(() => {
     void nextTick(() => { revealActive(); scheduleSettle() })
     if (typeof window.ResizeObserver !== 'undefined' && navEl.value) {
-      resizeObserver = new window.ResizeObserver(updateFades)
+      resizeObserver = new window.ResizeObserver(() => { updateFades(); scheduleSettle() })
       resizeObserver.observe(navEl.value)
     }
   })
@@ -328,7 +328,7 @@
     margin-bottom: 1px;
     border-radius: 9px;
     color: var(--ui-ink-2);
-    font-size: 13.5px;
+    font-size: 14px;
     font-weight: 500;
     text-decoration: none;
     overflow: hidden;
