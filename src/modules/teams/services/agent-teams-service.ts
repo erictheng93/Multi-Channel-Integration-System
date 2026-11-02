@@ -3,6 +3,7 @@
 // Supports unlimited team membership for agents
 
 import { drizzle } from 'drizzle-orm/d1';
+import { assertNotSystemAgent } from '@/constants/system-agent';
 import { createContextLogger } from '@/utils/logger'
 
 const log = createContextLogger('AgentTeamsService')
@@ -244,6 +245,7 @@ export class AgentTeamsService {
    * 將客服加入團隊
    */
   async addAgentToTeam(data: AddToTeamRequest): Promise<AgentTeamMembership> {
+    assertNotSystemAgent(data.agentId);
     const now = nowISO();
 
     // If this is set as primary, first unset any existing primary team
@@ -288,6 +290,7 @@ export class AgentTeamsService {
     teamIds: number[],
     roleInTeam: string = 'member'
   ): Promise<BulkAddResult> {
+    assertNotSystemAgent(agentId);
     const result: BulkAddResult = {
       added: [],
       skipped: [],
@@ -378,6 +381,7 @@ export class AgentTeamsService {
     agentIds: string[],
     roleInTeam: string = 'member'
   ): Promise<BatchAddMembersResult> {
+    assertNotSystemAgent(...agentIds);
     const result: BatchAddMembersResult = {
       added: [],
       skipped: [],
@@ -489,6 +493,7 @@ export class AgentTeamsService {
    * 從團隊移除客服
    */
   async removeAgentFromTeam(agentId: string, teamId: number): Promise<void> {
+    assertNotSystemAgent(agentId);
     // Check if this is the primary team
     const [membership] = await this.db
       .select({ isPrimary: agentTeams.isPrimary })
@@ -537,6 +542,7 @@ export class AgentTeamsService {
     teamId: number,
     data: UpdateTeamRoleRequest
   ): Promise<AgentTeamMembership> {
+    assertNotSystemAgent(agentId);
     if (data.roleInTeam !== undefined && !isTeamRole(data.roleInTeam)) throw new Error('Invalid roleInTeam');
 
     // Verify membership BEFORE any write: nothing outside this team may be touched.
@@ -569,6 +575,7 @@ export class AgentTeamsService {
    * 設定主要團隊
    */
   async setPrimaryTeam(agentId: string, teamId: number): Promise<void> {
+    assertNotSystemAgent(agentId);
     // Check if membership exists
     const membership = await this.getAgentTeamMembership(agentId, teamId);
     if (!membership) {

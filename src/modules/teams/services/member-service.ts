@@ -1,7 +1,7 @@
 // Team Member Service
 // 團隊成員業務邏輯服務
 
-import { notSystemAgent } from '@/constants/system-agent';
+import { assertNotSystemAgent, notSystemAgent } from '@/constants/system-agent';
 import { eq, and, or, desc, sql, isNull, inArray } from 'drizzle-orm';
 import { createDbClient, type Database } from '@/db/drizzle-factory';
 import {
@@ -236,6 +236,7 @@ export class MemberService {
     data: UpdateMemberStatusRequest,
     _updatedBy: string
   ): Promise<TeamMember> {
+    assertNotSystemAgent(memberId);
     const [updated] = await this.db
       .update(agents)
       .set({
@@ -262,6 +263,7 @@ export class MemberService {
     data: UpdateMemberRoleRequest,
     _updatedBy: string
   ): Promise<TeamMember> {
+    assertNotSystemAgent(memberId);
     const [updated] = await this.db
       .update(agents)
       .set({
@@ -288,6 +290,7 @@ export class MemberService {
     data: UpdateMemberRequest,
     _updatedBy: string
   ): Promise<TeamMember> {
+    assertNotSystemAgent(memberId);
     const updateData: AgentUpdate = {
       updatedAt: nowISO()
     };
@@ -369,7 +372,7 @@ export class MemberService {
       const existingMembers = await this.db
         .select()
         .from(agents)
-        .where(inArray(agents.id, memberIds));
+        .where(and(inArray(agents.id, memberIds), notSystemAgent(agents.id)));
 
       // 建立已存在成員的 Map
       const existingMemberMap = new Map(
@@ -480,6 +483,7 @@ export class MemberService {
         .from(agents)
         .where(and(
           inArray(agents.id, memberIds),
+          notSystemAgent(agents.id),
           isNull(agents.deletedAt) // 只查詢未被刪除的成員
         ));
 
@@ -611,6 +615,7 @@ export class MemberService {
         .from(agents)
         .where(and(
           inArray(agents.id, memberIds),
+          notSystemAgent(agents.id),
           isNull(agents.deletedAt)
         ));
 
@@ -789,6 +794,7 @@ export class MemberService {
    * 19. 最後刪除成員帳號
    */
   async hardDeleteMember(memberId: string, _deletedBy: string): Promise<boolean> {
+    assertNotSystemAgent(memberId);
     // Phase 1: Clean up all FK references in parallel (independent tables)
     await Promise.all([
       this.db.delete(notifications).where(eq(notifications.userId, memberId)),

@@ -12,6 +12,11 @@ export function isSystemAgentId(id: unknown): boolean {
   return id === SYSTEM_AGENT_ID;
 }
 
+/** Second layer behind blockSystemAgentTarget: services refuse the system actor whichever route reached them. */
+export function assertNotSystemAgent(...ids: string[]): void {
+  if (ids.some(isSystemAgentId)) { throw new Error('The system account cannot be modified'); }
+}
+
 /** Raw-SQL predicate that excludes the system actor, for a column reference such as `a.id` or `agents.id`. */
 export function notSystemAgentSql(column: string): string {
   return `${column} <> '${SYSTEM_AGENT_ID}'`;
