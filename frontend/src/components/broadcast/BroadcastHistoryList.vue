@@ -315,12 +315,19 @@ function formatDate(value: string | null): string {
   flex: none;
 }
 
-/* One line of the message, cut with an ellipsis: every record is the same height */
+/* The message gets its own line and two lines of room, so a record is read, not guessed at */
+.meta-line {
+  flex-wrap: wrap;
+}
+
 .meta-line .snippet {
+  display: -webkit-box;
+  flex: 1 0 100%;
   min-width: 0;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-clamp: 2;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
 
 .when {
