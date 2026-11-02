@@ -359,8 +359,7 @@ function handleFilterByType(type: string) {
   }
 
   /* the phone shows this block above the list instead */
-  .content-right :deep(.widget-wrapper:has(.rail-attn)),
-  .content-right :deep(.widget-wrapper:has(.stor)) {
+  .content-right :deep(.widget-wrapper:has(.rail-attn)) {
     display: none;
   }
 }

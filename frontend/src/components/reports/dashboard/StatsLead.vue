@@ -75,8 +75,18 @@
           :key="day.key"
           :class="{ today: day.today }"
         >
-          <span class="wb-n">{{ day.count }}</span>
-          <span class="wb-track"><i :style="{ height: day.h }" /></span>
+          <span class="wb-n">{{ day.count || '' }}</span>
+          <span
+            class="wb-track"
+            :class="{ 'is-zero': !day.count }"
+          >
+            <i
+              v-for="seg in day.segs"
+              :key="seg.tone"
+              :class="seg.tone"
+              :style="{ height: seg.h }"
+            />
+          </span>
           <span class="wb-d">{{ day.label }}</span>
         </li>
       </ul>
@@ -113,19 +123,31 @@ const completionRate = computed(() => {
 const dayKey = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Taipei' })
 const dayLabel = new Intl.DateTimeFormat('zh-TW', { timeZone: 'Asia/Taipei', month: 'numeric', day: 'numeric' })
 const week = computed(() => {
-  const counts = new Map<string, number>()
+  type Tally = { done: number; run: number; fail: number }
+  const counts = new Map<string, Tally>()
   for (const report of props.reports) {
     const key = dayKey.format(new Date(report.createdAt))
-    counts.set(key, (counts.get(key) ?? 0) + 1)
+    const tally = counts.get(key) ?? { done: 0, run: 0, fail: 0 }
+    if (report.status === 'failed') { tally.fail += 1 } else if (report.status === 'generating' || report.status === 'pending') { tally.run += 1 } else { tally.done += 1 }
+    counts.set(key, tally)
   }
   const now = Date.now()
   const days = Array.from({ length: 7 }, (_, i) => {
     const at = new Date(now - (6 - i) * 864e5)
     const key = dayKey.format(at)
-    return { key, label: dayLabel.format(at), count: counts.get(key) ?? 0, today: i === 6 }
+    const t = counts.get(key) ?? { done: 0, run: 0, fail: 0 }
+    return { key, label: dayLabel.format(at), count: t.done + t.run + t.fail, t, today: i === 6 }
   })
   const max = Math.max(1, ...days.map(d => d.count))
-  return days.map(d => ({ ...d, h: d.count ? `${Math.max(8, Math.round((d.count / max) * 100))}%` : '3px' }))
+  return days.map(d => ({
+    key: d.key,
+    label: d.label,
+    count: d.count,
+    today: d.today,
+    segs: ([['done', d.t.done], ['run', d.t.run], ['fail', d.t.fail]] as const)
+      .filter(([, n]) => n > 0)
+      .map(([tone, n]) => ({ tone, h: `${(n / max) * 100}%` }))
+  }))
 })
 
 const weekTotal = computed(() => week.value.reduce((sum, d) => sum + d.count, 0))
@@ -150,7 +172,7 @@ const rows = computed(() => {
 .lead {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
-  gap: 24px 56px;
+  gap: 24px 48px;
   align-items: center;
   padding: 28px 40px;
 }
@@ -223,7 +245,7 @@ const rows = computed(() => {
 
 .week-bars li {
   display: grid;
-  grid-template-rows: auto 96px auto;
+  grid-template-rows: 20px 110px auto;
   gap: 6px;
   justify-items: center;
 }
@@ -240,24 +262,47 @@ const rows = computed(() => {
 
 .wb-track {
   display: flex;
-  align-items: flex-end;
+  flex-direction: column-reverse;
+  gap: 2px;
   width: 100%;
   max-width: 44px;
   height: 100%;
   border-radius: 10px;
-  background: var(--ui-fill);
   overflow: hidden;
 }
 
 .wb-track i {
   display: block;
   width: 100%;
-  border-radius: 10px;
-  background: color-mix(in srgb, var(--ui-accent) 45%, var(--ui-surface));
+  min-height: 10px;
+  border-radius: 6px;
 }
 
-.today .wb-track i {
-  background: var(--ui-accent);
+.wb-track .done {
+  background: var(--ui-green);
+}
+
+.wb-track .run {
+  background: var(--ui-orange);
+}
+
+.wb-track .fail {
+  background: var(--ui-red);
+}
+
+.wb-track.is-zero {
+  position: relative;
+}
+
+.wb-track.is-zero::after {
+  position: absolute;
+  right: 30%;
+  bottom: 0;
+  left: 30%;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--ui-fill-strong);
+  content: '';
 }
 
 .wb-d {
@@ -303,7 +348,7 @@ const rows = computed(() => {
   position: absolute;
   top: 4px;
   bottom: 4px;
-  left: -28px;
+  left: -24px;
   width: 0.5px;
   background: var(--ui-sep);
   content: '';
