@@ -149,6 +149,8 @@ export class MessageBroadcaster implements DurableObject {
         // Monitoring
         case '/metrics':
           return this.httpHandlers.handleGetMetrics(request);
+        case '/online-users':
+          return this.httpHandlers.handleGetOnlineUsers(request);
         case '/status':
         case '/health':
           return this.httpHandlers.handleGetStatus(request);

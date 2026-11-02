@@ -7,7 +7,6 @@ import { createContextLogger } from '@/utils/logger'
 const log = createContextLogger('ReportManager')
 
 import type {
-  ReportBase,
   ReportDetails,
   ReportListQuery,
   ReportViewer,
@@ -33,6 +32,7 @@ import {
 import type { ReportGeneratorService } from './report-generator-service';
 import type { ReportUtils } from './report-utils';
 import { nowISO } from '@/utils/timestamp'
+import { mapReportRow } from './report-mapper'
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -56,13 +56,14 @@ export class ReportManagerService {
     try {
       const { drizzle } = await import('drizzle-orm/d1');
       const { reports } = await import('../../../db/schema');
-      const { eq, and, or, gte, lte, desc, count, isNull, inArray } = await import('drizzle-orm');
+      const { eq, and, or, gte, lte, lt, isNull, inArray, desc, asc, count, sql } = await import('drizzle-orm');
       const { likeEscaped } = await import('@/utils/sql-like');
 
       const db = drizzle(this.db);
       const page = query.page || 1;
       const pageSize = Math.min(query.pageSize || 20, DEFAULT_REPORT_CONFIG.maxPageSize);
       const offset = (page - 1) * pageSize;
+      const now = nowISO();
 
       // Visibility scope shared by the list, the total and the summary
       const scopeConditions = [isNull(reports.deletedAt)];
@@ -73,10 +74,19 @@ export class ReportManagerService {
         );
       }
 
-      // Build query conditions
       const conditions = [...scopeConditions];
       if (query.type) conditions.push(eq(reports.type, query.type));
-      if (query.status) conditions.push(eq(reports.status, query.status));
+      if (query.status === 'expired') {
+        conditions.push(eq(reports.status, 'completed'), lt(reports.expiresAt, now));
+      } else if (query.status === 'completed') {
+        conditions.push(
+          eq(reports.status, 'completed'),
+          or(isNull(reports.expiresAt), gte(reports.expiresAt, now))!
+        );
+      } else if (query.status) {
+        conditions.push(eq(reports.status, query.status));
+      }
+      if (query.format) conditions.push(eq(reports.format, query.format));
       if (query.createdBy) conditions.push(eq(reports.createdBy, query.createdBy));
       if (query.teamId) conditions.push(eq(reports.teamId, query.teamId));
       if (query.startDate) conditions.push(gte(reports.createdAt, query.startDate));
@@ -85,51 +95,48 @@ export class ReportManagerService {
 
       const whereClause = and(...conditions);
 
-      // Query total count
-      const totalResult = await db
-        .select({ count: count() })
-        .from(reports)
-        .where(whereClause)
-        .get();
+      const sortColumns = {
+        createdAt: reports.createdAt,
+        completedAt: reports.completedAt,
+        title: reports.title,
+        type: reports.type,
+        status: reports.status,
+        format: reports.format
+      } as const;
+      const sortColumn = sortColumns[(query.sortBy ?? 'createdAt') as keyof typeof sortColumns] ?? reports.createdAt;
+      const direction = query.sortOrder === 'asc' ? asc : desc;
+
+      // One GROUP BY status over the visible set (no search/type filters): the "expired" figure is
+      // the part of `completed` that is past expiresAt.
+      const [totalResult, reportRecords, statusRows] = await Promise.all([
+        db.select({ count: count() }).from(reports).where(whereClause).get(),
+        db
+          .select()
+          .from(reports)
+          .where(whereClause)
+          .orderBy(direction(sortColumn), desc(reports.id))
+          .limit(pageSize)
+          .offset(offset)
+          .all(),
+        db
+          .select({
+            status: reports.status,
+            total: count(),
+            expired: sql<number>`coalesce(sum(case when ${reports.status} = 'completed' and ${reports.expiresAt} < ${now} then 1 else 0 end), 0)`
+          })
+          .from(reports)
+          .where(and(...scopeConditions))
+          .groupBy(reports.status)
+          .all()
+      ]);
       const total = totalResult?.count || 0;
 
-      // Query paginated reports
-      const reportRecords = await db
-        .select()
-        .from(reports)
-        .where(whereClause)
-        .orderBy(desc(reports.createdAt))
-        .limit(pageSize)
-        .offset(offset)
-        .all();
-
-      const reportsList: ReportBase[] = reportRecords.map((report) => ({
-        id: report.id,
-        title: report.title,
-        type: report.type as 'conversation_summary' | 'agent_performance' | 'message_statistics' | 'custom',
-        format: report.format as 'json' | 'csv' | 'excel' | 'pdf',
-        status: report.status as 'pending' | 'generating' | 'completed' | 'failed',
-        createdBy: report.createdBy,
-        createdAt: report.createdAt || nowISO(),
-        updatedAt: report.updatedAt || undefined,
-        startedAt: report.generationStartedAt || undefined,
-        completedAt: report.completedAt || undefined,
-        downloadUrl: report.downloadUrl || undefined,
-        fileSize: report.fileSize || undefined,
-        teamId: report.teamId || undefined,
-        errorMessage: report.errorMessage || undefined,
-        metadata: report.options ? JSON.parse(report.options) : undefined
-      }));
-
-      // Summary stats (without pagination filters)
-      const summaryConditions = [...scopeConditions];
-      if (query.teamId) summaryConditions.push(eq(reports.teamId, query.teamId));
-      if (query.createdBy) summaryConditions.push(eq(reports.createdBy, query.createdBy));
-      const summaryWhere = and(...summaryConditions);
-      const allReports = await db.select().from(reports).where(summaryWhere).all();
+      const byStatus = new Map(statusRows.map((row) => [row.status, row]));
+      const countOf = (status: string) => Number(byStatus.get(status)?.total ?? 0);
+      const expiredReports = Number(byStatus.get('completed')?.expired ?? 0);
 
       return {
-        reports: reportsList,
+        reports: reportRecords.map(mapReportRow),
         pagination: {
           page,
           pageSize,
@@ -139,10 +146,12 @@ export class ReportManagerService {
           hasPrev: page > 1
         },
         summary: {
-          totalReports: allReports.length,
-          pendingReports: allReports.filter((r) => r.status === 'pending').length,
-          completedReports: allReports.filter((r) => r.status === 'completed').length,
-          failedReports: allReports.filter((r) => r.status === 'failed').length
+          totalReports: statusRows.reduce((sum, row) => sum + Number(row.total), 0),
+          pendingReports: countOf('pending'),
+          generatingReports: countOf('generating'),
+          completedReports: countOf('completed') - expiredReports,
+          failedReports: countOf('failed'),
+          expiredReports
         }
       };
     } catch (error) {
@@ -152,7 +161,8 @@ export class ReportManagerService {
   }
 
   /**
-   * Get report details. Reports the viewer cannot see are reported as not found.
+   * Get report details. Everything returned is stored data: timestamps, execution time and the
+   * download history table. Reports the viewer cannot see are reported as not found.
    */
   async getReportDetails(
     reportId: string,
@@ -169,30 +179,65 @@ export class ReportManagerService {
         if (!visible) return null;
       }
 
-      const details: ReportDetails = {
-        ...report,
-        generationLog: [
-          '2025-09-01T00:00:00.000Z - Report generation started',
-          '2025-09-01T00:01:00.000Z - Data collection completed',
-          '2025-09-01T00:03:00.000Z - Report formatting completed',
-          '2025-09-01T00:05:00.000Z - Report generation completed'
-        ],
-        executionTime: 300,
-        dataSource: {
-          tables: ['conversations', 'messages', 'users'],
-          filters: report.metadata?.filters || {},
-          recordCount: 15000
-        },
-        downloadHistory: [
-          {
-            downloadedAt: '2025-09-01T10:00:00.000Z',
-            downloadedBy: 'user123',
-            ipAddress: '192.168.1.100'
-          }
-        ]
-      };
+      const { drizzle } = await import('drizzle-orm/d1');
+      const { reports, reportDownloadHistory, agents } = await import('../../../db/schema');
+      const { eq, desc } = await import('drizzle-orm');
+      const db = drizzle(this.db);
 
-      return details;
+      const [row, downloads] = await Promise.all([
+        db
+          .select({
+            executionTime: reports.executionTime,
+            failedAt: reports.failedAt,
+            filters: reports.filters
+          })
+          .from(reports)
+          .where(eq(reports.id, reportId))
+          .get(),
+        db
+          .select({
+            downloadedAt: reportDownloadHistory.downloadedAt,
+            downloadedBy: reportDownloadHistory.downloadedBy,
+            downloadedByName: agents.displayName,
+            ipAddress: reportDownloadHistory.ipAddress
+          })
+          .from(reportDownloadHistory)
+          .leftJoin(agents, eq(agents.id, reportDownloadHistory.downloadedBy))
+          .where(eq(reportDownloadHistory.reportId, reportId))
+          .orderBy(desc(reportDownloadHistory.downloadedAt))
+          .limit(20)
+          .all()
+      ]);
+
+      const generationLog = [
+        `${report.createdAt} - Report requested`,
+        report.startedAt ? `${report.startedAt} - Generation started` : null,
+        report.completedAt ? `${report.completedAt} - Generation completed` : null,
+        row?.failedAt ? `${row.failedAt} - Generation failed${report.errorMessage ? `: ${report.errorMessage}` : ''}` : null
+      ].filter((line): line is string => line !== null);
+
+      let filters: ReportFilters = {};
+      if (row?.filters) {
+        try {
+          const parsed: unknown = JSON.parse(row.filters);
+          if (isRecord(parsed)) filters = parsed as ReportFilters;
+        } catch {
+          // malformed stored filters: report none rather than fail the whole details call
+        }
+      }
+
+      return {
+        ...report,
+        generationLog,
+        executionTime: row?.executionTime ?? undefined,
+        dataSource: { filters },
+        downloadHistory: downloads.map((d) => ({
+          downloadedAt: d.downloadedAt ?? '',
+          downloadedBy: d.downloadedBy,
+          downloadedByName: d.downloadedByName ?? undefined,
+          ipAddress: d.ipAddress ?? undefined
+        }))
+      };
     } catch (error) {
       log.error('Get report details error', {}, error as Error);
       return null;

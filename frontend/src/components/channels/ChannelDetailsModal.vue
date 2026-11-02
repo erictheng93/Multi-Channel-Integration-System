@@ -142,7 +142,7 @@ const formatDate = (dateStr: string): string => {
 }
 
 .detail-label {
-  font-size: 0.75rem;
+  font-size: 13px;
   color: var(--gray-600);
   font-weight: 500;
 }
@@ -162,7 +162,7 @@ const formatDate = (dateStr: string): string => {
   padding: 0.5rem;
   border: 1px solid var(--gray-300);
   border-radius: var(--radius-md);
-  font-size: 0.75rem;
+  font-size: 13px;
   font-family: monospace;
   background: var(--gray-50);
 }

@@ -1,6 +1,7 @@
 // Report Generator Service
 // Handles report data generation, querying, formatting and serialization
 
+import { mapReportRow } from './report-mapper';
 import { escapeCsvField } from '@/utils/csv';
 import type { Bindings } from '@/types';
 import type { drizzle } from 'drizzle-orm/d1';
@@ -172,27 +173,7 @@ export class ReportGeneratorService {
         .where(and(eq(reports.id, reportId), isNull(reports.deletedAt)))
         .get();
 
-      if (!report) {
-        return null;
-      }
-
-      return {
-        id: report.id,
-        title: report.title,
-        type: report.type as ReportBase['type'],
-        format: report.format as ReportFormat,
-        status: report.status as ReportStatus,
-        createdBy: report.createdBy,
-        createdAt: report.createdAt || nowISO(),
-        updatedAt: report.updatedAt || undefined,
-        startedAt: report.generationStartedAt || undefined,
-        completedAt: report.completedAt || undefined,
-        downloadUrl: report.downloadUrl || undefined,
-        fileSize: report.fileSize || undefined,
-        teamId: report.teamId || undefined,
-        errorMessage: report.errorMessage || undefined,
-        metadata: report.options ? JSON.parse(report.options) : undefined
-      };
+      return report ? mapReportRow(report) : null;
     } catch (error) {
       log.error('Get report status error', {}, error as Error);
       return null;

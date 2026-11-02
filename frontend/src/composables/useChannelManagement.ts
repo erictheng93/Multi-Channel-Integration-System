@@ -11,6 +11,7 @@ export function useChannelManagement() {
 
   const channels = ref<ChannelIntegration[]>([])
   const isLoading = ref(false)
+  const loadFailed = ref(false)
   const selectedPlatform = ref<ChannelPlatform | null>(null)
   const showConfigDialog = ref(false)
   const showDetailsModal = ref(false)
@@ -26,12 +27,16 @@ export function useChannelManagement() {
 
   const loadChannels = async () => {
     isLoading.value = true
+    loadFailed.value = false
     try {
       const response = await channelsApi.list()
       if (response.success) {
         channels.value = response.data
+      } else {
+        loadFailed.value = true
       }
     } catch (error) {
+      loadFailed.value = true
       console.error('Failed to load channels:', error)
     } finally {
       isLoading.value = false
@@ -118,12 +123,13 @@ export function useChannelManagement() {
   }
 
   const toggleChannelStatus = async (channel: ChannelIntegration) => {
+    // Optimistic: flip now, roll back if the server refuses
+    const next = !channel.isActive
+    channel.isActive = next
     try {
-      await channelsApi.update(channel.id, {
-        isActive: !channel.isActive
-      })
-      channel.isActive = !channel.isActive
+      await channelsApi.update(channel.id, { isActive: next })
     } catch (error) {
+      channel.isActive = !next
       console.error('Failed to toggle channel status:', error)
     }
   }
@@ -232,6 +238,7 @@ export function useChannelManagement() {
     getWebhookUrl,
     handleChannelCreated,
     isLoading,
+    loadFailed,
     openAddChannelDialog,
     refreshChannels,
     selectedChannel,

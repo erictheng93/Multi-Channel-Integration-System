@@ -590,6 +590,64 @@ describe('System Settings Controller', () => {
     })
   })
 
+  describe('Failed health check', () => {
+    async function checkHealthy() {
+      const { systemApi } = await import('@/api/system')
+      const at = new Date().toISOString()
+      vi.mocked(systemApi.healthCheck).mockResolvedValueOnce({
+        success: true,
+        data: {
+          overall: { status: 'healthy', message: 'OK', timestamp: at },
+          components: [
+            { component: 'database', version: '1.0', status: { status: 'healthy', message: 'OK', timestamp: at, responseTime: 5 }, lastCheck: at, checkInterval: 30 }
+          ],
+          infrastructure: {},
+          performance: { apiResponseTime: 10, databaseQueryTime: 5, cacheHitRate: 0.95 }
+        }
+      })
+      await controller.healthCheck()
+      expect(controller.healthOverall.value?.status).toBe('healthy')
+    }
+
+    function expectNoVerdictLeft(reason: string) {
+      expect(controller.healthOverall.value).toBeNull()
+      expect(controller.healthCheckResults.value).toEqual([])
+      expect(controller.healthCheckedAt.value).toBeNull()
+      expect(controller.healthCheckError.value).toBe(reason)
+    }
+
+    it('drops the previous verdict when the backend cannot be reached', async () => {
+      const { systemApi } = await import('@/api/system')
+      await checkHealthy()
+      vi.mocked(systemApi.healthCheck).mockRejectedValueOnce(new Error('Network down'))
+
+      await controller.healthCheck()
+
+      expectNoVerdictLeft('Network down')
+    })
+
+    it('drops the previous verdict when the response has no health payload', async () => {
+      const { systemApi } = await import('@/api/system')
+      await checkHealthy()
+      vi.mocked(systemApi.healthCheck).mockResolvedValueOnce({ success: false, message: 'Unavailable' })
+
+      await controller.healthCheck()
+
+      expectNoVerdictLeft('Unavailable')
+    })
+
+    it('clears the failure once a check succeeds', async () => {
+      const { systemApi } = await import('@/api/system')
+      vi.mocked(systemApi.healthCheck).mockRejectedValueOnce(new Error('Network down'))
+      await controller.healthCheck()
+      expect(controller.healthCheckError.value).toBe('Network down')
+
+      await checkHealthy()
+
+      expect(controller.healthCheckError.value).toBeNull()
+    })
+  })
+
   describe('Utility Functions', () => {
     it('should show message with correct type', () => {
       controller.showMessage('Test message', 'success')

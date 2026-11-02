@@ -2,3 +2,4 @@
 export { default as autoReplyRulesHandler } from './auto-reply-rules';
 export { default as autoReplySchedulesHandler } from './auto-reply-schedules';
 export { default as autoReplyLogsHandler } from './auto-reply-logs';
+export { default as autoReplyStatsHandler } from './auto-reply-stats';

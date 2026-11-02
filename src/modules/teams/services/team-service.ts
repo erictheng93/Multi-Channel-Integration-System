@@ -580,7 +580,7 @@ export class TeamService implements TeamServiceInterface {
       })
       .from(agentTeams)
       .innerJoin(agents, eq(agentTeams.agentId, agents.id))
-      .where(eq(agentTeams.teamId, teamId))
+      .where(and(eq(agentTeams.teamId, teamId), sql`${agents.deletedAt} IS NULL`))
       .orderBy(agents.displayName);
 
     return memberships.map(({ agent, roleInTeam, joinedAt }) => ({
