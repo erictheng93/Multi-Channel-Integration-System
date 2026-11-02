@@ -6,70 +6,84 @@
   >
     <h2
       id="broadcast-audience-title"
-      class="visually-hidden"
+      class="ledger-title"
     >
-      受眾預覽
+      發送明細
+      <span v-if="tagName">「{{ tagName }}」</span>
+      <span
+        v-else
+        class="ledger-hint"
+      >{{ loading ? '計算受眾中...' : '選擇目標標籤後，這裡算出誰會收到' }}</span>
     </h2>
 
     <div
-      v-if="!preview"
-      class="aud-empty"
+      class="ledger"
+      :class="{ 'is-empty': !preview }"
     >
-      <span
-        class="aud-ico"
+      <div class="cell">
+        <b>{{ preview ? preview.total : 0 }}</b>
+        <span>人符合標籤</span>
+      </div>
+      <i
+        class="op"
         aria-hidden="true"
-      >
-        <svg
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="1.8"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        ><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle
-          cx="9"
-          cy="7"
-          r="4"
-        /><path d="M22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8" /></svg>
-      </span>
-      <div>
-        <b>受眾預覽</b>
-        <span>{{ loading ? '計算受眾中...' : '選擇目標標籤後，會在這裡顯示會收到訊息的人數。' }}</span>
+      >−</i>
+      <div class="cell is-skip">
+        <b>{{ preview ? skipped : 0 }}</b>
+        <span>人略過</span>
+      </div>
+      <i
+        class="op"
+        aria-hidden="true"
+      >=</i>
+      <div class="cell is-send">
+        <b>{{ preview ? preview.sendable : 0 }}</b>
+        <span>人收到</span>
       </div>
     </div>
 
-    <template v-else>
-      <div class="big-row">
-        <span class="big">{{ preview.total }}</span>
-        <span class="of">人符合<template v-if="tagName">「{{ tagName }}」</template>標籤</span>
-      </div>
+    <div
+      class="mix"
+      role="img"
+      :aria-label="preview ? `LINE ${preview.sendable} 人，Facebook ${preview.byPlatform.facebook} 人，其他略過 ${otherSkipped} 人` : '尚無受眾'"
+    >
+      <i
+        v-if="preview"
+        class="m-line"
+        :style="{ flexGrow: preview.sendable }"
+      />
+      <i
+        v-if="preview && preview.byPlatform.facebook > 0"
+        class="m-fb"
+        :style="{ flexGrow: preview.byPlatform.facebook }"
+      />
+      <i
+        v-if="preview && otherSkipped > 0"
+        class="m-other"
+        :style="{ flexGrow: otherSkipped }"
+      />
+    </div>
+    <p
+      v-if="preview"
+      class="mix-key"
+    >
+      <span><i class="k-line" />LINE 可發，每人耗 1 則額度</span>
+      <span v-if="preview.byPlatform.facebook > 0"><i class="k-fb" />Facebook 本期略過</span>
+      <span v-if="otherSkipped > 0"><i class="k-other" />其他略過</span>
+    </p>
 
-      <div class="split">
-        <div class="ui-well tile">
-          <span class="tile-label"><span class="ui-ch ui-ch-line"><svg viewBox="0 0 24 24"><path d="M12 3C6.5 3 2 6.6 2 11c0 2.5 1.4 4.7 3.7 6.2L5 21l4.1-2.3c.9.2 1.9.3 2.9.3 5.5 0 10-3.6 10-8s-4.5-8-10-8Z" /></svg></span>LINE 可發</span>
-          <b>{{ preview.sendable }}</b>
-          <small>會消耗額度</small>
-        </div>
-        <div class="ui-well tile">
-          <span class="tile-label"><span class="ui-ch ui-ch-fb"><svg viewBox="0 0 24 24"><path d="M12 2C6.4 2 2 6.1 2 11.7c0 2.9 1.2 5.4 3.2 7.2V22l3-1.6c1.2.3 2.4.5 3.8.5 5.6 0 10-4.1 10-9.7S17.6 2 12 2Z" /></svg></span>Facebook</span>
-          <b>{{ preview.byPlatform.facebook }}</b>
-          <small>本期略過</small>
-        </div>
-      </div>
-
-      <ul
-        v-if="notes.length"
-        class="notes"
+    <ul
+      v-if="notes.length"
+      class="notes"
+    >
+      <li
+        v-for="note in notes"
+        :key="note.text"
+        :class="{ 'is-warn': note.warn }"
       >
-        <li
-          v-for="note in notes"
-          :key="note.text"
-          :class="{ 'is-warn': note.warn }"
-        >
-          {{ note.text }}
-        </li>
-      </ul>
-    </template>
+        {{ note.text }}
+      </li>
+    </ul>
   </section>
 </template>
 
@@ -95,6 +109,9 @@ function reasonLabel(reason: BroadcastRecipientErrorReason): string {
       return 'LINE 額度不足'
   }
 }
+
+const skipped = computed(() => (props.preview ? Math.max(props.preview.total - props.preview.sendable, 0) : 0))
+const otherSkipped = computed(() => (props.preview ? Math.max(skipped.value - props.preview.byPlatform.facebook, 0) : 0))
 
 const notes = computed(() => {
   const p = props.preview
@@ -125,90 +142,151 @@ const notes = computed(() => {
 </script>
 
 <style scoped>
+/* The tear-off stub of the broadcast: the arithmetic from audience to recipients */
 .audience-card {
-  padding: 18px 22px 20px;
+  position: relative;
+  margin-top: 10px;
+  padding: 22px 24px 20px;
+  border-top: 2px dashed rgba(60, 60, 67, 0.22);
 }
 
-.aud-empty {
-  display: flex;
-  gap: 14px;
-  align-items: center;
+.audience-card::before,
+.audience-card::after {
+  position: absolute;
+  top: -10px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--ui-canvas);
+  content: '';
 }
 
-.aud-ico {
+.audience-card::before {
+  left: -10px;
+}
+
+.audience-card::after {
+  right: -10px;
+}
+
+.ledger-title {
+  margin: 0 0 14px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ui-ink-2);
+}
+
+.ledger-hint {
+  font-weight: 500;
+  color: var(--ui-muted);
+}
+
+.ledger {
   display: grid;
-  flex: none;
-  width: 44px;
-  height: 44px;
-  place-items: center;
-  border-radius: 14px;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: 8px;
+  align-items: end;
+}
+
+.cell {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.cell b {
+  font: 600 40px / 1 var(--ui-font-display);
+  letter-spacing: -0.035em;
+  font-variant-numeric: tabular-nums;
+}
+
+.cell span {
+  font-size: 13px;
+  color: var(--ui-muted);
+}
+
+.is-skip b {
+  color: var(--ui-muted);
+}
+
+.is-send b {
+  color: var(--ui-accent);
+}
+
+.is-send span {
+  font-weight: 600;
+  color: var(--ui-ink-2);
+}
+
+.ledger.is-empty b {
+  color: var(--ui-faint);
+}
+
+.op {
+  padding-bottom: 20px;
+  font: 400 24px / 1 var(--ui-font-display);
+  font-style: normal;
+  color: var(--ui-muted);
+}
+
+.mix {
+  display: flex;
+  gap: 3px;
+  height: 12px;
+  margin-top: 18px;
+  overflow: hidden;
+  border-radius: 999px;
   background: var(--ui-fill);
-  color: var(--ui-muted);
 }
 
-.aud-ico svg {
-  width: 22px;
-  height: 22px;
+.mix i {
+  flex-basis: 0;
+  min-width: 6px;
 }
 
-.aud-empty b {
-  display: block;
-  font: 600 var(--ui-t-title) / 1.3 var(--ui-font-display);
+.m-line {
+  background: var(--ui-line);
 }
 
-.aud-empty span {
-  font-size: 13.5px;
-  color: var(--ui-muted);
+.m-fb {
+  background: var(--ui-messenger);
 }
 
-.big-row {
+.m-other {
+  background: var(--ui-faint);
+}
+
+.mix-key {
   display: flex;
   flex-wrap: wrap;
-  align-items: baseline;
-  gap: 4px 10px;
+  gap: 4px 16px;
+  margin: 10px 0 0;
+  font-size: 13px;
+  color: var(--ui-ink-2);
 }
 
-.big {
-  font: 600 38px / 1 var(--ui-font-display);
-  letter-spacing: -0.03em;
-  font-variant-numeric: tabular-nums;
-}
-
-.of {
-  font-size: 14px;
-  color: var(--ui-muted);
-}
-
-.split {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-  margin-top: 14px;
-}
-
-.tile {
-  display: grid;
-  gap: 2px;
-  padding: 12px 14px;
-}
-
-.tile-label {
+.mix-key span {
   display: flex;
-  align-items: center;
   gap: 6px;
-  font-size: 13px;
-  color: var(--ui-muted);
+  align-items: center;
 }
 
-.tile b {
-  font: 600 22px var(--ui-font-display);
-  letter-spacing: -0.02em;
-  font-variant-numeric: tabular-nums;
+.mix-key i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
 }
 
-.tile small {
-  font-size: 13px;
-  color: var(--ui-muted);
+.k-line {
+  background: var(--ui-line);
+}
+
+.k-fb {
+  background: var(--ui-messenger);
+}
+
+.k-other {
+  background: var(--ui-faint);
 }
 
 .notes {
@@ -223,13 +301,6 @@ const notes = computed(() => {
 
 .notes .is-warn {
   color: var(--ui-orange-ink);
-}
-
-.visually-hidden {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
+  font-weight: 600;
 }
 </style>

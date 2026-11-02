@@ -58,7 +58,7 @@
         </label>
       </div>
 
-      <label class="ui-field">
+      <label class="ui-field field-grow">
         <span class="lbl">訊息內容 <small>選填，可只發圖片</small></span>
         <textarea
           v-model.trim="content"
@@ -493,11 +493,16 @@
 
 <style scoped>
   .compose-card {
+    display: flex;
+    flex-direction: column;
     padding-bottom: 0;
   }
 
+  /* the message box takes whatever height the preview column adds, so the card never ends in blank space */
   .compose-form {
-    display: grid;
+    display: flex;
+    flex: 1;
+    flex-direction: column;
     gap: 18px;
     padding: 4px 22px 0;
   }
@@ -533,6 +538,15 @@
 
   .ui-textarea {
     min-height: 96px;
+  }
+
+  .field-grow {
+    flex: 1;
+    grid-template-rows: auto minmax(96px, 1fr) auto;
+  }
+
+  .field-grow .ui-textarea {
+    resize: none;
   }
 
   .image-grid {

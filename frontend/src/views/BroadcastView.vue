@@ -28,15 +28,15 @@
         <div
           class="ui-card side-panel"
         >
-          <BroadcastAudienceCard
-            :preview="broadcastsStore.preview"
-            :tag-name="previewTagName"
-            :loading="broadcastsStore.previewLoading"
-          />
           <BroadcastLinePreview
             :content="draft.content"
             :image-urls="draft.imageUrls"
             :last-sent="lastSent"
+          />
+          <BroadcastAudienceCard
+            :preview="broadcastsStore.preview"
+            :tag-name="previewTagName"
+            :loading="broadcastsStore.previewLoading"
           />
         </div>
       </div>
@@ -220,7 +220,6 @@ async function fetchCurrentRecipients() {
 
 .side-panel :deep(.preview-card) {
   flex: 1;
-  box-shadow: 0 -0.5px 0 var(--ui-sep);
 }
 
 @media (min-width: 1281px) {
