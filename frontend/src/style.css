@@ -1624,6 +1624,14 @@
         'actions';
       row-gap: 4px;
     }
+    /* Phone section pages: the parent section label (the switcher) sits above the title */
+    .ui-page-head:has(.ui-page-switch) {
+      grid-template-areas:
+        'crumb'
+        'title'
+        'sub'
+        'actions';
+    }
     /* Phone: the subtitle may wrap to two lines (desktop stays one) so key information is never cut */
     .ui-page-sub {
       display: -webkit-box;

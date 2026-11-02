@@ -37,6 +37,73 @@
 
 <template>
   <header class="ui-page-head">
+    <!-- Phone, section pages (報表 / 資料管理 / 系統設定): the parent section sits above the
+         title like an iOS large-title parent label and opens the sibling pages. The title keeps
+         the full row, so it never truncates. -->
+    <span
+      v-if="switcherItems.length > 1"
+      ref="pull"
+      class="ui-page-switch"
+    >
+      <button
+        type="button"
+        class="ui-page-switch-btn"
+        :aria-label="`${sectionLabel}，切換分頁`"
+        aria-haspopup="true"
+        :aria-expanded="menuOpen"
+        :aria-controls="menuId"
+        @click="menuOpen = !menuOpen"
+        @keydown.esc="closeMenu(true)"
+      >
+        <span class="ui-page-switch-label">{{ sectionLabel }}</span>
+        <svg
+          class="ui-page-switch-chev"
+          :class="{ 'is-open': menuOpen }"
+          width="14"
+          height="14"
+          viewBox="0 0 12 12"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        ><path d="m2.5 4.5 3.5 3.5 3.5-3.5" /></svg>
+      </button>
+      <ul
+        v-if="menuOpen"
+        :id="menuId"
+        class="ui-page-switch-menu"
+        @keydown.esc="closeMenu(true)"
+      >
+        <li
+          v-for="item in switcherItems"
+          :key="item.path"
+        >
+          <router-link
+            :to="item.path"
+            :aria-current="item.path === route.path ? 'page' : undefined"
+            :class="{ 'is-on': item.path === route.path }"
+            @click="closeMenu(false)"
+          >
+            <span>{{ item.label }}</span>
+            <svg
+              v-if="item.path === route.path"
+              class="ui-page-switch-check"
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.6"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            ><path d="m5 12.5 4.5 4.5L19 7" /></svg>
+          </router-link>
+        </li>
+      </ul>
+    </span>
     <h1 class="ui-page-title">
       <span
         v-if="icon"
@@ -45,80 +112,7 @@
       >
         <component :is="icon" />
       </span>
-      <!-- Phone, section pages (報表 / 資料管理 / 系統設定): the title IS the section switcher,
-           an iOS large-title menu. Elsewhere the title is plain text. -->
-      <span
-        v-if="switcherItems.length > 1"
-        ref="pull"
-        class="ui-page-switch"
-      >
-        <button
-          type="button"
-          class="ui-page-switch-btn"
-          :aria-label="`${title}，切換${sectionLabel}分頁`"
-          aria-haspopup="true"
-          :aria-expanded="menuOpen"
-          :aria-controls="menuId"
-          @click="menuOpen = !menuOpen"
-          @keydown.esc="closeMenu(true)"
-        >
-          <span class="ui-page-title-text"><slot name="title">{{ title }}</slot></span>
-          <span
-            class="ui-page-switch-chev"
-            :class="{ 'is-open': menuOpen }"
-            aria-hidden="true"
-          >
-            <span class="ui-page-switch-word">切換</span>
-            <svg
-              width="12"
-              height="12"
-              viewBox="0 0 12 12"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            ><path d="m2.5 4.5 3.5 3.5 3.5-3.5" /></svg>
-          </span>
-        </button>
-        <ul
-          v-if="menuOpen"
-          :id="menuId"
-          class="ui-page-switch-menu"
-          @keydown.esc="closeMenu(true)"
-        >
-          <li
-            v-for="item in switcherItems"
-            :key="item.path"
-          >
-            <router-link
-              :to="item.path"
-              :aria-current="item.path === route.path ? 'page' : undefined"
-              :class="{ 'is-on': item.path === route.path }"
-              @click="closeMenu(false)"
-            >
-              <span>{{ item.label }}</span>
-              <svg
-                v-if="item.path === route.path"
-                class="ui-page-switch-check"
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2.6"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                aria-hidden="true"
-              ><path d="m5 12.5 4.5 4.5L19 7" /></svg>
-            </router-link>
-          </li>
-        </ul>
-      </span>
-      <span
-        v-else
-        class="ui-page-title-text"
-      ><slot name="title">{{ title }}</slot></span>
+      <span class="ui-page-title-text"><slot name="title">{{ title }}</slot></span>
     </h1>
     <div
       v-if="$slots.actions"
@@ -208,21 +202,24 @@ watch(() => route?.path, () => { menuOpen.value = false })
 
 .ui-page-switch {
   position: relative;
+  grid-area: crumb;
+  justify-self: start;
   min-width: 0;
 }
 
 .ui-page-switch-btn {
   display: inline-flex;
-  gap: 10px;
+  gap: 4px;
   align-items: center;
   max-width: 100%;
   min-height: 44px;
+  margin-top: -8px;
   padding: 0;
   border: 0;
   background: none;
-  color: inherit;
-  font: inherit;
-  letter-spacing: inherit;
+  color: var(--ui-accent);
+  font: 600 15px / 1 var(--ui-font-display);
+  letter-spacing: 0;
   cursor: pointer;
 }
 
@@ -233,28 +230,13 @@ watch(() => route?.path, () => { menuOpen.value = false })
   border-radius: 8px;
 }
 
-/* iOS large-title menu: a small tinted chevron disc trails the title */
 .ui-page-switch-chev {
-  display: inline-flex;
   flex: none;
-  gap: 4px;
-  align-items: center;
-  height: 28px;
-  padding: 0 10px 0 12px;
-  border-radius: 999px;
-  background: var(--ui-accent-soft);
-  color: var(--ui-accent);
-  font: 600 13px var(--ui-font-display);
-  letter-spacing: 0;
   transition: transform 200ms ease-out;
 }
 
-.ui-page-switch-chev.is-open svg {
+.ui-page-switch-chev.is-open {
   transform: rotate(180deg);
-}
-
-.ui-page-switch-chev svg {
-  transition: transform 200ms ease-out;
 }
 
 .ui-page-switch-menu {
