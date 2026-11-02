@@ -10,6 +10,10 @@
       title="Facebook Messenger"
       :status="controller.settings.integrations.facebook.status"
       :last-test="controller.settings.integrations.facebook.lastTest"
+      testable
+      :testing="controller.testing.value"
+      :disabled="controller.saving.value"
+      @test="controller.testFacebookIntegration"
     />
     <FacebookIntegrationForm
       :settings="controller.settings.integrations.facebook"

@@ -1,30 +1,23 @@
 <template>
-  <div class="report-generator">
-    <header class="header-wrap">
-      <div class="ui-page-head">
-        <div>
-          <div class="ui-eyebrow">
-            報表
-          </div>
-          <h1 class="ui-page-title">
-            產生報表
-          </h1>
-          <p class="ui-page-sub">
-            依序選擇類型、內容、時間與格式；右側即時顯示將產生的內容。
-          </p>
-        </div>
-        <div class="ui-page-actions">
-          <button
-            class="btn btn-secondary"
-            :disabled="isGenerating"
-            @click="resetForm"
-          >
-            重置
-          </button>
-        </div>
-      </div>
-      <ReportsNav />
-    </header>
+  <div class="ui-page report-generator">
+    <UiPageHead
+      title="產生報表"
+      subtitle="依序選擇類型、內容、時間與格式，確認後產生。"
+    >
+      <template
+        v-if="isDirty"
+        #actions
+      >
+        <button
+          class="btn btn-secondary"
+          :disabled="isGenerating"
+          @click="resetForm"
+        >
+          重置
+        </button>
+      </template>
+    </UiPageHead>
+    <UiSectionNav section="reports" />
 
     <div class="generator-container">
       <div class="form-section">
@@ -64,6 +57,7 @@
           :title="formData.title"
           :format="formData.format"
           :time-range="formData.timeRange"
+          :options="formData.options"
           :is-generating="isGenerating"
           :current-step="currentStep"
           :recent-reports="recentReports"
@@ -74,7 +68,7 @@
               <button
                 class="btn btn-primary"
                 type="button"
-                :disabled="!isFormValid || isGenerating"
+                :disabled="isGenerating"
                 @click="generateReport"
               >
                 {{ isGenerating ? '產生中...' : '產生報表' }}
@@ -85,6 +79,27 @@
       </div>
     </div>
 
+    <UiActionBar
+      class="generate-bar"
+      label="產生報表"
+    >
+      <p
+        v-if="!isFormValid"
+        class="generate-hint"
+        role="status"
+      >
+        {{ missingHint }}
+      </p>
+      <button
+        class="btn btn-primary"
+        type="button"
+        :disabled="isGenerating"
+        @click="generateReport"
+      >
+        {{ isGenerating ? '產生中...' : '產生報表' }}
+      </button>
+    </UiActionBar>
+
     <ReportSuccessToast
       :visible="showSuccess"
       @close="showSuccess = false"
@@ -94,10 +109,12 @@
 
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue';
+import UiPageHead from '@/components/ui/UiPageHead.vue'
+import UiSectionNav from '@/components/ui/UiSectionNav.vue'
+import UiActionBar from '@/components/ui/UiActionBar.vue'
+import { ref, reactive, computed, nextTick, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import ReportsAPI from '@/api/reports';
-import ReportsNav from './ReportsNav.vue';
 import ReportTypeSelector from './ReportTypeSelector.vue';
 import ReportParameterForm from './ReportParameterForm.vue';
 import ReportPreviewPanel from './ReportPreviewPanel.vue';
@@ -125,6 +142,15 @@ const emit = defineEmits<{
 }>();
 
 const router = useRouter();
+
+const defaultOptions = () => ({
+  includeCharts: true,
+  includeSummary: true,
+  includeDetails: false,
+  chartType: 'line' as const,
+  maxRecords: 10000,
+  language: 'zh-TW' as const
+});
 
 // Reactive state
 const formData = reactive<ReportFormState>({
@@ -154,6 +180,13 @@ const showSuccess = ref(false);
 const errors = reactive<Record<string, string>>({});
 const recentReports = ref<ReportBase[]>([]);
 
+// 重置 only appears once there is something to reset
+const isDirty = computed(() =>
+  !!formData.type || !!formData.title.trim() || !!formData.description.trim() ||
+  formData.format !== 'json' || formData.timeRange !== 'last_30_days' ||
+  JSON.stringify(formData.options) !== JSON.stringify(defaultOptions())
+);
+
 // Computed
 const isFormValid = computed(() => {
   return formData.type &&
@@ -162,6 +195,16 @@ const isFormValid = computed(() => {
          formData.timeRange &&
          (formData.timeRange !== 'custom' ||
           (formData.startDate && formData.endDate));
+});
+
+// What still blocks the primary action (shown beside the phone action bar)
+const missingHint = computed(() => {
+  const missing = [
+    !formData.type && '報表類型',
+    !formData.title.trim() && '標題',
+    formData.timeRange === 'custom' && !(formData.startDate && formData.endDate) && '日期範圍'
+  ].filter(Boolean);
+  return missing.length > 0 ? `還需要：${missing.join('、')}` : '';
 });
 
 // Methods
@@ -229,8 +272,22 @@ const validateForm = (): boolean => {
   return Object.keys(newErrors).length === 0;
 };
 
+// Bring the first unmet step into view and put the keyboard on it
+const focusFirstInvalid = async () => {
+  await nextTick();
+  const target = errors.type
+    ? document.querySelector<HTMLElement>('.report-type-selector [role="radio"][tabindex="0"]')
+    : errors.title
+      ? document.getElementById('title')
+      : document.getElementById('startDate');
+  if (!target) { return; }
+  target.scrollIntoView?.({ block: 'center', behavior: 'smooth' });
+  target.focus({ preventScroll: true });
+};
+
 const generateReport = async () => {
   if (!validateForm()) {
+    await focusFirstInvalid();
     return;
   }
 
@@ -339,21 +396,6 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.report-generator {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  width: 100%;
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 20px;
-}
-
-.header-wrap {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
 
 .generator-container {
   display: grid;
@@ -394,9 +436,31 @@ onMounted(() => {
   }
 }
 
+.generate-bar {
+  display: none;
+}
+
+.generate-hint {
+  flex: 1;
+  margin: 0;
+  font-size: 13px;
+  color: var(--ui-muted);
+}
+
 @media (max-width: 768px) {
-  .report-generator {
-    padding: 16px;
+  /* The action bar replaces the in-card button so the primary action never scrolls away */
+  .generate-bar {
+    display: flex;
+  }
+
+  .generate-action,
+  .side-section :deep(.preview-card) {
+    display: none;
+  }
+
+  .generate-bar .btn {
+    flex: 0 0 auto;
+    min-width: 140px;
   }
 }
 </style>

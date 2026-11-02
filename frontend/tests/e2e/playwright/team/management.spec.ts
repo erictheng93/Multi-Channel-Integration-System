@@ -61,7 +61,7 @@ test.describe('Team Management (P1)', () => {
   test('should navigate to team page from sidebar', async ({ page }) => {
     await page.goto('/dashboard')
 
-    const teamLink = page.getByRole('link', { name: '團隊管理' })
+    const teamLink = page.getByRole('link', { name: '團隊成員' })
     await expect(teamLink).toBeVisible()
 
     await teamLink.click()

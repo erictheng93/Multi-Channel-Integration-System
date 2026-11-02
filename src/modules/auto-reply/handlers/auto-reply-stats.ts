@@ -74,7 +74,8 @@ autoReplyStatsHandler.get('/', async (c) => {
           and(
             scope,
             eq(autoReplyDeliveries.status, 'failed'),
-            gte(autoReplyDeliveries.createdAt, todayStart)
+            // A redelivery reuses the ledger row, so the failure happened at the latest attempt.
+            gte(autoReplyDeliveries.lastAttemptAt, todayStart)
           )
         ),
       getBusinessHoursStatus(teamId, c.env),

@@ -1,67 +1,72 @@
 <template>
-  <article class="ui-card">
-    <div class="ui-card-head">
-      <div>
-        <h2 class="ui-card-title">
-          近期事件
-        </h2>
+  <section>
+    <h2 class="ui-group-label">
+      近期事件
+    </h2>
+    <div class="ui-group">
+      <ul
+        v-if="events.length > 0"
+        class="ev"
+        :style="{ '--ev-cols': evCols, '--ev-rows': Math.ceil(events.length / evCols) }"
+      >
+        <li
+          v-for="event in events"
+          :key="event.id"
+        >
+          <span
+            class="ic"
+            :class="event.type"
+            aria-hidden="true"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path
+                v-if="event.type === 'recovery'"
+                d="m5 12 5 5L20 7"
+              />
+              <path
+                v-else-if="event.type === 'info'"
+                d="M12 8h.01M11 12h1v5h1"
+              />
+              <path
+                v-else
+                d="M12 7v6M12 17h.01"
+              />
+            </svg>
+          </span>
+          <span class="body">
+            <span class="msg">{{ event.message }}</span>
+            <time :datetime="event.timestamp">{{ relativeTime(event.timestamp) }}</time>
+          </span>
+        </li>
+      </ul>
+      <div
+        v-else
+        class="none"
+      >
+        近 1 小時沒有事件
       </div>
     </div>
-    <ul
-      v-if="events.length > 0"
-      class="ev"
-    >
-      <li
-        v-for="event in events"
-        :key="event.id"
-      >
-        <span
-          class="ic"
-          :class="event.type"
-          aria-hidden="true"
-        >
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <path
-              v-if="event.type === 'recovery'"
-              d="m5 12 5 5L20 7"
-            />
-            <path
-              v-else-if="event.type === 'info'"
-              d="M12 8h.01M11 12h1v5h1"
-            />
-            <path
-              v-else
-              d="M12 7v6M12 17h.01"
-            />
-          </svg>
-        </span>
-        <span class="msg">{{ event.message }}</span>
-        <time :datetime="event.timestamp">{{ relativeTime(event.timestamp) }}</time>
-      </li>
-    </ul>
-    <div
-      v-else
-      class="none"
-    >
-      近 1 小時沒有事件
-    </div>
-  </article>
+  </section>
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
 import type { MonitorEvent } from '@/types/api-monitor'
 import { formatRelativeTime } from '@/utils/monitor-helpers'
 
-defineProps<{
+const props = defineProps<{
   events: MonitorEvent[]
 }>()
+
+/** Up to three events sit side by side (one each); longer lists split into two balanced columns */
+const evCols = computed(() => (props.events.length <= 3 ? Math.max(1, props.events.length) : 2))
 
 function relativeTime(timestamp: string): string {
   return formatRelativeTime(timestamp)
@@ -69,9 +74,15 @@ function relativeTime(timestamp: string): string {
 </script>
 
 <style scoped>
+.label-note {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--ui-muted);
+}
+
 .ev {
   margin: 0;
-  padding: 0 0 8px;
+  padding: 6px 0;
   list-style: none;
 }
 
@@ -128,15 +139,23 @@ function relativeTime(timestamp: string): string {
   color: var(--ui-accent);
 }
 
-.msg {
+.body {
+  display: flex;
   flex: 1;
+  gap: 12px;
+  align-items: baseline;
+  justify-content: space-between;
+  min-width: 0;
+}
+
+.msg {
   min-width: 0;
   overflow-wrap: anywhere;
 }
 
 time {
   flex: none;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--ui-muted);
   font-variant-numeric: tabular-nums;
 }
@@ -145,6 +164,31 @@ time {
   padding: 8px 22px 24px;
   font-size: 13px;
   color: var(--ui-muted);
+}
+
+/* Full-width card: events flow down balanced columns (one each for up to three), each with its time beside it */
+@media (min-width: 1025px) {
+  .ev {
+    display: grid;
+    grid-auto-flow: column;
+    grid-template-columns: repeat(var(--ev-cols), minmax(0, 1fr));
+    grid-template-rows: repeat(var(--ev-rows), auto);
+    column-gap: 8px;
+  }
+
+  .ev li::before {
+    display: none;
+  }
+
+  /* with one event per column the card reads as a row of cards: stack message over time */
+  .ev li {
+    align-items: flex-start;
+  }
+
+  .body {
+    flex-direction: column;
+    gap: 2px;
+  }
 }
 
 @media (max-width: 768px) {

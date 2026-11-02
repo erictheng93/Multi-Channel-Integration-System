@@ -159,6 +159,15 @@ describe('LineQuotaMonitorService', () => {
     expect(mocks.getQuota).not.toHaveBeenCalled();
   });
 
+  it('keeps the reserve and usable remainder on a throttled manual refresh', async () => {
+    const service = new LineQuotaMonitorService(makeDb([{ credentials: 'tok-a', teamName: 'Sales' }]), makeEnv());
+    await service.refresh('cron');
+
+    const [item] = (await service.refresh('manual')).items;
+
+    expect(item).toMatchObject({ reserve: 2000, usableRemaining: 0 });
+  });
+
   it('lets the cron bypass the manual throttle', async () => {
     const env = makeEnv();
     const service = new LineQuotaMonitorService(makeDb([{ credentials: 'tok-a', teamName: 'Sales' }]), env);
