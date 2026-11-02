@@ -77,28 +77,18 @@ const handleSelect = (reply: QuickReply) => {
 </script>
 
 <style scoped>
-/* Quick replies: one swipeable row of capsule chips; the soft fade at the right edge says there is more */
+/* Quick replies: chips wrap on wide screens so none is ever cut; on a phone they are one swipeable row
+   (the soft fade at the right edge says there is more, and the spacer lets the last chip scroll clear of it) */
 .quick-replies {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   padding: 10px 0 4px;
-  overflow-x: auto;
-  -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 72px), transparent);
-  mask-image: linear-gradient(90deg, #000 calc(100% - 72px), transparent);
-  scrollbar-width: none;
-  -webkit-overflow-scrolling: touch;
-}
-
-.quick-replies::-webkit-scrollbar {
-  display: none;
 }
 
 .quick-reply-btn {
-  flex: 0 0 auto;
-  max-width: 260px;
+  flex: 0 1 auto;
   min-height: 32px;
-  overflow: hidden;
-  text-overflow: ellipsis;
   padding: 0 14px;
   border: 0;
   border-radius: 999px;
@@ -106,9 +96,34 @@ const handleSelect = (reply: QuickReply) => {
   color: var(--ui-accent);
   font-size: 13px;
   font-weight: 500;
-  white-space: nowrap;
+  text-align: left;
   cursor: pointer;
   transition: background-color var(--ui-dur) var(--ui-ease);
+}
+
+@media (max-width: 768px) {
+  .quick-replies {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 40px), transparent);
+    mask-image: linear-gradient(90deg, #000 calc(100% - 40px), transparent);
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .quick-replies::-webkit-scrollbar {
+    display: none;
+  }
+
+  .quick-replies::after {
+    flex: 0 0 32px;
+    content: '';
+  }
+
+  .quick-reply-btn {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
 }
 
 .quick-reply-btn:hover:not(:disabled) {
