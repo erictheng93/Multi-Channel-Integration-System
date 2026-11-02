@@ -82,6 +82,50 @@ describe('dashboard overview loading', () => {
     api.list.mockResolvedValue({ success: false })
   })
 
+  it('reads the all-members endpoint for admins', async () => {
+    signIn('admin')
+    api.getMembers.mockResolvedValue(ok([member('a')]))
+
+    const { overview, wrapper } = await mountOverview()
+
+    expect(api.getTeamMembersByTeam).not.toHaveBeenCalled()
+    expect(overview.members.data.value).toHaveLength(1)
+    wrapper.unmount()
+  })
+
+  it('reads each own team for agents, de-duplicating people in several teams', async () => {
+    signIn('agent', [1, 2])
+    api.getTeamMembersByTeam.mockImplementation(async (id: number) =>
+      id === 1 ? ok([member('a'), member('b')]) : ok([member('b'), member('c')]))
+
+    const { overview, wrapper } = await mountOverview()
+
+    expect(api.getMembers).not.toHaveBeenCalled()
+    expect(overview.members.data.value?.map((m) => m.id)).toEqual(['a', 'b', 'c'])
+    expect(overview.members.error.value).toBe(false)
+    wrapper.unmount()
+  })
+
+  it('shows an empty roster, not an error, for an agent with no teams', async () => {
+    signIn('agent')
+
+    const { overview, wrapper } = await mountOverview()
+
+    expect(overview.members.data.value).toEqual([])
+    expect(overview.members.error.value).toBe(false)
+    wrapper.unmount()
+  })
+
+  it('errors only when every team request failed', async () => {
+    signIn('agent', [1, 2])
+    api.getTeamMembersByTeam.mockResolvedValue({ success: false })
+
+    const { overview, wrapper } = await mountOverview()
+
+    expect(overview.members.error.value).toBe(true)
+    wrapper.unmount()
+  })
+
   it('keeps the newest range when an older volume response lands last', async () => {
     signIn('admin')
     const { overview, wrapper } = await mountOverview()

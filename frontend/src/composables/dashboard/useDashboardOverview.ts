@@ -22,6 +22,7 @@ import { activitiesApi, type ActivityLog } from '@/api/activities'
 import type { ConversationStats } from '@shared/api-contracts'
 import type { TeamMember } from '@/types'
 import { createVisibleInterval } from '@/utils/visibleInterval'
+import { useAuthStore } from '@/stores/auth'
 
 export type VolumeDays = 7 | 30 | 90
 
@@ -113,7 +114,17 @@ export function useDashboardOverview() {
   }
   const loadStats = () => load(stats, () => conversationApi.getStats())
   const loadPresence = () => load(presence, () => presenceApi.getTeamPresence())
-  const loadMembers = () => load(members, () => teamApi.getMembers())
+  // /teams/members is admin-only (403 for agents); agents read their own teams' rosters instead
+  const loadMembers = () => load(members, async () => {
+    const auth = useAuthStore()
+    if (auth.isAdmin) { return teamApi.getMembers() }
+    const results = await Promise.all(auth.allowedTeamIds.map((id) => teamApi.getTeamMembersByTeam(id)))
+    const ok = results.filter((r) => r.success && r.data)
+    if (results.length > 0 && ok.length === 0) { return { success: false } }
+    const byId = new Map<TeamMember['id'], TeamMember>()
+    for (const r of ok) { for (const m of r.data ?? []) { byId.set(m.id, m) } }
+    return { success: true, data: [...byId.values()] }
+  })
   const loadActivities = () => load(activities, async () => {
     const response = await activitiesApi.list({ page: 1, pageSize: 7 })
     return { success: response.success, data: response.data?.items }
