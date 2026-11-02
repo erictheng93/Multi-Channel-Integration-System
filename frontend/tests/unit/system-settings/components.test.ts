@@ -72,7 +72,7 @@ describe('System Settings Components', () => {
       expect(updates?.at(-1)?.[0]).toMatchObject({ systemName: 'Renamed' })
     })
 
-    it('should show the language as a read-only value', () => {
+    it('should show the language as a single-option select', () => {
       const wrapper = mount(GeneralSettingsForm, {
         props: {
           settings: mockSettings,
@@ -81,9 +81,11 @@ describe('System Settings Components', () => {
       })
 
       expect(wrapper.text()).toContain('介面語言')
-      // a value that cannot change is plain text, not a disabled field
-      expect(wrapper.find('#language').exists()).toBe(false)
-      expect(wrapper.find('.static-value').text()).toBe('繁體中文')
+      // one real option in a real control, not a disabled field and not bare text
+      const select = wrapper.find('#language')
+      expect(select.exists()).toBe(true)
+      expect(select.attributes('disabled')).toBeUndefined()
+      expect(select.text()).toBe('繁體中文')
     })
 
     it('should emit save event on form submit', async () => {

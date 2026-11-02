@@ -14,7 +14,7 @@
     <SettingsGroup title="系統識別">
       <SettingsRow
         label="系統名稱"
-        :hint="`顯示在側邊欄與登入頁，最多 40 字元（已輸入 ${localSettings.systemName.length}）`"
+        :hint="`顯示在側邊欄與登入頁，${localSettings.systemName.length} / 40 字`"
         for-id="systemName"
       >
         <input
@@ -46,7 +46,7 @@
     <SettingsGroup title="地區與語言">
       <SettingsRow
         label="時區"
-        hint="用於顯示時間與報表日期"
+        :hint="`用於顯示時間與報表日期，現在 ${clock.time}`"
         for-id="timezone"
       >
         <select
@@ -68,20 +68,17 @@
         class="lang-row"
         label="介面語言"
         hint="目前僅提供繁體中文"
+        for-id="language"
       >
-        <span class="static-value">繁體中文</span>
+        <select
+          id="language"
+          class="ui-select"
+        >
+          <option value="zh-TW">
+            繁體中文
+          </option>
+        </select>
       </SettingsRow>
-      <div
-        class="clock-tile"
-        role="img"
-        :aria-label="`${zoneName} 目前時間 ${clock.time}`"
-      >
-        <span class="clock-time">{{ clock.time }}</span>
-        <span class="clock-meta">
-          <span class="clock-day">{{ clock.day }}</span>
-          <span class="clock-zone">{{ zoneName }}</span>
-        </span>
-      </div>
     </SettingsGroup>
   </form>
 </template>
@@ -142,21 +139,18 @@ watch(
   { deep: true }
 )
 
-/** The chosen zone's wall time as a tile (read once per selection, no ticking timer) */
+/** The chosen zone's wall time (read once per selection, no ticking timer) */
 const clock = computed(() => {
   const timeZone = localSettings.timezone || 'Asia/Taipei'
   try {
     const now = new Date()
     return {
       time: new Intl.DateTimeFormat('zh-TW', { timeZone, hour: '2-digit', minute: '2-digit', hour12: false }).format(now),
-      day: new Intl.DateTimeFormat('zh-TW', { timeZone, month: 'long', day: 'numeric', weekday: 'long' }).format(now),
     }
   } catch {
-    return { time: '--:--', day: '' }
+    return { time: '--:--' }
   }
 })
-
-const zoneName = computed(() => TIMEZONES.find(z => z.value === localSettings.timezone)?.label ?? localSettings.timezone)
 
 function handleSave() {
   emit('save')
@@ -177,76 +171,14 @@ function handleSave() {
   background-color: var(--ui-surface);
 }
 
-/* the last card holds a real clock in the chosen zone and takes the leftover height */
-.general-form :deep(.settings-group:last-child .ui-card) {
+/* both cards share the column's leftover height: rows spread evenly so no card ends in blank space */
+.general-form :deep(.settings-group:last-child .ui-card),
+.general-form :deep(.settings-group:first-child .ui-card) {
   display: flex;
   flex-direction: column;
 }
 
-.clock-tile {
-  display: flex;
+.general-form :deep(.srow) {
   flex: 1;
-  gap: 18px;
-  align-items: center;
-  min-height: 84px;
-  margin: 4px 22px 20px;
-  padding: 14px 20px;
-  border-radius: 14px;
-  background: var(--ui-fill);
-}
-
-.clock-time {
-  font: 700 40px / 1 var(--ui-font-display);
-  font-variant-numeric: tabular-nums;
-  letter-spacing: -0.03em;
-  color: var(--ui-ink);
-}
-
-.clock-meta {
-  display: grid;
-  gap: 2px;
-}
-
-.clock-day {
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--ui-ink);
-}
-
-.clock-zone {
-  font-size: 13px;
-  color: var(--ui-ink-2);
-}
-
-@media (max-width: 768px) {
-  .clock-tile {
-    margin: 4px 16px 16px;
-  }
-
-  .clock-time {
-    font-size: 32px;
-  }
-}
-
-/* a value that cannot change is text, not a greyed-out field */
-.static-value {
-  flex: 1;
-  font-size: 15px;
-  font-weight: 500;
-  color: var(--ui-ink);
-  text-align: right;
-}
-
-/* stays one line on a phone: label left, value right */
-@media (max-width: 768px) {
-  .general-form :deep(.lang-row) {
-    flex-direction: row;
-    align-items: center;
-  }
-
-  .general-form :deep(.lang-row .srow-c) {
-    flex: none;
-    width: auto;
-  }
 }
 </style>
