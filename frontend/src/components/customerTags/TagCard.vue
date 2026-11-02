@@ -65,13 +65,13 @@
         aria-hidden="true"
       ><i :style="{ width: meterWidth }" /></span>
 
-      <button
+      <!-- phone: the row opens the tag sheet, where edit and delete live -->
+      <span
         class="phone-edit"
-        :aria-label="`編輯 ${tag.name}`"
-        @click.stop="$emit('edit')"
+        aria-hidden="true"
       >
-        <EditIcon />
-      </button>
+        <ChevronRightIcon />
+      </span>
       <div class="tag-actions">
         <button
           class="action-btn action-btn-primary"
@@ -96,7 +96,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { EditIcon, TrashIcon } from '@/components/icons'
+import { ChevronRightIcon, EditIcon, TrashIcon } from '@/components/icons'
 import type { Tag } from '@/types/tag'
 
 const props = defineProps<{
@@ -129,10 +129,10 @@ const meterWidth = computed(() => {
 .tag-card {
   position: relative;
   display: grid;
-  grid-template-columns: 22px minmax(0, 1fr) minmax(72px, 150px) 104px 80px;
+  grid-template-columns: 22px minmax(0, 1fr) 120px 80px;
   grid-template-areas:
-    'check chip meter count actions'
-    'check desc meter count actions';
+    'check chip count actions'
+    'check desc meter actions';
   align-items: center;
   column-gap: 14px;
   row-gap: 3px;
@@ -173,7 +173,7 @@ const meterWidth = computed(() => {
 
 /* Selection reads as a tint, never as a hard outline */
 .tag-card.tag-active {
-  background: var(--ui-surface-2);
+  background: color-mix(in srgb, var(--tag-c) 9%, var(--ui-surface));
 }
 
 .tag-card.tag-selected {
@@ -340,7 +340,9 @@ const meterWidth = computed(() => {
 
 .meter {
   grid-area: meter;
-  height: 8px;
+  justify-self: end;
+  width: 96px;
+  height: 6px;
   overflow: hidden;
   border-radius: 999px;
   background: var(--ui-fill-strong);
@@ -412,24 +414,11 @@ const meterWidth = computed(() => {
   color: var(--ui-red-ink);
 }
 
-/* The detail panel takes the right column on wide screens: drop the usage note to keep names readable */
-@media (max-width: 1280px) {
-  .tag-card {
-    grid-template-columns: 22px minmax(0, 1fr) minmax(72px, 150px) 104px 80px;
-  }
-}
-
-@media (max-width: 1024px) {
-  .tag-card {
-    grid-template-columns: 22px minmax(0, 1fr) minmax(72px, 150px) 104px 80px;
-  }
-}
-
 /* Phone: name, description and count; edit and delete live in the detail sheet */
 @media (max-width: 768px) {
   /* No empty select column on a phone: the checkbox column exists only where there is no hover to reveal it */
   .tag-card {
-    grid-template-columns: minmax(0, 1fr) auto 36px;
+    grid-template-columns: minmax(0, 1fr) auto 16px;
     grid-template-areas:
       'chip count edit'
       'desc count edit';
@@ -455,19 +444,18 @@ const meterWidth = computed(() => {
   .phone-edit {
     display: grid;
     grid-area: edit;
-    width: 36px;
+    width: 16px;
     height: 36px;
     place-items: center;
     border: 0;
-    border-radius: 10px;
-    background: var(--ui-fill);
-    color: var(--ui-ink-2);
-    cursor: pointer;
+    background: none;
+    color: var(--ui-faint);
+    pointer-events: none;
   }
 
   .phone-edit svg {
-    width: 18px;
-    height: 18px;
+    width: 16px;
+    height: 16px;
   }
 
   /* numeral over unit: the count stays narrow and never competes with the name */
@@ -498,7 +486,7 @@ const meterWidth = computed(() => {
 
   @media (hover: none) {
     .tag-card {
-      grid-template-columns: 22px minmax(0, 1fr) auto 36px;
+      grid-template-columns: 22px minmax(0, 1fr) auto 16px;
       grid-template-areas:
         'check chip count edit'
         'check desc count edit';

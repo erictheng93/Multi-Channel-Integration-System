@@ -11,6 +11,7 @@ vi.mock('@/components/icons', () => ({
   BarChartIcon: { template: '<span class="icon-bar-chart" />' },
   EditIcon: { template: '<span class="icon-edit" />' },
   TrashIcon: { template: '<span class="icon-trash" />' },
+  ChevronRightIcon: { template: '<span class="icon-chevron" />' },
 }))
 
 // ---------------------------------------------------------------------------

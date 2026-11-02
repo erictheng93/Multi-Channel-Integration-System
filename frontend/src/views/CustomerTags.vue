@@ -28,18 +28,6 @@
         :tags="allTags"
       />
 
-      <!-- Toolbar -->
-      <TagsToolbar
-        v-model:search-query="search.searchQuery.value"
-        :has-selection="selection.hasSelection.value"
-        :selection-count="selection.selectionCount.value"
-        :is-searching="search.isSearching.value"
-        :filtered-count="search.filteredTags.value.length"
-        :total-count="stats.totalTags"
-        @bulk-delete="openBulkDeleteModal"
-        @clear-selection="selection.clearSelection"
-      />
-
       <!-- Tags List + conversations side panel -->
       <section
         class="tags-layout"
@@ -51,6 +39,18 @@
           aria-label="標籤列表"
           :aria-busy="loading"
         >
+          <!-- Search + bulk actions share the list column -->
+          <TagsToolbar
+            v-model:search-query="search.searchQuery.value"
+            :has-selection="selection.hasSelection.value"
+            :selection-count="selection.selectionCount.value"
+            :is-searching="search.isSearching.value"
+            :filtered-count="search.filteredTags.value.length"
+            :total-count="stats.totalTags"
+            @bulk-delete="openBulkDeleteModal"
+            @clear-selection="selection.clearSelection"
+          />
+
           <!-- Loading State -->
           <div
             v-if="loading && tags.length === 0"
@@ -294,7 +294,7 @@ onUnmounted(() => {
   min-width: 0;
   min-height: 420px;
   /* tops line up with the first group row, below the group label */
-  margin-top: 29px;
+  margin-top: 81px;
 }
 
 /* The panel is exactly as tall as the tag grid; a long list scrolls inside it */
@@ -308,6 +308,20 @@ onUnmounted(() => {
   width: 100%;
   height: 100%;
   max-height: none;
+}
+
+.tags-content {
+  display: grid;
+  gap: 12px;
+  align-content: start;
+}
+
+.tags-content :deep(.search-box) {
+  max-width: none;
+}
+
+.tags-content :deep(.toolbar-section) {
+  flex-wrap: nowrap;
 }
 
 .loading-state {
