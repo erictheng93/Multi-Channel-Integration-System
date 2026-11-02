@@ -865,7 +865,6 @@ defineExpose({
 
   .header-actions {
     width: 100%;
-    flex-wrap: nowrap;
     justify-content: flex-start;
   }
 
