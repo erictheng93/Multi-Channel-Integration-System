@@ -444,7 +444,7 @@ const testAdvancedAssignScenario = async () => {
 }
 
 .result-time {
-  font-size: 0.75rem;
+  font-size: 13px;
   color: #6b7280;
   min-width: 70px;
   font-family: monospace;

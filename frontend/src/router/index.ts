@@ -45,7 +45,7 @@ const router = createRouter({
       component: () => import('@/views/ConversationsTable.vue'),  // 使用優化表格版本
       meta: {
         requiresAuth: true,
-        title: '對話管理'
+        title: '對話'
       }
     },
     {
@@ -64,7 +64,7 @@ const router = createRouter({
       meta: {
         requiresAuth: true,
         requiresAdmin: true,
-        title: '團隊管理'
+        title: '團隊成員'
       }
     },
     {
@@ -74,7 +74,7 @@ const router = createRouter({
       meta: {
         requiresAuth: true,
         requiresAdmin: true,
-        title: '頻道管理'
+        title: '頻道'
       }
     },
     {
@@ -114,13 +114,13 @@ const router = createRouter({
           path: 'integrations/line',
           name: 'SettingsIntegrationsLine',
           component: () => import('@/components/system-settings/pages/LineIntegrationPage.vue'),
-          meta: { requiresAuth: true, requiresAdmin: true, title: 'LINE OA 整合' }
+          meta: { requiresAuth: true, requiresAdmin: true, title: 'LINE 官方帳號' }
         },
         {
           path: 'integrations/facebook',
           name: 'SettingsIntegrationsFacebook',
           component: () => import('@/components/system-settings/pages/FacebookIntegrationPage.vue'),
-          meta: { requiresAuth: true, requiresAdmin: true, title: 'Facebook 整合' }
+          meta: { requiresAuth: true, requiresAdmin: true, title: 'Facebook' }
         },
         {
           path: 'advanced',
@@ -136,7 +136,7 @@ const router = createRouter({
           path: 'maintenance/health',
           name: 'SettingsMaintenanceHealth',
           component: () => import('@/components/system-settings/pages/SystemHealthPage.vue'),
-          meta: { requiresAuth: true, requiresAdmin: true, title: '系統健康檢查' }
+          meta: { requiresAuth: true, requiresAdmin: true, title: '健康檢查' }
         }
       ]
     },
@@ -147,7 +147,7 @@ const router = createRouter({
       meta: {
         requiresAuth: true,
         requiresAdmin: true,
-        title: 'API監控'
+        title: 'API 監控'
       }
     },
     // ==================== 组件测试页面 (开发用) ====================
@@ -169,7 +169,7 @@ const router = createRouter({
       meta: {
         requiresAuth: true,
         requiresAdmin: true,
-        title: 'WebSocket 性能監控'
+        title: '即時連線監控'
       }
     },
     // ==================== 客戶管理路由 ====================
@@ -179,7 +179,7 @@ const router = createRouter({
       component: () => import('@/views/CustomerTags.vue'),
       meta: {
         requiresAuth: true,
-        title: '標籤管理'
+        title: '客戶標籤'
       }
     },
     {
@@ -198,7 +198,7 @@ const router = createRouter({
       component: () => import('@/views/NotificationList.vue'),
       meta: {
         requiresAuth: true,
-        title: '通知中心'
+        title: '通知'
       }
     },
     // ==================== 資料管理路由 ====================
@@ -220,7 +220,7 @@ const router = createRouter({
           component: () => import('@/components/data-management/DataExport.vue'),
           meta: {
             requiresAuth: true,
-            title: '匯出對話記錄'
+            title: '匯出對話'
           }
         },
         {
@@ -241,7 +241,7 @@ const router = createRouter({
       component: () => import('@/views/Reports.vue'),
       meta: {
         requiresAuth: true,
-        title: '報表系統'
+        title: '報表'
       },
       children: [
         {
@@ -254,7 +254,7 @@ const router = createRouter({
           component: () => import('@/components/reports/ReportDashboard.vue'),
           meta: {
             requiresAuth: true,
-            title: '報表儀表板'
+            title: '報表總覽'
           }
         },
         {
@@ -272,7 +272,7 @@ const router = createRouter({
           component: () => import('@/components/reports/ReportGenerator.vue'),
           meta: {
             requiresAuth: true,
-            title: '生成報表'
+            title: '產生報表'
           }
         },
         {

@@ -10,7 +10,7 @@
 <template>
   <AppLayout>
     <div
-      class="customer-tags"
+      class="ui-page customer-tags ui-rise"
       role="main"
       aria-label="客戶標籤管理頁面"
     >
@@ -84,6 +84,8 @@
             :visible="true"
             :tag="conversationsTag"
             inline
+            @edit="editActiveTag"
+            @delete="deleteActiveTag"
           />
         </aside>
       </section>
@@ -120,6 +122,8 @@
         :visible="showConversationsModal && !isWide"
         :tag="conversationsTag"
         @update:visible="showConversationsModal = $event"
+        @edit="editActiveTag"
+        @delete="deleteActiveTag"
       />
     </div>
   </AppLayout>
@@ -229,6 +233,20 @@ watch(allTags, (list) => {
 
 // ==================== Methods ====================
 
+// Edit / delete from the detail panel or sheet (the sheet closes first on phones)
+const editActiveTag = () => {
+  const tag = conversationsTag.value
+  if (!tag) { return }
+  showConversationsModal.value = false
+  openEditModal(tag)
+}
+const deleteActiveTag = () => {
+  const tag = conversationsTag.value
+  if (!tag) { return }
+  showConversationsModal.value = false
+  openDeleteModal(tag)
+}
+
 /**
  * Handle bulk delete confirmation
  */
@@ -257,32 +275,38 @@ onUnmounted(() => {
 
 <style scoped>
 /* ==================== Page Layout ==================== */
-.customer-tags {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  width: 100%;
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 20px;
-  min-height: 100%;
-}
 
 /* ==================== Content Section ==================== */
 .tags-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: 16px;
-  align-items: start;
+  align-items: stretch;
 }
 
 .tags-layout.has-panel {
-  grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+  grid-template-columns: minmax(0, 8fr) minmax(0, 4fr);
 }
 
 .tags-panel {
-  position: sticky;
-  top: 16px;
+  position: relative;
+  min-width: 0;
+  min-height: 420px;
+  /* tops line up with the first group row, below the group label */
+  margin-top: 29px;
+}
+
+/* The panel is exactly as tall as the tag grid; a long list scrolls inside it */
+.tags-panel :deep(.modal-overlay.is-inline) {
+  position: absolute;
+  inset: 0;
+  display: block;
+}
+
+.tags-panel :deep(.is-inline .modal-container) {
+  width: 100%;
+  height: 100%;
+  max-height: none;
 }
 
 .loading-state {
@@ -302,8 +326,5 @@ onUnmounted(() => {
 
 /* ==================== Responsive Design ==================== */
 @media (max-width: 768px) {
-  .customer-tags {
-    padding: 16px;
-  }
 }
 </style>

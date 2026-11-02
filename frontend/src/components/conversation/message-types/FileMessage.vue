@@ -253,7 +253,7 @@ const handleDownload = () => {
 .file-meta {
   display: flex;
   gap: 8px;
-  font-size: 12px;
+  font-size: 13px;
   color: #6b7280;
 }
 
@@ -291,7 +291,7 @@ const handleDownload = () => {
 }
 
 .progress-text {
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 500;
   color: #3b82f6;
   min-width: 35px;
@@ -378,7 +378,7 @@ const handleDownload = () => {
   }
 
   .file-meta {
-    font-size: 11px;
+    font-size: 13px;
   }
 
   .file-action-btn {

@@ -22,6 +22,7 @@ import { activitiesApi, type ActivityLog } from '@/api/activities'
 import type { ConversationStats } from '@shared/api-contracts'
 import type { TeamMember } from '@/types'
 import { createVisibleInterval } from '@/utils/visibleInterval'
+import { useAuthStore } from '@/stores/auth'
 
 export type VolumeDays = 7 | 30 | 90
 
@@ -40,11 +41,17 @@ function section<T>(): Section<T> {
   return { data: ref(null) as Ref<T | null>, loading: ref(true), error: ref(false) }
 }
 
-async function load<T>(target: Section<T>, fetcher: () => Promise<{ success: boolean; data?: T }>): Promise<void> {
+async function load<T>(
+  target: Section<T>,
+  fetcher: () => Promise<{ success: boolean; data?: T }>,
+  isStale: () => boolean = () => false
+): Promise<void> {
   // Only the first load shows a skeleton; refreshes replace data silently
   if (target.data.value === null) { target.loading.value = true }
   try {
     const response = await fetcher()
+    // A newer request owns the section now; it will settle loading/error itself
+    if (isStale()) { return }
     if (response.success && response.data !== undefined) {
       target.data.value = response.data
       target.error.value = false
@@ -52,10 +59,10 @@ async function load<T>(target: Section<T>, fetcher: () => Promise<{ success: boo
       target.error.value = true
     }
   } catch {
+    if (isStale()) { return }
     if (target.data.value === null) { target.error.value = true }
-  } finally {
-    target.loading.value = false
   }
+  target.loading.value = false
 }
 
 /** Seconds -> compact Chinese duration for wait times: 45 秒 / 42 分 / 3 小時 5 分 */
@@ -99,12 +106,27 @@ export function useDashboardOverview() {
   const now = ref(Date.now())
 
   const loadSummary = () => load(summary, () => dashboardApi.getSummary())
-  const loadVolume = () => load(volume, () => dashboardApi.getMessageVolume(volumeDays.value))
+  // Only the latest volume request may write the chart (responses can arrive out of order)
+  let volumeRequestId = 0
+  const loadVolume = () => {
+    const requestId = ++volumeRequestId
+    return load(volume, () => dashboardApi.getMessageVolume(volumeDays.value), () => requestId !== volumeRequestId)
+  }
   const loadStats = () => load(stats, () => conversationApi.getStats())
   const loadPresence = () => load(presence, () => presenceApi.getTeamPresence())
-  const loadMembers = () => load(members, () => teamApi.getMembers())
+  // /teams/members is admin-only (403 for agents); agents read their own teams' rosters instead
+  const loadMembers = () => load(members, async () => {
+    const auth = useAuthStore()
+    if (auth.isAdmin) { return teamApi.getMembers() }
+    const results = await Promise.all(auth.allowedTeamIds.map((id) => teamApi.getTeamMembersByTeam(id)))
+    const ok = results.filter((r) => r.success && r.data)
+    if (results.length > 0 && ok.length === 0) { return { success: false } }
+    const byId = new Map<TeamMember['id'], TeamMember>()
+    for (const r of ok) { for (const m of r.data ?? []) { byId.set(m.id, m) } }
+    return { success: true, data: [...byId.values()] }
+  })
   const loadActivities = () => load(activities, async () => {
-    const response = await activitiesApi.list({ page: 1, pageSize: 5 })
+    const response = await activitiesApi.list({ page: 1, pageSize: 7 })
     return { success: response.success, data: response.data?.items }
   })
   const loadTeamNames = async (): Promise<void> => {

@@ -375,14 +375,14 @@ const handleCancel = () => {
 .form-hint {
   display: block;
   margin-top: var(--space-1);
-  font-size: 0.75rem;
+  font-size: 13px;
   color: var(--gray-500);
 }
 
 .error-message {
   display: block;
   margin-top: var(--space-1);
-  font-size: 0.75rem;
+  font-size: 13px;
   color: #ef4444;
   font-weight: 500;
 }

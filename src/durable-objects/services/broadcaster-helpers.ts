@@ -329,7 +329,9 @@ export class BroadcasterHelpers {
         .filter(sample => now - sample.ts <= METRICS_SAMPLE_RETENTION_MS)
         .slice(-METRICS_MAX_SAMPLES);
       try {
-        await this.ctx.state.storage.put('metricsSamples', this.samples);
+        // One atomic write: direct broadcasts bump the counters in memory only, so a sample stored
+        // alone would outlive the counters it refers to and the post-restart delta would go negative.
+        await this.ctx.state.storage.put({ metricsSamples: this.samples, distributionStats: stats });
       } catch (error) {
         log.warn('Failed to persist metrics samples', { error: error instanceof Error ? error.message : String(error) });
       }

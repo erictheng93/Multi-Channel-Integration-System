@@ -20,7 +20,9 @@
 // READ side (dashboard, channel overview):
 //   readDayCounts           rollup rows + a live delta query for messages after the
 //                           watermark (minutes of data), so numbers are current without
-//                           ever scanning history. If the rollup is absent (migration not
+//                           ever scanning history. Rows and watermark are read in one
+//                           batch so a concurrent aggregation cannot make a message
+//                           count twice. If the rollup is absent (migration not
 //                           applied) the delta simply covers the requested range: the old
 //                           behaviour, slower but correct.
 //
@@ -225,8 +227,6 @@ export interface ReadDayCountsOptions {
   nowMs: number;
   /** true = read the all-time total rows (admin only); day is returned as ''. */
   allTime?: boolean;
-  /** Pass an already-loaded watermark (null = rollup unavailable) to skip the read. */
-  watermark?: string | null;
   meter?: RowsReadMeter;
 }
 
@@ -234,6 +234,35 @@ export interface ReadDayCountsOptions {
 export function taipeiDayStartIso(day: string): string {
   const startMs = Date.parse(`${day}T00:00:00.000Z`) - 8 * 60 * 60 * 1000;
   return Number.isFinite(startMs) && startMs > 0 ? isoOf(startMs) : '';
+}
+
+/**
+ * The rollup rows and the watermark they were aggregated up to, read in one D1 batch (one
+ * transaction). Read separately, a cron commit between the two would leave rows that already
+ * include messages the older watermark says are still in the live delta: counted twice.
+ * The delta itself reads the source, so it is correct for this watermark whenever it runs.
+ */
+async function readRollupSnapshot(
+  db: D1Database,
+  query: string,
+  params: unknown[],
+  meter?: RowsReadMeter
+): Promise<{ watermark: string | null; rows: CountRow[] }> {
+  try {
+    const [mark, rollup] = await db.batch<{ value?: string } & CountRow>([
+      db.prepare('SELECT value FROM stats_watermarks WHERE key = ?').bind(ROLLUP_WATERMARK_KEY),
+      db.prepare(query).bind(...params)
+    ]);
+    meter?.track([mark, rollup]);
+    const watermark = mark?.results?.[0]?.value ?? null;
+    return { watermark, rows: watermark === null ? [] : rollup?.results ?? [] };
+  } catch (error) {
+    // Tables missing (migration 0069 not applied yet): readers fall back to the live scan.
+    log.warn('Rollup unavailable, falling back to live counts', {
+      error: error instanceof Error ? error.message : String(error)
+    });
+    return { watermark: null, rows: [] };
+  }
 }
 
 /**
@@ -247,7 +276,6 @@ export async function readDayCounts(
 ): Promise<DayCount[]> {
   const { fromDay, toDay, senderTypes, nowMs, meter } = options;
   const allTime = options.allTime ?? false;
-  const watermark = options.watermark !== undefined ? options.watermark : await readWatermark(db, meter);
   if (senderTypes.length === 0) { return []; }
 
   const merged = new Map<string, DayCount>();
@@ -261,21 +289,18 @@ export async function readDayCounts(
     if (existing) { existing.n += n; } else { merged.set(key, { day, platform, senderType, n }); }
   };
 
-  if (watermark !== null) {
-    const vis = getRollupVisibilitySql(user);
-    const dayClause = allTime ? `day = '${ALL_TIME_DAY}'` : 'day >= ? AND day <= ?';
-    const dayParams = allTime ? [] : [fromDay, toDay];
-    const rollup = await db.prepare(`
-      SELECT ${allTime ? "''" : 'day'} AS day, platform, sender_type AS senderType, SUM(count) AS n
-      FROM message_daily_stats
-      WHERE ${vis.clause}
-        AND sender_type IN (${placeholders(senderTypes.length)})
-        AND ${dayClause}
-      GROUP BY ${allTime ? '' : 'day, '}platform, sender_type
-    `).bind(...vis.params, ...senderTypes, ...dayParams).all<CountRow>();
-    meter?.track(rollup);
-    for (const row of rollup.results ?? []) { add(row); }
-  }
+  const vis = getRollupVisibilitySql(user);
+  const dayClause = allTime ? `day = '${ALL_TIME_DAY}'` : 'day >= ? AND day <= ?';
+  const dayParams = allTime ? [] : [fromDay, toDay];
+  const { watermark, rows } = await readRollupSnapshot(db, `
+    SELECT ${allTime ? "''" : 'day'} AS day, platform, sender_type AS senderType, SUM(count) AS n
+    FROM message_daily_stats
+    WHERE ${vis.clause}
+      AND sender_type IN (${placeholders(senderTypes.length)})
+      AND ${dayClause}
+    GROUP BY ${allTime ? '' : 'day, '}platform, sender_type
+  `, [...vis.params, ...senderTypes, ...dayParams], meter);
+  for (const row of rows) { add(row); }
 
   // Live delta: everything after the watermark (or the whole range when there is no rollup).
   const rangeStartIso = allTime ? '' : taipeiDayStartIso(fromDay);
