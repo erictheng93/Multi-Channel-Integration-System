@@ -93,8 +93,8 @@
                     :data-status="broadcast.status"
                   >{{ statusLabel(broadcast.status) }}</span>
                   <time>{{ formatDate(broadcast.sentAt || broadcast.createdAt) }}</time>
-                  <span class="snippet">{{ broadcast.content || '（僅圖片）' }}</span>
                 </span>
+                <span class="snippet">{{ broadcast.content || '（僅圖片）' }}</span>
               </td>
               <td class="col-result">
                 <template v-if="broadcast.totalRecipients > 0">
@@ -323,13 +323,16 @@ function formatDate(value: string | null): string {
 }
 
 /* The message gets its own line and two lines of room, so a record is read, not guessed at */
-.meta-line .snippet {
-  flex: 1 1 0;
-  min-width: 0;
+.col-title .snippet {
+  display: -webkit-box;
+  margin-top: 6px;
   overflow: hidden;
-  color: var(--ui-muted);
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--ui-ink-2);
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
 }
 
 .when {
@@ -418,10 +421,6 @@ function formatDate(value: string | null): string {
 @media (max-width: 768px) {
   .pagination .btn {
     min-height: 44px;
-  }
-
-  .meta-line .snippet {
-    display: none;
   }
 
   /* Stacked rows: title, status + time, result, then the detail action */

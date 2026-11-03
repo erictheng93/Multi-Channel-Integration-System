@@ -389,6 +389,19 @@ function reasonLabel(reason: BroadcastRecipientErrorReason): string {
   flex-direction: column;
 }
 
+/* the rows share the card's height with the records beside it, so the two cards end on one line */
+.recipient-list {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
+
+.recipient-list .recipient-row {
+  flex: 1 1 auto;
+  align-items: center;
+  max-height: 104px;
+}
+
 .recipient-section .pagination {
   margin-top: auto;
 }

@@ -128,13 +128,6 @@
                 <dd>{{ channel.used.toLocaleString() }}<small> / {{ channel.limit.toLocaleString() }} 則</small></dd>
               </div>
               <div
-                v-if="channel.reserve"
-                class="stat"
-              >
-                <dt><i class="dot rsv" />保留給客服回覆</dt>
-                <dd>{{ channel.reserve.toLocaleString() }}</dd>
-              </div>
-              <div
                 v-if="pendingFor(channel) > 0"
                 class="stat"
               >
@@ -142,11 +135,18 @@
                 <dd>{{ pendingFor(channel).toLocaleString() }}</dd>
               </div>
               <div
-                v-if="pendingFor(channel) > 0"
+                v-if="channel.reserve"
+                class="stat"
+              >
+                <dt><i class="dot rsv" />保留給客服回覆</dt>
+                <dd>{{ channel.reserve.toLocaleString() }}</dd>
+              </div>
+              <div
+                v-if="hasLead(channel)"
                 class="stat"
                 :class="{ 'is-short': isShort(channel) }"
               >
-                <dt><i class="dot free" />發送後可用</dt>
+                <dt><i class="dot free" />{{ pendingFor(channel) > 0 ? '發送後可用' : '可群發' }}</dt>
                 <dd>{{ afterSend(channel) === null ? '不限' : Math.max(afterSend(channel) ?? 0, 0).toLocaleString() }}</dd>
               </div>
             </dl>
@@ -399,7 +399,7 @@ function formatTime(iso: string): string {
 
 .channel-body.has-lead {
   grid-template-columns: auto minmax(0, 1fr);
-  gap: 16px 56px;
+  gap: 16px 36px;
   align-items: center;
 }
 
@@ -438,6 +438,7 @@ function formatTime(iso: string): string {
 }
 
 .lead-meaning {
+  max-width: 19em;
   margin-top: 2px;
   font-size: 14px;
   color: var(--ui-ink-2);

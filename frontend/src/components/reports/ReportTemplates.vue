@@ -103,15 +103,18 @@
           <h3 class="tpl-cap">
             報表內容
           </h3>
-          <ul class="tpl-inc">
-            <li
-              v-for="item in contents"
+          <p class="tpl-inc">
+            <template
+              v-for="(item, index) in contents"
               :key="item.label"
             >
-              <b>{{ item.label }}</b>
-              <span>{{ item.hint }}</span>
-            </li>
-          </ul>
+              <span
+                v-if="index"
+                class="tpl-sep"
+                aria-hidden="true"
+              > ・ </span><b :title="item.hint">{{ item.label }}</b>
+            </template>
+          </p>
         </section>
 
         <section
@@ -376,29 +379,19 @@ onMounted(() => {
 }
 
 .tpl-inc {
-  display: grid;
   margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.tpl-inc li {
-  display: grid;
-  gap: 1px;
-  padding: 9px 0;
   font-size: 14px;
-}
-
-.tpl-inc li + li {
-  box-shadow: 0 -0.5px 0 var(--ui-sep);
+  line-height: 1.7;
+  color: var(--ui-ink-2);
 }
 
 .tpl-inc b {
   font-weight: 600;
+  color: var(--ui-ink);
+  white-space: nowrap;
 }
 
-.tpl-inc span {
-  font-size: 13px;
+.tpl-sep {
   color: var(--ui-muted);
 }
 
