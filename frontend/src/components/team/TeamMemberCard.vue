@@ -140,7 +140,11 @@
         class="ui-pill"
         :class="statusClass"
       >{{ getStatusText(member.status) }}</span>
-      <span>{{ lastLogin }}</span>
+      <span
+        v-if="presence === 'online' && member.status === 'active'"
+        class="on-now"
+      ><i aria-hidden="true" />在線</span>
+      <span v-else>{{ lastLogin }}</span>
     </div>
 
     <div
@@ -469,7 +473,7 @@ const getRoleText = (role: string) => {
   display: block;
   overflow: hidden;
   font-size: 13px;
-  color: var(--ui-muted);
+  color: var(--ui-ink-2);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -580,6 +584,20 @@ const getRoleText = (role: string) => {
   display: flex;
   justify-content: flex-end;
 }
+.on-now {
+  display: inline-flex;
+  gap: 7px;
+  align-items: center;
+  font-weight: 600;
+  color: var(--ui-green-ink);
+}
+.on-now i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ui-green);
+}
+/* the menu is quiet until the row is hovered or focused: no column of lone grey discs */
 .more-btn {
   display: grid;
   width: 34px;
@@ -587,10 +605,14 @@ const getRoleText = (role: string) => {
   place-items: center;
   border: 0;
   border-radius: 50%;
-  background: var(--ui-fill);
+  background: transparent;
   color: var(--ui-ink-2);
   cursor: pointer;
   transition: background var(--ui-dur) var(--ui-ease);
+}
+.more-btn:hover,
+.member-row:hover .more-btn {
+  background: var(--ui-fill);
 }
 .more-btn:hover {
   background: var(--ui-fill-strong);

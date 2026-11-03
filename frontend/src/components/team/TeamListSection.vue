@@ -116,6 +116,7 @@
             :team="team"
             :loading="loading"
             :open-count="openByTeam ? (openByTeam.get(team.id) ?? 0) : null"
+            :open-total="openTotal"
             class="draggable-card"
             @toggle-status="(t) => emit('toggle-status', t)"
             @remove-team="(t) => emit('remove-team', t)"
@@ -179,6 +180,10 @@ interface Emits {
 const props = withDefaults(defineProps<Props>(), { openByTeam: null })
 
 const emit = defineEmits<Emits>()
+
+/** Open conversations across all teams: the load bar on each card is its share of this */
+const openTotal = computed<number | null>(() =>
+  props.openByTeam ? [...props.openByTeam.values()].reduce((sum, n) => sum + n, 0) : null)
 
 /** Search and sort only earn their place once there are enough teams to look through */
 const SEARCH_MIN_TEAMS = 5
