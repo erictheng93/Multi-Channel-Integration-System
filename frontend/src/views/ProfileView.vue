@@ -54,7 +54,7 @@
                     id="access-title"
                     class="pass-k"
                   >
-                    各團隊中的角色
+                    各團隊中的角色<small>由管理員設定</small>
                   </h2>
                   <ul class="ladders">
                     <li
@@ -516,7 +516,7 @@ const devicePerm = computed(() => {
   const shared = '桌面通知只套用於這台裝置，其餘跟著你的帳號。'
   if (perm === 'granted') { return { label: '已開啟', tone: 'on', hint: shared } }
   if (perm === 'denied') {
-    return { label: '已封鎖', tone: 'off', hint: '到瀏覽器網址列左側的網站設定，把「通知」改為允許。' }
+    return { label: '已封鎖', tone: 'off', hint: '瀏覽器擋住了通知：點網址列左側的圖示，把「通知」改為允許，再重新整理本頁。' }
   }
   if (perm === 'unsupported') { return { label: '瀏覽器不支援', tone: 'off', hint: shared } }
   return { label: '尚未開啟', tone: 'off', hint: shared }
@@ -840,10 +840,8 @@ watch(
   gap: 8px 18px;
   align-items: center;
   padding: 28px 28px 26px;
-  background:
-    radial-gradient(120% 90% at 100% 0%, rgb(255 255 255 / 0.16), transparent 60%),
-    linear-gradient(155deg, #1a73e0 0%, #0a4fb0 55%, #2b3f9e 100%);
-  color: #fff;
+  background: var(--ui-accent-soft);
+  color: var(--ui-ink);
 }
 
 .avatar {
@@ -853,8 +851,7 @@ watch(
   width: 72px;
   height: 72px;
   border-radius: 50%;
-  background: rgb(255 255 255 / 0.2);
-  box-shadow: inset 0 0 0 1.5px rgb(255 255 255 / 0.55);
+  background: var(--ui-accent);
   color: #fff;
   font: 600 32px var(--ui-font-display);
 }
@@ -877,7 +874,7 @@ watch(
 .identity-sub {
   overflow: hidden;
   font-size: 14px;
-  color: rgb(255 255 255 / 0.92);
+  color: var(--ui-ink-2);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -887,10 +884,10 @@ watch(
   justify-self: start;
   padding: 2px 12px;
   border-radius: 999px;
-  background: #fff;
+  background: var(--ui-surface);
   font-size: 13px;
   font-weight: 700;
-  color: #0a4fb0;
+  color: var(--ui-accent-ink, var(--ui-accent));
 }
 
 /* access: one ladder per team, my rung filled (the same three steps for every team) */
@@ -903,10 +900,19 @@ watch(
 }
 
 .pass-k {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  justify-content: space-between;
   margin: 0;
   font-size: 14px;
   font-weight: 600;
   color: var(--ui-muted);
+}
+
+.pass-k small {
+  font-size: 13px;
+  font-weight: 500;
 }
 
 .ladders {
@@ -1005,7 +1011,7 @@ watch(
 
 .rungs li.is-here .rung-dot {
   background: var(--tone);
-  box-shadow: 0 0 0 4px color-mix(in srgb, var(--tone) 22%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--tone) 22%, transparent);
 }
 
 .rung-label {
@@ -1024,36 +1030,14 @@ watch(
   color: var(--ui-muted);
 }
 
-/* session: the tear-off stub of the pass, cut by a perforated line with a notch each side */
+/* session: the foot of the pass, set off by a hairline */
 .pass-session {
-  position: relative;
   display: flex;
   gap: 14px;
   align-items: center;
   justify-content: space-between;
   padding: 22px 28px 24px;
-}
-
-.pass-session::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  right: 22px;
-  left: 22px;
-  border-top: 2px dashed var(--ui-fill-strong);
-}
-
-.pass-session::after {
-  content: '';
-  position: absolute;
-  top: -10px;
-  right: 0;
-  left: 0;
-  height: 20px;
-  background:
-    radial-gradient(circle 10px at 0 50%, var(--ui-canvas) 98%, transparent) left / 51% 100% no-repeat,
-    radial-gradient(circle 10px at 100% 50%, var(--ui-canvas) 98%, transparent) right / 51% 100% no-repeat;
-  pointer-events: none;
+  box-shadow: inset 0 0.5px 0 var(--ui-sep);
 }
 
 .session-text {
@@ -1339,8 +1323,9 @@ watch(
   height: 16px;
   padding: 2px;
   border-radius: 50%;
-  background: var(--ui-fill);
-  stroke: var(--ui-faint);
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px var(--ui-muted);
+  stroke: transparent;
   stroke-width: 3;
 }
 
@@ -1350,6 +1335,7 @@ watch(
 
 .pw-rules li.is-met .ico {
   background: var(--ui-green);
+  box-shadow: none;
   stroke: #fff;
 }
 
@@ -1369,6 +1355,7 @@ watch(
 
 .form-actions {
   display: flex;
+  margin-top: auto;
   gap: 16px;
   align-items: center;
   justify-content: space-between;
