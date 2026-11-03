@@ -367,6 +367,24 @@ const formattedTime = computed(() => {
   opacity: 0.62;
 }
 
+/* One accent for "needs you" (unread); the type is the glyph, not a colour. Read rows go quiet grey. */
+.notification-unread .notification-icon {
+  background: var(--ui-accent-soft);
+  color: var(--ui-accent);
+}
+
+/* A bar on the leading edge: unread is seen before it is read */
+.notification-unread::after {
+  position: absolute;
+  top: 14px;
+  bottom: 14px;
+  left: 8px;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--ui-accent);
+  content: '';
+}
+
 /* Urgent: the same pastel tile language, in red, whatever the type (the pill says why) */
 .notification-urgent .notification-icon {
   background: var(--ui-red-soft);
@@ -404,39 +422,6 @@ const formattedTime = computed(() => {
 .notification-icon svg {
   width: 19px;
   height: 19px;
-}
-
-.icon-new_message,
-.icon-new_conversation {
-  background: var(--ui-red-soft);
-  color: var(--ui-red-ink);
-}
-
-.icon-customer_responded {
-  background: var(--ui-green-soft);
-  color: var(--ui-green-ink);
-}
-
-.icon-conversation_assigned,
-.icon-customer_followed {
-  background: var(--ui-accent-soft);
-  color: var(--ui-accent);
-}
-
-.icon-conversation_transferred {
-  background: var(--ui-p-lavender);
-  color: var(--ui-p-lavender-ink);
-}
-
-.icon-mention,
-.icon-task_reminder {
-  background: var(--ui-orange-soft);
-  color: var(--ui-orange-ink);
-}
-
-.icon-agent_removed_from_team {
-  background: var(--ui-red-soft);
-  color: var(--ui-red-ink);
 }
 
 /* Copy takes the whole row; the trailing column sits on the card's right edge */
