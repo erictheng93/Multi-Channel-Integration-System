@@ -8,52 +8,52 @@
     :aria-busy="loading"
   >
     <div class="sh-pane">
-    <header class="sh-mast">
-      <p class="sh-kind">
-        報表樣張
-      </p>
-      <h2 class="sh-name">
-        {{ template.name }}
-      </h2>
-      <dl class="sh-props">
-        <div
-          v-for="prop in docProps"
-          :key="prop.k"
-        >
-          <dt>{{ prop.k }}</dt>
-          <dd>{{ prop.v }}</dd>
-        </div>
-      </dl>
-    </header>
+      <header class="sh-mast">
+        <p class="sh-kind">
+          報表樣張
+        </p>
+        <h2 class="sh-name">
+          {{ template.name }}
+        </h2>
+        <dl class="sh-props">
+          <div
+            v-for="prop in docProps"
+            :key="prop.k"
+          >
+            <dt>{{ prop.k }}</dt>
+            <dd>{{ prop.v }}</dd>
+          </div>
+        </dl>
+      </header>
 
-    <p
-      class="sh-note"
-      :class="{ 'is-warn': failed }"
-      :role="failed ? 'alert' : 'status'"
-    >
-      <template v-if="loading">
-        正在讀取最近一份報表…
-      </template>
-      <template v-else-if="failed">
-        無法讀取最近一份報表的內容，你仍可直接產生新的報表。
-      </template>
-      <template v-else-if="!latest">
-        還沒有產生過。以 JSON 產生第一份後，下列欄位會填入實際數值。
-      </template>
-      <template v-else>
-        數值取自
-        <router-link
-          :to="`/reports/${latest.id}`"
-          class="sh-src"
-        >
-          {{ latest.title }}
-        </router-link>
-        <span class="sh-ago"> ・ {{ ago }}</span>
-      </template>
-    </p>
-    <div class="sh-side">
-      <slot name="side" />
-    </div>
+      <p
+        class="sh-note"
+        :class="{ 'is-warn': failed }"
+        :role="failed ? 'alert' : 'status'"
+      >
+        <template v-if="loading">
+          正在讀取最近一份報表…
+        </template>
+        <template v-else-if="failed">
+          無法讀取最近一份報表的內容，你仍可直接產生新的報表。
+        </template>
+        <template v-else-if="!latest">
+          還沒有產生過。以 JSON 產生第一份後，下列欄位會填入實際數值。
+        </template>
+        <template v-else>
+          數值取自
+          <router-link
+            :to="`/reports/${latest.id}`"
+            class="sh-src"
+          >
+            {{ latest.title }}
+          </router-link>
+          <span class="sh-ago"> ・ {{ ago }}</span>
+        </template>
+      </p>
+      <div class="sh-side">
+        <slot name="side" />
+      </div>
     </div>
 
     <ol class="sh-spine">
