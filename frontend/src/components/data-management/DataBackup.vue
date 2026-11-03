@@ -876,27 +876,13 @@ onMounted(load)
 }
 
 .cal-key i {
-  width: 14px;
-  height: 14px;
+  width: 16px;
+  height: 16px;
   border-radius: 5px;
 }
 
 .k-has {
-  position: relative;
-  background: var(--ui-surface-2);
-  box-shadow: inset 0 0 0 0.5px var(--ui-sep);
-}
-
-.k-has::after {
-  position: absolute;
-  bottom: 2px;
-  left: 50%;
-  width: 4px;
-  height: 4px;
-  margin-left: -2px;
-  border-radius: 50%;
-  background: var(--ui-green);
-  content: '';
+  background: color-mix(in srgb, var(--ui-green) 22%, var(--ui-surface));
 }
 
 .k-miss {
@@ -917,10 +903,10 @@ onMounted(load)
   display: grid;
   place-items: center;
   width: 100%;
-  height: 38px;
+  height: 42px;
   padding: 0;
   border: 0;
-  border-radius: 9px;
+  border-radius: 11px;
   background: var(--ui-orange-soft);
   color: var(--ui-orange-ink);
   font: inherit;
@@ -934,30 +920,14 @@ onMounted(load)
 
 .cell.has {
   position: relative;
-  background: var(--ui-surface-2);
+  background: color-mix(in srgb, var(--ui-green) 15%, var(--ui-surface));
   color: var(--ui-ink);
   cursor: pointer;
   transition: background var(--ui-dur) var(--ui-ease), color var(--ui-dur) var(--ui-ease);
 }
 
-.cell.has::after {
-  position: absolute;
-  bottom: 5px;
-  left: 50%;
-  width: 5px;
-  height: 5px;
-  margin-left: -2.5px;
-  border-radius: 50%;
-  background: var(--ui-green);
-  content: '';
-}
-
-.cell.has.on::after {
-  background: #fff;
-}
-
 .cell.has:hover {
-  background: var(--ui-fill-strong);
+  background: color-mix(in srgb, var(--ui-green) 24%, var(--ui-surface));
 }
 
 .cell.today {
@@ -976,7 +946,7 @@ onMounted(load)
 }
 
 .num {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
@@ -1094,7 +1064,7 @@ onMounted(load)
   display: grid;
   gap: 2px;
   margin: 0;
-  padding: 8px 18px 12px;
+  padding: 6px 18px 8px;
   list-style: none;
 }
 
@@ -1103,7 +1073,7 @@ onMounted(load)
   grid-template-columns: 64px minmax(0, 1fr) auto;
   gap: 10px;
   align-items: center;
-  padding: 10px 0;
+  padding: 8px 0;
   font-size: 14px;
 }
 
@@ -1171,12 +1141,21 @@ onMounted(load)
   width: 100%;
 }
 
+.brow-main {
+  display: flex;
+  gap: 4px 12px;
+  align-items: baseline;
+  min-width: 0;
+}
+
 .brow-name {
+  flex: none;
   font-size: 14px;
   font-weight: 600;
 }
 
 .brow-file {
+  min-width: 0;
   overflow: hidden;
   font: 13px / 1.4 var(--ui-font-mono);
   color: var(--ui-ink-2);
