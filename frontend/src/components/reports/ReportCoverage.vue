@@ -184,8 +184,8 @@ const line = computed(() => {
 <style scoped>
 .cov {
   display: grid;
-  gap: 28px;
-  padding: 28px 36px 24px;
+  gap: 20px;
+  padding: 24px 36px 20px;
 }
 
 .cov-top {
@@ -207,7 +207,7 @@ const line = computed(() => {
   flex-wrap: wrap;
   gap: 8px 10px;
   align-items: center;
-  margin: 12px 0 0;
+  margin: 10px 0 0;
 }
 
 .cov-pre {
@@ -220,27 +220,45 @@ const line = computed(() => {
 }
 
 .tok {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
   margin: 0;
-  padding: 0 2px 2px;
+  padding: 4px 10px 4px 14px;
   border: 0;
-  border-radius: 6px;
-  background: transparent;
-  box-shadow: 0 2px 0 color-mix(in srgb, var(--ui-accent) 35%, transparent);
-  color: var(--ui-accent);
-  font: 600 22px / 1.3 var(--ui-font-display);
+  border-radius: 999px;
+  background: var(--ui-accent-soft);
+  color: var(--ui-accent-ink, var(--ui-accent));
+  font: 600 20px / 1.3 var(--ui-font-display);
   letter-spacing: -0.02em;
   text-align: left;
   cursor: pointer;
   transition: background var(--ui-dur) var(--ui-ease);
 }
 
+/* a caret says the word is a choice; a tap scrolls to the step that sets it */
+.tok::after {
+  width: 7px;
+  height: 7px;
+  margin: -3px 2px 0 2px;
+  border: solid currentcolor;
+  border-width: 0 2px 2px 0;
+  content: '';
+  transform: rotate(45deg);
+  opacity: 0.7;
+}
+
 .tok:hover {
-  background: var(--ui-accent-soft);
+  background: color-mix(in srgb, var(--ui-accent) 18%, var(--ui-surface));
+}
+
+.tok:focus-visible {
+  outline: 2px solid var(--ui-accent);
+  outline-offset: 2px;
 }
 
 .tok.is-open {
   background: var(--ui-orange-soft);
-  box-shadow: 0 2px 0 var(--ui-orange);
   color: var(--ui-orange-ink);
 }
 
@@ -253,13 +271,13 @@ const line = computed(() => {
 }
 
 .cov-count b {
-  font: 600 56px / 1 var(--ui-font-display);
-  letter-spacing: -0.035em;
+  font: 600 40px / 1 var(--ui-font-display);
+  letter-spacing: -0.03em;
   font-variant-numeric: tabular-nums;
 }
 
 .cov-count span {
-  font-size: 20px;
+  font-size: 18px;
   color: var(--ui-muted);
 }
 
@@ -279,7 +297,7 @@ const line = computed(() => {
 
 .cov-track {
   position: relative;
-  height: 18px;
+  height: 12px;
   border-radius: 999px;
   background: var(--ui-fill);
 }
@@ -374,12 +392,28 @@ const line = computed(() => {
     font-size: 17px;
   }
 
+  /* one fact per row (word, then its chip) instead of a sentence that wraps mid-phrase */
+  .cov-sentence {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 8px 14px;
+    align-items: center;
+  }
+
+  .cov-pre:not(:first-child) {
+    margin-left: 0;
+  }
+
   .tok {
-    font-size: 19px;
+    justify-self: start;
+  }
+
+  .tok {
+    font-size: 18px;
   }
 
   .cov-count b {
-    font-size: 40px;
+    font-size: 34px;
   }
 
   .cov-count span {
