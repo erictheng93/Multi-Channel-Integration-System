@@ -423,13 +423,14 @@ describe('Conversations Store', () => {
   })
 
   describe('Wait marker (awaitingSince) follows realtime messages', () => {
-    const base = { id: 'conv-1', status: 'active', unreadCount: 0 }
+    const base = { id: 'conv-1', status: 'active', unreadCount: 0, firstResponseAt: 1 }
     const cases: Array<[string, string | null, Record<string, unknown>, string | null]> = [
       ['customer question after a reply starts a wait', null, { senderType: 'customer', messageType: 'text', content: '請問價格？', timestamp: '2026-10-29T10:00:00.000Z' }, '2026-10-29T10:00:00.000Z'],
       ['customer sticker after a reply is not a wait', null, { senderType: 'customer', messageType: 'sticker', content: 'sticker' }, null],
       ['customer thanks after a reply is not a wait', null, { senderType: 'customer', messageType: 'text', content: '謝謝！' }, null],
       ['a second customer message keeps the earliest wait', '2026-10-01T00:00:00.000Z', { senderType: 'customer', messageType: 'text', content: '在嗎' }, '2026-10-01T00:00:00.000Z'],
-      ['an agent reply clears the wait', '2026-10-01T00:00:00.000Z', { senderType: 'agent', messageType: 'text', content: '好的' }, null],      ['an agent reply broadcast as message_sent clears the wait', '2026-10-01T00:00:00.000Z', { sender: { id: 'a1', name: 'A', role: 'agent' }, messageType: 'text', content: '好的' }, null],
+      ['an agent reply clears the wait', '2026-10-01T00:00:00.000Z', { senderType: 'agent', messageType: 'text', content: '好的' }, null],
+      ['an agent reply broadcast as message_sent clears the wait', '2026-10-01T00:00:00.000Z', { sender: { id: 'a1', name: 'A', role: 'agent' }, messageType: 'text', content: '好的' }, null],
 
       ['an auto-reply does not clear the wait', '2026-10-01T00:00:00.000Z', { senderType: 'agent', senderId: 'auto-reply', messageType: 'text', content: '已收到' }, '2026-10-01T00:00:00.000Z'],
       ['a delivery receipt (no sender) does not clear the wait', '2026-10-01T00:00:00.000Z', {}, '2026-10-01T00:00:00.000Z']
@@ -440,6 +441,25 @@ describe('Conversations Store', () => {
       store.setConversations([{ ...base, awaitingSince: before }] as never)
       store.updateConversationFromWebSocketMessage('conv-1', message as never)
       expect(store.conversations[0]?.awaitingSince).toBe(expected)
+    })
+
+    it.each([
+      ['sticker', 'sticker'],
+      ['text', '謝謝']
+    ])('first contact (no human reply yet): a %s still starts a wait', async (messageType, content) => {
+      const { useConversationsStore } = await import('./conversations')
+      const store = useConversationsStore()
+      store.setConversations([{ ...base, firstResponseAt: null, awaitingSince: null }] as never)
+      store.updateConversationFromWebSocketMessage('conv-1', { senderType: 'customer', messageType, content, timestamp: '2026-10-29T10:00:00.000Z' } as never)
+      expect(store.conversations[0]?.awaitingSince).toBe('2026-10-29T10:00:00.000Z')
+    })
+
+    it('an auto-reply does not count as the first human reply', async () => {
+      const { useConversationsStore } = await import('./conversations')
+      const store = useConversationsStore()
+      store.setConversations([{ ...base, firstResponseAt: null, awaitingSince: null }] as never)
+      store.updateConversationFromWebSocketMessage('conv-1', { senderType: 'agent', senderId: 'auto-reply', content: '已收到' } as never)
+      expect(store.conversations[0]?.firstResponseAt).toBeNull()
     })
 
     it('leaves an absent marker absent (older cached rows)', async () => {
