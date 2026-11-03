@@ -303,7 +303,7 @@ function handleFilterByType(type: string) {
   display: grid;
   grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
   gap: 16px;
-  align-items: start;
+  align-items: stretch;
 }
 
 .content-left {
@@ -313,21 +313,31 @@ function handleFilterByType(type: string) {
   min-width: 0;
 }
 
-/* The right column is shorter than the list: it stays in view while the list scrolls */
+/* both columns end on the same line: the last widget takes the remaining height */
 .content-right :deep(.ui-card-title) {
   font-size: 17px;
 }
 
 .content-right {
-  position: sticky;
-  top: 16px;
   display: flex;
   flex-direction: column;
 }
 
+.content-right :deep(.sidebar-widgets) {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
+
 .content-right :deep(.widgets-container) {
-  display: grid;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
   gap: 16px;
+}
+
+.content-right :deep(.widget-wrapper:last-child) {
+  flex: 1;
 }
 
 @media (max-width: 1280px) {
@@ -335,8 +345,5 @@ function handleFilterByType(type: string) {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .content-right {
-    position: static;
-  }
 }
 </style>

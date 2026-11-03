@@ -70,6 +70,16 @@
           :style="{ left: tick.pos }"
         >{{ tick.label }}</span>
       </div>
+      <div
+        class="sh-grid"
+        aria-hidden="true"
+      >
+        <i
+          v-for="tick in ticks"
+          :key="tick.at"
+          :style="{ left: tick.pos }"
+        />
+      </div>
       <ul
         class="sh-rows"
         aria-label="報表與保留期"
@@ -268,13 +278,13 @@ const rows = computed(() => live.value.map(r => {
 
 .sh-title {
   margin: 4px 0 0;
-  font: 400 28px / 1.2 var(--ui-font-display);
+  font: 400 24px / 1.25 var(--ui-font-display);
   letter-spacing: -0.02em;
   color: var(--ui-ink-2);
 }
 
 .sh-title b {
-  font-size: 46px;
+  font-size: 40px;
   font-weight: 600;
   letter-spacing: -0.035em;
   font-variant-numeric: tabular-nums;
@@ -334,7 +344,7 @@ const rows = computed(() => live.value.map(r => {
 }
 
 .k-left {
-  background: color-mix(in srgb, var(--ui-green) 28%, var(--ui-surface));
+  background: color-mix(in srgb, var(--ui-green) 45%, var(--ui-surface));
 }
 
 .k-run,
@@ -358,8 +368,30 @@ const rows = computed(() => live.value.map(r => {
 
 .sh-axis {
   position: relative;
-  height: 22px;
+  height: 28px;
   margin-left: var(--name-w);
+}
+
+/* a hairline under every axis label, so each bar's start and end can be read against a date */
+.sh-grid {
+  position: absolute;
+  top: 24px;
+  right: 0;
+  bottom: 0;
+  left: var(--name-w);
+  pointer-events: none;
+}
+
+.sh-grid i {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 0;
+  border-left: 0.5px solid var(--ui-sep);
+}
+
+.sh-rows {
+  position: relative;
 }
 
 .sh-tick {
@@ -367,7 +399,7 @@ const rows = computed(() => live.value.map(r => {
   top: 0;
   font-size: 13px;
   font-variant-numeric: tabular-nums;
-  color: var(--ui-muted);
+  color: var(--ui-ink-2);
   transform: translateX(-50%);
   white-space: nowrap;
 }
@@ -463,7 +495,7 @@ const rows = computed(() => live.value.map(r => {
 
 .sh-left {
   border-radius: 0 999px 999px 0;
-  background: color-mix(in srgb, var(--ui-green) 28%, var(--ui-surface));
+  background: color-mix(in srgb, var(--ui-green) 45%, var(--ui-surface));
 }
 
 .sh-dot {
@@ -527,7 +559,7 @@ const rows = computed(() => live.value.map(r => {
   }
 
   .sh-title b {
-    font-size: 40px;
+    font-size: 36px;
   }
 
   .sh-meta {
@@ -547,6 +579,10 @@ const rows = computed(() => live.value.map(r => {
     margin-left: 0;
   }
 
+  .sh-grid {
+    display: none;
+  }
+
   .sh-row {
     grid-template-columns: minmax(0, 1fr);
     min-height: 62px;
@@ -558,10 +594,16 @@ const rows = computed(() => live.value.map(r => {
   }
 
   .sh-track {
-    height: 20px;
+    height: 24px;
   }
 
-  .sh-rows li:nth-child(n + 6) {
+  .sh-kept,
+  .sh-left {
+    height: 12px;
+    margin-top: -6px;
+  }
+
+  .sh-rows li:nth-child(n + 7) {
     display: none;
   }
 }

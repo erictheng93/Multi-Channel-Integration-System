@@ -27,7 +27,7 @@
       v-else-if="selected"
       class="tpl-grid"
     >
-      <aside class="tpl-side">
+      <div class="tpl-picks">
         <div
           class="tpl-list"
           role="radiogroup"
@@ -41,52 +41,6 @@
             @select="onSelect"
           />
         </div>
-
-        <div class="tpl-actions">
-          <button
-            type="button"
-            class="btn btn-primary"
-            :aria-busy="generating"
-            @click="useTemplate(selected)"
-          >
-            {{ generating ? '產生中...' : '直接產生' }}
-          </button>
-          <button
-            type="button"
-            class="btn btn-secondary"
-            @click="customizeTemplate(selected)"
-          >
-            調整後產生
-          </button>
-        </div>
-
-        <section
-          v-if="earlier.length"
-          class="ui-card tpl-hist"
-          aria-label="更早的產出"
-        >
-          <h3 class="tpl-cap">
-            更早的產出
-          </h3>
-          <ul>
-            <li
-              v-for="item in earlier"
-              :key="item.id"
-            >
-              <router-link
-                :to="`/reports/${item.id}`"
-                class="tpl-hrow"
-              >
-                <span class="tpl-hname">{{ item.title }}</span>
-                <span class="tpl-hmeta">{{ item.format.toUpperCase() }} ・ {{ relativeTime(item.completedAt ?? item.createdAt) }}</span>
-                <span
-                  class="ui-pill"
-                  :class="statusClass(item.status)"
-                >{{ statusText[item.status] ?? item.status }}</span>
-              </router-link>
-            </li>
-          </ul>
-        </section>
 
         <router-link
           to="/reports/generate"
@@ -120,23 +74,61 @@
             aria-hidden="true"
           ><path d="m9 6 6 6-6 6" /></svg>
         </router-link>
-      </aside>
-
-      <div class="tpl-stack">
-        <ReportSheet
-          :template="selected"
-          :state="latestState"
-          :loading="latestLoading"
-        />
-        <!-- one paper edge per earlier output of this type: the stack behind the sheet is that history -->
-        <i
-          v-for="n in earlier.length"
-          :key="n"
-          class="tpl-edge"
-          :style="{ '--n': n }"
-          aria-hidden="true"
-        />
       </div>
+
+      <ReportSheet
+        :template="selected"
+        :state="latestState"
+        :loading="latestLoading"
+      >
+        <template #side>
+          <section
+            v-if="earlier.length"
+            class="tpl-hist"
+            aria-label="更早的產出"
+          >
+            <h3 class="tpl-cap">
+              更早的產出
+            </h3>
+            <ul>
+              <li
+                v-for="item in earlier"
+                :key="item.id"
+              >
+                <router-link
+                  :to="`/reports/${item.id}`"
+                  class="tpl-hrow"
+                >
+                  <span class="tpl-hname">{{ item.title }}</span>
+                  <span class="tpl-hmeta">{{ item.format.toUpperCase() }} ・ {{ relativeTime(item.completedAt ?? item.createdAt) }}</span>
+                  <span
+                    class="ui-pill"
+                    :class="statusClass(item.status)"
+                  >{{ statusText[item.status] ?? item.status }}</span>
+                </router-link>
+              </li>
+            </ul>
+          </section>
+
+          <div class="tpl-actions">
+            <button
+              type="button"
+              class="btn btn-secondary"
+              @click="customizeTemplate(selected)"
+            >
+              調整後產生
+            </button>
+            <button
+              type="button"
+              class="btn btn-primary"
+              :aria-busy="generating"
+              @click="useTemplate(selected)"
+            >
+              {{ generating ? '產生中...' : '直接產生' }}
+            </button>
+          </div>
+        </template>
+      </ReportSheet>
     </div>
 
     <UiActionBar
@@ -264,57 +256,31 @@ onMounted(() => {
 <style scoped>
 .tpl-grid {
   display: grid;
-  grid-template-columns: 360px minmax(0, 1fr);
-  gap: 20px;
-  align-items: start;
-}
-
-.tpl-stack {
-  min-width: 0;
-}
-
-.tpl-stack > .sheet {
-  position: relative;
-  z-index: 4;
-}
-
-.tpl-edge {
-  position: relative;
-  z-index: calc(4 - var(--n));
-  display: block;
-  height: 24px;
-  margin: -12px calc(var(--n) * 20px) 0;
-  border-radius: 0 0 var(--ui-r-group) var(--ui-r-group);
-  background: var(--ui-surface);
-  box-shadow: var(--ui-shadow-card), 0 0 0 0.5px var(--ui-sep);
-}
-
-.tpl-side {
-  position: sticky;
-  top: calc(var(--ui-topbar-h) + 20px);
-  display: grid;
   gap: 16px;
-  min-width: 0;
+}
+
+.tpl-picks {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
 }
 
 .tpl-list {
   display: grid;
-  gap: 12px;
+  grid-column: span 2;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
 }
 
 .tpl-actions {
   display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 8px;
-}
-
-.tpl-actions .btn {
-  width: 100%;
 }
 
 .tpl-hist {
   display: grid;
   gap: 4px;
-  padding: 18px 20px 10px;
 }
 
 .tpl-cap {
@@ -375,16 +341,17 @@ onMounted(() => {
   grid-template-columns: auto minmax(0, 1fr) auto;
   gap: 14px;
   align-items: center;
-  padding: 16px 20px;
+  padding: 18px 20px;
   border-radius: var(--ui-r-group);
-  background: var(--ui-surface);
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px var(--ui-sep);
   color: var(--ui-ink);
   text-decoration: none;
   transition: background var(--ui-dur) var(--ui-ease);
 }
 
 .custom-row:hover {
-  background: var(--ui-fill);
+  background: var(--ui-surface);
 }
 
 .custom-row:focus-visible {
@@ -440,16 +407,12 @@ onMounted(() => {
 }
 
 @media (max-width: 1024px) {
-  .tpl-grid {
+  .tpl-picks {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .tpl-side {
-    position: static;
-  }
-
   .tpl-list {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-column: auto;
   }
 }
 
@@ -458,12 +421,10 @@ onMounted(() => {
     display: flex;
     flex-direction: column;
     gap: 16px;
-    align-items: stretch;
   }
 
-  /* the side column dissolves: picker first, then the sheet, then the quiet extras */
-  .tpl-side {
-    position: static;
+  /* picker first, then the sheet, then the quiet custom entry */
+  .tpl-picks {
     display: contents;
   }
 
@@ -472,20 +433,12 @@ onMounted(() => {
     gap: 10px;
   }
 
-  .tpl-stack {
+  .tpl-grid > :deep(.sheet) {
     order: 2;
   }
 
-  .tpl-edge {
-    margin-inline: calc(var(--n) * 12px);
-  }
-
-  .tpl-hist {
-    order: 3;
-  }
-
   .custom-row {
-    order: 4;
+    order: 3;
   }
 
   .tpl-actions {
