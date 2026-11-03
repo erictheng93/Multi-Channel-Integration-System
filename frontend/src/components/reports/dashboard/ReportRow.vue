@@ -324,7 +324,7 @@ const canDelete = computed(() => {
 .row-actions {
   display: flex;
   justify-content: flex-end;
-  gap: 2px;
+  gap: 14px;
 }
 
 .action-btn {
