@@ -1,8 +1,9 @@
 <!--
   SystemHealthPage.vue
-  Health check page. Signature: the verdict, three facts, and one row per service that carries its own latency
-  bar on one shared scale (full track = the slowest scale shown in the caption), so the slow service reads at
-  a glance. A service that was never checked has an empty track and says so in its pill.
+  Health check page. Signature: one verdict, a status strip with one segment per service (a service never checked
+  is a dashed outline, not a colour), and one latency bar per service on a single zoned scale (green up to 100 ms,
+  orange up to 300 ms, red past it) so "fast enough" is visible, not just short. LINE webhook has its own card
+  because it only runs on demand: the card holds the inline test button and the last result.
   Opening the page runs the plain check; 立即檢查 (page head) also runs the on-demand LINE webhook test.
 -->
 
@@ -32,8 +33,8 @@
       </UiEmptyState>
 
       <template v-else>
-        <div class="hl-side">
-          <header class="hl-top">
+        <div class="hl-top">
+          <div class="hl-verdict">
             <div
               class="hl-big"
               :class="mixed ? 'mixed' : overallTone"
@@ -41,29 +42,10 @@
             >
               {{ heroValue ?? '—' }}
             </div>
-            <span
-              v-if="mixed"
-              class="ui-pill ui-pill-orange"
-            >{{ counts.unchecked }} 項待檢查</span>
-            <ul
-              v-else-if="counts.warning + counts.critical + counts.unchecked > 0"
-              class="hero-counts"
-              aria-label="服務狀態統計"
-            >
-              <li v-if="counts.warning > 0">
-                <span class="dot o" />{{ counts.warning }} 警告
-              </li>
-              <li v-if="counts.critical > 0">
-                <span class="dot r" />{{ counts.critical }} 異常
-              </li>
-              <li v-if="counts.unchecked > 0">
-                <span class="dot u" />{{ counts.unchecked }} 未檢查
-              </li>
-            </ul>
-          </header>
-          <p class="hl-meaning">
-            {{ heroSubtitle }}
-          </p>
+            <p class="hl-meaning">
+              {{ heroSubtitle }}
+            </p>
+          </div>
           <dl
             v-if="latencyFacts.length > 0"
             class="hl-facts"
@@ -82,85 +64,211 @@
               </dd>
             </div>
           </dl>
-
-          <p class="hscale">
-            回應時間，各服務同一比例，滿格 = {{ latencyScale }} ms
-          </p>
-          <ul
-            class="hlist"
-            aria-label="服務檢查"
-          >
-            <li
-              v-for="row in rows"
-              :key="row.key"
-              class="hrow"
-              :class="{ 'is-unchecked': row.label === '未檢查' }"
-            >
-              <span
-                class="hstat"
-                :class="row.tone"
-                aria-hidden="true"
-              >
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2.2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                >
-                  <path
-                    v-if="row.tone === 'ok'"
-                    d="M5 12.5 10 17.5 19 7"
-                  />
-                  <template v-else-if="row.tone === 'unknown'">
-                    <circle
-                      cx="12"
-                      cy="12"
-                      r="8.5"
-                    />
-                    <path d="M12 7.5V12l3 2" />
-                  </template>
-                  <path
-                    v-else
-                    d="M12 8v5M12 17h.01"
-                  />
-                </svg>
-              </span>
-              <div class="hrow-main">
-                <div class="hrow-title">
-                  {{ row.name }}
-                </div>
-                <div class="hrow-sub">
-                  {{ row.sub }}<span
-                    v-if="row.at"
-                    class="row-at"
-                  > · {{ row.at }}</span>
-                </div>
-              </div>
-              <span
-                class="hbar"
-                :class="barTone(row)"
-                aria-hidden="true"
-              ><i :style="{ width: barWidth(row) }" /></span>
-              <span
-                class="lat-n"
-                :class="barTone(row)"
-              >
-                <template v-if="row.latencyMs !== null">{{ row.latencyMs.toLocaleString() }}<small>ms</small></template>
-              </span>
-              <span
-                class="ui-pill ui-pill-dot"
-                :class="pillClass(row)"
-              >{{ row.label }}</span>
-            </li>
-          </ul>
-          <p class="hnote">
-            LINE webhook 只在按「立即檢查」時測試；持續失敗請到 LINE Developers 對 Webhook URL 按「Verify」。
-          </p>
         </div>
+
+        <ol
+          class="strip"
+          aria-label="各服務狀態"
+        >
+          <li
+            v-for="row in rows"
+            :key="row.key"
+            class="seg"
+            :class="row.tone"
+          >
+            <i aria-hidden="true" />
+            <span>{{ stripName(row) }}<span class="sr-only">，{{ row.label }}</span></span>
+          </li>
+        </ol>
       </template>
     </article>
+
+    <div
+      v-if="rows.length > 0"
+      class="hgrid"
+    >
+      <section
+        class="ui-card hsvc"
+        aria-label="服務檢查"
+      >
+        <header class="ui-card-head hsvc-head">
+          <div>
+            <h2 class="ui-card-title">
+              回應時間
+            </h2>
+            <div class="ui-card-sub">
+              各服務同一比例，滿格 = {{ latencyScale }} ms
+            </div>
+          </div>
+          <ul
+            class="zones"
+            aria-label="色區說明"
+          >
+            <li><i class="z-ok" />&le; {{ SLOW_MS }} ms 正常</li>
+            <li><i class="z-warn" />{{ SLOW_MS }}&ndash;{{ FAULT_MS }} 偏慢</li>
+            <li><i class="z-bad" />&gt; {{ FAULT_MS }} 異常</li>
+          </ul>
+        </header>
+        <ul class="hlist">
+          <li
+            v-for="row in serviceRows"
+            :key="row.key"
+            class="hrow"
+          >
+            <span
+              class="hstat"
+              :class="row.tone"
+              aria-hidden="true"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path
+                  v-if="row.tone === 'ok'"
+                  d="M5 12.5 10 17.5 19 7"
+                />
+                <template v-else-if="row.tone === 'unknown'">
+                  <circle
+                    cx="12"
+                    cy="12"
+                    r="8.5"
+                  />
+                  <path d="M12 7.5V12l3 2" />
+                </template>
+                <path
+                  v-else
+                  d="M12 8v5M12 17h.01"
+                />
+              </svg>
+            </span>
+            <div class="hrow-main">
+              <div class="hrow-title">
+                {{ row.name }}
+              </div>
+              <div class="hrow-sub">
+                {{ row.sub }}
+              </div>
+            </div>
+            <span
+              class="hbar"
+              :class="barTone(row)"
+              :style="zoneStyle(latencyScale)"
+              aria-hidden="true"
+            ><i :style="{ width: barWidth(row.latencyMs, latencyScale) }" /></span>
+            <span
+              class="lat-n"
+              :class="barTone(row)"
+            >
+              <template v-if="row.latencyMs !== null">{{ row.latencyMs.toLocaleString() }}<small>ms</small></template>
+            </span>
+            <span
+              class="ui-pill ui-pill-dot"
+              :class="pillClass(row)"
+            >{{ row.label }}</span>
+          </li>
+        </ul>
+      </section>
+
+      <aside
+        v-if="webhookRow"
+        class="ui-card hwh"
+        aria-label="LINE webhook"
+      >
+        <header class="hwh-head">
+          <span
+            class="hstat"
+            :class="webhookRow.tone"
+            aria-hidden="true"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path
+                v-if="webhookRow.tone === 'ok'"
+                d="M5 12.5 10 17.5 19 7"
+              />
+              <template v-else-if="webhookRow.tone === 'unknown'">
+                <circle
+                  cx="12"
+                  cy="12"
+                  r="8.5"
+                />
+                <path d="M12 7.5V12l3 2" />
+              </template>
+              <path
+                v-else
+                d="M12 8v5M12 17h.01"
+              />
+            </svg>
+          </span>
+          <div class="hrow-main">
+            <h2 class="ui-card-title">
+              LINE webhook
+            </h2>
+            <div class="hrow-sub">
+              {{ webhookRow.sub }}
+            </div>
+          </div>
+          <span
+            class="ui-pill ui-pill-dot"
+            :class="pillClass(webhookRow)"
+          >{{ webhookRow.label }}</span>
+        </header>
+
+        <div
+          v-if="webhookRow.latencyMs !== null"
+          class="hwh-result"
+        >
+          <div class="hwh-ms">
+            <span
+              class="lat-n"
+              :class="barTone(webhookRow)"
+            >{{ webhookRow.latencyMs.toLocaleString() }}<small>ms</small></span>
+            <span
+              v-if="webhookRow.at"
+              class="hwh-at"
+            >今天 {{ webhookRow.at }} 測試</span>
+          </div>
+          <span
+            class="hbar"
+            :class="barTone(webhookRow)"
+            :style="zoneStyle(webhookScale)"
+            aria-hidden="true"
+          ><i :style="{ width: barWidth(webhookRow.latencyMs, webhookScale) }" /></span>
+        </div>
+        <p
+          v-else
+          class="hwh-idle"
+        >
+          這項只在你按下時才測試，會送出一次簽章請求並量測回應時間。
+        </p>
+
+        <ol class="hwh-steps">
+          <li>「測試 webhook」會連同其餘服務一起重新檢查。</li>
+          <li>持續失敗請到 LINE Developers，對 Webhook URL 按「Verify」。</li>
+          <li>測試結果只代表剛才那一次，不是持續監看。</li>
+        </ol>
+
+        <button
+          type="button"
+          class="btn btn-secondary hwh-btn"
+          :aria-busy="controller.processing.value || undefined"
+          @click="runWebhookTest"
+        >
+          {{ controller.processing.value ? '檢查中...' : webhookRow.latencyMs !== null ? '重新測試 webhook' : '測試 webhook' }}
+        </button>
+      </aside>
+    </div>
   </div>
 </template>
 
@@ -194,6 +302,10 @@ const SERVICE_DESCRIPTIONS: Record<string, string> = {
   'durable_object': '即時連線與對話房間',
   queue: '訊息收件與延遲發送佇列'
 }
+
+/** Latency zones: up to SLOW_MS is fine, up to FAULT_MS is slow, past it is a fault */
+const SLOW_MS = 100
+const FAULT_MS = 300
 
 function toneOf(status: string): Tone {
   if (status === 'healthy') {
@@ -279,9 +391,17 @@ const counts = computed(() => ({
   unchecked: rows.value.filter(row => row.tone === 'unknown').length
 }))
 
-/** Bar scale: the slowest measured service, floored at 100 ms so 12 ms vs 64 ms is not exaggerated */
+/** Bar scale: the fault line, or the slowest service when it is past it, so all three zones are always on the track */
 const latencyScale = computed(() =>
-  Math.max(100, ...rows.value.map(row => row.latencyMs ?? 0)))
+  Math.max(FAULT_MS, ...serviceRows.value.map(row => row.latencyMs ?? 0)))
+const webhookScale = computed(() => Math.max(FAULT_MS, webhookRow.value?.latencyMs ?? 0))
+
+/** Track tint: green zone, orange zone, red zone, each ending where its threshold falls on this scale */
+function zoneStyle(scale: number): Record<string, string> {
+  const a = Math.round((SLOW_MS / scale) * 1000) / 10
+  const b = Math.round((FAULT_MS / scale) * 1000) / 10
+  return { '--za': `${a}%`, '--zb': `${b}%` }
+}
 
 const overallTone = computed<'ok' | 'warn' | 'bad' | 'unknown'>(() => {
   if (counts.value.critical > 0) {
@@ -319,20 +439,34 @@ const heroValue = computed<string | null>(() => {
     return '降級'
   }
   if (mixed.value) {
-    return `${counts.value.healthy} 項正常`
+    return `${counts.value.healthy} / ${rows.value.length} 項正常`
   }
   return overallTone.value === 'ok' ? '正常' : null
 })
 
 /** Tone is the speed itself: under 100 ms is fine, up to 300 ms is slow, past that is a fault; a failing check is red whatever it measured */
 function barTone(row: Row): string {
-  if (row.tone === 'bad' || (row.latencyMs ?? 0) > 300) { return 'bad' }
-  if (row.tone === 'warn' || (row.latencyMs ?? 0) > 100) { return 'warn' }
+  if (row.tone === 'bad' || (row.latencyMs ?? 0) > FAULT_MS) { return 'bad' }
+  if (row.tone === 'warn' || (row.latencyMs ?? 0) > SLOW_MS) { return 'warn' }
   return row.tone
 }
 
 /** Short name: the part in parentheses when a service has one (資料庫 (D1) -> D1) */
 const shortName = (name: string): string => /\(([^)]+)\)\s*$/.exec(name)?.[1] ?? name
+
+/** Strip label: short enough that six fit across a phone */
+function stripName(row: Row): string {
+  if (row.key === 'durable_object') { return 'DO' }
+  if (row.key === 'lineWebhook') { return 'LINE' }
+  return shortName(row.name)
+}
+
+/** The inline button runs the full check: the plain services plus the on-demand webhook probe */
+function runWebhookTest(): void {
+  if (!controller?.processing.value) {
+    void controller?.healthCheck(true)
+  }
+}
 
 /** Three facts the list below does not already say: the mean, the slowest service and when it was checked */
 const latencyFacts = computed(() => {
@@ -356,14 +490,13 @@ const heroSubtitle = computed(() => {
   }
   const attention = rows.value.filter(row => row.tone === 'warn' || row.tone === 'bad')
   const unchecked = rows.value.filter(row => row.tone === 'unknown')
-  const pending = unchecked.length > 0 ? `，${unchecked.map(row => row.name).join('、')} 尚未檢查` : ''
   if (attention.length > 0) {
     return `${attention.map(row => row.name).join('、')} 需要注意。`
   }
   if (unchecked.length > 0) {
-    return `${unchecked.map(row => row.name).join('、')} 還沒有測試結果，按「立即檢查」補上。`
+    return `${unchecked.map(row => row.name).join('、')} 還沒有測試結果，按「測試 webhook」補上。`
   }
-  return `${counts.value.healthy} 項服務運作正常${pending}。`
+  return `${counts.value.healthy} 項服務運作正常。`
 })
 
 function formatChecked(iso: string): string {
@@ -382,9 +515,6 @@ function formatChecked(iso: string): string {
 
 function pillClass(row: Row): string {
   const tone = row.tone
-  if (row.label === '未檢查') {
-    return 'ui-pill-orange'
-  }
   if (tone === 'ok') {
     return 'ui-pill-green'
   }
@@ -398,9 +528,9 @@ function pillClass(row: Row): string {
 }
 
 /** Bar fill on the shared scale; a service with no measurement has an empty track */
-function barWidth(row: Row): string {
-  if (row.latencyMs === null) { return '0%' }
-  return `${Math.max(3, Math.min(100, Math.round((row.latencyMs / latencyScale.value) * 100)))}%`
+function barWidth(ms: number | null, scale: number): string {
+  if (ms === null) { return '0%' }
+  return `${Math.max(3, Math.min(100, Math.round((ms / scale) * 100)))}%`
 }
 
 // Plain check on open; the webhook test stays on-demand.
@@ -414,12 +544,14 @@ onMounted(() => {
 <style scoped>
 .health-stack {
   display: grid;
+  gap: 16px;
   min-width: 0;
 }
 
 .hl {
   display: grid;
-  padding: 28px 32px;
+  gap: 22px;
+  padding: 28px 32px 26px;
 }
 
 .hl-empty {
@@ -427,37 +559,12 @@ onMounted(() => {
 }
 
 /* ---------- verdict ---------- */
-.hl-side {
+.hl-top {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(320px, 460px);
   gap: 0 40px;
   align-items: start;
   min-width: 0;
-}
-
-.hl-side > .hlist,
-.hl-side > .hnote,
-.hl-side > .hscale {
-  grid-column: 1 / -1;
-}
-
-.hl-side > .hl-facts {
-  grid-column: 2;
-  grid-row: 1 / span 3;
-  margin: 0;
-}
-
-.hscale {
-  margin: 22px 0 2px;
-  font-size: 13px;
-  color: var(--ui-muted);
-}
-
-.hl-top {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px 14px;
-  align-items: center;
 }
 
 .hl-big {
@@ -497,7 +604,7 @@ onMounted(() => {
 .hl-facts {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  margin: 18px 0 6px;
+  margin: 0;
   padding: 14px 0;
   box-shadow: inset 0 0.5px 0 var(--ui-sep), inset 0 -0.5px 0 var(--ui-sep);
 }
@@ -539,45 +646,120 @@ onMounted(() => {
   color: var(--ui-muted);
 }
 
-.hero-counts {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px 18px;
+/* ---------- status strip: one segment per service ---------- */
+.strip {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: 6px;
   margin: 0;
   padding: 0;
   list-style: none;
-  font-size: var(--ui-t-meta);
-  font-weight: 600;
-  color: var(--ui-ink-2);
-  font-variant-numeric: tabular-nums;
 }
 
-.hero-counts li {
-  display: inline-flex;
-  gap: 7px;
-  align-items: center;
+.seg {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
 }
 
-.hero-counts .dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
+.seg i {
+  display: block;
+  height: 12px;
+  border-radius: 6px;
+  background: var(--ui-green);
 }
 
-.hero-counts .dot.o,
-.hero-counts .dot.u {
+.seg.warn i {
   background: var(--ui-orange);
 }
 
-.hero-counts .dot.r {
+.seg.bad i {
   background: var(--ui-red);
 }
 
-/* ---------- service rows ---------- */
+/* never checked: an outline, because no colour is honest when nothing was measured */
+.seg.unknown i {
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px var(--ui-field-edge);
+}
+
+.seg > span {
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ui-ink-2);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* ---------- cards ---------- */
+.hgrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 380px);
+  gap: 16px;
+  align-items: stretch;
+  min-width: 0;
+}
+
+.hsvc-head {
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 22px 28px 8px;
+}
+
+.zones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+  color: var(--ui-ink-2);
+}
+
+.zones li {
+  display: inline-flex;
+  gap: 7px;
+  align-items: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.zones i {
+  width: 14px;
+  height: 10px;
+  border-radius: 3px;
+}
+
+.z-ok {
+  background: var(--ui-green-soft);
+  box-shadow: inset 0 0 0 1px var(--ui-green);
+}
+
+.z-warn {
+  background: var(--ui-orange-soft);
+  box-shadow: inset 0 0 0 1px var(--ui-orange);
+}
+
+.z-bad {
+  background: var(--ui-red-soft);
+  box-shadow: inset 0 0 0 1px var(--ui-red);
+}
+
 .hlist {
   display: grid;
   margin: 0;
-  padding: 0;
+  padding: 0 28px 14px;
   list-style: none;
 }
 
@@ -585,7 +767,7 @@ onMounted(() => {
   display: flex;
   gap: 12px;
   align-items: center;
-  padding: 11px 0;
+  padding: 13px 0;
 }
 
 .hrow + .hrow {
@@ -623,9 +805,9 @@ onMounted(() => {
   color: var(--ui-red-ink);
 }
 
-.hrow.is-unchecked .hstat {
-  background: var(--ui-accent-soft);
-  color: var(--ui-accent);
+.hstat.unknown {
+  background: var(--ui-fill);
+  color: var(--ui-ink-2);
 }
 
 .hrow-main {
@@ -643,17 +825,19 @@ onMounted(() => {
   color: var(--ui-muted);
 }
 
-.row-at {
-  font-variant-numeric: tabular-nums;
-}
-
+/* the track carries the zones: green to 100 ms, orange to 300 ms, red beyond */
 .hbar {
   flex: none;
-  width: clamp(120px, 30%, 320px);
-  height: 10px;
+  width: clamp(120px, 34%, 320px);
+  height: 12px;
   overflow: hidden;
   border-radius: 999px;
-  background: var(--ui-fill);
+  background: linear-gradient(
+    to right,
+    var(--ui-green-soft) 0 var(--za, 33%),
+    var(--ui-orange-soft) var(--za, 33%) var(--zb, 100%),
+    var(--ui-red-soft) var(--zb, 100%) 100%
+  );
 }
 
 .hbar i {
@@ -698,13 +882,96 @@ onMounted(() => {
   width: 62px;
 }
 
-.hnote {
-  margin: 4px 0 0;
-  padding-top: 12px;
-  box-shadow: inset 0 0.5px 0 var(--ui-sep);
+/* ---------- webhook card ---------- */
+.hwh {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 22px 24px;
+}
+
+.hwh-head {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.hwh-result {
+  display: grid;
+  gap: 10px;
+}
+
+.hwh-ms {
+  display: flex;
+  gap: 12px;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.hwh-ms .lat-n {
+  min-width: 0;
+  font-size: 34px;
+  letter-spacing: -0.03em;
+}
+
+.hwh-ms .lat-n small {
+  font-size: 15px;
+}
+
+.hwh-at {
   font-size: 13px;
-  line-height: 1.55;
   color: var(--ui-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.hwh .hbar {
+  width: 100%;
+}
+
+.hwh-idle {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--ui-ink-2);
+}
+
+.hwh-btn {
+  margin-top: auto;
+}
+
+.hwh-steps {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 16px 0 0;
+  box-shadow: inset 0 0.5px 0 var(--ui-sep);
+  list-style: none;
+  counter-reset: step;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--ui-ink-2);
+  text-align: left;
+}
+
+.hwh-steps li {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  counter-increment: step;
+}
+
+.hwh-steps li::before {
+  content: counter(step);
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--ui-fill);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ui-ink-2);
 }
 
 @media (max-width: 1024px) {
@@ -712,20 +979,20 @@ onMounted(() => {
     padding: 24px;
   }
 
-  .hl-side {
+  .hl-top {
     grid-template-columns: minmax(0, 1fr);
+    gap: 18px;
   }
 
-  .hl-side > .hl-facts {
-    grid-column: 1;
-    grid-row: auto;
-    margin: 18px 0 6px;
+  .hgrid {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
-/* phone: the verdict, the three facts, then the rows with their bars under the name */
+/* phone: verdict, strip, then rows with their bars under the name; the webhook card follows */
 @media (max-width: 768px) {
   .hl {
+    gap: 18px;
     padding: 20px 18px;
   }
 
@@ -741,20 +1008,24 @@ onMounted(() => {
     font-size: 22px;
   }
 
-  .row-at {
-    display: none;
+  .hsvc-head {
+    padding: 18px 18px 6px;
+  }
+
+  .hlist {
+    padding: 0 18px 10px;
   }
 
   .hrow {
     flex-wrap: wrap;
-    row-gap: 6px;
+    row-gap: 8px;
   }
 
   .hrow .ui-pill {
     width: auto;
   }
 
-  .hbar {
+  .hrow .hbar {
     order: 5;
     flex: none;
     width: calc(100% - 42px);
@@ -764,5 +1035,10 @@ onMounted(() => {
   .lat-n {
     min-width: 0;
   }
+
+  .hwh {
+    padding: 20px 18px;
+  }
+
 }
 </style>
