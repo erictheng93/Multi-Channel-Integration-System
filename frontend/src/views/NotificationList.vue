@@ -281,8 +281,7 @@ onUnmounted(() => {
 .lead-fig {
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  gap: 14px;
+  gap: 10px;
 }
 
 .lead-label {
@@ -294,7 +293,7 @@ onUnmounted(() => {
 
 .lead-num {
   margin: 0;
-  font: 600 56px / 1 var(--ui-font-display);
+  font: 600 64px / 1 var(--ui-font-display);
   letter-spacing: -0.03em;
   font-variant-numeric: tabular-nums;
 }
@@ -309,16 +308,16 @@ onUnmounted(() => {
 
 .lead-time {
   display: grid;
-  gap: 8px;
-  margin: 0;
-  padding-top: 14px;
-  box-shadow: inset 0 0.5px 0 var(--ui-sep);
+  flex: 1;
+  grid-auto-rows: 1fr;
+  margin: 10px 0 0;
 }
 
 .lead-time > div {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
+  box-shadow: inset 0 0.5px 0 var(--ui-sep);
 }
 
 .lead-time dt {

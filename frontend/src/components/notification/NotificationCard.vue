@@ -375,7 +375,19 @@ const formattedTime = computed(() => {
 
 /* Unread is a faint wash across the row plus the dot by the time (no hard edge bar); a wash this light does not read as a selection */
 .notification-unread {
-  background: color-mix(in srgb, var(--ui-accent) 5%, var(--ui-surface));
+  background: color-mix(in srgb, var(--ui-accent) 6%, var(--ui-surface));
+}
+
+/* The Mail gutter dot: a glance down the left edge counts what still needs you */
+.notification-unread::after {
+  position: absolute;
+  top: 31px;
+  left: 8px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ui-accent);
+  content: '';
 }
 
 /* Urgent: the same pastel tile language, in red, whatever the type (the pill says why) */
@@ -730,6 +742,10 @@ const formattedTime = computed(() => {
   .notification-card + .notification-card::before {
     right: 16px;
     left: 70px;
+  }
+
+  .notification-unread::after {
+    left: 4px;
   }
 
   /* The title wraps (two lines at most) instead of cutting the customer name off */
