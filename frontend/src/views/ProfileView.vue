@@ -217,9 +217,18 @@
                 </div>
                 <span
                   class="ui-pill ui-pill-dot"
-                  :class="devicePerm.tone === 'on' ? 'ui-pill-green' : ''"
+                  :class="devicePerm.tone === 'on' ? 'ui-pill-green' : devicePerm.tone === 'blocked' ? 'ui-pill-orange' : ''"
                 >{{ devicePerm.label }}</span>
               </div>
+              <ol
+                v-if="devicePerm.tone === 'blocked'"
+                class="notify-steps"
+                aria-label="解除封鎖的步驟"
+              >
+                <li>點網址列左側的圖示</li>
+                <li>把「通知」改為「允許」</li>
+                <li>重新整理這個頁面</li>
+              </ol>
               <RouterLink
                 class="notify-link"
                 :to="{ path: '/notifications', query: { settings: '1' } }"
@@ -245,7 +254,7 @@
             id="security-title"
             class="ui-group-label"
           >
-            修改密碼
+            <span>修改密碼</span>
             <button
               type="button"
               class="pw-fold"
@@ -254,6 +263,12 @@
               @click="pwOpen = !pwOpen"
             >
               {{ pwOpen ? '收合' : '展開' }}
+              <svg
+                class="ico pw-chev"
+                :class="{ 'is-open': pwOpen }"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              ><path d="m9 6 6 6-6 6" /></svg>
             </button>
           </h2>
           <form
@@ -505,7 +520,7 @@ const sessionParts = computed(() => {
   if (!exp) { return { time: '有效', date: '登入狀態有效' } }
   const d = new Date(exp)
   const pad = (n: number): string => String(n).padStart(2, '0')
-  return { time: `${pad(d.getHours())}:${pad(d.getMinutes())}`, date: `${d.getMonth() + 1}/${d.getDate()} · 這個瀏覽器` }
+  return { time: `${pad(d.getHours())}:${pad(d.getMinutes())}`, date: `${d.getMonth() + 1}/${d.getDate()} 到期 · 這個瀏覽器` }
 })
 
 async function onSignOut(): Promise<void> {
@@ -523,7 +538,7 @@ const devicePerm = computed(() => {
   const shared = '桌面通知只套用於這台裝置，其餘跟著你的帳號。'
   if (perm === 'granted') { return { label: '已開啟', tone: 'on', hint: shared } }
   if (perm === 'denied') {
-    return { label: '已封鎖', tone: 'off', hint: '被瀏覽器封鎖：點網址列左側圖示，將「通知」改為允許。' }
+    return { label: '已封鎖', tone: 'blocked', hint: '被瀏覽器封鎖，桌面通知不會跳出。照下面三步解除：' }
   }
   if (perm === 'unsupported') { return { label: '瀏覽器不支援', tone: 'off', hint: shared } }
   return { label: '尚未開啟', tone: 'off', hint: shared }
@@ -826,14 +841,14 @@ watch(
   padding-left: 20px;
 }
 
-/* the fold control only exists on a phone */
+/* the fold control only exists on a phone: there the whole 修改密碼 heading is one tappable-looking row */
 .pw-fold {
   display: none;
+  align-items: center;
+  gap: 2px;
   margin-left: auto;
   padding: 0 4px;
   min-height: 44px;
-  margin-top: -12px;
-  margin-bottom: -12px;
   border: 0;
   background: transparent;
   color: var(--ui-accent);
@@ -842,16 +857,39 @@ watch(
   cursor: pointer;
 }
 
+.pw-chev {
+  transition: transform var(--ui-dur) var(--ui-ease);
+}
+
+.pw-chev.is-open {
+  transform: rotate(90deg);
+}
+
 @media (max-width: 768px) {
   .pw-fold {
-    display: inline-block;
+    display: inline-flex;
+  }
+
+  #security .ui-group-label {
+    display: flex;
+    align-items: center;
+    padding: 0 8px 0 20px;
+    border-radius: var(--ui-r-inner);
+    background: var(--ui-surface);
+    box-shadow: var(--ui-shadow-pill);
+    color: var(--ui-ink);
+    font-size: 15px;
   }
 }
 
 .pw-card {
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
+  justify-content: flex-start;
+}
+
+.pw-card .form-actions {
+  margin-top: auto;
 }
 
 /* ---- the pass: one wide ticket, three zones split by a perforation (who / what they may do / how long) ---- */
@@ -1003,61 +1041,34 @@ watch(
   color: var(--ui-ink);
 }
 
-/* a read-only rank track (not buttons): a line through three dots, the steps up to my role filled, my own ringed */
+/* a read-only level meter (not buttons): three segments, the steps up to my role filled; only my own label is ink */
 .rungs {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
 .rungs li {
-  position: relative;
   display: grid;
   gap: 6px;
-  justify-items: center;
   color: var(--ui-ink-2);
 }
 
-.rungs li::before {
-  content: '';
-  position: absolute;
-  top: 7px;
-  right: 50%;
-  left: -50%;
-  height: 3px;
-  border-radius: 2px;
+.rung-dot {
+  height: 6px;
+  border-radius: 3px;
   background: var(--ui-fill-strong);
 }
 
-.rungs li:first-child::before {
-  display: none;
-}
-
-.rungs li.is-passed::before,
-.rungs li.is-here::before {
-  background: var(--ui-accent);
-}
-
-.rung-dot {
-  position: relative;
-  z-index: 1;
-  width: 17px;
-  height: 17px;
-  border-radius: 50%;
-  background: var(--ui-surface);
-  box-shadow: inset 0 0 0 3px var(--ui-fill-strong);
-}
-
 .rungs li.is-passed .rung-dot {
-  background: var(--ui-accent);
-  box-shadow: none;
+  background: color-mix(in srgb, var(--ui-accent) 45%, var(--ui-surface));
 }
 
 .rungs li.is-here .rung-dot {
   background: var(--ui-accent);
-  box-shadow: 0 0 0 4px var(--ui-accent-soft);
 }
 
 .rung-label {
@@ -1343,11 +1354,11 @@ watch(
   outline-offset: -2px;
 }
 
-/* the three rules, live: chips that fill with a check as each is met */
+/* the three rules, live: a checklist whose ticks turn green as each is met (no rings, so it never reads as radio buttons) */
 .pw-rules {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 6px 20px;
   margin: 0;
   padding: 0 20px 18px;
   list-style: none;
@@ -1355,13 +1366,10 @@ watch(
 
 .pw-rules li {
   display: inline-flex;
-  gap: 6px;
+  gap: 8px;
   align-items: center;
-  height: 32px;
-  padding: 0 12px 0 8px;
-  border-radius: 999px;
-  background: var(--ui-fill);
-  font-size: 13px;
+  min-height: 24px;
+  font-size: 14px;
   font-weight: 500;
   color: var(--ui-ink-2);
 }
@@ -1370,32 +1378,43 @@ watch(
   display: grid;
   flex: none;
   place-items: center;
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  box-shadow: inset 0 0 0 2px var(--ui-field-edge);
+  width: 18px;
+  height: 18px;
+  border-radius: 6px;
+  background: var(--ui-fill);
 }
 
 .rule-dot .ico {
-  width: 11px;
-  height: 11px;
-  stroke: #fff;
+  width: 12px;
+  height: 12px;
+  stroke: var(--ui-ink-2);
   stroke-width: 3;
-  opacity: 0;
+  opacity: 0.55;
 }
 
 .pw-rules li.is-met {
-  background: var(--ui-green-soft);
   color: var(--ui-green-ink, var(--ui-ink));
 }
 
 .pw-rules li.is-met .rule-dot {
   background: var(--ui-green-ink, var(--ui-green));
-  box-shadow: none;
 }
 
 .pw-rules li.is-met .rule-dot .ico {
+  stroke: #fff;
   opacity: 1;
+}
+
+.notify-steps {
+  display: grid;
+  gap: 8px;
+  margin: 0 20px 16px;
+  padding: 12px 16px 12px 36px;
+  list-style: decimal;
+  border-radius: var(--ui-r-inner);
+  background: var(--ui-surface-2);
+  font-size: 14px;
+  color: var(--ui-ink);
 }
 
 /* password: the three fields stack at a readable width, the action closes the card */
