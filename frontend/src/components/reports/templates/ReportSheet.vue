@@ -4,7 +4,7 @@
      JSON report of that type; with no report yet the cells are skeleton lines. Nothing is invented. -->
 <template>
   <article
-    class="ui-lead sheet"
+    class="sheet"
     :aria-label="`${template.name}的報表樣張`"
     :aria-busy="loading"
   >
@@ -108,11 +108,22 @@
                 class="sh-dot"
                 :class="part.tone"
               />{{ part.label }}</span>
+              <span
+                class="sh-lg-track"
+                aria-hidden="true"
+              ><i
+                :class="part.tone"
+                :style="{ width: sheet.total > 0 ? `${Math.max(part.value > 0 ? 2 : 0, (part.value / sheet.total) * 100)}%` : '0%' }"
+              /></span>
               <b>{{ part.value.toLocaleString('en-US') }}</b>
               <small>{{ pct(part.value, sheet.total) }}</small>
             </li>
             <li class="sh-lg-sum">
               <span class="sh-lg-name">整圈合計</span>
+              <span
+                class="sh-lg-track"
+                aria-hidden="true"
+              />
               <b>{{ sheet.total.toLocaleString('en-US') }}</b>
               <small>100%</small>
             </li>
@@ -182,6 +193,34 @@
       </div>
     </section>
 
+    <section
+      class="sh-inc"
+      aria-label="報表內容"
+    >
+      <h3 class="sh-cap">
+        報表內容
+      </h3>
+      <ul>
+        <li
+          v-for="item in contents"
+          :key="item.label"
+        >
+          <svg
+            viewBox="0 0 16 16"
+            aria-hidden="true"
+          ><path
+            d="M3.5 8.5l3 3 6-7"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          /></svg>
+          <span><b>{{ item.label }}</b><small>{{ item.hint }}</small></span>
+        </li>
+      </ul>
+    </section>
+
     <footer class="sh-foot">
       <template v-if="loading">
         正在讀取最近一份報表…
@@ -212,7 +251,7 @@ import type { ReportTemplate } from '@/types/reports'
 import { relativeTime, type LatestReport } from './latestReport'
 import { readSheet, type Tone } from './sheetData'
 
-const props = defineProps<{ template: ReportTemplate; state: LatestReport | null; loading: boolean }>()
+const props = defineProps<{ template: ReportTemplate; state: LatestReport | null; loading: boolean; contents: Array<{ label: string; hint: string }> }>()
 
 interface Kpi { label: string; value: number | null; note?: string; tone?: Tone; unit?: string }
 
@@ -272,7 +311,8 @@ const more = computed(() => sheet.value.agents.length - SHOWN_AGENTS)
 .sheet {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 22px;
+  min-width: 0;
   padding: 28px 32px 22px;
 }
 
@@ -469,9 +509,9 @@ const more = computed(() => sheet.value.agents.length - SHOWN_AGENTS)
 
 .sh-legend li {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto 52px;
-  gap: 12px;
-  align-items: baseline;
+  grid-template-columns: 84px minmax(0, 1fr) 48px 52px;
+  gap: 16px;
+  align-items: center;
   padding: 14px 0;
   font-variant-numeric: tabular-nums;
 }
@@ -486,6 +526,7 @@ const more = computed(() => sheet.value.agents.length - SHOWN_AGENTS)
 }
 
 .sh-legend b {
+  text-align: right;
   font-size: 18px;
   font-weight: 700;
 }
@@ -494,6 +535,33 @@ const more = computed(() => sheet.value.agents.length - SHOWN_AGENTS)
   text-align: right;
   font-size: 14px;
   color: var(--ui-muted);
+}
+
+.sh-lg-track {
+  display: block;
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--ui-fill);
+}
+
+.sh-lg-sum .sh-lg-track {
+  background: transparent;
+}
+
+.sh-lg-track i {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--ui-blue);
+}
+
+.sh-lg-track i.green {
+  background: var(--ui-green);
+}
+
+.sh-lg-track i.grey {
+  background: var(--ui-fill-strong);
 }
 
 .sh-lg-sum .sh-lg-name,
@@ -582,6 +650,49 @@ const more = computed(() => sheet.value.agents.length - SHOWN_AGENTS)
   color: var(--ui-muted);
 }
 
+.sh-inc {
+  display: grid;
+  gap: 12px;
+}
+
+.sh-inc ul {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 24px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sh-inc li {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+}
+
+.sh-inc svg {
+  width: 18px;
+  height: 18px;
+  margin-top: 1px;
+  color: var(--ui-green-ink);
+}
+
+.sh-inc span {
+  display: grid;
+  gap: 1px;
+}
+
+.sh-inc b {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.sh-inc small {
+  font-size: 13px;
+  color: var(--ui-muted);
+}
+
 .sh-skel i {
   display: block;
   height: 14px;
@@ -624,7 +735,7 @@ const more = computed(() => sheet.value.agents.length - SHOWN_AGENTS)
 @media (max-width: 768px) {
   .sheet {
     gap: 18px;
-    padding: 20px 18px 16px;
+    padding: 18px 16px 16px;
   }
 
   .sh-mast {
@@ -650,6 +761,19 @@ const more = computed(() => sheet.value.agents.length - SHOWN_AGENTS)
 
   .sh-kpi {
     padding: 12px;
+  }
+
+  .sh-inc ul {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px 12px;
+  }
+
+  .sh-kind {
+    display: none;
+  }
+
+  .sh-inc small {
+    display: none;
   }
 
   .sh-kpi dt {
@@ -680,6 +804,10 @@ const more = computed(() => sheet.value.agents.length - SHOWN_AGENTS)
     grid-template-columns: minmax(0, 1fr) auto 40px;
     gap: 8px;
     padding: 10px 0;
+  }
+
+  .sh-lg-track {
+    display: none;
   }
 
   .sh-lg-name {
