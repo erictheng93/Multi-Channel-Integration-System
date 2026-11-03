@@ -313,6 +313,11 @@ function handleFilterByType(type: string) {
   min-width: 0;
 }
 
+/* the list takes the leftover height so both columns end on one line */
+.content-left > :last-child {
+  flex: 1;
+}
+
 /* both columns end on the same line: the last widget takes the remaining height */
 .content-right :deep(.ui-card-title) {
   font-size: 17px;

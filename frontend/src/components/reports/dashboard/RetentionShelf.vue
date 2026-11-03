@@ -314,10 +314,15 @@ const rows = computed(() => live.value.map(r => {
 
 .sh-fail {
   margin-left: 12px;
-  padding: 0;
+  padding: 3px 12px;
   border: 0;
-  background: none;
-  font-size: 14px;
+  border-radius: 999px;
+  background: var(--ui-red-soft);
+  color: var(--ui-red-ink);
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
 }
 
 .sh-legend {
@@ -606,7 +611,8 @@ const rows = computed(() => live.value.map(r => {
 
   .sh-fail {
     display: block;
-    margin: 6px 0 0;
+    width: fit-content;
+    margin: 8px 0 0;
   }
 
   .sh-body {
