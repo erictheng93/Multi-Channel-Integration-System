@@ -55,12 +55,18 @@
       class="wk-skel"
       aria-hidden="true"
     />
-    <p
-      v-if="note && !loading"
-      class="wk-note"
+    <div
+      v-if="days.length > 0 && !loading"
+      class="wk-foot"
     >
-      {{ note }}
-    </p>
+      <p class="wk-note">
+        {{ note || '顏色越深代表當天操作越多。' }}
+      </p>
+      <span
+        class="wk-scale"
+        aria-hidden="true"
+      >少<i /><i /><i /><i /><i />多</span>
+    </div>
   </article>
 </template>
 
@@ -198,16 +204,17 @@ const meaning = computed<string[]>(() => {
   align-content: start;
   padding: 14px 6px 12px;
   border-radius: 18px;
-  background: color-mix(in srgb, var(--ui-green) calc(var(--lv) * 46%), var(--ui-surface-2));
+  background: color-mix(in srgb, var(--ui-green) calc(var(--lv) * 30%), var(--ui-surface-2));
   text-align: center;
 }
 
 .wk-day.is-peak {
-  box-shadow: 0 0 0 2px var(--ui-green);
+  box-shadow: 0 0 0 2px var(--ui-green-ink);
 }
 
+/* a quiet day is plain, not alarming: the flag names it, colour stays for the shade scale */
 .wk-day.is-low {
-  background: var(--ui-orange-soft);
+  background: var(--ui-surface-2);
 }
 
 .wk-wd {
@@ -244,7 +251,7 @@ const meaning = computed<string[]>(() => {
 }
 
 .wk-day.is-low .wk-flag {
-  color: var(--ui-orange-ink);
+  color: var(--ui-ink-2);
 }
 
 .wk-day.is-peak .wk-flag {
@@ -257,11 +264,39 @@ const meaning = computed<string[]>(() => {
   background: var(--ui-fill);
 }
 
+.wk-foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 20px;
+  align-items: center;
+  justify-content: space-between;
+}
+
 .wk-note {
   margin: 0;
   font-size: 13px;
   color: var(--ui-muted);
 }
+
+.wk-scale {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  font-size: 13px;
+  color: var(--ui-muted);
+}
+
+.wk-scale i {
+  width: 18px;
+  height: 12px;
+  border-radius: 4px;
+}
+
+.wk-scale i:nth-of-type(1) { background: color-mix(in srgb, var(--ui-green) 6%, var(--ui-surface-2)); }
+.wk-scale i:nth-of-type(2) { background: color-mix(in srgb, var(--ui-green) 12%, var(--ui-surface-2)); }
+.wk-scale i:nth-of-type(3) { background: color-mix(in srgb, var(--ui-green) 18%, var(--ui-surface-2)); }
+.wk-scale i:nth-of-type(4) { background: color-mix(in srgb, var(--ui-green) 24%, var(--ui-surface-2)); }
+.wk-scale i:nth-of-type(5) { background: color-mix(in srgb, var(--ui-green) 30%, var(--ui-surface-2)); }
 
 @media (max-width: 768px) {
   .wk {
