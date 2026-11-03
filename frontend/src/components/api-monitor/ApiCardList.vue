@@ -5,7 +5,6 @@
       class="ep-head"
       aria-hidden="true"
     >
-      <span />
       <span class="hide-m">方法</span>
       <span>端點</span>
       <span>P95</span>
@@ -54,17 +53,13 @@ defineEmits<{
 <style scoped>
 .ep-head {
   display: grid;
-  grid-template-columns: 10px 52px minmax(0, 1fr) 84px 76px 84px 16px;
+  grid-template-columns: 52px minmax(260px, 1.25fr) repeat(3, minmax(0, 1fr)) 16px;
   gap: 12px;
   padding: 8px 22px;
   box-shadow: inset 0 -0.5px 0 var(--ui-sep);
   font-size: 13px;
   font-weight: 600;
   color: var(--ui-muted);
-}
-
-.ep-head span:nth-child(n + 4):nth-child(-n + 6) {
-  text-align: right;
 }
 
 .count-line {
@@ -75,13 +70,17 @@ defineEmits<{
 
 @media (max-width: 768px) {
   .ep-head {
-    grid-template-columns: 10px minmax(0, 1fr) 76px 16px;
+    grid-template-columns: minmax(0, 1fr) 76px 16px;
     gap: 10px;
     padding: 8px 16px;
   }
 
   .hide-m {
     display: none;
+  }
+
+  .ep-head span:nth-child(3) {
+    text-align: right;
   }
 
   .count-line {
