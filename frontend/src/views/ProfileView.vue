@@ -846,6 +846,52 @@ watch(
   .pw-fold {
     display: inline-block;
   }
+
+  /* collapsed or not, the password section is a card row with a chevron; the whole row is the tap target */
+  .profile-page #security-title {
+    position: relative;
+    align-items: center;
+    min-height: 56px;
+    margin-bottom: 8px;
+    padding: 0 20px;
+    border-radius: 20px;
+    background: var(--ui-surface);
+    box-shadow: var(--ui-shadow-card);
+    color: var(--ui-ink);
+    font-size: 16px;
+    letter-spacing: 0;
+    text-transform: none;
+  }
+
+  .pw-fold {
+    margin-top: 0;
+    margin-bottom: 0;
+    padding-right: 22px;
+  }
+
+  .pw-fold::before {
+    position: absolute;
+    inset: 0;
+    border-radius: 20px;
+    content: '';
+  }
+
+  .pw-fold::after {
+    position: absolute;
+    top: 50%;
+    right: 22px;
+    width: 8px;
+    height: 8px;
+    border-right: 2px solid currentcolor;
+    border-bottom: 2px solid currentcolor;
+    transform: translateY(-70%) rotate(45deg);
+    transition: transform var(--ui-dur) var(--ui-ease);
+    content: '';
+  }
+
+  .pw-fold[aria-expanded='true']::after {
+    transform: translateY(-30%) rotate(-135deg);
+  }
 }
 
 .pw-card {
@@ -1289,6 +1335,7 @@ watch(
 
 .notify-head {
   display: flex;
+  flex: 1;
   gap: 12px;
   align-items: center;
   padding: 16px 20px;
