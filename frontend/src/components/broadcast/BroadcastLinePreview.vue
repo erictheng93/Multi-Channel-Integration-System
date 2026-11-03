@@ -1,11 +1,12 @@
 <template>
   <section
     class="ui-card preview-card"
+    :class="{ 'is-empty': !hasContent }"
     aria-labelledby="broadcast-line-preview-title"
   >
     <p class="pv-head">
       <b id="broadcast-line-preview-title">LINE 預覽</b>
-      <span>{{ hasContent ? `客戶看到的順序：${order}` : lastSent ? '輸入內容後，這裡改顯示你的草稿' : '即時顯示客戶端的樣子' }}</span>
+      <span>{{ hasContent ? `客戶看到的順序：${order}` : '你的草稿，客戶端的樣子' }}</span>
     </p>
 
     <div class="phone">
@@ -35,23 +36,6 @@
             :src="url"
             :alt="`預覽圖片 ${index + 1}`"
           >
-        </div>
-        <div
-          v-else-if="lastSent"
-          class="thread is-last"
-        >
-          <p class="last-cap">
-            上次群發・{{ lastSent.title }}
-          </p>
-          <div class="bubble">
-            {{ lastSent.content }}
-          </div>
-          <p
-            v-if="lastSent.mixed"
-            class="last-note"
-          >
-            這則另含圖片
-          </p>
         </div>
         <div
           v-else
@@ -91,8 +75,6 @@ import { getLineQuota } from '@/api/broadcasts'
 const props = defineProps<{
   content: string
   imageUrls: string[]
-  /** The newest sent broadcast with text: shown until the draft has content, so the phone is never an empty frame */
-  lastSent?: { title: string; content: string; mixed: boolean } | null
 }>()
 
 // The official account name comes from the same quota snapshot the quota card shows
@@ -124,6 +106,7 @@ const order = computed(() => {
   display: flex;
   flex-direction: column;
   padding: 16px 0;
+  box-shadow: 0 -0.5px 0 var(--ui-sep);
 }
 
 .pv-head {
@@ -298,6 +281,20 @@ const order = computed(() => {
 }
 
 @media (max-width: 768px) {
+  /* nothing typed yet: the frame would be an empty box between the form and the records, so only its caption stays */
+  .preview-card.is-empty .phone,
+  .preview-card.is-empty .disclaimer {
+    display: none;
+  }
+
+  .preview-card.is-empty {
+    padding-bottom: 12px;
+  }
+
+  .preview-card.is-empty .pv-head {
+    margin-bottom: 0;
+  }
+
   .chat-empty {
     min-height: 96px;
   }

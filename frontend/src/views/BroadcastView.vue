@@ -28,15 +28,14 @@
         <div
           class="ui-card side-panel"
         >
-          <BroadcastLinePreview
-            :content="draft.content"
-            :image-urls="draft.imageUrls"
-            :last-sent="lastSent"
-          />
           <BroadcastAudienceCard
             :preview="broadcastsStore.preview"
             :tag-name="previewTagName"
             :loading="broadcastsStore.previewLoading"
+          />
+          <BroadcastLinePreview
+            :content="draft.content"
+            :image-urls="draft.imageUrls"
           />
         </div>
       </div>
@@ -101,10 +100,6 @@ const pendingByChannel = computed(() =>
     (broadcastsStore.preview?.tokenGroups ?? []).map(group => [group.channelKey, group.recipientCount])
   )
 )
-const lastSent = computed(() => {
-  const found = broadcastsStore.broadcasts.find(item => item.status !== 'draft' && item.content.trim().length > 0)
-  return found ? { title: found.title, content: found.content, mixed: found.contentType === 'mixed' } : null
-})
 const previewTagName = computed(
   () => tagsStore.tags.find(tag => tag.id === broadcastsStore.previewTagId)?.name
 )
