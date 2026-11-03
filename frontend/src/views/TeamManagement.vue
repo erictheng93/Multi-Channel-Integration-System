@@ -99,7 +99,6 @@
       <!-- Team Management Section -->
       <TeamListSection
         :teams="teams"
-        :members="members"
         :open-by-team="openByTeam"
         :loading="loading"
         :sort-options="teamSorting.sortOptions"

@@ -65,8 +65,10 @@ const emit = defineEmits<{ clear: [] }>()
 
 .dz-btn.btn {
   flex: none;
-  background: var(--ui-red-soft);
-  color: color-mix(in srgb, var(--ui-red-ink) 72%, var(--ui-pill-shade));
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px var(--ui-red-ink);
+  font-weight: 600;
+  color: var(--ui-red-ink);
 }
 
 @media (max-width: 768px) {

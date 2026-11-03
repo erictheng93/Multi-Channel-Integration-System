@@ -70,7 +70,7 @@ const tone = computed(() => {
 .team-avatar.is-sm {
   width: 28px;
   height: 28px;
-  font-size: 12px;
+  font-size: 13px;
   box-shadow: 0 0 0 2px var(--ui-surface);
 }
 .presence {
