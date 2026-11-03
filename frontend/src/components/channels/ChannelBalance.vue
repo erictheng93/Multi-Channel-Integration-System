@@ -44,7 +44,7 @@
         class="bal-axis"
         aria-hidden="true"
       >
-        <span />
+        <span class="bal-scale">兩側同一比例，軌道 = {{ fmt(max) }} 則</span>
         <span class="bal-axis-l">客戶來訊</span>
         <span class="bal-axis-r">客服發送</span>
         <span />
@@ -66,7 +66,7 @@
               {{ row.label }}
             </div>
             <div class="bal-sub">
-              {{ row.off ? '已停用，不計入訊息量' : row.lastAt }}
+              {{ row.off ? '已停用' : row.lastAt }}
             </div>
           </div>
         </div>
@@ -76,26 +76,28 @@
             :aria-label="`客戶來訊 ${fmt(row.inN)} 則`"
           >
             <span class="bal-num"><b>{{ fmt(row.inN) }}</b><small>累計 {{ fmt(row.inTotal) }}</small></span>
-            <i
+            <span class="bal-track"><i
               class="bal-bar in"
               :style="{ '--r': ratio(row.inN) }"
-            />
+            /></span>
           </div>
           <div
             class="bal-side is-out"
             :aria-label="`客服發送 ${fmt(row.outN)} 則`"
           >
-            <i
+            <span class="bal-track"><i
               class="bal-bar out"
               :style="{ '--r': ratio(row.outN) }"
-            />
+            /></span>
             <span class="bal-num"><b>{{ fmt(row.outN) }}</b><small>累計 {{ fmt(row.outTotal) }}</small></span>
           </div>
         </template>
         <div
           v-else
           class="bal-side bal-off"
-        />
+        >
+          已停用，不計入訊息量
+        </div>
         <span
           class="bal-health ui-pill ui-pill-dot"
           :class="row.off ? 'is-calm' : row.problem ? 'ui-pill-orange' : 'ui-pill-green'"
@@ -321,9 +323,22 @@ const ratio = (n: number): number => (n === 0 ? 0 : Math.max(0.02, n / max.value
   padding-left: 14px;
 }
 
+.bal-track {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  height: 22px;
+  border-radius: 8px;
+  background: var(--ui-fill);
+}
+
+.is-in .bal-track {
+  justify-content: flex-end;
+}
+
 .bal-bar {
   flex: none;
-  width: calc((100% - 92px) * var(--r));
+  width: calc(100% * var(--r));
   height: 22px;
 }
 
@@ -376,10 +391,12 @@ const ratio = (n: number): number => (n === 0 ? 0 : Math.max(0.02, n / max.value
 .bal-off {
   grid-column: 2 / 4;
   padding: 0 14px;
-  background: repeating-linear-gradient(90deg, var(--ui-fill) 0 6px, transparent 6px 12px);
-  background-position: 0 50%;
-  background-size: 100% 2px;
-  background-repeat: no-repeat;
+  font-size: 14px;
+  color: var(--ui-muted);
+}
+
+.bal-scale {
+  font-weight: 500;
 }
 
 @media (max-width: 1024px) {
@@ -445,9 +462,13 @@ const ratio = (n: number): number => (n === 0 ? 0 : Math.max(0.02, n / max.value
     min-height: 0;
   }
 
+  .bal-track,
   .bal-bar {
-    width: calc((100% - 84px) * var(--r));
     height: 18px;
+  }
+
+  .bal-scale {
+    display: none;
   }
 
   .bal-num {

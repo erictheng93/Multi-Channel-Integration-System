@@ -159,7 +159,7 @@ const ribbonEvents = computed<RibbonEvent[]>(() => {
     out.push({
       key: 'backup',
       at: new Date(auto.uploaded).getTime(),
-      what: backupCount.value === null ? '自動備份完成' : `自動備份完成 · 共 ${backupCount.value} 份`,
+      what: '自動備份完成',
       icon: BACKUP_ICON,
       tone: 'green',
     })
@@ -170,7 +170,7 @@ const ribbonEvents = computed<RibbonEvent[]>(() => {
     out.push({
       key: 'line-test',
       at: new Date(test.testedAt).getTime(),
-      what: ok ? `LINE 連線測試成功${test.latencyMs ? ` · ${test.latencyMs} ms` : ''}` : 'LINE 連線測試失敗',
+      what: ok ? 'LINE 連線測試成功' : 'LINE 連線測試失敗',
       icon: LINE_ICON,
       tone: ok ? 'green' : 'red',
     })
