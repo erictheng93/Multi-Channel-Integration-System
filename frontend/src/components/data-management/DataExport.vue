@@ -255,29 +255,35 @@
             />
           </button>
         </div>
-        <details class="ex-fields">
-          <summary>
-            <span>檔案內容</span>
-            <small>{{ selectedUnit }}</small>
-          </summary>
-          <code class="sheet-shape">{{ shape }}</code>
-          <dl class="sheet-rows">
-            <div
-              v-for="row in selectedRows"
-              :key="row.note"
-              class="sheet-row"
-            >
-              <dt v-if="row.key">
-                {{ row.key }}
-              </dt>
-              <dd :class="{ 'is-wide': !row.key }">
-                {{ row.note }}
-              </dd>
-            </div>
-          </dl>
-        </details>
       </section>
     </div>
+
+    <details
+      class="ui-card ex-fields"
+      :open="detailsOpen"
+    >
+      <summary>
+        <span>檔案內容</span>
+        <small>{{ selectedUnit }}</small>
+      </summary>
+      <div class="sheet-body">
+        <code class="sheet-shape">{{ shape }}</code>
+        <dl class="sheet-rows">
+          <div
+            v-for="row in selectedRows"
+            :key="row.note"
+            class="sheet-row"
+          >
+            <dt v-if="row.key">
+              {{ row.key }}
+            </dt>
+            <dd :class="{ 'is-wide': !row.key }">
+              {{ row.note }}
+            </dd>
+          </div>
+        </dl>
+      </div>
+    </details>
 
     <UiActionBar
       class="export-actions"
@@ -322,6 +328,8 @@ import {
   type ExportFilters
 } from '@/api/export'
 import { generatePdfExport } from '@/services/pdfExportService'
+
+const detailsOpen = typeof window === 'undefined' || typeof window.matchMedia !== 'function' || window.matchMedia('(min-width: 769px)').matches
 
 type FormatId = 'json' | 'csv' | 'txt' | 'pdf'
 
@@ -583,7 +591,7 @@ async function runExport() {
   display: grid;
   grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
   gap: 16px;
-  align-items: start;
+  align-items: stretch;
 }
 
 .ex-pick {
@@ -655,17 +663,22 @@ async function runExport() {
 }
 
 .ex-fields {
-  margin: 0 22px 20px;
-  border-radius: var(--ui-r-inner);
-  background: var(--ui-surface-2);
+  margin: 0;
+}
+
+.sheet-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 4px;
+  padding-bottom: 12px;
 }
 
 .ex-fields summary {
   display: flex;
   gap: 10px;
   align-items: baseline;
-  padding: 14px 16px;
-  font-size: 15px;
+  padding: 18px 22px;
+  font-size: 17px;
   font-weight: 600;
   cursor: pointer;
 }
@@ -714,6 +727,8 @@ async function runExport() {
 
 .sheet-rows {
   display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 24px;
   margin: 0 8px;
   padding: 2px 0 12px;
 }
@@ -727,7 +742,8 @@ async function runExport() {
   box-shadow: 0 -0.5px 0 var(--ui-sep);
 }
 
-.sheet-row:first-child {
+.sheet-row:first-child,
+.sheet-row:nth-child(2) {
   box-shadow: none;
 }
 
@@ -832,7 +848,7 @@ async function runExport() {
 
 .g-over {
   border-radius: 0 999px 999px 0;
-  background: repeating-linear-gradient(135deg, var(--ui-orange) 0 4px, color-mix(in srgb, var(--ui-orange) 35%, var(--ui-surface)) 4px 8px);
+  background: color-mix(in srgb, var(--ui-orange) 45%, var(--ui-surface));
 }
 
 .g-limit {
@@ -1083,8 +1099,16 @@ async function runExport() {
     font-size: 36px;
   }
 
-  .ex-fields {
-    margin: 0 16px 16px;
+  .sheet-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .sheet-rows {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .sheet-row:nth-child(2) {
+    box-shadow: 0 -0.5px 0 var(--ui-sep);
   }
 
   .sheet-row {

@@ -10,15 +10,18 @@
     >
       發送明細
       <span v-if="tagName">「{{ tagName }}」</span>
-      <span
-        v-else
-        class="ledger-hint"
-      >{{ loading ? '計算受眾中...' : '選擇目標標籤後，這裡算出誰會收到' }}</span>
     </h2>
 
+    <p
+      v-if="!preview"
+      class="ledger-wait"
+    >
+      {{ loading ? '計算受眾中...' : '選擇目標標籤後，這裡會算出符合的人數、略過的人數與實際收件人。' }}
+    </p>
+
     <div
+      v-if="preview"
       class="ledger"
-      :class="{ 'is-empty': !preview }"
     >
       <div class="cell">
         <b>{{ preview ? preview.total : 0 }}</b>
@@ -43,6 +46,7 @@
     </div>
 
     <div
+      v-if="preview"
       class="mix"
       role="img"
       :aria-label="preview ? `LINE ${preview.sendable} 人，Facebook ${preview.byPlatform.facebook} 人，其他略過 ${otherSkipped} 人` : '尚無受眾'"
@@ -144,29 +148,16 @@ const notes = computed(() => {
 <style scoped>
 /* The tear-off stub of the broadcast: the arithmetic from audience to recipients */
 .audience-card {
-  position: relative;
-  margin-top: 10px;
-  padding: 22px 24px 20px;
-  border-top: 2px dashed rgba(60, 60, 67, 0.22);
+  margin-top: 0;
+  padding: 20px 24px 22px;
+  box-shadow: 0 -0.5px 0 var(--ui-sep);
 }
 
-.audience-card::before,
-.audience-card::after {
-  position: absolute;
-  top: -10px;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background: var(--ui-canvas);
-  content: '';
-}
-
-.audience-card::before {
-  left: -10px;
-}
-
-.audience-card::after {
-  right: -10px;
+.ledger-wait {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--ui-ink-2);
 }
 
 .ledger-title {
@@ -174,11 +165,6 @@ const notes = computed(() => {
   font-size: 15px;
   font-weight: 600;
   color: var(--ui-ink-2);
-}
-
-.ledger-hint {
-  font-weight: 500;
-  color: var(--ui-muted);
 }
 
 .ledger {
@@ -216,10 +202,6 @@ const notes = computed(() => {
 .is-send span {
   font-weight: 600;
   color: var(--ui-ink-2);
-}
-
-.ledger.is-empty b {
-  color: var(--ui-faint);
 }
 
 .op {

@@ -767,6 +767,14 @@
     .foot-note {
       flex: 1 0 100%;
     }
+    /* the send action stays within reach while the long form scrolls */
+    .compose-foot {
+      position: sticky;
+      bottom: 0;
+      z-index: 2;
+      background: var(--ui-surface);
+      border-radius: 0 0 var(--ui-r-group) var(--ui-r-group);
+    }
     .actions {
       width: 100%;
     }

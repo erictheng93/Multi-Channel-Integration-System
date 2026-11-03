@@ -64,7 +64,7 @@
                 活動
               </th>
               <th class="th-result">
-                結果
+                結果<span class="th-note">（條長依人數）</span>
               </th>
               <th class="th-act">
                 <span class="sr-only">操作</span>
@@ -107,6 +107,7 @@
                   <div
                     class="result-bar"
                     aria-hidden="true"
+                    :style="{ width: scale(broadcast) }"
                   >
                     <i
                       class="seg-ok"
@@ -185,7 +186,7 @@
 import UiEmptyState from '@/components/ui/UiEmptyState.vue'
 import type { BroadcastRecord, BroadcastStatus } from '@/api/broadcasts'
 
-defineProps<{
+const props = defineProps<{
   broadcasts: BroadcastRecord[]
   loading: boolean
   pagination: {
@@ -231,6 +232,12 @@ function statusClass(status: BroadcastStatus): string {
     default:
       return ''
   }
+}
+
+// one shared scale: the biggest broadcast on the page fills the track, the others are drawn in proportion
+function scale(broadcast: BroadcastRecord): string {
+  const max = Math.max(1, ...props.broadcasts.map(item => item.totalRecipients))
+  return `${Math.max(12, (broadcast.totalRecipients / max) * 100)}%`
 }
 
 function share(count: number, broadcast: BroadcastRecord): string {
@@ -335,6 +342,10 @@ function formatDate(value: string | null): string {
 
 .col-result {
   min-width: 0;
+}
+
+.th-note {
+  font-weight: 400;
 }
 
 .result-bar {
