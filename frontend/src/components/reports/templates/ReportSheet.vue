@@ -22,7 +22,18 @@
       </p>
     </header>
 
-    <dl class="sh-kpis">
+    <p
+      v-if="!isAgents"
+      class="sh-hero"
+    >
+      <b>{{ live ? total.toLocaleString('en-US') : '—' }}</b>
+      <span>個對話，統計期間內建立</span>
+    </p>
+
+    <dl
+      v-else
+      class="sh-kpis"
+    >
       <div
         v-for="kpi in kpis"
         :key="kpi.label"
@@ -242,7 +253,7 @@ const tableRows = computed<TableRow[]>(() => {
 })
 
 const foot = computed(() => {
-  if (!live.value) { return null }
+  if (!live.value || !isAgents.value) { return null }
   if (isAgents.value) {
     const more = agents.value.length - SHOWN_AGENTS
     return { label: more > 0 ? `另有 ${more} 位未列出` : `共 ${agents.value.length} 位`, value: agentSum.value.toLocaleString('en-US') }
@@ -341,22 +352,40 @@ const foot = computed(() => {
   color: var(--ui-muted);
 }
 
+.sh-hero {
+  display: flex;
+  gap: 12px;
+  align-items: baseline;
+  margin: 20px 0 0;
+}
+
+.sh-hero b {
+  font: 700 56px / 1 var(--ui-font-display);
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+}
+
+.sh-hero span {
+  font-size: 15px;
+  color: var(--ui-ink-2);
+}
+
 .sh-compose {
   display: grid;
   gap: 8px;
-  margin-top: 20px;
+  margin-top: 16px;
 }
 
 .sh-compose p {
   margin: 0;
   font-size: 13px;
-  color: var(--ui-muted);
+  color: var(--ui-ink-2);
 }
 
 .sh-split-bar {
   display: flex;
   gap: 3px;
-  height: 14px;
+  height: 16px;
   overflow: hidden;
   border-radius: 999px;
 }
@@ -394,7 +423,7 @@ const foot = computed(() => {
 .sh-table {
   flex: 1;
   width: 100%;
-  margin-top: 28px;
+  margin-top: 24px;
   border-collapse: collapse;
   table-layout: fixed;
 }
@@ -421,7 +450,7 @@ const foot = computed(() => {
 
 .sh-table tbody th,
 .sh-table tbody td {
-  padding: 14px 0;
+  padding: 12px 0;
   vertical-align: middle;
   border-bottom: 1px solid var(--ui-sep);
 }
@@ -539,6 +568,10 @@ const foot = computed(() => {
 
   .sh-kpis {
     margin-top: 16px;
+  }
+
+  .sh-hero b {
+    font-size: 44px;
   }
 
   .sh-kpi {
