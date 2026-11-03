@@ -27,6 +27,7 @@
         <!-- One panel for audience + LINE preview, always visible (on a phone it sits right under the form) -->
         <div
           class="ui-card side-panel"
+          :class="{ 'is-idle': sideIdle }"
         >
           <BroadcastAudienceCard
             :preview="broadcastsStore.preview"
@@ -99,6 +100,10 @@ const pendingByChannel = computed(() =>
   Object.fromEntries(
     (broadcastsStore.preview?.tokenGroups ?? []).map(group => [group.channelKey, group.recipientCount])
   )
+)
+// nothing chosen and nothing typed: on a phone the panel would only restate the empty form
+const sideIdle = computed(
+  () => !broadcastsStore.preview && !broadcastsStore.previewLoading && !draft.value.content && !draft.value.imageUrls.length
 )
 const previewTagName = computed(
   () => tagsStore.tags.find(tag => tag.id === broadcastsStore.previewTagId)?.name
@@ -237,6 +242,10 @@ async function fetchCurrentRecipients() {
 @media (max-width: 768px) {
   .side-panel {
     align-self: start;
+  }
+
+  .side-panel.is-idle {
+    display: none;
   }
 
 }

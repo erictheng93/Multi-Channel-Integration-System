@@ -260,6 +260,7 @@
 
     <details
       class="ui-card ex-fields"
+      :open="fieldsOpen"
     >
       <summary>
         <span>檔案內容</span>
@@ -335,6 +336,8 @@ type FormatId = 'json' | 'csv' | 'txt' | 'pdf'
 const EXPORT_LIMIT = 5000
 
 const selectedFormat = ref<FormatId>('json')
+// the file layout is part of the page on a desktop; on a phone it stays one tap away
+const fieldsOpen = ref(typeof window !== 'undefined' && window.innerWidth > 768)
 
 type Row = { key?: string; note: string }
 
@@ -1002,10 +1005,10 @@ async function runExport() {
   display: grid;
   flex: none;
   place-items: center;
-  width: 44px;
-  height: 44px;
-  border-radius: 12px;
-  font: 600 13px var(--ui-font-mono);
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  font: 700 14px var(--ui-font-mono);
 }
 
 .fmt-ico.blue {
@@ -1116,7 +1119,7 @@ async function runExport() {
   }
 
   .sheet-row dt {
-    font-size: 12px;
+    font-size: 13px;
   }
 
   .scope-grid {
