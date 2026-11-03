@@ -134,7 +134,7 @@
     "@hono/zod-validator": "^0.9.1",
     "bcryptjs": "^3.0.3",
     "drizzle-orm": "^0.45.4",
-    "hono": "^4.13.13",
+    "hono": "^4.13.14",
     "ipaddr.js": "^2.5.0",
     "jsonwebtoken": "^9.0.3",
     "node-fetch": "^3.3.2",
@@ -148,7 +148,7 @@
     "@types/bcryptjs": "^3.0.0",
     "@types/better-sqlite3": "^9.6.0",
     "@types/jsonwebtoken": "^9.0.10",
-    "@types/node": "^26.6.5",
+    "@types/node": "^26.6.6",
     "@types/qrcode": "^1.5.6",
     "@types/ws": "^8.18.2",
     "@vitest/coverage-v8": "^5.0.5",
@@ -159,7 +159,7 @@
     "tsx": "^4.23.15",
     "typescript": "^6.0.3",
     "vitest": "^5.0.5",
-    "wrangler": "4.152.0",
+    "wrangler": "4.156.0",
     "ws": "^8.22.0"
   }
 }
