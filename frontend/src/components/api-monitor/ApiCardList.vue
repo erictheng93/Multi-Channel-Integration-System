@@ -8,6 +8,10 @@
       <span class="hide-m">方法</span>
       <span>端點</span>
       <span class="only-wide">說明</span>
+      <span
+        v-if="scaleMs"
+        class="only-xl"
+      >P50 至 P95</span>
       <span>P95</span>
       <span class="hide-m">成功率</span>
       <span class="hide-m">請求數</span>
@@ -23,24 +27,30 @@
       :key="ep.id"
       :endpoint="ep"
       :expanded="expandedCard === ep.id"
+      :scale-ms="scaleMs"
       @toggle="$emit('toggle-card', ep.id)"
     />
     <div
       v-if="total !== undefined"
       class="count-line"
     >
-      顯示 {{ endpoints.length }} / {{ total }} 個端點
+      顯示 {{ endpoints.length }} / {{ total }} 個端點<template v-if="scaleMs">
+        <span class="only-xl-inline"> · 延遲條帶為 P50 至 P95，每列共用 0 – {{ scaleLabel }} 刻度</span>
+      </template>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
 import type { ApiEndpoint } from '@/types/api-monitor'
 import ApiCard from './ApiCard.vue'
 import ApiEmptyState from './ApiEmptyState.vue'
 
-defineProps<{
+const props = defineProps<{
   endpoints: ApiEndpoint[]
+  /** Shared right-hand end of the latency band, ms; omit to hide the band */
+  scaleMs?: number
   expandedCard: string | null
   /** Endpoint count before filtering, for the footer line */
   total?: number
@@ -49,6 +59,11 @@ defineProps<{
 defineEmits<{
   (_e: 'toggle-card', _id: string): void
 }>()
+
+const scaleLabel = computed(() => {
+  const ms = props.scaleMs ?? 0
+  return ms >= 1000 ? `${(ms / 1000).toFixed(2)} s` : `${Math.round(ms)} ms`
+})
 </script>
 
 <style scoped>
@@ -69,7 +84,9 @@ defineEmits<{
   color: var(--ui-muted);
 }
 
-.only-wide {
+.only-wide,
+.only-xl,
+.only-xl-inline {
   display: none;
 }
 
@@ -83,8 +100,22 @@ defineEmits<{
     display: block;
   }
 
-  .ep-head span:nth-child(n + 4):nth-child(-n + 6) {
+  .ep-head span:nth-child(n + 4):nth-child(-n + 7):not(.only-xl) {
     text-align: right;
+  }
+}
+
+@media (min-width: 1281px) {
+  .ep-head:has(.only-xl) {
+    grid-template-columns: 52px 290px minmax(0, 1fr) 150px 90px 90px 110px 16px;
+  }
+
+  .only-xl {
+    display: block;
+  }
+
+  .only-xl-inline {
+    display: inline;
   }
 }
 
