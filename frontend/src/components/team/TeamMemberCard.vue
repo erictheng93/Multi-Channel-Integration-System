@@ -94,7 +94,7 @@
         >{{ getRoleText(member.role) }}</span>
         <span
           v-else
-          class="ui-pill"
+          class="rank-agent"
         >{{ getRoleText(member.role) }}</span>
       </div>
       <div class="memberships">
@@ -549,9 +549,8 @@ const getRoleText = (role: string) => {
   color: color-mix(in srgb, var(--ui-accent) 72%, var(--ui-pill-shade));
 }
 .rl-member {
-  padding: 2px 9px;
-  border-radius: 999px;
-  background: var(--ui-fill);
+  padding: 0;
+  background: none;
   line-height: 1.4;
   color: var(--ui-ink-2);
 }

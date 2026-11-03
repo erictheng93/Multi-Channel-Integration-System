@@ -51,11 +51,6 @@
           class="ro-col"
           role="columnheader"
         >{{ rank.label }}</span>
-        <span
-          v-if="presenceAvailable"
-          class="ro-col ro-col-live"
-          role="columnheader"
-        >在線</span>
       </div>
 
       <section
@@ -86,6 +81,16 @@
               · {{ lane.open }} 件處理中
             </template>
           </div>
+          <div
+            v-if="lane.share !== null"
+            class="ro-load"
+          >
+            <span
+              class="ro-track"
+              aria-hidden="true"
+            ><i :style="{ width: `${Math.max(lane.share, 3)}%` }" /></span>
+            <span class="ro-load-t">佔處理中對話 <b>{{ lane.share }}%</b></span>
+          </div>
           <p
             v-if="lane.description"
             class="ro-team-desc"
@@ -101,37 +106,8 @@
           role="cell"
         >
           <span class="ro-cell-label">{{ rank.label }}</span>
-          <div
-            v-if="rank.key === 'member' && lane.byRank[rank.key].length > 0"
-            class="ro-crew"
-          >
-            <ul class="ro-stack">
-              <li
-                v-for="person in lane.byRank[rank.key].slice(0, STACK_MAX)"
-                :key="person.id"
-                :title="person.name"
-              >
-                <TeamAvatar
-                  :name="person.name"
-                  :seed="person.id"
-                  :src="person.avatar"
-                  size="sm"
-                />
-                <span class="sr-only">{{ person.name }}</span>
-              </li>
-              <li
-                v-if="lane.byRank[rank.key].length > STACK_MAX"
-                class="ro-more"
-              >
-                +{{ lane.byRank[rank.key].length - STACK_MAX }}
-              </li>
-            </ul>
-            <span class="ro-crew-n">
-              <b>{{ lane.byRank[rank.key].length }}</b> 位成員<template v-if="memberOnline(lane.byRank[rank.key]) !== null"> · {{ memberOnline(lane.byRank[rank.key]) }} 在線</template>
-            </span>
-          </div>
           <ul
-            v-else-if="lane.byRank[rank.key].length > 0"
+            v-if="lane.byRank[rank.key].length > 0"
             class="ro-people"
           >
             <li
@@ -154,19 +130,6 @@
             v-else
             class="ro-none"
           >尚未指派</span>
-        </div>
-        <div
-          v-if="presenceAvailable"
-          class="ro-live"
-          role="cell"
-          :aria-label="`${lane.online} / ${lane.total} 在線`"
-        >
-          <i
-            v-for="(dot, i) in lane.dots"
-            :key="i"
-            :class="{ 'is-on': dot }"
-            aria-hidden="true"
-          />
         </div>
       </section>
     </div>
@@ -199,13 +162,6 @@ const props = defineProps<{
   loading?: boolean
 }>()
 
-/** Members are shown as a face stack (the member table below names everyone); leaders keep their names */
-const STACK_MAX = 5
-
-function memberOnline(people: ReadonlyArray<{ online: boolean | null }>): number | null {
-  return props.presenceAvailable ? people.filter(p => p.online).length : null
-}
-
 const RANKS: ReadonlyArray<{ key: Rank, label: string }> = [
   { key: 'supervisor', label: '主管' },
   { key: 'lead', label: '組長' },
@@ -224,6 +180,8 @@ interface Person {
   avatar?: string
   online: boolean | null
 }
+
+const openTotal = computed(() => props.openByTeam ? [...props.openByTeam.values()].reduce((a, b) => a + b, 0) : 0)
 
 const lanes = computed(() =>
   props.teams
@@ -248,8 +206,7 @@ const lanes = computed(() =>
         online: props.presenceAvailable ? everyone.filter(p => p.online).length : null,
         open: props.openByTeam ? (props.openByTeam.get(team.id) ?? 0) : null,
         byRank,
-        /** One dot per person: lit when online, so a team's cover reads as a row of lights */
-        dots: everyone.map(p => p.online === true).sort((a, b) => Number(b) - Number(a))
+        share: props.openByTeam && openTotal.value > 0 ? Math.round(((props.openByTeam.get(team.id) ?? 0) / openTotal.value) * 100) : null
       }
     })
     .filter(lane => lane.total > 0))
@@ -257,8 +214,7 @@ const lanes = computed(() =>
 /** Only roles somebody holds get a column */
 const ranks = computed(() => RANKS.filter(rank => lanes.value.some(lane => lane.byRank[rank.key].length > 0)))
 const cols = computed(() => [
-  ...ranks.value.map(rank => (rank.key === 'member' ? 'minmax(0, 1.6fr)' : 'minmax(0, 1fr)')),
-  ...(props.presenceAvailable ? ['minmax(88px, 0.6fr)'] : [])
+  ...ranks.value.map(rank => (rank.key === 'member' ? 'minmax(0, 2fr)' : 'minmax(0, 1fr)'))
 ].join(' '))
 
 /** Active members in more than one team: the per-team counts can exceed the overall count */
@@ -331,14 +287,13 @@ const sharedMembers = computed(() =>
   padding: 0 20px;
   font-size: 13px;
   font-weight: 600;
-  color: var(--ui-muted);
+  color: var(--ui-ink-2);
 }
 
 .ro-lane {
   padding: 14px 20px;
   border-radius: var(--ui-r-inner);
   background: var(--ui-surface-2);
-  box-shadow: inset 4px 0 0 var(--lane);
 }
 
 .ro-team-name {
@@ -408,69 +363,35 @@ const sharedMembers = computed(() =>
   font-weight: 600;
 }
 
-.ro-crew {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px 14px;
-  align-items: center;
-}
-
-.ro-stack {
-  display: flex;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.ro-stack li + li {
-  margin-left: -3px;
-}
-
-.ro-live {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  align-items: center;
-}
-
-.ro-live i {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  box-shadow: inset 0 0 0 1.5px var(--ui-field-edge);
-}
-
-.ro-live i.is-on {
-  background: var(--ui-green);
-  box-shadow: none;
-}
-
-.ro-stack :deep(.team-avatar.is-sm) {
-  width: 32px;
-  height: 32px;
-  box-shadow: 0 0 0 2px var(--ui-surface-2);
-}
-
-.ro-more {
+.ro-load {
   display: grid;
-  place-items: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background: var(--ui-fill-strong);
-  box-shadow: 0 0 0 2px var(--ui-surface-2);
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--ui-ink-2);
+  gap: 5px;
+  margin-top: 10px;
+  max-width: 260px;
 }
 
-.ro-crew-n {
-  font-size: 14px;
+.ro-track {
+  display: block;
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--ui-fill-strong);
+}
+
+.ro-track i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--lane);
+}
+
+.ro-load-t {
+  font-size: 13px;
   color: var(--ui-ink-2);
   font-variant-numeric: tabular-nums;
 }
 
-.ro-crew-n b {
+.ro-load-t b {
   color: var(--ui-ink);
 }
 
@@ -529,7 +450,7 @@ const sharedMembers = computed(() =>
   }
 
   .ro-cols,
-  .ro-live {
+  .ro-team-desc {
     display: none;
   }
 
@@ -549,10 +470,6 @@ const sharedMembers = computed(() =>
   .ro-cell:has(.ro-none),
   .ro-note {
     display: none;
-  }
-
-  .ro-cell.is-members .ro-crew {
-    padding-top: 2px;
   }
 
   .ro-cell-label {
