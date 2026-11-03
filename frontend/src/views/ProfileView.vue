@@ -69,7 +69,6 @@
                       <ol
                         v-if="row.rank >= 0"
                         class="rungs"
-                        :style="{ '--tone': row.tone }"
                         :aria-label="`${row.name}：${row.role}`"
                       >
                         <li
@@ -77,12 +76,10 @@
                           :key="label"
                           :class="{ 'is-passed': i < row.rank, 'is-here': i === row.rank }"
                         >
-                          <svg
-                            v-if="i === row.rank"
-                            class="ico rung-check"
-                            viewBox="0 0 24 24"
+                          <span
+                            class="rung-dot"
                             aria-hidden="true"
-                          ><path d="m5 12.5 4.5 4.5L19 7.5" /></svg>
+                          />
                           <span class="rung-label">{{ label }}</span>
                         </li>
                       </ol>
@@ -429,11 +426,13 @@
                     :key="rule.key"
                     :class="{ 'is-met': rule.met }"
                   >
-                    <svg
+                    <span
+                      class="rule-dot"
+                      aria-hidden="true"
+                    ><svg
                       class="ico"
                       viewBox="0 0 24 24"
-                      aria-hidden="true"
-                    ><path d="m5 12.5 4.5 4.5L19 7.5" /></svg>
+                    ><path d="m6 12.5 4 4L18 8" /></svg></span>
                     {{ rule.text }}
                     <span class="sr-only">{{ rule.met ? '已符合' : '尚未符合' }}</span>
                   </li>
@@ -466,7 +465,7 @@ import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppLayout from '@/components/ui/AppLayout.vue'
 import { useAuthStore } from '@/stores/auth'
-import { teamRoleText, teamToneColor } from '@/utils/team-tone'
+import { teamRoleText } from '@/utils/team-tone'
 import { useToast } from '@/composables/useToast'
 import { apiClient } from '@/api/base'
 import { authApi } from '@/api/auth'
@@ -509,7 +508,6 @@ const teamRows = computed(() =>
       isPrimary: t.id === authStore.currentAgent?.primaryTeamId,
       role: role ? teamRoleText(role) : roleLabel.value,
       rank,
-      tone: teamToneColor(t.id),
     }
   }),
 )
@@ -1021,50 +1019,71 @@ watch(
   color: var(--ui-ink);
 }
 
-/* three read-only steps of one ladder: the steps up to my role are tinted, my own is solid, the rest are grey */
+/* a read-only rank track (not buttons): a line through three dots, the steps up to my role filled, my own ringed */
 .rungs {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 4px;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
 .rungs li {
-  display: flex;
-  gap: 4px;
-  align-items: center;
-  justify-content: center;
-  height: 32px;
-  border-radius: 999px;
-  background: var(--ui-fill);
+  position: relative;
+  display: grid;
+  gap: 6px;
+  justify-items: center;
   color: var(--ui-ink-2);
 }
 
-.rungs li.is-passed {
-  background: color-mix(in srgb, var(--tone) 18%, var(--ui-surface));
-  color: var(--ui-ink);
+.rungs li::before {
+  content: '';
+  position: absolute;
+  top: 7px;
+  right: 50%;
+  left: -50%;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--ui-fill-strong);
 }
 
-.rungs li.is-here {
-  background: color-mix(in srgb, var(--tone) 42%, var(--ui-surface));
-  color: var(--ui-ink);
+.rungs li:first-child::before {
+  display: none;
 }
 
-.rung-check {
-  width: 14px;
-  height: 14px;
-  stroke-width: 2.6;
+.rungs li.is-passed::before,
+.rungs li.is-here::before {
+  background: var(--ui-accent);
+}
+
+.rung-dot {
+  position: relative;
+  z-index: 1;
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  background: var(--ui-surface);
+  box-shadow: inset 0 0 0 3px var(--ui-fill-strong);
+}
+
+.rungs li.is-passed .rung-dot {
+  background: var(--ui-accent);
+  box-shadow: none;
+}
+
+.rungs li.is-here .rung-dot {
+  background: var(--ui-accent);
+  box-shadow: 0 0 0 4px var(--ui-accent-soft);
 }
 
 .rung-label {
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .rungs li.is-here .rung-label {
   font-weight: 700;
+  color: var(--ui-ink);
 }
 
 .ladder-empty {
@@ -1360,19 +1379,35 @@ watch(
   color: var(--ui-ink-2);
 }
 
-.pw-rules .ico {
-  width: 16px;
-  height: 16px;
-  stroke: var(--ui-muted);
-  stroke-width: 2.4;
+.rule-dot {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 2px var(--ui-fill-strong);
+}
+
+.rule-dot .ico {
+  width: 12px;
+  height: 12px;
+  stroke: #fff;
+  stroke-width: 3;
+  opacity: 0;
 }
 
 .pw-rules li.is-met {
   color: var(--ui-ink);
 }
 
-.pw-rules li.is-met .ico {
-  stroke: var(--ui-green-ink, var(--ui-green));
+.pw-rules li.is-met .rule-dot {
+  background: var(--ui-green-ink, var(--ui-green));
+  box-shadow: none;
+}
+
+.pw-rules li.is-met .rule-dot .ico {
+  opacity: 1;
 }
 
 /* password: the three fields stack at a readable width, the action closes the card */
