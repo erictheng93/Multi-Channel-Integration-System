@@ -125,8 +125,9 @@ onBeforeUnmount(() => {
   gap: 8px;
   margin: 0;
   padding: 2px 8px 2px 16px;
-  background: var(--ui-accent-soft);
-  color: var(--ui-ink);
+  background: var(--ui-surface-2);
+  box-shadow: inset 0 -0.5px 0 var(--ui-sep);
+  color: var(--ui-ink-2);
   font-size: 13px;
   font-weight: 500;
   line-height: 1.4;

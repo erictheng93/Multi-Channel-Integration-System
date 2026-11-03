@@ -472,8 +472,8 @@ const props = defineProps<Props>()
     display: flex;
     align-items: center;
     gap: 10px;
-    padding: 6px 6px 6px 14px;
-    border-radius: 24px;
+    padding: 8px 8px 8px 16px;
+    border-radius: 28px;
     background: var(--ui-surface-2);
     box-shadow: inset 0 0 0 0.5px var(--ui-sep);
     transition: box-shadow var(--ui-dur) var(--ui-ease), background var(--ui-dur) var(--ui-ease);
@@ -498,7 +498,7 @@ const props = defineProps<Props>()
     min-width: 0;
     min-height: 24px;
     max-height: 120px;
-    padding: 8px 0;
+    padding: 10px 0;
     border: none;
     outline: none;
     resize: none;
