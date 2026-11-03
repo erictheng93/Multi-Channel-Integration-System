@@ -24,294 +24,177 @@
           </template>
         </UiPageHead>
 
-        <div class="conv-layout">
-          <!-- 分頁籤：預設「處理中」，已結案的對話不佔據最顯眼的位置 -->
-          <div class="conv-stack">
-            <section class="ui-group filter-card">
-              <div class="filter-top">
-                <div
-                  ref="scopeTabsEl"
-                  class="ui-seg"
-                  :class="{ 'is-overflowing': scopeTabsOverflow }"
-                  role="tablist"
-                  aria-label="對話分類"
+        <!-- The queue as a picture: who is waiting, for how long, in whose lane. Real waits from /conversations/waiting. -->
+        <ConversationQueueBoard
+          v-if="counts"
+          :items="waitingItems"
+          :total="waitingTotal"
+          :stale-count="staleCount"
+          :stale-open="scope === 'stale'"
+          :unread="unreadStore.total"
+          :now="clock"
+          :team-names="teamNameById"
+          :team-open="teamOpenById"
+          :selected-team="filterComposable.filters.value.teamId"
+          @open="goToConversation"
+          @team="toggleTeam"
+          @stale="selectView('stale')"
+        />
+
+        <!-- 分頁籤：預設「處理中」，已結案的對話不佔據最顯眼的位置 -->
+        <div class="conv-stack">
+          <section class="ui-group filter-card">
+            <div class="filter-top">
+              <div
+                ref="scopeTabsEl"
+                class="ui-seg"
+                :class="{ 'is-overflowing': scopeTabsOverflow }"
+                role="tablist"
+                aria-label="對話分類"
+              >
+                <button
+                  v-for="tab in visibleTabs"
+                  :key="tab.value"
+                  type="button"
+                  role="tab"
+                  class="scope-tab"
+                  :class="{ 'is-on': scope === tab.value, 'is-stale': tab.value === 'stale' }"
+                  :aria-selected="scope === tab.value"
+                  :title="tab.value === 'stale' ? `已含在處理中：客戶來訊後超過 ${WAITING_WINDOW_DAYS} 天仍未回覆，不計入待回覆` : undefined"
+                  :data-testid="`scope-tab-${tab.value}`"
+                  @click="selectView(tab.value)"
                 >
+                  {{ tab.label }}
+                  <span
+                    v-if="tabCount(tab.value) !== null"
+                    class="ui-seg-n"
+                  >{{ tabCount(tab.value) }}</span>
+                </button>
+              </div>
+              <p
+                v-if="isSearching && scope !== 'stale'"
+                class="scope-hint"
+                role="status"
+              >
+                搜尋時會一併顯示已結案的對話
+              </p>
+            </div>
+            <ConversationFilters
+              :filters="filterComposable.filters.value"
+              :available-tags="availableTags"
+              :total-conversations="conversations.length"
+              :unread-count="0"
+              @update:filter="handleFilterUpdate"
+              @toggle:tag="filterComposable.toggleTagFilter"
+              @clear:tags="filterComposable.clearTagFilter"
+              @clear:all="filterComposable.clearAllFilters"
+            />
+          </section>
+
+          <div class="ui-group conv-group">
+            <!-- 逾期待回覆：說明結案是可逆的 -->
+            <p
+              v-if="scope === 'stale'"
+              class="stale-note"
+              role="note"
+              data-testid="stale-note"
+            >
+              這些對話的客戶已超過 {{ WAITING_WINDOW_DAYS }} 天沒有收到回覆，不計入待回覆。從未獲得回覆的排在最前面，其餘依等待時間由久到近。
+              按「選取」勾選後可批量結案；結案不會刪除任何內容，客戶下次來訊時會自動重新開啟同一個對話。
+            </p>
+
+            <!-- SSE 更新指示器 -->
+            <ConversationSyncIndicator :visible="isUpdating" />
+
+            <div class="conversations-content">
+              <div
+                v-if="loading && displayedConversations.length === 0"
+                class="loading-overlay"
+              >
+                <HamsterLoader message="載入對話列表中..." />
+              </div>
+              <div
+                v-else-if="loadError && displayedConversations.length === 0"
+                class="conversations-error"
+                role="alert"
+              >
+                <div class="conversations-error-content">
+                  <div class="conversations-error-title">
+                    無法載入對話列表
+                  </div>
+                  <div class="conversations-error-text">
+                    {{ loadError }}
+                  </div>
                   <button
-                    v-for="tab in visibleTabs"
-                    :key="tab.value"
                     type="button"
-                    role="tab"
-                    class="scope-tab"
-                    :class="{ 'is-on': scope === tab.value, 'is-stale': tab.value === 'stale' }"
-                    :aria-selected="scope === tab.value"
-                    :title="tab.value === 'stale' ? `已含在處理中：客戶來訊後超過 ${WAITING_WINDOW_DAYS} 天仍未回覆，不計入待回覆` : undefined"
-                    :data-testid="`scope-tab-${tab.value}`"
-                    @click="selectView(tab.value)"
+                    class="btn btn-primary"
+                    :disabled="isUpdating"
+                    @click="refreshConversations"
                   >
-                    {{ tab.label }}
-                    <span
-                      v-if="tabCount(tab.value) !== null"
-                      class="ui-seg-n"
-                    >{{ tabCount(tab.value) }}</span>
+                    重試
                   </button>
                 </div>
-                <p
-                  v-if="isSearching && scope !== 'stale'"
-                  class="scope-hint"
-                  role="status"
-                >
-                  搜尋時會一併顯示已結案的對話
-                </p>
               </div>
-              <ConversationFilters
-                :filters="filterComposable.filters.value"
-                :available-tags="availableTags"
-                :total-conversations="conversations.length"
-                :unread-count="0"
-                @update:filter="handleFilterUpdate"
-                @toggle:tag="filterComposable.toggleTagFilter"
-                @clear:tags="filterComposable.clearTagFilter"
-                @clear:all="filterComposable.clearAllFilters"
-              />
-            </section>
-
-            <div class="ui-group conv-group">
-              <!-- 逾期待回覆：說明結案是可逆的 -->
-              <p
-                v-if="scope === 'stale'"
-                class="stale-note"
-                role="note"
-                data-testid="stale-note"
+              <UiEmptyState
+                v-else-if="displayedConversations.length === 0"
+                class="no-data"
+                :title="emptyText"
               >
-                這些對話的客戶已超過 {{ WAITING_WINDOW_DAYS }} 天沒有收到回覆，不計入待回覆。從未獲得回覆的排在最前面，其餘依等待時間由久到近。
-                按「選取」勾選後可批量結案；結案不會刪除任何內容，客戶下次來訊時會自動重新開啟同一個對話。
-              </p>
+                <template #icon>
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.8"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    aria-hidden="true"
+                  ><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20.5l1.4-4.6A8 8 0 1 1 21 12Z" /></svg>
+                </template>
+              </UiEmptyState>
+              <div
+                v-else
+                class="conversations-table-container"
+                :class="{ updating: isUpdating }"
+              >
+                <!-- Desktop Table View -->
+                <ConversationDesktopTable
+                  :conversations="displayedConversations"
+                  :selection-mode="selectionMode"
+                  :selected-ids="selectedIds"
+                  @select="goToConversation"
+                  @toggle-select="toggleSelect"
+                  @toggle-select-all="toggleSelectAll"
+                />
 
-              <!-- SSE 更新指示器 -->
-              <ConversationSyncIndicator :visible="isUpdating" />
+                <!-- Mobile Card View -->
+                <ConversationMobileCards
+                  :conversations="displayedConversations"
+                  :selection-mode="selectionMode"
+                  :selected-ids="selectedIds"
+                  @select="goToConversation"
+                  @toggle-select="toggleSelect"
+                />
 
-              <div class="conversations-content">
-                <div
-                  v-if="loading && displayedConversations.length === 0"
-                  class="loading-overlay"
-                >
-                  <HamsterLoader message="載入對話列表中..." />
-                </div>
-                <div
-                  v-else-if="loadError && displayedConversations.length === 0"
-                  class="conversations-error"
-                  role="alert"
-                >
-                  <div class="conversations-error-content">
-                    <div class="conversations-error-title">
-                      無法載入對話列表
-                    </div>
-                    <div class="conversations-error-text">
-                      {{ loadError }}
-                    </div>
-                    <button
-                      type="button"
-                      class="btn btn-primary"
-                      :disabled="isUpdating"
-                      @click="refreshConversations"
-                    >
-                      重試
-                    </button>
-                  </div>
-                </div>
-                <UiEmptyState
-                  v-else-if="displayedConversations.length === 0"
-                  class="no-data"
-                  :title="emptyText"
-                >
-                  <template #icon>
-                    <svg
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="1.8"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      aria-hidden="true"
-                    ><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20.5l1.4-4.6A8 8 0 1 1 21 12Z" /></svg>
-                  </template>
-                </UiEmptyState>
-                <div
-                  v-else
-                  class="conversations-table-container"
-                  :class="{ updating: isUpdating }"
-                >
-                  <!-- Desktop Table View -->
-                  <ConversationDesktopTable
-                    :conversations="displayedConversations"
-                    :selection-mode="selectionMode"
-                    :selected-ids="selectedIds"
-                    @select="goToConversation"
-                    @toggle-select="toggleSelect"
-                    @toggle-select-all="toggleSelectAll"
-                  />
-
-                  <!-- Mobile Card View -->
-                  <ConversationMobileCards
-                    :conversations="displayedConversations"
-                    :selection-mode="selectionMode"
-                    :selected-ids="selectedIds"
-                    @select="goToConversation"
-                    @toggle-select="toggleSelect"
-                  />
-
-                  <p class="list-foot">
-                    <svg
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      aria-hidden="true"
-                    ><circle
-                      cx="12"
-                      cy="12"
-                      r="9"
-                    /><path d="M12 11v5M12 8h.01" /></svg>
-                    <span>{{ LEGEND_TEXT }}</span>
-                  </p>
-                </div>
+                <p class="list-foot">
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    aria-hidden="true"
+                  ><circle
+                    cx="12"
+                    cy="12"
+                    r="9"
+                  /><path d="M12 11v5M12 8h.01" /></svg>
+                  <span>{{ LEGEND_TEXT }}</span>
+                </p>
               </div>
             </div>
           </div>
-
-          <!-- Rail (wide screens): the queue at a glance, and the team split as one-tap filters. Real counts. -->
-          <aside
-            v-if="counts"
-            class="conv-rail"
-            aria-label="佇列概況"
-          >
-            <div class="ui-card rail-card">
-              <section
-                class="rail-wait"
-                aria-labelledby="rail-wait-title"
-              >
-                <h2
-                  id="rail-wait-title"
-                  class="rail-label"
-                >
-                  待回覆
-                </h2>
-                <p class="rail-num">
-                  <span class="ui-num">{{ waitingTotal }}</span><small>件</small>
-                </p>
-                <p
-                  v-if="waitingTop"
-                  class="rail-meta"
-                >
-                  最久等 <strong :class="{ 'is-hot': oldestWaitHot }">{{ oldestWaitText }}</strong><template v-if="waitingTop.customerName">
-                    ・ {{ waitingTop.customerName }}
-                  </template>
-                </p>
-                <p
-                  v-else
-                  class="rail-meta"
-                >
-                  目前沒有等待回覆的客戶
-                </p>
-                <p
-                  v-if="unreadStore.total > 0"
-                  class="rail-meta"
-                  :title="UNREAD_HINT"
-                >
-                  我的未讀 <strong>{{ unreadStore.total }}</strong> 件，列表中以色條標示
-                </p>
-                <div class="rail-actions">
-                  <button
-                    v-if="waitingTop"
-                    type="button"
-                    class="btn btn-primary btn-sm"
-                    @click="goToConversation(waitingTop.conversationId)"
-                  >
-                    先處理最久的
-                  </button>
-                  <button
-                    v-if="staleCount > 0 && scope !== 'stale'"
-                    type="button"
-                    class="btn btn-secondary btn-sm"
-                    @click="selectView('stale')"
-                  >
-                    逾期 {{ staleCount }} 件
-                  </button>
-                </div>
-              </section>
-
-              <section
-                v-if="teamRows.length > 0"
-                class="rail-sec"
-                aria-labelledby="rail-team-title"
-              >
-                <h2
-                  id="rail-team-title"
-                  class="rail-label"
-                >
-                  處理中依團隊
-                </h2>
-                <div class="rail-split">
-                  <div
-                    class="rail-stack"
-                    aria-hidden="true"
-                  >
-                    <i
-                      v-for="(row, i) in teamRows"
-                      :key="row.key"
-                      :class="`seg-${i % 4}`"
-                      :style="{ flexGrow: row.open }"
-                    />
-                  </div>
-                </div>
-                <button
-                  v-for="(row, i) in teamRows"
-                  :key="row.key"
-                  type="button"
-                  class="rail-row"
-                  :class="{ 'is-selected': filterComposable.filters.value.teamId === row.filterId }"
-                  :aria-pressed="filterComposable.filters.value.teamId === row.filterId"
-                  @click="toggleTeam(row.filterId)"
-                >
-                  <span
-                    class="rail-key"
-                    :class="`seg-${i % 4}`"
-                    aria-hidden="true"
-                  />
-                  <span class="rail-name">{{ row.name }}</span>
-                  <span class="rail-total">{{ row.open }}</span>
-                </button>
-              </section>
-
-              <section
-                v-if="channelRows.length > 1 || !!filterComposable.filters.value.platform"
-                class="rail-sec"
-                aria-labelledby="rail-channel-title"
-              >
-                <h2
-                  id="rail-channel-title"
-                  class="rail-label"
-                >
-                  目前列表依渠道
-                </h2>
-                <div class="rail-chips">
-                  <button
-                    v-for="row in channelRows"
-                    :key="row.key"
-                    type="button"
-                    class="rail-chip"
-                    :class="{ 'is-selected': filterComposable.filters.value.platform === row.key }"
-                    :aria-pressed="filterComposable.filters.value.platform === row.key"
-                    @click="toggleChannel(row.key)"
-                  >
-                    {{ row.name }}<b>{{ row.n }}</b>
-                  </button>
-                </div>
-              </section>
-            </div>
-          </aside>
         </div>
 
         <!-- 批量操作列 -->
@@ -374,9 +257,8 @@ import { useToast } from '@/composables/useToast'
 import { useConfirmDialog } from '@/composables/useConfirmDialog'
 import { conversationApi } from '@/api/conversations'
 import { useUnreadStore } from '@/stores/unread'
-import { formatWaitText } from '@/composables/dashboard/useDashboardOverview'
-import { LEGEND_TEXT, UNREAD_HINT } from '@/composables/conversation/useConversationRowMeta'
-import { WAITING_WINDOW_DAYS, type ConversationStats } from '@shared/api-contracts'
+import { LEGEND_TEXT } from '@/composables/conversation/useConversationRowMeta'
+import { WAITING_WINDOW_DAYS, type ConversationStats, type WaitingConversation } from '@shared/api-contracts'
 import { tagCacheService } from '@/services/tagCacheService'
 import type { ConversationFilters as ConversationFiltersType } from '@/types'
 
@@ -385,6 +267,7 @@ import RefreshButton from '@/components/ui/RefreshButton.vue'
 import ErrorBoundary from '@/components/ErrorBoundary.vue'
 import HamsterLoader from '@/components/ui/HamsterLoader.vue'
 import ConversationSyncIndicator from '@/components/conversations/ConversationSyncIndicator.vue'
+import ConversationQueueBoard from '@/components/conversations/ConversationQueueBoard.vue'
 import ConversationDesktopTable from '@/components/conversations/ConversationDesktopTable.vue'
 import ConversationMobileCards from '@/components/conversations/ConversationMobileCards.vue'
 import { ConversationFilters } from '@/components/conversation-list'
@@ -397,92 +280,47 @@ const unreadStore = useUnreadStore()
 // 待回覆 (team-wide) comes from /conversations/waiting; 未讀 (personal) from the shared unread store.
 const counts = ref<ConversationStats | null>(null)
 const waitingTotal = ref(0)
-const waitingSince = ref<string | null>(null)
+const waitingItems = ref<WaitingConversation[]>([])
 const staleCount = ref(0)
-const waitingTop = ref<{ conversationId: string; customerName: string } | null>(null)
 const clock = ref(Date.now())
 let clockTimer: ReturnType<typeof setInterval> | null = null
 
+// The board draws the longest-waiting conversations; the rest stay in the list below
+const BOARD_LIMIT = 24
+
 async function loadCounts() {
   try {
-    const [statsRes, waitingRes] = await Promise.all([conversationApi.getStats(), conversationApi.getWaiting(1)])
+    const [statsRes, waitingRes] = await Promise.all([conversationApi.getStats(), conversationApi.getWaiting(BOARD_LIMIT)])
     if (statsRes.success && statsRes.data) { counts.value = statsRes.data }
     if (waitingRes.success && waitingRes.data) {
       waitingTotal.value = waitingRes.data.total
-      waitingSince.value = waitingRes.data.items[0]?.waitingSince ?? null
+      waitingItems.value = waitingRes.data.items
       staleCount.value = waitingRes.data.stale?.count ?? 0
-      const top = waitingRes.data.items[0]
-      waitingTop.value = top ? { conversationId: top.conversationId, customerName: top.customerName ?? '客戶' } : null
+      clock.value = Date.now()
     }
   } catch (err) {
     console.warn('Failed to load conversation counts:', err)
   }
 }
 
-const oldestWaitText = computed(() =>
-  waitingSince.value ? formatWaitText(Math.max(0, (clock.value - Date.parse(waitingSince.value)) / 1000)) : '')
-
-const oldestWaitHot = computed(() => waitingSince.value !== null && clock.value - Date.parse(waitingSince.value) >= 30 * 60 * 1000)
-
 // Team names come from the conversations already loaded (their assignedTeam)
 const teamNameById = computed(() => new Map(
   conversations.value.flatMap(c => (c.assignedTeam?.id && c.assignedTeam.name ? [[c.assignedTeam.id, c.assignedTeam.name] as const] : []))
 ))
 
-// Rail: open conversations per team (a row filters the list; the unassigned pool filters teamId 0)
-// share = the row's size against the largest row, drawn as a small bar so the rail reads at a glance
-const shareOf = (n: number, max: number): number => Math.max(4, Math.round((n / Math.max(1, max)) * 100))
-const teamRows = computed(() => {
-  const open = (counts.value?.byTeam ?? []).filter(t => t.open > 0)
-  const max = Math.max(1, ...open.map(t => t.open))
-  return open.map(t => ({
-    key: String(t.teamId ?? 'none'),
-    filterId: t.teamId === null ? 0 : t.teamId,
-    name: t.teamId === null ? '未指派' : (teamNameById.value.get(t.teamId) ?? `團隊 ${t.teamId}`),
-    open: t.open,
-    share: shareOf(t.open, max)
-  }))
-})
-// Rail: the loaded list by channel (one-tap filter, same way the team rows work)
-const channelRows = computed(() => {
-  const tally = new Map<string, number>()
-  for (const c of displayedConversations.value) {
-    const key = c.platform || c.user?.platform || 'line'
-    tally.set(key, (tally.get(key) ?? 0) + 1)
-  }
-  const names: Record<string, string> = { line: 'LINE', facebook: 'Messenger' }
-  const max = Math.max(1, ...tally.values())
-  return [...tally.entries()]
-    .map(([key, n]) => ({ key, name: names[key] ?? key, n, share: shareOf(n, max) }))
-    .sort((a, b) => b.n - a.n)
-})
-
-function toggleChannel(key: string) {
-  const current = filterComposable.filters.value.platform
-  const next = key === 'line' || key === 'facebook' ? key : ''
-  filterComposable.updateFilter('platform', current === next ? '' : next)
-}
+// Open conversations per team (0 = the unassigned pool), the number under each lane name
+const teamOpenById = computed(() => new Map(
+  (counts.value?.byTeam ?? []).map(t => [t.teamId ?? 0, t.open] as const)
+))
 
 function toggleTeam(filterId: number) {
   filterComposable.updateFilter('teamId', filterComposable.filters.value.teamId === filterId ? undefined : filterId)
 }
 
-// One line (<= 60 chars). With the rail visible (wide screens) the wait numbers live there, so the line carries only
-// what the rail does not; on tablet and phone the rail is hidden and the line keeps them.
-const railVisible = ref(typeof window !== 'undefined' && window.matchMedia?.('(min-width: 1025px)').matches === true)
-let railMql: ReturnType<typeof window.matchMedia> | null = null
-const onRailChange = (e: { matches: boolean }) => { railVisible.value = e.matches }
-
+// One short line; the queue itself is the board above the list
 const subtitle = computed(() => {
   if (!counts.value) { return '' }
-  const parts = [`${counts.value.open} 件處理中`]
-  if (!railVisible.value) {
-    parts.push(`${waitingTotal.value} 件待回覆`)
-    if (oldestWaitText.value) { parts.push(`最久等 ${oldestWaitText.value}`) }
-  }
-  // Phone: three facts at most (the unread count already rides the nav badge and the bell)
-  if (unreadStore.total > 0 && railVisible.value) { parts.push(`我的未讀 ${unreadStore.total}`) }
-  return parts.join(' · ')
+  return `${counts.value.open} 件處理中`
 })
 
 function tabCount(value: ListView): number | null {
@@ -804,11 +642,6 @@ const measureScopeTabs = () => {
 }
 let scopeTabsObserver: globalThis.ResizeObserver | null = null
 onMounted(() => {
-  if (typeof window.matchMedia === 'function') {
-    railMql = window.matchMedia('(min-width: 1025px)')
-    railVisible.value = railMql.matches
-    railMql.addEventListener('change', onRailChange)
-  }
   measureScopeTabs()
   if (scopeTabsEl.value && typeof window.ResizeObserver !== 'undefined') {
     scopeTabsObserver = new window.ResizeObserver(measureScopeTabs)
@@ -819,7 +652,6 @@ watch(() => visibleTabs.value.length, () => { void nextTick(measureScopeTabs) })
 
 // 清理实时同步资源
 onUnmounted(() => {
-  railMql?.removeEventListener('change', onRailChange)
   scopeTabsObserver?.disconnect()
   frontendLogger.debug('[ConversationsTable] Component unmounting, cleaning up...')
   if (refillTimer) { clearTimeout(refillTimer) }
@@ -833,231 +665,7 @@ onUnmounted(() => {
   position: relative;
 }
 
-/* List (left) + queue rail (right, wide screens only) */
-.conv-layout {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 296px;
-  gap: 20px;
-  align-items: start;
-}
-
-.conv-rail {
-  display: grid;
-  gap: 20px;
-  min-width: 0;
-}
-
-.rail-card {
-  display: grid;
-  gap: 0;
-  overflow: hidden;
-  box-shadow: var(--ui-shadow-card);
-}
-
-.rail-wait {
-  display: grid;
-  gap: 6px;
-  padding: 20px 22px 22px;
-}
-
-.rail-sec {
-  display: grid;
-  gap: 6px;
-  padding: 16px 12px 14px;
-  box-shadow: inset 0 0.5px 0 var(--ui-sep);
-}
-
-.rail-sec > .rail-label,
-.rail-sec > .rail-split {
-  padding-inline: 10px;
-}
-
-.rail-split {
-  margin-bottom: 4px;
-}
-
-/* team share: one stacked bar, each team keeps its colour in the legend rows below */
-.rail-stack {
-  display: flex;
-  gap: 3px;
-  height: 10px;
-}
-
-.rail-stack i {
-  flex-basis: 0;
-  min-width: 6px;
-  border-radius: 999px;
-}
-
-.seg-0 {
-  background: var(--ui-accent);
-}
-
-.seg-1 {
-  background: var(--ui-teal);
-}
-
-.seg-2 {
-  background: var(--ui-orange);
-}
-
-.seg-3 {
-  background: var(--ui-indigo);
-}
-
-.rail-key {
-  flex: none;
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-}
-
-.rail-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  padding: 2px 10px 4px;
-}
-
-.rail-chip {
-  display: inline-flex;
-  gap: 8px;
-  align-items: center;
-  min-height: 36px;
-  padding: 0 14px;
-  border: 0;
-  border-radius: 999px;
-  background: var(--ui-fill);
-  color: var(--ui-ink);
-  font: 600 14px var(--ui-font-display);
-  cursor: pointer;
-}
-
-.rail-chip b {
-  font-variant-numeric: tabular-nums;
-  color: var(--ui-ink-2);
-}
-
-.rail-chip.is-selected {
-  background: var(--ui-accent);
-  color: #fff;
-}
-
-.rail-chip.is-selected b {
-  color: #fff;
-}
-
-.rail-label {
-  margin: 0;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--ui-ink-2);
-}
-
-.rail-num {
-  margin: 0;
-  font: 600 48px / 1.05 var(--ui-font-display);
-  letter-spacing: -0.03em;
-  font-variant-numeric: tabular-nums;
-}
-
-.rail-num small {
-  margin-left: 4px;
-  font-size: 16px;
-  font-weight: 500;
-  letter-spacing: 0;
-  color: var(--ui-muted);
-}
-
-.rail-meta {
-  margin: 0;
-  font-size: 14px;
-  color: var(--ui-ink-2);
-}
-
-.rail-meta strong {
-  font-weight: 600;
-}
-
-.rail-meta strong.is-hot {
-  color: var(--ui-red-ink);
-}
-
-.rail-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 8px;
-}
-
-.rail-row {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  width: 100%;
-  min-height: 44px;
-  padding: 0 10px;
-  border: 0;
-  border-radius: 12px;
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-
-.rail-row:focus-visible,
-.rail-chip:focus-visible {
-  outline: 2px solid var(--ui-accent);
-  outline-offset: -2px;
-}
-
-.rail-row:hover {
-  background: var(--ui-fill);
-}
-
-.rail-row.is-selected {
-  background: var(--ui-sel-tint);
-  box-shadow: var(--ui-sel-ring);
-}
-
-@media (min-width: 1025px) {
-  .conv-rail {
-    position: sticky;
-    top: calc(var(--ui-topbar-h) + 20px);
-  }
-
-}
-
-.rail-name {
-  flex: 1;
-  min-width: 0;
-  font-size: 15px;
-  font-weight: 500;
-}
-
-.rail-total.is-hot {
-  color: var(--ui-red-ink);
-}
-
-.rail-total {
-  font-size: 15px;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  color: var(--ui-ink);
-}
-
-@media (max-width: 1024px) {
-  .conv-layout {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .conv-rail {
-    display: none;
-  }
-}
-
-/* One group holds the controls and the list: the filter block heads it, a hairline divides them */
+/* Queue board on top, the list under it */
 .conv-stack {
   display: flex;
   flex-direction: column;
