@@ -62,7 +62,13 @@
         v-if="showInsights"
         class="ui-card al-more"
       >
-        <summary>操作類型與最活躍成員</summary>
+        <summary>
+          <span>操作類型與最活躍成員</span>
+          <span
+            v-if="overview?.topUsers[0]"
+            class="al-more-hint"
+          >最活躍 {{ overview.topUsers[0].user_name }}</span>
+        </summary>
         <ActivityInsights
           :overview="overview"
           :active-action="filters.action"
@@ -539,6 +545,13 @@ onUnmounted(() => {
   font-weight: 600;
   cursor: pointer;
   list-style: none;
+}
+.al-more-hint {
+  margin-left: auto;
+  padding-right: 10px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ui-ink-2);
 }
 .al-more summary::-webkit-details-marker {
   display: none;
