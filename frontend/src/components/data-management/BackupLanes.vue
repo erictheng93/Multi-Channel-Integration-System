@@ -62,10 +62,10 @@
       <summary class="lanes-head">
         <h2>保留期間</h2>
         <span class="lanes-fold">{{ lanes.length }} 類</span>
-        <span class="lanes-key">每條以該類型的保留天數為滿格；<i
+        <span class="lanes-key">整條 = 該類型的保留期，右端為今天；色塊 = 已存天數；<i
           class="lg-dot"
           aria-hidden="true"
-        />一份備份，細線為已涵蓋的期間</span>
+        />= 一份備份</span>
       </summary>
       <div
         class="lanes"
@@ -127,8 +127,8 @@ const props = defineProps<{
   policy: BackupPolicy | null
 }>()
 
-/** The retention chart is open on desktop and folded on a phone, where the backup action comes first */
-const lanesOpen = ref(typeof window === 'undefined' || typeof window.matchMedia !== 'function' || !window.matchMedia('(max-width: 768px)').matches)
+/** The retention chart is open everywhere (on a phone it sits under the backup action); the header can still fold it */
+const lanesOpen = ref(true)
 
 const DAY = 24 * 3600 * 1000
 const TAIPEI = 'Asia/Taipei'
@@ -378,28 +378,28 @@ const aria = computed(() =>
   position: absolute;
   top: 50%;
   right: 0;
-  height: 4px;
-  margin-top: -2px;
-  border-radius: 2px;
-  background: color-mix(in srgb, var(--lane) 45%, var(--ui-surface));
+  height: 18px;
+  margin-top: -9px;
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--lane) 40%, var(--ui-surface));
 }
 
 .lane-dot {
   position: absolute;
   top: 50%;
-  width: 13px;
-  height: 13px;
-  margin: -6.5px -6.5px 0 0;
+  width: 9px;
+  height: 9px;
+  margin: -4.5px -4.5px 0 0;
   border-radius: 50%;
   background: var(--lane);
-  box-shadow: 0 0 0 2px var(--ui-fill);
+  box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--lane) 40%, var(--ui-surface));
 }
 
 .lanes-head .lg-dot {
   display: inline-block;
-  width: 11px;
-  height: 11px;
-  margin: 0 4px 0 2px;
+  width: 9px;
+  height: 9px;
+  margin: 0 2px 0 2px;
   border-radius: 50%;
   background: var(--ui-ink-2);
   vertical-align: 0;
