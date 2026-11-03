@@ -1,6 +1,9 @@
 <!--
   SystemHealthPage.vue
-  Health check page: overall verdict, counts and one row per service with its measured latency.
+  Health check page. Signature: a latency radar. One axis per service, the distance from the centre is the
+  measured response time on one shared scale (rings at 25 / 50 / 75 / 100 % of the scale), so the shape of the
+  polygon shows at a glance which service is the slow one. A service that was never checked has no point,
+  only a dashed marker. The verdict, three facts and one row per service sit beside it.
   Opening the page runs the plain check; 立即檢查 (page head) also runs the on-demand LINE webhook test.
 -->
 
@@ -10,193 +13,208 @@
       class="ui-lead hl"
       aria-label="整體狀態"
     >
-      <div class="hl-main">
-        <div class="hl-kicker">
-          整體狀態
-        </div>
-        <div
-          class="hl-big"
-          :class="mixed ? 'mixed' : overallTone"
-          :aria-busy="(controller.processing.value && !controller.healthOverall.value) || undefined"
-        >
-          {{ heroValue ?? '—' }}
-        </div>
-        <span
-          v-if="mixed"
-          class="ui-pill ui-pill-orange hl-badge"
-        >{{ counts.unchecked }} 項待檢查</span>
-        <p
-          v-if="!mixed"
-          class="hl-meaning"
-        >
-          {{ heroSubtitle }}
-        </p>
-        <ul
-          v-if="rows.length > 0 && !mixed"
-          class="hero-counts"
-          aria-label="服務狀態統計"
-        >
-          <li>
-            <span class="dot g" />{{ counts.healthy }} 正常
-          </li>
-          <li v-if="counts.warning > 0">
-            <span class="dot o" />{{ counts.warning }} 警告
-          </li>
-          <li v-if="counts.critical > 0">
-            <span class="dot r" />{{ counts.critical }} 異常
-          </li>
-          <li v-if="counts.unchecked > 0">
-            <span class="dot u" />{{ counts.unchecked }} 未檢查
-          </li>
-        </ul>
-      </div>
-      <dl
-        v-if="latencyFacts.length > 0"
-        class="hl-facts"
+      <UiEmptyState
+        v-if="rows.length === 0"
+        class="hl-empty"
+        :title="emptyState.title"
+        :description="emptyState.description"
       >
-        <div
-          v-for="fact in latencyFacts"
-          :key="fact.label"
-          class="hl-fact"
-        >
-          <dt>{{ fact.label }}</dt>
-          <dd class="hl-fact-v">
-            {{ fact.value }}<small v-if="fact.unit">{{ fact.unit }}</small>
-          </dd>
-          <dd class="hl-fact-sub">
-            {{ fact.sub }}
-          </dd>
-        </div>
-      </dl>
-    </article>
-
-    <section aria-label="服務檢查">
-      <h2 class="ui-group-label">
-        服務檢查
-        <span class="label-note">條長為回應時間，滿格 {{ latencyScale }} ms</span>
-      </h2>
-      <div class="ui-group">
-        <UiEmptyState
-          v-if="rows.length === 0"
-          :title="emptyState.title"
-          :description="emptyState.description"
-        >
-          <template #icon>
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="1.8"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              aria-hidden="true"
-            ><path d="M22 12h-4l-3 9L9 3l-3 9H2" /></svg>
-          </template>
-        </UiEmptyState>
-        <ul
-          v-else
-          class="ui-list"
-        >
-          <li
-            class="hscale"
+        <template #icon>
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.8"
+            stroke-linecap="round"
+            stroke-linejoin="round"
             aria-hidden="true"
-          >
-            <span class="hscale-ruler">
-              <span class="t0">0</span>
-              <span class="t1">{{ latencyScale / 2 }}</span>
-              <span class="t2">{{ latencyScale }} ms</span>
-            </span>
-          </li>
-          <li
-            v-for="row in rows"
-            :key="row.key"
-            class="ui-row is-flush hrow"
-            :class="{ 'is-unchecked': row.label === '未檢查' }"
-          >
-            <span
-              class="hstat"
-              :class="row.tone"
+          ><path d="M22 12h-4l-3 9L9 3l-3 9H2" /></svg>
+        </template>
+      </UiEmptyState>
+
+      <template v-else>
+        <figure
+          class="radar"
+          :class="radarTone"
+          :aria-label="`各服務回應時間雷達圖，外圈 ${latencyScale} ms`"
+        >
+          <div class="radar-box">
+            <svg
+              class="radar-svg"
+              viewBox="0 0 100 100"
               aria-hidden="true"
             >
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2.2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <path
-                  v-if="row.tone === 'ok'"
-                  d="M5 12.5 10 17.5 19 7"
-                />
-                <template v-else-if="row.tone === 'unknown'">
-                  <circle
-                    cx="12"
-                    cy="12"
-                    r="8.5"
-                  />
-                  <path d="M12 7.5V12l3 2" />
-                </template>
-                <path
-                  v-else
-                  d="M12 8v5M12 17h.01"
-                />
-              </svg>
-            </span>
-            <div class="ui-row-main">
-              <div class="ui-row-title">
-                {{ row.name }}
-              </div>
-              <div class="ui-row-sub">
-                {{ row.sub }}<span
-                  v-if="row.at"
-                  class="row-at"
-                > · {{ row.at }}</span>
-              </div>
+              <circle
+                v-for="ring in RINGS"
+                :key="ring"
+                class="r-ring"
+                cx="50"
+                cy="50"
+                :r="RADIUS * ring"
+              />
+              <line
+                v-for="spot in spots"
+                :key="`ax-${spot.key}`"
+                class="r-axis"
+                x1="50"
+                y1="50"
+                :x2="spot.rimX"
+                :y2="spot.rimY"
+              />
+              <polygon
+                v-if="shape"
+                class="r-shape"
+                :points="shape"
+              />
+            </svg>
+            <span
+              v-for="spot in spots"
+              :key="`dot-${spot.key}`"
+              class="r-dot"
+              :class="[spot.tone, { 'is-empty': !spot.measured }]"
+              :style="{ left: `${spot.x}%`, top: `${spot.y}%` }"
+              aria-hidden="true"
+            />
+            <div
+              v-for="spot in spots"
+              :key="`lb-${spot.key}`"
+              class="r-label"
+              :class="spot.side"
+              :style="{ left: `${spot.lx}%`, top: `${spot.ly}%` }"
+            >
+              <span class="r-name">{{ spot.short }}</span>
+              <span
+                class="r-val"
+                :class="spot.tone"
+              >{{ spot.value }}</span>
+            </div>
+          </div>
+          <figcaption class="radar-cap">
+            離中心越遠越慢，外圈 {{ latencyScale }} ms
+          </figcaption>
+        </figure>
+
+        <div class="hl-side">
+          <header class="hl-top">
+            <div
+              class="hl-big"
+              :class="mixed ? 'mixed' : overallTone"
+              :aria-busy="(controller.processing.value && !controller.healthOverall.value) || undefined"
+            >
+              {{ heroValue ?? '—' }}
             </div>
             <span
-              class="lat-bar"
-              :class="barTone(row)"
-              aria-hidden="true"
-            ><i
-              v-if="row.latencyMs !== null"
-              :style="{ width: barWidth(row.latencyMs) }"
-            /><em v-else-if="row.label === '未檢查'">尚未測試</em></span>
-            <span
-              class="lat-n"
-              :class="row.tone"
+              v-if="mixed"
+              class="ui-pill ui-pill-orange"
+            >{{ counts.unchecked }} 項待檢查</span>
+            <ul
+              v-else-if="counts.warning + counts.critical + counts.unchecked > 0"
+              class="hero-counts"
+              aria-label="服務狀態統計"
             >
-              <template v-if="row.latencyMs !== null">{{ row.latencyMs.toLocaleString() }}<small>ms</small></template>
-            </span>
-            <span
-              class="ui-pill ui-pill-dot"
-              :class="pillClass(row)"
-            >{{ row.label }}</span>
-          </li>
-          <li class="hnote">
-            <span
-              class="hnote-ico"
-              aria-hidden="true"
+              <li v-if="counts.warning > 0">
+                <span class="dot o" />{{ counts.warning }} 警告
+              </li>
+              <li v-if="counts.critical > 0">
+                <span class="dot r" />{{ counts.critical }} 異常
+              </li>
+              <li v-if="counts.unchecked > 0">
+                <span class="dot u" />{{ counts.unchecked }} 未檢查
+              </li>
+            </ul>
+          </header>
+          <p class="hl-meaning">
+            {{ heroSubtitle }}
+          </p>
+          <dl
+            v-if="latencyFacts.length > 0"
+            class="hl-facts"
+          >
+            <div
+              v-for="fact in latencyFacts"
+              :key="fact.label"
+              class="hl-fact"
             >
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              ><circle
-                cx="12"
-                cy="12"
-                r="9"
-              /><path d="M12 11v5M12 8h.01" /></svg>
-            </span>
-            <p>LINE webhook 只在按「立即檢查」時測試；持續失敗請到 LINE Developers 對 Webhook URL 按「Verify」。</p>
-          </li>
-        </ul>
-      </div>
-    </section>
+              <dt>{{ fact.label }}</dt>
+              <dd class="hl-fact-v">
+                {{ fact.value }}<small v-if="fact.unit">{{ fact.unit }}</small>
+              </dd>
+              <dd class="hl-fact-sub">
+                {{ fact.sub }}
+              </dd>
+            </div>
+          </dl>
+
+          <ul
+            class="hlist"
+            aria-label="服務檢查"
+          >
+            <li
+              v-for="row in rows"
+              :key="row.key"
+              class="hrow"
+              :class="{ 'is-unchecked': row.label === '未檢查' }"
+            >
+              <span
+                class="hstat"
+                :class="row.tone"
+                aria-hidden="true"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2.2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path
+                    v-if="row.tone === 'ok'"
+                    d="M5 12.5 10 17.5 19 7"
+                  />
+                  <template v-else-if="row.tone === 'unknown'">
+                    <circle
+                      cx="12"
+                      cy="12"
+                      r="8.5"
+                    />
+                    <path d="M12 7.5V12l3 2" />
+                  </template>
+                  <path
+                    v-else
+                    d="M12 8v5M12 17h.01"
+                  />
+                </svg>
+              </span>
+              <div class="hrow-main">
+                <div class="hrow-title">
+                  {{ row.name }}
+                </div>
+                <div class="hrow-sub">
+                  {{ row.sub }}<span
+                    v-if="row.at"
+                    class="row-at"
+                  > · {{ row.at }}</span>
+                </div>
+              </div>
+              <span
+                class="lat-n"
+                :class="barTone(row)"
+              >
+                <template v-if="row.latencyMs !== null">{{ row.latencyMs.toLocaleString() }}<small>ms</small></template>
+              </span>
+              <span
+                class="ui-pill ui-pill-dot"
+                :class="pillClass(row)"
+              >{{ row.label }}</span>
+            </li>
+          </ul>
+          <p class="hnote">
+            LINE webhook 只在按「立即檢查」時測試；持續失敗請到 LINE Developers 對 Webhook URL 按「Verify」。
+          </p>
+        </div>
+      </template>
+    </article>
   </div>
 </template>
 
@@ -360,12 +378,7 @@ const heroValue = computed<string | null>(() => {
   return overallTone.value === 'ok' ? '正常' : null
 })
 
-/** Bars share one scale: the slowest measured service fills the track, floored at 100 ms so 12 vs 64 ms is not exaggerated */
-function barWidth(ms: number): string {
-  return `${Math.max(4, Math.round((ms / latencyScale.value) * 100))}%`
-}
-
-/** Bar colour is the speed itself: under 100 ms is fine, up to 300 ms is slow, past that is a fault; a failing check is red whatever it measured */
+/** Tone is the speed itself: under 100 ms is fine, up to 300 ms is slow, past that is a fault; a failing check is red whatever it measured */
 function barTone(row: Row): string {
   if (row.tone === 'bad' || (row.latencyMs ?? 0) > 300) { return 'bad' }
   if (row.tone === 'warn' || (row.latencyMs ?? 0) > 100) { return 'warn' }
@@ -438,6 +451,76 @@ function pillClass(row: Row): string {
   return ''
 }
 
+/* ---------- latency radar ---------- */
+const RADIUS = 34
+const RINGS = [0.25, 0.5, 0.75, 1] as const
+const LABEL_RADIUS = 45
+
+const SHORT_NAME: Record<string, string> = {
+  database: 'D1',
+  cache: 'KV',
+  r2: 'R2',
+  'durable_object': 'DO',
+  queue: 'Queue',
+  lineWebhook: 'Webhook'
+}
+
+interface Spot {
+  key: string
+  short: string
+  tone: 'ok' | 'warn' | 'bad'
+  measured: boolean
+  value: string
+  x: number
+  y: number
+  rimX: number
+  rimY: number
+  lx: number
+  ly: number
+  side: 'top' | 'bottom' | 'left' | 'right'
+}
+
+const spots = computed<Spot[]>(() => {
+  const count = rows.value.length
+  return rows.value.map((row, index) => {
+    const angle = (-90 + (360 / count) * index) * (Math.PI / 180)
+    const cos = Math.cos(angle)
+    const sin = Math.sin(angle)
+    const measured = row.latencyMs !== null
+    // a failed check with no measurement sits on the rim; a never-checked service sits at the half ring
+    const ratio = measured ? Math.min((row.latencyMs ?? 0) / latencyScale.value, 1) : row.tone === 'bad' ? 1 : 0.5
+    const tone = barTone(row)
+    const side = Math.abs(cos) < 0.2 ? (sin < 0 ? 'top' : 'bottom') : cos > 0 ? 'right' : 'left'
+    // top and bottom labels sit centred on the axis; side labels start beside the rim
+    const lr = side === 'top' || side === 'bottom' ? LABEL_RADIUS : LABEL_RADIUS - 7
+    return {
+      key: row.key,
+      short: SHORT_NAME[row.key] ?? shortName(row.name),
+      tone: tone === 'warn' || tone === 'bad' ? tone : 'ok',
+      measured,
+      value: measured ? `${row.latencyMs?.toLocaleString()} ms` : row.tone === 'bad' ? '異常' : '未檢查',
+      x: 50 + RADIUS * ratio * cos,
+      y: 50 + RADIUS * ratio * sin,
+      rimX: 50 + RADIUS * cos,
+      rimY: 50 + RADIUS * sin,
+      lx: 50 + lr * cos,
+      ly: 50 + lr * sin,
+      side
+    }
+  })
+})
+
+/** The polygon joins the measured services only, in axis order */
+const shape = computed(() => {
+  const measured = spots.value.filter(spot => spot.measured)
+  return measured.length >= 3 ? measured.map(spot => `${spot.x.toFixed(2)},${spot.y.toFixed(2)}`).join(' ') : ''
+})
+
+const radarTone = computed(() => {
+  if (counts.value.critical > 0) { return 'bad' }
+  return counts.value.warning > 0 ? 'warn' : 'ok'
+})
+
 // Plain check on open; the webhook test stays on-demand.
 onMounted(() => {
   if (controller.healthCheckResults.value.length === 0) {
@@ -449,28 +532,168 @@ onMounted(() => {
 <style scoped>
 .health-stack {
   display: grid;
-  gap: 22px;
   min-width: 0;
 }
 
+/* radar left, verdict + services right */
 .hl {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: 24px 56px;
+  grid-template-columns: minmax(320px, 440px) minmax(0, 1fr);
+  gap: 20px 40px;
   align-items: center;
-  padding: 24px 32px;
+  padding: 28px 32px;
 }
 
-.hl-kicker {
-  font-size: 15px;
+.hl-empty {
+  grid-column: 1 / -1;
+}
+
+/* ---------- radar ---------- */
+.radar {
+  --tone: var(--ui-green);
+  --tone-soft: var(--ui-green-soft);
+
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  min-width: 0;
+}
+
+.radar.warn {
+  --tone: var(--ui-orange);
+  --tone-soft: var(--ui-orange-soft);
+}
+
+.radar.bad {
+  --tone: var(--ui-red);
+  --tone-soft: var(--ui-red-soft);
+}
+
+.radar-box {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1;
+}
+
+.radar-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.r-ring {
+  fill: none;
+  stroke: var(--ui-sep);
+  stroke-width: 0.4;
+}
+
+.r-ring:last-of-type {
+  stroke-width: 0.6;
+}
+
+.r-axis {
+  stroke: var(--ui-sep);
+  stroke-width: 0.4;
+}
+
+.r-shape {
+  fill: var(--tone-soft);
+  stroke: var(--tone);
+  stroke-linejoin: round;
+  stroke-width: 0.9;
+}
+
+.r-dot {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--ui-green);
+  box-shadow: 0 0 0 3px var(--ui-surface);
+  transform: translate(-50%, -50%);
+}
+
+.r-dot.warn {
+  background: var(--ui-orange);
+}
+
+.r-dot.bad {
+  background: var(--ui-red);
+}
+
+.r-dot.is-empty {
+  background: var(--ui-surface);
+  box-shadow: inset 0 0 0 2px var(--ui-faint);
+}
+
+.r-label {
+  position: absolute;
+  display: grid;
+  gap: 1px;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.r-label.top,
+.r-label.bottom {
+  justify-items: center;
+  text-align: center;
+  transform: translate(-50%, -50%);
+}
+
+.r-label.right {
+  transform: translate(0, -50%);
+}
+
+.r-label.left {
+  justify-items: end;
+  text-align: right;
+  transform: translate(-100%, -50%);
+}
+
+.r-name {
+  font-size: 13px;
   font-weight: 600;
-  color: var(--section-ink);
+  color: var(--ui-muted);
+}
+
+.r-val {
+  font: 600 15px var(--ui-font-display);
+  font-variant-numeric: tabular-nums;
+}
+
+.r-val.warn {
+  color: var(--ui-orange-ink);
+}
+
+.r-val.bad {
+  color: var(--ui-red-ink);
+}
+
+.radar-cap {
+  font-size: 13px;
+  text-align: center;
+  color: var(--ui-muted);
+}
+
+/* ---------- verdict ---------- */
+.hl-side {
+  display: grid;
+  min-width: 0;
+}
+
+.hl-top {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  align-items: center;
 }
 
 .hl-big {
-  margin-top: 2px;
-  font: 600 52px / 1.1 var(--ui-font-display);
-  letter-spacing: -0.035em;
+  font: 600 38px / 1.15 var(--ui-font-display);
+  letter-spacing: -0.03em;
   color: var(--ui-ink);
 }
 
@@ -487,12 +710,7 @@ onMounted(() => {
 }
 
 .hl-big.mixed {
-  font-size: 52px;
   color: var(--ui-ink);
-}
-
-.hl-badge {
-  margin-top: 8px;
 }
 
 .hl-big.unknown {
@@ -501,7 +719,8 @@ onMounted(() => {
 
 .hl-meaning {
   margin: 4px 0 0;
-  font-size: 15px;
+  font-size: 14px;
+  line-height: 1.5;
   color: var(--ui-ink-2);
 }
 
@@ -509,14 +728,16 @@ onMounted(() => {
 .hl-facts {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  margin: 0;
+  margin: 18px 0 6px;
+  padding: 14px 0;
+  box-shadow: inset 0 0.5px 0 var(--ui-sep), inset 0 -0.5px 0 var(--ui-sep);
 }
 
 .hl-fact {
   display: grid;
-  gap: 2px;
+  gap: 1px;
   align-content: start;
-  padding: 4px 20px;
+  padding: 0 16px;
   box-shadow: inset 0.5px 0 0 var(--ui-sep);
 }
 
@@ -532,7 +753,7 @@ onMounted(() => {
 
 .hl-fact-v {
   margin: 0;
-  font: 600 40px / 1.15 var(--ui-font-display);
+  font: 600 26px / 1.2 var(--ui-font-display);
   letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
 }
@@ -552,8 +773,8 @@ onMounted(() => {
 .hero-counts {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px 20px;
-  margin: 14px 0 0;
+  gap: 6px 18px;
+  margin: 0;
   padding: 0;
   list-style: none;
   font-size: var(--ui-t-meta);
@@ -568,23 +789,14 @@ onMounted(() => {
   align-items: center;
 }
 
-/* A zero is not news: quiet it down */
-.hero-counts li.zero {
-  font-weight: 500;
-  color: var(--ui-muted);
-}
-
 .hero-counts .dot {
   width: 8px;
   height: 8px;
   border-radius: 50%;
 }
 
-.hero-counts .dot.g {
-  background: var(--ui-green);
-}
-
-.hero-counts .dot.o {
+.hero-counts .dot.o,
+.hero-counts .dot.u {
   background: var(--ui-orange);
 }
 
@@ -592,17 +804,23 @@ onMounted(() => {
   background: var(--ui-red);
 }
 
-.hero-counts .dot.u {
-  background: var(--ui-orange);
-}
-
-.hero-counts li.zero .dot {
-  background: var(--ui-fill-strong);
+/* ---------- service rows ---------- */
+.hlist {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
 .hrow {
-  padding: 14px 22px;
-  gap: 14px;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 11px 0;
+}
+
+.hrow + .hrow {
+  box-shadow: inset 0 0.5px 0 var(--ui-sep);
 }
 
 .hstat {
@@ -636,51 +854,33 @@ onMounted(() => {
   color: var(--ui-red-ink);
 }
 
-.lat-bar {
-  display: block;
+.hrow.is-unchecked .hstat {
+  background: var(--ui-accent-soft);
+  color: var(--ui-accent);
+}
+
+.hrow-main {
   flex: 1;
   min-width: 0;
-  height: 12px;
-  overflow: hidden;
-  border-radius: 999px;
-  /* ruler: faint ticks at each quarter of the scale */
-  background:
-    linear-gradient(90deg, transparent calc(25% - 0.5px), var(--ui-surface) calc(25% - 0.5px) calc(25% + 0.5px), transparent calc(25% + 0.5px)),
-    linear-gradient(90deg, transparent calc(50% - 0.5px), var(--ui-surface) calc(50% - 0.5px) calc(50% + 0.5px), transparent calc(50% + 0.5px)),
-    linear-gradient(90deg, transparent calc(75% - 0.5px), var(--ui-surface) calc(75% - 0.5px) calc(75% + 0.5px), transparent calc(75% + 0.5px)),
-    var(--ui-fill-strong);
 }
 
-.lat-bar:empty {
-  background: transparent;
+.hrow-title {
+  font: 600 15px / 1.3 var(--ui-font-ui);
 }
 
-.lat-bar em {
-  display: block;
-  padding: 0 14px;
+.hrow-sub {
   font-size: 13px;
-  font-style: normal;
+  line-height: 1.4;
   color: var(--ui-muted);
 }
 
-.lat-bar i {
-  display: block;
-  height: 100%;
-  border-radius: inherit;
-  background: var(--ui-green);
-}
-
-.lat-bar.warn i {
-  background: var(--ui-orange);
-}
-
-.lat-bar.bad i {
-  background: var(--ui-red);
+.row-at {
+  font-variant-numeric: tabular-nums;
 }
 
 .lat-n {
-  width: 64px;
-  font: 600 14px var(--ui-font-display);
+  min-width: 56px;
+  font: 600 15px var(--ui-font-display);
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
@@ -705,184 +905,62 @@ onMounted(() => {
   width: 62px;
 }
 
-.row-at {
-  font-variant-numeric: tabular-nums;
-}
-
-/* a footnote under the list, not a grey box inside it */
 .hnote {
-  display: flex;
-  gap: 10px;
-  align-items: flex-start;
-  margin: 4px 22px 0;
-  padding: 14px 0 16px;
+  margin: 4px 0 0;
+  padding-top: 12px;
   box-shadow: inset 0 0.5px 0 var(--ui-sep);
-}
-
-.hnote p {
-  margin: 0;
-  font-size: 14px;
+  font-size: 13px;
   line-height: 1.55;
-  color: var(--ui-ink-2);
-}
-
-/* the bars start right after the service name; this row labels their scale */
-.hscale {
-  display: flex;
-  gap: 14px;
-  padding: 10px 22px 0;
-  font-size: 12px;
   color: var(--ui-muted);
-  font-variant-numeric: tabular-nums;
-}
-
-.hscale::before {
-  content: '';
-  flex: 0 0 calc(30px + 14px + 230px);
-}
-
-.hscale-ruler {
-  position: relative;
-  flex: 1;
-  height: 16px;
-  min-width: 0;
-}
-
-.hscale-ruler span {
-  position: absolute;
-  top: 0;
-  white-space: nowrap;
-}
-
-.hscale-ruler .t0 {
-  left: 0;
-}
-
-.hscale-ruler .t1 {
-  left: 50%;
-  transform: translateX(-50%);
-}
-
-.hscale-ruler .t2 {
-  right: 0;
-}
-
-.hscale::after {
-  content: '';
-  flex: 0 0 calc(64px + 14px + 62px);
-}
-
-/* the unchecked service keeps the grid: a dashed empty track and a filled button say "needs a press" */
-.hrow.is-unchecked .hstat {
-  background: var(--ui-accent-soft);
-  color: var(--ui-accent);
-}
-
-.hrow.is-unchecked .lat-bar {
-  height: 28px;
-  background: none;
-  box-shadow: inset 0 0 0 1.5px var(--ui-fill-strong);
-}
-
-.hrow.is-unchecked .lat-bar em {
-  line-height: 28px;
-}
-
-.hnote-ico {
-  display: grid;
-  flex: none;
-  place-items: center;
-  width: 22px;
-  height: 22px;
-  color: var(--ui-muted);
-}
-
-.hnote-ico svg {
-  width: 18px;
-  height: 18px;
-}
-
-.hrow .ui-row-sub {
-  white-space: normal;
-}
-
-.hrow .ui-row-main {
-  flex: 0 0 230px;
 }
 
 @media (max-width: 1024px) {
-  .hscale {
-    display: none;
-  }
-
-  .hrow .ui-row-main {
-    flex: 1 1 200px;
-  }
-
   .hl {
-    grid-template-columns: minmax(0, 1fr);
-    padding: 22px 24px;
-  }
-
-  .hl-fact {
-    padding: 4px 16px;
+    grid-template-columns: minmax(260px, 340px) minmax(0, 1fr);
+    gap: 20px 28px;
+    padding: 24px;
   }
 }
 
+/* phone: the radar first, then the verdict, then the rows */
 @media (max-width: 768px) {
   .hl {
-    padding: 20px;
+    grid-template-columns: minmax(0, 1fr);
+    padding: 20px 18px;
+  }
+
+  .radar {
+    width: min(100%, 340px);
+    margin: 0 auto;
   }
 
   .hl-big {
-    font-size: 40px;
+    font-size: 32px;
+  }
+
+  .hl-fact {
+    padding: 0 10px;
   }
 
   .hl-fact-v {
-    font-size: 24px;
+    font-size: 22px;
   }
 
   .row-at {
     display: none;
   }
 
-  /* the bar sits under the row text, aligned with it (the 30px tile and the gap come first) */
-  .lat-bar {
-    order: 9;
-    flex: 1 0 calc(100% - 44px);
-    width: auto;
-    height: 8px;
-    margin: -4px 0 0 44px;
-  }
-
-  .lat-bar:empty {
-    display: none;
-  }
-
-  .hnote {
-    margin: 6px 10px 10px;
-    padding: 12px 14px;
-  }
-
-  .lat-n {
-    width: auto;
-  }
-
   .hrow {
     flex-wrap: wrap;
-  }
-
-  .hrow .ui-row-main {
-    flex-basis: 150px;
-  }
-
-  .hrow {
-    gap: 12px;
-    padding: 14px 18px;
+    row-gap: 4px;
   }
 
   .hrow .ui-pill {
     width: auto;
+  }
+
+  .lat-n {
+    min-width: 0;
   }
 }
 </style>
