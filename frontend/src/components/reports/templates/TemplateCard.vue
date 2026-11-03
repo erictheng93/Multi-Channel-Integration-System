@@ -116,12 +116,12 @@ const figure = computed(() => {
 .tpl-row {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
-  gap: 16px;
+  gap: 14px;
   align-items: center;
   width: 100%;
-  padding: 16px 20px;
+  padding: 14px 16px;
   border: 0;
-  border-radius: var(--ui-r-group);
+  border-radius: var(--ui-r-inner);
   background: var(--ui-surface);
   color: var(--ui-ink);
   font: inherit;
@@ -147,8 +147,8 @@ const figure = computed(() => {
 /* a sheet of paper, portrait, with the template's own mini chart */
 .tpl-paper {
   display: grid;
-  width: 56px;
-  height: 68px;
+  width: 48px;
+  height: 58px;
   place-items: center;
   border-radius: 8px;
   background: var(--ui-surface);
@@ -156,8 +156,8 @@ const figure = computed(() => {
 }
 
 .tpl-paper svg {
-  width: 44px;
-  height: 44px;
+  width: 38px;
+  height: 38px;
 }
 
 .tpl-paper circle {
@@ -225,30 +225,27 @@ const figure = computed(() => {
   box-shadow: inset 0 0 0 6px var(--ui-accent);
 }
 
+/* phone: a two-way switch, name + figure under a small paper */
 @media (max-width: 768px) {
   .tpl-row {
     grid-template-columns: auto minmax(0, 1fr);
     gap: 10px;
-    padding: 12px;
+    padding: 10px 12px;
   }
 
   .tpl-paper {
-    width: 40px;
-    height: 48px;
+    width: 34px;
+    height: 42px;
   }
 
   .tpl-paper svg {
-    width: 30px;
-    height: 30px;
+    width: 26px;
+    height: 26px;
   }
 
   .tpl-row .radio,
   .tpl-desc {
     display: none;
-  }
-
-  .tpl-fig {
-    font-size: 13px;
   }
 
   .tpl-name {

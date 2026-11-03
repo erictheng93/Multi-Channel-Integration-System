@@ -1,4 +1,4 @@
-<!-- 報表模板：only templates the backend can generate. Signature: the chosen template is drawn as a report sheet, its contents as a numbered outline filled with the real figures of the latest report -->
+<!-- 報表模板：only templates the backend can generate. One workbench: the picker and generation settings on a tinted side, the chosen template drawn as a report sheet (real figures of the latest report) beside it, earlier outputs and the actions under the picker -->
 
 <template>
   <div class="ui-page report-templates ui-rise">
@@ -34,33 +34,33 @@
 
     <div
       v-else-if="selected"
-      class="tpl-grid"
+      class="ui-lead wb"
     >
-      <div
-        class="tpl-list"
-        role="radiogroup"
-        aria-label="現成模板"
+      <section
+        class="wb-pick"
+        aria-label="選擇模板"
       >
-        <TemplateCard
-          v-for="template in usableTemplates"
-          :key="template.name"
-          :template="template"
-          :selected="selected.name === template.name"
-          :state="states[template.type] ?? null"
-          @select="onSelect"
-        />
-      </div>
+        <h2 class="tpl-cap">
+          現成模板
+        </h2>
+        <div
+          class="tpl-list"
+          role="radiogroup"
+          aria-label="現成模板"
+        >
+          <TemplateCard
+            v-for="template in usableTemplates"
+            :key="template.name"
+            :template="template"
+            :selected="selected.name === template.name"
+            :state="states[template.type] ?? null"
+            @select="onSelect"
+          />
+        </div>
 
-      <ReportSheet
-        :template="selected"
-        :state="latestState"
-        :loading="latestLoading"
-      />
-
-      <aside
-        class="ui-card tpl-rail"
-        aria-label="產生設定"
-      >
+        <h2 class="tpl-cap tpl-cap-spec">
+          產生設定
+        </h2>
         <dl class="tpl-props">
           <div
             v-for="prop in docProps"
@@ -70,43 +70,27 @@
             <dd>{{ prop.v }}</dd>
           </div>
         </dl>
+      </section>
 
-        <section
-          class="tpl-hist"
-          aria-label="報表內容"
-        >
-          <h3 class="tpl-cap">
-            報表內容
-          </h3>
-          <ul class="tpl-inc">
-            <li
-              v-for="item in contents"
-              :key="item.label"
-            >
-              <svg
-                viewBox="0 0 16 16"
-                aria-hidden="true"
-              ><path
-                d="M3.5 8.5l3 3 6-7"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              /></svg>
-              <span><b>{{ item.label }}</b><small>{{ item.hint }}</small></span>
-            </li>
-          </ul>
-        </section>
+      <ReportSheet
+        class="wb-main"
+        :template="selected"
+        :state="latestState"
+        :loading="latestLoading"
+        :contents="contents"
+      />
 
-        <section
+      <section
+        class="wb-meta"
+        aria-label="產出與操作"
+      >
+        <div
           v-if="earlier.length"
           class="tpl-hist"
-          aria-label="更早的產出"
         >
-          <h3 class="tpl-cap">
+          <h2 class="tpl-cap">
             更早的產出
-          </h3>
+          </h2>
           <ul>
             <li
               v-for="item in earlier"
@@ -125,7 +109,7 @@
               </router-link>
             </li>
           </ul>
-        </section>
+        </div>
 
         <div class="tpl-actions">
           <button
@@ -144,7 +128,7 @@
             {{ generating ? '產生中...' : '直接產生' }}
           </button>
         </div>
-      </aside>
+      </section>
     </div>
 
     <UiActionBar
@@ -279,50 +263,78 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.tpl-grid {
+/* one workbench: picker + settings on a tinted side, the report sheet beside it, earlier outputs and actions under the picker */
+.wb {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 360px;
-  gap: 16px;
-  align-items: stretch;
+  grid-template-columns: 340px minmax(0, 1fr);
+  grid-template-areas:
+    'pick main'
+    'meta main';
+  grid-template-rows: auto 1fr;
+  overflow: hidden;
+}
+
+.wb-pick,
+.wb-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: var(--ui-surface-2);
+}
+
+.wb-pick {
+  grid-area: pick;
+  padding: 24px 24px 20px;
+}
+
+.wb-meta {
+  grid-area: meta;
+  gap: 20px;
+  padding: 4px 24px 24px;
+}
+
+.wb-main {
+  grid-area: main;
 }
 
 .tpl-list {
   display: grid;
-  grid-column: 1 / -1;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
+  gap: 10px;
 }
 
-/* the rail beside the sheet: how it will be generated, where the figures come from, what came before, then the actions */
-.tpl-rail {
-  display: flex;
-  flex-direction: column;
-  gap: 26px;
-  padding: 24px;
+.tpl-cap {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ui-ink-2);
+}
+
+.tpl-cap-spec {
+  margin-top: 10px;
 }
 
 .tpl-props {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
   margin: 0;
-  overflow: hidden;
+  padding: 0 16px;
   border-radius: var(--ui-r-inner);
-  background: var(--ui-surface-2);
+  background: var(--ui-surface);
 }
 
 .tpl-props div {
   display: flex;
-  flex-direction: column-reverse;
-  gap: 2px;
-  padding: 12px 14px;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 0;
 }
 
 .tpl-props div + div {
-  box-shadow: inset 0.5px 0 0 var(--ui-sep);
+  box-shadow: 0 -0.5px 0 var(--ui-sep);
 }
 
 .tpl-props dt {
-  font-size: 13px;
+  font-size: 14px;
   color: var(--ui-ink-2);
 }
 
@@ -337,67 +349,17 @@ onMounted(() => {
   color: var(--ui-accent-ink, var(--ui-accent));
 }
 
-.tpl-inc {
-  display: grid;
-  gap: 12px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.tpl-inc li {
-  display: grid;
-  grid-template-columns: 18px minmax(0, 1fr);
-  gap: 10px;
-  align-items: start;
-}
-
-.tpl-inc svg {
-  width: 18px;
-  height: 18px;
-  margin-top: 2px;
-  color: var(--ui-green-ink);
-}
-
-.tpl-inc span {
-  display: grid;
-  gap: 1px;
-}
-
-.tpl-inc b {
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--ui-ink);
-}
-
-.tpl-inc small {
-  font-size: 13px;
-  color: var(--ui-muted);
-}
-
-.tpl-actions {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-  margin-top: auto;
-}
-
 .tpl-hist {
   display: grid;
-  gap: 10px;
-}
-
-.tpl-cap {
-  margin: 0;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--ui-ink-2);
+  gap: 8px;
 }
 
 .tpl-hist ul {
   display: grid;
   margin: 0;
-  padding: 0;
+  padding: 0 16px;
+  border-radius: var(--ui-r-inner);
+  background: var(--ui-surface);
   list-style: none;
 }
 
@@ -440,6 +402,13 @@ onMounted(() => {
   color: var(--ui-accent);
 }
 
+.tpl-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: auto;
+}
+
 .tpl-bar {
   display: none;
 }
@@ -453,27 +422,81 @@ onMounted(() => {
 }
 
 @media (max-width: 1024px) {
-  .tpl-grid {
+  .wb {
     grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      'pick'
+      'main'
+      'meta';
+    grid-template-rows: none;
+  }
+
+  .wb-meta {
+    padding-top: 20px;
   }
 }
 
+/* phone: switch template, read the sheet, glance at earlier outputs; the actions live in the pinned bar */
 @media (max-width: 768px) {
-  .tpl-grid {
+  .wb {
+    display: flex;
+    flex-direction: column;
     gap: 12px;
+    overflow: visible;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
   }
 
-  .tpl-list {
+  .wb-pick,
+  .wb-meta {
+    padding: 0;
+    background: transparent;
+  }
+
+  .wb-pick {
     gap: 10px;
   }
 
-  .tpl-rail {
-    gap: 16px;
-    padding: 18px;
+  .wb-pick > .tpl-cap {
+    display: none;
   }
 
-  .tpl-hist[aria-label="報表內容"] {
+  .tpl-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  /* the settings become one line */
+  .tpl-cap-spec {
     display: none;
+  }
+
+  .tpl-props {
+    display: flex;
+    padding: 10px 4px;
+  }
+
+  .tpl-props div {
+    flex: 1;
+    flex-direction: column-reverse;
+    gap: 1px;
+    padding: 0 4px;
+    text-align: center;
+  }
+
+  .tpl-props div + div {
+    box-shadow: inset 0.5px 0 0 var(--ui-sep);
+  }
+
+  .tpl-props dd {
+    font-size: 14px;
+  }
+
+  .wb-main {
+    border-radius: var(--ui-r-lead);
+    background: var(--ui-surface);
+    box-shadow: var(--ui-shadow-card);
   }
 
   .tpl-actions {
