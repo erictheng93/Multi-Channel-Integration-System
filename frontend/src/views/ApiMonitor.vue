@@ -60,6 +60,7 @@
             :endpoints="controller.filteredApis.value"
             :expanded-card="controller.expandedCard.value"
             :total="controller.endpoints.value.length"
+            :scale-ms="latencyScale"
             @toggle-card="controller.toggleCard"
           />
         </div>
@@ -105,6 +106,9 @@ const statusCounts = computed(() => {
     error: endpoints.filter(e => e.status === 'error').length,
   }
 })
+
+/** One latency scale for every row band: the slowest P95, never below the 500 ms alarm line */
+const latencyScale = computed(() => Math.max(500, ...controller.endpoints.value.map(e => e.responseTime)))
 
 const LEAD_LABEL = { operational: '運作正常', degraded: '部分降級', outage: '服務中斷' } as const
 const LEAD_TONE = { operational: 'good', degraded: 'warn', outage: 'bad' } as const

@@ -42,6 +42,16 @@
         <span class="sr-l">成功率 </span>{{ endpoint.successRate }}%<span class="sr-n"> 成功 · {{ endpoint.requestCount.toLocaleString() }} 次/時</span>
       </div>
 
+      <span
+        v-if="scaleMs"
+        class="range"
+        :class="endpoint.status"
+        role="img"
+        :aria-label="`P50 ${endpoint.p50ResponseTime} 毫秒至 P95 ${endpoint.responseTime} 毫秒`"
+      >
+        <i :style="rangeStyle" />
+      </span>
+
       <span class="m m-p95"><span class="m-k">P95 </span>{{ latency.value }}<small>{{ latency.unit }}</small></span>
       <span
         class="m m-rate hide-m"
@@ -78,6 +88,8 @@ import EndpointDetailPanel from './EndpointDetailPanel.vue'
 const props = defineProps<{
   endpoint: ApiEndpoint
   expanded: boolean
+  /** Shared right-hand end of the latency band, ms (the slowest P95 across all endpoints) */
+  scaleMs?: number
 }>()
 
 defineEmits<{
@@ -95,6 +107,16 @@ const pathSegments = computed(() => {
 const latency = computed(() => {
   const ms = props.endpoint.responseTime
   return ms >= 1000 ? { value: (ms / 1000).toFixed(2), unit: 's' } : { value: String(Math.round(ms)), unit: 'ms' }
+})
+
+/** The band runs from P50 to P95 on one scale for every row, so rows compare by eye */
+const rangeStyle = computed(() => {
+  const max = props.scaleMs || 1
+  const lo = Math.min(props.endpoint.p50ResponseTime, props.endpoint.responseTime)
+  const hi = props.endpoint.responseTime
+  const left = Math.min(98, (lo / max) * 100)
+  const width = Math.max(2, Math.min(100 - left, ((hi - lo) / max) * 100))
+  return { left: `${left}%`, width: `${width}%` }
 })
 
 const statusText = computed(() => {
@@ -139,6 +161,41 @@ const successClass = computed(() => {
 
 .m-k {
   display: none;
+}
+
+.range {
+  display: none;
+}
+
+@media (min-width: 1281px) {
+  .ep.has-range,
+  .ep:has(.range) {
+    grid-template-columns: 52px 290px minmax(0, 1fr) 150px 90px 90px 110px 16px;
+  }
+
+  .range {
+    position: relative;
+    display: block;
+    height: 8px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--ui-fill) 55%, transparent);
+  }
+
+  .range i {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--ui-accent) 38%, var(--ui-surface));
+  }
+
+  .range.warning i {
+    background: color-mix(in srgb, var(--ui-orange) 50%, var(--ui-surface));
+  }
+
+  .range.error i {
+    background: color-mix(in srgb, var(--ui-red) 45%, var(--ui-surface));
+  }
 }
 
 @media (min-width: 1025px) {

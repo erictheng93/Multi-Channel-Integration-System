@@ -36,7 +36,7 @@
         >
           <figcaption>
             <span>端點 P95 回應時間</span>
-            <span>{{ ceiling.label }} 為滿格</span>
+            <span>每條共用同一刻度</span>
           </figcaption>
           <ol>
             <li
@@ -55,9 +55,26 @@
               </span>
             </li>
           </ol>
-          <p class="p95-note">
-            <span v-if="ceiling.mark !== null"><u />500 ms 警戒線</span>
-            <span v-if="avgMs">平均回應 {{ avgMs }} ms</span>
+          <div
+            v-if="ceiling.mark !== null"
+            class="p95-axis"
+            aria-hidden="true"
+          >
+            <span class="ax-0">0</span>
+            <span
+              class="ax-mark"
+              :style="{ left: ceiling.mark }"
+            >500 ms 警戒線</span>
+            <span
+              v-if="ceiling.showTop"
+              class="ax-top"
+            >{{ ceiling.label }}</span>
+          </div>
+          <p
+            v-if="avgMs"
+            class="p95-note"
+          >
+            <span>全部端點平均回應 {{ avgMs }} ms</span>
           </p>
         </figure>
       </div>
@@ -261,6 +278,8 @@ const top = computed(() => Math.max(WARN_MS, ...source.value.map(e => e.response
 const ceiling = computed(() => ({
   label: fmtMs(top.value),
   mark: top.value > WARN_MS ? `${(WARN_MS / top.value) * 100}%` : null,
+  // the right-hand end label would collide with the warning label when the line sits near the end
+  showTop: top.value > WARN_MS * 1.5,
 }))
 const rows = computed(() =>
   source.value.map(e => ({
@@ -284,15 +303,19 @@ const aria = computed(() => `端點 P95 回應時間：${rows.value.map(r => `${
 .topo {
   display: grid;
   grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
-  gap: 0 40px;
+  gap: 0 36px;
   align-items: stretch;
 }
 
+/* the lists sit on one soft panel instead of beside a hairline */
 .side {
   display: grid;
   align-content: start;
-  gap: 18px;
+  gap: 16px;
   min-width: 0;
+  padding: 18px 22px 8px;
+  border-radius: 22px;
+  background: color-mix(in srgb, var(--ui-fill) 42%, var(--ui-surface));
 }
 
 .col {
@@ -401,8 +424,7 @@ const aria = computed(() => `端點 P95 回應時間：${rows.value.map(r => `${
   display: flex;
   flex-direction: column;
   min-width: 0;
-  padding: 0 40px 0 0;
-  border-inline-end: 0.5px solid var(--ui-sep);
+  padding: 0;
 }
 
 .core-kicker {
@@ -509,17 +531,36 @@ const aria = computed(() => `端點 P95 回應時間：${rows.value.map(r => `${
 .p95-track {
   position: relative;
   grid-column: 1 / -1;
-  height: 8px;
+  height: 10px;
   border-radius: 999px;
   background: color-mix(in srgb, var(--ui-fill) 55%, transparent);
 }
+
+/* shared axis under the bars: where zero is, where the 500 ms line sits, where the full bar ends */
+.p95-axis {
+  position: relative;
+  height: 18px;
+  margin-top: -2px;
+  font-size: 13px;
+  color: var(--ui-ink-2);
+}
+
+.p95-axis span {
+  position: absolute;
+  top: 0;
+  white-space: nowrap;
+}
+
+.ax-0 { left: 0; }
+.ax-top { right: 0; }
+.ax-mark { transform: translateX(-50%); }
 
 /* state colour stays, softened: a slow endpoint reads as a longer bar, not a siren */
 .p95-track i {
   display: block;
   height: 100%;
   border-radius: inherit;
-  background: color-mix(in srgb, var(--c) 68%, var(--ui-surface));
+  background: color-mix(in srgb, var(--c) 52%, var(--ui-surface));
 }
 
 .p95-track u {
@@ -542,16 +583,7 @@ const aria = computed(() => `端點 P95 回應時間：${rows.value.map(r => `${
   flex-wrap: wrap;
   justify-content: flex-start;
   gap: 4px 20px;
-}
-
-.p95-note u {
-  display: inline-block;
-  width: 2px;
-  height: 12px;
-  margin-right: 6px;
-  border-radius: 1px;
-  background: var(--ui-ink-2);
-  vertical-align: -2px;
+  color: var(--ui-ink-2);
 }
 
 /* ---- events ---- */
@@ -587,7 +619,7 @@ const aria = computed(() => `端點 P95 回應時間：${rows.value.map(r => `${
   align-items: center;
   padding: 10px 14px 12px;
   border-radius: 14px;
-  background: var(--ui-fill);
+  background: color-mix(in srgb, var(--c) 9%, var(--ui-surface));
   font-size: 14px;
   line-height: 1.4;
 }
@@ -624,9 +656,6 @@ const aria = computed(() => `端點 P95 回應時間：${rows.value.map(r => `${
     gap: 0 28px;
   }
 
-  .core {
-    padding-right: 28px;
-  }
 }
 
 @media (max-width: 1024px) {
@@ -645,11 +674,6 @@ const aria = computed(() => `端點 P95 回應時間：${rows.value.map(r => `${
     gap: 28px;
   }
 
-  .core {
-    padding: 0;
-    border: 0;
-  }
-
   .events ul {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -665,9 +689,38 @@ const aria = computed(() => `端點 P95 回應時間：${rows.value.map(r => `${
     font-size: 34px;
   }
 
+  /* phone order: verdict and bars, then what just happened, then the lists */
+  .topo {
+    display: contents;
+  }
+
+  .core { order: 1; }
+  .events { order: 2; }
+  .side { order: 3; }
+
   .side {
     grid-template-columns: minmax(0, 1fr);
     gap: 14px;
+    padding: 14px 14px 6px;
+    border-radius: 18px;
+  }
+
+  /* the three backend services fit one row of tiles */
+  .col-out .nodes {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .col-out .node {
+    flex-direction: column;
+    gap: 6px;
+    align-items: flex-start;
+    padding: 10px 0 8px;
+  }
+
+  .col-out .node-main small {
+    white-space: nowrap;
   }
 
   /* phone: events are flat rows, not three grey blocks */

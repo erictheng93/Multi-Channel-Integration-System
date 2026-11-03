@@ -53,17 +53,20 @@
     <!-- Signature: how much of each kind's retention window is in use. Every bar is that kind's own
          window (full width = how long it is kept, today on the right); the colour reaches back as far as
          the oldest file stored. -->
-    <div
+    <details
       v-if="lanes.length > 0"
       class="hero-lanes"
+      :open="lanesOpen"
+      @toggle="lanesOpen = ($event.target as HTMLDetailsElement).open"
     >
-      <div class="lanes-head">
+      <summary class="lanes-head">
         <h2>保留期間</h2>
-        <span>每條以該類型的保留天數為滿格；<i
+        <span class="lanes-fold">{{ lanes.length }} 類</span>
+        <span class="lanes-key">每條以該類型的保留天數為滿格；<i
           class="lg-dot"
           aria-hidden="true"
         />一份備份，細線為已涵蓋的期間</span>
-      </div>
+      </summary>
       <div
         class="lanes"
         role="img"
@@ -106,12 +109,12 @@
           <span>今天</span>
         </div>
       </div>
-    </div>
+    </details>
   </article>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import type { BackupItem, BackupPolicy } from '@/api/backup'
 
 const props = defineProps<{
@@ -123,6 +126,9 @@ const props = defineProps<{
   items: BackupItem[]
   policy: BackupPolicy | null
 }>()
+
+/** The retention chart is open on desktop and folded on a phone, where the backup action comes first */
+const lanesOpen = ref(typeof window === 'undefined' || typeof window.matchMedia !== 'function' || !window.matchMedia('(max-width: 768px)').matches)
 
 const DAY = 24 * 3600 * 1000
 const TAIPEI = 'Asia/Taipei'
@@ -297,9 +303,23 @@ const aria = computed(() =>
   font-weight: 600;
 }
 
+.lanes-head {
+  cursor: default;
+  list-style: none;
+  pointer-events: none;
+}
+
+.lanes-head::-webkit-details-marker {
+  display: none;
+}
+
 .lanes-head span {
   font-size: 13px;
-  color: var(--ui-muted);
+  color: var(--ui-ink-2);
+}
+
+.lanes-fold {
+  display: none;
 }
 
 .lanes {
@@ -343,15 +363,15 @@ const aria = computed(() =>
 
 .lane-track {
   position: relative;
-  height: 36px;
-  border-radius: 12px;
+  height: 40px;
+  border-radius: 13px;
   background: var(--ui-fill);
 }
 
 /* the stretch from the oldest stored file to today */
 .lane-in {
   position: absolute;
-  inset: 0 14px;
+  inset: 0 16px;
 }
 
 .lane-span {
@@ -367,9 +387,9 @@ const aria = computed(() =>
 .lane-dot {
   position: absolute;
   top: 50%;
-  width: 10px;
-  height: 10px;
-  margin: -5px -5px 0 0;
+  width: 13px;
+  height: 13px;
+  margin: -6.5px -6.5px 0 0;
   border-radius: 50%;
   background: var(--lane);
   box-shadow: 0 0 0 2px var(--ui-fill);
@@ -377,8 +397,8 @@ const aria = computed(() =>
 
 .lanes-head .lg-dot {
   display: inline-block;
-  width: 9px;
-  height: 9px;
+  width: 11px;
+  height: 11px;
   margin: 0 4px 0 2px;
   border-radius: 50%;
   background: var(--ui-ink-2);
@@ -410,6 +430,10 @@ const aria = computed(() =>
   .hero-actions {
     padding-top: 16px;
   }
+
+  .lanes-head {
+    pointer-events: auto;
+  }
 }
 
 @media (max-width: 768px) {
@@ -426,6 +450,44 @@ const aria = computed(() =>
   .hero-actions :deep(.lead-act),
   .hero-actions :deep(.btn) {
     width: 100%;
+  }
+
+  .lanes-head {
+    position: relative;
+    cursor: pointer;
+    padding: 12px 0 4px;
+    border-top: 0.5px solid var(--ui-sep);
+  }
+
+  .lanes-key {
+    flex-basis: 100%;
+    order: 3;
+  }
+
+  .hero-lanes:not([open]) .lanes-key {
+    display: none;
+  }
+
+  .lanes-fold {
+    display: inline;
+    margin-left: auto;
+  }
+
+  .lanes-head h2 {
+    flex: 1;
+  }
+
+  .lanes-head::after {
+    width: 8px;
+    height: 8px;
+    border-right: 2px solid var(--ui-muted);
+    border-bottom: 2px solid var(--ui-muted);
+    content: '';
+    transform: rotate(45deg) translateY(-2px);
+  }
+
+  .hero-lanes[open] .lanes-head::after {
+    transform: rotate(-135deg);
   }
 
   .lanes {
