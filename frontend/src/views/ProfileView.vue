@@ -13,447 +13,434 @@
         subtitle="修改顯示名稱與密碼，其餘由管理員管理"
       />
 
-      <div class="profile-stack">
-        <div class="profile-cols">
-          <div class="profile-col profile-col-pass">
-            <!-- The pass: who is signed in, what they can do in each team, and how long the session lasts -->
-            <section
-              class="o-pass"
-              aria-labelledby="pass-title"
+      <!-- The pass: who is signed in, what they can do in each team, and how long the session lasts -->
+      <article
+        class="pass"
+        aria-label="我的帳號"
+      >
+        <section class="pz pz-id">
+          <div class="avatar">
+            {{ initial }}
+          </div>
+          <div class="identity-text">
+            <div class="identity-name">
+              {{ profile.displayName || '—' }}
+            </div>
+            <div class="identity-sub">
+              {{ identitySub }}
+            </div>
+            <span class="pass-role">{{ roleLabel }}</span>
+          </div>
+        </section>
+
+        <section
+          class="pz pz-roles"
+          data-testid="admin-managed"
+          aria-labelledby="access-title"
+        >
+          <h2
+            id="access-title"
+            class="pass-k"
+          >
+            各團隊中的角色<small>由管理員設定</small>
+          </h2>
+          <ul class="ladders">
+            <li
+              v-for="row in teamRows"
+              :key="row.id"
+              class="ladder"
             >
-              <h2
-                id="pass-title"
-                class="ui-group-label"
-              >
-                我的帳號
-              </h2>
-              <article
-                class="pass"
-              >
-                <header class="pass-band">
-                  <div class="avatar">
-                    {{ initial }}
-                  </div>
-                  <div class="identity-text">
-                    <div class="identity-name">
-                      {{ profile.displayName || '—' }}
-                    </div>
-                    <div class="identity-sub">
-                      {{ identitySub }}
-                    </div>
-                  </div>
-                  <span class="pass-role">{{ roleLabel }}</span>
-                </header>
-
-                <section
-                  class="pass-access"
-                  data-testid="admin-managed"
-                  aria-labelledby="access-title"
-                >
-                  <h2
-                    id="access-title"
-                    class="pass-k"
-                  >
-                    各團隊中的角色<small>由管理員設定</small>
-                  </h2>
-                  <ul class="ladders">
-                    <li
-                      v-for="row in teamRows"
-                      :key="row.id"
-                      class="ladder"
-                    >
-                      <div class="ladder-head">
-                        <span class="team-name">{{ row.name }}<em v-if="row.isPrimary">主要</em></span>
-                        <span class="team-role">{{ row.role }}</span>
-                      </div>
-                      <ol
-                        v-if="row.rank >= 0"
-                        class="rungs"
-                        :aria-label="`${row.name}：${row.role}`"
-                      >
-                        <li
-                          v-for="(label, i) in ROLE_STEPS"
-                          :key="label"
-                          :class="{ 'is-passed': i < row.rank, 'is-here': i === row.rank }"
-                        >
-                          <span
-                            class="rung-dot"
-                            aria-hidden="true"
-                          />
-                          <span class="rung-label">{{ label }}</span>
-                        </li>
-                      </ol>
-                    </li>
-                    <li
-                      v-if="!teamRows.length"
-                      class="ladder-empty"
-                    >
-                      尚未加入任何團隊
-                    </li>
-                  </ul>
-                </section>
-
-                <footer
-                  id="session"
-                  class="pass-session"
-                >
-                  <div class="session-text">
-                    <span class="session-k">登入有效至</span>
-                    <span class="session-v">{{ sessionParts.time }}</span>
-                    <span class="session-s">{{ sessionParts.date }}</span>
-                  </div>
-                  <button
-                    type="button"
-                    class="btn btn-secondary session-out"
-                    @click="onSignOut"
-                  >
-                    登出這個瀏覽器
-                  </button>
-                </footer>
-              </article>
-            </section>
-
-            <!-- 通知偏好 — the settings already live on the notifications page; this is one status row -->
-            <section
-              id="notification-prefs"
-              class="o-notify"
-              aria-labelledby="prefs-title"
-            >
-              <h2
-                id="prefs-title"
-                class="ui-group-label"
-              >
-                通知偏好
-              </h2>
-              <div class="ui-group notify-card">
-                <div
-                  class="notify-head"
-                  data-testid="device-notify"
-                >
-                  <span
-                    class="notify-ico"
-                    aria-hidden="true"
-                  >
-                    <svg
-                      viewBox="0 0 24 24"
-                      class="ico"
-                    ><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" /><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" /></svg>
-                  </span>
-                  <div class="notify-main">
-                    <div class="row-label-strong">
-                      這台裝置的桌面通知
-                    </div>
-                    <p class="notify-hint">
-                      {{ devicePerm.hint }}
-                    </p>
-                  </div>
-                  <span
-                    class="ui-pill ui-pill-dot"
-                    :class="devicePerm.tone === 'on' ? 'ui-pill-green' : ''"
-                  >{{ devicePerm.label }}</span>
-                </div>
-                <RouterLink
-                  class="notify-link"
-                  :to="{ path: '/notifications', query: { settings: '1' } }"
-                >
-                  通知類型與提醒方式
-                  <svg
-                    class="ico"
-                    viewBox="0 0 24 24"
-                    aria-hidden="true"
-                  ><path d="m9 6 6 6-6 6" /></svg>
-                </RouterLink>
+              <div class="ladder-head">
+                <span class="team-name">{{ row.name }}<em v-if="row.isPrimary">主要</em></span>
+                <span class="team-role">{{ row.role }}</span>
               </div>
-            </section>
-          </div>
-          <div class="profile-col">
-            <!-- 基本資料 -->
-            <section
-              id="basic"
-              class="o-basic"
-              aria-labelledby="basic-title"
+              <ol
+                v-if="row.rank >= 0"
+                class="rungs"
+                :aria-label="`${row.name}：${row.role}`"
+              >
+                <li
+                  v-for="(label, i) in ROLE_STEPS"
+                  :key="label"
+                  :class="{ 'is-passed': i < row.rank, 'is-here': i === row.rank }"
+                >
+                  <span
+                    class="rung-dot"
+                    aria-hidden="true"
+                  />
+                  <span class="rung-label">{{ label }}</span>
+                </li>
+              </ol>
+            </li>
+            <li
+              v-if="!teamRows.length"
+              class="ladder-empty"
             >
-              <h2
-                id="basic-title"
-                class="ui-group-label"
-              >
-                基本資料
-              </h2>
-              <form
-                class="ui-group name-card"
-                @submit.prevent="onSaveProfile"
-              >
-                <div class="form-row">
-                  <label
-                    class="row-label"
-                    for="display-name"
-                  >顯示名稱</label>
-                  <div class="name-line">
-                    <div class="row-control">
-                      <input
-                        id="display-name"
-                        v-model.trim="profile.displayName"
-                        type="text"
-                        maxlength="50"
-                        class="ui-input"
-                        :class="{ 'is-invalid': profileErrors.displayName }"
-                        autocomplete="name"
-                        aria-required="true"
-                        :aria-describedby="profileErrors.displayName ? 'display-name-error' : 'display-name-hint'"
-                        :disabled="profileSaving"
-                      >
-                      <span
-                        v-if="profileErrors.displayName"
-                        id="display-name-error"
-                        class="form-error"
-                      >
-                        {{ profileErrors.displayName }}
-                      </span>
-                    </div>
-                    <div
-                      class="save-slot"
-                      :class="{ 'is-open': profileChanged || profileSaving }"
-                      :inert="!(profileChanged || profileSaving)"
+              尚未加入任何團隊
+            </li>
+          </ul>
+        </section>
+
+        <footer
+          id="session"
+          class="pz pz-session"
+        >
+          <div class="session-text">
+            <span class="session-k">登入有效至</span>
+            <span class="session-v">{{ sessionParts.time }}</span>
+            <span class="session-s">{{ sessionParts.date }}</span>
+          </div>
+          <button
+            type="button"
+            class="btn btn-secondary session-out"
+            @click="onSignOut"
+          >
+            登出這個瀏覽器
+          </button>
+        </footer>
+      </article>
+
+      <div class="profile-cols">
+        <div class="profile-col">
+          <!-- 基本資料 -->
+          <section
+            id="basic"
+            class="o-basic"
+            aria-labelledby="basic-title"
+          >
+            <h2
+              id="basic-title"
+              class="ui-group-label"
+            >
+              基本資料
+            </h2>
+            <form
+              class="ui-group name-card"
+              @submit.prevent="onSaveProfile"
+            >
+              <div class="form-row">
+                <label
+                  class="row-label"
+                  for="display-name"
+                >顯示名稱</label>
+                <div class="name-line">
+                  <div class="row-control">
+                    <input
+                      id="display-name"
+                      v-model.trim="profile.displayName"
+                      type="text"
+                      maxlength="50"
+                      class="ui-input"
+                      :class="{ 'is-invalid': profileErrors.displayName }"
+                      autocomplete="name"
+                      aria-required="true"
+                      :aria-describedby="profileErrors.displayName ? 'display-name-error' : 'display-name-hint'"
+                      :disabled="profileSaving"
                     >
-                      <button
-                        type="button"
-                        class="btn btn-ghost"
-                        :disabled="profileSaving"
-                        @click="resetProfile"
-                      >
-                        重設
-                      </button>
-                      <button
-                        type="submit"
-                        class="btn btn-primary"
-                        :disabled="profileSaving"
-                      >
-                        {{ profileSaving ? '儲存中…' : '儲存' }}
-                      </button>
-                    </div>
-                  </div>
-                  <p
-                    id="display-name-hint"
-                    class="field-hint"
-                  >
-                    會出現在你送出的訊息署名 · {{ profile.displayName.length }} / 50
-                  </p>
-                  <div class="sign-preview">
-                    <span class="sign-k">客戶看到的署名</span>
-                    <span class="sign-v">{{ profile.displayName || '—' }}</span>
-                  </div>
-                </div>
-              </form>
-            </section>
-
-            <!-- 安全性 -->
-            <section
-              id="security"
-              class="o-security"
-              aria-labelledby="security-title"
-            >
-              <h2
-                id="security-title"
-                class="ui-group-label"
-              >
-                修改密碼
-                <button
-                  type="button"
-                  class="pw-fold"
-                  :aria-expanded="pwOpen"
-                  aria-controls="pw-form"
-                  @click="pwOpen = !pwOpen"
-                >
-                  {{ pwOpen ? '收合' : '展開' }}
-                </button>
-              </h2>
-              <form
-                v-show="pwOpen"
-                id="pw-form"
-                class="ui-group pw-card"
-                @submit.prevent="onChangePassword"
-              >
-                <div class="pw-grid">
-                  <div class="form-cell">
-                    <label
-                      class="row-label"
-                      for="current-password"
-                    >目前密碼</label>
-                    <div class="row-control">
-                      <div class="pw">
-                        <input
-                          id="current-password"
-                          v-model="passwordForm.currentPassword"
-                          :type="show.current ? 'text' : 'password'"
-                          class="ui-input"
-                          :class="{ 'is-invalid': passwordErrors.currentPassword }"
-                          placeholder="輸入目前的密碼"
-                          autocomplete="current-password"
-                          aria-required="true"
-                          :disabled="passwordSaving"
-                        >
-                        <button
-                          type="button"
-                          class="pw-toggle"
-                          :aria-label="show.current ? '隱藏密碼' : '顯示密碼'"
-                          @click="show.current = !show.current"
-                        >
-                          <svg
-                            class="ico"
-                            viewBox="0 0 24 24"
-                          ><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z" /><circle
-                            cx="12"
-                            cy="12"
-                            r="3"
-                          /></svg>
-                        </button>
-                      </div>
-                      <span
-                        v-if="passwordErrors.currentPassword"
-                        class="form-error"
-                      >
-                        {{ passwordErrors.currentPassword }}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div class="form-cell">
-                    <label
-                      class="row-label"
-                      for="new-password"
-                    >新密碼</label>
-                    <div class="row-control">
-                      <div class="pw">
-                        <input
-                          id="new-password"
-                          v-model="passwordForm.newPassword"
-                          :type="show.next ? 'text' : 'password'"
-                          class="ui-input"
-                          :class="{ 'is-invalid': passwordErrors.newPassword }"
-                          placeholder="至少 8 個字元"
-                          autocomplete="new-password"
-                          aria-required="true"
-                          :disabled="passwordSaving"
-                        >
-                        <button
-                          type="button"
-                          class="pw-toggle"
-                          :aria-label="show.next ? '隱藏密碼' : '顯示密碼'"
-                          @click="show.next = !show.next"
-                        >
-                          <svg
-                            class="ico"
-                            viewBox="0 0 24 24"
-                          ><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z" /><circle
-                            cx="12"
-                            cy="12"
-                            r="3"
-                          /></svg>
-                        </button>
-                      </div>
-                      <div
-                        v-if="passwordForm.newPassword"
-                        class="strength-bar"
-                      >
-                        <div class="strength-track">
-                          <div
-                            class="strength-fill"
-                            :class="`strength-${passwordStrength.level}`"
-                            :style="{ width: `${passwordStrength.percent}%` }"
-                          />
-                        </div>
-                        <span class="strength-label">{{ passwordStrength.label }}</span>
-                      </div>
-                      <span
-                        v-if="passwordErrors.newPassword"
-                        class="form-error"
-                      >
-                        {{ passwordErrors.newPassword }}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div class="form-cell">
-                    <label
-                      class="row-label"
-                      for="confirm-password"
-                    >確認新密碼</label>
-                    <div class="row-control">
-                      <div class="pw">
-                        <input
-                          id="confirm-password"
-                          v-model="passwordForm.confirmPassword"
-                          :type="show.confirm ? 'text' : 'password'"
-                          class="ui-input"
-                          :class="{ 'is-invalid': passwordErrors.confirmPassword }"
-                          placeholder="再輸入一次新密碼"
-                          autocomplete="new-password"
-                          aria-required="true"
-                          :disabled="passwordSaving"
-                        >
-                        <button
-                          type="button"
-                          class="pw-toggle"
-                          :aria-label="show.confirm ? '隱藏密碼' : '顯示密碼'"
-                          @click="show.confirm = !show.confirm"
-                        >
-                          <svg
-                            class="ico"
-                            viewBox="0 0 24 24"
-                          ><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z" /><circle
-                            cx="12"
-                            cy="12"
-                            r="3"
-                          /></svg>
-                        </button>
-                      </div>
-                      <span
-                        v-if="passwordErrors.confirmPassword"
-                        class="form-error"
-                      >
-                        {{ passwordErrors.confirmPassword }}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                <ul
-                  class="pw-rules"
-                  aria-label="密碼規則"
-                >
-                  <li
-                    v-for="rule in passwordRules"
-                    :key="rule.key"
-                    :class="{ 'is-met': rule.met }"
-                  >
                     <span
-                      class="rule-dot"
-                      aria-hidden="true"
-                    ><svg
-                      class="ico"
-                      viewBox="0 0 24 24"
-                    ><path d="m6 12.5 4 4L18 8" /></svg></span>
-                    {{ rule.text }}
-                    <span class="sr-only">{{ rule.met ? '已符合' : '尚未符合' }}</span>
-                  </li>
-                </ul>
-
-                <div class="form-actions">
-                  <p class="form-actions-note">
-                    修改後會自動登出，需用新密碼重新登入。
-                  </p>
-                  <button
-                    type="submit"
-                    class="btn btn-primary"
-                    :disabled="passwordSaving"
+                      v-if="profileErrors.displayName"
+                      id="display-name-error"
+                      class="form-error"
+                    >
+                      {{ profileErrors.displayName }}
+                    </span>
+                  </div>
+                  <div
+                    class="save-slot"
+                    :class="{ 'is-open': profileChanged || profileSaving }"
+                    :inert="!(profileChanged || profileSaving)"
                   >
-                    {{ passwordSaving ? '修改中…' : '修改密碼' }}
-                  </button>
+                    <button
+                      type="button"
+                      class="btn btn-ghost"
+                      :disabled="profileSaving"
+                      @click="resetProfile"
+                    >
+                      重設
+                    </button>
+                    <button
+                      type="submit"
+                      class="btn btn-primary"
+                      :disabled="profileSaving"
+                    >
+                      {{ profileSaving ? '儲存中…' : '儲存' }}
+                    </button>
+                  </div>
                 </div>
-              </form>
-            </section>
-          </div>
+                <p
+                  id="display-name-hint"
+                  class="field-hint"
+                >
+                  會出現在你送出的訊息署名 · {{ profile.displayName.length }} / 50
+                </p>
+                <div class="sign-preview">
+                  <span class="sign-k">客戶看到的署名</span>
+                  <span class="sign-v">{{ profile.displayName || '—' }}</span>
+                </div>
+              </div>
+            </form>
+          </section>
+
+          <!-- 通知偏好: the settings already live on the notifications page; this is one status row -->
+          <section
+            id="notification-prefs"
+            class="o-notify"
+            aria-labelledby="prefs-title"
+          >
+            <h2
+              id="prefs-title"
+              class="ui-group-label"
+            >
+              通知偏好
+            </h2>
+            <div class="ui-group notify-card">
+              <div
+                class="notify-head"
+                data-testid="device-notify"
+              >
+                <span
+                  class="notify-ico"
+                  aria-hidden="true"
+                >
+                  <svg
+                    viewBox="0 0 24 24"
+                    class="ico"
+                  ><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" /><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" /></svg>
+                </span>
+                <div class="notify-main">
+                  <div class="row-label-strong">
+                    這台裝置的桌面通知
+                  </div>
+                  <p class="notify-hint">
+                    {{ devicePerm.hint }}
+                  </p>
+                </div>
+                <span
+                  class="ui-pill ui-pill-dot"
+                  :class="devicePerm.tone === 'on' ? 'ui-pill-green' : ''"
+                >{{ devicePerm.label }}</span>
+              </div>
+              <RouterLink
+                class="notify-link"
+                :to="{ path: '/notifications', query: { settings: '1' } }"
+              >
+                通知類型與提醒方式
+                <svg
+                  class="ico"
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+                ><path d="m9 6 6 6-6 6" /></svg>
+              </RouterLink>
+            </div>
+          </section>
         </div>
+
+        <!-- 安全性 -->
+        <section
+          id="security"
+          class="o-security"
+          aria-labelledby="security-title"
+        >
+          <h2
+            id="security-title"
+            class="ui-group-label"
+          >
+            修改密碼
+            <button
+              type="button"
+              class="pw-fold"
+              :aria-expanded="pwOpen"
+              aria-controls="pw-form"
+              @click="pwOpen = !pwOpen"
+            >
+              {{ pwOpen ? '收合' : '展開' }}
+            </button>
+          </h2>
+          <form
+            v-show="pwOpen"
+            id="pw-form"
+            class="ui-group pw-card"
+            @submit.prevent="onChangePassword"
+          >
+            <div class="pw-grid">
+              <div class="form-cell">
+                <label
+                  class="row-label"
+                  for="current-password"
+                >目前密碼</label>
+                <div class="row-control">
+                  <div class="pw">
+                    <input
+                      id="current-password"
+                      v-model="passwordForm.currentPassword"
+                      :type="show.current ? 'text' : 'password'"
+                      class="ui-input"
+                      :class="{ 'is-invalid': passwordErrors.currentPassword }"
+                      placeholder="輸入目前的密碼"
+                      autocomplete="current-password"
+                      aria-required="true"
+                      :disabled="passwordSaving"
+                    >
+                    <button
+                      type="button"
+                      class="pw-toggle"
+                      :aria-label="show.current ? '隱藏密碼' : '顯示密碼'"
+                      @click="show.current = !show.current"
+                    >
+                      <svg
+                        class="ico"
+                        viewBox="0 0 24 24"
+                      ><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z" /><circle
+                        cx="12"
+                        cy="12"
+                        r="3"
+                      /></svg>
+                    </button>
+                  </div>
+                  <span
+                    v-if="passwordErrors.currentPassword"
+                    class="form-error"
+                  >
+                    {{ passwordErrors.currentPassword }}
+                  </span>
+                </div>
+              </div>
+
+              <div class="form-cell">
+                <label
+                  class="row-label"
+                  for="new-password"
+                >新密碼</label>
+                <div class="row-control">
+                  <div class="pw">
+                    <input
+                      id="new-password"
+                      v-model="passwordForm.newPassword"
+                      :type="show.next ? 'text' : 'password'"
+                      class="ui-input"
+                      :class="{ 'is-invalid': passwordErrors.newPassword }"
+                      placeholder="至少 8 個字元"
+                      autocomplete="new-password"
+                      aria-required="true"
+                      :disabled="passwordSaving"
+                    >
+                    <button
+                      type="button"
+                      class="pw-toggle"
+                      :aria-label="show.next ? '隱藏密碼' : '顯示密碼'"
+                      @click="show.next = !show.next"
+                    >
+                      <svg
+                        class="ico"
+                        viewBox="0 0 24 24"
+                      ><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z" /><circle
+                        cx="12"
+                        cy="12"
+                        r="3"
+                      /></svg>
+                    </button>
+                  </div>
+                  <div
+                    v-if="passwordForm.newPassword"
+                    class="strength-bar"
+                  >
+                    <div class="strength-track">
+                      <div
+                        class="strength-fill"
+                        :class="`strength-${passwordStrength.level}`"
+                        :style="{ width: `${passwordStrength.percent}%` }"
+                      />
+                    </div>
+                    <span class="strength-label">{{ passwordStrength.label }}</span>
+                  </div>
+                  <span
+                    v-if="passwordErrors.newPassword"
+                    class="form-error"
+                  >
+                    {{ passwordErrors.newPassword }}
+                  </span>
+                </div>
+              </div>
+
+              <div class="form-cell">
+                <label
+                  class="row-label"
+                  for="confirm-password"
+                >確認新密碼</label>
+                <div class="row-control">
+                  <div class="pw">
+                    <input
+                      id="confirm-password"
+                      v-model="passwordForm.confirmPassword"
+                      :type="show.confirm ? 'text' : 'password'"
+                      class="ui-input"
+                      :class="{ 'is-invalid': passwordErrors.confirmPassword }"
+                      placeholder="再輸入一次新密碼"
+                      autocomplete="new-password"
+                      aria-required="true"
+                      :disabled="passwordSaving"
+                    >
+                    <button
+                      type="button"
+                      class="pw-toggle"
+                      :aria-label="show.confirm ? '隱藏密碼' : '顯示密碼'"
+                      @click="show.confirm = !show.confirm"
+                    >
+                      <svg
+                        class="ico"
+                        viewBox="0 0 24 24"
+                      ><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z" /><circle
+                        cx="12"
+                        cy="12"
+                        r="3"
+                      /></svg>
+                    </button>
+                  </div>
+                  <span
+                    v-if="passwordErrors.confirmPassword"
+                    class="form-error"
+                  >
+                    {{ passwordErrors.confirmPassword }}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <ul
+              class="pw-rules"
+              aria-label="密碼規則"
+            >
+              <li
+                v-for="rule in passwordRules"
+                :key="rule.key"
+                :class="{ 'is-met': rule.met }"
+              >
+                <span
+                  class="rule-dot"
+                  aria-hidden="true"
+                ><svg
+                  class="ico"
+                  viewBox="0 0 24 24"
+                ><path d="m6 12.5 4 4L18 8" /></svg></span>
+                {{ rule.text }}
+                <span class="sr-only">{{ rule.met ? '已符合' : '尚未符合' }}</span>
+              </li>
+            </ul>
+
+            <div class="form-actions">
+              <p class="form-actions-note">
+                修改後會自動登出，需用新密碼重新登入。
+              </p>
+              <button
+                type="submit"
+                class="btn btn-primary"
+                :disabled="passwordSaving"
+              >
+                {{ passwordSaving ? '修改中…' : '修改密碼' }}
+              </button>
+            </div>
+          </form>
+        </section>
       </div>
     </div>
   </AppLayout>
@@ -536,7 +523,7 @@ const devicePerm = computed(() => {
   const shared = '桌面通知只套用於這台裝置，其餘跟著你的帳號。'
   if (perm === 'granted') { return { label: '已開啟', tone: 'on', hint: shared } }
   if (perm === 'denied') {
-    return { label: '已封鎖', tone: 'off', hint: '瀏覽器擋住了通知：點網址列左側的圖示，把「通知」改為允許，再重新整理本頁。' }
+    return { label: '已封鎖', tone: 'off', hint: '被瀏覽器封鎖：點網址列左側圖示，將「通知」改為允許。' }
   }
   if (perm === 'unsupported') { return { label: '瀏覽器不支援', tone: 'off', hint: shared } }
   return { label: '尚未開啟', tone: 'off', hint: shared }
@@ -796,16 +783,16 @@ watch(
   stroke-linejoin: round;
 }
 
-.profile-stack {
+.profile-page {
   display: flex;
   flex-direction: column;
-  min-width: 0;
+  gap: 20px;
 }
 
-/* two columns: the pass (+ the device row) beside the two forms; both end on the same line */
+/* below the pass: the name and the device on the left, the password on the right; both columns end on one line */
 .profile-cols {
   display: grid;
-  grid-template-columns: minmax(300px, 400px) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 20px;
   align-items: stretch;
 }
@@ -817,6 +804,7 @@ watch(
   min-width: 0;
 }
 
+.profile-cols > section,
 .profile-col > section {
   display: flex;
   flex-direction: column;
@@ -824,31 +812,18 @@ watch(
 }
 
 /* the last card of each column takes the slack, so both columns end on the same line */
-.profile-col > section:last-child {
+.profile-col > section:last-child,
+.profile-cols > .o-security {
   flex: 1;
 }
 
-/* in the pass column the pass takes the slack (never less than its own height); the device row keeps its height */
-.profile-col-pass > .o-pass {
-  flex: 1 0 auto;
-}
-
-.profile-col-pass > .o-notify {
-  flex: none;
-}
-
-.profile-col > section .ui-group,
-.profile-col > section .pass {
+.profile-cols section .ui-group {
   flex: 1;
 }
 
 /* labels sit on the same inset as the text inside their card */
 .profile-page .ui-group-label {
   padding-left: 20px;
-}
-
-.profile-page .o-pass .ui-group-label {
-  padding-left: 24px;
 }
 
 /* the fold control only exists on a phone */
@@ -879,81 +854,90 @@ watch(
   justify-content: space-between;
 }
 
-/* ---- the pass: the one elevated object, a wallet-style identity card ---- */
+/* ---- the pass: one wide ticket, three zones split by a perforation (who / what they may do / how long) ---- */
 .pass {
   position: relative;
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: minmax(340px, 1.25fr) minmax(0, 1.7fr) minmax(200px, 0.75fr);
   min-width: 0;
-  overflow: hidden;
   border-radius: 28px;
   background: var(--ui-surface);
   box-shadow: var(--ui-shadow-card);
 }
 
-.pass-band {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: 8px 18px;
+.pz {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+  padding: 28px;
+}
+
+/* the perforation: a dashed line with a notch cut at each end */
+.pz + .pz::before {
+  position: absolute;
+  inset: 22px auto 22px 0;
+  width: 0;
+  border-left: 2px dashed var(--ui-fill-strong);
+  content: '';
+}
+
+.pz-id {
+  flex-direction: row;
+  justify-content: flex-start;
+  gap: 20px;
   align-items: center;
-  padding: 26px 24px 24px;
-  background: var(--ui-accent-soft);
-  color: var(--ui-ink);
 }
 
 .avatar {
   display: grid;
-  grid-row: span 2;
+  flex: none;
   place-items: center;
-  width: 72px;
-  height: 72px;
+  width: 84px;
+  height: 84px;
   border-radius: 50%;
   background: var(--ui-accent);
   color: #fff;
-  font: 600 32px var(--ui-font-display);
+  font: 600 36px var(--ui-font-display);
 }
 
 .identity-text {
   display: grid;
-  gap: 2px;
-  align-self: end;
+  gap: 4px;
+  justify-items: start;
   min-width: 0;
 }
 
 .identity-name {
+  max-width: 100%;
   overflow: hidden;
-  font: 700 28px / 1.2 var(--ui-font-display);
+  font: 700 30px / 1.2 var(--ui-font-display);
   letter-spacing: -0.025em;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .identity-sub {
-  overflow: hidden;
+  max-width: 100%;
   font-size: 14px;
   color: var(--ui-ink-2);
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 
 .pass-role {
-  align-self: start;
-  justify-self: start;
-  padding: 2px 12px;
+  margin-top: 4px;
+  padding: 3px 12px;
   border-radius: 999px;
-  background: var(--ui-surface);
+  background: var(--ui-accent-soft);
   font-size: 13px;
   font-weight: 700;
-  color: var(--ui-accent-ink, var(--ui-accent));
+  color: var(--ui-accent);
 }
 
 /* access: one ladder per team, my rung filled (the same three steps for every team) */
-.pass-access {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
+.pz-roles {
   gap: 14px;
-  padding: 22px 24px 20px;
 }
 
 .pass-k {
@@ -974,9 +958,8 @@ watch(
 
 .ladders {
   display: grid;
-  flex: 1;
-  align-content: space-evenly;
-  gap: 18px;
+  grid-template-columns: repeat(auto-fit, minmax(176px, 1fr));
+  gap: 20px 32px;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -985,6 +968,7 @@ watch(
 .ladder {
   display: grid;
   gap: 10px;
+  align-content: start;
 }
 
 .ladder-head {
@@ -1091,14 +1075,10 @@ watch(
   color: var(--ui-muted);
 }
 
-/* session: the foot of the pass, set off by a hairline */
-.pass-session {
-  display: flex;
+/* session: the stub of the ticket */
+.pz-session {
   gap: 14px;
-  align-items: center;
-  justify-content: space-between;
-  padding: 22px 24px 24px;
-  box-shadow: inset 0 0.5px 0 var(--ui-sep);
+  align-items: flex-start;
 }
 
 .session-text {
@@ -1113,7 +1093,7 @@ watch(
 }
 
 .session-v {
-  font: 700 28px / 1.15 var(--ui-font-display);
+  font: 700 34px / 1.15 var(--ui-font-display);
   letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
 }
@@ -1363,19 +1343,26 @@ watch(
   outline-offset: -2px;
 }
 
+/* the three rules, live: chips that fill with a check as each is met */
 .pw-rules {
-  display: grid;
+  display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   margin: 0;
-  padding: 2px 20px 18px;
+  padding: 0 20px 18px;
   list-style: none;
 }
 
 .pw-rules li {
-  display: flex;
-  gap: 8px;
+  display: inline-flex;
+  gap: 6px;
   align-items: center;
-  font-size: 14px;
+  height: 32px;
+  padding: 0 12px 0 8px;
+  border-radius: 999px;
+  background: var(--ui-fill);
+  font-size: 13px;
+  font-weight: 500;
   color: var(--ui-ink-2);
 }
 
@@ -1383,22 +1370,23 @@ watch(
   display: grid;
   flex: none;
   place-items: center;
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
   border-radius: 50%;
-  box-shadow: inset 0 0 0 2px var(--ui-fill-strong);
+  box-shadow: inset 0 0 0 2px var(--ui-field-edge);
 }
 
 .rule-dot .ico {
-  width: 12px;
-  height: 12px;
+  width: 11px;
+  height: 11px;
   stroke: #fff;
   stroke-width: 3;
   opacity: 0;
 }
 
 .pw-rules li.is-met {
-  color: var(--ui-ink);
+  background: var(--ui-green-soft);
+  color: var(--ui-green-ink, var(--ui-ink));
 }
 
 .pw-rules li.is-met .rule-dot {
@@ -1440,6 +1428,30 @@ watch(
   color: var(--ui-ink-2);
 }
 
+@media (max-width: 1280px) {
+  .pass {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .pz-roles {
+    grid-column: 1 / -1;
+    order: 3;
+  }
+
+  .pz-session {
+    order: 2;
+  }
+
+  /* the horizontal perforation under the identity row */
+  .pz-roles::before {
+    inset: 0 22px auto;
+    width: auto;
+    height: 0;
+    border-top: 2px dashed var(--ui-fill-strong);
+    border-left: 0;
+  }
+}
+
 @media (max-width: 768px) {
   /* one column in the order a person acts in: the pass, the name, the password, the device */
   .profile-cols {
@@ -1452,60 +1464,62 @@ watch(
     display: contents;
   }
 
-  .o-pass {
+  .profile-col > #basic {
     order: 1;
   }
 
-  #basic {
+  .profile-cols > #security {
     order: 2;
   }
 
-  #security {
+  .profile-col > #notification-prefs {
     order: 3;
   }
 
-  #notification-prefs {
-    order: 4;
+  .pass {
+    grid-template-columns: minmax(0, 1fr);
   }
 
-  .pass-access,
-  .ladders {
-    flex: none;
-  }
-}
-
-/* Phone: a condensed pass */
-@media (max-width: 768px) {
-  .pass-band {
-    gap: 4px 14px;
+  .pz {
     padding: 20px;
   }
 
+  .pz-id {
+    order: 1;
+  }
+
+  .pz-roles {
+    order: 2;
+  }
+
+  .pz-session {
+    flex-direction: row;
+    gap: 14px;
+    align-items: center;
+    justify-content: space-between;
+    order: 3;
+  }
+
+  .pz + .pz::before {
+    inset: 0 22px auto;
+    width: auto;
+    height: 0;
+    border-top: 2px dashed var(--ui-fill-strong);
+    border-left: 0;
+  }
+
   .avatar {
-    width: 56px;
-    height: 56px;
-    font-size: 24px;
+    width: 64px;
+    height: 64px;
+    font-size: 28px;
   }
 
   .identity-name {
     font-size: 24px;
   }
 
-  .pass-access {
-    gap: 12px;
-    padding: 18px 20px 16px;
-  }
-
-  .ladders {
-    gap: 16px;
-  }
-
-  .pass-session {
-    padding: 20px;
-  }
-
   .session-v {
-    font-size: 24px;
+    font-size: 26px;
   }
 
   .form-actions {
