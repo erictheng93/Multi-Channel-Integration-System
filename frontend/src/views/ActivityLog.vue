@@ -131,7 +131,7 @@
           class="al-aside"
           :overview="overview"
           :active-action="filters.action"
-          :legend="false"
+          :legend="true"
           @filter-action="onInsightAction"
         />
       </div>
@@ -513,6 +513,10 @@ onUnmounted(() => {
   color: var(--ui-muted);
 }
 
+.al-grid.has-aside .al-legend {
+  display: none;
+}
+
 .al-aside {
   position: sticky;
   top: 20px;
@@ -559,6 +563,10 @@ onUnmounted(() => {
 
   .al-aside {
     display: none;
+  }
+
+  .al-grid.has-aside .al-legend {
+    display: block;
   }
 
   .al-more {
