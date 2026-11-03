@@ -297,41 +297,44 @@ onMounted(() => {
 .tpl-rail {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 26px;
   padding: 24px;
 }
 
 .tpl-props {
   display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   margin: 0;
+  overflow: hidden;
+  border-radius: var(--ui-r-inner);
+  background: var(--ui-surface-2);
 }
 
 .tpl-props div {
   display: flex;
-  gap: 12px;
-  align-items: baseline;
-  justify-content: space-between;
-  padding: 10px 0;
+  flex-direction: column-reverse;
+  gap: 2px;
+  padding: 12px 14px;
 }
 
 .tpl-props div + div {
-  box-shadow: 0 -0.5px 0 var(--ui-sep);
-}
-
-.tpl-props div:first-child {
-  padding-top: 0;
+  box-shadow: inset 0.5px 0 0 var(--ui-sep);
 }
 
 .tpl-props dt {
-  font-size: 14px;
-  color: var(--ui-muted);
+  font-size: 13px;
+  color: var(--ui-ink-2);
 }
 
 .tpl-props dd {
   margin: 0;
   font-size: 15px;
-  font-weight: 600;
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
+}
+
+.tpl-props div:last-child dd {
+  color: var(--ui-accent-ink, var(--ui-accent));
 }
 
 .tpl-inc {
@@ -467,24 +470,6 @@ onMounted(() => {
   .tpl-rail {
     gap: 16px;
     padding: 18px;
-  }
-
-  /* the settings read as one wrapping line of facts, not a three-row table */
-  .tpl-props {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 4px 20px;
-  }
-
-  .tpl-props div,
-  .tpl-props div:first-child {
-    flex-direction: column;
-    gap: 0;
-    padding: 0;
-  }
-
-  .tpl-props div + div {
-    box-shadow: none;
   }
 
   .tpl-hist[aria-label="報表內容"] {

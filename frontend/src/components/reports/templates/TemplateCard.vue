@@ -243,9 +243,12 @@ const figure = computed(() => {
   }
 
   .tpl-row .radio,
-  .tpl-desc,
-  .tpl-fig {
+  .tpl-desc {
     display: none;
+  }
+
+  .tpl-fig {
+    font-size: 13px;
   }
 
   .tpl-name {

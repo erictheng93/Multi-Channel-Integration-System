@@ -17,6 +17,8 @@ export interface SheetData {
   agents: AgentBar[];
   agentSum: number;
   period: string;
+  /** Calendar days the period covers (inclusive); 0 when unknown */
+  days: number;
 }
 
 const dateFmt = new Intl.DateTimeFormat('zh-TW', { timeZone: 'Asia/Taipei', month: 'numeric', day: 'numeric' });
@@ -28,11 +30,15 @@ export function readSheet(type: ReportType | undefined, state: LatestReport | nu
   const isAgents = type === 'agent_performance';
 
   let period = '近 30 天';
+  let days = 0;
   const p = data.period;
   if (isRecord(p) && typeof p.startDate === 'string' && typeof p.endDate === 'string') {
     const a = new Date(p.startDate);
     const b = new Date(p.endDate);
-    if (!Number.isNaN(a.getTime()) && !Number.isNaN(b.getTime())) { period = `${dateFmt.format(a)} – ${dateFmt.format(b)}`; }
+    if (!Number.isNaN(a.getTime()) && !Number.isNaN(b.getTime())) {
+      period = `${dateFmt.format(a)} – ${dateFmt.format(b)}`;
+      days = Math.max(1, Math.round((b.getTime() - a.getTime()) / 864e5) + 1);
+    }
   }
 
   const total = num(data.totalConversations);
@@ -50,5 +56,5 @@ export function readSheet(type: ReportType | undefined, state: LatestReport | nu
   }));
   const agentSum = agents.reduce((sum, a) => sum + a.value, 0);
 
-  return { live, isAgents, total, parts, agents, agentSum, period };
+  return { live, isAgents, total, parts, agents, agentSum, period, days };
 }
