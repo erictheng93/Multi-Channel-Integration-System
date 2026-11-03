@@ -23,22 +23,18 @@ function mountLanes(items: BackupItem[]) {
 }
 
 describe('BackupLanes', () => {
-  it('draws one lane per kind of backup that exists, with a tick per file', () => {
-    const wrapper = mountLanes([item('daily', 0), item('daily', 1), item('daily', 2), item('monthly', 1), item('tags', 0)])
+  it('draws one lane per kind of backup that exists, with how much of its window is stored', () => {
+    const wrapper = mountLanes([item('daily', 0), item('daily', 15), item('daily', 3), item('monthly', 1), item('tags', 0)])
     const lanes = wrapper.findAll('.lane')
     expect(lanes.map((l) => l.find('.lane-name b').text())).toEqual(['每日', '每月', '資料匯出'])
-    expect(lanes[0]?.findAll('.lane-tick')).toHaveLength(3)
     expect(lanes[0]?.find('.lane-n').text()).toContain('3 份')
-    expect(lanes[0]?.find('.lane-name small').text()).toBe('保留 30 天')
+    expect(lanes[0]?.find('.lane-name small').text()).toBe('已存 15 / 30 天')
+    expect(lanes[0]?.find('.lane-fill').attributes('style')).toContain('width: 50%')
   })
 
-  it('puts today on the right and the oldest mark on the left of the axis', () => {
+  it('labels the two ends of every bar', () => {
     const wrapper = mountLanes([item('daily', 0), item('monthly', 40)])
-    const labels = wrapper.findAll('.axis span').map((s) => s.text())
-    expect(labels[0]).toBe('1 年')
-    expect(labels[labels.length - 1]).toBe('今天')
-    const ticks = wrapper.findAll('.lane')[0]?.findAll('.lane-tick') ?? []
-    expect(parseFloat(ticks[0]?.attributes('style')?.replace('left: ', '') ?? '0')).toBeGreaterThan(99.9)
+    expect(wrapper.findAll('.axis span').map((s) => s.text())).toEqual(['到期刪除', '今天'])
   })
 
   it('shows the headline figures and no lanes when there are no files', () => {

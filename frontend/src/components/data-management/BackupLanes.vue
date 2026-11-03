@@ -50,15 +50,16 @@
       </div>
     </div>
 
-    <!-- Signature: how long each kind of backup is kept. Every file is a tick placed by its age
-         (today on the right), inside the shaded window the retention policy keeps it for. -->
+    <!-- Signature: how much of each kind's retention window is in use. Every bar is that kind's own
+         window (full width = how long it is kept, today on the right); the colour reaches back as far as
+         the oldest file stored. -->
     <div
       v-if="lanes.length > 0"
       class="hero-lanes"
     >
       <div class="lanes-head">
         <h2>保留期間</h2>
-        <span>每個刻度是一份備份，底色是保留視窗</span>
+        <span>每條以該類型的保留天數為滿格，色塊是已存的天數</span>
       </div>
       <div
         class="lanes"
@@ -73,19 +74,12 @@
         >
           <div class="lane-name">
             <b>{{ lane.label }}</b>
-            <small>{{ lane.keep ? `保留 ${lane.keep} 天` : '' }}</small>
+            <small>{{ lane.used }}</small>
           </div>
           <div class="lane-track">
             <span
-              v-if="lane.keep"
-              class="lane-window"
-              :style="{ left: lane.windowLeft + '%' }"
-            />
-            <i
-              v-for="(x, i) in lane.ticks"
-              :key="i"
-              class="lane-tick"
-              :style="{ left: x + '%' }"
+              class="lane-fill"
+              :style="{ width: lane.fill + '%' }"
             />
           </div>
           <div class="lane-n">
@@ -97,11 +91,8 @@
           class="axis"
           aria-hidden="true"
         >
-          <span
-            v-for="t in axis"
-            :key="t.label"
-            :style="{ left: t.x + '%' }"
-          >{{ t.label }}</span>
+          <span>到期刪除</span>
+          <span>今天</span>
         </div>
       </div>
     </div>
@@ -146,23 +137,14 @@ const retention = (tiers: string[]): number => {
 
 const ageDays = (iso: string) => Math.max(0, (Date.now() - new Date(iso).getTime()) / DAY)
 
-/** The axis reaches as far back as the longest kept lane, or the oldest file, whichever is longer */
-const span = computed(() => {
-  const oldest = Math.max(0, ...props.items.map(i => ageDays(i.uploaded)))
-  const keep = Math.max(0, ...LANES.map(l => (props.items.some(i => l.tiers.includes(i.tier)) ? retention(l.tiers) : 0)))
-  const need = Math.max(oldest, keep, 30)
-  return need <= 35 ? 30 : need <= 100 ? 90 : 365
-})
-
-/** Square-root scale: the recent days, where daily files crowd, keep room; a year still fits */
-const at = (days: number) => (1 - Math.sqrt(Math.min(days, span.value) / span.value)) * 100
-
 const lanes = computed(() => {
   if (props.items.length === 0) { return [] }
   return LANES
     .map((lane) => {
       const mine = props.items.filter(i => lane.tiers.includes(i.tier))
       const keep = retention(lane.tiers)
+      const oldest = Math.max(0, ...mine.map(i => ageDays(i.uploaded)))
+      const days = Math.max(1, Math.round(oldest))
       return {
         key: lane.key,
         label: lane.label,
@@ -170,18 +152,11 @@ const lanes = computed(() => {
         keep,
         count: mine.length,
         size: formatBytes(mine.reduce((n, i) => n + i.size, 0)),
-        windowLeft: keep ? at(keep) : 0,
-        ticks: mine.map(i => at(ageDays(i.uploaded))),
+        used: keep ? `已存 ${Math.min(days, keep)} / ${keep} 天` : `最早 ${days} 天前`,
+        fill: keep ? Math.min(100, Math.max(3, (days / keep) * 100)) : 100,
       }
     })
     .filter(l => l.count > 0)
-})
-
-const axis = computed(() => {
-  // oldest first, so the labels read left to right and today closes the row
-  const marks = span.value === 30 ? [30, 14, 7, 0] : span.value === 90 ? [90, 30, 7, 0] : [365, 90, 30, 7, 0]
-  const names: Record<number, string> = { 0: '今天', 7: '7 天', 14: '14 天', 30: '30 天', 90: '90 天', 365: '1 年' }
-  return marks.map(d => ({ label: names[d] ?? `${d} 天`, x: at(d) }))
 })
 
 const totals = computed(() => {
@@ -193,7 +168,7 @@ const totals = computed(() => {
 })
 
 const aria = computed(() =>
-  `各類備份的保留期間：${lanes.value.map(l => `${l.label} ${l.count} 份${l.keep ? `，保留 ${l.keep} 天` : ''}`).join('；')}`,
+  `各類備份的保留期間：${lanes.value.map(l => `${l.label} ${l.count} 份，${l.used}`).join('；')}`,
 )
 </script>
 
@@ -310,7 +285,7 @@ const aria = computed(() =>
 }
 
 .lanes {
-  --name: 96px;
+  --name: 132px;
   --count: 112px;
   display: grid;
   flex: 1;
@@ -356,45 +331,21 @@ const aria = computed(() =>
   background: var(--ui-fill);
 }
 
-.lane-window {
+.lane-fill {
   position: absolute;
   top: 0;
   right: 0;
   bottom: 0;
-  background: color-mix(in srgb, var(--lane) 16%, var(--ui-surface));
-}
-
-.lane-tick {
-  position: absolute;
-  top: 7px;
-  bottom: 7px;
-  width: 3px;
-  margin-left: -1.5px;
-  border-radius: 2px;
-  background: var(--lane);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--lane) 42%, var(--ui-surface));
 }
 
 .axis {
-  position: relative;
-  height: 20px;
+  display: flex;
+  justify-content: space-between;
   margin: 0 calc(var(--count) + 14px) 0 calc(var(--name) + 14px);
   font-size: 13px;
-  color: var(--ui-muted);
-}
-
-.axis span {
-  position: absolute;
-  top: 0;
-  white-space: nowrap;
-  transform: translateX(-50%);
-}
-
-.axis span:first-child {
-  transform: none;
-}
-
-.axis span:last-child {
-  transform: translateX(-100%);
+  color: var(--ui-ink-2);
 }
 
 @media (max-width: 1024px) {
@@ -462,11 +413,6 @@ const aria = computed(() =>
     grid-column: 1 / -1;
     height: 28px;
     border-radius: 10px;
-  }
-
-  .lane-tick {
-    top: 5px;
-    bottom: 5px;
   }
 
   .axis {
