@@ -37,6 +37,7 @@
           <BroadcastLinePreview
             :content="draft.content"
             :image-urls="draft.imageUrls"
+            :sample="lastSample"
           />
         </div>
       </div>
@@ -105,6 +106,7 @@ const pendingByChannel = computed(() =>
 const sideIdle = computed(
   () => !broadcastsStore.preview && !broadcastsStore.previewLoading && !draft.value.content && !draft.value.imageUrls.length
 )
+const lastSample = computed(() => broadcastsStore.broadcasts.find(b => b.content.trim())?.content.trim() ?? '')
 const previewTagName = computed(
   () => tagsStore.tags.find(tag => tag.id === broadcastsStore.previewTagId)?.name
 )
