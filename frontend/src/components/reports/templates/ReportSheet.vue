@@ -7,6 +7,7 @@
     :aria-label="`${template.name}的報表樣張`"
     :aria-busy="loading"
   >
+    <div class="sh-pane">
     <header class="sh-mast">
       <p class="sh-kind">
         報表樣張
@@ -50,6 +51,10 @@
         <span class="sh-ago"> ・ {{ ago }}</span>
       </template>
     </p>
+    <div class="sh-side">
+      <slot name="side" />
+    </div>
+    </div>
 
     <ol class="sh-spine">
       <li
@@ -242,14 +247,34 @@ const rows = computed<Row[]>(() => {
 <style scoped>
 .sheet {
   display: grid;
-  align-content: start;
+  grid-template-columns: 340px minmax(0, 1fr);
+  min-height: 520px;
   overflow: hidden;
+}
+
+/* the document's left margin: title, properties, source and the actions; the outline reads on the right */
+.sh-pane {
+  display: flex;
+  flex-direction: column;
+  background: var(--ui-surface-2);
+  box-shadow: inset -0.5px 0 0 var(--ui-sep);
+}
+
+.sh-side {
+  display: grid;
+  gap: 16px;
+  margin-top: auto;
+  padding: 20px 28px 28px;
+}
+
+.sh-side:empty {
+  display: none;
 }
 
 .sh-mast {
   display: grid;
   gap: 6px;
-  padding: 28px 36px 20px;
+  padding: 28px 28px 16px;
 }
 
 .sh-kind {
@@ -267,9 +292,8 @@ const rows = computed<Row[]>(() => {
 }
 
 .sh-props {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 24px;
+  display: grid;
+  gap: 4px;
   margin: 6px 0 0;
 }
 
@@ -293,9 +317,7 @@ const rows = computed<Row[]>(() => {
 
 .sh-note {
   margin: 0;
-  padding: 12px 36px;
-  background: var(--ui-surface-2);
-  box-shadow: 0 0.5px 0 var(--ui-sep), 0 -0.5px 0 var(--ui-sep);
+  padding: 0 28px;
   font-size: 14px;
   color: var(--ui-ink-2);
 }
@@ -322,7 +344,8 @@ const rows = computed<Row[]>(() => {
 .sh-spine {
   display: grid;
   margin: 0;
-  padding: 12px 36px 24px;
+  align-content: start;
+  padding: 20px 36px 24px;
   list-style: none;
 }
 
@@ -331,14 +354,14 @@ const rows = computed<Row[]>(() => {
   display: grid;
   grid-template-columns: 28px minmax(0, 1fr);
   gap: 16px;
-  padding: 14px 0;
+  padding: 20px 0;
 }
 
 /* the spine: a hairline joining the numbered nodes */
 .sh-row:not(:last-child)::before {
   position: absolute;
-  top: 46px;
-  bottom: -14px;
+  top: 52px;
+  bottom: -20px;
   left: 13.5px;
   width: 1.5px;
   background: var(--ui-fill-strong);
@@ -537,9 +560,34 @@ const rows = computed<Row[]>(() => {
   width: 38%;
 }
 
+@media (max-width: 1024px) {
+  .sheet {
+    min-height: 0;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .sh-pane {
+    box-shadow: 0 0.5px 0 var(--ui-sep);
+  }
+}
+
 @media (max-width: 768px) {
+  .sh-pane {
+    display: contents;
+  }
+
   .sh-mast {
-    padding: 22px 20px 16px;
+    padding: 22px 20px 12px;
+    background: var(--ui-surface-2);
+  }
+
+  .sh-side {
+    order: 3;
+    padding: 4px 20px 20px;
+  }
+
+  .sh-text span {
+    display: none;
   }
 
   .sh-name {
@@ -547,7 +595,8 @@ const rows = computed<Row[]>(() => {
   }
 
   .sh-note {
-    padding: 12px 20px;
+    padding: 0 20px 12px;
+    background: var(--ui-surface-2);
   }
 
   .sh-spine {
@@ -556,6 +605,12 @@ const rows = computed<Row[]>(() => {
 
   .sh-row {
     gap: 12px;
+    padding: 12px 0;
+  }
+
+  .sh-row:not(:last-child)::before {
+    top: 40px;
+    bottom: -12px;
   }
 
   .sh-bars li {
