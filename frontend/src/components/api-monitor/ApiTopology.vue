@@ -45,17 +45,6 @@
         </div>
       </div>
 
-      <div
-        class="gut gut-in"
-        aria-hidden="true"
-      >
-        <i
-          v-for="n in inNodes"
-          :key="n.id"
-          :class="`is-${n.tone}`"
-        />
-      </div>
-
       <div class="core">
         <div class="core-kicker">
           整體狀態
@@ -113,17 +102,6 @@
             <span v-if="avgMs">平均回應 {{ avgMs }} ms</span>
           </p>
         </figure>
-      </div>
-
-      <div
-        class="gut gut-out"
-        aria-hidden="true"
-      >
-        <i
-          v-for="n in outNodes"
-          :key="n.id"
-          :class="`is-${n.tone}`"
-        />
       </div>
 
       <div class="col col-out">
@@ -298,13 +276,11 @@ const aria = computed(() => `端點 P95 回應時間：${rows.value.map(r => `${
   display: grid;
   gap: 18px;
   padding: 26px 32px 22px;
-  --line: var(--ui-fill-strong);
-  --gut: 52px;
 }
 
 .topo {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) var(--gut) minmax(0, 1.35fr) var(--gut) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) minmax(0, 1fr);
   align-items: stretch;
 }
 
@@ -343,10 +319,6 @@ const aria = computed(() => `端點 P95 回應時間：${rows.value.map(r => `${
 .node.is-warn { --c: var(--ui-orange); }
 .node.is-bad { --c: var(--ui-red); }
 
-.node.is-warn,
-.node.is-bad {
-  background: color-mix(in srgb, var(--c) 10%, var(--ui-surface));
-}
 
 .node-ico {
   display: grid;
@@ -414,93 +386,16 @@ const aria = computed(() => `端點 P95 回應時間：${rows.value.map(r => `${
   color: var(--ui-muted);
 }
 
-/* ---- the lines between the columns: one stub per node, a bus, one stub into the centre ---- */
-.gut {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  margin-top: 26px;
-}
-
-.gut i {
-  --c: var(--line);
-  position: relative;
-  flex: 1;
-}
-
-.gut i.is-warn { --c: var(--ui-orange); }
-.gut i.is-bad { --c: var(--ui-red); }
-
-/* stub from the node to the bus */
-.gut i::before {
-  position: absolute;
-  top: 50%;
-  height: 2px;
-  margin-top: -1px;
-  background: var(--c);
-  content: '';
-}
-
-.gut-in i::before {
-  right: 50%;
-  left: 0;
-}
-
-.gut-out i::before {
-  right: 0;
-  left: 50%;
-}
-
-/* the bus joins the stubs */
-.gut i::after {
-  position: absolute;
-  top: -5px;
-  bottom: -5px;
-  left: 50%;
-  width: 2px;
-  margin-left: -1px;
-  background: var(--line);
-  content: '';
-}
-
-.gut i:first-child::after {
-  top: 50%;
-}
-
-.gut i:last-child::after {
-  bottom: 50%;
-}
-
-.gut i:only-child::after {
-  display: none;
-}
-
-/* the stub into the centre card */
-.gut::after {
-  position: absolute;
-  top: calc(50% - 1px);
-  height: 2px;
-  background: var(--line);
-  content: '';
-}
-
-.gut-in::after {
-  right: 0;
-  left: 50%;
-}
-
-.gut-out::after {
-  right: 50%;
-  left: 0;
-}
-
 /* ---- centre ---- */
+.col-in { padding-right: 32px; }
+.col-out { padding-left: 32px; }
+
 .core {
   display: flex;
   flex-direction: column;
   min-width: 0;
-  padding-top: 0;
+  padding: 0 32px;
+  border-inline: 0.5px solid var(--ui-sep);
 }
 
 .core-kicker {
@@ -513,12 +408,30 @@ const aria = computed(() => `端點 P95 回應時間：${rows.value.map(r => `${
 .core-verdict {
   font: 600 40px / 1.1 var(--ui-font-display);
   letter-spacing: -0.03em;
-  color: var(--ui-muted);
 }
 
-.core-verdict.is-good { color: var(--ui-green-ink); }
-.core-verdict.is-warn { color: var(--ui-orange-ink); }
-.core-verdict.is-bad { color: var(--ui-red-ink); }
+.core-verdict {
+  --c: var(--ui-muted);
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  color: var(--ui-ink);
+}
+
+/* status colour is the dot only; the words stay ink */
+.core-verdict::before {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--c);
+  content: '';
+}
+
+.core-verdict[aria-busy]::before { display: none; }
+.core-verdict.is-good { --c: var(--ui-green); }
+.core-verdict.is-warn { --c: var(--ui-orange); }
+.core-verdict.is-bad { --c: var(--ui-red); }
 
 .core-skel {
   display: inline-block;
@@ -679,7 +592,11 @@ const aria = computed(() => `端點 P95 回應時間：${rows.value.map(r => `${
 }
 
 .ev-msg {
+  display: -webkit-box;
+  overflow: hidden;
   overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
   color: var(--ui-ink);
 }
 
@@ -689,13 +606,21 @@ const aria = computed(() => `端點 P95 回應時間：${rows.value.map(r => `${
   color: var(--ui-muted);
 }
 
+@media (min-width: 1025px) {
+  .ev-msg { min-height: 2.8em; }
+}
+
 @media (max-width: 1280px) {
-  .topo-card {
-    --gut: 36px;
+  .core {
+    padding-inline: 22px;
   }
 
-  .topo {
-    grid-template-columns: minmax(0, 1fr) var(--gut) minmax(0, 1.4fr) var(--gut) minmax(0, 1fr);
+  .col-in {
+    padding-right: 22px;
+  }
+
+  .col-out {
+    padding-left: 22px;
   }
 
   .p95 li {
@@ -718,8 +643,14 @@ const aria = computed(() => `端點 P95 回應時間：${rows.value.map(r => `${
     gap: 18px;
   }
 
-  .gut {
-    display: none;
+  .col-in,
+  .col-out {
+    padding: 0;
+  }
+
+  .core {
+    padding: 0;
+    border: 0;
   }
 
   .core {
@@ -765,8 +696,13 @@ const aria = computed(() => `端點 P95 回應時間：${rows.value.map(r => `${
     grid-row: 1;
   }
 
+  .nodes {
+    gap: 6px;
+  }
+
   .node {
-    min-height: 56px;
+    min-height: 52px;
+    padding: 8px 12px;
   }
 
   .node-ms small {
