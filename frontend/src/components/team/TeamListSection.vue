@@ -115,8 +115,6 @@
             :key="team.id"
             :team="team"
             :loading="loading"
-            :open-count="openByTeam ? (openByTeam.get(team.id) ?? 0) : null"
-            :open-total="openTotal"
             class="draggable-card"
             @toggle-status="(t) => emit('toggle-status', t)"
             @remove-team="(t) => emit('remove-team', t)"
@@ -182,9 +180,6 @@ const props = withDefaults(defineProps<Props>(), { openByTeam: null })
 const emit = defineEmits<Emits>()
 
 /** Open conversations across all teams: the load bar on each card is its share of this */
-const openTotal = computed<number | null>(() =>
-  props.openByTeam ? [...props.openByTeam.values()].reduce((sum, n) => sum + n, 0) : null)
-
 /** Search and sort only earn their place once there are enough teams to look through */
 const SEARCH_MIN_TEAMS = 5
 
@@ -407,7 +402,7 @@ function handlePageChange(page: number) {
   gap: 12px;
   padding-bottom: 4px;
 }
-/* desktop: two cards side by side. Mark, name and description on top; the counts sit under them, since the roster above already names who runs each team */
+/* desktop: two slim rows side by side: only the team's identity and its menu, the roster above already carries members, presence and load */
 @media (min-width: 769px) {
   .teams-list {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -417,13 +412,13 @@ function handlePageChange(page: number) {
     grid-template-columns: 56px minmax(0, 1fr) auto;
     grid-template-areas:
       'mark main acts';
-    align-items: start;
+    align-items: center;
     column-gap: 16px;
-    padding: 20px;
+    padding: 16px 20px;
   }
   .team-section :deep(.team-mark) { grid-area: mark; width: 56px; height: 56px; }
   .team-section :deep(.team-main) { grid-area: main; }
-  .team-section :deep(.team-acts) { grid-area: acts; margin: -4px -6px 0 0; }
+  .team-section :deep(.team-acts) { grid-area: acts; margin: 0 -6px 0 0; }
   .team-section :deep(.team-acts .go) { display: none; }
 }
 .drag-hint {
