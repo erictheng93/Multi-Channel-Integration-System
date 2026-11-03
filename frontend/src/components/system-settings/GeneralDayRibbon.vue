@@ -34,7 +34,6 @@
           {{ dateText }} · {{ modelValue }}<span
             v-if="restText"
             class="rb-rest"
-            :class="{ late: nowFrac >= 0.8 }"
           > · 今天還剩 {{ restText }}</span>
         </p>
       </div>
@@ -93,10 +92,6 @@
             class="rb-elapsed"
             :style="{ width: pct(nowFrac) }"
           />
-          <span
-            v-if="restText && nowFrac < 0.8"
-            class="rb-rest-in"
-          >今天還剩 {{ restText }}</span>
         </div>
         <span
           v-for="pin in pins"
@@ -295,13 +290,10 @@ const ariaLabel = computed(() => {
 }
 
 .rb-status {
-  display: inline-flex;
+  display: flex;
   gap: 9px;
-  align-items: center;
-  margin: 0 0 10px;
-  padding: 6px 14px 6px 12px;
-  border-radius: 999px;
-  background: var(--ui-fill);
+  align-items: baseline;
+  margin: 0 0 6px;
   font-size: 14px;
   font-weight: 500;
   color: var(--ui-ink-2);
@@ -378,10 +370,10 @@ const ariaLabel = computed(() => {
 
 .rb-track {
   position: absolute;
-  top: 48px;
+  top: 56px;
   right: 0;
   left: 0;
-  height: 26px;
+  height: 10px;
   overflow: hidden;
   border-radius: 999px;
   background: var(--ui-fill);
@@ -392,26 +384,6 @@ const ariaLabel = computed(() => {
   height: 100%;
   border-radius: 999px;
   background: color-mix(in srgb, var(--ui-blue) 42%, var(--ui-fill));
-}
-
-.rb-rest {
-  display: none;
-}
-
-.rb-rest.late {
-  display: inline;
-}
-
-/* the empty part of the track says what is left of the day, inside the picture */
-.rb-rest-in {
-  position: absolute;
-  top: 50%;
-  right: 16px;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--ui-ink-2);
-  transform: translateY(-50%);
-  font-variant-numeric: tabular-nums;
 }
 
 .rb-grid {
@@ -507,9 +479,9 @@ const ariaLabel = computed(() => {
 
 /* events: the same marks, said in words, as one plain key under the ribbon */
 .rb-legend {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 10px 24px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 36px;
   margin: 0;
   padding: 14px 14px 0;
   list-style: none;
@@ -588,10 +560,6 @@ const ariaLabel = computed(() => {
   }
 
   .rb-rest {
-    display: inline;
-  }
-
-  .rb-rest-in {
     display: none;
   }
 
