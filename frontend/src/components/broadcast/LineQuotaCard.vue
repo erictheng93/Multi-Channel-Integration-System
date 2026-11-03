@@ -342,7 +342,46 @@ function formatTime(iso: string): string {
 
 <style scoped>
 .quota-lead {
-  padding: 18px 28px 20px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-rows: auto 1fr;
+  gap: 0 44px;
+  padding: 20px 28px 22px;
+}
+
+/* one channel: the headline number sits left, title + meter stack on the right */
+.quota-head {
+  grid-column: 2;
+  grid-row: 1;
+  margin-bottom: 14px;
+}
+
+.channel-list,
+.channel:first-child {
+  display: contents;
+}
+
+.channel:not(:first-child),
+.state,
+.channel-body:not(.has-lead),
+.q-warn {
+  grid-column: 1 / -1;
+}
+
+.channel-body.has-lead {
+  display: contents;
+}
+
+.has-lead .channel-main {
+  grid-column: 1;
+  grid-row: 1 / span 2;
+  align-self: center;
+}
+
+.has-lead .meter {
+  grid-column: 2;
+  grid-row: 2;
+  align-self: end;
 }
 
 .quota-head {
@@ -366,7 +405,8 @@ function formatTime(iso: string): string {
 }
 
 .quota-rule {
-  display: block;
+  display: inline;
+  margin-left: 12px;
 }
 
 .state {
@@ -601,9 +641,37 @@ function formatTime(iso: string): string {
 }
 
 @media (max-width: 1024px) {
+  .quota-lead {
+    display: block;
+  }
+
+  .channel-list {
+    display: block;
+  }
+
+  .channel:first-child {
+    display: block;
+  }
+
   .channel-body.has-lead {
+    display: grid;
     grid-template-columns: minmax(0, 1fr);
     gap: 14px;
+  }
+
+  .has-lead .channel-main,
+  .has-lead .meter {
+    grid-column: auto;
+    grid-row: auto;
+  }
+
+  .quota-head {
+    margin-bottom: 0;
+  }
+
+  .quota-rule {
+    display: block;
+    margin-left: 0;
   }
 }
 

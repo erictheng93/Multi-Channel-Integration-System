@@ -140,9 +140,9 @@ const order = computed(() => {
 /* A short phone while there is nothing to show, centred in the panel; it grows with real content */
 .phone {
   display: flex;
-  flex: 1 1 auto;
+  flex: none;
   flex-direction: column;
-  width: min(100% - 44px, 320px);
+  width: min(100% - 44px, 300px);
   min-height: 0;
   margin: 0 auto;
   overflow: hidden;
@@ -197,7 +197,8 @@ const order = computed(() => {
   display: flex;
   flex: 1;
   flex-direction: column;
-  min-height: 200px;
+  justify-content: flex-end;
+  min-height: 230px;
   padding: 16px;
   overflow-y: auto;
   background: #eef1f6;
@@ -318,7 +319,7 @@ const order = computed(() => {
   }
 
   .chat {
-    min-height: 140px;
+    min-height: 200px;
   }
 }
 

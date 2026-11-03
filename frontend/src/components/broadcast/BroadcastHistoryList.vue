@@ -93,8 +93,8 @@
                     :data-status="broadcast.status"
                   >{{ statusLabel(broadcast.status) }}</span>
                   <time>{{ formatDate(broadcast.sentAt || broadcast.createdAt) }}</time>
+                  <span class="snippet">{{ broadcast.content || '（僅圖片）' }}</span>
                 </span>
-                <span class="snippet">{{ broadcast.content || '（僅圖片）' }}</span>
               </td>
               <td class="col-result">
                 <template v-if="broadcast.totalRecipients > 0">
@@ -308,7 +308,7 @@ function formatDate(value: string | null): string {
   display: flex;
   gap: 10px;
   align-items: center;
-  margin-top: 6px;
+  margin-top: 4px;
   font-size: 13px;
   color: var(--ui-ink-2);
   font-variant-numeric: tabular-nums;
@@ -324,15 +324,13 @@ function formatDate(value: string | null): string {
 
 /* The message gets its own line and two lines of room, so a record is read, not guessed at */
 .col-title .snippet {
-  display: -webkit-box;
-  margin-top: 6px;
+  flex: 1 1 0;
+  min-width: 0;
   overflow: hidden;
   font-size: 13px;
-  line-height: 1.45;
   color: var(--ui-ink-2);
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .when {
@@ -455,6 +453,19 @@ function formatDate(value: string | null): string {
 
   .col-title {
     grid-column: 1 / -1;
+  }
+
+  .meta-line {
+    flex-wrap: wrap;
+  }
+
+  .col-title .snippet {
+    flex-basis: 100%;
+    display: -webkit-box;
+    white-space: normal;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
   }
 
   /* the visible way into the recipient detail (the whole row is also tappable) */
