@@ -218,57 +218,72 @@
         <div class="ui-card-head">
           <div>
             <h2 class="ui-card-title">
-              檔案格式與內容
+              檔案格式
             </h2>
             <p class="ui-card-sub">
-              選格式，下方就是檔案裡會有的欄位
+              依用途選擇
             </p>
           </div>
         </div>
         <div
-          class="ui-seg fmt-seg"
-          role="group"
+          class="ex-list"
+          role="radiogroup"
           aria-label="匯出格式"
         >
           <button
             v-for="format in formats"
             :key="format.id"
             type="button"
-            :aria-pressed="selectedFormat === format.id"
+            class="ex-row"
+            :class="{ 'is-on': selectedFormat === format.id }"
+            role="radio"
+            :aria-checked="selectedFormat === format.id"
             @click="selectFormat(format.id)"
           >
-            {{ format.name }}
+            <span
+              class="fmt-ico"
+              :class="format.tone"
+              aria-hidden="true"
+            >{{ format.icon }}</span>
+            <span class="ex-main">
+              <b class="ex-name">{{ format.name }}<span class="ex-tag">{{ format.tagline }}</span></b>
+              <span class="ex-use">{{ format.usecases.join('、') }}</span>
+            </span>
+            <i
+              class="radio"
+              aria-hidden="true"
+            />
           </button>
-        </div>
-        <div
-          class="fmt-sheet"
-          aria-live="polite"
-        >
-          <p class="fmt-title">
-            <b>{{ current.name }}</b>
-            <span>{{ current.tagline }}，{{ selectedUnit }}</span>
-          </p>
-          <p class="fmt-use">
-            適合：{{ current.usecases.join('、') }}
-          </p>
-          <code class="sheet-shape">{{ shape }}</code>
-          <dl class="sheet-rows">
-            <div
-              v-for="row in selectedRows"
-              :key="row.note"
-              class="sheet-row"
-            >
-              <dt v-if="row.key">
-                {{ row.key }}
-              </dt>
-              <dd :class="{ 'is-wide': !row.key }">
-                {{ row.note }}
-              </dd>
-            </div>
-          </dl>
         </div>
       </section>
     </div>
+
+    <details
+      class="ui-card ex-fields"
+      :open="fieldsOpen"
+    >
+      <summary>
+        <span>檔案內容</span>
+        <small>{{ selectedUnit }}</small>
+      </summary>
+      <div class="sheet-body">
+        <code class="sheet-shape">{{ shape }}</code>
+        <dl class="sheet-rows">
+          <div
+            v-for="row in selectedRows"
+            :key="row.note"
+            class="sheet-row"
+          >
+            <dt v-if="row.key">
+              {{ row.key }}
+            </dt>
+            <dd :class="{ 'is-wide': !row.key }">
+              {{ row.note }}
+            </dd>
+          </div>
+        </dl>
+      </div>
+    </details>
 
     <UiActionBar
       class="export-actions"
@@ -321,6 +336,9 @@ type FormatId = 'json' | 'csv' | 'txt' | 'pdf'
 const EXPORT_LIMIT = 5000
 
 const selectedFormat = ref<FormatId>('json')
+// the file layout is part of the page on a desktop; on a phone it stays one tap away
+const fieldsOpen = ref(false)
+
 type Row = { key?: string; note: string }
 
 const formats: Array<{
@@ -406,7 +424,7 @@ const formats: Array<{
   }
 ]
 
-const current = computed(() => formats.find(f => f.id === selectedFormat.value) ?? formats[0] as (typeof formats)[number])
+const current = computed(() => formats.find(f => f.id === selectedFormat.value) ?? formats[0])
 const selectedRows = computed(() => current.value?.rows ?? [])
 const selectedUnit = computed(() => current.value?.unit ?? '')
 const selectedName = computed(() => current.value?.name ?? '')
@@ -583,51 +601,123 @@ async function runExport() {
   min-width: 0;
 }
 
-.fmt-seg {
-  display: flex;
-  margin: 4px 22px 0;
-}
-
-.fmt-seg > button {
-  flex: 1 1 0;
-  justify-content: center;
-}
-
-.fmt-sheet {
-  display: flex;
+.ex-list {
+  display: grid;
   flex: 1;
-  flex-direction: column;
-  gap: 6px;
-  padding: 18px 22px 20px;
+  gap: 2px;
+  grid-auto-rows: 1fr;
+  padding: 4px 10px 12px;
 }
 
-.fmt-title {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 2px 12px;
-  align-items: baseline;
-  margin: 0;
+.ex-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: center;
+  width: 100%;
+  padding: 12px 16px;
+  border: 0;
+  border-radius: var(--ui-r-inner);
+  background: transparent;
+  color: var(--ui-ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--ui-dur) var(--ui-ease);
 }
 
-.fmt-title b {
-  font: 600 22px / 1.2 var(--ui-font-display);
+.ex-row:hover {
+  background: var(--ui-fill);
+}
+
+.ex-row.is-on {
+  background: var(--ui-sel-tint);
+  box-shadow: var(--ui-sel-ring);
+}
+
+.ex-row:focus-visible {
+  outline: 2px solid var(--ui-accent);
+  outline-offset: 2px;
+}
+
+.ex-main {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.ex-name {
+  font: 600 20px / 1.2 var(--ui-font-display);
   letter-spacing: -0.02em;
 }
 
-.fmt-title span {
-  font-size: 14px;
+.ex-tag {
+  margin-left: 10px;
+  font: 500 14px var(--ui-font-ui);
+  letter-spacing: 0;
   color: var(--ui-ink-2);
 }
 
-.fmt-use {
-  margin: 0 0 6px;
-  font-size: 14px;
-  color: var(--ui-ink-2);
+.ex-use {
+  font-size: 13px;
+  color: var(--ui-muted);
+}
+
+.ex-fields {
+  margin: 0;
+}
+
+.sheet-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 4px;
+  padding-bottom: 12px;
+}
+
+.ex-fields summary {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  padding: 18px 22px;
+  font-size: 17px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.ex-fields summary {
+  list-style: none;
+}
+
+.ex-fields summary::-webkit-details-marker {
+  display: none;
+}
+
+.ex-fields summary::after {
+  width: 8px;
+  height: 8px;
+  margin: 0 4px 0 2px;
+  border: solid var(--ui-muted);
+  border-width: 0 2px 2px 0;
+  align-self: center;
+  content: '';
+  transform: rotate(45deg) translateY(-2px);
+  transition: transform var(--ui-dur) var(--ui-ease);
+}
+
+.ex-fields[open] summary::after {
+  transform: rotate(-135deg);
+}
+
+.ex-fields summary small {
+  margin-left: auto;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ui-muted);
 }
 
 .sheet-shape {
   display: block;
-  margin: 0 0 6px;
+  margin: 0 16px 8px;
   padding: 12px 14px;
   overflow-wrap: anywhere;
   border-radius: var(--ui-r-inner);
@@ -638,20 +728,23 @@ async function runExport() {
 
 .sheet-rows {
   display: grid;
-  margin: 0;
-  padding: 0;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 24px;
+  margin: 0 8px;
+  padding: 2px 0 12px;
 }
 
 .sheet-row {
   display: grid;
-  grid-template-columns: 132px minmax(0, 1fr);
+  grid-template-columns: 124px minmax(0, 1fr);
   gap: 12px;
-  padding: 5px 2px;
+  padding: 8px 14px;
   font-size: 14px;
   box-shadow: 0 -0.5px 0 var(--ui-sep);
 }
 
-.sheet-row:first-child {
+.sheet-row:first-child,
+.sheet-row:nth-child(2) {
   box-shadow: none;
 }
 
@@ -662,13 +755,13 @@ async function runExport() {
   color: var(--ui-ink);
 }
 
-.sheet-row dd {
-  margin: 0;
-  color: var(--ui-ink-2);
-}
-
 .sheet-row dd.is-wide {
   grid-column: 1 / -1;
+  color: var(--ui-muted);
+}
+
+.sheet-row dd {
+  margin: 0;
   color: var(--ui-ink-2);
 }
 
@@ -680,8 +773,9 @@ async function runExport() {
 
 .scope-rules {
   display: grid;
-  margin: auto 22px 0;
-  padding: 0 18px;
+  gap: 8px;
+  margin: 0 22px;
+  padding: 12px 18px;
   border-radius: var(--ui-r-inner);
   background: var(--ui-surface-2);
   list-style: none;
@@ -691,23 +785,17 @@ async function runExport() {
 
 .scope-rules li {
   display: flex;
-  gap: 12px;
-  align-items: center;
-  min-height: 68px;
-  padding: 10px 0;
-  box-shadow: 0 -0.5px 0 var(--ui-sep);
-}
-
-.scope-rules li:first-child {
-  box-shadow: none;
+  gap: 10px;
+  align-items: baseline;
 }
 
 .scope-rules li::before {
   flex: none;
-  width: 8px;
-  height: 8px;
+  width: 5px;
+  height: 5px;
+  margin-bottom: 3px;
   border-radius: 50%;
-  background: var(--ui-accent);
+  background: var(--ui-faint);
   content: '';
 }
 
@@ -715,7 +803,7 @@ async function runExport() {
   margin-bottom: 24px;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 30px 16px;
+  gap: 26px 16px;
   padding: 8px 22px 0;
 }
 
@@ -904,6 +992,49 @@ async function runExport() {
   color: var(--ui-ink-2);
 }
 
+.fmt-ico {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  font: 700 14px var(--ui-font-mono);
+}
+
+.fmt-ico.blue {
+  background: var(--ui-accent-soft);
+  color: var(--ui-accent);
+}
+
+.fmt-ico.green {
+  background: var(--ui-green-soft);
+  color: var(--ui-green-ink);
+}
+
+.fmt-ico.lavender {
+  background: var(--ui-p-lavender);
+  color: var(--ui-p-lavender-ink);
+}
+
+.fmt-ico.red {
+  background: var(--ui-red-soft);
+  color: var(--ui-red-ink);
+}
+
+.radio {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1.5px var(--ui-field-edge);
+  transition: box-shadow var(--ui-dur) var(--ui-ease);
+}
+
+.is-on .radio {
+  box-shadow: inset 0 0 0 6px var(--ui-accent);
+}
+
 /* The sheet carries the CTA on larger screens; phones get the sticky action bar */
 .export-actions {
   display: none;
@@ -960,21 +1091,26 @@ async function runExport() {
     font-size: 36px;
   }
 
-  .fmt-seg {
-    margin: 4px 16px 0;
+  .sheet-body {
+    grid-template-columns: minmax(0, 1fr);
   }
 
-  .fmt-sheet {
-    padding: 16px 16px 18px;
+  .sheet-rows {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .sheet-row:nth-child(2) {
+    box-shadow: 0 -0.5px 0 var(--ui-sep);
   }
 
   .sheet-row {
     grid-template-columns: 112px minmax(0, 1fr);
     gap: 12px;
+    padding: 7px 10px;
   }
 
-  .scope-rules li {
-    min-height: 48px;
+  .sheet-row dt {
+    font-size: 13px;
   }
 
   .scope-grid {
