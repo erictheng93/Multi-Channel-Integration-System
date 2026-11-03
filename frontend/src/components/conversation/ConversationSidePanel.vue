@@ -259,7 +259,6 @@ const rhythm = computed(() => {
   if (waits.length === 0) { return null }
   const picked = waits.slice(-WAIT_ROWS)
   const longest = Math.max(...picked.map(w => w.ms), 1)
-  const answered = waits.filter(w => !w.pending)
   const first = all[0]?.t ?? 0
   const last = all[all.length - 1]?.t ?? 0
   const sameDay = new Date(first).toDateString() === new Date(last).toDateString()
