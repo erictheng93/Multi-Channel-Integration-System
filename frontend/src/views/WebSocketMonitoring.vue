@@ -95,6 +95,20 @@
                 <dt>每位平均</dt>
                 <dd>{{ perAgent }}<small>條</small></dd>
               </div>
+              <div>
+                <dt>錯誤率</dt>
+                <dd>{{ errorRate === null ? '—' : (errorRate * 100).toFixed(2) }}<small v-if="errorRate !== null">%</small></dd>
+                <dd class="fact-note">
+                  <span
+                    v-if="errorRate !== null"
+                    class="ui-pill ui-pill-dot"
+                    :class="errorStatus.pill"
+                  >{{ errorStatus.label }}</span>
+                  <template v-else>
+                    {{ RESAMPLE_HINT }}
+                  </template>
+                </dd>
+              </div>
             </dl>
           </div>
           <div class="board-chart">
@@ -143,156 +157,6 @@
           </div>
         </article>
 
-        <!-- 即時指標 -->
-        <section
-          aria-label="即時指標"
-          class="s12 rates"
-        >
-          <h2 class="ui-group-label">
-            即時指標
-            <span class="label-note">每 {{ POLL_SECONDS }} 秒更新</span>
-          </h2>
-          <div class="ui-group rates-card">
-            <div class="ui-row is-flush kpi-row">
-              <span
-                class="ui-kpi-ico green"
-                aria-hidden="true"
-              >
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                ><path d="M7 4v16M7 20l-3-3M7 20l3-3M17 20V4M17 4l-3 3M17 4l3 3" /></svg>
-              </span>
-              <div class="kpi-main">
-                <div class="kpi-label">
-                  事件 / 秒
-                </div>
-                <div class="ui-kpi-foot">
-                  <template v-if="eventsTotal === null">
-                    {{ metrics ? RESAMPLE_HINT : '' }}
-                  </template>
-                  <template v-else>
-                    入 <b>{{ fmt(eventsIn, 2) }}</b> / 出 <b>{{ fmt(eventsOut, 2) }}</b>
-                  </template>
-                </div>
-              </div>
-              <div class="kpi-value">
-                {{ eventsTotal === null ? '—' : fmt(eventsTotal, 2) }}
-              </div>
-              <div
-                v-if="eventsSplit !== null"
-                class="meter meter-split"
-                role="img"
-                :aria-label="`入站佔 ${eventsSplit}%，出站佔 ${100 - eventsSplit}%`"
-              >
-                <span class="m-track"><i
-                  class="in"
-                  :style="{ width: `${eventsSplit}%` }"
-                /></span>
-                <span class="m-ticks"><em>入站 {{ eventsSplit }}%</em><em>出站 {{ 100 - eventsSplit }}%</em></span>
-              </div>
-            </div>
-
-            <div class="ui-row is-flush kpi-row">
-              <span
-                class="ui-kpi-ico orange"
-                aria-hidden="true"
-              >
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                ><circle
-                  cx="12"
-                  cy="12"
-                  r="9"
-                /><path d="M12 7v5l3 2" /></svg>
-              </span>
-              <div class="kpi-main">
-                <div class="kpi-label">
-                  平均處理延遲
-                </div>
-                <div class="ui-kpi-foot">
-                  <template v-if="metrics && !latencyKnown">
-                    {{ RESAMPLE_HINT }}
-                  </template>
-                  <template v-else-if="metrics">
-                    <span
-                      class="ui-pill ui-pill-dot"
-                      :class="latency.pill"
-                    >{{ latency.label }}</span><span class="foot-hint">{{ latency.hint }}</span>
-                  </template>
-                </div>
-              </div>
-              <div class="kpi-value">
-                {{ latencyKnown ? fmt(metrics?.averageLatency, 0) : '—' }}<small v-if="latencyKnown">ms</small>
-              </div>
-              <div
-                v-if="latencyKnown"
-                class="meter"
-                :class="latency.tone"
-                role="img"
-                :aria-label="`0 到 ${LATENCY_SCALE} 毫秒的量尺，目前 ${fmt(metrics?.averageLatency, 0)} 毫秒`"
-              >
-                <span class="m-track"><i :style="{ width: latencyPct }" /><u style="left: 20%" /></span>
-                <span class="m-ticks"><em>0</em><em style="left: 20%">100</em><em>500 ms</em></span>
-              </div>
-            </div>
-
-            <div class="ui-row is-flush kpi-row">
-              <span
-                class="ui-kpi-ico red"
-                aria-hidden="true"
-              >
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                ><path d="M12 3 2 20h20Z" /><path d="M12 10v4M12 17h.01" /></svg>
-              </span>
-              <div class="kpi-main">
-                <div class="kpi-label">
-                  錯誤率
-                </div>
-                <div class="ui-kpi-foot">
-                  <template v-if="errorRate === null">
-                    {{ metrics ? RESAMPLE_HINT : '' }}
-                  </template>
-                  <template v-else>
-                    <span
-                      class="ui-pill ui-pill-dot"
-                      :class="errorStatus.pill"
-                    >{{ errorStatus.label }}</span><span class="foot-hint">{{ errorStatus.hint }}</span>
-                  </template>
-                </div>
-              </div>
-              <div class="kpi-value">
-                {{ errorRate === null ? '—' : (errorRate * 100).toFixed(2) }}<small v-if="errorRate !== null">%</small>
-              </div>
-              <div
-                v-if="errorRate !== null"
-                class="meter"
-                :class="errorStatus.tone"
-                role="img"
-                :aria-label="`0 到 ${ERROR_SCALE}% 的量尺，目前 ${(errorRate * 100).toFixed(2)}%`"
-              >
-                <span class="m-track"><i :style="{ width: errorPct }" /><u style="left: 20%" /></span>
-                <span class="m-ticks"><em>0</em><em style="left: 20%">1%</em><em>5%</em></span>
-              </div>
-            </div>
-          </div>
-        </section>
-
         <!-- 事件量 -->
         <section class="s6">
           <h2 class="ui-group-label">
@@ -300,20 +164,37 @@
             <span class="label-note">每秒收發事件數</span>
           </h2>
           <div class="ui-group chart-card">
-            <div class="card-head">
-              <p class="legend">
-                <span><i
-                  class="sw"
-                  style="--c: var(--ui-indigo)"
-                /><em>入站</em><b>{{ chart.lastIn === null ? '—' : fmt(chart.lastIn, 2) }}</b></span>
-                <span><i
-                  class="sw"
-                  style="--c: var(--ui-teal)"
-                /><em>出站</em><b>{{ chart.lastOut === null ? '—' : fmt(chart.lastOut, 2) }}</b></span>
+            <div class="card-head kpi-head">
+              <p class="cur">
+                <b>{{ eventsTotal === null ? '—' : fmt(eventsTotal, 2) }}</b>
+                <span>事件 / 秒</span>
                 <span
                   v-if="stats.peakEvents !== null"
                   class="peak"
                 >合計峰值 <b>{{ fmt(stats.peakEvents, 2) }}</b> / 秒</span>
+              </p>
+              <p
+                v-if="eventsTotal !== null"
+                class="legend"
+              >
+                <span><i
+                  class="sw"
+                  style="--c: var(--ui-indigo)"
+                /><em>入站</em><strong>{{ fmt(eventsIn, 2) }}</strong></span>
+                <span><i
+                  class="sw"
+                  style="--c: var(--ui-teal)"
+                /><em>出站</em><strong>{{ fmt(eventsOut, 2) }}</strong></span>
+                <span
+                  v-if="eventsSplit !== null"
+                  class="split-note"
+                >入站佔 {{ eventsSplit }}%</span>
+              </p>
+              <p
+                v-else-if="metrics"
+                class="legend"
+              >
+                {{ RESAMPLE_HINT }}
               </p>
             </div>
             <div class="chart-wrap">
@@ -352,14 +233,30 @@
             <span class="label-note">平均處理時間（毫秒）</span>
           </h2>
           <div class="ui-group chart-card">
-            <div class="card-head">
+            <div class="card-head kpi-head">
               <p class="cur">
-                <b>{{ chart.lastLatency === null ? '—' : fmt(chart.lastLatency, 0) }}</b>
-                <span>ms · 最新取樣</span>
+                <b>{{ latencyKnown ? fmt(metrics?.averageLatency, 0) : '—' }}</b>
+                <span>ms</span>
                 <span
                   v-if="stats.peakLatency !== null"
                   class="peak"
                 >峰值 <b>{{ fmt(stats.peakLatency, 0) }}</b> ms</span>
+              </p>
+              <p
+                v-if="latencyKnown"
+                class="legend"
+              >
+                <span
+                  class="ui-pill ui-pill-dot"
+                  :class="latency.pill"
+                >{{ latency.label }}</span>
+                <span>{{ latency.hint }}</span>
+              </p>
+              <p
+                v-else-if="metrics"
+                class="legend"
+              >
+                {{ RESAMPLE_HINT }}
               </p>
             </div>
             <div class="chart-wrap">
@@ -533,7 +430,7 @@ const EVENT_SERIES: WsChartSeries[] = [
   { key: 'out', color: 'var(--ui-teal)', pick: p => p.eventsOutPerS, area: true, label: '出', digits: 2, unit: '/秒' }
 ]
 const LATENCY_SERIES: WsChartSeries[] = [
-  { key: 'lat', color: 'var(--ui-accent)', pick: p => p.avgProcessingMs, area: true, label: '延遲', unit: 'ms', peak: true }
+  { key: 'lat', color: 'var(--ui-ink-2)', pick: p => p.avgProcessingMs, area: false, label: '延遲', unit: 'ms', peak: true }
 ]
 /** The same thresholds the live row uses (under 100 ms is excellent, over 500 ms needs work) */
 const LATENCY_REFS = [{ value: 100, label: '優秀 100 ms' }, { value: 500, label: '需改進 500 ms' }]
@@ -560,12 +457,6 @@ const subtitle = computed(() => {
 /** 0 ms with no sampled events is "nothing measured", not a perfect latency. */
 const latencyKnown = computed(() => !!metrics.value && (sampled.value || metrics.value.averageLatency > 0))
 
-/** Meter scales: each bar ends at its "needs work" line (500 ms / 5%); the 100 ms / 1% mark sits at one fifth */
-const LATENCY_SCALE = 500
-const ERROR_SCALE = 5
-const clampPct = (n: number) => `${Math.min(100, Math.max(1.5, n))}%`
-const latencyPct = computed(() => clampPct(((metrics.value?.averageLatency ?? 0) / LATENCY_SCALE) * 100))
-const errorPct = computed(() => clampPct((((errorRate.value ?? 0) * 100) / ERROR_SCALE) * 100))
 /** Inbound share of all events, whole percent */
 const eventsSplit = computed(() =>
   eventsIn.value === null || eventsTotal.value === null || eventsTotal.value <= 0
@@ -628,25 +519,6 @@ const perAgent = computed(() => {
   const m = metrics.value
   return m && m.onlineAgents > 0 ? (m.registeredConnections / m.onlineAgents).toFixed(1).replace(/\.0$/, '') : null
 })
-
-function lastOf(pick: (_p: WsMetricsPointDto) => number | null): number | null {
-  const points = history.value
-  for (let i = points.length - 1; i >= 0; i--) {
-    const point = points[i]
-    const value = point ? pick(point) : null
-    if (value !== null && Number.isFinite(value)) {
-      return value
-    }
-  }
-  return null
-}
-
-const chart = computed(() => ({
-  lastConnections: lastOf(p => p.activeConnections),
-  lastIn: lastOf(p => p.eventsInPerS),
-  lastOut: lastOf(p => p.eventsOutPerS),
-  lastLatency: lastOf(p => p.avgProcessingMs)
-}))
 
 const hasHistory = computed(() => history.value.length > 0)
 const hasEvents = computed(() => history.value.some(p => eventsOf(p) !== null))
@@ -925,7 +797,7 @@ function formatTime(timestamp: number) {
 
 .board-num {
   margin-top: 4px;
-  font: 600 88px / 1 var(--ui-font-display);
+  font: 600 64px / 1 var(--ui-font-display);
   letter-spacing: -0.04em;
   font-variant-numeric: tabular-nums;
   color: var(--ui-ink);
@@ -953,7 +825,8 @@ function formatTime(timestamp: number) {
 
 .board-facts {
   display: flex;
-  gap: 28px;
+  flex-wrap: wrap;
+  gap: 14px 24px;
   margin: auto 0 0;
   padding-top: 14px;
   border-top: 0.5px solid var(--ui-sep);
@@ -972,7 +845,7 @@ function formatTime(timestamp: number) {
 
 .board-facts dd {
   margin: 2px 0 0;
-  font: 600 26px / 1.1 var(--ui-font-display);
+  font: 600 24px / 1.1 var(--ui-font-display);
   letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
 }
@@ -1165,146 +1038,26 @@ function formatTime(timestamp: number) {
   color: var(--ui-muted);
 }
 
-/* A rate row: icon, name with its verdict, the number */
-.rates-card {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  flex: 1;
-}
-
-.rates-card > .kpi-row::before {
-  display: none;
-}
-
-.rates-card > .kpi-row + .kpi-row {
-  border-left: 0.5px solid var(--ui-sep);
-}
-
-.kpi-row {
-  display: grid;
-  grid-template:
-    'ico label' auto
-    'value value' auto
-    'foot foot' auto
-    'meter meter' auto / auto minmax(0, 1fr);
-  gap: 6px 12px;
-  align-items: center;
-  padding-top: 20px;
-  padding-bottom: 20px;
-}
-
-.kpi-main {
-  display: contents;
-}
-
-.kpi-row .ui-kpi-ico { grid-area: ico; }
-.kpi-label {
-  grid-area: label;
-  font-size: 15px;
-  font-weight: 600;
-}
-
-.kpi-main .ui-kpi-foot {
-  grid-area: foot;
-  flex-wrap: wrap;
-  row-gap: 4px;
-}
-
-.kpi-value {
-  grid-area: value;
-  margin-top: 4px;
-  font: 600 44px / 1 var(--ui-font-display);
-  letter-spacing: -0.03em;
+.legend strong {
+  font: 600 20px / 1 var(--ui-font-display);
   font-variant-numeric: tabular-nums;
+  color: var(--ui-ink);
 }
 
-/* a quiet scale under each live number: where it sits against the same thresholds the pill uses */
-.meter {
-  --c: var(--ui-green);
-  grid-area: meter;
-  margin-top: 10px;
-}
-
-.meter.is-warn { --c: var(--ui-orange); }
-.meter.is-bad { --c: var(--ui-red); }
-
-.m-track {
-  position: relative;
-  display: block;
-  height: 8px;
-  border-radius: 999px;
-  background: var(--ui-fill);
-}
-
-.m-track i {
-  display: block;
-  height: 100%;
-  border-radius: inherit;
-  background: color-mix(in srgb, var(--c) 72%, var(--ui-surface));
-}
-
-.m-track u {
-  position: absolute;
-  top: -3px;
-  bottom: -3px;
-  width: 2px;
-  margin-left: -1px;
-  border-radius: 1px;
-  background: var(--ui-ink-2);
-}
-
-.m-ticks {
-  position: relative;
-  display: flex;
-  justify-content: space-between;
-  height: 20px;
-  margin-top: 4px;
-  font-size: 13px;
+.split-note {
   color: var(--ui-ink-2);
 }
 
-.m-ticks em {
-  font-style: normal;
-  white-space: nowrap;
-}
-
-.m-ticks em[style] {
-  position: absolute;
-  transform: translateX(-50%);
-}
-
-/* the in / out split uses the same two colours as the event chart */
-.meter-split .m-track {
-  overflow: hidden;
-  background: color-mix(in srgb, var(--ui-teal) 70%, var(--ui-surface));
-}
-
-.meter-split .m-track i {
-  background: color-mix(in srgb, var(--ui-indigo) 80%, var(--ui-surface));
-}
-
-.kpi-value small {
-  margin-left: 5px;
-  font: 500 16px var(--ui-font-ui);
-  letter-spacing: 0;
+.board-facts dd.fact-note {
+  margin-top: 4px;
+  font: 400 13px var(--ui-font-ui);
   color: var(--ui-muted);
 }
 
-.ui-kpi-ico.green,
-.ui-kpi-ico.orange,
-.ui-kpi-ico.red {
-  background: var(--ui-fill);
-  color: var(--ui-ink-2);
-}
-
-.ui-kpi-foot b {
-  font-weight: 600;
-  color: var(--ui-ink-2);
-  font-variant-numeric: tabular-nums;
-}
-
-.foot-hint {
-  white-space: nowrap;
+.kpi-head {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
 }
 
 .alerts {
@@ -1412,44 +1165,14 @@ function formatTime(timestamp: number) {
     width: auto;
     height: 0.5px;
   }
-
-  .rates-card {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .rates-card > .kpi-row + .kpi-row {
-    border-top: 0.5px solid var(--ui-sep);
-    border-left: 0;
-  }
 }
 
 @media (max-width: 768px) {
-  /* Phone: same order as the desktop (board, rates, events, latency) */
+  /* Phone: same order as the desktop (board, events, latency) */
   .s6,
   .s4,
   .s8 {
     margin-top: 16px;
-  }
-
-  /* Phone: label and verdict on the left, the number on the right (one short row each) */
-  .kpi-row {
-    grid-template:
-      'ico label value' auto
-      'ico foot value' auto
-      'meter meter meter' auto / auto minmax(0, 1fr) auto;
-    gap: 2px 12px;
-    padding-top: 14px;
-    padding-bottom: 14px;
-  }
-
-  .kpi-value {
-    margin-top: 0;
-    font-size: 34px;
-  }
-
-  .ui-kpi-foot {
-    flex-wrap: wrap;
-    row-gap: 4px;
   }
 
   .board {
@@ -1457,7 +1180,7 @@ function formatTime(timestamp: number) {
   }
 
   .board-num {
-    font-size: 56px;
+    font-size: 52px;
   }
 
   .peak {
