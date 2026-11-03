@@ -24,6 +24,13 @@
               focusable="false"
             >
               <ellipse
+                class="nf-ring r1"
+                cx="50"
+                cy="62"
+                rx="58"
+                ry="76"
+              />
+              <ellipse
                 class="nf-ring r3"
                 cx="50"
                 cy="62"
@@ -112,15 +119,10 @@
               </button>
             </div>
             <p
-              v-if="trace.bad"
+              v-if="trace.bad && trace.goodPrefix"
               class="trace-note"
             >
-              <template v-if="trace.goodPrefix">
-                「{{ trace.goodPrefix }}」存在，但底下沒有「{{ trace.bad }}」
-              </template>
-              <template v-else>
-                沒有「{{ trace.bad }}」這個頁面
-              </template>
+              「{{ trace.goodPrefix }}」存在，但底下沒有「{{ trace.bad }}」
             </p>
           </div>
 
@@ -221,6 +223,14 @@
               </router-link>
             </li>
           </ul>
+          <button
+            v-if="canExpand"
+            type="button"
+            class="find-more"
+            @click="showAll = true"
+          >
+            顯示全部 {{ allowed.length }} 個頁面
+          </button>
           <p
             v-if="shownPages.length === 0"
             class="find-empty"
@@ -350,10 +360,18 @@ const guess = computed(() => {
 // ---- the finder ----
 const query = ref('')
 
-// One flat list in the sidebar's order: every row is the same size, and the icon tint says which section it is in
+// A 404 is not a second sidebar: the six pages people open most are offered, the rest are one tap or one word away
+const FIRST_PAGES = ['/dashboard', '/conversations', '/notifications', '/tags', '/broadcasts', '/reports']
+const showAll = ref(false)
+const canExpand = computed(() => query.value.trim() === '' && !showAll.value && allowed.value.length > FIRST_PAGES.length)
+
+// One flat list in the sidebar's order; typing searches every page
 const shownPages = computed(() => {
   const q = query.value.trim().toLowerCase()
-  const match = (p: Page): boolean => q === '' || p.label.toLowerCase().includes(q) || p.path.toLowerCase().includes(q)
+  const narrow = q === '' && !showAll.value
+  const match = (p: Page): boolean => q === ''
+    ? !narrow || FIRST_PAGES.includes(p.path)
+    : p.label.toLowerCase().includes(q) || p.path.toLowerCase().includes(q)
   return NAV_SECTIONS.flatMap(section =>
     allowed.value
       .filter(p => sectionForPath(p.path)?.id === section.id && match(p))
@@ -461,6 +479,7 @@ const goBack = () => {
   }
 
   .nf-find {
+    justify-content: center;
     padding: 36px 32px 32px;
   }
 }
@@ -497,6 +516,11 @@ const goBack = () => {
   opacity: 0.4;
 }
 
+.nf-ring.r1 {
+  stroke-width: 2;
+  opacity: 0.18;
+}
+
 .nf-dot {
   fill: var(--ui-blue);
 }
@@ -505,6 +529,10 @@ const goBack = () => {
 @media (prefers-reduced-motion: no-preference) {
   .nf-ring.r2 {
     animation: nf-ping 900ms var(--ui-ease) 150ms both;
+  }
+
+  .nf-ring.r1 {
+    animation: nf-ping 1100ms var(--ui-ease) 300ms both;
   }
 }
 
@@ -573,8 +601,6 @@ const goBack = () => {
   background: var(--ui-red-soft);
   color: var(--ui-red-ink);
   font-weight: 700;
-  text-decoration: line-through;
-  text-decoration-thickness: 1.5px;
 }
 
 .seg.is-rest {
@@ -588,7 +614,7 @@ const goBack = () => {
 .trace-note {
   margin: 8px 0 0;
   font-size: 14px;
-  color: var(--ui-red-ink);
+  color: var(--ui-ink-2);
 }
 
 .copy {
@@ -740,20 +766,26 @@ const goBack = () => {
   white-space: nowrap;
 }
 
-.tone-workspace {
-  --tone: var(--ui-blue);
+/* one calm hue for every destination: colour is not information here */
+.find-item {
+  --tone: var(--ui-accent);
 }
 
-.tone-growth {
-  --tone: var(--ui-orange);
+.find-more {
+  align-self: flex-start;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ui-accent);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
 }
 
-.tone-team {
-  --tone: var(--ui-green);
-}
-
-.tone-system {
-  --tone: var(--ui-indigo);
+.find-more:hover {
+  background: var(--ui-accent-soft);
 }
 
 .find-empty {
@@ -771,8 +803,12 @@ const goBack = () => {
 }
 
 @media (min-width: 1025px) {
+  .nf:not(.is-solo) {
+    min-height: 640px;
+  }
+
   .nf:not(.is-solo) .code {
-    font-size: 120px;
+    font-size: 144px;
   }
 
   .nf:not(.is-solo) .nf-title {

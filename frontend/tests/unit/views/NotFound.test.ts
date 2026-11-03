@@ -54,12 +54,18 @@ describe('NotFound.vue', () => {
     expect(wrapper.find('.trace-extra').text()).toBe('?x=1')
   })
 
-  it('lists only pages the role can open', () => {
+  it('lists only pages the role can open', async () => {
     expect(hrefs(mountPage())).not.toContain('/team')
     expect(hrefs(mountPage())).toContain('/conversations')
 
+    // the first six are offered up front; the rest sit behind "show all"
+    expect(hrefs(mountPage())).toHaveLength(6)
+
     state.isAdmin.value = true
-    expect(hrefs(mountPage())).toEqual(expect.arrayContaining(['/team', '/settings', '/monitoring/api']))
+    const wrapper = mountPage()
+    expect(hrefs(wrapper)).not.toContain('/team')
+    await wrapper.find('.find-more').trigger('click')
+    expect(hrefs(wrapper)).toEqual(expect.arrayContaining(['/team', '/settings', '/monitoring/api']))
   })
 
   it('names the first part of the address that does not exist and keeps the good prefix', () => {
