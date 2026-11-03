@@ -36,27 +36,22 @@
         role="group"
         aria-label="標籤地圖，點選查看該標籤的對話"
       >
-        <button
+        <component
+          :is="t.other ? 'div' : 'button'"
           v-for="t in tiles"
           :key="t.id"
-          type="button"
+          :type="t.other ? undefined : 'button'"
           class="tile"
-          :class="{ 'is-active': activeTagId === t.id, 'is-wide': t.showCount }"
+          :class="{ 'is-active': activeTagId === t.id, 'is-tall': t.tall, 'is-other': t.other }"
           :style="t.style"
           :aria-label="`${t.name}，${t.count} 個對話`"
-          :aria-pressed="activeTagId === t.id"
-          :title="`${t.name}：${t.count} 個對話（${t.share}%）`"
-          @click="emit('select', t.id)"
+          :aria-pressed="t.other ? undefined : activeTagId === t.id"
+          :title="t.title ?? `${t.name}：${t.count} 個對話（${t.share}%）`"
+          @click="!t.other && emit('select', t.id)"
         >
-          <span
-            v-if="t.showName"
-            class="tile-name"
-          >{{ t.name }}</span>
-          <b
-            v-if="t.showCount"
-            class="tile-n"
-          >{{ t.count }}</b>
-        </button>
+          <span class="tile-name">{{ t.name }}</span>
+          <b class="tile-n">{{ t.count }}</b>
+        </component>
       </div>
       <p
         v-else
@@ -135,26 +130,55 @@ const coverage = computed(() => {
   return Math.round((five / total.value) * 100)
 })
 
-const tiles = computed(() => {
+/** A tile smaller than this cannot carry its name and count legibly */
+const MIN_W = 84
+const MIN_H = 48
+const OTHER_ID = -1
+
+/** Lay the tags out; tags whose tile would be too small to read are folded into one 「其他」 tile (re-laid out until every tile fits) */
+const layout = computed(() => {
   const byId = new Map(used.value.map((t) => [t.id, t]))
-  const rects = squarify(used.value.map((t) => ({ id: t.id, value: t.conversationCount || 0 })), box.value.w, box.value.h)
+  // smallest first: the tags folded away are always the least used
+  const ascending = [...used.value].sort((a, b) => (a.conversationCount || 0) - (b.conversationCount || 0))
+  const build = (foldedCount: number) => {
+    const keep = ascending.slice(foldedCount)
+    const gone = ascending.slice(0, foldedCount)
+    const items = keep.map((t) => ({ id: t.id, value: t.conversationCount || 0 }))
+    if (gone.length > 0) { items.push({ id: OTHER_ID, value: gone.reduce((n, t) => n + (t.conversationCount || 0), 0) }) }
+    return { rects: squarify(items, box.value.w, box.value.h), folded: gone.map((t) => t.id) }
+  }
+  let n = 0
+  let result = build(n)
+  // fold one more tag while any tile (the 「其他」 tile included) is too small to read, keeping at least two real tiles
+  while (n < ascending.length - 2 && result.rects.some((r) => r.w < MIN_W || r.h < MIN_H)) {
+    n += 1
+    result = build(n)
+  }
+  return { ...result, byId }
+})
+
+const tiles = computed(() => {
+  const { rects, folded, byId } = layout.value
   return rects.flatMap((r) => {
-    const tag = byId.get(r.id as number)
-    if (!tag) { return [] }
-    const count = tag.conversationCount || 0
+    const other = r.id === OTHER_ID
+    const tag = other ? null : byId.get(r.id as number)
+    if (!other && !tag) { return [] }
+    const names = folded.map((id) => byId.get(id)?.name).filter(Boolean).join('、')
+    const count = other ? folded.reduce((n, id) => n + (byId.get(id)?.conversationCount || 0), 0) : (tag?.conversationCount || 0)
     return [{
-      id: tag.id,
-      name: tag.name,
+      id: other ? OTHER_ID : (tag as Tag).id,
+      other,
+      name: other ? `其他 ${folded.length} 個標籤` : (tag as Tag).name,
       count,
       share: total.value > 0 ? Math.round((count / total.value) * 100) : 0,
-      showName: r.w >= 58 && r.h >= 30,
-      showCount: r.w >= 58 && r.h >= 70,
+      title: other ? `${names}：共 ${count} 個對話` : undefined,
+      tall: r.h >= 74,
       style: {
         left: `${(r.x / box.value.w) * 100}%`,
         top: `${(r.y / box.value.h) * 100}%`,
         width: `${(r.w / box.value.w) * 100}%`,
         height: `${(r.h / box.value.h) * 100}%`,
-        '--tag-c': tag.color,
+        '--tag-c': other ? 'var(--ui-muted)' : (tag as Tag).color,
       },
     }]
   })
@@ -314,6 +338,10 @@ const tiles = computed(() => {
   position: relative;
 }
 
+.is-tall .tile-n {
+  font-size: 24px;
+}
+
 .tile-name {
   display: -webkit-box;
   overflow: hidden;
@@ -325,8 +353,24 @@ const tiles = computed(() => {
   overflow-wrap: anywhere;
 }
 
+.tile:not(.is-tall) {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.tile.is-other {
+  cursor: default;
+  color: var(--ui-ink-2);
+}
+
+.tile.is-other::before {
+  background: var(--ui-fill);
+}
+
 .tile-n {
-  font: 600 24px / 1 var(--ui-font-display);
+  font: 600 18px / 1 var(--ui-font-display);
   letter-spacing: -0.02em;
   color: var(--ui-ink);
   font-variant-numeric: tabular-nums;

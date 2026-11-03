@@ -49,4 +49,15 @@ describe('TagsStats -- tag map', () => {
     expect(wrapper.find('.map-empty').exists()).toBe(true)
     expect(wrapper.findAll('.tile')).toHaveLength(0)
   })
+
+  it('folds tags too small to read into one other tile and keeps every count visible', () => {
+    const many = [tag(1, 'A', 120), tag(2, 'B', 60), tag(3, 'C', 40), tag(4, 'D', 2), tag(5, 'E', 1)]
+    const wrapper = mount(TagsStats, {
+      props: { stats: { totalTags: 5, totalConversations: 223, activeTags: 5 }, tags: many },
+    })
+    const other = wrapper.find('.tile.is-other')
+    expect(other.exists()).toBe(true)
+    expect(other.text()).toContain('3')
+    expect(wrapper.findAll('.tile').every((t) => t.find('.tile-n').exists())).toBe(true)
+  })
 })

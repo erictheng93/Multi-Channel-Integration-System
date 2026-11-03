@@ -13,14 +13,6 @@
       @keydown.space.prevent="$emit('toggle')"
     >
       <span
-        class="sd"
-        :class="endpoint.status"
-        :title="statusText"
-        :aria-label="endpoint.status === 'healthy' ? undefined : statusText"
-        :role="endpoint.status === 'healthy' ? undefined : 'img'"
-      />
-
-      <span
         class="meth"
         :class="endpoint.method.toLowerCase()"
       >{{ endpoint.method }}</span>
@@ -33,16 +25,21 @@
           >
             <span class="seg">{{ seg }}</span><wbr>
           </template>
+          <span
+            v-if="endpoint.status !== 'healthy'"
+            class="flag"
+            :class="endpoint.status"
+          >{{ statusText }}</span>
         </div>
         <div class="desc">
           {{ endpoint.description }}
         </div>
-        <div
-          class="sr"
-          :class="successClass"
-        >
-          成功率 {{ endpoint.successRate }}%<span class="sr-n"> · {{ endpoint.requestCount.toLocaleString() }} 次/時</span>
-        </div>
+      </div>
+      <div
+        class="sr"
+        :class="successClass"
+      >
+        <span class="sr-l">成功率 </span>{{ endpoint.successRate }}%<span class="sr-n"> · {{ endpoint.requestCount.toLocaleString() }} 次/時</span>
       </div>
 
       <span class="m m-p95">{{ latency.value }}<small>{{ latency.unit }}</small></span>
@@ -134,7 +131,7 @@ const successClass = computed(() => {
 
 .ep {
   display: grid;
-  grid-template-columns: 10px 52px minmax(0, 1fr) 84px 76px 84px 16px;
+  grid-template-columns: 52px minmax(0, 1fr) 84px 76px 84px 16px;
   gap: 12px;
   align-items: center;
   padding: 12px 22px;
@@ -145,24 +142,24 @@ const successClass = computed(() => {
   outline-offset: -2px;
 }
 
-.sd {
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  background: var(--ui-muted);
+/* Only a problem is flagged, in words; healthy rows stay quiet */
+.flag {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 0 8px;
+  border-radius: 999px;
+  font: 600 13px / 20px var(--ui-font-ui);
+  vertical-align: 1px;
 }
 
-/* Only a problem gets a dot; healthy rows stay quiet so status is not encoded three ways */
-.sd.healthy {
-  background: transparent;
+.flag.warning {
+  background: var(--ui-orange-soft);
+  color: var(--ui-orange-ink);
 }
 
-.sd.warning {
-  background: var(--ui-orange);
-}
-
-.sd.error {
-  background: var(--ui-red);
+.flag.error {
+  background: var(--ui-red-soft);
+  color: var(--ui-red-ink);
 }
 
 .meth {
@@ -282,20 +279,18 @@ const successClass = computed(() => {
     display: inline;
   }
 
+  .sr-l {
+    display: none;
+  }
+
   /* Method pill sits above the path so the path owns the full middle column (no 3-4 line wrap) */
   .ep {
     grid-template-areas:
-      'sd meth m chev'
-      'sd main m chev';
-    grid-template-columns: 10px minmax(0, 1fr) 76px 16px;
-    gap: 4px 10px;
+      'meth sr m chev'
+      'main main m chev';
+    grid-template-columns: auto minmax(0, 1fr) 76px 16px;
+    gap: 6px 10px;
     padding: 12px 16px;
-  }
-
-  .sd {
-    grid-area: sd;
-    align-self: start;
-    margin-top: 5px;
   }
 
   .meth {
@@ -336,14 +331,17 @@ const successClass = computed(() => {
   }
 
   .desc {
-    overflow: visible;
-    overflow-wrap: anywhere;
-    text-overflow: clip;
-    white-space: normal;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .sr {
     display: block;
+    grid-area: sr;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .ep-wrap + .ep-wrap::before {

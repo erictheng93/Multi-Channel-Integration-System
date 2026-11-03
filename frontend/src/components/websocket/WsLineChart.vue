@@ -16,6 +16,7 @@
       :viewBox="`0 0 ${geom.width} ${geom.height}`"
       role="img"
       :aria-label="chartLabel"
+      :style="{ '--fs': `${geom.width >= 800 ? 15 : 13}px` }"
       @pointermove="onMove"
       @pointerdown="onMove"
       @pointerleave="hover = null"
@@ -125,11 +126,6 @@
             :stroke="s.color"
             stroke-width="2.4"
           />
-          <text
-            :x="s.peak.x"
-            :y="s.peak.y - 12"
-            text-anchor="middle"
-          >{{ s.peak.text }}</text>
         </g>
       </template>
       <g v-if="hoverView">
@@ -315,7 +311,7 @@ const refLines = computed(() => (props.refs ?? [])
 
 .ws-chart text {
   fill: var(--ui-muted);
-  font: 500 13px var(--ui-font-ui);
+  font: 500 var(--fs, 13px) var(--ui-font-ui);
   font-variant-numeric: tabular-nums;
 }
 
@@ -335,7 +331,7 @@ const refLines = computed(() => (props.refs ?? [])
 
 .ws-chart .ref-label {
   fill: var(--ui-ink-2);
-  font-size: 13px;
+  font-size: var(--fs, 13px);
 }
 </style>
 
