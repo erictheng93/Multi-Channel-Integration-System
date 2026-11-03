@@ -256,6 +256,10 @@
                 v-if="coverageDays.before > 0"
                 class="cal-since"
               >前 {{ coverageDays.before }} 天備份尚未啟用，不列入</span>
+              <span
+                class="cal-gap"
+                :class="{ 'is-miss': missingDays.length > 0 }"
+              >{{ missingDays.length === 0 ? '每天都有備份，沒有缺口' : `缺少 ${missingDays.join('、')} 的備份` }}</span>
             </p>
             <div
               class="cal-week"
@@ -567,7 +571,7 @@ const strip = computed<StripCell[]>(() => {
       today: i === 0,
       before: !entry && firstDay !== '' && key < firstDay,
       col: dow,
-      label: String(Number(key.slice(8, 10))),
+      label: Number(key.slice(8, 10)) === 1 || i === span - 1 ? `${Number(key.slice(5, 7))}/${Number(key.slice(8, 10))}` : String(Number(key.slice(8, 10))),
       aria: entry ? `${dayLabel(d)} ${dayDate(d)}，${count} 份，${formatBytes(size)}` : (!entry && firstDay !== '' && key < firstDay ? `${dayDate(d)}，備份尚未啟用` : `${dayDate(d)}，沒有備份`)
     })
   }
@@ -587,6 +591,14 @@ const leadMeaning = computed(() => {
   const newer = manual && new Date(manual.uploaded).getTime() > auto ? `之後有手動備份 ${formatDate(manual.uploaded)}` : ''
   return [scheduleText.value, newer, statusPill.value.label === '已逾期' ? '已逾期' : ''].filter(Boolean).join(' · ')
 })
+
+/** Days that should have a backup and have none (today is excused until its run has had time to land) */
+const missingDays = computed(() =>
+  strip.value
+    .filter(cell => cell.count === 0 && !cell.before && !cell.today)
+    .slice(0, 4)
+    .map(cell => cell.label.includes('/') ? cell.label : `${cell.key.slice(5, 7).replace(/^0/, '')}/${cell.label}`),
+)
 
 /** One arc: days of the last 30 (or the daily retention) that have at least one backup */
 const coverageDays = computed(() => {
@@ -805,6 +817,18 @@ onMounted(load)
   color: var(--ui-muted);
 }
 
+.cal-gap {
+  display: block;
+  margin-top: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ui-green-ink);
+}
+
+.cal-gap.is-miss {
+  color: var(--ui-orange-ink);
+}
+
 .cal-since {
   display: block;
   margin-top: 2px;
@@ -947,6 +971,7 @@ onMounted(load)
 
 .num {
   font-size: 14px;
+  white-space: nowrap;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }

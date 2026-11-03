@@ -47,9 +47,13 @@
         class="range"
         :class="endpoint.status"
         role="img"
-        :aria-label="`P50 ${endpoint.p50ResponseTime} 毫秒至 P95 ${endpoint.responseTime} 毫秒`"
+        :aria-label="`P95 ${endpoint.responseTime} 毫秒`"
       >
         <i :style="rangeStyle" />
+        <u
+          v-if="warnMark !== null"
+          :style="{ left: warnMark }"
+        />
       </span>
 
       <span class="m m-p95"><span class="m-k">P95 </span>{{ latency.value }}<small>{{ latency.unit }}</small></span>
@@ -109,14 +113,15 @@ const latency = computed(() => {
   return ms >= 1000 ? { value: (ms / 1000).toFixed(2), unit: 's' } : { value: String(Math.round(ms)), unit: 'ms' }
 })
 
-/** The band runs from P50 to P95 on one scale for every row, so rows compare by eye */
+/** The bar runs from 0 to P95 on one scale for every row, so rows compare by eye; the tick is the 500 ms alarm line */
 const rangeStyle = computed(() => {
   const max = props.scaleMs || 1
-  const lo = Math.min(props.endpoint.p50ResponseTime, props.endpoint.responseTime)
-  const hi = props.endpoint.responseTime
-  const left = Math.min(98, (lo / max) * 100)
-  const width = Math.max(2, Math.min(100 - left, ((hi - lo) / max) * 100))
-  return { left: `${left}%`, width: `${width}%` }
+  const width = Math.max(1.5, Math.min(100, (props.endpoint.responseTime / max) * 100))
+  return { left: '0%', width: `${width}%` }
+})
+const warnMark = computed(() => {
+  const max = props.scaleMs || 0
+  return max > 500 ? `${(500 / max) * 100}%` : null
 })
 
 const statusText = computed(() => {
@@ -170,13 +175,13 @@ const successClass = computed(() => {
 @media (min-width: 1281px) {
   .ep.has-range,
   .ep:has(.range) {
-    grid-template-columns: 52px 290px minmax(0, 1fr) 150px 90px 90px 110px 16px;
+    grid-template-columns: 52px 250px minmax(0, 1fr) 190px 80px 80px 100px 16px;
   }
 
   .range {
     position: relative;
     display: block;
-    height: 8px;
+    height: 10px;
     border-radius: 999px;
     background: color-mix(in srgb, var(--ui-fill) 55%, transparent);
   }
@@ -187,6 +192,16 @@ const successClass = computed(() => {
     bottom: 0;
     border-radius: 999px;
     background: color-mix(in srgb, var(--ui-accent) 38%, var(--ui-surface));
+  }
+
+  .range u {
+    position: absolute;
+    top: -3px;
+    bottom: -3px;
+    width: 2px;
+    margin-left: -1px;
+    border-radius: 1px;
+    background: var(--ui-ink-2);
   }
 
   .range.warning i {
@@ -257,28 +272,7 @@ const successClass = computed(() => {
   border-radius: 999px;
   background: var(--ui-fill);
   font: 700 13px var(--ui-font-ui);
-  color: var(--ui-muted);
-}
-
-.meth.get {
-  background: var(--ui-green-soft);
-  color: var(--ui-green-ink);
-}
-
-.meth.post {
-  background: var(--ui-accent-soft);
-  color: var(--ui-accent);
-}
-
-.meth.put,
-.meth.patch {
-  background: var(--ui-orange-soft);
-  color: var(--ui-orange-ink);
-}
-
-.meth.delete {
-  background: var(--ui-red-soft);
-  color: var(--ui-red-ink);
+  color: var(--ui-ink-2);
 }
 
 .ep-main {
