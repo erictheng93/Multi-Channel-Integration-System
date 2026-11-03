@@ -1,3 +1,4 @@
+import { recordRecentPath } from '@/utils/recent-pages'
 import { createRouter, createWebHistory } from 'vue-router'
 import { combinedAuthGuard, authCacheCanAdmit } from '@/middleware/authGuard'
 import { createLogger } from '@/utils/logger'
@@ -397,6 +398,7 @@ router.beforeEach(async (to, from, next) => {
 // Handle navigation completion
 router.afterEach((to, from) => {
   frontendLogger.debug(' Navigation completed:', from.path, '->', to.path)
+  if (to.matched.length > 0 && to.name !== 'NotFound') { recordRecentPath(to.path) }
 })
 
 // Handle navigation errors
