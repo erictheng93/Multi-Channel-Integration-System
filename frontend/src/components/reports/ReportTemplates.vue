@@ -5,7 +5,16 @@
     <UiPageHead
       title="報表模板"
       :subtitle="templatesSubtitle"
-    />
+    >
+      <template #actions>
+        <router-link
+          to="/reports/generate"
+          class="btn btn-secondary"
+        >
+          自訂報表
+        </router-link>
+      </template>
+    </UiPageHead>
     <UiSectionNav section="reports" />
 
     <div
@@ -27,108 +36,130 @@
       v-else-if="selected"
       class="tpl-grid"
     >
-      <div class="tpl-picks">
-        <div
-          class="tpl-list"
-          role="radiogroup"
-          aria-label="現成模板"
-        >
-          <TemplateCard
-            v-for="template in usableTemplates"
-            :key="template.name"
-            :template="template"
-            :selected="selected.name === template.name"
-            @select="onSelect"
-          />
-        </div>
-
-        <router-link
-          to="/reports/generate"
-          class="custom-row"
-        >
-          <span
-            class="custom-ico"
-            aria-hidden="true"
-          >
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            ><path d="M12 5v14M5 12h14" /></svg>
-          </span>
-          <span class="custom-main">
-            <b>自訂報表</b>
-            <span>自選類型、時間範圍與格式</span>
-          </span>
-          <svg
-            class="custom-chev"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            aria-hidden="true"
-          ><path d="m9 6 6 6-6 6" /></svg>
-        </router-link>
+      <div
+        class="tpl-list"
+        role="radiogroup"
+        aria-label="現成模板"
+      >
+        <TemplateCard
+          v-for="template in usableTemplates"
+          :key="template.name"
+          :template="template"
+          :selected="selected.name === template.name"
+          @select="onSelect"
+        />
       </div>
 
       <ReportSheet
         :template="selected"
         :state="latestState"
         :loading="latestLoading"
-      >
-        <template #side>
-          <section
-            v-if="earlier.length"
-            class="tpl-hist"
-            aria-label="更早的產出"
-          >
-            <h3 class="tpl-cap">
-              更早的產出
-            </h3>
-            <ul>
-              <li
-                v-for="item in earlier"
-                :key="item.id"
-              >
-                <router-link
-                  :to="`/reports/${item.id}`"
-                  class="tpl-hrow"
-                >
-                  <span class="tpl-hname">{{ item.title }}</span>
-                  <span class="tpl-hmeta">{{ item.format.toUpperCase() }} ・ {{ relativeTime(item.completedAt ?? item.createdAt) }}</span>
-                  <span
-                    class="ui-pill"
-                    :class="statusClass(item.status)"
-                  >{{ statusText[item.status] ?? item.status }}</span>
-                </router-link>
-              </li>
-            </ul>
-          </section>
+      />
 
-          <div class="tpl-actions">
-            <button
-              type="button"
-              class="btn btn-secondary"
-              @click="customizeTemplate(selected)"
-            >
-              調整後產生
-            </button>
-            <button
-              type="button"
-              class="btn btn-primary"
-              :aria-busy="generating"
-              @click="useTemplate(selected)"
-            >
-              {{ generating ? '產生中...' : '直接產生' }}
-            </button>
+      <aside
+        class="ui-card tpl-rail"
+        aria-label="產生設定"
+      >
+        <dl class="tpl-props">
+          <div
+            v-for="prop in docProps"
+            :key="prop.k"
+          >
+            <dt>{{ prop.k }}</dt>
+            <dd>{{ prop.v }}</dd>
           </div>
-        </template>
-      </ReportSheet>
+        </dl>
+
+        <p
+          class="tpl-src"
+          :class="{ 'is-warn': latestState?.failed }"
+          :role="latestState?.failed ? 'alert' : 'status'"
+        >
+          <template v-if="latestLoading">
+            正在讀取最近一份報表…
+          </template>
+          <template v-else-if="latestState?.failed">
+            無法讀取最近一份報表的內容，你仍可直接產生新的報表。
+          </template>
+          <template v-else-if="!latestState?.report">
+            還沒有產生過。以 JSON 產生第一份後，樣張會填入實際數值。
+          </template>
+          <template v-else>
+            樣張數值取自
+            <router-link
+              :to="`/reports/${latestState.report.id}`"
+              class="tpl-src-link"
+            >
+              {{ latestState.report.title }}
+            </router-link>
+            <span class="tpl-src-ago"> ・ {{ relativeTime(latestState.report.completedAt ?? latestState.report.createdAt) }}</span>
+          </template>
+        </p>
+
+        <section
+          class="tpl-hist"
+          aria-label="報表內容"
+        >
+          <h3 class="tpl-cap">
+            報表內容
+          </h3>
+          <ul class="tpl-inc">
+            <li
+              v-for="item in contents"
+              :key="item.label"
+            >
+              <b>{{ item.label }}</b>
+              <span>{{ item.hint }}</span>
+            </li>
+          </ul>
+        </section>
+
+        <section
+          v-if="earlier.length"
+          class="tpl-hist"
+          aria-label="更早的產出"
+        >
+          <h3 class="tpl-cap">
+            更早的產出
+          </h3>
+          <ul>
+            <li
+              v-for="item in earlier"
+              :key="item.id"
+            >
+              <router-link
+                :to="`/reports/${item.id}`"
+                class="tpl-hrow"
+              >
+                <span class="tpl-hname">{{ item.title }}</span>
+                <span class="tpl-hmeta">{{ item.format.toUpperCase() }} ・ {{ relativeTime(item.completedAt ?? item.createdAt) }}</span>
+                <span
+                  class="ui-pill"
+                  :class="statusClass(item.status)"
+                >{{ statusText[item.status] ?? item.status }}</span>
+              </router-link>
+            </li>
+          </ul>
+        </section>
+
+        <div class="tpl-actions">
+          <button
+            type="button"
+            class="btn btn-secondary"
+            @click="customizeTemplate(selected)"
+          >
+            調整後產生
+          </button>
+          <button
+            type="button"
+            class="btn btn-primary"
+            :aria-busy="generating"
+            @click="useTemplate(selected)"
+          >
+            {{ generating ? '產生中...' : '直接產生' }}
+          </button>
+        </div>
+      </aside>
     </div>
 
     <UiActionBar
@@ -167,7 +198,7 @@ import ReportsAPI from '@/api/reports';
 import TemplateCard from './templates/TemplateCard.vue';
 import ReportSheet from './templates/ReportSheet.vue';
 import { useLatestReport, relativeTime } from './templates/latestReport';
-import { DEFAULT_TEMPLATES } from './templates/templateHelpers';
+import { DEFAULT_TEMPLATES, REPORT_CONTENTS, formatEstimatedTime } from './templates/templateHelpers';
 
 const router = useRouter();
 
@@ -197,6 +228,13 @@ const usableTemplates = computed(() => templates.value.filter(isSupported));
 const selected = ref<ReportTemplate | null>(null);
 const { state: latestState, loading: latestLoading } = useLatestReport(computed(() => selected.value?.type));
 const earlier = computed(() => (latestState.value?.recent ?? []).filter(item => item.id !== latestState.value?.report?.id).slice(0, 3));
+const docProps = computed(() => {
+  const list = [{ k: '時間範圍', v: '近 30 天' }, { k: '輸出格式', v: 'JSON' }];
+  const seconds = selected.value?.estimatedTime;
+  if (seconds) { list.push({ k: '預估耗時', v: `約 ${formatEstimatedTime(seconds)}` }); }
+  return list;
+});
+const contents = computed(() => (selected.value ? REPORT_CONTENTS[selected.value.type] ?? [] : []));
 const statusText: Record<string, string> = { completed: '已完成', generating: '生成中', pending: '待處理', failed: '失敗', expired: '已過期' };
 const statusClass = (status: string) => ({ completed: 'ui-pill-green', generating: 'ui-pill-blue', pending: 'ui-pill-blue', failed: 'ui-pill-red' }[status] ?? '');
 
@@ -209,7 +247,7 @@ watch(usableTemplates, list => {
   }
 }, { immediate: true });
 const templatesSubtitle = computed(() =>
-  usableTemplates.value.length === 0 ? '' : `${usableTemplates.value.length} 組可直接使用的模板，或自訂報表`
+  usableTemplates.value.length === 0 ? '' : `${usableTemplates.value.length} 組現成模板，樣張為最近一份報表的真實數值`
 );
 
 // 使用模板生成報告
@@ -256,26 +294,119 @@ onMounted(() => {
 <style scoped>
 .tpl-grid {
   display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px;
   gap: 16px;
-}
-
-.tpl-picks {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 16px;
+  align-items: stretch;
 }
 
 .tpl-list {
   display: grid;
-  grid-column: span 2;
+  grid-column: 1 / -1;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
+}
+
+/* the rail beside the sheet: how it will be generated, where the figures come from, what came before, then the actions */
+.tpl-rail {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 24px;
+}
+
+.tpl-props {
+  display: grid;
+  margin: 0;
+}
+
+.tpl-props div {
+  display: flex;
+  gap: 12px;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 10px 0;
+}
+
+.tpl-props div + div {
+  box-shadow: 0 -0.5px 0 var(--ui-sep);
+}
+
+.tpl-props div:first-child {
+  padding-top: 0;
+}
+
+.tpl-props dt {
+  font-size: 14px;
+  color: var(--ui-muted);
+}
+
+.tpl-props dd {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.tpl-src {
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: var(--ui-r-inner);
+  background: var(--ui-surface-2);
+  font-size: 14px;
+  color: var(--ui-ink-2);
+}
+
+.tpl-src.is-warn {
+  color: var(--ui-red-ink);
+}
+
+.tpl-src-link {
+  font-weight: 600;
+  color: var(--ui-accent);
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+
+.tpl-src-link:hover {
+  text-decoration: underline;
+}
+
+.tpl-src-ago {
+  color: var(--ui-muted);
+}
+
+.tpl-inc {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tpl-inc li {
+  display: grid;
+  gap: 1px;
+  padding: 9px 0;
+  font-size: 14px;
+}
+
+.tpl-inc li + li {
+  box-shadow: 0 -0.5px 0 var(--ui-sep);
+}
+
+.tpl-inc b {
+  font-weight: 600;
+}
+
+.tpl-inc span {
+  font-size: 13px;
+  color: var(--ui-muted);
 }
 
 .tpl-actions {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 8px;
+  margin-top: auto;
 }
 
 .tpl-hist {
@@ -336,64 +467,6 @@ onMounted(() => {
   color: var(--ui-accent);
 }
 
-.custom-row {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  gap: 14px;
-  align-items: center;
-  padding: 18px 20px;
-  border-radius: var(--ui-r-group);
-  background: transparent;
-  box-shadow: inset 0 0 0 1.5px var(--ui-sep);
-  color: var(--ui-ink);
-  text-decoration: none;
-  transition: background var(--ui-dur) var(--ui-ease);
-}
-
-.custom-row:hover {
-  background: var(--ui-surface);
-}
-
-.custom-row:focus-visible {
-  outline: 2px solid var(--ui-accent);
-  outline-offset: 2px;
-}
-
-.custom-ico {
-  display: grid;
-  width: 40px;
-  height: 40px;
-  place-items: center;
-  border-radius: 12px;
-  background: var(--ui-fill);
-  color: var(--ui-ink-2);
-}
-
-.custom-ico svg {
-  width: 20px;
-  height: 20px;
-}
-
-.custom-main {
-  display: grid;
-  gap: 2px;
-}
-
-.custom-main b {
-  font: 600 16px / 1.3 var(--ui-font-display);
-}
-
-.custom-main span {
-  font-size: 14px;
-  color: var(--ui-ink-2);
-}
-
-.custom-chev {
-  width: 18px;
-  height: 18px;
-  color: var(--ui-muted);
-}
-
 .tpl-bar {
   display: none;
 }
@@ -407,38 +480,45 @@ onMounted(() => {
 }
 
 @media (max-width: 1024px) {
-  .tpl-picks {
+  .tpl-grid {
     grid-template-columns: minmax(0, 1fr);
-  }
-
-  .tpl-list {
-    grid-column: auto;
   }
 }
 
 @media (max-width: 768px) {
   .tpl-grid {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-  }
-
-  /* picker first, then the sheet, then the quiet custom entry */
-  .tpl-picks {
-    display: contents;
+    gap: 12px;
   }
 
   .tpl-list {
-    order: 1;
     gap: 10px;
   }
 
-  .tpl-grid > :deep(.sheet) {
-    order: 2;
+  .tpl-rail {
+    gap: 16px;
+    padding: 18px;
   }
 
-  .custom-row {
-    order: 3;
+  /* the settings read as one wrapping line of facts, not a three-row table */
+  .tpl-props {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 20px;
+  }
+
+  .tpl-props div,
+  .tpl-props div:first-child {
+    flex-direction: column;
+    gap: 0;
+    padding: 0;
+  }
+
+  .tpl-props div + div {
+    box-shadow: none;
+  }
+
+  .tpl-hist[aria-label="報表內容"] {
+    display: none;
   }
 
   .tpl-actions {
