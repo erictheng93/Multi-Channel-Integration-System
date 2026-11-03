@@ -280,7 +280,7 @@ const triggerTypeLabel = computed(() => {
   overflow: hidden;
   font-size: 13px;
   line-height: 1.45;
-  color: var(--ui-muted);
+  color: var(--ui-ink-2);
 }
 
 .rule-card__when,
@@ -426,34 +426,7 @@ const triggerTypeLabel = computed(() => {
   color: var(--ui-muted);
 }
 
-/* the rail: one line through every rung, starting and ending at the first and last */
-.rule-card::after {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 38px;
-  width: 2px;
-  background: var(--ui-fill-strong);
-  content: '';
-}
-
-.rule-card.is-first::after {
-  top: 31px;
-}
-
-.rule-card.is-last::after {
-  bottom: auto;
-  height: 31px;
-}
-
-.rule-card.is-first.is-last::after {
-  display: none;
-}
-
-.rule-card--expanded.is-last::after {
-  bottom: 0;
-  height: auto;
-}
+/* the numbered rungs stand alone: a hairline through them read as an error */
 
 .rule-card__hits {
   display: inline-flex;
@@ -540,29 +513,31 @@ const triggerTypeLabel = computed(() => {
   .rule-card__reply {
     display: -webkit-box;
     flex: 1 1 0;
-    -webkit-line-clamp: 2;
+    -webkit-line-clamp: 1;
   }
 
   .rule-card__prio-line {
     display: flex;
-    flex-wrap: wrap;
-    gap: 2px 10px;
+    flex-wrap: nowrap;
+    gap: 2px 0;
     margin-top: 2px;
     font-size: 13px;
     color: var(--ui-muted);
     font-variant-numeric: tabular-nums;
   }
 
-  /* the condition keeps its own line and wraps: a cut-off keyword cannot be checked by eye */
+  /* phone: the meta line is just the numbers; the condition is read in the opened rule */
   .rule-card__prio-when {
-    flex: 1 0 100%;
-    min-width: 0;
-    overflow-wrap: anywhere;
-    color: var(--ui-ink-2);
+    display: none;
   }
 
   .rule-card__prio-n {
     flex: none;
+  }
+
+  .rule-card__prio-n + .rule-card__prio-n::before {
+    margin: 0 7px;
+    content: '·';
   }
 
   .rule-card__body {
