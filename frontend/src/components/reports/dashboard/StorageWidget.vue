@@ -61,6 +61,9 @@ const soonest = computed(() => {
 
 <style scoped>
 .stor {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
   padding: 18px 20px 16px;
 }
 
@@ -143,7 +146,8 @@ const soonest = computed(() => {
 }
 
 .stor-foot {
-  margin: 12px 0 0;
+  margin: auto 0 0;
+  padding-top: 12px;
   font-size: 13px;
   color: var(--ui-muted);
 }

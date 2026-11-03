@@ -3,12 +3,12 @@
     class="ui-lead cov"
     aria-label="這份報表涵蓋的期間"
   >
-    <div class="cov-text">
-      <p class="cov-kicker">
-        這份報表
-      </p>
-      <ul class="cov-sentence">
-        <li>
+    <div class="cov-top">
+      <div class="cov-text">
+        <p class="cov-kicker">
+          這份報表
+        </p>
+        <p class="cov-sentence">
           <span class="cov-pre">產生</span>
           <button
             type="button"
@@ -18,8 +18,6 @@
           >
             {{ typeLabel || '尚未選擇類型' }}
           </button>
-        </li>
-        <li>
           <span class="cov-pre">涵蓋</span>
           <button
             type="button"
@@ -29,8 +27,6 @@
           >
             {{ rangeLabel || '尚未選擇期間' }}
           </button>
-        </li>
-        <li>
           <span class="cov-pre">輸出為</span>
           <button
             type="button"
@@ -39,53 +35,47 @@
           >
             {{ formatLabel }}
           </button>
-        </li>
-      </ul>
+        </p>
+      </div>
+
+      <p class="cov-count">
+        <b>{{ span.days || '—' }}</b>
+        <span v-if="span.days">天</span>
+        <em class="cov-cap">{{ span.days ? `${span.from} – ${span.to}` : '選擇期間後顯示' }}</em>
+      </p>
     </div>
 
     <figure
-      class="cov-grid-wrap"
+      class="cov-line"
       :aria-label="caption"
     >
-      <div class="cov-count">
-        <b>{{ span.days || '—' }}</b>
-        <span>{{ span.days ? '天' : '' }}</span>
-        <em class="cov-cap">{{ span.days ? `${span.from} – ${span.to}` : '選擇期間後，涵蓋的日子會亮起' }}</em>
-      </div>
       <div
-        class="cov-grid"
+        class="cov-track"
         role="img"
         :aria-label="caption"
-        :style="{ '--weeks': weeks.count }"
       >
-        <span
-          v-for="m in weeks.months"
-          :key="m.col"
-          class="cov-m"
-          :style="{ gridColumn: `${m.col} / span 4` }"
-        >{{ m.label }}</span>
-        <span
-          v-for="d in weekdays"
-          :key="d.row"
-          class="cov-d"
-          :style="{ gridRow: d.row }"
-        >{{ d.label }}</span>
         <i
-          v-for="cell in weeks.cells"
-          :key="cell.n"
-          class="cov-c"
-          :class="{ on: cell.on, today: cell.today }"
-          :style="{ gridColumn: cell.col, gridRow: cell.row }"
+          v-if="line.seg"
+          class="cov-seg"
+          :style="{ left: line.seg.left, width: line.seg.width }"
         />
       </div>
-      <p
-        class="cov-key"
+      <div
+        class="cov-axis"
         aria-hidden="true"
       >
-        <span><i class="on" />涵蓋的日子</span>
-        <span><i />其他日子</span>
-        <span><i class="today" />今天</span>
-      </p>
+        <span
+          v-for="tick in line.ticks"
+          :key="tick.left"
+          class="cov-tick"
+          :style="{ left: tick.left }"
+        >{{ tick.label }}</span>
+        <span class="cov-tick is-today">今天 {{ line.todayLabel }}</span>
+      </div>
+      <figcaption class="cov-key">
+        <span><i class="on" />藍色段是這份報表的期間</span>
+        <span>時間軸為最近 {{ line.window }} 天</span>
+      </figcaption>
     </figure>
   </section>
 </template>
@@ -93,8 +83,8 @@
 <script setup lang="ts">
 /**
  * ReportCoverage: the lead of the generate page. The request reads as one sentence (type,
- * period, format; each token jumps to its step) and the chosen period is drawn on a week
- * calendar ending today, so "過去 30 天" or "上季" is a shape you can see, not a label.
+ * period, format; each token jumps to its step) and the chosen period is drawn as a segment on
+ * a labelled timeline that ends today, so "過去 30 天" or "上季" is a shape you can see, not a label.
  */
 import { computed } from 'vue'
 import type { ReportTimeRange } from '@/types/reports'
@@ -153,47 +143,56 @@ const span = computed(() => {
   return r ? { days: r[1] - r[0] + 1, from: fmt(r[0]), to: fmt(r[1]) } : { days: 0, from: '', to: '' }
 })
 
-// Monday-first rows; every other day is named so the rows read without a guess
-const weekdays = [{ row: 2, label: '一' }, { row: 4, label: '三' }, { row: 6, label: '五' }, { row: 8, label: '日' }]
-
 const caption = computed(() => (span.value.days ? `涵蓋 ${span.value.from} 至 ${span.value.to}，共 ${span.value.days} 天` : '尚未選擇期間'))
 
-// Monday-first week columns ending with this week; wider when the period reaches further back
-const weeks = computed(() => {
+const WINDOWS = [30, 90, 180, 365, 730, 1460]
+const MAX_TICKS = 5
+
+// The axis reaches back far enough that the segment never fills it, then names the month starts inside it
+const line = computed(() => {
   const t = today.value
-  const dow = (n: number): number => (n + 3) % 7
   const r = range.value
-  const reach = r ? t - r[0] : 0
-  const count = Math.min(60, Math.max(13, Math.ceil(reach / 7) + 2))
-  const start = t - dow(t) - (count - 1) * 7
-  const cells: Array<{ n: number; col: number; row: number; on: boolean; today: boolean }> = []
-  const months: Array<{ col: number; label: string }> = []
-  let lastMonth = -1
-  for (let col = 0; col < count; col += 1) {
-    const monday = start + col * 7
-    const mo = new Date(monday * DAY).getUTCMonth()
-    if (mo !== lastMonth) {
-      if (months.length === 0 || col + 2 - (months[months.length - 1]?.col ?? 0) >= 4) { months.push({ col: col + 2, label: `${mo + 1} 月` }) }
-      lastMonth = mo
-    }
-    for (let row = 0; row < 7; row += 1) {
-      const n = monday + row
-      if (n > t) { continue }
-      cells.push({ n, col: col + 2, row: row + 2, on: !!r && n >= r[0] && n <= r[1], today: n === t })
-    }
+  const reach = r ? t - r[0] + 1 : 30
+  const window = WINDOWS.find(w => w >= reach * 1.25) ?? Math.ceil(reach * 1.25)
+  const start = t - window
+  const pos = (n: number): number => ((n - start) / window) * 100
+  const pct = (v: number): string => `${Math.min(100, Math.max(0, v)).toFixed(2)}%`
+
+  const seg = r ? { left: `min(${pct(pos(r[0]))}, calc(100% - 8px))`, width: `max(8px, ${pct(pos(r[1] + 1) - pos(r[0]))})` } : null
+
+  const months: Array<{ n: number; label: string }> = []
+  const first = new Date(start * DAY)
+  const year = first.getUTCFullYear()
+  let month = first.getUTCMonth() + 1
+  for (let guard = 0; guard < 60; guard += 1) {
+    const day = utcDay(year, month, 1)
+    if (day >= t) { break }
+    const d = new Date(day * DAY)
+    months.push({ n: day, label: window > 365 ? `${String(d.getUTCFullYear()).slice(2)}/${d.getUTCMonth() + 1}` : `${d.getUTCMonth() + 1} 月` })
+    month += 1
   }
-  // a month label needs four columns of room; one that would run past the grid is left out
-  return { count, cells, months: months.filter(m => m.col + 3 <= count + 1) }
+  const step = Math.max(1, Math.ceil(months.length / MAX_TICKS))
+  // the "today" label owns the right end; a month label that close would collide with it
+  const ticks = months
+    .filter((_, i) => i % step === 0)
+    .filter(item => pos(item.n) > 6 && pos(item.n) < 80)
+    .map(item => ({ left: pct(pos(item.n)), label: item.label }))
+  return { window, seg, ticks, todayLabel: fmt(t) }
 })
 </script>
 
 <style scoped>
 .cov {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 24px 56px;
-  align-items: center;
-  padding: 24px 36px;
+  gap: 28px;
+  padding: 28px 36px 24px;
+}
+
+.cov-top {
+  display: flex;
+  gap: 24px 48px;
+  align-items: flex-end;
+  justify-content: space-between;
 }
 
 .cov-kicker {
@@ -204,29 +203,23 @@ const weeks = computed(() => {
 }
 
 .cov-sentence {
-  display: grid;
-  gap: 8px;
-  margin: 12px 0 0;
-  padding: 0;
-  list-style: none;
-}
-
-.cov-sentence li {
   display: flex;
-  gap: 12px;
+  flex-wrap: wrap;
+  gap: 8px 10px;
   align-items: center;
-  min-width: 0;
+  margin: 12px 0 0;
 }
 
 .cov-pre {
-  flex: none;
-  width: 3.4em;
   font: 400 18px / 1.3 var(--ui-font-display);
   color: var(--ui-ink-2);
 }
 
+.cov-pre:not(:first-child) {
+  margin-left: 6px;
+}
+
 .tok {
-  display: inline;
   margin: 0;
   padding: 2px 10px;
   border: 0;
@@ -249,58 +242,99 @@ const weeks = computed(() => {
   color: var(--ui-orange-ink);
 }
 
-.cov-grid-wrap {
-  display: grid;
-  gap: 10px;
+.cov-count {
+  display: flex;
+  flex: none;
+  gap: 6px;
+  align-items: baseline;
   margin: 0;
 }
 
-.cov-count {
-  display: flex;
-  gap: 6px;
-  align-items: baseline;
-}
-
 .cov-count b {
-  font: 600 44px / 1 var(--ui-font-display);
+  font: 600 56px / 1 var(--ui-font-display);
   letter-spacing: -0.035em;
   font-variant-numeric: tabular-nums;
 }
 
 .cov-count span {
-  font-size: 18px;
+  font-size: 20px;
   color: var(--ui-muted);
 }
 
-.cov-grid {
-  display: grid;
-  grid-template-columns: 18px repeat(var(--weeks), 22px);
-  grid-template-rows: 18px repeat(7, 22px);
-  gap: 3px;
-  max-width: 100%;
-  padding-right: 4px;
+.cov-cap {
+  margin-left: 10px;
+  font-size: 16px;
+  font-style: normal;
+  font-variant-numeric: tabular-nums;
+  color: var(--ui-ink-2);
 }
 
-.cov-m {
-  grid-row: 1;
+.cov-line {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+}
+
+.cov-track {
+  position: relative;
+  height: 18px;
+  border-radius: 999px;
+  background: var(--ui-fill);
+}
+
+.cov-seg {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-radius: 999px;
+  background: var(--ui-accent);
+}
+
+.cov-axis {
+  position: relative;
+  height: 26px;
+}
+
+.cov-tick {
+  position: absolute;
+  top: 0;
+  padding-top: 9px;
   font-size: 13px;
   white-space: nowrap;
+  transform: translateX(-50%);
   color: var(--ui-muted);
+  font-variant-numeric: tabular-nums;
 }
 
-.cov-d {
-  grid-column: 1;
-  align-self: center;
-  font-size: 13px;
-  line-height: 1;
-  color: var(--ui-muted);
+/* a short tick over each label ties it to the track above */
+.cov-tick::before {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 1px;
+  height: 6px;
+  background: var(--ui-faint);
+  content: '';
+}
+
+.cov-tick.is-today {
+  right: 0;
+  left: auto;
+  transform: none;
+  font-weight: 600;
+  color: var(--ui-ink);
+}
+
+.cov-tick.is-today::before {
+  right: 0;
+  left: auto;
+  background: var(--ui-ink);
 }
 
 .cov-key {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px 16px;
-  margin: 0;
+  gap: 4px 20px;
   font-size: 13px;
   color: var(--ui-ink-2);
 }
@@ -312,9 +346,9 @@ const weeks = computed(() => {
 }
 
 .cov-key i {
-  width: 12px;
-  height: 12px;
-  border-radius: 4px;
+  width: 14px;
+  height: 8px;
+  border-radius: 999px;
   background: var(--ui-fill);
 }
 
@@ -322,86 +356,32 @@ const weeks = computed(() => {
   background: var(--ui-accent);
 }
 
-.cov-key i.today {
-  box-shadow: 0 0 0 1.5px var(--ui-ink);
-}
-
-.cov-c {
-  display: block;
-  border-radius: 6px;
-  background: var(--ui-fill);
-}
-
-.cov-c.on {
-  background: var(--ui-accent);
-}
-
-.cov-c.today {
-  box-shadow: 0 0 0 2px var(--ui-surface), 0 0 0 3.5px var(--ui-ink);
-}
-
-.cov-cap {
-  margin-left: auto;
-  font-size: 15px;
-  font-style: normal;
-  font-variant-numeric: tabular-nums;
-  color: var(--ui-ink-2);
-}
-
-@media (max-width: 1280px) {
-  .cov {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .cov-grid-wrap {
-    grid-template-columns: auto minmax(0, 1fr);
-    column-gap: 20px;
-    align-items: center;
-  }
-
-  .cov-count {
-    flex-wrap: wrap;
-    max-width: 84px;
-  }
-
-  .cov-key {
-    grid-column: 1 / -1;
-  }
-
-  .cov-cap {
-    flex: 1 0 100%;
-    margin: 0;
-    font-size: 14px;
-  }
-}
-
 @media (max-width: 768px) {
   .cov {
-    gap: 14px;
+    gap: 18px;
     padding: 20px;
   }
 
+  .cov-top {
+    flex-direction: column;
+    gap: 12px;
+    align-items: flex-start;
+  }
+
   .cov-pre {
-    font-size: 18px;
+    font-size: 17px;
   }
 
   .tok {
     font-size: 19px;
   }
 
-  .cov-grid {
-    grid-template-columns: 14px repeat(var(--weeks), minmax(0, 1fr));
-    grid-template-rows: 16px repeat(7, auto);
-    gap: 2px;
-  }
-
-  .cov-c {
-    aspect-ratio: 1;
-    border-radius: 4px;
-  }
-
   .cov-count b {
-    font-size: 34px;
+    font-size: 40px;
+  }
+
+  .cov-count span {
+    font-size: 18px;
   }
 }
 </style>

@@ -12,19 +12,12 @@
       <span v-if="tagName">「{{ tagName }}」</span>
     </h2>
 
-    <p
-      v-if="!preview"
-      class="ledger-wait"
-    >
-      {{ loading ? '計算受眾中...' : '選擇目標標籤後，這裡會算出符合的人數、略過的人數與實際收件人。' }}
-    </p>
-
     <div
-      v-if="preview"
       class="ledger"
+      :class="{ 'is-wait': !preview }"
     >
       <div class="cell">
-        <b>{{ preview ? preview.total : 0 }}</b>
+        <b>{{ preview ? preview.total : '—' }}</b>
         <span>人符合標籤</span>
       </div>
       <i
@@ -32,7 +25,7 @@
         aria-hidden="true"
       >−</i>
       <div class="cell is-skip">
-        <b>{{ preview ? skipped : 0 }}</b>
+        <b>{{ preview ? skipped : '—' }}</b>
         <span>人略過</span>
       </div>
       <i
@@ -40,10 +33,17 @@
         aria-hidden="true"
       >=</i>
       <div class="cell is-send">
-        <b>{{ preview ? preview.sendable : 0 }}</b>
+        <b>{{ preview ? preview.sendable : '—' }}</b>
         <span>人收到</span>
       </div>
     </div>
+
+    <p
+      v-if="!preview"
+      class="ledger-wait"
+    >
+      {{ loading ? '計算受眾中...' : '選擇目標標籤後，算出符合、略過與實際收件的人數。' }}
+    </p>
 
     <div
       v-if="preview"
@@ -150,11 +150,10 @@ const notes = computed(() => {
 .audience-card {
   margin-top: 0;
   padding: 20px 24px 22px;
-  box-shadow: 0 -0.5px 0 var(--ui-sep);
 }
 
 .ledger-wait {
-  margin: 0;
+  margin: 14px 0 0;
   font-size: 14px;
   line-height: 1.5;
   color: var(--ui-ink-2);
@@ -189,6 +188,25 @@ const notes = computed(() => {
 .cell span {
   font-size: 13px;
   color: var(--ui-muted);
+}
+
+/* nothing calculated yet: the figures are drawn as quiet placeholder bars */
+.is-wait b {
+  display: block;
+  width: 56px;
+  height: 12px;
+  margin: 0 0 12px;
+  border-radius: 999px;
+  background: var(--ui-fill);
+  font-size: 0;
+}
+
+.is-wait .op {
+  padding-bottom: 32px;
+}
+
+.is-wait .is-send b {
+  background: var(--ui-accent-soft);
 }
 
 .is-skip b {

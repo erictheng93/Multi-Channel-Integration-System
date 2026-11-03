@@ -121,6 +121,12 @@
                 :class="row.tone"
                 :style="{ left: row.dot }"
               />
+              <em
+                v-if="row.tone !== 'ok'"
+                class="sh-state"
+                :class="row.tone"
+                :style="{ left: row.dot }"
+              >{{ row.tone === 'fail' ? '失敗' : '生成中' }}</em>
             </span>
           </button>
         </li>
@@ -344,7 +350,8 @@ const rows = computed(() => live.value.map(r => {
 }
 
 .k-left {
-  background: color-mix(in srgb, var(--ui-green) 45%, var(--ui-surface));
+  background: color-mix(in srgb, var(--ui-green) 10%, var(--ui-surface));
+  box-shadow: inset 0 0 0 2px var(--ui-green);
 }
 
 .k-run,
@@ -495,7 +502,8 @@ const rows = computed(() => live.value.map(r => {
 
 .sh-left {
   border-radius: 0 999px 999px 0;
-  background: color-mix(in srgb, var(--ui-green) 45%, var(--ui-surface));
+  background: color-mix(in srgb, var(--ui-green) 10%, var(--ui-surface));
+  box-shadow: inset 0 0 0 2px var(--ui-green);
 }
 
 .sh-dot {
@@ -516,6 +524,26 @@ const rows = computed(() => live.value.map(r => {
 
 .sh-dot.fail {
   background: var(--ui-red);
+}
+
+/* the dot names itself, so a lone mark on the axis is never a mystery */
+.sh-state {
+  position: absolute;
+  top: 50%;
+  margin-left: 16px;
+  font-size: 13px;
+  font-style: normal;
+  font-weight: 600;
+  white-space: nowrap;
+  transform: translateY(-50%);
+}
+
+.sh-state.fail {
+  color: var(--ui-red-ink);
+}
+
+.sh-state.run {
+  color: var(--ui-orange-ink);
 }
 
 .sh-foot {
@@ -580,7 +608,7 @@ const rows = computed(() => live.value.map(r => {
   }
 
   .sh-grid {
-    display: none;
+    top: 24px;
   }
 
   .sh-row {
