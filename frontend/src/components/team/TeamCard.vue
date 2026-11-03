@@ -16,6 +16,12 @@
       <div class="team-name">
         {{ team.name }}
       </div>
+      <p
+        v-if="team.description?.trim()"
+        class="team-desc"
+      >
+        {{ team.description }}
+      </p>
       <div class="team-meta">
         <span class="ui-pill">{{ team.memberCount || 0 }} 成員</span>
         <span
@@ -474,6 +480,16 @@ import { createLogger } from '@/utils/logger'
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.team-desc {
+  display: -webkit-box;
+  margin: 3px 0 0;
+  overflow: hidden;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--ui-muted);
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
 .go {
   width: 16px;
   height: 16px;
@@ -497,14 +513,14 @@ import { createLogger } from '@/utils/logger'
   height: 34px;
   place-items: center;
   border: 0;
-  border-radius: 10px;
-  background: transparent;
+  border-radius: 50%;
+  background: var(--ui-fill);
   color: var(--ui-ink-2);
   cursor: pointer;
   transition: background var(--ui-dur) var(--ui-ease);
 }
 .more-btn:hover {
-  background: var(--ui-fill);
+  background: var(--ui-fill-strong);
 }
 .more-btn:disabled {
   cursor: not-allowed;
