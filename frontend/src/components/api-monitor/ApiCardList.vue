@@ -7,6 +7,7 @@
     >
       <span class="hide-m">方法</span>
       <span>端點</span>
+      <span class="only-wide">說明</span>
       <span>P95</span>
       <span class="hide-m">成功率</span>
       <span class="hide-m">請求數</span>
@@ -68,19 +69,29 @@ defineEmits<{
   color: var(--ui-muted);
 }
 
-@media (max-width: 768px) {
+.only-wide {
+  display: none;
+}
+
+/* desktop: the description gets its own column, so a row is one line and the numbers sit in a tight block */
+@media (min-width: 1025px) {
   .ep-head {
-    grid-template-columns: minmax(0, 1fr) 76px 16px;
-    gap: 10px;
-    padding: 8px 16px;
+    grid-template-columns: 52px 290px minmax(0, 1fr) 90px 90px 110px 16px;
   }
 
-  .hide-m {
-    display: none;
+  .only-wide {
+    display: block;
   }
 
-  .ep-head span:nth-child(3) {
+  .ep-head span:nth-child(n + 4):nth-child(-n + 6) {
     text-align: right;
+  }
+}
+
+@media (max-width: 768px) {
+  /* the phone row labels its own numbers, so no column header */
+  .ep-head {
+    display: none;
   }
 
   .count-line {
