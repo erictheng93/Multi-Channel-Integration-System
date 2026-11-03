@@ -416,4 +416,17 @@ const canDelete = computed(() => {
     height: 44px;
   }
 }
+.tag-line .report-type-badge {
+  padding: 0;
+  border-radius: 0;
+  background: none;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ui-ink-2);
+}
+
+.tag-line .report-type-badge::after {
+  margin-left: 6px;
+  content: '・';
+}
 </style>
