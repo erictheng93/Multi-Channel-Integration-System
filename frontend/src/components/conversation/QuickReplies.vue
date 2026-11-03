@@ -197,7 +197,7 @@ const handleSelect = (reply: QuickReply) => {
 
 .quick-reply-btn {
   flex: 0 0 auto;
-  max-width: min(220px, 62vw);
+  max-width: min(360px, 78vw);
   min-height: 32px;
   overflow: hidden;
   text-overflow: ellipsis;
