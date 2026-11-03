@@ -131,7 +131,7 @@ const successClass = computed(() => {
 
 .ep {
   display: grid;
-  grid-template-columns: 52px minmax(0, 1fr) 84px 76px 84px 16px;
+  grid-template-columns: 52px minmax(260px, 1.25fr) repeat(3, minmax(0, 1fr)) 16px;
   gap: 12px;
   align-items: center;
   padding: 12px 22px;
@@ -234,7 +234,6 @@ const successClass = computed(() => {
 .m {
   font-size: 13px;
   font-weight: 600;
-  text-align: right;
   font-variant-numeric: tabular-nums;
 }
 
@@ -275,6 +274,10 @@ const successClass = computed(() => {
 }
 
 @media (max-width: 768px) {
+  .m {
+    text-align: right;
+  }
+
   .sr-n {
     display: inline;
   }

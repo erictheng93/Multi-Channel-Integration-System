@@ -856,9 +856,9 @@ onMounted(load)
 }
 
 .cal-key {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px 14px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px 12px;
   margin: 12px 0 0;
   font-size: 13px;
   color: var(--ui-muted);
@@ -870,14 +870,33 @@ onMounted(load)
   align-items: center;
 }
 
+.cal-key {
+  font-size: 13px;
+  color: var(--ui-ink-2);
+}
+
 .cal-key i {
-  width: 12px;
-  height: 12px;
-  border-radius: 4px;
+  width: 14px;
+  height: 14px;
+  border-radius: 5px;
 }
 
 .k-has {
-  background: var(--ui-green-soft);
+  position: relative;
+  background: var(--ui-surface-2);
+  box-shadow: inset 0 0 0 0.5px var(--ui-sep);
+}
+
+.k-has::after {
+  position: absolute;
+  bottom: 2px;
+  left: 50%;
+  width: 4px;
+  height: 4px;
+  margin-left: -2px;
+  border-radius: 50%;
+  background: var(--ui-green);
+  content: '';
 }
 
 .k-miss {
@@ -890,8 +909,8 @@ onMounted(load)
 }
 
 .k-today {
-  background: var(--ui-green-soft);
-  box-shadow: inset 0 0 0 2px var(--ui-green-ink);
+  background: var(--ui-surface-2);
+  box-shadow: inset 0 0 0 2px var(--ui-ink);
 }
 
 .cell {
@@ -914,10 +933,27 @@ onMounted(load)
 }
 
 .cell.has {
-  background: var(--ui-green-soft);
-  color: var(--ui-green-ink);
+  position: relative;
+  background: var(--ui-surface-2);
+  color: var(--ui-ink);
   cursor: pointer;
   transition: background var(--ui-dur) var(--ui-ease), color var(--ui-dur) var(--ui-ease);
+}
+
+.cell.has::after {
+  position: absolute;
+  bottom: 5px;
+  left: 50%;
+  width: 5px;
+  height: 5px;
+  margin-left: -2.5px;
+  border-radius: 50%;
+  background: var(--ui-green);
+  content: '';
+}
+
+.cell.has.on::after {
+  background: #fff;
 }
 
 .cell.has:hover {
@@ -925,7 +961,7 @@ onMounted(load)
 }
 
 .cell.today {
-  box-shadow: inset 0 0 0 2px var(--ui-green-ink);
+  box-shadow: inset 0 0 0 2px var(--ui-ink);
 }
 
 .cell.on,
@@ -1067,7 +1103,7 @@ onMounted(load)
   grid-template-columns: 64px minmax(0, 1fr) auto;
   gap: 10px;
   align-items: center;
-  padding: 7px 0;
+  padding: 10px 0;
   font-size: 14px;
 }
 
@@ -1200,11 +1236,6 @@ onMounted(load)
     display: none;
   }
 
-  .brow-file {
-    overflow-wrap: anywhere;
-    white-space: normal;
-  }
-
   .lead-act .btn {
     width: 100%;
     justify-content: center;
@@ -1252,10 +1283,38 @@ onMounted(load)
     padding-left: 10px;
   }
 
-  /* the type is already in the name; the file name ends in an ellipsis (full name on hover) */
+  /* the type is already in the name; the file name takes a full-width line of its own so it never wraps */
   .brow {
-    grid-template-columns: minmax(0, 1fr) auto 36px;
-    gap: 8px;
+    display: grid;
+    grid-template:
+      'name stat dl' auto
+      'file file file' auto / minmax(0, 1fr) auto 36px;
+    gap: 2px 8px;
+  }
+
+  .brow-main {
+    display: contents;
+  }
+
+  .brow-name {
+    grid-area: name;
+    align-self: center;
+  }
+
+  .brow-file {
+    grid-area: file;
+    overflow: hidden;
+    font-size: 13px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .brow-stat {
+    grid-area: stat;
+  }
+
+  .brow-dl {
+    grid-area: dl;
   }
 
   .brow-type {

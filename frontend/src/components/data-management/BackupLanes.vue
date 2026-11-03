@@ -59,7 +59,10 @@
     >
       <div class="lanes-head">
         <h2>保留期間</h2>
-        <span>每條以該類型的保留天數為滿格，色塊是已存的天數</span>
+        <span>每條以該類型的保留天數為滿格；<i
+          class="lg-dot"
+          aria-hidden="true"
+        />一份備份，細線為已涵蓋的期間</span>
       </div>
       <div
         class="lanes"
@@ -77,10 +80,18 @@
             <small>{{ lane.used }}</small>
           </div>
           <div class="lane-track">
-            <span
-              class="lane-fill"
-              :style="{ width: lane.fill + '%' }"
-            />
+            <span class="lane-in">
+              <span
+                class="lane-span"
+                :style="{ width: lane.span + '%' }"
+              />
+              <i
+                v-for="(d, i) in lane.dots"
+                :key="i"
+                class="lane-dot"
+                :style="{ right: d + '%' }"
+              />
+            </span>
           </div>
           <div class="lane-n">
             {{ lane.count }} 份
@@ -137,6 +148,11 @@ const retention = (tiers: string[]): number => {
 
 const ageDays = (iso: string) => Math.max(0, (Date.now() - new Date(iso).getTime()) / DAY)
 
+/** One mark per stored file: its age as a share of the lane's window (0 = today, on the right) */
+function dotsFor(mine: BackupItem[], window: number): number[] {
+  return mine.map(i => Math.min(100, (ageDays(i.uploaded) / Math.max(1, window)) * 100))
+}
+
 const lanes = computed(() => {
   if (props.items.length === 0) { return [] }
   return LANES
@@ -154,6 +170,8 @@ const lanes = computed(() => {
         size: formatBytes(mine.reduce((n, i) => n + i.size, 0)),
         used: keep ? `已存 ${Math.min(days, keep)} / ${keep} 天` : `最早 ${days} 天前`,
         fill: keep ? Math.min(100, Math.max(3, (days / keep) * 100)) : 100,
+        dots: dotsFor(mine, keep || days),
+        span: Math.round(Math.min(100, (oldest / Math.max(1, keep || days)) * 100) * 10) / 10,
       }
     })
     .filter(l => l.count > 0)
@@ -326,18 +344,45 @@ const aria = computed(() =>
 .lane-track {
   position: relative;
   height: 36px;
-  overflow: hidden;
   border-radius: 12px;
   background: var(--ui-fill);
 }
 
-.lane-fill {
+/* the stretch from the oldest stored file to today */
+.lane-in {
   position: absolute;
-  top: 0;
+  inset: 0 14px;
+}
+
+.lane-span {
+  position: absolute;
+  top: 50%;
   right: 0;
-  bottom: 0;
-  border-radius: 12px;
-  background: color-mix(in srgb, var(--lane) 42%, var(--ui-surface));
+  height: 4px;
+  margin-top: -2px;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--lane) 45%, var(--ui-surface));
+}
+
+.lane-dot {
+  position: absolute;
+  top: 50%;
+  width: 10px;
+  height: 10px;
+  margin: -5px -5px 0 0;
+  border-radius: 50%;
+  background: var(--lane);
+  box-shadow: 0 0 0 2px var(--ui-fill);
+}
+
+.lanes-head .lg-dot {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  margin: 0 4px 0 2px;
+  border-radius: 50%;
+  background: var(--ui-ink-2);
+  vertical-align: 0;
 }
 
 .axis {

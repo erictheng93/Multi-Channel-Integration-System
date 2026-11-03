@@ -29,7 +29,8 @@ describe('BackupLanes', () => {
     expect(lanes.map((l) => l.find('.lane-name b').text())).toEqual(['每日', '每月', '資料匯出'])
     expect(lanes[0]?.find('.lane-n').text()).toContain('3 份')
     expect(lanes[0]?.find('.lane-name small').text()).toBe('已存 15 / 30 天')
-    expect(lanes[0]?.find('.lane-fill').attributes('style')).toContain('width: 50%')
+    expect(lanes[0]?.find('.lane-span').attributes('style')).toContain('width: 50%')
+    expect(lanes[0]?.findAll('.lane-dot')).toHaveLength(3)
   })
 
   it('labels the two ends of every bar', () => {
