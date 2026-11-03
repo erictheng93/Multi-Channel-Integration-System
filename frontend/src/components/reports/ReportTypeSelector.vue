@@ -165,14 +165,12 @@ function onKey(event: KeyboardEvent, index: number) {
   --hue: var(--ui-accent);
   --hue-soft: var(--ui-accent-soft);
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  grid-template-areas:
-    'ico radio'
-    'info info';
-  gap: 14px 12px;
-  align-items: start;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas: 'ico info radio';
+  gap: 10px;
+  align-items: center;
   min-width: 0;
-  padding: 16px;
+  padding: 14px 12px;
   border: 0;
   border-radius: var(--ui-r-inner);
   background: var(--ui-surface);
@@ -213,17 +211,17 @@ function onKey(event: KeyboardEvent, index: number) {
 .type-ico {
   display: grid;
   grid-area: ico;
-  width: 44px;
-  height: 44px;
+  width: 40px;
+  height: 40px;
   place-items: center;
-  border-radius: 14px;
+  border-radius: 12px;
   background: var(--hue-soft);
   color: var(--hue);
 }
 
 .selected .type-ico {
-  background: var(--hue);
-  color: #fff;
+  background: var(--hue-soft);
+  box-shadow: 0 0 0 1.5px var(--hue);
 }
 
 .type-ico svg {
@@ -243,6 +241,7 @@ function onKey(event: KeyboardEvent, index: number) {
 }
 
 .type-desc {
+  text-wrap: balance;
   font-size: 13px;
   line-height: 1.4;
   color: var(--ui-ink-2);
