@@ -246,30 +246,6 @@ onUnmounted(() => controller.cleanup())
   }
 }
 
-/* the check button is an action, not a banner: on the phone it sits on the title row at its natural width */
-@media (max-width: 768px) {
-  .system-settings :deep(.ui-page-head) {
-    grid-template-columns: minmax(0, 1fr) auto;
-    grid-template-areas:
-      'crumb crumb'
-      'title actions'
-      'sub sub';
-  }
-
-  .system-settings :deep(.ui-page-actions) {
-    padding-top: 0;
-  }
-
-  .system-settings :deep(.ui-page-actions) {
-    justify-content: flex-end;
-  }
-
-  .system-settings :deep(.ui-page-actions > .btn) {
-    flex: none;
-    width: auto;
-  }
-}
-
 @media (min-width: 769px) {
   .settings-actions {
     position: sticky;

@@ -304,8 +304,8 @@ const emptyState = computed(() => {
     return { title: '檢查中...', description: '正在逐項檢查服務。' }
   }
   return checkFailed.value
-    ? { title: '無法完成檢查', description: '最近一次檢查沒有取得結果，按右上角「立即檢查」重試。' }
-    : { title: '尚無檢查結果', description: '按右上角「立即檢查」開始。' }
+    ? { title: '無法完成檢查', description: '最近一次檢查沒有取得結果，按「立即檢查」重試。' }
+    : { title: '尚無檢查結果', description: '按「立即檢查」開始。' }
 })
 
 const heroValue = computed<string | null>(() => {

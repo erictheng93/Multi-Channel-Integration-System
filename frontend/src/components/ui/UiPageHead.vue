@@ -158,7 +158,8 @@ const icon = computed(() => (props.tile ? navIconForPath(route?.path ?? '') : un
 // tests) nobody is an admin.
 const authStore = getActivePinia() ? useAuthStore() : null
 const sectionKey = computed(() => sectionNavKeyForPath(route?.path ?? ''))
-const isPhone = ref(false)
+// read synchronously so the switcher is there on first paint (no pop-in that shifts the page head)
+const isPhone = ref(typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 768px)').matches)
 const switcherItems = computed(() =>
   isPhone.value && sectionKey.value
     ? sectionNavItems(sectionKey.value, authStore?.currentAgent?.role === 'admin')
