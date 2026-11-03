@@ -66,10 +66,11 @@
   box-shadow: none;
 }
 
-/* Sent bubbles are a soft brand tint with ink text: a long thread stays calm, and the sender is still obvious at a glance */
+/* Sent bubbles are solid brand blue with white text (the sender reads at a glance, 7:1 on both themes);
+   the received side stays a neutral grey well */
 .message-outgoing .message-content {
-  background: color-mix(in srgb, var(--ui-accent) 38%, var(--ui-surface));
-  color: var(--ui-ink);
+  background: color-mix(in srgb, var(--ui-accent) 86%, #000);
+  color: #fff;
   border-color: transparent;
   box-shadow: none;
 }
@@ -107,25 +108,21 @@
   color: var(--ui-ink-2);
 }
 
-/* ─── Apple-inspired: Links in outgoing bubbles ─── */
+/* ─── Links in outgoing bubbles: white on blue ─── */
 .message-outgoing .message-content a,
-.message-outgoing .message-content .message-link {
-  color: var(--ui-accent);
+.message-outgoing .message-content .message-link,
+.message-outgoing .message-content a:visited,
+.message-outgoing .message-content .message-link:visited {
+  color: #fff;
   text-decoration: underline;
-  text-decoration-color: color-mix(in srgb, var(--ui-accent) 50%, transparent);
+  text-decoration-color: rgba(255, 255, 255, 0.6);
   text-underline-offset: 2px;
   transition: text-decoration-color 0.2s ease;
 }
 
 .message-outgoing .message-content a:hover,
 .message-outgoing .message-content .message-link:hover {
-  color: var(--ui-accent);
-  text-decoration-color: var(--ui-accent);
-}
-
-.message-outgoing .message-content a:visited,
-.message-outgoing .message-content .message-link:visited {
-  color: var(--ui-accent);
+  text-decoration-color: #fff;
 }
 
 /* ─── Apple-inspired: Links in incoming bubbles ─── */

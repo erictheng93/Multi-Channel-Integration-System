@@ -18,10 +18,10 @@ const mountPanel = (messages: ReturnType<typeof msg>[], status = 'open') =>
   })
 
 describe('ConversationSidePanel reply speed', () => {
-  it('gives each customer-to-reply wait its own bar and labels it', () => {
+  it('gives each customer-to-reply wait its own row and labels it', () => {
     const wrapper = mountPanel([msg('customer', 0), msg('agent', 4), msg('customer', 10), msg('agent', 25)], 'closed')
     const rows = wrapper.findAll('.wait')
-    expect(rows.map(r => r.find('.wait-val').text())).toEqual(['4 分', '15 分'])
+    expect(rows.map(r => r.find('.wait-line b').text())).toEqual(['4 分', '15 分'])
     expect(wrapper.findAll('.wait.is-pending')).toHaveLength(0)
   })
 

@@ -33,10 +33,15 @@
         <template v-if="rhythm">
           <h3 class="sp-h">
             回覆速度
+            <small>{{ rhythm.capped || hasMore ? '最近幾輪' : '每一輪' }}</small>
           </h3>
-          <p class="sp-note">
-            每一列是客戶來訊的時間，長條是客服花了多久回覆{{ rhythm.capped || hasMore ? '（最近幾輪）' : '' }}
-          </p>
+          <div
+            class="legend"
+            aria-hidden="true"
+          >
+            <span><i class="sw sw-c" />客戶來訊</span>
+            <span><i class="sw sw-a" />客服回覆</span>
+          </div>
           <ul
             class="waits"
             :aria-label="rhythm.aria"
@@ -47,12 +52,19 @@
               class="wait"
               :class="{ 'is-pending': row.pending }"
             >
-              <span class="wait-at">{{ row.at }}</span>
+              <span class="wait-t">{{ row.at }}</span>
               <span
-                class="wait-track"
+                class="wait-line"
                 aria-hidden="true"
-              ><i :style="{ width: `${row.pct}%` }" /></span>
-              <span class="wait-val">{{ row.text }}</span>
+              >
+                <i class="dot dot-c" />
+                <b>{{ row.text }}</b>
+                <i
+                  class="dot"
+                  :class="row.pending ? 'dot-p' : 'dot-a'"
+                />
+              </span>
+              <span class="wait-t wait-end">{{ row.pending ? '待回覆' : row.endAt }}</span>
             </li>
           </ul>
           <dl
@@ -60,11 +72,11 @@
             :aria-label="`往來 共 ${totalMessages} 則`"
           >
             <div>
-              <dt><i class="sw sw-c" />客戶來訊</dt>
+              <dt>客戶來訊</dt>
               <dd>{{ activity?.customer ?? 0 }}</dd>
             </div>
             <div>
-              <dt><i class="sw sw-a" />客服回覆</dt>
+              <dt>客服回覆</dt>
               <dd>{{ activity?.agent ?? 0 }}</dd>
             </div>
             <div v-if="activity?.firstReply">
@@ -72,20 +84,6 @@
               <dd>{{ activity.firstReply }}</dd>
             </div>
           </dl>
-          <div
-            v-if="totalMessages > 0"
-            class="split"
-            aria-hidden="true"
-          >
-            <i
-              class="split-c"
-              :style="{ flex: activity?.customer ?? 0 }"
-            />
-            <i
-              class="split-a"
-              :style="{ flex: activity?.agent ?? 0 }"
-            />
-          </div>
         </template>
       </section>
 
@@ -243,22 +241,21 @@ const rhythm = computed(() => {
     .filter(m => m.side !== '' && Number.isFinite(m.t))
     .sort((a, b) => a.t - b.t)
   if (all.length < 2) { return null }
-  const waits: { key: string; ms: number; at: number; pending: boolean }[] = []
+  const waits: { key: string; ms: number; at: number; end: number; pending: boolean }[] = []
   let runStart: number | null = null
   for (const m of all) {
     if (m.side === 'customer') {
       if (runStart === null) { runStart = m.t }
     } else if (runStart !== null) {
-      waits.push({ key: `w${runStart}`, ms: m.t - runStart, at: runStart, pending: false })
+      waits.push({ key: `w${runStart}`, ms: m.t - runStart, at: runStart, end: m.t, pending: false })
       runStart = null
     }
   }
   if (runStart !== null && props.conversation?.status !== 'closed') {
-    waits.push({ key: 'open', ms: Math.max(0, now.value - runStart), at: runStart, pending: true })
+    waits.push({ key: 'open', ms: Math.max(0, now.value - runStart), at: runStart, end: now.value, pending: true })
   }
   if (waits.length === 0) { return null }
   const picked = waits.slice(-WAIT_ROWS)
-  const longest = Math.max(...picked.map(w => w.ms), 1)
   const first = all[0]?.t ?? 0
   const last = all[all.length - 1]?.t ?? 0
   const sameDay = new Date(first).toDateString() === new Date(last).toDateString()
@@ -266,7 +263,7 @@ const rhythm = computed(() => {
     rows: picked.map(w => ({
       key: w.key,
       at: stamp(w.at, !sameDay),
-      pct: Math.max(4, Math.round((w.ms / longest) * 100)),
+      endAt: stamp(w.end, !sameDay),
       text: w.pending ? `已等 ${gapText(w.ms)}` : gapText(w.ms),
       pending: w.pending
     })),
@@ -383,17 +380,18 @@ const createdAtText = computed(() => {
   color: var(--ui-muted);
 }
 
-/* ---- reply speed: one bar per customer-to-reply wait, all on the same scale ---- */
-.sp-note {
-  margin: -6px 0 12px;
+/* ---- reply speed: one row per customer-to-reply round, "customer time --- wait --- reply time" ---- */
+.legend {
+  display: flex;
+  gap: 16px;
+  margin: -4px 0 12px;
   font-size: 13px;
-  line-height: 18px;
-  color: var(--ui-muted);
+  color: var(--ui-ink-2);
 }
 
 .waits {
   display: grid;
-  gap: 10px;
+  gap: 12px;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -401,50 +399,86 @@ const createdAtText = computed(() => {
 
 .wait {
   display: grid;
-  grid-template-columns: 52px minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   gap: 10px;
   align-items: center;
   font-size: 13px;
   font-variant-numeric: tabular-nums;
 }
 
-.wait-at {
-  color: var(--ui-muted);
+.wait-t {
+  min-width: 44px;
+  color: var(--ui-ink-2);
 }
 
-.wait-track {
+.wait-end {
+  text-align: right;
+}
+
+.wait-line {
+  position: relative;
+  display: flex;
+  gap: 0;
+  align-items: center;
+  justify-content: space-between;
+  height: 24px;
+}
+
+.wait-line::before {
+  position: absolute;
+  inset: 50% 5px auto;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--ui-accent);
+  opacity: 0.35;
+  content: '';
+  transform: translateY(-50%);
+}
+
+.wait-line b {
+  position: relative;
+  padding: 0 8px;
+  background: var(--ui-surface);
+  color: var(--ui-ink);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.wait-line .dot {
+  position: relative;
+  width: 10px;
   height: 10px;
-  border-radius: 5px;
-  background: var(--ui-fill);
-  overflow: hidden;
+  border-radius: 50%;
 }
 
-.wait-track i {
-  display: block;
-  height: 100%;
-  border-radius: 5px;
+.dot-c {
+  background: color-mix(in srgb, var(--ui-ink) 30%, var(--ui-surface));
+}
+
+.dot-a {
   background: var(--ui-accent);
 }
 
-.wait-val {
-  min-width: 52px;
-  font-weight: 600;
-  text-align: right;
-  color: var(--ui-ink);
+.dot-p {
+  background: var(--ui-surface);
+  box-shadow: inset 0 0 0 2px var(--ui-orange-ink);
 }
 
-.wait.is-pending .wait-track i {
+.wait.is-pending .wait-line::before {
   background: var(--ui-orange-ink);
+  opacity: 0.45;
 }
 
-.wait.is-pending .wait-val {
+.wait.is-pending .wait-line b,
+.wait.is-pending .wait-end {
   color: var(--ui-orange-ink);
+  font-weight: 700;
 }
 
 .glance {
   display: flex;
   gap: 8px;
-  margin: 14px 0 0;
+  margin: 16px 0 0;
   padding-top: 14px;
   box-shadow: inset 0 0.5px 0 var(--ui-sep);
 }
@@ -465,39 +499,17 @@ const createdAtText = computed(() => {
 
 .sw {
   display: inline-block;
-  width: 8px;
-  height: 8px;
+  width: 9px;
+  height: 9px;
   margin-right: 6px;
   border-radius: 50%;
 }
 
 .sw-c {
-  background: color-mix(in srgb, var(--ui-ink) 22%, var(--ui-surface));
+  background: color-mix(in srgb, var(--ui-ink) 30%, var(--ui-surface));
 }
 
 .sw-a {
-  background: var(--ui-accent);
-}
-
-/* Who spoke how much: the same two tones as the bubbles in the thread */
-.split {
-  display: flex;
-  gap: 3px;
-  height: 8px;
-  margin-top: 12px;
-}
-
-.split i {
-  display: block;
-  min-width: 4px;
-  border-radius: 4px;
-}
-
-.split-c {
-  background: color-mix(in srgb, var(--ui-ink) 22%, var(--ui-surface));
-}
-
-.split-a {
   background: var(--ui-accent);
 }
 

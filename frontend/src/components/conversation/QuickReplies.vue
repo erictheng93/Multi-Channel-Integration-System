@@ -136,15 +136,16 @@ const handleSelect = (reply: QuickReply) => {
 /* Quick replies: one swipeable row of natural-width chips at every width (long text ellipsizes, the full
    text is in the tooltip). The fade at the right edge appears only while more chips wait off screen. */
 .quick-replies-wrap {
-  position: relative;
+  display: flex;
+  gap: 8px;
+  align-items: center;
   min-width: 0;
 }
 
 .quick-more {
-  position: absolute;
-  top: 10px;
-  right: 0;
   display: grid;
+  flex: none;
+  margin-top: 6px;
   place-items: center;
   width: 32px;
   height: 32px;
@@ -169,6 +170,8 @@ const handleSelect = (reply: QuickReply) => {
 
 .quick-replies {
   display: flex;
+  flex: 1 1 0;
+  min-width: 0;
   gap: 8px;
   padding: 10px 0 4px;
   overflow-x: auto;
@@ -183,18 +186,18 @@ const handleSelect = (reply: QuickReply) => {
 }
 
 .quick-replies.has-more {
-  -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 56px), transparent);
-  mask-image: linear-gradient(90deg, #000 calc(100% - 56px), transparent);
+  -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 40px), transparent);
+  mask-image: linear-gradient(90deg, #000 calc(100% - 40px), transparent);
 }
 
 .quick-replies.has-more::after {
-  flex: 0 0 40px;
+  flex: 0 0 24px;
   content: '';
 }
 
 .quick-reply-btn {
   flex: 0 0 auto;
-  max-width: min(260px, 70vw);
+  max-width: min(220px, 62vw);
   min-height: 32px;
   overflow: hidden;
   text-overflow: ellipsis;
