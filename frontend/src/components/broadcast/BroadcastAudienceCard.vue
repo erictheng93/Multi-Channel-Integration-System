@@ -39,12 +39,6 @@
     </div>
 
     <template v-else>
-      <p
-        class="formula"
-        aria-hidden="true"
-      >
-        <span>符合標籤</span><i>−</i><span>略過</span><i>=</i><b>實際收到</b>
-      </p>
       <p class="ledger-wait">
         {{ loading ? '計算受眾中...' : '選擇目標標籤後，算出符合、略過與實際收件的人數。' }}
       </p>

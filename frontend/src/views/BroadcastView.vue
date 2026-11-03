@@ -11,40 +11,68 @@
 
       <LineQuotaCard :pending="pendingByChannel" />
 
-      <div class="page-grid compose-row">
-        <BroadcastComposeCard
-          :tags="tagsStore.tags"
-          :preview="broadcastsStore.preview"
-          :preview-tag-id="broadcastsStore.previewTagId"
-          :preview-loading="broadcastsStore.previewLoading"
-          :sending="broadcastsStore.sending"
-          :error="broadcastsStore.error"
-          @preview="handlePreview"
-          @send="handleSend"
-          @draft="draft = $event"
-        />
-
-        <!-- One panel for audience + LINE preview, always visible (on a phone it sits right under the form) -->
-        <div
-          class="ui-card side-panel"
-          :class="{ 'is-idle': sideIdle }"
-        >
-          <BroadcastAudienceCard
-            :preview="broadcastsStore.preview"
-            :tag-name="previewTagName"
-            :loading="broadcastsStore.previewLoading"
-          />
-          <BroadcastLinePreview
-            :content="draft.content"
-            :image-urls="draft.imageUrls"
-            :sample="lastSample"
-          />
+      <section
+        class="ui-card bench"
+        :class="{ 'is-open': composeOpen }"
+        aria-label="建立群發"
+      >
+        <!-- Phones start with the log; the composer opens from this bar -->
+        <div class="bench-bar">
+          <div>
+            <h2 class="bench-title">
+              建立群發
+            </h2>
+            <p class="bench-sub">
+              選擇一個標籤，系統會先凍結收件人快照再發送。
+            </p>
+          </div>
+          <button
+            type="button"
+            class="btn btn-sm"
+            :class="composeOpen ? 'btn-secondary' : 'btn-primary'"
+            :aria-expanded="composeOpen"
+            @click="composeOpen = !composeOpen"
+          >
+            {{ composeOpen ? '收合' : '新增群發' }}
+          </button>
         </div>
-      </div>
 
-      <div
-        class="page-grid"
+        <div class="bench-body">
+          <BroadcastComposeCard
+            :tags="tagsStore.tags"
+            :preview="broadcastsStore.preview"
+            :preview-tag-id="broadcastsStore.previewTagId"
+            :preview-loading="broadcastsStore.previewLoading"
+            :sending="broadcastsStore.sending"
+            :error="broadcastsStore.error"
+            @preview="handlePreview"
+            @send="handleSend"
+            @draft="draft = $event"
+          />
+
+          <!-- Audience arithmetic over the phone the customer will hold -->
+          <aside
+            class="bench-side"
+            :class="{ 'is-idle': sideIdle }"
+          >
+            <BroadcastAudienceCard
+              :preview="broadcastsStore.preview"
+              :tag-name="previewTagName"
+              :loading="broadcastsStore.previewLoading"
+            />
+            <BroadcastLinePreview
+              :content="draft.content"
+              :image-urls="draft.imageUrls"
+              :sample="lastSample"
+            />
+          </aside>
+        </div>
+      </section>
+
+      <section
+        class="ui-card log"
         :class="{ 'has-detail': isWide && detailOpen }"
+        aria-label="發送紀錄與收件人"
       >
         <BroadcastHistoryList
           :broadcasts="broadcastsStore.broadcasts"
@@ -65,7 +93,7 @@
           @close="detailOpen = false"
           @page-change="handleRecipientPageChange"
         />
-      </div>
+      </section>
     </main>
   </AppLayout>
 </template>
@@ -94,6 +122,8 @@ const detailOpen = ref(false)
 const detailBroadcastId = ref<string | null>(null)
 const recipientStatus = ref<BroadcastRecipientStatus | undefined>()
 const recipientPage = ref(1)
+// phones keep the composer folded until asked for; wide screens always show it
+const composeOpen = ref(false)
 const draft = ref<{ content: string; imageUrls: string[] }>({ content: '', imageUrls: [] })
 
 // Recipients the current audience preview would send, per LINE channel (feeds the quota card)
@@ -151,6 +181,7 @@ async function handlePreview(input: BroadcastPreviewRequest) {
 
 async function handleSend(input: CreateBroadcastRequest, onCreateSettled: (_created: boolean) => void) {
   await broadcastsStore.createAndSend(input, onCreateSettled)
+  if (!broadcastsStore.error) { composeOpen.value = false }
   if (broadcastsStore.selectedBroadcast) {
     await openDetail(broadcastsStore.selectedBroadcast.id)
   }
@@ -192,63 +223,111 @@ async function fetchCurrentRecipients() {
 
 
 <style scoped>
+.broadcast-page {
+  --ui-pane: color-mix(in srgb, var(--ui-accent) 4%, var(--ui-surface));
+}
+
 /* grouped headers inside the working cards: 17px, not the 19px card title */
 .broadcast-page :deep(.ui-card-title) {
   font-size: 17px;
 }
 
-.page-grid {
+/* ---- workbench: the composer and what the customer will see, one card ---- */
+.bench,
+.log {
+  padding: 0;
+  overflow: hidden;
+}
+
+.bench-bar {
+  display: none;
+}
+
+.bench-body {
   display: grid;
-  /* minmax(0, ...) so a card's min-content cannot widen the track past the page */
-  grid-template-columns: minmax(0, 1fr);
-  gap: 16px;
-  align-items: start;
+  grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+  align-items: stretch;
 }
 
-.side-panel {
-  display: flex;
-  flex-direction: column;
-  align-self: stretch;
-}
-
-@media (min-width: 1281px) {
-  .compose-row {
-    align-items: stretch;
-  }
-}
-
-/* the two cards share one panel: flatten them and separate with one hairline */
-.side-panel :deep(.ui-card) {
+.bench :deep(.ui-card),
+.log :deep(.ui-card),
+.log :deep(.is-inline .ui-card) {
   border-radius: 0;
   background: transparent;
   box-shadow: none;
 }
 
-.side-panel :deep(.preview-card) {
+.bench :deep(.compose-card) {
+  padding-top: 6px;
+}
+
+.bench-side {
+  display: flex;
+  flex-direction: column;
+  background: var(--ui-pane);
+}
+
+.bench-side :deep(.preview-card) {
   flex: 1;
+  justify-content: center;
+  box-shadow: none;
+}
+
+/* ---- the log: records and the chosen record's recipients, one card ---- */
+.log {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: stretch;
 }
 
 @media (min-width: 1281px) {
-  .page-grid {
+  .log.has-detail {
     grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
   }
-  /* records and recipient detail end on the same line */
-  .page-grid.has-detail {
-    align-items: stretch;
-  }
-  .page-grid:has(> :only-child) {
-    grid-template-columns: minmax(0, 1fr);
+
+  .log.has-detail :deep(.modal-backdrop) {
+    background: var(--ui-pane);
   }
 }
 
-@media (max-width: 768px) {
-  .side-panel {
-    align-self: start;
+@media (max-width: 1280px) {
+  .bench-body {
+    grid-template-columns: minmax(0, 1fr);
   }
 
-  .side-panel.is-idle {
+
+}
+
+@media (max-width: 768px) {
+  .bench-bar {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 18px;
+  }
+
+  .bench-title {
+    margin: 0;
+    font: 600 17px / 1.3 var(--ui-font-display);
+  }
+
+  .bench-sub {
+    margin: 2px 0 0;
+    font-size: 13px;
+    color: var(--ui-ink-2);
+  }
+
+  .bench:not(.is-open) .bench-body {
     display: none;
   }
 
+  .bench :deep(.compose-card > .ui-card-head) {
+    display: none;
+  }
+
+  .bench-side.is-idle {
+    display: none;
+  }
 }
 </style>
