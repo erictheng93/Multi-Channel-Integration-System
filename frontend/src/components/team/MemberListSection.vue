@@ -43,7 +43,7 @@
           v-model="searchQuery"
           class="search-input"
           type="text"
-          placeholder="搜尋姓名、信箱、帳號"
+          placeholder="搜尋成員 (姓名、信箱、帳號)..."
           aria-label="搜尋成員"
           @keydown.escape="clearSearch"
         >
@@ -650,7 +650,9 @@ function handleSelectPage() {
   outline: none;
 }
 .search-input::placeholder {
+  overflow: hidden;
   color: var(--ui-muted);
+  text-overflow: ellipsis;
 }
 .search-clear {
   position: relative;
