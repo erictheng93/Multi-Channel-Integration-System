@@ -43,7 +43,7 @@
           v-model="searchQuery"
           class="search-input"
           type="text"
-          placeholder="搜尋成員 (姓名、信箱、帳號)..."
+          placeholder="搜尋姓名、信箱、帳號"
           aria-label="搜尋成員"
           @keydown.escape="clearSearch"
         >
@@ -64,6 +64,7 @@
       <div
         v-if="teamFilterOptions.length > 0"
         class="ui-seg team-seg"
+        :class="{ 'is-long': teamFilterOptions.length > 3 }"
         role="group"
         aria-label="依團隊篩選"
       >
@@ -562,25 +563,28 @@ function handleSelectPage() {
   color: var(--ui-ink-2);
 }
 .lg-c {
+  display: inline-flex;
   flex: none;
-  padding: 2px 9px;
+  gap: 6px;
+  align-items: center;
   white-space: nowrap;
-  border-radius: 999px;
   font-size: 13px;
   font-weight: 600;
-  color: var(--ui-muted);
-}
-.lg-member {
-  background: var(--ui-fill);
   color: var(--ui-ink-2);
 }
-.lg-lead {
-  background: var(--ui-green-soft);
-  color: color-mix(in srgb, var(--ui-green-ink) 72%, var(--ui-pill-shade));
+/* a static key (dot + word), deliberately not a pill: the ranks are shown, never picked, here */
+.lg-c::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ui-faint);
 }
-.lg-sup {
-  background: var(--ui-indigo-soft);
-  color: color-mix(in srgb, var(--ui-indigo-ink) 72%, var(--ui-pill-shade));
+.lg-lead::before {
+  background: var(--ui-green);
+}
+.lg-sup::before {
+  background: var(--ui-indigo);
 }
 .lg-a {
   color: var(--ui-faint);
@@ -789,7 +793,7 @@ function handleSelectPage() {
     display: contents;
   }
   .search-bar {
-    flex: 1 1 calc(100% - 58px);
+    flex: 1 1 calc(100% - 112px);
     order: 1;
     max-width: none;
     height: 44px;
@@ -803,15 +807,46 @@ function handleSelectPage() {
     font-size: 0;
     gap: 0;
   }
+  /* team tabs get their own full-width row so every name reads whole; only a long list scrolls, and then it fades */
   .team-seg {
-    flex: 1 1 0;
-    order: 3;
+    flex: 1 1 100%;
+    order: 4;
     min-width: 0;
+  }
+  .team-seg.is-long {
     mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
   }
+  /* the sort control collapses to an icon beside the batch toggle (its label stays for screen readers) */
   .tools-end > :deep(.sort-dropdown) {
     flex: none;
-    order: 4;
+    order: 2;
+  }
+  .tools-end > :deep(.sort-dropdown .sort-button) {
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    justify-content: center;
+  }
+  .tools-end > :deep(.sort-dropdown .sort-icon) {
+    display: none;
+  }
+  .tools-end > :deep(.sort-dropdown .sort-button::before) {
+    content: '⇅';
+    font-size: 20px;
+    line-height: 1;
+    color: var(--ui-ink-2);
+  }
+  .tools-end > :deep(.sort-dropdown .sort-label) {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+  .tools-end > :deep(.sort-dropdown .sort-order-badge),
+  .tools-end > :deep(.sort-dropdown .custom-badge),
+  .tools-end > :deep(.sort-dropdown .chevron-icon) {
+    display: none;
   }
   .bulkbar {
     margin-right: 16px;

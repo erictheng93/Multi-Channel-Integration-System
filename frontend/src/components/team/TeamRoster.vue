@@ -119,7 +119,7 @@
           <span
             v-else
             class="ro-none"
-          >—</span>
+          >未指定</span>
         </div>
       </section>
     </div>
@@ -200,7 +200,7 @@ const lanes = computed(() =>
 
 /** Only roles somebody holds get a column */
 const ranks = computed(() => RANKS.filter(rank => lanes.value.some(lane => lane.byRank[rank.key].length > 0)))
-const cols = computed(() => ranks.value.map(rank => (rank.key === 'member' ? 'minmax(0, 1.6fr)' : 'minmax(0, 1fr)')).join(' '))
+const cols = computed(() => ranks.value.map(rank => (rank.key === 'member' ? 'minmax(0, 2fr)' : 'minmax(0, 1fr)')).join(' '))
 
 /** Active members in more than one team: the per-team counts can exceed the overall count */
 const sharedMembers = computed(() =>
@@ -350,6 +350,7 @@ const sharedMembers = computed(() =>
 }
 
 .ro-none {
+  font-size: 13px;
   color: var(--ui-muted);
 }
 
