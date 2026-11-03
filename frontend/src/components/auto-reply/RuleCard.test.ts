@@ -86,16 +86,16 @@ describe('RuleCard -- rendering', () => {
     expect(wrapper.find('.rule-card__trigger-badge').text()).toBe('關鍵字')
   })
 
-  it('renders priority in the quiet meta line', () => {
+  it('renders priority as the numbered rung', () => {
     const wrapper = mountRuleCard({ rule: makeRule({ priority: 50 }) })
-    expect(wrapper.find('.rule-card__meta').text()).toContain('優先 50')
+    expect(wrapper.find('.rule-card__rung').text()).toBe('50')
   })
 
   it('keeps the condition and action counts in the priority tooltip', () => {
     const rule = makeRule()
     // 1 condition, 2 actions from fixture
     const wrapper = mountRuleCard({ rule })
-    const title = wrapper.find('.rule-card__meta').attributes('title') ?? ''
+    const title = wrapper.find('.rule-card__rung').attributes('title') ?? ''
     expect(title).toContain('1 個條件')
     expect(title).toContain('2 個動作')
   })
@@ -103,7 +103,6 @@ describe('RuleCard -- rendering', () => {
   it('shows how often the rule fired when hit counts are known', () => {
     const wrapper = mountRuleCard({ rule: makeRule(), hits: 7, hitsMax: 14 })
     expect(wrapper.find('.rule-card__hits b').text()).toBe('7')
-    expect(wrapper.find('.rule-card__hits-bar i').attributes('style')).toContain('width: 50%')
   })
 
   it('shows no hit count while the log view is filtered (hits unknown)', () => {

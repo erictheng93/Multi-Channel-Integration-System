@@ -139,7 +139,7 @@ watch(() => props.isBusinessHours, (v) => { open.value = v })
 const matches = computed(() => matchAutoReplyRules(text.value, props.rules, open.value))
 const winner = computed(() => matches.value[0] ?? null)
 const shadowed = computed(() => matches.value.slice(1))
-const recent = computed(() => props.logs.slice(0, 5))
+const recent = computed(() => props.logs.slice(0, 4))
 
 function replyText(rule: AutoReplyRule): string {
   const first = rule.actions[0]
@@ -291,6 +291,11 @@ function replyText(rule: AutoReplyRule): string {
   font-size: 13px;
   line-height: 1.5;
   color: var(--ui-muted);
+}
+
+/* the newest triggers fill what is left beside the rule list, so both columns end together */
+.recent {
+  flex: 1;
 }
 
 .recent-list {

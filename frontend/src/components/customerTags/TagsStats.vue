@@ -17,60 +17,72 @@
         </div>
         <div>
           <dt>最常用</dt>
-          <dd>{{ parts[0]?.name ?? '-' }}</dd>
-        </div>
-        <div v-if="unusedCount > 0">
-          <dt>尚未套用</dt>
-          <dd>{{ unusedCount }}</dd>
+          <dd>{{ top[0]?.name ?? '-' }}</dd>
         </div>
       </dl>
     </div>
 
-    <div
-      v-if="parts.length > 0"
-      class="lead-mix"
-    >
-      <div class="mix-head">
-        標籤分佈<span>前 {{ parts.length }} 名佔 {{ coverage }}%</span>
+    <!-- Signature: the tag map. Every tag in use is a tile whose area is its share of tagged
+         conversations, in the tag's own colour. A tile opens that tag's customers. -->
+    <div class="lead-map">
+      <div class="map-head">
+        <h2>標籤地圖</h2>
+        <span v-if="tiles.length > 0">面積代表對話數，前 {{ Math.min(5, tiles.length) }} 名佔 {{ coverage }}%</span>
       </div>
       <div
-        class="mix-bar"
-        role="img"
-        :aria-label="`標籤分佈：${parts.map((p) => `${p.name} ${p.count}`).join('、')}`"
+        v-if="tiles.length > 0"
+        ref="boxEl"
+        class="map"
+        role="group"
+        aria-label="標籤地圖，點選查看該標籤的對話"
       >
-        <i
-          v-for="p in parts"
-          :key="p.id"
-          :style="{ flexGrow: p.count, background: p.color }"
-        />
-        <i
-          v-if="rest"
-          class="mix-rest"
-          :style="{ flexGrow: rest.count }"
-        />
-      </div>
-      <ul class="mix-legend">
-        <li
-          v-for="p in parts"
-          :key="p.id"
+        <button
+          v-for="t in tiles"
+          :key="t.id"
+          type="button"
+          class="tile"
+          :class="{ 'is-active': activeTagId === t.id, 'is-wide': t.showCount }"
+          :style="t.style"
+          :aria-label="`${t.name}，${t.count} 個對話`"
+          :aria-pressed="activeTagId === t.id"
+          :title="`${t.name}：${t.count} 個對話（${t.share}%）`"
+          @click="emit('select', t.id)"
         >
-          <i :style="{ background: p.color }" />
-          <span class="mix-name">{{ p.name }}</span>
-          <b>{{ p.count }}</b>
-        </li>
-        <li v-if="rest">
-          <i class="mix-rest" />
-          <span class="mix-name">其他 {{ rest.tags }} 個標籤</span>
-          <b>{{ rest.count }}</b>
-        </li>
-      </ul>
+          <span
+            v-if="t.showName"
+            class="tile-name"
+          >{{ t.name }}</span>
+          <b
+            v-if="t.showCount"
+            class="tile-n"
+          >{{ t.count }}</b>
+        </button>
+      </div>
+      <p
+        v-else
+        class="map-empty"
+      >
+        還沒有標籤被套用到對話。在對話裡加上標籤後，這裡會依用量排出每個標籤的大小。
+      </p>
+      <p
+        v-if="unused.length > 0"
+        class="map-unused"
+      >
+        <span>尚未套用</span>
+        <i
+          v-for="u in unused"
+          :key="u.id"
+          class="ui-pill"
+        >{{ u.name }}</i>
+      </p>
     </div>
   </article>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type { Tag } from '@/types/tag'
+import { squarify } from '@/utils/treemap'
 
 const props = defineProps<{
   stats: {
@@ -79,64 +91,83 @@ const props = defineProps<{
     activeTags: number
   }
   tags: Tag[]
+  /** Tag open in the detail panel */
+  activeTagId?: number | null
 }>()
 
-const unusedCount = computed(() => Math.max(0, props.stats.totalTags - props.stats.activeTags))
+const emit = defineEmits<{ select: [id: number] }>()
 
-// The five most-applied tags in their own colours: what the counts are made of, not a restated fraction
-const parts = computed(() =>
+// The map is laid out for the box it is drawn in, so tiles stay square on a phone too
+const boxEl = ref<HTMLElement | null>(null)
+const box = ref({ w: 640, h: 240 })
+let observer: globalThis.ResizeObserver | null = null
+
+// The box only exists once tags have loaded, so it is observed whenever it appears
+onMounted(() => {
+  if (typeof window.ResizeObserver === 'undefined') { return }
+  observer = new window.ResizeObserver((entries) => {
+    const rect = entries[0]?.contentRect
+    if (rect && rect.width > 0 && rect.height > 0) {
+      box.value = { w: rect.width, h: rect.height }
+    }
+  })
+  watch(boxEl, (el, previous) => {
+    if (previous) { observer?.unobserve(previous) }
+    if (el) { observer?.observe(el) }
+  }, { immediate: true, flush: 'post' })
+})
+onBeforeUnmount(() => observer?.disconnect())
+
+const used = computed(() =>
   [...props.tags]
     .filter((t) => (t.conversationCount || 0) > 0)
-    .sort((a, b) => (b.conversationCount || 0) - (a.conversationCount || 0))
-    .slice(0, 5)
-    .map((t) => ({ id: t.id, name: t.name, color: t.color, count: t.conversationCount || 0 })),
+    .sort((a, b) => (b.conversationCount || 0) - (a.conversationCount || 0)),
 )
 
-/** Everything outside the top five, so the bar and legend add up to the whole */
-const rest = computed(() => {
-  const total = props.tags.reduce((n, t) => n + (t.conversationCount || 0), 0)
-  const count = total - parts.value.reduce((n, p) => n + p.count, 0)
-  const tags = props.tags.filter((t) => (t.conversationCount || 0) > 0).length - parts.value.length
-  return count > 0 ? { count, tags } : null
-})
+const total = computed(() => used.value.reduce((n, t) => n + (t.conversationCount || 0), 0))
+const top = used
+
+const unused = computed(() => props.tags.filter((t) => !(t.conversationCount || 0)))
 
 const coverage = computed(() => {
-  const total = props.tags.reduce((n, t) => n + (t.conversationCount || 0), 0)
-  if (total <= 0) { return 0 }
-  return Math.round((parts.value.reduce((n, p) => n + p.count, 0) / total) * 100)
+  if (total.value <= 0) { return 0 }
+  const five = used.value.slice(0, 5).reduce((n, t) => n + (t.conversationCount || 0), 0)
+  return Math.round((five / total.value) * 100)
+})
+
+const tiles = computed(() => {
+  const byId = new Map(used.value.map((t) => [t.id, t]))
+  const rects = squarify(used.value.map((t) => ({ id: t.id, value: t.conversationCount || 0 })), box.value.w, box.value.h)
+  return rects.flatMap((r) => {
+    const tag = byId.get(r.id as number)
+    if (!tag) { return [] }
+    const count = tag.conversationCount || 0
+    return [{
+      id: tag.id,
+      name: tag.name,
+      count,
+      share: total.value > 0 ? Math.round((count / total.value) * 100) : 0,
+      showName: r.w >= 58 && r.h >= 30,
+      showCount: r.w >= 58 && r.h >= 70,
+      style: {
+        left: `${(r.x / box.value.w) * 100}%`,
+        top: `${(r.y / box.value.h) * 100}%`,
+        width: `${(r.w / box.value.w) * 100}%`,
+        height: `${(r.h / box.value.h) * 100}%`,
+        '--tag-c': tag.color,
+      },
+    }]
+  })
 })
 </script>
 
 <style scoped>
-.mix-rest {
-  background: var(--ui-muted);
-  opacity: 0.55;
-}
-
-.lead-facts {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px 32px;
-  margin: 22px 0 0;
-}
-
-.lead-facts dt {
-  font-size: 13px;
-  color: var(--ui-muted);
-}
-
-.lead-facts dd {
-  margin: 2px 0 0;
-  font: 600 18px / 1.2 var(--ui-font-display);
-  font-variant-numeric: tabular-nums;
-}
-
 .lead {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
-  gap: 20px 40px;
-  align-items: center;
-  padding: 24px 40px;
+  grid-template-columns: 240px minmax(0, 1fr);
+  gap: 20px 44px;
+  align-items: stretch;
+  padding: 26px 36px;
 }
 
 .lead-main {
@@ -174,104 +205,186 @@ const coverage = computed(() => {
   color: var(--ui-ink-2);
 }
 
-.lead-mix {
-  position: relative;
-  min-width: 0;
+.lead-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 32px;
+  margin: auto 0 0;
+  padding-top: 22px;
 }
 
-.lead-mix::before {
+.lead-facts dt {
+  font-size: 13px;
+  color: var(--ui-muted);
+}
+
+.lead-facts dd {
+  margin: 2px 0 0;
+  font: 600 18px / 1.2 var(--ui-font-display);
+  font-variant-numeric: tabular-nums;
+}
+
+.lead-map {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding-left: 44px;
+}
+
+.lead-map::before {
   position: absolute;
   top: 4px;
   bottom: 4px;
-  left: -20px;
+  left: 0;
   width: 0.5px;
   background: var(--ui-sep);
   content: '';
 }
 
-.mix-head {
+.map-head {
   display: flex;
-  gap: 10px;
+  flex-wrap: wrap;
+  gap: 2px 14px;
   align-items: baseline;
   justify-content: space-between;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--ui-ink-2);
+  margin-bottom: 12px;
 }
 
-.mix-head span {
+.map-head h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.map-head span {
   font-size: 13px;
-  font-weight: 500;
   color: var(--ui-muted);
 }
 
-.mix-bar {
-  display: flex;
-  gap: 3px;
-  height: 14px;
-  margin-top: 12px;
-}
-
-.mix-bar i {
-  flex-basis: 0;
-  min-width: 6px;
-  border-radius: 999px;
-}
-
-.mix-legend {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 230px));
-  gap: 8px 36px;
-  margin: 16px 0 0;
-  padding: 0;
-  list-style: none;
-}
-
-.mix-legend li {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  min-width: 0;
-  font-size: 14px;
-}
-
-.mix-legend li i {
-  flex: none;
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-}
-
-.mix-name {
-  min-width: 0;
+.map {
+  position: relative;
   flex: 1;
-  overflow: hidden;
-  color: var(--ui-ink-2);
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  min-height: 196px;
 }
 
-.mix-legend b {
+.tile {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 2px;
+  min-width: 0;
+  padding: 8px 10px;
+  overflow: hidden;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: color-mix(in srgb, var(--tag-c) 62%, #000);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+/* the tile body is inset so neighbours are separated by the page surface, not by outlines */
+.tile::before {
+  position: absolute;
+  inset: 2px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--tag-c) 20%, var(--ui-surface));
+  content: '';
+  transition: background var(--ui-dur) var(--ui-ease);
+}
+
+.tile:hover::before {
+  background: color-mix(in srgb, var(--tag-c) 30%, var(--ui-surface));
+}
+
+.tile.is-active::before {
+  background: color-mix(in srgb, var(--tag-c) 34%, var(--ui-surface));
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--tag-c) 70%, #000);
+}
+
+.tile:focus-visible {
+  outline: 2px solid var(--ui-accent);
+  outline-offset: -1px;
+}
+
+.tile > * {
+  position: relative;
+}
+
+.tile-name {
+  display: -webkit-box;
+  overflow: hidden;
+  font-size: 14px;
   font-weight: 600;
+  line-height: 1.3;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow-wrap: anywhere;
+}
+
+.tile-n {
+  font: 600 24px / 1 var(--ui-font-display);
+  letter-spacing: -0.02em;
+  color: var(--ui-ink);
   font-variant-numeric: tabular-nums;
 }
 
-@media (max-width: 768px) {
+.map-empty {
+  margin: 0;
+  padding: 24px 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--ui-ink-2);
+}
+
+.map-unused {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 8px;
+  align-items: center;
+  margin: 12px 0 0;
+  font-size: 13px;
+  color: var(--ui-muted);
+}
+
+.map-unused i {
+  font-style: normal;
+}
+
+@media (max-width: 1024px) {
   .lead {
     grid-template-columns: minmax(0, 1fr);
     padding: 22px 20px;
   }
 
-  .lead-num {
-    font-size: 48px;
+  .lead-map {
+    padding-left: 0;
   }
 
-  .lead-mix::before {
+  .lead-map::before {
     display: none;
   }
 
   .lead-facts {
-    margin-top: 14px;
+    margin: 0;
+    padding-top: 14px;
+  }
+}
+
+@media (max-width: 768px) {
+  .lead-num {
+    font-size: 48px;
+  }
+
+  .map {
+    min-height: 280px;
+  }
+
+  .tile {
+    padding: 6px 8px;
   }
 }
 </style>

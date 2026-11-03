@@ -26,6 +26,8 @@
       <TagsStats
         :stats="stats"
         :tags="allTags"
+        :active-tag-id="conversationsTag?.id ?? null"
+        @select="openMapTag"
       />
 
       <!-- Tags List + conversations side panel -->
@@ -234,6 +236,12 @@ watch(allTags, (list) => {
 
 // ==================== Methods ====================
 
+// A tile on the tag map opens that tag's customers (side panel on desktop, sheet below)
+const openMapTag = (id: number) => {
+  const tag = allTags.value.find((t) => t.id === id)
+  if (tag) { openConversationsModal(tag) }
+}
+
 // Edit / delete from the detail panel or sheet (the sheet closes first on phones)
 const editActiveTag = () => {
   const tag = conversationsTag.value
@@ -293,8 +301,8 @@ onUnmounted(() => {
   position: relative;
   min-width: 0;
   min-height: 420px;
-  /* tops line up with the first group row, below the group label */
-  margin-top: 81px;
+  /* the panel starts level with the search box and runs as far as the list */
+  margin-top: 0;
 }
 
 /* The panel is exactly as tall as the tag grid; a long list scrolls inside it */
