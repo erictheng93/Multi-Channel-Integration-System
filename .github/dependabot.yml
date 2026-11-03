@@ -7,6 +7,9 @@ updates:
     schedule:
       interval: weekly
     groups:
+      # S3 client and presigner share Smithy private types; upgrade together.
+      aws-sdk:
+        patterns: ["@aws-sdk/*"]
       wrangler:
         patterns: ["wrangler"]
       # vitest and its coverage/ui packages must share a major; bump them together.
