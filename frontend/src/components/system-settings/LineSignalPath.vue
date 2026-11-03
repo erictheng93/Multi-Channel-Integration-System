@@ -148,97 +148,6 @@
               >{{ lastTest.latencyMs.toLocaleString() }} ms</span>
             </div>
           </div>
-          <div class="quota">
-            <div
-              v-if="quotaLoading"
-              class="quota-state"
-            >
-              載入額度中...
-            </div>
-            <div
-              v-else-if="!channel"
-              class="quota-state"
-            >
-              {{ quotaFailed ? '無法取得額度資料' : '尚未查詢過本月額度' }}
-              <button
-                type="button"
-                class="btn btn-secondary btn-sm"
-                :disabled="refreshing"
-                @click="refresh"
-              >
-                {{ refreshing ? '查詢中...' : '立即查詢' }}
-              </button>
-            </div>
-            <template v-else>
-              <div class="quota-top">
-                <div class="quota-big">
-                  <span class="quota-label">本月已發送</span>
-                  {{ channel.used === null ? '尚無數據' : channel.used.toLocaleString() }}<small v-if="channel.limited && channel.limit !== null"> / {{ channel.limit.toLocaleString() }} 則</small><small v-else-if="channel.used !== null"> 則（不限額）</small>
-                </div>
-                <div class="quota-meta">
-                  <span>{{ updatedText }}</span>
-                  <button
-                    type="button"
-                    class="btn btn-secondary btn-sm"
-                    :disabled="refreshing"
-                    @click="refresh"
-                  >
-                    {{ refreshing ? '查詢中...' : '立即查詢' }}
-                  </button>
-                </div>
-              </div>
-              <template v-if="channel.limited && channel.limit !== null && channel.used !== null">
-                <div
-                  class="qbar"
-                  role="progressbar"
-                  aria-valuemin="0"
-                  :aria-valuemax="channel.limit"
-                  :aria-valuenow="Math.min(channel.used, channel.limit)"
-                  :aria-label="`本月額度已使用 ${percent}%`"
-                >
-                  <i
-                    class="seg-used"
-                    :class="tone"
-                    :style="{ width: `${segs.used}%` }"
-                  />
-                  <i
-                    v-if="segs.usable > 0"
-                    class="seg-usable"
-                    :style="{ width: `${segs.usable}%` }"
-                  />
-                  <i
-                    v-if="segs.reserve > 0"
-                    class="seg-reserve"
-                    :style="{ width: `${segs.reserve}%` }"
-                  />
-                </div>
-                <ul class="qlegend">
-                  <li :class="`q-${tone}`">
-                    <span
-                      class="sw seg-used"
-                      :class="tone"
-                    />已發送 <b>{{ percent }}%</b><template v-if="tone === 'danger'">
-                      · 即將用完
-                    </template><template v-else-if="tone === 'warn'">
-                      · 額度偏緊
-                    </template>
-                  </li>
-                  <li v-if="channel.usableRemaining !== null">
-                    <span class="sw seg-usable" />群發還能用 <b>{{ channel.usableRemaining.toLocaleString() }}</b>
-                  </li>
-                  <li v-if="channel.reserve !== null && channel.reserve > 0">
-                    <span class="sw seg-reserve" />留給客服回覆 <b>{{ channel.reserve.toLocaleString() }}</b>
-                  </li>
-                </ul>
-              </template>
-              <p
-                v-if="channel.error"
-                class="quota-warn"
-              >
-                本次查詢失敗（{{ channel.error }}），顯示的是上次成功的數據。
-              </p>
-            </template>
-          </div>
         </section>
       </div>
 
@@ -265,6 +174,98 @@
           </div>
         </div>
       </div>
+    </div>
+
+    <div class="quota">
+      <div
+        v-if="quotaLoading"
+        class="quota-state"
+      >
+        載入額度中...
+      </div>
+      <div
+        v-else-if="!channel"
+        class="quota-state"
+      >
+        {{ quotaFailed ? '無法取得額度資料' : '尚未查詢過本月額度' }}
+        <button
+          type="button"
+          class="btn btn-secondary btn-sm"
+          :disabled="refreshing"
+          @click="refresh"
+        >
+          {{ refreshing ? '查詢中...' : '立即查詢' }}
+        </button>
+      </div>
+      <template v-else>
+        <div class="quota-top">
+          <div class="quota-big">
+            <span class="quota-label">本月已發送</span>
+            {{ channel.used === null ? '尚無數據' : channel.used.toLocaleString() }}<small v-if="channel.limited && channel.limit !== null"> / {{ channel.limit.toLocaleString() }} 則</small><small v-else-if="channel.used !== null"> 則（不限額）</small>
+          </div>
+          <div class="quota-meta">
+            <span>{{ updatedText }}</span>
+            <button
+              type="button"
+              class="btn btn-secondary btn-sm"
+              :disabled="refreshing"
+              @click="refresh"
+            >
+              {{ refreshing ? '查詢中...' : '立即查詢' }}
+            </button>
+          </div>
+        </div>
+        <template v-if="channel.limited && channel.limit !== null && channel.used !== null">
+          <div
+            class="qbar"
+            role="progressbar"
+            aria-valuemin="0"
+            :aria-valuemax="channel.limit"
+            :aria-valuenow="Math.min(channel.used, channel.limit)"
+            :aria-label="`本月額度已使用 ${percent}%`"
+          >
+            <i
+              class="seg-used"
+              :class="tone"
+              :style="{ width: `${segs.used}%` }"
+            />
+            <i
+              v-if="segs.usable > 0"
+              class="seg-usable"
+              :style="{ width: `${segs.usable}%` }"
+            />
+            <i
+              v-if="segs.reserve > 0"
+              class="seg-reserve"
+              :style="{ width: `${segs.reserve}%` }"
+            />
+          </div>
+          <ul class="qlegend">
+            <li :class="`q-${tone}`">
+              <span
+                class="sw seg-used"
+                :class="tone"
+              />已發送 <b>{{ percent }}%</b><template v-if="tone === 'danger'">
+                · 即將用完
+              </template><template v-else-if="tone === 'warn'">
+                · 額度偏緊
+              </template>
+            </li>
+            <li v-if="channel.usableRemaining !== null">
+              <span class="sw seg-usable" />群發還能用 <b>{{ channel.usableRemaining.toLocaleString() }}</b>
+            </li>
+            <li v-if="channel.reserve !== null && channel.reserve > 0">
+              <span class="sw seg-reserve" />留給客服回覆 <b>{{ channel.reserve.toLocaleString() }}</b>
+            </li>
+          </ul>
+        </template>
+        <p
+          v-if="channel.error"
+          class="quota-warn"
+        >
+          本次查詢失敗（{{ channel.error }}），顯示的是上次成功的數據。
+        </p>
+      </template>
     </div>
   </article>
 </template>
@@ -592,8 +593,8 @@ const segs = computed(() => {
   gap: 8px;
   align-items: center;
   min-width: 0;
-  max-width: 100%;
-  margin: 0 26px;
+  max-width: calc(100% - 44px);
+  margin: 0 36px 0 30px;
   padding: 6px 8px 6px 14px;
   border-radius: 999px;
   background: var(--ui-surface);
@@ -608,6 +609,7 @@ const segs = computed(() => {
 
 .chip-k {
   color: var(--ui-muted);
+  white-space: nowrap;
 }
 
 .chip-ms {
@@ -671,10 +673,9 @@ const segs = computed(() => {
   background: var(--ui-faint);
 }
 
-/* quota: the track laid under the outgoing wire */
+/* quota: its own band under the path, the width of the whole card, so no wire runs through it */
 .quota {
-  margin-top: 12px;
-  padding: 14px 16px 16px;
+  padding: 16px 20px 18px;
   border-radius: var(--ui-r-inner);
   background: var(--ui-surface-2);
 }
@@ -923,6 +924,7 @@ const segs = computed(() => {
 
   .wire-chip,
   .wire-out .wire-chip {
+    max-width: 100%;
     margin: 0;
     padding: 6px 8px 6px 14px;
     border-radius: var(--ui-r-inner);
