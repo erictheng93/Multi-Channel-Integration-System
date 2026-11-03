@@ -37,7 +37,7 @@
             <span
               class="ins-bar"
               aria-hidden="true"
-            ><i :style="{ width: row.width }" /></span>
+            ><i :style="{ width: row.width, background: row.tone }" /></span>
           </button>
         </li>
       </ul>
@@ -127,13 +127,22 @@ function totalOf(count: number): string {
   return total > 0 ? `${Math.round((count / total) * 100)}%` : ''
 }
 
+/** Bar colour by what kind of operation it is, so the rail says more than one flat green */
+function toneOf(action: string): string {
+  if (action.startsWith('message') || action.startsWith('broadcast')) { return 'var(--ui-green)' }
+  if (action.startsWith('user')) { return 'var(--ui-blue)' }
+  if (action.startsWith('tag')) { return 'var(--ui-indigo)' }
+  if (action.startsWith('conversation')) { return 'var(--ui-orange)' }
+  return 'var(--ui-teal)'
+}
+
 const actions = computed(() => {
   const stats = props.overview?.actionStats ?? {}
   const rows = Object.entries(stats)
     .filter(([, count]) => count > 0)
     .sort((a, b) => b[1] - a[1])
     .slice(0, SHOWN)
-    .map(([key, count]) => ({ key, label: getActionLabel(key), count, share: totalOf(count) }))
+    .map(([key, count]) => ({ key, label: getActionLabel(key), count, share: totalOf(count), tone: toneOf(key) }))
   return scaled(rows)
 })
 
