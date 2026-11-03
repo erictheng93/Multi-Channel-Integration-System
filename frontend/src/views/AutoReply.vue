@@ -64,7 +64,8 @@
           :is-business-hours="stats.isBusinessHours"
           :business-hours="stats.businessHours"
           :success-rate="stats.successRate"
-          :today-window="todayWindow"
+          :week-plan="weekPlan"
+          @open-schedules="switchTab('schedules')"
         />
 
         <!-- Tabs -->
@@ -195,7 +196,7 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import AppLayout from '@/components/ui/AppLayout.vue'
 import LoadingSpinner from '@/components/ui/LoadingSpinner.vue'
 import ConfirmDialog from '@/components/ui/ConfirmDialog.vue'
-import AutoReplyStats from '@/components/auto-reply/AutoReplyStats.vue'
+import AutoReplyStats, { type WeekPlan } from '@/components/auto-reply/AutoReplyStats.vue'
 import RuleList from '@/components/auto-reply/RuleList.vue'
 import RuleAside from '@/components/auto-reply/RuleAside.vue'
 import ScheduleGrid from '@/components/auto-reply/ScheduleGrid.vue'
@@ -237,23 +238,35 @@ const headline = computed(() => {
   return `${summary}${today}優先序數字越小越先比對。`
 })
 
-// Today's opening window (minutes since midnight) and the current time, both in the team's timezone,
-// from the saved schedule: it draws where "now" sits inside the day
-const todayWindow = computed(() => {
+// The week of opening windows plus "now" and today's reply times, all read in the team's timezone
+const weekPlan = computed<WeekPlan | null>(() => {
   void stats.value
+  if (store.schedules.length === 0) { return null }
   const tz = stats.value.businessHours?.timezone || store.schedules[0]?.timezone || 'Asia/Taipei'
-  let weekday = new Date().getDay()
-  let minutes = new Date().getHours() * 60 + new Date().getMinutes()
-  try {
-    const parts = new Intl.DateTimeFormat('en-US', { timeZone: tz, weekday: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(new Date())
-    const get = (t: string) => parts.find(p => p.type === t)?.value ?? ''
-    weekday = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].indexOf(get('weekday'))
-    minutes = Number(get('hour')) * 60 + Number(get('minute'))
-  } catch { /* unknown timezone: keep the browser clock */ }
-  const row = store.schedules.find(sc => sc.dayOfWeek === weekday)
-  if (!row || !row.isActive) { return null }
+  const fmt = (d: Date) => {
+    try {
+      const parts = new Intl.DateTimeFormat('en-US', { timeZone: tz, weekday: 'short', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(d)
+      const get = (t: string) => parts.find(p => p.type === t)?.value ?? ''
+      return {
+        weekday: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].indexOf(get('weekday')),
+        minutes: Number(get('hour')) * 60 + Number(get('minute')),
+        date: `${get('year')}-${get('month')}-${get('day')}`,
+      }
+    } catch {
+      return { weekday: d.getDay(), minutes: d.getHours() * 60 + d.getMinutes(), date: d.toDateString() }
+    }
+  }
+  const now = fmt(new Date())
   const toMin = (t: string) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5))
-  return { start: toMin(row.startTime), end: toMin(row.endTime), now: minutes }
+  const days = [1, 2, 3, 4, 5, 6, 0].map((day) => {
+    const row = store.schedules.find(sc => sc.dayOfWeek === day)
+    return { day, open: !!row?.isActive, start: row ? toMin(row.startTime) : 0, end: row ? toMin(row.endTime) : 0 }
+  })
+  const replies = store.logs
+    .map(log => fmt(new Date(log.created_at)))
+    .filter(t => t.date === now.date)
+    .map(t => t.minutes)
+  return { days, today: now.weekday, now: now.minutes, replies }
 })
 
 // How often each rule fired in the newest logs; unknown while the log view is filtered or on a later page
@@ -363,7 +376,7 @@ onUnmounted(() => cleanup())
   display: grid;
   grid-template-columns: minmax(0, 1fr) 340px;
   gap: 16px;
-  align-items: start;
+  align-items: stretch;
 }
 
 @media (max-width: 1280px) {

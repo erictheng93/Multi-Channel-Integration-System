@@ -69,12 +69,19 @@
             </option>
           </select>
         </div>
-        <span class="rule-list__count">{{ rules.length }} 條規則<template v-if="hits">，觸發次數取自最近 {{ hitsWindow ?? 50 }} 筆日誌</template></span>
+        <span class="rule-list__count">{{ rules.length }} 條規則<template v-if="hits">，次數取自最近 {{ hitsWindow ?? 50 }} 筆日誌</template></span>
+      </div>
+
+      <div class="rule-list__cols">
+        <span>比對順序，圓圈是優先序</span>
+        <span v-if="hits">最近觸發</span>
       </div>
 
       <RuleCard
-        v-for="rule in rules"
+        v-for="(rule, i) in rules"
         :key="rule.id"
+        :first="i === 0"
+        :last="i === rules.length - 1"
         :rule="rule"
         :is-expanded="expandedRuleId === rule.id"
         :form-data="formData"
@@ -232,7 +239,23 @@ const hitsMax = computed(() => Math.max(0, ...Object.values(props.hits ?? {})))
 }
 
 .rule-list__items {
-  padding: 4px 0;
+  flex: 1;
+  padding: 0 0 4px;
+}
+
+/* column captions for the rows below: the rail on the left, the recent-trigger count on the right */
+.rule-list__cols {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 22px 4px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ui-muted);
+}
+
+.rule-list__cols span:last-child {
+  width: 74px;
+  text-align: right;
 }
 
 .rule-list__new-card {
@@ -260,7 +283,8 @@ const hitsMax = computed(() => Math.max(0, ...Object.values(props.hits ?? {})))
     flex: 1 1 auto;
   }
 
-  .rule-list__count {
+  .rule-list__count,
+  .rule-list__cols {
     display: none;
   }
 
