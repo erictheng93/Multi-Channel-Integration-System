@@ -3,20 +3,14 @@
     <section class="ui-lead preview-card">
       <div class="lead-head">
         <p class="lead-kicker">
-          即將產生
+          報表標題
         </p>
         <h3
           class="lead-title"
-          :class="{ 'is-empty': !reportType }"
-        >
-          {{ reportType ? reportTypeLabel : '新報表' }}
-        </h3>
-        <p
-          class="lead-sub"
           :class="{ 'is-empty': !title.trim() }"
         >
           {{ title.trim() || '填寫標題後即可產生' }}
-        </p>
+        </h3>
       </div>
 
       <div
@@ -26,21 +20,13 @@
         <h4 class="sample-cap">
           報表會包含
         </h4>
-        <ul class="sample-list">
+        <ul class="sample-chips">
           <li
             v-for="item in contents"
             :key="item.label"
+            :title="item.hint"
           >
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="3"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              aria-hidden="true"
-            ><path d="m5 12 5 5 9-10" /></svg>
-            <span class="sample-t"><b>{{ item.label }}</b><span>{{ item.hint }}</span></span>
+            {{ item.label }}
           </li>
         </ul>
         <p class="sample-opts">
@@ -213,8 +199,7 @@ const formatDate = (dateString: string): string => {
   letter-spacing: -0.025em;
 }
 
-.lead-title.is-empty,
-.lead-sub.is-empty {
+.lead-title.is-empty {
   color: var(--ui-muted);
 }
 
@@ -222,12 +207,6 @@ const formatDate = (dateString: string): string => {
   font-weight: 600;
 }
 
-.lead-sub {
-  margin: 4px 0 0;
-  overflow-wrap: anywhere;
-  font-size: 14px;
-  color: var(--ui-ink-2);
-}
 
 .sample {
   padding: 4px 24px 0;
@@ -241,43 +220,22 @@ const formatDate = (dateString: string): string => {
   color: var(--ui-ink-2);
 }
 
-.sample-list {
-  display: grid;
-  margin: 0;
+.sample-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 6px;
   padding: 0;
   list-style: none;
 }
 
-.sample-list li {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: 12px;
-  align-items: start;
-  padding: 9px 0;
-}
-
-.sample-list svg {
-  width: 20px;
-  height: 20px;
-  padding: 4px;
-  border-radius: 50%;
+.sample-chips li {
+  padding: 6px 12px;
+  border-radius: 999px;
   background: var(--ui-green-soft);
-  color: var(--ui-green-ink);
-}
-
-.sample-t {
-  display: grid;
-  gap: 1px;
-}
-
-.sample-t b {
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 600;
-}
-
-.sample-t span {
-  font-size: 13px;
-  color: var(--ui-ink-2);
+  color: var(--ui-green-ink);
 }
 
 .sample-opts {

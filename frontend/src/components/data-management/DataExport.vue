@@ -40,215 +40,226 @@
           </p>
         </template>
       </div>
-      <div class="res-note">
-        <template v-if="count !== null">
-          <p
-            v-if="willTruncate"
-            class="res-warn"
-          >
-            <b>符合條件共 {{ count.count.toLocaleString() }} 筆，其餘 {{ (count.count - EXPORT_LIMIT).toLocaleString() }} 筆不會匯出。</b>
-            縮小期間或指定客戶，就能完整匯出。
-          </p>
-          <p
-            v-else
-            class="res-ok"
-          >
-            符合目前條件的全部對話訊息
-          </p>
-        </template>
-      </div>
-      <button
-        type="button"
-        class="btn btn-primary lead-cta"
-        :aria-busy="exporting"
-        @click="runExport"
+
+      <div
+        class="res-gauge"
+        role="img"
+        :aria-label="gaugeLabel"
       >
-        <DownloadIcon :size="16" />
-        {{ exporting ? '匯出中…' : `開始匯出 ${selectedName}` }}
-      </button>
+        <div class="g-track">
+          <i
+            v-if="totalAll !== null"
+            class="g-all"
+            :style="{ width: gaugePct(totalAll) }"
+          />
+          <i
+            v-if="count !== null"
+            class="g-pick"
+            :style="{ width: gaugePct(exportCount) }"
+          />
+          <i
+            v-if="count !== null && willTruncate"
+            class="g-over"
+            :style="{ left: gaugePct(EXPORT_LIMIT), width: gaugePct(count.count - EXPORT_LIMIT) }"
+          />
+          <span
+            class="g-limit"
+            :class="{ 'is-late': EXPORT_LIMIT / gaugeScale > 0.7 }"
+            :style="{ left: gaugePct(EXPORT_LIMIT) }"
+          ><em>單次上限 {{ EXPORT_LIMIT.toLocaleString() }}</em></span>
+        </div>
+        <p class="g-cap">
+          <span v-if="count !== null"><i class="k-pick" />這份檔案 <b>{{ exportCount.toLocaleString() }}</b> 筆<template v-if="sharePct"> ，佔全部 {{ sharePct }}</template></span>
+          <span v-if="totalAll !== null"><i class="k-all" />全部對話 <b>{{ totalAll.toLocaleString() }}</b> 筆</span>
+        </p>
+        <p
+          v-if="willTruncate && count"
+          class="res-warn"
+        >
+          另有 {{ (count.count - EXPORT_LIMIT).toLocaleString() }} 筆不會匯出，縮小期間或指定客戶就能完整匯出。
+        </p>
+      </div>
+
+      <div class="res-cta">
+        <button
+          type="button"
+          class="btn btn-primary lead-cta"
+          :aria-busy="exporting"
+          @click="runExport"
+        >
+          <DownloadIcon :size="16" />
+          {{ exporting ? '匯出中…' : `開始匯出 ${selectedName}` }}
+        </button>
+        <p class="res-file">
+          {{ fileName }}
+        </p>
+      </div>
     </section>
 
     <div class="ex-grid">
-      <div class="ex-left">
-        <section
-          class="ui-card ex-pick"
-          aria-label="選擇格式"
-        >
-          <div class="ui-card-head">
-            <div>
-              <h2 class="ui-card-title">
-                檔案格式
-              </h2>
-              <p class="ui-card-sub">
-                依用途選擇
-              </p>
+      <form
+        class="ui-card ex-scope"
+        aria-label="匯出範圍"
+        @submit.prevent="runExport"
+      >
+        <div class="ui-card-head">
+          <div>
+            <h2 class="ui-card-title">
+              匯出範圍
+            </h2>
+            <p class="ui-card-sub">
+              不選就是全部，下方筆數會即時更新
+            </p>
+          </div>
+        </div>
+        <div class="scope-grid">
+          <div class="ui-field scope-period">
+            <span
+              id="ex-period-label"
+              class="field-label"
+            >期間</span>
+            <div
+              class="ui-seg period-seg"
+              role="group"
+              aria-labelledby="ex-period-label"
+            >
+              <button
+                v-for="option in periods"
+                :key="option.id"
+                type="button"
+                :aria-pressed="period === option.id"
+                @click="pickPeriod(option.id)"
+              >
+                {{ option.label }}
+              </button>
             </div>
+            <p
+              v-if="period !== 'custom'"
+              class="period-note"
+            >
+              {{ periodNote }}
+            </p>
           </div>
           <div
-            class="ex-list"
-            role="radiogroup"
-            aria-label="匯出格式"
+            v-show="period === 'custom'"
+            class="ui-field"
           >
-            <button
-              v-for="format in formats"
-              :key="format.id"
-              type="button"
-              class="ex-row"
-              :class="{ 'is-on': selectedFormat === format.id }"
-              role="radio"
-              :aria-checked="selectedFormat === format.id"
-              @click="selectFormat(format.id)"
+            <label for="ex-from">起始日期</label>
+            <input
+              id="ex-from"
+              v-model="filters.dateFrom"
+              type="date"
+              class="ui-input"
+              :max="filters.dateTo || undefined"
             >
-              <span
-                class="fmt-ico"
-                :class="format.tone"
-                aria-hidden="true"
-              >{{ format.icon }}</span>
-              <span class="ex-main">
-                <b class="ex-name">{{ format.name }}<span class="ex-tag">{{ format.tagline }}</span></b>
-                <span class="ex-use">{{ format.usecases.join('、') }}</span>
-              </span>
-              <i
-                class="radio"
-                aria-hidden="true"
-              />
-            </button>
           </div>
-        </section>
-
-        <form
-          class="ui-card ex-scope"
-          aria-label="匯出範圍"
-          @submit.prevent="runExport"
+          <div
+            v-show="period === 'custom'"
+            class="ui-field"
+          >
+            <label for="ex-to">結束日期</label>
+            <input
+              id="ex-to"
+              v-model="filters.dateTo"
+              type="date"
+              class="ui-input"
+              :min="filters.dateFrom || undefined"
+            >
+          </div>
+          <div class="ui-field">
+            <label for="ex-customer">客戶</label>
+            <select
+              id="ex-customer"
+              v-model="filters.customerId"
+              class="ui-select"
+            >
+              <option value="">
+                全部客戶
+              </option>
+              <option
+                v-for="customer in customers"
+                :key="customer.id"
+                :value="String(customer.id)"
+              >
+                {{ customer.displayName || '未知用戶' }}
+              </option>
+            </select>
+          </div>
+          <div class="ui-field">
+            <label for="ex-agent">客服人員</label>
+            <select
+              id="ex-agent"
+              v-model="filters.agentId"
+              class="ui-select"
+            >
+              <option value="">
+                全部客服
+              </option>
+              <option
+                v-for="agent in agents"
+                :key="agent.id"
+                :value="agent.id"
+              >
+                {{ agent.displayName || '未知客服' }}
+              </option>
+            </select>
+          </div>
+        </div>
+        <ul class="scope-rules">
+          <li>僅含你有權限查看的對話</li>
+          <li>已收回的訊息不匯出</li>
+          <li>單次最多 {{ EXPORT_LIMIT.toLocaleString() }} 筆，超過的部分不會匯出</li>
+        </ul>
+      </form>
+      <section
+        class="ui-card ex-pick"
+        aria-label="選擇格式"
+      >
+        <div class="ui-card-head">
+          <div>
+            <h2 class="ui-card-title">
+              檔案格式
+            </h2>
+            <p class="ui-card-sub">
+              依用途選擇
+            </p>
+          </div>
+        </div>
+        <div
+          class="ex-list"
+          role="radiogroup"
+          aria-label="匯出格式"
         >
-          <div class="ui-card-head">
-            <div>
-              <h2 class="ui-card-title">
-                匯出範圍
-              </h2>
-              <p class="ui-card-sub">
-                不選就是全部，下方筆數會即時更新
-              </p>
-            </div>
-          </div>
-          <div class="scope-grid">
-            <div class="ui-field scope-period">
-              <span
-                id="ex-period-label"
-                class="field-label"
-              >期間</span>
-              <div
-                class="ui-seg period-seg"
-                role="group"
-                aria-labelledby="ex-period-label"
-              >
-                <button
-                  v-for="option in periods"
-                  :key="option.id"
-                  type="button"
-                  :aria-pressed="period === option.id"
-                  @click="pickPeriod(option.id)"
-                >
-                  {{ option.label }}
-                </button>
-              </div>
-              <p
-                v-if="period !== 'custom'"
-                class="period-note"
-              >
-                {{ periodNote }}
-              </p>
-            </div>
-            <div
-              v-show="period === 'custom'"
-              class="ui-field"
-            >
-              <label for="ex-from">起始日期</label>
-              <input
-                id="ex-from"
-                v-model="filters.dateFrom"
-                type="date"
-                class="ui-input"
-                :max="filters.dateTo || undefined"
-              >
-            </div>
-            <div
-              v-show="period === 'custom'"
-              class="ui-field"
-            >
-              <label for="ex-to">結束日期</label>
-              <input
-                id="ex-to"
-                v-model="filters.dateTo"
-                type="date"
-                class="ui-input"
-                :min="filters.dateFrom || undefined"
-              >
-            </div>
-            <div class="ui-field">
-              <label for="ex-customer">客戶</label>
-              <select
-                id="ex-customer"
-                v-model="filters.customerId"
-                class="ui-select"
-              >
-                <option value="">
-                  全部客戶
-                </option>
-                <option
-                  v-for="customer in customers"
-                  :key="customer.id"
-                  :value="String(customer.id)"
-                >
-                  {{ customer.displayName || '未知用戶' }}
-                </option>
-              </select>
-            </div>
-            <div class="ui-field">
-              <label for="ex-agent">客服人員</label>
-              <select
-                id="ex-agent"
-                v-model="filters.agentId"
-                class="ui-select"
-              >
-                <option value="">
-                  全部客服
-                </option>
-                <option
-                  v-for="agent in agents"
-                  :key="agent.id"
-                  :value="agent.id"
-                >
-                  {{ agent.displayName || '未知客服' }}
-                </option>
-              </select>
-            </div>
-          </div>
-          <ul class="scope-rules">
-            <li>僅含你有權限查看的對話</li>
-            <li>已收回的訊息不匯出</li>
-            <li>單次最多 {{ EXPORT_LIMIT.toLocaleString() }} 筆，超過的部分不會匯出</li>
-          </ul>
-        </form>
-      </div>
-
-      <div class="ex-right">
-        <section
-          class="ui-lead ex-sheet"
-          :aria-label="`${selectedName} 匯出設定`"
-        >
-          <header class="sheet-bar">
-            <div>
-              <h2 class="sheet-file">
-                {{ selectedName }} 檔案內容
-              </h2>
-              <p class="sheet-name">
-                {{ fileName }}
-              </p>
-            </div>
-            <span class="sheet-unit">{{ selectedUnit }}</span>
-          </header>
-
+          <button
+            v-for="format in formats"
+            :key="format.id"
+            type="button"
+            class="ex-row"
+            :class="{ 'is-on': selectedFormat === format.id }"
+            role="radio"
+            :aria-checked="selectedFormat === format.id"
+            @click="selectFormat(format.id)"
+          >
+            <span
+              class="fmt-ico"
+              :class="format.tone"
+              aria-hidden="true"
+            >{{ format.icon }}</span>
+            <span class="ex-main">
+              <b class="ex-name">{{ format.name }}<span class="ex-tag">{{ format.tagline }}</span></b>
+              <span class="ex-use">{{ format.usecases.join('、') }}</span>
+            </span>
+            <i
+              class="radio"
+              aria-hidden="true"
+            />
+          </button>
+        </div>
+        <details class="ex-fields">
+          <summary>
+            <span>檔案內容</span>
+            <small>{{ selectedUnit }}</small>
+          </summary>
           <code class="sheet-shape">{{ shape }}</code>
           <dl class="sheet-rows">
             <div
@@ -264,8 +275,8 @@
               </dd>
             </div>
           </dl>
-        </section>
-      </div>
+        </details>
+      </section>
     </div>
 
     <UiActionBar
@@ -420,6 +431,8 @@ const filters = reactive({ dateFrom: '', dateTo: '', customerId: '', agentId: ''
 const customers = ref<ExportCustomerOption[]>([])
 const agents = ref<ExportAgentOption[]>([])
 const count = ref<ExportCountResult | null>(null)
+/** Everything the signed-in agent could export (no filters), the scale the file is drawn against */
+const totalAll = ref<number | null>(null)
 const exporting = ref(false)
 const willTruncate = computed(() => !!count.value?.willBeTruncated)
 /** What the file will really hold: the match count, capped at the server limit */
@@ -430,6 +443,18 @@ const barCount = computed(() => {
     ? `${EXPORT_LIMIT.toLocaleString()} 筆，超過上限`
     : `${count.value.count.toLocaleString()} 筆`
 })
+
+// The bar runs from 0 to the largest of: the whole archive, this match, the server cap
+const gaugeScale = computed(() => Math.max(totalAll.value ?? 0, count.value?.count ?? 0, EXPORT_LIMIT))
+const gaugePct = (n: number): string => `${Math.min(100, (Math.max(n, 0) / gaugeScale.value) * 100)}%`
+const sharePct = computed(() => {
+  if (count.value === null || !totalAll.value) { return '' }
+  const pct = (exportCount.value / totalAll.value) * 100
+  return pct > 0 && pct < 1 ? '不到 1%' : `${Math.round(pct)}%`
+})
+const gaugeLabel = computed(() =>
+  count.value === null ? '計算筆數中' : `這份檔案 ${exportCount.value.toLocaleString()} 筆，${totalAll.value !== null ? `全部對話 ${totalAll.value.toLocaleString()} 筆，` : ''}單次上限 ${EXPORT_LIMIT.toLocaleString()} 筆`
+)
 
 // Period presets set the two dates; the raw date inputs only show for 自訂
 type PeriodId = 'all' | 'd7' | 'd30' | 'custom'
@@ -499,6 +524,10 @@ watch(filters, refreshCount)
 onMounted(async () => {
   refreshCount()
   try {
+    const all = await getExportCount({ format: selectedFormat.value })
+    totalAll.value = all.success && all.data ? all.data.count : null
+  } catch { totalAll.value = null }
+  try {
     const result = await getExportCustomers()
     customers.value = result.success && result.data ? result.data : []
   } catch { customers.value = [] }
@@ -552,14 +581,9 @@ async function runExport() {
 <style scoped>
 .ex-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
   gap: 16px;
-  align-items: stretch;
-}
-
-.ex-left,
-.ex-right {
-  display: contents;
+  align-items: start;
 }
 
 .ex-pick {
@@ -571,8 +595,8 @@ async function runExport() {
 .ex-list {
   display: grid;
   flex: 1;
-  grid-auto-rows: 1fr;
-  gap: 4px;
+  gap: 2px;
+  align-content: start;
   padding: 4px 10px 12px;
 }
 
@@ -582,7 +606,7 @@ async function runExport() {
   gap: 14px;
   align-items: center;
   width: 100%;
-  padding: 17px 16px;
+  padding: 12px 16px;
   border: 0;
   border-radius: var(--ui-r-inner);
   background: transparent;
@@ -630,47 +654,56 @@ async function runExport() {
   color: var(--ui-muted);
 }
 
-.ex-sheet {
-  display: grid;
-  gap: 0;
-  padding: 0;
-  overflow: hidden;
+.ex-fields {
+  margin: 0 22px 20px;
+  border-radius: var(--ui-r-inner);
+  background: var(--ui-surface-2);
 }
 
-.sheet-bar {
+.ex-fields summary {
   display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  justify-content: space-between;
-  padding: 20px 22px 14px;
+  gap: 10px;
+  align-items: baseline;
+  padding: 14px 16px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
 }
 
-.sheet-file {
-  margin: 0;
-  font: 700 22px / 1.2 var(--ui-font-display);
-  letter-spacing: -0.02em;
+.ex-fields summary {
+  list-style: none;
 }
 
-.sheet-name {
-  margin: 2px 0 0;
-  font: 500 13px var(--ui-font-mono);
-  color: var(--ui-muted);
+.ex-fields summary::-webkit-details-marker {
+  display: none;
 }
 
-.sheet-unit {
-  align-self: start;
-  padding: 4px 12px;
-  white-space: nowrap;
-  border-radius: 999px;
-  background: var(--ui-fill);
+.ex-fields summary::after {
+  width: 8px;
+  height: 8px;
+  margin: 0 4px 0 2px;
+  border: solid var(--ui-muted);
+  border-width: 0 2px 2px 0;
+  align-self: center;
+  content: '';
+  transform: rotate(45deg) translateY(-2px);
+  transition: transform var(--ui-dur) var(--ui-ease);
+}
+
+.ex-fields[open] summary::after {
+  transform: rotate(-135deg);
+}
+
+.ex-fields summary small {
+  margin-left: auto;
   font-size: 13px;
   font-weight: 500;
-  color: var(--ui-ink-2);
+  color: var(--ui-muted);
 }
 
 .sheet-shape {
   display: block;
-  margin: 0 22px 8px;
+  margin: 0 16px 8px;
   padding: 12px 14px;
   overflow-wrap: anywhere;
   border-radius: var(--ui-r-inner);
@@ -681,8 +714,8 @@ async function runExport() {
 
 .sheet-rows {
   display: grid;
-  margin: 0 22px;
-  padding: 2px 0 20px;
+  margin: 0 8px;
+  padding: 2px 0 12px;
 }
 
 .sheet-row {
@@ -724,8 +757,8 @@ async function runExport() {
 .scope-rules {
   display: grid;
   gap: 8px;
-  margin: auto 22px 0;
-  padding: 14px 18px;
+  margin: 0 22px;
+  padding: 12px 18px;
   border-radius: var(--ui-r-inner);
   background: var(--ui-surface-2);
   list-style: none;
@@ -760,21 +793,120 @@ async function runExport() {
 .ex-result {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
-  gap: 16px 40px;
+  gap: 16px 48px;
   align-items: center;
-  padding: 24px 32px;
+  padding: 26px 36px;
 }
 
-.res-note {
+.res-gauge {
   display: grid;
-  gap: 6px;
+  gap: 12px;
   min-width: 0;
+  padding-top: 22px;
 }
 
-.res-note > p {
+.g-track {
+  position: relative;
+  height: 20px;
+  border-radius: 999px;
+  background: var(--ui-fill);
+}
+
+.g-track i {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+}
+
+.g-all {
+  border-radius: 999px;
+  background: var(--ui-fill-strong);
+}
+
+.g-pick {
+  min-width: 10px;
+  border-radius: 999px;
+  background: var(--ui-accent);
+}
+
+.g-over {
+  border-radius: 0 999px 999px 0;
+  background: repeating-linear-gradient(135deg, var(--ui-orange) 0 4px, color-mix(in srgb, var(--ui-orange) 35%, var(--ui-surface)) 4px 8px);
+}
+
+.g-limit {
+  position: absolute;
+  top: -8px;
+  bottom: -8px;
+  width: 0;
+  border-left: 2px solid var(--ui-ink);
+}
+
+.g-limit em {
+  position: absolute;
+  top: -18px;
+  left: 0;
+  font-size: 13px;
+  font-style: normal;
+  font-weight: 600;
+  white-space: nowrap;
+  color: var(--ui-ink-2);
+  transform: translateX(-50%);
+}
+
+.g-limit.is-late em {
+  transform: translateX(-100%);
+}
+
+.g-cap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 24px;
   margin: 0;
+  font-size: 14px;
+  color: var(--ui-ink-2);
 }
 
+.g-cap span {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.g-cap b {
+  color: var(--ui-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.g-cap i {
+  width: 12px;
+  height: 8px;
+  border-radius: 999px;
+}
+
+.k-pick {
+  background: var(--ui-accent);
+}
+
+.k-all {
+  background: var(--ui-fill-strong);
+}
+
+.res-cta {
+  display: grid;
+  gap: 8px;
+  justify-items: stretch;
+}
+
+.res-file {
+  max-width: 220px;
+  margin: 0;
+  overflow-wrap: anywhere;
+  font: 500 13px / 1.4 var(--ui-font-mono);
+  text-align: center;
+  color: var(--ui-muted);
+}
 
 .res-count > p {
   margin: 0;
@@ -811,10 +943,9 @@ async function runExport() {
 }
 
 .res-warn {
-  padding: 10px 14px;
-  border-radius: var(--ui-r-inner);
-  background: var(--ui-orange-soft);
+  margin: 0;
   font-size: 14px;
+  font-weight: 600;
   line-height: 1.5;
   color: var(--ui-orange-ink);
 }
@@ -915,16 +1046,6 @@ async function runExport() {
 
 @media (max-width: 1280px) {
   .ex-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .ex-sheet {
-    grid-column: 1 / -1;
-  }
-}
-
-@media (max-width: 1024px) {
-  .ex-grid {
     grid-template-columns: minmax(0, 1fr);
   }
 
@@ -932,14 +1053,24 @@ async function runExport() {
     grid-template-columns: auto minmax(0, 1fr);
   }
 
-  .ex-result .lead-cta {
+  .res-cta {
     grid-column: 1 / -1;
+    justify-items: start;
+  }
+
+  .res-file {
+    max-width: none;
+    text-align: left;
   }
 }
 
 @media (max-width: 768px) {
-  .ex-result .lead-cta {
+  .res-cta {
     display: none;
+  }
+
+  .res-gauge {
+    padding-top: 18px;
   }
 
   .ex-result {
@@ -952,23 +1083,14 @@ async function runExport() {
     font-size: 36px;
   }
 
-  .sheet-bar {
-    padding: 18px 20px 12px;
-  }
-
-  .sheet-shape {
-    margin: 0 20px 8px;
-  }
-
-  .sheet-rows {
-    margin: 0 20px;
-    padding-bottom: 18px;
+  .ex-fields {
+    margin: 0 16px 16px;
   }
 
   .sheet-row {
-    grid-template-columns: 124px minmax(0, 1fr);
+    grid-template-columns: 112px minmax(0, 1fr);
     gap: 12px;
-    padding: 7px 14px;
+    padding: 7px 10px;
   }
 
   .sheet-row dt {

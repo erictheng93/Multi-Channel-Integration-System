@@ -316,18 +316,13 @@ function formatDate(value: string | null): string {
 }
 
 /* The message gets its own line and two lines of room, so a record is read, not guessed at */
-.meta-line {
-  flex-wrap: wrap;
-}
-
 .meta-line .snippet {
-  display: -webkit-box;
-  flex: 1 0 100%;
+  flex: 1 1 0;
   min-width: 0;
   overflow: hidden;
-  line-clamp: 2;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
+  color: var(--ui-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .when {
@@ -412,6 +407,10 @@ function formatDate(value: string | null): string {
 @media (max-width: 768px) {
   .pagination .btn {
     min-height: 44px;
+  }
+
+  .meta-line .snippet {
+    display: none;
   }
 
   /* Stacked rows: title, status + time, result, then the detail action */
