@@ -107,11 +107,13 @@
             <template
               v-for="(item, index) in contents"
               :key="item.label"
-            ><span
-              v-if="index"
-              class="tpl-sep"
-              aria-hidden="true"
-            > ・ </span><b :title="item.hint">{{ item.label }}</b></template>
+            >
+              <span
+                v-if="index"
+                class="tpl-sep"
+                aria-hidden="true"
+              > ・ </span><b :title="item.hint">{{ item.label }}</b>
+            </template>
           </p>
         </section>
 
