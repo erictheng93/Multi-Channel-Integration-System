@@ -94,7 +94,7 @@
         >{{ getRoleText(member.role) }}</span>
         <span
           v-else
-          class="rank-agent"
+          class="ui-pill"
         >{{ getRoleText(member.role) }}</span>
       </div>
       <div class="memberships">
