@@ -53,16 +53,7 @@
             to="/settings/advanced"
           >
             <span class="adv-label">{{ item.label }}</span>
-            <svg
-              class="adv-chev"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2.4"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              aria-hidden="true"
-            ><path d="m9 6 6 6-6 6" /></svg>
+            <span class="adv-chev">調整</span>
             <span
               class="adv-value"
               :class="item.state"
@@ -269,15 +260,11 @@ const advancedRows = computed(() => {
   background: var(--ui-surface-2);
 }
 
-/* the cell is a link: the chevron sits in a small round fill so it reads as a control, not a glyph */
+/* the cell is a link: the word says so, in link colour, instead of a tiny glyph */
 .adv-chev {
-  box-sizing: content-box;
-  width: 14px;
-  height: 14px;
-  padding: 5px;
-  border-radius: 50%;
-  background: var(--ui-fill);
-  color: var(--ui-ink-2);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ui-accent);
 }
 
 .adv-value,
