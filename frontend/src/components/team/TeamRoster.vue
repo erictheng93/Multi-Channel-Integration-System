@@ -51,6 +51,11 @@
           class="ro-col"
           role="columnheader"
         >{{ rank.label }}</span>
+        <span
+          v-if="presenceAvailable"
+          class="ro-col ro-col-live"
+          role="columnheader"
+        >在線</span>
       </div>
 
       <section
@@ -96,8 +101,37 @@
           role="cell"
         >
           <span class="ro-cell-label">{{ rank.label }}</span>
+          <div
+            v-if="rank.key === 'member' && lane.byRank[rank.key].length > 0"
+            class="ro-crew"
+          >
+            <ul class="ro-stack">
+              <li
+                v-for="person in lane.byRank[rank.key].slice(0, STACK_MAX)"
+                :key="person.id"
+                :title="person.name"
+              >
+                <TeamAvatar
+                  :name="person.name"
+                  :seed="person.id"
+                  :src="person.avatar"
+                  size="sm"
+                />
+                <span class="sr-only">{{ person.name }}</span>
+              </li>
+              <li
+                v-if="lane.byRank[rank.key].length > STACK_MAX"
+                class="ro-more"
+              >
+                +{{ lane.byRank[rank.key].length - STACK_MAX }}
+              </li>
+            </ul>
+            <span class="ro-crew-n">
+              <b>{{ lane.byRank[rank.key].length }}</b> 位成員<template v-if="memberOnline(lane.byRank[rank.key]) !== null"> · {{ memberOnline(lane.byRank[rank.key]) }} 在線</template>
+            </span>
+          </div>
           <ul
-            v-if="lane.byRank[rank.key].length > 0"
+            v-else-if="lane.byRank[rank.key].length > 0"
             class="ro-people"
           >
             <li
@@ -119,7 +153,20 @@
           <span
             v-else
             class="ro-none"
-          >未指定</span>
+          >尚未指派</span>
+        </div>
+        <div
+          v-if="presenceAvailable"
+          class="ro-live"
+          role="cell"
+          :aria-label="`${lane.online} / ${lane.total} 在線`"
+        >
+          <i
+            v-for="(dot, i) in lane.dots"
+            :key="i"
+            :class="{ 'is-on': dot }"
+            aria-hidden="true"
+          />
         </div>
       </section>
     </div>
@@ -151,6 +198,13 @@ const props = defineProps<{
   openByTeam: ReadonlyMap<number, number> | null
   loading?: boolean
 }>()
+
+/** Members are shown as a face stack (the member table below names everyone); leaders keep their names */
+const STACK_MAX = 5
+
+function memberOnline(people: ReadonlyArray<{ online: boolean | null }>): number | null {
+  return props.presenceAvailable ? people.filter(p => p.online).length : null
+}
 
 const RANKS: ReadonlyArray<{ key: Rank, label: string }> = [
   { key: 'supervisor', label: '主管' },
@@ -193,14 +247,19 @@ const lanes = computed(() =>
         total: everyone.length,
         online: props.presenceAvailable ? everyone.filter(p => p.online).length : null,
         open: props.openByTeam ? (props.openByTeam.get(team.id) ?? 0) : null,
-        byRank
+        byRank,
+        /** One dot per person: lit when online, so a team's cover reads as a row of lights */
+        dots: everyone.map(p => p.online === true).sort((a, b) => Number(b) - Number(a))
       }
     })
     .filter(lane => lane.total > 0))
 
 /** Only roles somebody holds get a column */
 const ranks = computed(() => RANKS.filter(rank => lanes.value.some(lane => lane.byRank[rank.key].length > 0)))
-const cols = computed(() => ranks.value.map(rank => (rank.key === 'member' ? 'minmax(0, 2fr)' : 'minmax(0, 1fr)')).join(' '))
+const cols = computed(() => [
+  ...ranks.value.map(rank => (rank.key === 'member' ? 'minmax(0, 1.6fr)' : 'minmax(0, 1fr)')),
+  ...(props.presenceAvailable ? ['minmax(88px, 0.6fr)'] : [])
+].join(' '))
 
 /** Active members in more than one team: the per-team counts can exceed the overall count */
 const sharedMembers = computed(() =>
@@ -349,9 +408,89 @@ const sharedMembers = computed(() =>
   font-weight: 600;
 }
 
-.ro-none {
+.ro-crew {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  align-items: center;
+}
+
+.ro-stack {
+  display: flex;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ro-stack li + li {
+  margin-left: -3px;
+}
+
+.ro-live {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.ro-live i {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1.5px var(--ui-field-edge);
+}
+
+.ro-live i.is-on {
+  background: var(--ui-green);
+  box-shadow: none;
+}
+
+.ro-stack :deep(.team-avatar.is-sm) {
+  width: 32px;
+  height: 32px;
+  box-shadow: 0 0 0 2px var(--ui-surface-2);
+}
+
+.ro-more {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--ui-fill-strong);
+  box-shadow: 0 0 0 2px var(--ui-surface-2);
   font-size: 13px;
-  color: var(--ui-muted);
+  font-weight: 600;
+  color: var(--ui-ink-2);
+}
+
+.ro-crew-n {
+  font-size: 14px;
+  color: var(--ui-ink-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.ro-crew-n b {
+  color: var(--ui-ink);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* an unfilled role is a dashed capsule, not blank grey text */
+.ro-none {
+  display: inline-flex;
+  padding: 4px 12px;
+  border-radius: 999px;
+  box-shadow: inset 0 0 0 1px var(--ui-sep-strong, var(--ui-faint));
+  font-size: 13px;
+  color: var(--ui-ink-2);
 }
 
 .ro-note {
@@ -389,7 +528,8 @@ const sharedMembers = computed(() =>
     padding: 0 4px;
   }
 
-  .ro-cols {
+  .ro-cols,
+  .ro-live {
     display: none;
   }
 
@@ -405,11 +545,14 @@ const sharedMembers = computed(() =>
     align-items: flex-start;
   }
 
-  /* the member list below restates everyone, so the phone card keeps only the leadership rows */
+  /* an empty role is left out; the members row is the face stack, so the card never hides who is in the team */
   .ro-cell:has(.ro-none),
-  .ro-cell.is-members,
   .ro-note {
     display: none;
+  }
+
+  .ro-cell.is-members .ro-crew {
+    padding-top: 2px;
   }
 
   .ro-cell-label {
