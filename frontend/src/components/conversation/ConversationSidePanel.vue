@@ -35,7 +35,7 @@
             回覆速度
           </h3>
           <p class="sp-note">
-            客戶來訊到客服回覆花了多久{{ rhythm.capped || hasMore ? '（最近幾輪）' : '' }}
+            每一列是客戶來訊的時間，長條是客服花了多久回覆{{ rhythm.capped || hasMore ? '（最近幾輪）' : '' }}
           </p>
           <ul
             class="waits"
@@ -60,11 +60,11 @@
             :aria-label="`往來 共 ${totalMessages} 則`"
           >
             <div>
-              <dt>客戶來訊</dt>
+              <dt><i class="sw sw-c" />客戶來訊</dt>
               <dd>{{ activity?.customer ?? 0 }}</dd>
             </div>
             <div>
-              <dt>客服回覆</dt>
+              <dt><i class="sw sw-a" />客服回覆</dt>
               <dd>{{ activity?.agent ?? 0 }}</dd>
             </div>
             <div v-if="activity?.firstReply">
@@ -72,6 +72,20 @@
               <dd>{{ activity.firstReply }}</dd>
             </div>
           </dl>
+          <div
+            v-if="totalMessages > 0"
+            class="split"
+            aria-hidden="true"
+          >
+            <i
+              class="split-c"
+              :style="{ flex: activity?.customer ?? 0 }"
+            />
+            <i
+              class="split-a"
+              :style="{ flex: activity?.agent ?? 0 }"
+            />
+          </div>
         </template>
       </section>
 
@@ -307,11 +321,6 @@ const createdAtText = computed(() => {
   background: var(--ui-surface);
 }
 
-/* The last card takes the rest of the rail, so the column ends flush with the chat instead of floating */
-.sp-card:last-child {
-  flex: 1 0 auto;
-}
-
 .sp-h {
   display: flex;
   align-items: baseline;
@@ -458,6 +467,44 @@ const createdAtText = computed(() => {
   font-size: 13px;
   color: var(--ui-ink-2);
   white-space: nowrap;
+}
+
+.sw {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 6px;
+  border-radius: 50%;
+}
+
+.sw-c {
+  background: color-mix(in srgb, var(--ui-ink) 22%, var(--ui-surface));
+}
+
+.sw-a {
+  background: var(--ui-accent);
+}
+
+/* Who spoke how much: the same two tones as the bubbles in the thread */
+.split {
+  display: flex;
+  gap: 3px;
+  height: 8px;
+  margin-top: 12px;
+}
+
+.split i {
+  display: block;
+  min-width: 4px;
+  border-radius: 4px;
+}
+
+.split-c {
+  background: color-mix(in srgb, var(--ui-ink) 22%, var(--ui-surface));
+}
+
+.split-a {
+  background: var(--ui-accent);
 }
 
 .glance dd {

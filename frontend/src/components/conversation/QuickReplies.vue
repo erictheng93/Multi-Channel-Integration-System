@@ -2,7 +2,13 @@
   <Transition name="fade-in">
     <div
       v-if="replies.length > 0"
+      ref="rail"
       class="quick-replies"
+      :class="{ 'has-more': hasMore }"
+      role="group"
+      aria-label="快速回覆"
+      @scroll.passive="measure"
+      @wheel="onWheel"
     >
       <button
         v-for="reply in replies"
@@ -58,7 +64,9 @@ interface Props {
   disabled?: boolean
 }
 
-withDefaults(defineProps<Props>(), {
+import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+
+const props = withDefaults(defineProps<Props>(), {
   disabled: false,
 })
 
@@ -72,26 +80,70 @@ interface Emits {
   (_e: 'select', _reply: QuickReply): void
 }
 
+// One swipeable row of chips; the fade at the right edge shows only while more chips wait off screen
+const rail = ref<HTMLElement | null>(null)
+const hasMore = ref(false)
+const measure = (): void => {
+  const el = rail.value
+  hasMore.value = !!el && el.scrollWidth - el.clientWidth - el.scrollLeft > 4
+}
+const onWheel = (e: WheelEvent): void => {
+  const el = rail.value
+  if (el && hasMore.value && Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+    el.scrollLeft += e.deltaY
+    e.preventDefault()
+  }
+}
+let observer: globalThis.ResizeObserver | null = null
+onMounted(() => {
+  void nextTick(() => {
+    measure()
+    if (rail.value && typeof window.ResizeObserver !== 'undefined') {
+      observer = new window.ResizeObserver(measure)
+      observer.observe(rail.value)
+    }
+  })
+})
+watch(() => props.replies, () => { void nextTick(measure) })
+onBeforeUnmount(() => observer?.disconnect())
+
+
 const handleSelect = (reply: QuickReply) => {
   emit('select', reply)
 }
 </script>
 
 <style scoped>
-/* Quick replies: an even two-column grid on wide screens (no ragged second row, long text ellipsizes and the
-   full text is in the tooltip); on a phone one swipeable row (the fade at the right edge says there is more,
-   and the spacer lets the last chip scroll clear of it) */
+/* Quick replies: one swipeable row of natural-width chips at every width (long text ellipsizes, the full
+   text is in the tooltip). The fade at the right edge appears only while more chips wait off screen. */
 .quick-replies {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  display: flex;
   gap: 8px;
-  max-height: 84px;
   padding: 10px 0 4px;
-  overflow-y: auto;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+}
+
+.quick-replies::-webkit-scrollbar {
+  display: none;
+}
+
+.quick-replies.has-more {
+  -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 56px), transparent);
+  mask-image: linear-gradient(90deg, #000 calc(100% - 56px), transparent);
+}
+
+.quick-replies.has-more::after {
+  flex: 0 0 40px;
+  content: '';
 }
 
 .quick-reply-btn {
-  min-width: 0;
+  flex: 0 0 auto;
+  max-width: min(320px, 78vw);
   min-height: 32px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -106,33 +158,6 @@ const handleSelect = (reply: QuickReply) => {
   text-align: left;
   cursor: pointer;
   transition: background-color var(--ui-dur) var(--ui-ease);
-}
-
-@media (max-width: 768px) {
-  .quick-replies {
-    display: flex;
-    max-height: none;
-    overflow-x: auto;
-    overflow-y: hidden;
-    -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 56px), transparent);
-    mask-image: linear-gradient(90deg, #000 calc(100% - 56px), transparent);
-    scrollbar-width: none;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  .quick-replies::-webkit-scrollbar {
-    display: none;
-  }
-
-  .quick-replies::after {
-    flex: 0 0 48px;
-    content: '';
-  }
-
-  .quick-reply-btn {
-    flex: 0 0 auto;
-    max-width: 78vw;
-  }
 }
 
 .quick-reply-btn:hover:not(:disabled) {
