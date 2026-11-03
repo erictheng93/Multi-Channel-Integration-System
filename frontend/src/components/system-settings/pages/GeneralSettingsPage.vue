@@ -48,8 +48,6 @@
             to="/settings/advanced"
           >
             <span class="adv-label">{{ item.label }}</span>
-            <span class="adv-value">{{ item.value }}</span>
-            <span class="adv-note">{{ item.note }}</span>
             <svg
               class="adv-chev"
               viewBox="0 0 24 24"
@@ -60,6 +58,11 @@
               stroke-linejoin="round"
               aria-hidden="true"
             ><path d="m9 6 6 6-6 6" /></svg>
+            <span
+              class="adv-value"
+              :class="item.state"
+            >{{ item.value }}</span>
+            <span class="adv-note">{{ item.note }}</span>
           </router-link>
         </li>
       </ul>
@@ -192,7 +195,7 @@ const advancedRows = computed(() => {
     { label: '訊息可撤回時間', value: a.recallWindowSeconds > 0 ? `${a.recallWindowSeconds} 秒` : '關閉', note: '延遲發送，期間可撤回' },
     { label: '訊息處理逾時', value: `${Math.round(a.messageTimeout / 1000)} 秒`, note: '處理逾時前的等待時間' },
     { label: '登入有效期限', value: `${Math.round(a.sessionExpiry / 3600)} 小時`, note: '登入狀態可保持的時間' },
-    { label: '速率限制', value: a.enableRateLimit ? '已開啟' : '已關閉', note: '限制過量請求以保護服務' },
+    { label: '速率限制', value: a.enableRateLimit ? '已開啟' : '已關閉', note: '限制過量請求以保護服務', state: a.enableRateLimit ? 'on' : 'off' },
   ]
 })
 </script>
@@ -239,10 +242,11 @@ const advancedRows = computed(() => {
 }
 
 .adv-item {
-  position: relative;
   display: grid;
-  gap: 4px;
-  padding: 16px 24px 18px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 4px 8px;
+  align-items: center;
+  padding: 20px 24px 22px;
   color: inherit;
   text-decoration: none;
 }
@@ -253,13 +257,22 @@ const advancedRows = computed(() => {
 }
 
 .adv-chev {
-  position: absolute;
-  top: 50%;
-  right: 18px;
-  width: 14px;
-  height: 14px;
-  color: var(--ui-faint);
-  transform: translateY(-50%);
+  width: 16px;
+  height: 16px;
+  color: var(--ui-muted);
+}
+
+.adv-value,
+.adv-note {
+  grid-column: 1 / -1;
+}
+
+.adv-value.on {
+  color: var(--ui-green-ink);
+}
+
+.adv-value.off {
+  color: var(--ui-muted);
 }
 
 .adv-label {

@@ -586,14 +586,14 @@ const getRoleText = (role: string) => {
   height: 34px;
   place-items: center;
   border: 0;
-  border-radius: 10px;
-  background: transparent;
+  border-radius: 50%;
+  background: var(--ui-fill);
   color: var(--ui-ink-2);
   cursor: pointer;
   transition: background var(--ui-dur) var(--ui-ease);
 }
 .more-btn:hover {
-  background: var(--ui-fill);
+  background: var(--ui-fill-strong);
 }
 .more-btn:disabled {
   cursor: not-allowed;
@@ -689,7 +689,8 @@ const getRoleText = (role: string) => {
   .more-btn {
     width: 44px;
     height: 44px;
-    margin-right: -10px;
+    margin-right: -6px;
+    background: transparent;
   }
 }
 </style>
