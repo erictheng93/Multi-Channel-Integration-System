@@ -468,11 +468,11 @@ const segs = computed(() => {
 }
 
 .node-line {
-  background: var(--ui-p-mint);
+  background: var(--ui-surface-2);
 }
 
 .node-sys {
-  background: var(--ui-p-sky);
+  background: var(--ui-surface-2);
 }
 
 .node-tile-line {
@@ -499,7 +499,7 @@ const segs = computed(() => {
 
 .node-mono {
   font-family: var(--ui-font-mono);
-  font-size: 12.5px;
+  font-size: 13px;
 }
 
 .wires {
@@ -939,7 +939,7 @@ const segs = computed(() => {
   }
 
   .url {
-    font-size: 12px;
+    font-size: 13px;
   }
 
   .quota-big {

@@ -605,7 +605,7 @@ import { createLogger } from '@/utils/logger'
   /* The whole card opens the team, so the phone keeps only the overflow menu, top right: no crowded action row */
   .team-card {
     grid-template-columns: 44px minmax(0, 1fr) auto;
-    grid-template-areas: 'mark main acts' '. avs avs';
+    grid-template-areas: 'mark main acts';
     align-items: start;
     padding: 16px;
   }
@@ -619,9 +619,9 @@ import { createLogger } from '@/utils/logger'
   .team-main {
     grid-area: main;
   }
+  /* the people are listed one section up; the phone card stays a short summary */
   .avs {
-    grid-area: avs;
-    padding: 0;
+    display: none;
   }
   .team-acts .go {
     display: none;
