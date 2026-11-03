@@ -144,10 +144,6 @@
             <dt>最後訊息</dt>
             <dd>{{ lastMessageText }}</dd>
           </div>
-          <div v-if="rhythm?.avgText">
-            <dt>平均回覆</dt>
-            <dd>{{ rhythm.avgText }}</dd>
-          </div>
         </dl>
       </section>
     </template>
@@ -276,7 +272,6 @@ const rhythm = computed(() => {
       pending: w.pending
     })),
     capped: waits.length > picked.length,
-    avgText: answered.length > 0 ? gapText(answered.reduce((sum, w) => sum + w.ms, 0) / answered.length) : '',
     aria: `客服回覆速度，最近 ${picked.length} 輪${picked.some(w => w.pending) ? '，客戶仍在等待回覆' : ''}`
   }
 })

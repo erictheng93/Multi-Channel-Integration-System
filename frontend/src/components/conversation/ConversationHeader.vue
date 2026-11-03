@@ -639,7 +639,8 @@ defineExpose({
 
 .action-group .assign-action-btn.has-assignment,
 .action-group .tag-selector-wrapper :deep(.tag-trigger-btn.has-tags) {
-  background: var(--ui-accent-soft);
+  background: transparent;
+  color: var(--ui-ink);
 }
 
 /* Pushes 更多 and 結案 to the far right edge */
@@ -774,8 +775,7 @@ defineExpose({
 }
 
 .tag-selector-wrapper :deep(.tag-trigger-btn.has-tags) {
-  background: var(--ui-accent-soft);
-  color: var(--ui-accent);
+  color: var(--ui-ink);
 }
 
 .close-toggle-btn {
