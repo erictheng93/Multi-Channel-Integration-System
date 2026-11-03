@@ -64,7 +64,7 @@
           v-model.trim="content"
           class="ui-textarea"
           maxlength="2000"
-          rows="3"
+          rows="4"
           placeholder="輸入文字（選填，可只發圖片）"
         />
         <span class="ui-hint hint-split"><span>LINE 單則文字上限 2,000 字</span><span class="num">{{ content.length }} / 2000</span></span>
@@ -763,13 +763,6 @@
     }
     .image-grid {
       gap: 8px;
-    }
-    /* the one-line explainers under single fields are noise on a phone; counters stay */
-    .ui-field > .ui-hint:not(.hint-split) {
-      display: none;
-    }
-    .ui-textarea {
-      min-height: 84px;
     }
     .foot-note {
       flex: 1 0 100%;

@@ -64,7 +64,7 @@
                 活動
               </th>
               <th class="th-result">
-                結果<span class="th-note">條長依人數，同一把尺</span>
+                結果<span class="th-note">（條長依人數）</span>
               </th>
               <th class="th-act">
                 <span class="sr-only">操作</span>
@@ -81,36 +81,14 @@
               <td class="col-title">
                 <strong class="title-line">
                   <span class="title-text">{{ broadcast.title }}</span>
-                  <svg
+                  <span
                     v-if="broadcast.contentType === 'mixed'"
-                    class="mixed-ico"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="1.9"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    role="img"
-                    aria-label="含圖片"
-                  >
-                    <rect
-                      x="3"
-                      y="4"
-                      width="18"
-                      height="16"
-                      rx="3"
-                    />
-                    <circle
-                      cx="9"
-                      cy="10"
-                      r="1.6"
-                    />
-                    <path d="m21 16-5-5-8 9" />
-                  </svg>
+                    class="ui-pill ui-pill-blue mixed-pill"
+                  >圖文</span>
                 </strong>
                 <span class="meta-line">
                   <span
-                    class="st"
+                    class="ui-pill ui-pill-dot status-pill"
                     :class="statusClass(broadcast.status)"
                     :data-status="broadcast.status"
                   >{{ statusLabel(broadcast.status) }}</span>
@@ -245,12 +223,12 @@ function statusLabel(status: BroadcastStatus): string {
 function statusClass(status: BroadcastStatus): string {
   switch (status) {
     case 'completed':
-      return 'is-ok'
+      return 'ui-pill-green'
     case 'partial_failed':
     case 'sending':
-      return 'is-warn'
+      return 'ui-pill-orange'
     case 'failed':
-      return 'is-bad'
+      return 'ui-pill-red'
     default:
       return ''
   }
@@ -340,48 +318,21 @@ function formatDate(value: string | null): string {
   flex: none;
 }
 
-.st {
+.status-pill {
   flex: none;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-weight: 600;
-  color: var(--ui-ink-2);
-}
-
-.st::before {
-  content: '';
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--ui-faint);
-}
-
-.st.is-ok { color: var(--ui-green-ink); }
-.st.is-ok::before { background: var(--ui-green); }
-.st.is-warn { color: var(--ui-orange-ink, #8a5200); }
-.st.is-warn::before { background: var(--ui-orange); }
-.st.is-bad { color: var(--ui-red-ink); }
-.st.is-bad::before { background: var(--ui-red); }
-
-.mixed-ico {
-  flex: none;
-  width: 16px;
-  height: 16px;
-  color: var(--ui-muted);
 }
 
 /* The message gets its own line and two lines of room, so a record is read, not guessed at */
 .col-title .snippet {
   display: -webkit-box;
-  margin-top: 4px;
+  margin-top: 6px;
   overflow: hidden;
   font-size: 13px;
   line-height: 1.45;
   color: var(--ui-ink-2);
   -webkit-box-orient: vertical;
-  -webkit-line-clamp: 1;
-  line-clamp: 1;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
 }
 
 .when {
@@ -500,11 +451,6 @@ function formatDate(value: string | null): string {
   .col-result {
     grid-column: 1;
     grid-row: 2;
-  }
-
-  /* phone: title, status + time, result; the quoted text is in the detail */
-  .col-title .snippet {
-    display: none;
   }
 
   .col-title {
