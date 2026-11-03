@@ -902,7 +902,7 @@ defineExpose({
 @media (max-width: 768px) {
   .conversation-header {
     gap: 4px;
-    padding: 8px 12px 10px;
+    padding: calc(8px + env(safe-area-inset-top)) 12px 10px;
   }
 
   .customer-avatar {

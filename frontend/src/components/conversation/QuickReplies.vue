@@ -8,6 +8,7 @@
         v-for="reply in replies"
         :key="reply.id"
         class="quick-reply-btn"
+        :title="reply.text"
         :disabled="disabled"
         @click="handleSelect(reply)"
       >
@@ -77,18 +78,24 @@ const handleSelect = (reply: QuickReply) => {
 </script>
 
 <style scoped>
-/* Quick replies: chips wrap on wide screens so none is ever cut; on a phone they are one swipeable row
-   (the soft fade at the right edge says there is more, and the spacer lets the last chip scroll clear of it) */
+/* Quick replies: an even two-column grid on wide screens (no ragged second row, long text ellipsizes and the
+   full text is in the tooltip); on a phone one swipeable row (the fade at the right edge says there is more,
+   and the spacer lets the last chip scroll clear of it) */
 .quick-replies {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
+  max-height: 84px;
   padding: 10px 0 4px;
+  overflow-y: auto;
 }
 
 .quick-reply-btn {
-  flex: 0 1 auto;
+  min-width: 0;
   min-height: 32px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   padding: 0 14px;
   border: 0;
   border-radius: 999px;
@@ -103,10 +110,12 @@ const handleSelect = (reply: QuickReply) => {
 
 @media (max-width: 768px) {
   .quick-replies {
-    flex-wrap: nowrap;
+    display: flex;
+    max-height: none;
     overflow-x: auto;
-    -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 40px), transparent);
-    mask-image: linear-gradient(90deg, #000 calc(100% - 40px), transparent);
+    overflow-y: hidden;
+    -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 56px), transparent);
+    mask-image: linear-gradient(90deg, #000 calc(100% - 56px), transparent);
     scrollbar-width: none;
     -webkit-overflow-scrolling: touch;
   }
@@ -116,13 +125,13 @@ const handleSelect = (reply: QuickReply) => {
   }
 
   .quick-replies::after {
-    flex: 0 0 32px;
+    flex: 0 0 48px;
     content: '';
   }
 
   .quick-reply-btn {
     flex: 0 0 auto;
-    white-space: nowrap;
+    max-width: 78vw;
   }
 }
 
