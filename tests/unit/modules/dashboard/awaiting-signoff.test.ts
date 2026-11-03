@@ -10,6 +10,7 @@ import {
 } from '@/modules/dashboard/services/awaiting-rules';
 import { isSignOffMessage } from '@shared/api-contracts';
 import {
+  MIGRATION_EDIT,
   MIGRATION_HYGIENE,
   addConv,
   addCustomer,
@@ -183,11 +184,12 @@ describe('customer message committed out of timestamp order', () => {
 });
 
 describe('migration 0072', () => {
-  it('re-creates the five awaiting triggers under their 0070 names', () => {
+  it('re-creates the five awaiting triggers under their 0070 names (plus the 0073 edit trigger)', () => {
     const db = freshDb();
     const names = (db.prepare("SELECT name FROM sqlite_master WHERE type = 'trigger' AND name LIKE 'trg_messages_awaiting_%' ORDER BY name").all() as Array<{ name: string }>).map(r => r.name);
     expect(names).toEqual([
       'trg_messages_awaiting_customer',
+      'trg_messages_awaiting_customer_edited',
       'trg_messages_awaiting_deleted',
       'trg_messages_awaiting_recalled',
       'trg_messages_awaiting_reply_insert',
@@ -252,6 +254,36 @@ describe('migration 0072', () => {
     const db = freshDb();
     db.exec(readMigration(MIGRATION_HYGIENE));
     expect((db.prepare("SELECT COUNT(*) AS n FROM agents WHERE id = 'system'").get() as { n: number }).n).toBe(1);
+  });
+});
+
+describe('migration 0073: editing a customer message re-derives the marker', () => {
+  it('embeds the shared awaiting expression', () => {
+    expect(readMigration(MIGRATION_EDIT).replace(/\r\n/g, '\n')).toContain(awaitingExpression('NEW.conversation_id'));
+  });
+
+  it('thanks edited into a question starts the wait; edited back clears it', () => {
+    const db = freshDb();
+    addConv(db, 'c');
+    addMsg(db, 'c', 'customer', T(1), { content: '問題' });
+    addMsg(db, 'c', 'agent', T(2));
+    const thanks = addMsg(db, 'c', 'customer', T(3), { content: '謝謝' });
+    expect(awaitingOf(db, 'c')).toBeNull();
+    db.prepare('UPDATE messages SET content = ? WHERE id = ?').run('請問保固多久', thanks);
+    expect(awaitingOf(db, 'c')).toBe(T(3));
+    db.prepare('UPDATE messages SET content = ? WHERE id = ?').run('謝謝', thanks);
+    expect(awaitingOf(db, 'c')).toBeNull();
+  });
+
+  it('a type change from sticker re-derives too', () => {
+    const db = freshDb();
+    addConv(db, 'c');
+    addMsg(db, 'c', 'customer', T(1), { content: '問題' });
+    addMsg(db, 'c', 'agent', T(2));
+    const sticker = addMsg(db, 'c', 'customer', T(3), { type: 'sticker', content: '' });
+    expect(awaitingOf(db, 'c')).toBeNull();
+    db.prepare("UPDATE messages SET message_type = 'image' WHERE id = ?").run(sticker);
+    expect(awaitingOf(db, 'c')).toBe(T(3));
   });
 });
 
