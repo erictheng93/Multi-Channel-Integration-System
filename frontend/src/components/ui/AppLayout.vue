@@ -1,11 +1,12 @@
 <template>
   <div
     class="app-layout"
+    :class="{ 'is-thread': isThread }"
     :data-section="sectionId"
   >
     <!-- Mobile Menu Button -->
     <button
-      v-if="isMobile && !showMobileMenu"
+      v-if="isMobile && !showMobileMenu && !isThread"
       class="mobile-menu-btn"
       aria-label="開啟選單"
       @click="toggleSidebar"
@@ -113,6 +114,9 @@
 
   // Section the page belongs to (same grouping as the sidebar); empty for pages like /profile
   // Colour identity of the page: the CSS tokens --section-hue / -soft / -ink resolve from this attribute
+  // A conversation thread on a phone owns the whole screen (its header has the back button), like Messages:
+  // no global top bar above it, so the thread header is the only bar
+  const isThread = computed(() => route.name === 'ConversationDetail')
   const sectionId = computed(() => sectionIdForPath(route.path))
   const currentSectionLabel = computed(() => {
     // /profile sits outside the sidebar groups: 帳號 is its parent segment
@@ -371,6 +375,16 @@
     .page-content {
       padding: var(--space-4);
       padding-bottom: calc(var(--space-4) + env(safe-area-inset-bottom));
+    }
+
+    /* The thread's header pads for the status bar itself and the chat takes the 60px the bar had */
+    .is-thread .top-bar {
+      display: none;
+    }
+
+    .is-thread :deep(.detail-layout) {
+      height: calc(100vh - env(safe-area-inset-bottom));
+      height: calc(100dvh - env(safe-area-inset-bottom));
     }
 
     .sidebar {

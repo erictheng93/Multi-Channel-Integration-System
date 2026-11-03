@@ -334,7 +334,7 @@ describe('QuickReplies', () => {
 
       const button = wrapper.find('.quick-reply-btn')
       expect(button.text()).toBe(specialText)
-      expect(button.html()).not.toContain('<script>')
+      expect(button.find('script').exists()).toBe(false)
     })
 
     it('should handle replies with duplicate IDs', () => {

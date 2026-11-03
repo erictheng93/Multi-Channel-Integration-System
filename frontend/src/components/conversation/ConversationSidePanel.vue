@@ -32,35 +32,29 @@
 
         <template v-if="rhythm">
           <h3 class="sp-h">
-            往來節奏<span class="legend"><i class="k-customer" />客戶<i class="k-agent" />客服</span>
+            回覆速度
           </h3>
-          <div
-            class="rhythm"
-            role="img"
+          <p class="sp-note">
+            客戶來訊到客服回覆花了多久{{ rhythm.capped || hasMore ? '（最近幾輪）' : '' }}
+          </p>
+          <ul
+            class="waits"
             :aria-label="rhythm.aria"
-            :style="{ '--n': rhythm.cols.length }"
           >
-            <span
-              v-for="col in rhythm.cols"
-              :key="col.key"
-              class="bar"
-              :class="col.side"
-              :style="{ gridColumn: col.index + 1 }"
-            />
-            <span
-              v-for="link in rhythm.links"
-              :key="link.key"
-              class="link"
-              :class="{ 'is-pending': link.pending }"
-              :style="{ gridColumn: `${link.from + 1} / ${link.to + 2}` }"
-            ><em>{{ link.text }}</em></span>
-          </div>
-          <div
-            class="rhythm-axis"
-            aria-hidden="true"
-          >
-            <span>{{ rhythm.first }}</span><span v-if="rhythm.capped || hasMore">最近 {{ rhythm.cols.length }} 則</span><span>{{ rhythm.last }}</span>
-          </div>
+            <li
+              v-for="row in rhythm.rows"
+              :key="row.key"
+              class="wait"
+              :class="{ 'is-pending': row.pending }"
+            >
+              <span class="wait-at">{{ row.at }}</span>
+              <span
+                class="wait-track"
+                aria-hidden="true"
+              ><i :style="{ width: `${row.pct}%` }" /></span>
+              <span class="wait-val">{{ row.text }}</span>
+            </li>
+          </ul>
           <dl
             class="glance"
             :aria-label="`往來 共 ${totalMessages} 則`"
@@ -128,9 +122,17 @@
             <dt>客戶建檔</dt>
             <dd>{{ customerSinceText }}</dd>
           </div>
-          <div v-if="messageCount !== null && hasMore">
-            <dt>已載入訊息</dt>
-            <dd>{{ messageCount }} 則</dd>
+          <div v-if="totalMessages > 0">
+            <dt>{{ hasMore ? '已載入訊息' : '訊息數' }}</dt>
+            <dd>{{ totalMessages }} 則</dd>
+          </div>
+          <div v-if="lastMessageText">
+            <dt>最後訊息</dt>
+            <dd>{{ lastMessageText }}</dd>
+          </div>
+          <div v-if="rhythm?.avgText">
+            <dt>平均回覆</dt>
+            <dd>{{ rhythm.avgText }}</dd>
           </div>
         </dl>
       </section>
@@ -218,49 +220,58 @@ let timer: ReturnType<typeof setInterval> | null = null
 onMounted(() => { timer = setInterval(() => { now.value = Date.now() }, 30_000) })
 onBeforeUnmount(() => { if (timer) { clearInterval(timer) } })
 
-const RHYTHM_MAX = 9
-
-type Side = 'is-customer' | 'is-agent'
+const WAIT_ROWS = 4
 
 /**
- * The shape of the conversation: the latest messages in order, customer above the line and the team below it.
- * A bridge joins the first unanswered customer message of a run to the reply that answered it and says how long
- * that took; a dashed bridge at the end is the wait that is still open. Built from the messages already loaded.
+ * How fast the team answered: every run of customer messages is one row, from its first message to the
+ * reply that answered it. Bars share one scale (the longest wait), so rows compare honestly; a wait that
+ * is still open on an open conversation is the last row, in orange. Built from the messages already loaded.
  */
 const rhythm = computed(() => {
   const all = (props.messages ?? [])
-    .map(m => ({ side: (m.senderType === 'customer' ? 'is-customer' : m.senderType === 'agent' ? 'is-agent' : '') as Side | '', t: timeOf(m) }))
-    .filter((m): m is { side: Side; t: number } => m.side !== '' && Number.isFinite(m.t))
+    .map(m => ({ side: m.senderType === 'customer' ? 'customer' : m.senderType === 'agent' ? 'agent' : '', t: timeOf(m) }))
+    .filter(m => m.side !== '' && Number.isFinite(m.t))
     .sort((a, b) => a.t - b.t)
   if (all.length < 2) { return null }
-  const picked = all.slice(-RHYTHM_MAX)
-  const cols = picked.map((m, index) => ({ key: `${index}-${m.t}`, index, side: m.side, t: m.t }))
-  const links: { key: string; from: number; to: number; text: string; pending: boolean }[] = []
-  let runStart = -1
-  for (const col of cols) {
-    if (col.side === 'is-customer') {
-      if (runStart < 0) { runStart = col.index }
-    } else if (runStart >= 0) {
-      const start = cols[runStart]
-      if (start) { links.push({ key: `l${runStart}`, from: runStart, to: col.index, text: gapText(col.t - start.t), pending: false }) }
-      runStart = -1
+  const waits: { key: string; ms: number; at: number; pending: boolean }[] = []
+  let runStart: number | null = null
+  for (const m of all) {
+    if (m.side === 'customer') {
+      if (runStart === null) { runStart = m.t }
+    } else if (runStart !== null) {
+      waits.push({ key: `w${runStart}`, ms: m.t - runStart, at: runStart, pending: false })
+      runStart = null
     }
   }
-  const startOpen = runStart >= 0 ? cols[runStart] : undefined
-  if (startOpen && props.conversation?.status !== 'closed') {
-    links.push({ key: 'open', from: runStart, to: cols.length - 1, text: `已等 ${gapText(Math.max(0, now.value - startOpen.t))}`, pending: true })
+  if (runStart !== null && props.conversation?.status !== 'closed') {
+    waits.push({ key: 'open', ms: Math.max(0, now.value - runStart), at: runStart, pending: true })
   }
-  const first = cols[0]?.t ?? 0
-  const last = cols[cols.length - 1]?.t ?? 0
+  if (waits.length === 0) { return null }
+  const picked = waits.slice(-WAIT_ROWS)
+  const longest = Math.max(...picked.map(w => w.ms), 1)
+  const answered = waits.filter(w => !w.pending)
+  const first = all[0]?.t ?? 0
+  const last = all[all.length - 1]?.t ?? 0
   const sameDay = new Date(first).toDateString() === new Date(last).toDateString()
   return {
-    cols,
-    links,
-    capped: all.length > picked.length,
-    first: stamp(first, !sameDay),
-    last: stamp(last, !sameDay),
-    aria: `最近 ${cols.length} 則往來，客服回覆 ${links.filter(l => !l.pending).length} 次${links.some(l => l.pending) ? '，客戶仍在等待回覆' : ''}`
+    rows: picked.map(w => ({
+      key: w.key,
+      at: stamp(w.at, !sameDay),
+      pct: Math.max(4, Math.round((w.ms / longest) * 100)),
+      text: w.pending ? `已等 ${gapText(w.ms)}` : gapText(w.ms),
+      pending: w.pending
+    })),
+    capped: waits.length > picked.length,
+    avgText: answered.length > 0 ? gapText(answered.reduce((sum, w) => sum + w.ms, 0) / answered.length) : '',
+    aria: `客服回覆速度，最近 ${picked.length} 輪${picked.some(w => w.pending) ? '，客戶仍在等待回覆' : ''}`
   }
+})
+
+const lastMessageText = computed(() => {
+  const times = (props.messages ?? []).filter(m => m.senderType === 'customer' || m.senderType === 'agent').map(timeOf).filter(Number.isFinite)
+  if (times.length === 0) { return '' }
+  const last = Math.max(...times)
+  return stamp(last, new Date(last).toDateString() !== new Date().toDateString())
 })
 
 const customerSinceText = computed(() => {
@@ -296,6 +307,11 @@ const createdAtText = computed(() => {
   background: var(--ui-surface);
 }
 
+/* The last card takes the rest of the rail, so the column ends flush with the chat instead of floating */
+.sp-card:last-child {
+  flex: 1 0 auto;
+}
+
 .sp-h {
   display: flex;
   align-items: baseline;
@@ -304,30 +320,6 @@ const createdAtText = computed(() => {
   font-size: 14px;
   font-weight: 700;
   color: var(--ui-ink-2);
-}
-
-.legend {
-  display: inline-flex;
-  gap: 6px;
-  align-items: center;
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--ui-muted);
-}
-
-.legend i {
-  width: 14px;
-  height: 8px;
-  border-radius: 4px;
-}
-
-.legend .k-agent {
-  margin-left: 6px;
-  background: var(--ui-accent);
-}
-
-.legend .k-customer {
-  background: var(--ui-faint);
 }
 
 .sp-h small {
@@ -388,88 +380,62 @@ const createdAtText = computed(() => {
   color: var(--ui-muted);
 }
 
-/* ---- the rhythm strip ---- */
-.rhythm {
+/* ---- reply speed: one bar per customer-to-reply wait, all on the same scale ---- */
+.sp-note {
+  margin: -6px 0 12px;
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--ui-muted);
+}
+
+.waits {
   display: grid;
-  grid-template-columns: repeat(var(--n), minmax(0, 1fr));
-  grid-template-rows: 20px 46px 20px;
-  column-gap: 4px;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
-.bar {
-  width: 100%;
-  height: 16px;
-  border-radius: 8px;
+.wait {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
 }
 
-.bar.is-customer {
-  grid-row: 1;
-  align-self: end;
-  background: var(--ui-faint);
+.wait-at {
+  color: var(--ui-muted);
 }
 
-.bar.is-agent {
-  grid-row: 3;
-  align-self: start;
+.wait-track {
+  height: 10px;
+  border-radius: 5px;
+  background: var(--ui-fill);
+  overflow: hidden;
+}
+
+.wait-track i {
+  display: block;
+  height: 100%;
+  border-radius: 5px;
   background: var(--ui-accent);
 }
 
-/* a bridge from the customer's first unanswered message to the reply, labelled with how long it took */
-.link {
-  position: relative;
-  display: flex;
-  grid-row: 2;
-  align-items: center;
-  justify-content: center;
-}
-
-.link::before {
-  position: absolute;
-  inset: 50% 10px auto;
-  height: 2px;
-  margin-top: -1px;
-  border-radius: 1px;
-  background: color-mix(in srgb, var(--ui-accent) 55%, transparent);
-  content: '';
-}
-
-.link em {
-  position: relative;
-  z-index: 1;
-  padding: 1px 7px;
-  border-radius: 999px;
-  background: var(--ui-surface);
-  box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--ui-accent) 40%, transparent);
-  font-size: 13px;
-  font-style: normal;
+.wait-val {
+  min-width: 52px;
   font-weight: 600;
-  line-height: 18px;
-  font-variant-numeric: tabular-nums;
-  color: var(--ui-accent-ink, var(--ui-accent));
-  white-space: nowrap;
+  text-align: right;
+  color: var(--ui-ink);
 }
 
-.link.is-pending {
-  justify-content: flex-end;
+.wait.is-pending .wait-track i {
+  background: var(--ui-orange-ink);
 }
 
-.link.is-pending::before {
-  background: repeating-linear-gradient(90deg, var(--ui-orange-ink) 0 5px, transparent 5px 9px);
-}
-
-.link.is-pending em {
-  background: var(--ui-orange-soft);
-  box-shadow: none;
+.wait.is-pending .wait-val {
   color: var(--ui-orange-ink);
-}
-
-.rhythm-axis {
-  display: flex;
-  justify-content: space-between;
-  margin-top: 6px;
-  font-size: 13px;
-  font-variant-numeric: tabular-nums;
-  color: var(--ui-muted);
 }
 
 .glance {

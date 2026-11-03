@@ -44,6 +44,12 @@
   border-bottom-right-radius: 6px;
 }
 
+/* Received bubbles are a neutral grey well (iMessage), so they separate from the white chat card without a shadow */
+.message-incoming .message-content {
+  background: color-mix(in srgb, var(--ui-ink) 7%, var(--ui-surface));
+  box-shadow: none;
+}
+
 /* Sent bubbles are a soft brand tint with ink text: a long thread stays calm, and the sender is still obvious at a glance */
 .message-outgoing .message-content {
   background: color-mix(in srgb, var(--ui-accent) 24%, var(--ui-surface));
