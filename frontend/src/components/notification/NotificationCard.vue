@@ -44,11 +44,6 @@
       >
         <span class="sr-only">{{ typeLabel }}</span>
         <span class="meta-when">
-          <span
-            v-if="!notification.isRead"
-            class="notification-dot"
-            aria-hidden="true"
-          />
           <time
             class="notification-time"
             :datetime="notification.createdAt"
@@ -82,11 +77,6 @@
     <!-- Trailing column at the card edge: unread dot + time, then the row actions -->
     <div class="notification-trail">
       <span class="notification-when">
-        <span
-          v-if="!notification.isRead"
-          class="notification-dot"
-          aria-hidden="true"
-        />
         <time
           class="notification-time"
           :datetime="notification.createdAt"
@@ -466,13 +456,6 @@ const formattedTime = computed(() => {
   gap: 8px;
   align-items: center;
   height: 22px;
-}
-
-.notification-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--ui-accent);
 }
 
 .notification-time {

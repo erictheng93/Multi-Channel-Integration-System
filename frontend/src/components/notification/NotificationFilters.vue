@@ -71,6 +71,7 @@
 
     <!-- Priority Filter -->
     <select
+      v-if="showPrioritySelect"
       :value="selectedPriority"
       class="ui-select filter-select filter-priority"
       aria-label="通知優先級"
@@ -87,6 +88,13 @@
         {{ priority.label }}
       </option>
     </select>
+
+    <p
+      v-if="resultCount !== undefined"
+      class="filter-count"
+    >
+      {{ hasActiveFilters ? '符合' : '共' }} {{ resultCount }} 則
+    </p>
 
     <!-- Clear Filters -->
     <button
@@ -114,7 +122,11 @@ withDefaults(defineProps<{
   counts?: { total: number; unread: number } | null
   /** Hidden while the type mosaic is on the page */
   showTypeSelect?: boolean
-}>(), { counts: null, showTypeSelect: true })
+  /** Hidden while the rail's priority rows do this job */
+  showPrioritySelect?: boolean
+  /** How many notifications the current filters match (server total) */
+  resultCount?: number
+}>(), { counts: null, showTypeSelect: true, showPrioritySelect: true, resultCount: undefined })
 
 defineEmits<{
   'update:selectedType': [value: string]
@@ -137,8 +149,16 @@ defineEmits<{
   box-shadow: inset 0 -0.5px 0 var(--ui-sep);
 }
 
-.filter-tabs + .filter-select {
+.filter-tabs + .filter-select,
+.filter-tabs + .filter-count {
   margin-left: auto;
+}
+
+.filter-count {
+  margin: 0;
+  font-size: 13px;
+  color: var(--ui-ink-2);
+  font-variant-numeric: tabular-nums;
 }
 
 .filter-select {
@@ -163,6 +183,10 @@ defineEmits<{
 @media (max-width: 768px) {
   .filter-tabs + .filter-select {
     margin-left: 0;
+  }
+
+  .filter-count {
+    display: none;
   }
 
   .filter-tabs {

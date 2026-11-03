@@ -21,54 +21,22 @@
         @open-settings="showSettings = true"
       />
 
-      <!-- The inbox as a mosaic: each tile is a notification type, sized by how many of it there are, and a filter -->
-      <section
-        v-if="stats && typeRows.length > 0"
-        class="notif-lead ui-lead"
-        aria-label="通知概況"
-      >
-        <div class="lead-fig">
-          <h2 class="lead-label">
-            未讀通知
-          </h2>
-          <p class="lead-num">
-            <span
-              class="ui-num"
-              :class="{ 'is-clear': stats.unread === 0 }"
-            >{{ stats.unread }}</span><small v-if="stats.unread > 0">則</small><small
-              v-else
-              class="lead-clear"
-            >全部已讀</small>
-          </p>
-          <p
-            v-if="urgentUnread > 0"
-            class="lead-hot"
-          >
-            含 {{ urgentUnread }} 則緊急
-          </p>
-          <dl class="lead-time">
-            <div>
-              <dt>全部</dt>
-              <dd>{{ stats.total }}</dd>
-            </div>
-            <div>
-              <dt>今天</dt>
-              <dd>{{ stats.timeRange?.today ?? 0 }}</dd>
-            </div>
-            <div>
-              <dt>本週</dt>
-              <dd>{{ stats.timeRange?.thisWeek ?? 0 }}</dd>
-            </div>
-          </dl>
-        </div>
-        <NotificationMosaic
-          :rows="typeRows"
-          :selected="filters.selectedType.value"
-          @toggle="toggleType"
-        />
-      </section>
-
       <div class="notif-grid">
+        <!-- The inbox at a glance: what needs you, then every type and priority as a filter row -->
+        <NotificationRail
+          v-if="stats && typeRows.length > 0"
+          class="notif-rail"
+          :unread="stats.unread"
+          :urgent-unread="urgentUnread"
+          :times="times"
+          :types="typeRows"
+          :priorities="priorityRows"
+          :selected-type="filters.selectedType.value"
+          :selected-priority="filters.selectedPriority.value"
+          @toggle-type="toggleType"
+          @toggle-priority="togglePriority"
+        />
+
         <div class="notif-main ui-card">
           <NotificationFilters
             v-model:selected-type="filters.selectedType.value"
@@ -78,7 +46,9 @@
             :notification-types="filters.notificationTypes"
             :priorities="filters.priorities"
             :counts="stats ? { total: stats.total, unread: stats.unread } : null"
-            :show-type-select="!stats || typeRows.length === 0"
+            :show-type-select="!hasRail"
+            :show-priority-select="!hasRail"
+            :result-count="pagination.total"
             @apply-filters="filters.applyFilters"
             @clear-filters="filters.clearFilters"
           />
@@ -185,7 +155,7 @@ import {
   NotificationCard,
   NotificationEmptyState
 } from '@/components/notification'
-import NotificationMosaic from '@/components/notification/NotificationMosaic.vue'
+import NotificationRail from '@/components/notification/NotificationRail.vue'
 import NotificationSettingsModal from '@/components/notification/NotificationSettingsModal.vue'
 import type { Notification } from '@/stores/notifications'
 
@@ -210,7 +180,7 @@ const {
   keyboard
 } = controller
 
-// ==================== Mosaic ====================
+// ==================== Rail ====================
 
 const typeRows = computed(() =>
   filters.notificationTypes
@@ -222,10 +192,32 @@ const typeRows = computed(() =>
     .filter((row) => row.total > 0)
 )
 
+const priorityRows = computed(() =>
+  filters.priorities.map((p) => ({
+    ...p,
+    total: stats.value?.byPriority?.[p.value as keyof NonNullable<typeof stats.value>['byPriority']]?.total ?? 0,
+    unread: stats.value?.byPriority?.[p.value as keyof NonNullable<typeof stats.value>['byPriority']]?.unread ?? 0
+  }))
+)
+
+const hasRail = computed(() => !!stats.value && typeRows.value.length > 0)
+
+const times = computed(() => [
+  { label: '全部', value: stats.value?.total ?? 0 },
+  { label: '今天', value: stats.value?.timeRange?.today ?? 0 },
+  { label: '本週', value: stats.value?.timeRange?.thisWeek ?? 0 },
+  { label: '本月', value: stats.value?.timeRange?.thisMonth ?? 0 }
+])
+
 const urgentUnread = computed(() => stats.value?.byPriority?.urgent?.unread ?? 0)
 
 function toggleType(value: string): void {
   filters.selectedType.value = (filters.selectedType.value === value ? '' : value) as typeof filters.selectedType.value
+  filters.applyFilters()
+}
+
+function togglePriority(value: string): void {
+  filters.selectedPriority.value = (filters.selectedPriority.value === value ? '' : value) as typeof filters.selectedPriority.value
   filters.applyFilters()
 }
 
@@ -279,79 +271,23 @@ onUnmounted(() => {
 
 <style scoped>
 
-/* Lead: what needs you (the unread count), then the inbox as one composition bar; the list sits under it */
-.notif-lead {
+/* Two columns: the list takes the room, the rail (the page's one elevated object) rides beside it */
+.notif-grid {
   display: grid;
-  grid-template-columns: 240px minmax(0, 1fr);
-  gap: 32px;
-  align-items: center;
-  padding: 24px 28px;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  grid-template-areas: "main rail";
+  gap: var(--ui-page-gap);
+  align-items: start;
 }
 
-.lead-fig {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.lead-label {
-  margin: 0;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--ui-ink-2);
-}
-
-.lead-num {
-  margin: 0;
-  font: 600 64px / 1 var(--ui-font-display);
-  letter-spacing: -0.03em;
-  font-variant-numeric: tabular-nums;
-}
-
-.lead-num small {
-  margin-left: 4px;
-  font-size: 16px;
-  font-weight: 500;
-  letter-spacing: 0;
-  color: var(--ui-ink-2);
-}
-
-.lead-num .lead-clear {
-  margin-left: 10px;
-  color: var(--ui-green-ink);
-  font-weight: 700;
-}
-
-.lead-hot {
-  margin: 0;
-  font: 600 14px var(--ui-font-display);
-  color: var(--ui-red-ink);
-}
-
-/* the rest of the inbox in one quiet line of three figures */
-.lead-time {
-  display: flex;
-  gap: 20px;
-  margin: 10px 0 0;
-}
-
-.lead-time > div {
-  display: grid;
-  gap: 2px;
-}
-
-.lead-time dt {
-  font-size: 13px;
-  color: var(--ui-ink-2);
-}
-
-.lead-time dd {
-  margin: 0;
-  font: 700 20px / 1.2 var(--ui-font-display);
-  font-variant-numeric: tabular-nums;
+.notif-rail {
+  grid-area: rail;
+  position: sticky;
+  top: calc(var(--ui-topbar-h) + 16px);
 }
 
 .notif-main {
+  grid-area: main;
   min-width: 0;
   overflow: hidden;
 }
@@ -432,24 +368,18 @@ onUnmounted(() => {
   transition: transform 0.3s var(--ui-ease);
 }
 
+@media (max-width: 1024px) {
+  .notif-grid {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "rail" "main";
+  }
+
+  .notif-rail {
+    position: static;
+  }
+}
+
 @media (max-width: 768px) {
-  /* Phone: no card, just the types as a row of chips right above the list */
-  .notif-lead {
-    display: block;
-    padding: 0;
-    border-radius: 0;
-    background: transparent;
-    box-shadow: none;
-  }
-
-  .lead-fig {
-    display: none;
-  }
-
-  .notif-lead :deep(.mosaic) {
-    margin: 0 -16px;
-  }
-
   .day-label {
     padding: 14px 16px 4px;
   }
