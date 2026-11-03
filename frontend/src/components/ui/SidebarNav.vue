@@ -325,7 +325,7 @@
     display: flex;
     align-items: center;
     gap: 10px;
-    height: 32px;
+    height: 31px;
     padding: 0 10px;
     margin-bottom: 1px;
     border-radius: 9px;
