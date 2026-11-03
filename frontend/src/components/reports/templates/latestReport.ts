@@ -62,3 +62,16 @@ export function useLatestReport(type: Ref<ReportType | undefined>) {
 
   return { state, loading };
 }
+
+/** Several types at once (the picker thumbnails): one reactive map, each type loaded through the same cache */
+export function useLatestByType(types: Ref<ReportType[]>) {
+  const states = ref<Partial<Record<ReportType, LatestReport>>>({});
+  watch(types, async list => {
+    await Promise.all(list.map(async type => {
+      const result = cache.get(type) ?? await fetchLatest(type);
+      cache.set(type, result);
+      states.value = { ...states.value, [type]: result };
+    }));
+  }, { immediate: true });
+  return states;
+}
