@@ -173,7 +173,7 @@ const meterWidth = computed(() => {
 
 /* Selection reads as a tint, never as a hard outline */
 .tag-card.tag-active {
-  background: color-mix(in srgb, var(--tag-c) 5%, var(--ui-fill));
+  background: color-mix(in srgb, var(--tag-c) 9%, var(--ui-surface));
 }
 
 .tag-card.tag-selected {
