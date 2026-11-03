@@ -45,19 +45,6 @@
             <p class="hl-meaning">
               {{ heroSubtitle }}
             </p>
-            <ol
-              class="chips"
-              aria-label="各服務狀態"
-            >
-              <li
-                v-for="row in rows"
-                :key="row.key"
-                class="chip"
-                :class="row.tone"
-              >
-                <i aria-hidden="true" />{{ stripName(row) }}<span class="sr-only">，{{ row.label }}</span>
-              </li>
-            </ol>
           </div>
           <dl
             v-if="latencyFacts.length > 0"
@@ -95,7 +82,7 @@
               回應時間
             </h2>
             <div class="ui-card-sub">
-              各服務同一比例，滿格 = {{ latencyScale }} ms
+              同一條時間軸，0 到 {{ latencyScale }} ms，越短越快
             </div>
           </div>
           <ul
@@ -107,7 +94,24 @@
             <li><i class="z-bad" />&gt; {{ FAULT_MS }} ms</li>
           </ul>
         </header>
-        <ul class="hlist">
+        <ul
+          class="hlist"
+          :style="slowLine !== null ? { '--slow': `${slowLine}%` } : undefined"
+        >
+          <li
+            class="haxis"
+            aria-hidden="true"
+          >
+            <span class="haxis-track">
+              <span
+                v-for="(tick, i) in axisTicks"
+                :key="tick"
+                class="haxis-t"
+                :class="{ 'is-first': i === 0, 'is-last': i === axisTicks.length - 1 }"
+                :style="{ left: `${(tick / latencyScale) * 100}%` }"
+              >{{ tick }}<template v-if="i === axisTicks.length - 1"> ms</template></span>
+            </span>
+          </li>
           <li
             v-for="row in rows"
             :key="row.key"
@@ -156,7 +160,6 @@
               v-if="row.latencyMs !== null"
               class="hbar"
               :class="barTone(row)"
-              :style="zoneVars"
               aria-hidden="true"
             ><i :style="{ width: barWidth(row.latencyMs, latencyScale) }" /></span>
             <span
@@ -166,7 +169,7 @@
               <button
                 v-if="row.key === 'lineWebhook'"
                 type="button"
-                class="btn btn-secondary btn-sm"
+                class="btn btn-primary btn-sm"
                 :aria-busy="controller.processing.value || undefined"
                 @click="runWebhookTest"
               >
@@ -191,7 +194,7 @@
           class="hfoot"
         >
           <p>
-            <b>LINE webhook 只在你按下時才測試。</b>會送出一次簽章請求並量測回應時間，同時重新檢查其餘服務；結果只代表剛才那一次。持續失敗請到 LINE Developers，對 Webhook URL 按「Verify」。
+            LINE webhook 只在你按下時才測試，結果只代表剛才那一次。持續失敗請到 LINE Developers，對 Webhook URL 按「Verify」。
           </p>
           <button
             v-if="webhookRow.latencyMs !== null"
@@ -327,15 +330,16 @@ const counts = computed(() => ({
   unchecked: rows.value.filter(row => row.tone === 'unknown').length
 }))
 
-/** Bar scale: the fault line, or the slowest service when it is past it, so all three zones are always on the track */
-const latencyScale = computed(() =>
-  Math.max(FAULT_MS, ...serviceRows.value.map(row => row.latencyMs ?? 0)))
+/** Shared axis: 0 to the slow line, or to the slowest measurement (rounded up to 100) when something is past it, so short bars still differ */
+const latencyScale = computed(() => {
+  const slowest = Math.max(0, ...rows.value.map(row => row.latencyMs ?? 0))
+  return Math.max(SLOW_MS, Math.ceil(slowest / 100) * 100)
+})
 
-/** Track zones painted in the legend's colours: boundaries at SLOW_MS and FAULT_MS on the shared scale */
-const zoneVars = computed(() => ({
-  '--z1': `${(SLOW_MS / latencyScale.value) * 100}%`,
-  '--z2': `${(FAULT_MS / latencyScale.value) * 100}%`
-}))
+/** Axis ticks: start, middle, end of the shared scale */
+const axisTicks = computed(() => [0, latencyScale.value / 2, latencyScale.value])
+/** Where the 100 ms "slow" line falls on the track, as a percent; null when it is the track end (nothing to draw) */
+const slowLine = computed(() => (latencyScale.value > SLOW_MS ? (SLOW_MS / latencyScale.value) * 100 : null))
 
 const overallTone = computed<'ok' | 'warn' | 'bad' | 'unknown'>(() => {
   if (counts.value.critical > 0) {
@@ -387,13 +391,6 @@ function barTone(row: Row): string {
 
 /** Short name: the part in parentheses when a service has one (資料庫 (D1) -> D1) */
 const shortName = (name: string): string => /\(([^)]+)\)\s*$/.exec(name)?.[1] ?? name
-
-/** Strip label: short enough that six fit across a phone */
-function stripName(row: Row): string {
-  if (row.key === 'durable_object') { return 'DO' }
-  if (row.key === 'lineWebhook') { return 'LINE' }
-  return shortName(row.name)
-}
 
 /** The inline button runs the full check: the plain services plus the on-demand webhook probe */
 function runWebhookTest(): void {
@@ -576,57 +573,6 @@ onMounted(() => {
   color: var(--ui-muted);
 }
 
-/* ---------- service chips: a dot and a name per service; a never-checked one is an outline, not a colour ---------- */
-.chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin: 16px 0 0;
-  padding: 0;
-  list-style: none;
-}
-
-.chip {
-  display: inline-flex;
-  gap: 7px;
-  align-items: center;
-  padding: 5px 12px 5px 10px;
-  border-radius: 999px;
-  background: var(--ui-fill);
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--ui-ink-2);
-}
-
-.chip i {
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  background: var(--ui-green);
-}
-
-.chip.warn i {
-  background: var(--ui-orange);
-}
-
-.chip.bad i {
-  background: var(--ui-red);
-}
-
-.chip.unknown i {
-  background: transparent;
-  box-shadow: inset 0 0 0 1.5px var(--ui-field-edge);
-}
-
-.sr-only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
-}
-
 /* ---------- cards ---------- */
 .hgrid {
   display: grid;
@@ -680,17 +626,72 @@ onMounted(() => {
 }
 
 .hlist {
+  --cols: 30px clamp(180px, 26%, 280px) minmax(160px, 1fr) 76px 62px;
+
   display: grid;
   margin: 0;
   padding: 0 28px 8px;
   list-style: none;
 }
 
-.hrow {
-  display: flex;
-  gap: 12px;
+.hrow,
+.haxis {
+  display: grid;
+  grid-template-columns: var(--cols);
+  gap: 0 14px;
   align-items: center;
+}
+
+.hrow {
   padding: 13px 0;
+}
+
+/* axis: labels sit over the track column, so every bar below reads against the same ruler */
+.haxis {
+  padding: 4px 0 12px;
+}
+
+.haxis-track {
+  position: relative;
+  display: block;
+  grid-column: 3;
+  height: 20px;
+  font-size: 13px;
+  color: var(--ui-ink-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.haxis-t {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+
+.haxis-t::after {
+  content: '';
+  position: absolute;
+  top: 20px;
+  left: 50%;
+  width: 1px;
+  height: 6px;
+  background: var(--ui-ink-2);
+}
+
+.haxis-t.is-first::after {
+  left: 0;
+}
+
+.haxis-t.is-last::after {
+  left: 100%;
+}
+
+.haxis-t.is-first {
+  transform: none;
+}
+
+.haxis-t.is-last {
+  transform: translateX(-100%);
 }
 
 .hrow + .hrow {
@@ -734,7 +735,6 @@ onMounted(() => {
 }
 
 .hrow-main {
-  flex: 0 0 clamp(190px, 30%, 300px);
   min-width: 0;
 }
 
@@ -750,20 +750,23 @@ onMounted(() => {
 
 /* the track is the legend: soft green to 100 ms, soft orange to 300 ms, soft red beyond; the fill is the measurement */
 .hbar {
-  flex: 1;
-  min-width: 120px;
-  height: 12px;
+  position: relative;
+  height: 14px;
   overflow: hidden;
   border-radius: 999px;
-  background: linear-gradient(90deg, var(--ui-green-soft) 0 var(--z1, 33%), color-mix(in srgb, var(--ui-orange-soft) 55%, transparent) var(--z1, 33%) var(--z2, 100%), var(--ui-red-soft) var(--z2, 100%) 100%);
+  background: var(--ui-fill-strong);
+}
+
+/* the thin line is the 100 ms "slow" mark, drawn only when the axis runs past it */
+.hlist[style*='--slow'] .hbar {
+  background-image: linear-gradient(90deg, transparent calc(var(--slow) - 0.5px), var(--ui-ink-2) calc(var(--slow) - 0.5px) calc(var(--slow) + 0.5px), transparent calc(var(--slow) + 0.5px));
 }
 
 .hbar-none {
   display: flex;
-  flex: 1;
-  min-width: 120px;
+  min-width: 0;
   font-size: 13px;
-  color: var(--ui-muted);
+  color: var(--ui-ink-2);
 }
 
 .hbar i {
@@ -782,7 +785,7 @@ onMounted(() => {
 }
 
 .lat-n {
-  min-width: 56px;
+  min-width: 0;
   font: 600 15px var(--ui-font-display);
   text-align: right;
   font-variant-numeric: tabular-nums;
@@ -827,10 +830,6 @@ onMounted(() => {
   color: var(--ui-ink-2);
 }
 
-.hfoot b {
-  color: var(--ui-ink);
-}
-
 .hfoot .btn {
   flex: none;
 }
@@ -847,6 +846,10 @@ onMounted(() => {
 
   .hgrid {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .hlist {
+    --cols: 30px minmax(130px, 24%) minmax(100px, 1fr) 70px 62px;
   }
 }
 
@@ -877,9 +880,14 @@ onMounted(() => {
     padding: 0 18px 10px;
   }
 
+  .haxis {
+    display: none;
+  }
+
   .hrow {
+    display: flex;
     flex-wrap: wrap;
-    row-gap: 8px;
+    gap: 8px 12px;
   }
 
   .hrow .ui-pill {
@@ -897,25 +905,11 @@ onMounted(() => {
     margin-left: 42px;
   }
 
-  .lat-n {
-    min-width: 0;
-  }
-
   .hfoot {
     flex-direction: column;
     align-items: stretch;
     margin: 0 18px;
     padding: 14px 0 18px;
-  }
-
-  /* six chips across a phone: an even 3 x 2 grid, no orphan */
-  .chips {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
-  .chip {
-    justify-content: center;
   }
 
   /* the webhook row: the test button sits full width under the name, where the bar would be */
@@ -929,6 +923,5 @@ onMounted(() => {
   .hrow .hbar-none .btn {
     width: 100%;
   }
-
 }
 </style>

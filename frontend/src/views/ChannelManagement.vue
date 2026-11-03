@@ -46,7 +46,6 @@
       <!-- Signature: customer messages vs agent replies per channel, one shared axis -->
       <ChannelBalance
         v-if="!isLoading && !loadFailed && channels.length > 0"
-        :rows="balanceRows"
         :total="leadVolume.total"
         :in-n="leadVolume.inN"
         :out-n="leadVolume.outN"
@@ -76,6 +75,12 @@
             {{ p.label }} <span class="ui-seg-n">{{ getChannelCount(p.id) }}</span>
           </button>
         </div>
+        <p
+          v-if="volumeMax > 0"
+          class="scale-note"
+        >
+          各頻道長條同一比例，滿格 = {{ formatCount(volumeMax) }} 則
+        </p>
       </div>
 
       <!-- Loading State -->
@@ -260,6 +265,39 @@
           </div>
 
           <div
+            class="chvol"
+            :class="{ 'is-idle': !volumeOf(channel) }"
+          >
+            <template v-if="volumeOf(channel)">
+              <div class="vrow">
+                <span class="vl">客戶來訊</span>
+                <span class="vt"><i
+                  class="vb is-in"
+                  :style="{ width: volumeWidth(volumeOf(channel)!.inN) }"
+                /></span>
+                <b class="vn">{{ formatCount(volumeOf(channel)!.inN) }}</b>
+              </div>
+              <div class="vrow">
+                <span class="vl">客服發送</span>
+                <span class="vt"><i
+                  class="vb is-out"
+                  :style="{ width: volumeWidth(volumeOf(channel)!.outN) }"
+                /></span>
+                <b class="vn">{{ formatCount(volumeOf(channel)!.outN) }}</b>
+              </div>
+              <p class="vnote">
+                累計 {{ formatCount(volumeOf(channel)!.inTotal) }} 來 / {{ formatCount(volumeOf(channel)!.outTotal) }} 發 · {{ volumeOf(channel)!.lastAt }}
+              </p>
+            </template>
+            <p
+              v-else
+              class="vnote"
+            >
+              {{ channel.isActive ? '暫時無法取得訊息量' : '已停用，不計入訊息量' }}
+            </p>
+          </div>
+
+          <div
             v-if="problemIds.has(channel.id)"
             class="chwarn"
             role="alert"
@@ -389,7 +427,7 @@ import { computed } from 'vue'
 import AppLayout from '@/components/ui/AppLayout.vue'
 import ChannelConfigDialog from '@/components/channels/ChannelConfigDialog.vue'
 import ChannelDetailsModal from '@/components/channels/ChannelDetailsModal.vue'
-import ChannelBalance, { type BalanceRow } from '@/components/channels/ChannelBalance.vue'
+import ChannelBalance from '@/components/channels/ChannelBalance.vue'
 import { formatLastLogin } from '@/utils/team-tone'
 import { platformVolume24h } from '@/utils/channel-volume'
 import { useChannelManagement } from '@/composables/useChannelManagement'
@@ -495,22 +533,35 @@ function hasWebhookProblem(channel: ChannelIntegration): boolean {
 const problemChannels = computed(() => channels.value.filter(hasWebhookProblem))
 
 /** One row per channel for the balance board: the same real counters the lead totals use (disabled channels are listed, not charted) */
-const balanceRows = computed<BalanceRow[]>(() =>
-  channels.value.map((c) => {
+interface ChannelVolume {
+  inN: number
+  outN: number
+  inTotal: number
+  outTotal: number
+  lastAt: string
+}
+
+/** Last-24h counters per active channel; a disabled or unreporting channel has none (never a made-up zero) */
+const volumes = computed(() => {
+  const map = new Map<number, ChannelVolume>()
+  for (const c of channels.value) {
     const act = c.isActive ? c.activity : undefined
-    return {
-      key: String(c.id),
-      label: channelTitle(c),
-      platform: c.platform,
-      off: !c.isActive,
-      inN: act?.customerMessages24h ?? 0,
-      outN: act?.agentMessages24h ?? 0,
-      inTotal: act?.customerMessagesTotal ?? 0,
-      outTotal: act?.agentMessagesTotal ?? 0,
-      lastAt: act ? `最後活動 ${act.lastActivityAt ? formatLastLogin(act.lastActivityAt) : '尚無活動'}` : '暫時無法取得訊息量',
-      problem: hasWebhookProblem(c)
-    }
-  }))
+    if (!act) { continue }
+    map.set(c.id, {
+      inN: act.customerMessages24h ?? 0,
+      outN: act.agentMessages24h ?? 0,
+      inTotal: act.customerMessagesTotal ?? 0,
+      outTotal: act.agentMessagesTotal ?? 0,
+      lastAt: `最後活動 ${act.lastActivityAt ? formatLastLogin(act.lastActivityAt) : '尚無活動'}`
+    })
+  }
+  return map
+})
+const volumeOf = (channel: ChannelIntegration): ChannelVolume | undefined => volumes.value.get(channel.id)
+
+/** One scale for every bar: the biggest single side among the channels */
+const volumeMax = computed(() => Math.max(0, ...[...volumes.value.values()].flatMap(v => [v.inN, v.outN])))
+const volumeWidth = (n: number): string => (n === 0 || volumeMax.value === 0 ? '0%' : `${Math.max(3, Math.round((n / volumeMax.value) * 100))}%`)
 
 /** Never a made-up zero: no total when no active channel reports activity */
 const leadVolume = computed(() => {
@@ -591,6 +642,61 @@ const selectedPlatformLabel = computed(() =>
   background: var(--ui-surface);
   color: var(--ui-orange-ink);
   font-weight: 600;
+}
+
+.scale-note {
+  margin: 0 0 0 auto;
+  font-size: 13px;
+  color: var(--ui-ink-2);
+}
+
+/* the card's own 24 h numbers: two bars on one shared scale, same colours as the summary above */
+.chvol {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  padding: 0 20px;
+}
+.vrow {
+  display: grid;
+  grid-template-columns: 4.6em minmax(0, 1fr) 3.2em;
+  gap: 10px;
+  align-items: center;
+  font-size: 14px;
+  color: var(--ui-ink-2);
+}
+.vt {
+  display: block;
+  height: 12px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--ui-fill-strong);
+}
+.vb {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+}
+.vb.is-in {
+  background: var(--ui-blue);
+}
+.vb.is-out {
+  background: color-mix(in srgb, var(--ui-blue) 38%, var(--ui-surface));
+}
+.vn {
+  font: 600 15px var(--ui-font-display);
+  color: var(--ui-ink);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.vnote {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--ui-ink-2);
+}
+.chvol.is-idle {
+  align-content: center;
 }
 
 /* Every card has the same parts in the same order, so rows line up without any grid trickery */
@@ -773,13 +879,16 @@ const selectedPlatformLabel = computed(() =>
 @media (min-width: 1025px) {
   .chgrid {
     grid-template-columns: minmax(0, 1fr);
-    grid-auto-rows: 1fr;
+    grid-auto-rows: auto;
     gap: 14px;
   }
   .chcard {
     display: grid;
-    grid-template-columns: 250px minmax(0, 1fr) minmax(0, 1fr) 120px;
-    grid-template-areas: 'head warn meta foot';
+    grid-template-columns: 250px minmax(0, 1.1fr) minmax(0, 1fr) 120px;
+    grid-template-areas:
+      'head vol warn foot'
+      'head vol meta foot';
+    row-gap: 10px;
     align-items: center;
     column-gap: 28px;
     padding: 20px 22px;
@@ -789,8 +898,9 @@ const selectedPlatformLabel = computed(() =>
   .hd-pill { display: inline-flex; margin-top: 8px; }
   .chname { display: grid; justify-items: start; }
   .chwarn { grid-area: warn; margin: 0; }
-  .meta { grid-area: meta; padding: 0; align-self: center; }
-  .chcard:not(:has(.chwarn)) .meta { grid-column: 2 / 4; }
+  .meta { grid-area: meta; padding: 0; align-self: start; }
+  .chwarn { align-self: end; }
+  .chvol { grid-area: vol; }
   .chfoot .toggle { justify-self: end; }
   .chfoot { grid-area: foot; display: grid; justify-items: end; align-content: center; margin: 0; padding: 0; }
 }
@@ -831,6 +941,16 @@ const selectedPlatformLabel = computed(() =>
   }
   .chcard.off .chfoot {
     padding-top: 0;
+  }
+  .chcard.off .chvol {
+    display: none;
+  }
+  .scale-note {
+    flex-basis: 100%;
+    margin: 0;
+  }
+  .chvol {
+    padding: 4px 16px 0;
   }
   .chwarn {
     margin: 4px 16px 0;
