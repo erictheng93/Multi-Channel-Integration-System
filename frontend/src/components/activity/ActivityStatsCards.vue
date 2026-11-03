@@ -31,6 +31,7 @@
 
     <ol
       v-if="days.length > 0 && !loading"
+      ref="daysEl"
       class="wk-days"
       :class="{ 'is-many': days.length > 10 }"
       :aria-label="`${periodLabel}每日活動數`"
@@ -72,7 +73,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import type { ActivityOverview } from '@/api/activities'
 import { isActivityRestoreEnabled } from '@/config/runtime'
 
@@ -80,6 +81,17 @@ const props = defineProps<{
   overview: ActivityOverview | null
   loading: boolean
 }>()
+
+/** Phone: the day tiles scroll, and open on the newest days (the right end) */
+const daysEl = ref<HTMLElement | null>(null)
+function scrollToNewest(): void {
+  void nextTick(() => {
+    const el = daysEl.value
+    if (!el) { return }
+    // a scrolling strip must be reachable by keyboard; a strip that fits is not a stop
+    if (el.scrollWidth > el.clientWidth) { el.tabIndex = 0; el.scrollLeft = el.scrollWidth } else { el.removeAttribute('tabindex') }
+  })
+}
 
 /** The restorable count only means something while the restore feature is on. */
 const showRestorable = isActivityRestoreEnabled()
@@ -129,6 +141,8 @@ const note = computed(() => {
   const name = Number.isNaN(day.getTime()) ? low.date : `週${WEEKDAYS[day.getDay()]}`
   return `每格底部的橫條是當天占最忙一天的比例。${name}僅 ${low.count.toLocaleString('en-US')} 筆，約為日均的 ${Math.round((low.count / avg) * 100)}%。`
 })
+
+watch(() => days.value.length, scrollToNewest, { immediate: true, flush: 'post' })
 
 const meaning = computed<string[]>(() => {
   const overview = props.overview
@@ -218,7 +232,7 @@ const meaning = computed<string[]>(() => {
 .wk-meter {
   display: block;
   width: calc(100% - 28px);
-  height: 6px;
+  height: 10px;
   margin-top: auto;
   overflow: hidden;
   border-radius: 999px;
@@ -292,7 +306,7 @@ const meaning = computed<string[]>(() => {
 .wk-note {
   margin: 0;
   font-size: 13px;
-  color: var(--ui-muted);
+  color: var(--ui-ink-2);
 }
 
 @media (max-width: 768px) {
@@ -305,8 +319,20 @@ const meaning = computed<string[]>(() => {
     padding: 0 4px;
   }
 
+  /* seven narrow tiles became a scroller of full-size ones: it opens on the newest day, the left edge fades to say there is more */
   .wk-days {
-    gap: 5px;
+    grid-template-columns: none;
+    grid-auto-columns: 66px;
+    gap: 8px;
+    overflow-x: auto;
+    padding-bottom: 2px;
+    scrollbar-width: none;
+    scroll-snap-type: x proximity;
+    mask-image: linear-gradient(90deg, transparent 0, #000 22px);
+  }
+
+  .wk-day {
+    scroll-snap-align: end;
   }
 
   .wk-day {
@@ -315,10 +341,9 @@ const meaning = computed<string[]>(() => {
   }
 
   .wk-n {
-    font-size: 19px;
+    font-size: 22px;
   }
 
-  .wk-date,
   .wk-part:last-child {
     display: none;
   }
@@ -328,7 +353,7 @@ const meaning = computed<string[]>(() => {
   }
 
   .wk-meter {
-    width: calc(100% - 14px);
+    width: calc(100% - 20px);
     margin-top: 8px;
   }
 

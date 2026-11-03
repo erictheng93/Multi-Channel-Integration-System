@@ -57,14 +57,40 @@
         class="timeline-item__chip"
         data-test="restore-expired"
       >
-        已過期
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2.2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        ><circle
+          cx="12"
+          cy="12"
+          r="9"
+        /><path d="M12 7v5l3 2" /></svg>已過期
       </span>
       <span
         v-else-if="restoreState.kind === 'irreversible'"
         class="timeline-item__chip"
         data-test="restore-irreversible"
       >
-        不可還原
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2.2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        ><rect
+          x="5"
+          y="11"
+          width="14"
+          height="9"
+          rx="2"
+        /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></svg>不可還原
       </span>
       <span
         v-else-if="restoreState.kind === 'already-restored'"
@@ -326,9 +352,18 @@ onUnmounted(() => {
 }
 /* the closed state is plain centred text in the action's slot: one capsule (還原) per column, never three kinds */
 .timeline-item__restore-zone .timeline-item__chip {
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+  justify-content: center;
   padding: 6px 0;
   color: var(--ui-ink-2);
   text-align: center;
+}
+.timeline-item__chip svg {
+  flex: none;
+  width: 14px;
+  height: 14px;
 }
 /* the one real action is the accent one */
 .timeline-item__restore-zone .btn {
