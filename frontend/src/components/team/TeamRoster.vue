@@ -86,6 +86,7 @@
           v-for="rank in ranks"
           :key="rank.key"
           class="ro-cell"
+          :class="{ 'is-members': rank.key === 'member' }"
           role="cell"
         >
           <span class="ro-cell-label">{{ rank.label }}</span>
@@ -325,12 +326,12 @@ const sharedMembers = computed(() =>
   border-radius: 999px;
   background: var(--ui-surface);
   font-size: 14px;
-  color: var(--ui-muted);
+  color: var(--ui-ink);
   white-space: nowrap;
 }
 
+/* online people are bolder; offline ones keep full ink so they never read as disabled (the dot carries presence) */
 .ro-person.is-on {
-  color: var(--ui-ink);
   font-weight: 600;
 }
 
@@ -389,7 +390,10 @@ const sharedMembers = computed(() =>
     align-items: flex-start;
   }
 
-  .ro-cell:has(.ro-none) {
+  /* the member list below restates everyone, so the phone card keeps only the leadership rows */
+  .ro-cell:has(.ro-none),
+  .ro-cell.is-members,
+  .ro-note {
     display: none;
   }
 
