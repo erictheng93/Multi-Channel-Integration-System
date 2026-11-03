@@ -1,280 +1,273 @@
-<!-- The report as a document: the template's contents are the outline (a numbered spine), and each entry is filled with the
-     real figure from the latest completed JSON report of that type. Nothing is invented: with no report yet the entries
-     are skeleton lines and the note says so. -->
+<!-- The report as a document: a real sample of what the template produces. Headline figures, then the breakdown as a
+     table with bars on one shared scale. Every number is read from the latest completed JSON report of that type;
+     with no report yet the cells are skeleton lines and the rail beside it says so. Nothing is invented. -->
 <template>
   <article
     class="ui-lead sheet"
     :aria-label="`${template.name}的報表樣張`"
     :aria-busy="loading"
   >
-    <div class="sh-pane">
-      <header class="sh-mast">
+    <header class="sh-mast">
+      <div class="sh-title">
         <p class="sh-kind">
           報表樣張
         </p>
         <h2 class="sh-name">
           {{ template.name }}
         </h2>
-        <dl class="sh-props">
-          <div
-            v-for="prop in docProps"
-            :key="prop.k"
-          >
-            <dt>{{ prop.k }}</dt>
-            <dd>{{ prop.v }}</dd>
-          </div>
-        </dl>
-      </header>
-
-      <p
-        class="sh-note"
-        :class="{ 'is-warn': failed }"
-        :role="failed ? 'alert' : 'status'"
-      >
-        <template v-if="loading">
-          正在讀取最近一份報表…
-        </template>
-        <template v-else-if="failed">
-          無法讀取最近一份報表的內容，你仍可直接產生新的報表。
-        </template>
-        <template v-else-if="!latest">
-          還沒有產生過。以 JSON 產生第一份後，下列欄位會填入實際數值。
-        </template>
-        <template v-else>
-          數值取自
-          <router-link
-            :to="`/reports/${latest.id}`"
-            class="sh-src"
-          >
-            {{ latest.title }}
-          </router-link>
-          <span class="sh-ago"> ・ {{ ago }}</span>
-        </template>
-      </p>
-      <div class="sh-side">
-        <slot name="side" />
       </div>
+      <p class="sh-period">
+        <span>統計期間</span>
+        <b>{{ periodText }}</b>
+      </p>
+    </header>
+
+    <dl class="sh-kpis">
+      <div
+        v-for="kpi in kpis"
+        :key="kpi.label"
+        class="sh-kpi"
+      >
+        <dt>
+          <i
+            v-if="kpi.tone"
+            class="sh-dot"
+            :class="kpi.tone"
+          />{{ kpi.label }}
+        </dt>
+        <dd>
+          <b>{{ kpi.value === null ? '—' : kpi.value.toLocaleString('en-US') }}</b>
+          <small v-if="kpi.note">{{ kpi.note }}</small>
+        </dd>
+      </div>
+    </dl>
+
+    <div
+      v-if="split.length"
+      class="sh-compose"
+    >
+      <span
+        class="sh-split-bar"
+        aria-hidden="true"
+      >
+        <i
+          v-for="part in split"
+          :key="part.label"
+          :class="part.tone"
+          :style="{ flexGrow: part.value }"
+        />
+      </span>
+      <p>{{ total.toLocaleString('en-US') }} 個對話依狀態分段，整條為 100%</p>
     </div>
 
-    <ol class="sh-spine">
-      <li
-        v-for="(row, index) in rows"
-        :key="row.label"
-        class="sh-row"
-      >
-        <span
-          class="sh-node"
-          aria-hidden="true"
-        >{{ index + 1 }}</span>
-        <div class="sh-body">
-          <div class="sh-head">
-            <span class="sh-text">
-              <b><i
-                v-if="row.stat?.tone"
-                class="sh-dot"
-                :class="row.stat.tone"
-              />{{ row.label }}</b>
-              <span>{{ row.hint }}</span>
-            </span>
-            <span
-              v-if="row.stat"
-              class="sh-stat"
-            >
-              <b>{{ row.stat.value === null ? '—' : row.stat.value.toLocaleString('en-US') }}</b>
-              <small v-if="row.stat.share">佔 {{ row.stat.share }}</small>
-            </span>
-            <span
-              v-else-if="row.text"
-              class="sh-when"
-            >{{ row.text }}</span>
-          </div>
-
-          <ul
-            v-if="row.bars?.length"
-            class="sh-bars"
+    <table class="sh-table">
+      <caption class="sh-cap">
+        {{ tableTitle }}
+      </caption>
+      <thead>
+        <tr>
+          <th scope="col">
+            {{ headLabel }}
+          </th>
+          <th
+            scope="col"
+            class="sh-col-bar"
           >
-            <li
-              v-for="bar in row.bars"
-              :key="bar.name"
-            >
-              <span class="sh-bar-name">{{ bar.name }}</span>
-              <span
-                class="sh-meter"
-                aria-hidden="true"
-              ><i :style="{ width: bar.width }" /></span>
-              <span class="sh-bar-n">{{ bar.value.toLocaleString('en-US') }}</span>
-            </li>
-          </ul>
-
-          <div
-            v-if="row.split?.length"
-            class="sh-split"
+            {{ barLabel }}
+          </th>
+          <th
+            scope="col"
+            class="sh-col-n"
           >
+            {{ countLabel }}
+          </th>
+        </tr>
+      </thead>
+      <tbody v-if="tableRows.length">
+        <tr
+          v-for="row in tableRows"
+          :key="row.name"
+        >
+          <th scope="row">
+            <i
+              v-if="row.tone"
+              class="sh-dot"
+              :class="row.tone"
+            />{{ row.name }}
+          </th>
+          <td class="sh-col-bar">
             <span
-              class="sh-split-bar"
+              class="sh-meter"
               aria-hidden="true"
-            >
-              <i
-                v-for="part in row.split"
-                :key="part.label"
-                :class="part.tone"
-                :style="{ flexGrow: part.value }"
-              />
-            </span>
-            <ul>
-              <li
-                v-for="part in row.split"
-                :key="part.label"
-              >
-                <i
-                  class="sh-dot"
-                  :class="part.tone"
-                />{{ part.label }}
-                <b>{{ part.value.toLocaleString('en-US') }}</b>
-              </li>
-            </ul>
-          </div>
-
-          <span
-            v-if="row.skeleton"
-            class="sh-skel"
-            aria-hidden="true"
-          ><i /><i /><i /></span>
-        </div>
-      </li>
-    </ol>
+            ><i
+              :class="row.tone"
+              :style="{ width: row.width }"
+            /></span>
+          </td>
+          <td class="sh-col-n">
+            <b>{{ row.value.toLocaleString('en-US') }}</b>
+            <small v-if="row.share">{{ row.share }}</small>
+          </td>
+        </tr>
+      </tbody>
+      <tbody
+        v-else
+        aria-hidden="true"
+      >
+        <tr
+          v-for="n in 4"
+          :key="n"
+          class="sh-skel"
+        >
+          <th scope="row">
+            <i />
+          </th>
+          <td class="sh-col-bar">
+            <i />
+          </td>
+          <td class="sh-col-n">
+            <i />
+          </td>
+        </tr>
+      </tbody>
+      <tfoot v-if="foot">
+        <tr>
+          <th
+            scope="row"
+            colspan="2"
+          >
+            {{ foot.label }}
+          </th>
+          <td class="sh-col-n">
+            <b>{{ foot.value }}</b>
+          </td>
+        </tr>
+      </tfoot>
+    </table>
   </article>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { ReportTemplate } from '@/types/reports'
-import { REPORT_CONTENTS, formatEstimatedTime } from './templateHelpers'
-import { isRecord, num, relativeTime, type LatestReport } from './latestReport'
+import { isRecord, num, type LatestReport } from './latestReport'
 
 const props = defineProps<{ template: ReportTemplate; state: LatestReport | null; loading: boolean }>()
 
 type Tone = 'blue' | 'green' | 'grey'
-interface Row {
-  label: string
-  hint: string
-  stat?: { value: number | null; share?: string; tone?: Tone }
-  text?: string
-  bars?: Array<{ name: string; value: number; width: string }>
-  split?: Array<{ label: string; value: number; tone: Tone; plain?: boolean }>
-  skeleton?: boolean
-}
-
-const latest = computed(() => props.state?.report ?? null)
-const failed = computed(() => !!props.state?.failed)
-const ago = computed(() => (latest.value ? relativeTime(latest.value.completedAt ?? latest.value.createdAt) : ''))
-
-const docProps = computed(() => {
-  const list = [{ k: '時間範圍', v: '近 30 天' }, { k: '輸出格式', v: 'JSON' }]
-  const seconds = props.template.estimatedTime
-  if (seconds) { list.push({ k: '預估耗時', v: `約 ${formatEstimatedTime(seconds)}` }) }
-  return list
-})
+interface Kpi { label: string; value: number | null; note?: string; tone?: Tone }
+interface TableRow { name: string; value: number; width: string; share?: string; tone?: Tone }
 
 const data = computed<Record<string, unknown>>(() => {
   const raw = props.state?.content?.data
   return isRecord(raw) ? raw : {}
 })
-const hasData = computed(() => !!latest.value && !!props.state?.content)
+const live = computed(() => !!props.state?.report && !!props.state?.content)
 
 const dateFmt = new Intl.DateTimeFormat('zh-TW', { timeZone: 'Asia/Taipei', month: 'numeric', day: 'numeric' })
-const period = computed(() => {
+const periodText = computed(() => {
   const p = data.value.period
-  if (!isRecord(p) || typeof p.startDate !== 'string' || typeof p.endDate !== 'string') { return '' }
-  const a = new Date(p.startDate)
-  const b = new Date(p.endDate)
-  if (Number.isNaN(a.getTime()) || Number.isNaN(b.getTime())) { return '' }
-  return `${dateFmt.format(a)} – ${dateFmt.format(b)}`
+  if (isRecord(p) && typeof p.startDate === 'string' && typeof p.endDate === 'string') {
+    const a = new Date(p.startDate)
+    const b = new Date(p.endDate)
+    if (!Number.isNaN(a.getTime()) && !Number.isNaN(b.getTime())) { return `${dateFmt.format(a)} – ${dateFmt.format(b)}` }
+  }
+  return '近 30 天'
 })
 
 const pct = (part: number, total: number): string => (total > 0 ? `${Math.round((part / total) * 100)}%` : '')
-const width = (value: number, max: number): string => `${Math.max(4, Math.round((value / max) * 100))}%`
+const barWidth = (value: number, max: number): string => (value <= 0 ? '0%' : `${Math.max(3, Math.round((value / max) * 100))}%`)
 
-/** One entry per REPORT_CONTENTS item, in order; the value kind is decided by the template's type and the entry's position.
-    Only the two templates the backend can generate are drawn; any other type falls back to its plain outline. */
-const rows = computed<Row[]>(() => {
-  const items = REPORT_CONTENTS[props.template.type] ?? []
-  const d = data.value
-  const live = hasData.value
-  const periodText = period.value || '近 30 天（預設）'
+const isAgents = computed(() => props.template.type === 'agent_performance')
 
-  if (props.template.type === 'conversation_summary') {
-    const total = num(d.totalConversations)
-    const active = num(d.activeConversations)
-    const done = num(d.completedConversations)
-    const rest = total - active - done
-    const parts: NonNullable<Row['split']> = [
-      { label: '進行中', value: active, tone: 'blue', plain: true },
-      { label: '已結案', value: done, tone: 'green', plain: true },
-      { label: '其他', value: rest, tone: 'grey' }
+const total = computed(() => num(data.value.totalConversations))
+const split = computed<Array<{ label: string; value: number; tone: Tone }>>(() => {
+  if (isAgents.value || !live.value) { return [] }
+  const active = num(data.value.activeConversations)
+  const done = num(data.value.completedConversations)
+  const rest = Math.max(0, total.value - active - done)
+  const parts: Array<{ label: string; value: number; tone: Tone }> = [
+    { label: '進行中', value: active, tone: 'blue' },
+    { label: '已結案', value: done, tone: 'green' },
+    { label: '其他', value: rest, tone: 'grey' }
+  ]
+  return parts.filter(part => part.value > 0)
+})
+
+const agents = computed(() => (Array.isArray(data.value.agentMetrics) ? data.value.agentMetrics.filter(isRecord) : []).map(m => ({
+  name: typeof m.agentName === 'string' && m.agentName ? m.agentName : '未命名客服',
+  value: num(m.messagesHandled)
+})))
+const agentSum = computed(() => agents.value.reduce((sum, a) => sum + a.value, 0))
+
+const kpis = computed<Kpi[]>(() => {
+  const on = live.value
+  if (isAgents.value) {
+    const count = num(data.value.totalAgents) || agents.value.length
+    return [
+      { label: '客服人數', value: on ? count : null },
+      { label: '訊息總數', value: on ? agentSum.value : null },
+      { label: '平均每人', value: on && count > 0 ? Math.round(agentSum.value / count) : null }
     ]
-    const stat = (value: number, tone?: Tone): Row['stat'] => ({ value: live ? value : null, share: live && tone ? pct(value, total) : '', tone })
-    return items.map((item, i): Row => {
-      if (i === 0) { return { ...item, stat: stat(total), ...(live ? { split: parts.filter(part => part.value > 0) } : {}) } }
-      if (i === 1) { return { ...item, stat: stat(active, 'blue') } }
-      if (i === 2) { return { ...item, stat: stat(done, 'green') } }
-      return { ...item, text: periodText }
-    })
   }
+  const active = num(data.value.activeConversations)
+  const done = num(data.value.completedConversations)
+  return [
+    { label: '對話總數', value: on ? total.value : null },
+    { label: '進行中', value: on ? active : null, note: on ? `佔 ${pct(active, total.value)}` : '', tone: 'blue' },
+    { label: '已結案', value: on ? done : null, note: on ? `佔 ${pct(done, total.value)}` : '', tone: 'green' }
+  ]
+})
 
-  if (props.template.type === 'agent_performance') {
-    const agents = (Array.isArray(d.agentMetrics) ? d.agentMetrics.filter(isRecord) : []).map(m => ({
-      name: typeof m.agentName === 'string' && m.agentName ? m.agentName : '未命名客服',
-      value: num(m.messagesHandled)
-    }))
-    const max = Math.max(1, ...agents.map(a => a.value))
-    return items.map((item, i): Row => {
-      if (i === 0) { return { ...item, stat: { value: live ? num(d.totalAgents) : null } } }
-      if (i === 1) {
-        return live
-          ? { ...item, bars: agents.slice(0, 6).map(a => ({ ...a, width: width(a.value, max) })) }
-          : { ...item, skeleton: true }
-      }
-      if (i === 2) { return { ...item, text: live ? `共 ${agents.length} 列` : '—' } }
-      return { ...item, text: periodText }
-    })
+const tableTitle = computed(() => (isAgents.value ? '各客服訊息數' : '對話狀態分布'))
+const headLabel = computed(() => (isAgents.value ? '客服' : '狀態'))
+const barLabel = computed(() => (isAgents.value ? '相對訊息量（最高者為滿格）' : '佔對話總數（滿格為 100%）'))
+const countLabel = computed(() => (isAgents.value ? '訊息數' : '對話數'))
+
+const SHOWN_AGENTS = 6
+const tableRows = computed<TableRow[]>(() => {
+  if (!live.value) { return [] }
+  if (isAgents.value) {
+    const max = Math.max(1, ...agents.value.map(a => a.value))
+    return agents.value.slice(0, SHOWN_AGENTS).map(a => ({ ...a, width: barWidth(a.value, max) }))
   }
+  const active = num(data.value.activeConversations)
+  const done = num(data.value.completedConversations)
+  const parts: Array<{ name: string; value: number; tone: Tone }> = [
+    { name: '進行中', value: active, tone: 'blue' },
+    { name: '已結案', value: done, tone: 'green' },
+    { name: '其他', value: Math.max(0, total.value - active - done), tone: 'grey' }
+  ]
+  return parts.map(part => ({ ...part, width: barWidth(part.value, total.value), share: pct(part.value, total.value) }))
+})
 
-  return items.map((item): Row => ({ ...item }))
+const foot = computed(() => {
+  if (!live.value) { return null }
+  if (isAgents.value) {
+    const more = agents.value.length - SHOWN_AGENTS
+    return { label: more > 0 ? `另有 ${more} 位未列出` : `共 ${agents.value.length} 位`, value: agentSum.value.toLocaleString('en-US') }
+  }
+  return { label: '合計', value: total.value.toLocaleString('en-US') }
 })
 </script>
 
 <style scoped>
 .sheet {
-  display: grid;
-  grid-template-columns: 340px minmax(0, 1fr);
-  min-height: 520px;
-  overflow: hidden;
-}
-
-/* the document's left margin: title, properties, source and the actions; the outline reads on the right */
-.sh-pane {
   display: flex;
   flex-direction: column;
-  background: var(--ui-surface-2);
-  box-shadow: inset -0.5px 0 0 var(--ui-sep);
-}
-
-.sh-side {
-  display: grid;
-  gap: 16px;
-  margin-top: auto;
-  padding: 20px 28px 28px;
-}
-
-.sh-side:empty {
-  display: none;
+  padding: 28px 32px 24px;
 }
 
 .sh-mast {
+  display: flex;
+  gap: 16px;
+  align-items: flex-end;
+  justify-content: space-between;
+}
+
+.sh-title {
   display: grid;
   gap: 6px;
-  padding: 28px 28px 16px;
 }
 
 .sh-kind {
@@ -291,152 +284,186 @@ const rows = computed<Row[]>(() => {
   letter-spacing: -0.03em;
 }
 
-.sh-props {
-  display: grid;
-  gap: 4px;
-  margin: 6px 0 0;
-}
-
-.sh-props div {
-  display: flex;
-  gap: 8px;
-  align-items: baseline;
-}
-
-.sh-props dt {
-  font-size: 14px;
-  color: var(--ui-muted);
-}
-
-.sh-props dd {
-  margin: 0;
-  font-size: 14px;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-}
-
-.sh-note {
-  margin: 0;
-  padding: 0 28px;
-  font-size: 14px;
-  color: var(--ui-ink-2);
-}
-
-.sh-note.is-warn {
-  color: var(--ui-red-ink);
-}
-
-.sh-src {
-  font-weight: 600;
-  color: var(--ui-accent);
-  text-decoration: none;
-  overflow-wrap: anywhere;
-}
-
-.sh-src:hover {
-  text-decoration: underline;
-}
-
-.sh-ago {
-  color: var(--ui-muted);
-}
-
-.sh-spine {
-  display: grid;
-  margin: 0;
-  align-content: start;
-  padding: 20px 36px 24px;
-  list-style: none;
-}
-
-.sh-row {
-  position: relative;
-  display: grid;
-  grid-template-columns: 28px minmax(0, 1fr);
-  gap: 16px;
-  padding: 20px 0;
-}
-
-/* the spine: a hairline joining the numbered nodes */
-.sh-row:not(:last-child)::before {
-  position: absolute;
-  top: 52px;
-  bottom: -20px;
-  left: 13.5px;
-  width: 1.5px;
-  background: var(--ui-fill-strong);
-  content: '';
-}
-
-.sh-node {
-  display: grid;
-  width: 28px;
-  height: 28px;
-  place-items: center;
-  border-radius: 50%;
-  background: var(--section-hue-soft);
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--section-ink);
-  font-variant-numeric: tabular-nums;
-}
-
-.sh-body {
-  display: grid;
-  gap: 10px;
-  min-width: 0;
-}
-
-.sh-head {
-  display: flex;
-  gap: 16px;
-  align-items: baseline;
-  justify-content: space-between;
-}
-
-.sh-text {
+.sh-period {
   display: grid;
   gap: 2px;
-  min-width: 0;
-}
-
-.sh-text b {
-  font: 600 16px / 1.3 var(--ui-font-display);
-}
-
-.sh-text span {
-  font-size: 14px;
-  color: var(--ui-ink-2);
-}
-
-.sh-stat {
-  display: flex;
-  flex: none;
-  gap: 10px;
-  align-items: baseline;
-}
-
-.sh-stat b {
-  font: 700 28px / 1.1 var(--ui-font-display);
-  letter-spacing: -0.02em;
-  font-variant-numeric: tabular-nums;
-}
-
-.sh-stat small {
+  margin: 0;
+  text-align: right;
   font-size: 13px;
   color: var(--ui-muted);
 }
 
-.sh-when {
-  flex: none;
+.sh-period b {
   font-size: 16px;
   font-weight: 600;
+  color: var(--ui-ink);
   font-variant-numeric: tabular-nums;
+}
+
+.sh-kpis {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: 24px 0 0;
+  border-radius: var(--ui-r-inner);
+  background: var(--ui-surface-2);
+}
+
+.sh-kpi {
+  display: grid;
+  gap: 4px;
+  padding: 18px 20px;
+}
+
+.sh-kpi + .sh-kpi {
+  box-shadow: inset 0.5px 0 0 var(--ui-sep);
+}
+
+.sh-kpi dt {
+  font-size: 14px;
+  color: var(--ui-ink-2);
+}
+
+.sh-kpi dd {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  margin: 0;
+}
+
+.sh-kpi b {
+  font: 700 36px / 1.1 var(--ui-font-display);
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.sh-kpi small {
+  font-size: 13px;
+  color: var(--ui-muted);
+}
+
+.sh-compose {
+  display: grid;
+  gap: 8px;
+  margin-top: 20px;
+}
+
+.sh-compose p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--ui-muted);
+}
+
+.sh-split-bar {
+  display: flex;
+  gap: 3px;
+  height: 14px;
+  overflow: hidden;
+  border-radius: 999px;
+}
+
+.sh-split-bar i {
+  flex-basis: 0;
+  min-width: 6px;
+  background: var(--ui-blue);
+}
+
+.sh-split-bar i.green,
+.sh-dot.green,
+.sh-meter i.green {
+  background: var(--ui-green);
+}
+
+.sh-split-bar i.grey,
+.sh-dot.grey,
+.sh-meter i.grey {
+  background: var(--ui-fill-strong);
+}
+
+.sh-dot.blue {
+  background: var(--ui-blue);
+}
+
+.sh-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: 8px;
+  border-radius: 50%;
+}
+
+.sh-table {
+  flex: 1;
+  width: 100%;
+  margin-top: 28px;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.sh-cap {
+  padding-bottom: 6px;
+  text-align: left;
+  font: 600 16px / 1.3 var(--ui-font-display);
+  color: var(--ui-ink);
+}
+
+.sh-table thead th {
+  padding: 8px 0;
+  text-align: left;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ui-muted);
+  border-bottom: 1px solid var(--ui-sep);
+}
+
+.sh-table thead .sh-col-n {
+  text-align: right;
+}
+
+.sh-table tbody th,
+.sh-table tbody td {
+  padding: 14px 0;
+  vertical-align: middle;
+  border-bottom: 1px solid var(--ui-sep);
+}
+
+.sh-table tbody th {
+  width: 112px;
+  overflow: hidden;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.sh-table .sh-col-bar {
+  padding-right: 20px;
+  padding-left: 20px;
+}
+
+.sh-col-n {
+  width: 112px;
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.sh-col-n b {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.sh-col-n small {
+  display: inline-block;
+  min-width: 40px;
+  margin-left: 8px;
+  font-size: 13px;
+  color: var(--ui-muted);
 }
 
 .sh-meter {
   display: block;
-  height: 8px;
+  height: 10px;
   overflow: hidden;
   border-radius: 999px;
   background: var(--ui-fill);
@@ -449,173 +476,137 @@ const rows = computed<Row[]>(() => {
   background: var(--ui-blue);
 }
 
-.sh-bars {
-  display: grid;
-  gap: 8px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.sh-bars li {
-  display: grid;
-  grid-template-columns: 76px minmax(0, 1fr) 56px;
-  gap: 12px;
-  align-items: center;
+.sh-table tfoot th,
+.sh-table tfoot td {
+  padding: 14px 0 0;
+  text-align: left;
   font-size: 14px;
-}
-
-.sh-bar-name {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  font-weight: 500;
   color: var(--ui-ink-2);
 }
 
-.sh-bar-n {
+.sh-table tfoot td {
   text-align: right;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-}
-
-.sh-split {
-  display: grid;
-  gap: 10px;
-}
-
-.sh-split-bar {
-  display: flex;
-  gap: 3px;
-  height: 8px;
-  overflow: hidden;
-  border-radius: 999px;
-}
-
-.sh-split-bar i {
-  flex-basis: 0;
-  min-width: 6px;
-  background: var(--ui-blue);
-}
-
-.sh-split-bar i.green,
-.sh-dot.green {
-  background: var(--ui-green);
-}
-
-.sh-split-bar i.grey,
-.sh-dot.grey {
-  background: var(--ui-fill-strong);
-}
-
-.sh-dot.blue {
-  background: var(--ui-blue);
-}
-
-.sh-split ul {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 24px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  font-size: 14px;
-  color: var(--ui-ink-2);
-}
-
-.sh-split b {
-  margin-left: 6px;
-  color: var(--ui-ink);
-  font-variant-numeric: tabular-nums;
-}
-
-.sh-dot {
-  display: inline-block;
-  width: 10px;
-  height: 10px;
-  margin-right: 8px;
-  border-radius: 50%;
-}
-
-.sh-skel {
-  display: grid;
-  gap: 8px;
 }
 
 .sh-skel i {
   display: block;
-  height: 8px;
+  height: 10px;
   border-radius: 999px;
   background: var(--ui-fill);
 }
 
-.sh-skel i:nth-child(1) {
-  width: 92%;
+.sh-skel th i {
+  width: 64px;
 }
 
-.sh-skel i:nth-child(2) {
-  width: 64%;
-}
-
-.sh-skel i:nth-child(3) {
-  width: 38%;
+.sh-skel .sh-col-n i {
+  width: 40px;
+  margin-left: auto;
 }
 
 @media (max-width: 1024px) {
   .sheet {
-    min-height: 0;
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .sh-pane {
-    box-shadow: 0 0.5px 0 var(--ui-sep);
+    padding: 24px 24px 20px;
   }
 }
 
 @media (max-width: 768px) {
-  .sh-pane {
-    display: contents;
+  .sheet {
+    padding: 20px 18px 16px;
   }
 
   .sh-mast {
-    padding: 22px 20px 12px;
-    background: var(--ui-surface-2);
-  }
-
-  .sh-side {
-    order: 3;
-    padding: 4px 20px 20px;
-  }
-
-  .sh-text span {
-    display: none;
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
   }
 
   .sh-name {
     font-size: 26px;
   }
 
-  .sh-note {
-    padding: 0 20px 12px;
-    background: var(--ui-surface-2);
+  .sh-period {
+    display: flex;
+    gap: 8px;
+    align-items: baseline;
+    text-align: left;
   }
 
-  .sh-spine {
-    padding: 8px 20px 18px;
+  .sh-period b {
+    font-size: 15px;
   }
 
-  .sh-row {
-    gap: 12px;
+  .sh-kpis {
+    margin-top: 16px;
+  }
+
+  .sh-kpi {
+    padding: 12px;
+  }
+
+  .sh-kpi dt {
+    font-size: 13px;
+  }
+
+  .sh-kpi dd {
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .sh-kpi b {
+    font-size: 26px;
+  }
+
+  .sh-table {
+    margin-top: 20px;
+  }
+
+  /* the bar drops under the name so neither is truncated: name + count on one line, bar beneath */
+  .sh-cap {
+    display: block;
+    width: 100%;
+  }
+
+  .sh-table thead {
+    display: none;
+  }
+
+  .sh-table,
+  .sh-table tbody,
+  .sh-table tfoot {
+    display: block;
+  }
+
+  .sh-table tbody tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px 12px;
     padding: 12px 0;
+    box-shadow: 0 0.5px 0 var(--ui-sep);
   }
 
-  .sh-row:not(:last-child)::before {
-    top: 40px;
-    bottom: -12px;
+  .sh-table tbody th,
+  .sh-table tbody td {
+    width: auto;
+    padding: 0;
+    border: 0;
   }
 
-  .sh-bars li {
-    grid-template-columns: 64px minmax(0, 1fr) 48px;
-    gap: 10px;
+  .sh-table tbody .sh-col-bar {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    padding: 0;
+  }
+
+  .sh-table tfoot tr {
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .sh-table tfoot th,
+  .sh-table tfoot td {
+    width: auto;
   }
 }
 </style>
