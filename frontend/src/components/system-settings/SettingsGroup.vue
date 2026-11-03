@@ -9,12 +9,15 @@
     class="settings-group"
     :class="{ 'is-danger': danger }"
   >
-    <h2
+    <div
       v-if="title"
-      class="group-title"
+      class="group-head"
     >
-      {{ title }}
-    </h2>
+      <h2 class="group-title">
+        {{ title }}
+      </h2>
+      <slot name="action" />
+    </div>
     <article class="ui-card">
       <slot />
     </article>
@@ -36,6 +39,21 @@ defineProps<{
 </script>
 
 <style scoped>
+.group-head {
+  display: flex;
+  gap: 12px;
+  align-items: baseline;
+  justify-content: space-between;
+  padding-right: 6px;
+}
+
+.group-head :deep(a) {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ui-accent);
+  text-decoration: none;
+}
+
 .group-title {
   margin: 0;
   padding: 0 6px 8px 16px;
