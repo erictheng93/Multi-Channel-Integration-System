@@ -560,7 +560,7 @@ const getRoleText = (role: string) => {
 .m-role {
   display: none;
   margin-left: 8px;
-  font-size: 12.5px;
+  font-size: 13px;
   font-weight: 600;
   vertical-align: 1px;
 }
