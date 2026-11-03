@@ -187,6 +187,43 @@
           v-if="isAuthenticated"
           class="nf-find"
         >
+          <div
+            v-if="recents.length > 0 && query.trim() === ''"
+            class="recent"
+          >
+            <h2 class="find-label">
+              最近造訪
+            </h2>
+            <ul class="recent-list">
+              <li
+                v-for="page in recents"
+                :key="page.path"
+              >
+                <router-link
+                  :to="page.path"
+                  class="find-item"
+                >
+                  <span
+                    class="find-ico"
+                    aria-hidden="true"
+                  >
+                    <component :is="page.icon" />
+                  </span>
+                  <span class="find-name">{{ page.label }}</span>
+                  <svg
+                    class="ico recent-go"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2.2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    aria-hidden="true"
+                  ><path d="m9 6 6 6-6 6" /></svg>
+                </router-link>
+              </li>
+            </ul>
+          </div>
           <label
             class="find-label"
             for="nf-search"
@@ -256,6 +293,7 @@ import { useAuthStore } from '@/stores/auth'
 import { NAV_SECTIONS, sectionForPath, type SectionId } from '@/config/nav-sections'
 import { NAV_ICONS } from '@/config/nav-icons'
 import { SECTION_NAV } from '@/config/section-nav'
+import { readRecentPaths } from '@/utils/recent-pages'
 
 interface Page {
   path: string
@@ -359,6 +397,19 @@ const guess = computed(() => {
 
 // ---- the finder ----
 const query = ref('')
+
+// The last pages this browser opened: each resolves to the closest known page (a conversation counts as 對話), up to three
+const recents = computed(() => {
+  const out: Page[] = []
+  for (const raw of readRecentPaths()) {
+    const hit = allowed.value
+      .filter(p => raw === p.path || raw.startsWith(`${p.path}/`))
+      .sort((a, b) => b.path.length - a.path.length)[0]
+    if (hit && !out.some(o => o.path === hit.path) && hit.path !== route.path) { out.push(hit) }
+    if (out.length === 3) { break }
+  }
+  return out
+})
 
 // A 404 is not a second sidebar: the six pages people open most are offered, the rest are one tap or one word away
 const FIRST_PAGES = ['/dashboard', '/conversations', '/notifications', '/tags', '/broadcasts', '/reports']
@@ -467,7 +518,8 @@ const goBack = () => {
   gap: 8px;
   min-width: 0;
   padding: 28px 24px 24px;
-  background: var(--ui-surface-2);
+  background: var(--ui-surface);
+  box-shadow: inset 0 0.5px 0 var(--ui-sep);
 }
 
 @media (min-width: 1025px) {
@@ -482,6 +534,7 @@ const goBack = () => {
   .nf-find {
     justify-content: center;
     padding: 36px 32px 32px;
+    box-shadow: inset 0.5px 0 0 var(--ui-sep);
   }
 }
 
@@ -726,7 +779,7 @@ const goBack = () => {
   min-height: 46px;
   padding: 6px 12px 6px 8px;
   border-radius: 14px;
-  background: var(--ui-surface);
+  background: var(--ui-surface-2);
   color: var(--ui-ink);
   text-decoration: none;
   transition: box-shadow var(--ui-dur) var(--ui-ease);
@@ -748,7 +801,7 @@ const goBack = () => {
   width: 32px;
   height: 32px;
   border-radius: 10px;
-  background: color-mix(in srgb, var(--tone) 14%, var(--ui-surface));
+  background: color-mix(in srgb, var(--tone) 14%, var(--ui-surface-2));
   color: color-mix(in srgb, var(--tone) 78%, #000);
 }
 
@@ -764,6 +817,26 @@ const goBack = () => {
   font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.recent {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.recent-list {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.recent-go {
+  flex: none;
+  margin-left: auto;
+  color: var(--ui-ink-2);
 }
 
 /* one calm hue for every destination: colour is not information here */
@@ -803,12 +876,13 @@ const goBack = () => {
 }
 
 @media (min-width: 1025px) {
+  /* the card is the page: it fills the viewport, so there is no void above and below it */
   .nf:not(.is-solo) {
-    min-height: 560px;
+    min-height: calc(100dvh - var(--ui-topbar-h) - 2 * var(--ui-gutter));
   }
 
   .nf:not(.is-solo) .code {
-    font-size: 144px;
+    font-size: 176px;
   }
 
   .nf:not(.is-solo) .nf-title {
