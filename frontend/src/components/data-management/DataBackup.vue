@@ -251,6 +251,7 @@
           <div class="ui-group cal-card">
             <p class="cal-sum">
               <b>{{ coverageDays.have }}</b><span> / {{ coverageDays.total }} 天有備份</span>
+              <span class="cal-since">{{ calRange }}</span>
               <span
                 v-if="coverageDays.before > 0"
                 class="cal-since"
@@ -296,6 +297,30 @@
             </p>
           </div>
         </details>
+
+        <!-- The newest file of every kind: the answer to "is each kind of backup still running" -->
+        <section
+          v-if="latestByTier.length > 0"
+          class="latest"
+          aria-label="各類最新備份"
+        >
+          <h2 class="ui-group-label">
+            各類最新備份
+          </h2>
+          <ul class="ui-group latest-card">
+            <li
+              v-for="row in latestByTier"
+              :key="row.tier"
+            >
+              <span
+                class="ui-pill"
+                :class="tierPill(row.tier)"
+              >{{ tierLabel(row.tier) }}</span>
+              <span class="lt-when">{{ formatDate(row.uploaded) }}</span>
+              <span class="lt-size">{{ formatBytes(row.size) }}</span>
+            </li>
+          </ul>
+        </section>
       </div>
     </div>
   </div>
@@ -420,6 +445,22 @@ const tierChips = computed(() => {
   ]
 })
 
+const calRange = computed(() => {
+  const first = strip.value[0]
+  const last = strip.value[strip.value.length - 1]
+  const md = (key: string) => `${Number(key.slice(5, 7))}/${Number(key.slice(8, 10))}`
+  return first && last ? `${md(first.key)} 至 ${md(last.key)}` : ''
+})
+
+/** Newest file per kind of backup (the list arrives newest first) */
+const latestByTier = computed(() => {
+  const seen = new Map<string, BackupItem>()
+  for (const item of data.value?.items ?? []) {
+    if (!seen.has(item.tier)) { seen.set(item.tier, item) }
+  }
+  return [...seen.values()].sort((a, b) => tierRank(a.tier) - tierRank(b.tier))
+})
+
 const visibleItems = computed(() => {
   const items = data.value?.items ?? []
   const filtered = tierFilter.value === 'all' ? items : items.filter(item => item.tier === tierFilter.value)
@@ -526,7 +567,7 @@ const strip = computed<StripCell[]>(() => {
       today: i === 0,
       before: !entry && firstDay !== '' && key < firstDay,
       col: dow,
-      label: i === span - 1 || Number(key.slice(8, 10)) === 1 ? `${Number(key.slice(5, 7))}/${Number(key.slice(8, 10))}` : String(Number(key.slice(8, 10))),
+      label: String(Number(key.slice(8, 10))),
       aria: entry ? `${dayLabel(d)} ${dayDate(d)}，${count} 份，${formatBytes(size)}` : (!entry && firstDay !== '' && key < firstDay ? `${dayDate(d)}，備份尚未啟用` : `${dayDate(d)}，沒有備份`)
     })
   }
@@ -1013,6 +1054,33 @@ onMounted(load)
   background: var(--ui-surface-2);
 }
 
+.latest-card {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 8px 18px 12px;
+  list-style: none;
+}
+
+.latest-card li {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 7px 0;
+  font-size: 14px;
+}
+
+.lt-when {
+  color: var(--ui-ink-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.lt-size {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
 /* Sticky calendar */
 .side-col {
   position: sticky;
@@ -1074,8 +1142,8 @@ onMounted(load)
 
 .brow-file {
   overflow: hidden;
-  font: 12px / 1.4 var(--ui-font-mono);
-  color: var(--ui-muted);
+  font: 13px / 1.4 var(--ui-font-mono);
+  color: var(--ui-ink-2);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -1127,6 +1195,16 @@ onMounted(load)
 }
 
 @media (max-width: 768px) {
+  /* the file list below already shows each kind's newest file */
+  .latest {
+    display: none;
+  }
+
+  .brow-file {
+    overflow-wrap: anywhere;
+    white-space: normal;
+  }
+
   .lead-act .btn {
     width: 100%;
     justify-content: center;
