@@ -55,9 +55,9 @@
 }
 
 .message-outgoing .sticker-rendered-content :deep(.sticker-fallback) {
-  background: color-mix(in srgb, var(--ui-ink) 6%, transparent);
-  border-color: var(--ui-ink-2);
-  color: var(--ui-ink-2);
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.4);
+  color: rgba(255, 255, 255, 0.9);
 }
 
 .sticker-image-container {
@@ -91,8 +91,8 @@
 }
 
 .message-outgoing .sticker-placeholder {
-  background: color-mix(in srgb, var(--ui-ink) 6%, transparent);
-  border-color: var(--ui-ink-2);
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.4);
 }
 
 .sticker-icon {
@@ -107,7 +107,7 @@
 }
 
 .message-outgoing .sticker-text {
-  color: var(--ui-ink-2);
+  color: rgba(255, 255, 255, 0.9);
 }
 
 .sticker-info {
@@ -119,7 +119,7 @@
 }
 
 .message-outgoing .sticker-info {
-  color: var(--ui-ink-2);
+  color: rgba(255, 255, 255, 0.7);
 }
 
 /* Enhanced Sticker Loading States */
@@ -175,22 +175,22 @@
 }
 
 .message-outgoing .loading-text {
-  color: var(--ui-ink-2);
+  color: rgba(255, 255, 255, 0.8);
 }
 
 .message-outgoing .sticker-skeleton {
   background: linear-gradient(
     90deg,
-    color-mix(in srgb, var(--ui-ink) 8%, transparent) 25%,
-    color-mix(in srgb, var(--ui-ink) 8%, transparent) 50%,
-    color-mix(in srgb, var(--ui-ink) 8%, transparent) 75%
+    rgba(255, 255, 255, 0.2) 25%,
+    rgba(255, 255, 255, 0.1) 50%,
+    rgba(255, 255, 255, 0.2) 75%
   );
   background-size: 200% 100%;
 }
 
 .message-outgoing .spinner-ring {
-  border-color: var(--ui-ink-2);
-  border-top-color: var(--ui-ink-2);
+  border-color: rgba(255, 255, 255, 0.3);
+  border-top-color: rgba(255, 255, 255, 0.8);
 }
 
 /* Enhanced Sticker Placeholder */
@@ -227,12 +227,12 @@
 }
 
 .message-outgoing .sticker-placeholder.enhanced {
-  background: color-mix(in srgb, var(--ui-ink) 6%, transparent);
-  border-color: var(--ui-ink-2);
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.3);
 }
 
 .message-outgoing .sticker-error-hint {
-  color: var(--ui-ink-2);
+  color: rgba(255, 255, 255, 0.6);
 }
 
 /* CDN Fallback Indicator */
@@ -280,15 +280,15 @@
 }
 
 .message-outgoing .sticker-info.enhanced {
-  background: color-mix(in srgb, var(--ui-ink) 6%, transparent);
+  background: rgba(255, 255, 255, 0.15);
 }
 
 .message-outgoing .sticker-id-info {
-  color: var(--ui-ink-2);
+  color: rgba(255, 255, 255, 0.8);
 }
 
 .message-outgoing .cdn-info {
-  color: var(--ui-ink-2);
+  color: rgba(255, 255, 255, 0.9);
 }
 
 /* Responsive Adjustments */
