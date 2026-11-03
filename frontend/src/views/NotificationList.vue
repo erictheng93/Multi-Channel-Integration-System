@@ -281,7 +281,7 @@ onUnmounted(() => {
 .lead-fig {
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
+  justify-content: center;
   gap: 14px;
 }
 
@@ -293,7 +293,7 @@ onUnmounted(() => {
 }
 
 .lead-num {
-  margin: 2px 0 auto;
+  margin: 0;
   font: 600 56px / 1 var(--ui-font-display);
   letter-spacing: -0.03em;
   font-variant-numeric: tabular-nums;
