@@ -144,7 +144,7 @@ const URGENT_WAIT_SECONDS = 1800
 const pillTone = (state: string, conversation: Conversation): string => {
   if (state !== 'waiting') { return state === 'replied' ? 'ui-pill-green' : '' }
   const since = conversation.awaitingSince ? Date.parse(conversation.awaitingSince) : NaN
-  return !Number.isNaN(since) && (now.value - since) / 1000 >= URGENT_WAIT_SECONDS ? 'ui-pill-red' : 'is-calm'
+  return !Number.isNaN(since) && (now.value - since) / 1000 >= URGENT_WAIT_SECONDS ? 'ui-pill-red' : 'ui-pill-orange'
 }
 
 // 選取模式下，點擊整張卡片切換選取而非導覽

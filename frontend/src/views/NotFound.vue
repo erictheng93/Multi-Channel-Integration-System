@@ -5,94 +5,143 @@
     :class="{ 'bare-shell': !isAuthenticated }"
   >
     <div class="ui-page not-found-page">
-      <section class="nf">
-        <div class="nf-lead ui-lead">
-          <div class="code-wrap">
-            <!-- The zero is a lost signal: a ring with a quiet echo inside. Decoration; the number is read as 404 -->
-            <div
-              class="code"
-              role="img"
-              aria-label="404"
+      <section
+        class="nf ui-lead"
+        :class="{ 'is-solo': !isAuthenticated }"
+      >
+        <div class="nf-lead">
+          <!-- The zero is a lost signal: a ring with a quiet echo inside. Decoration; the number is read as 404 -->
+          <div
+            class="code"
+            role="img"
+            aria-label="404"
+          >
+            <span aria-hidden="true">4</span>
+            <svg
+              class="zero"
+              viewBox="0 0 100 124"
+              aria-hidden="true"
+              focusable="false"
             >
-              <span aria-hidden="true">4</span>
-              <svg
-                class="zero"
-                viewBox="0 0 100 124"
-                aria-hidden="true"
-                focusable="false"
-              >
-                <ellipse
-                  class="nf-ring r3"
-                  cx="50"
-                  cy="62"
-                  rx="42"
-                  ry="56"
-                />
-                <ellipse
-                  class="nf-ring r2"
-                  cx="50"
-                  cy="62"
-                  rx="24"
-                  ry="33"
-                />
-                <circle
-                  class="nf-dot"
-                  cx="50"
-                  cy="62"
-                  r="7"
-                />
-              </svg>
-              <span aria-hidden="true">4</span>
-            </div>
+              <ellipse
+                class="nf-ring r3"
+                cx="50"
+                cy="62"
+                rx="42"
+                ry="56"
+              />
+              <ellipse
+                class="nf-ring r2"
+                cx="50"
+                cy="62"
+                rx="24"
+                ry="33"
+              />
+              <circle
+                class="nf-dot"
+                cx="50"
+                cy="62"
+                r="7"
+              />
+            </svg>
+            <span aria-hidden="true">4</span>
           </div>
           <h1 class="nf-title">
             找不到這個頁面
           </h1>
           <p class="nf-reason">
-            可能原因：網址輸入有誤、頁面已被移除，或你沒有權限查看。
+            網址輸入有誤、頁面已被移除，或你沒有權限查看。
           </p>
-          <div class="asked ui-well">
-            <span class="k">你開啟的網址</span>
-            <span
-              class="mono"
-              :title="route.fullPath"
-            >{{ route.fullPath }}</span>
-            <button
-              type="button"
-              class="copy"
-              :aria-label="copied ? '已複製網址' : '複製網址'"
-              @click="copyUrl"
+
+          <!-- The address, taken apart: the parts that exist, and the first one that does not -->
+          <div class="trace">
+            <p class="trace-k">
+              你開啟的網址
+            </p>
+            <div class="trace-bar">
+              <code
+                class="trace-path"
+                :title="route.fullPath"
+              ><template
+                v-for="(seg, i) in trace.segments"
+                :key="i"
+              ><span class="trace-slash">/</span><span
+                class="seg"
+                :class="`is-${seg.state}`"
+              >{{ seg.text }}</span></template><span
+                v-if="trace.segments.length === 0"
+                class="trace-slash"
+              >/</span><span
+                v-if="trace.extra"
+                class="trace-extra"
+              >{{ trace.extra }}</span></code>
+              <button
+                type="button"
+                class="copy"
+                :aria-label="copied ? '已複製網址' : '複製網址'"
+                @click="copyUrl"
+              >
+                <svg
+                  v-if="!copied"
+                  class="ico"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                ><rect
+                  x="9"
+                  y="9"
+                  width="11"
+                  height="11"
+                  rx="2.5"
+                /><path d="M5 15V6.5A2.5 2.5 0 0 1 7.5 4H15" /></svg>
+                <svg
+                  v-else
+                  class="ico"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2.4"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                ><path d="m5 12.5 4.5 4.5L19 7" /></svg>
+              </button>
+            </div>
+            <p
+              v-if="trace.bad"
+              class="trace-note"
             >
-              <svg
-                v-if="!copied"
-                class="ico"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                aria-hidden="true"
-              ><rect
-                x="9"
-                y="9"
-                width="11"
-                height="11"
-                rx="2.5"
-              /><path d="M5 15V6.5A2.5 2.5 0 0 1 7.5 4H15" /></svg>
-              <svg
-                v-else
-                class="ico"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2.4"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                aria-hidden="true"
-              ><path d="m5 12.5 4.5 4.5L19 7" /></svg>
-            </button>
+              <template v-if="trace.goodPrefix">
+                「{{ trace.goodPrefix }}」存在，但底下沒有「{{ trace.bad }}」
+              </template>
+              <template v-else>
+                沒有「{{ trace.bad }}」這個頁面
+              </template>
+            </p>
           </div>
+
+          <router-link
+            v-if="guess"
+            :to="guess.path"
+            class="guess"
+          >
+            <span class="guess-k">你是不是要找</span>
+            <span class="guess-v">{{ guess.label }}<span class="guess-path">{{ guess.path }}</span></span>
+            <svg
+              class="ico"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            ><path d="m9 6 6 6-6 6" /></svg>
+          </router-link>
 
           <div class="nf-actions">
             <button
@@ -131,54 +180,61 @@
           </div>
         </div>
 
+        <!-- Every page you may open, grouped as the sidebar groups them; type to narrow, Enter opens the first -->
         <div
-          v-if="links.length > 0"
-          class="list-wrap"
+          v-if="isAuthenticated"
+          class="nf-find"
         >
-          <h2 class="list-label">
-            常用的頁面
-          </h2>
-          <div class="list ui-group">
-            <router-link
-              v-for="link in links"
-              :key="link.to"
-              :to="link.to"
-              class="go"
-            >
-              <span
-                class="go-ico"
-                :class="link.tone"
-                aria-hidden="true"
+          <label
+            class="find-label"
+            for="nf-search"
+          >要去哪裡？</label>
+          <input
+            id="nf-search"
+            v-model="query"
+            type="search"
+            class="ui-input find-input"
+            placeholder="輸入頁面名稱，例如「標籤」"
+            autocomplete="off"
+            @keydown.enter.prevent="openFirst"
+          >
+          <div
+            v-for="group in shownGroups"
+            :key="group.id"
+            class="find-group"
+          >
+            <h2 class="find-h">
+              {{ group.label }}
+            </h2>
+            <ul class="find-list">
+              <li
+                v-for="page in group.pages"
+                :key="page.path"
               >
-                <!-- eslint-disable vue/no-v-html -->
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  v-html="link.icon"
-                />
-              <!-- eslint-enable vue/no-v-html -->
-              </span>
-              <div class="go-text">
-                <b>{{ link.title }}</b>
-                <small>{{ link.text }}</small>
-              </div>
-              <svg
-                class="go-chev"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2.2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                aria-hidden="true"
-              ><path d="m9 6 6 6-6 6" /></svg>
-            </router-link>
+                <router-link
+                  :to="page.path"
+                  class="find-item"
+                  :class="`tone-${group.id}`"
+                >
+                  <span
+                    class="find-ico"
+                    aria-hidden="true"
+                  >
+                    <component :is="page.icon" />
+                  </span>
+                  <span class="find-name">{{ page.label }}</span>
+                </router-link>
+              </li>
+            </ul>
           </div>
-          <p class="list-note">
+          <p
+            v-if="shownGroups.length === 0"
+            class="find-empty"
+            role="status"
+          >
+            沒有符合「{{ query.trim() }}」的頁面
+          </p>
+          <p class="find-note">
             看不到想找的頁面？可能是你的帳號沒有權限，請聯絡管理員開通。
           </p>
         </div>
@@ -188,20 +244,20 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, type Component } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import AppLayout from '@/components/ui/AppLayout.vue'
 import { useAuthStore } from '@/stores/auth'
+import { NAV_SECTIONS, sectionForPath, type SectionId } from '@/config/nav-sections'
+import { NAV_ICONS } from '@/config/nav-icons'
+import { SECTION_NAV } from '@/config/section-nav'
 
-interface QuickLink {
-  to: string
-  title: string
-  text: string
-  tone: 'blue' | 'green' | 'orange' | 'indigo'
-  /** Inner SVG markup, static */
-  icon: string
-  adminOnly?: boolean
+interface Page {
+  path: string
+  label: string
+  icon: Component
+  adminOnly: boolean
 }
 
 const route = useRoute()
@@ -209,43 +265,113 @@ const router = useRouter()
 const authStore = useAuthStore()
 const { isAuthenticated, isAdmin } = storeToRefs(authStore)
 
-const QUICK_LINKS: QuickLink[] = [
-  {
-    to: '/conversations',
-    title: '對話',
-    text: 'LINE 與 Messenger 訊息',
-    tone: 'blue',
-    icon: '<path d="M21 12a8 8 0 0 1-11.6 7.1L4 20.5l1.4-4.6A8 8 0 1 1 21 12Z"/>'
-  },
-  {
-    to: '/tags',
-    title: '客戶標籤',
-    text: '分類與客戶經營',
-    tone: 'orange',
-    icon: '<path d="M12.6 2.6A2 2 0 0 0 11.2 2H4a2 2 0 0 0-2 2v7.2a2 2 0 0 0 .6 1.4l8.7 8.7a2.4 2.4 0 0 0 3.4 0l6.6-6.6a2.4 2.4 0 0 0 0-3.4Z"/><circle cx="7.5" cy="7.5" r="1.2"/>'
-  },
-  {
-    to: '/team',
-    title: '團隊成員',
-    text: '成員、角色與團隊',
-    tone: 'green',
-    icon: '<circle cx="9" cy="8" r="3.2"/><path d="M3 20c.4-3.4 2.8-5.2 6-5.2s5.6 1.8 6 5.2"/><path d="M16 5.2a3.2 3.2 0 0 1 0 5.6M18 14.9c1.8.6 2.8 2.3 3 5.1"/>',
-    adminOnly: true
-  },
-  {
-    to: '/settings',
-    title: '系統設定',
-    text: '整合、備份與健康檢查',
-    tone: 'indigo',
-    icon: '<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M2 12h3M19 12h3M4.9 19.1 7 17M17 7l2.1-2.1"/>',
-    adminOnly: true
-  }
-]
+// The same destinations the sidebar offers (admin-only ones are for admins only: a non-admin would bounce to the dashboard)
+const PAGES: readonly Page[] = [
+  { path: '/dashboard', label: '儀表板', adminOnly: false },
+  { path: '/conversations', label: '對話', adminOnly: false },
+  { path: '/notifications', label: '通知', adminOnly: false },
+  { path: '/tags', label: '客戶標籤', adminOnly: false },
+  { path: '/broadcasts', label: '群發訊息', adminOnly: false },
+  { path: '/auto-reply', label: '自動回覆', adminOnly: true },
+  { path: '/reports', label: SECTION_NAV.reports.label, adminOnly: false },
+  { path: '/team', label: '團隊成員', adminOnly: true },
+  { path: '/channels', label: '頻道', adminOnly: true },
+  { path: '/activities', label: '活動記錄', adminOnly: true },
+  { path: '/data', label: SECTION_NAV.data.label, adminOnly: false },
+  { path: '/monitoring/api', label: 'API 監控', adminOnly: true },
+  { path: '/monitoring/websocket', label: '即時連線監控', adminOnly: true },
+  { path: '/settings', label: SECTION_NAV.settings.label, adminOnly: true }
+].map(p => ({ ...p, icon: NAV_ICONS[p.path] as Component }))
 
-/** Only pages this user can open (admin-only pages would bounce a non-admin to the dashboard); none when signed out. */
-const links = computed(() =>
-  isAuthenticated.value ? QUICK_LINKS.filter(link => !link.adminOnly || isAdmin.value) : []
-)
+const allowed = computed(() => PAGES.filter(p => !p.adminOnly || isAdmin.value))
+
+// Sub-pages are only used to guess what a mistyped address meant
+const GUESS_TARGETS = computed(() => [
+  ...allowed.value.map(p => ({ path: p.path, label: p.label })),
+  ...(Object.values(SECTION_NAV)).flatMap(section =>
+    section.items.filter(i => !i.adminOnly || isAdmin.value).map(i => ({ path: i.path, label: i.label }))
+  ).filter(i => isAdmin.value || !i.path.startsWith('/settings'))
+])
+
+// ---- the address, taken apart ----
+type SegState = 'ok' | 'bad' | 'rest'
+
+const unknown = (path: string): boolean => {
+  const matched = router.resolve(path).matched
+  return matched.length === 0 || matched.some(m => m.name === 'NotFound')
+}
+
+const trace = computed(() => {
+  const parts = route.path.split('/').filter(Boolean)
+  const decode = (s: string): string => { try { return decodeURIComponent(s) } catch { return s } }
+  let acc = ''
+  let badAt = -1
+  parts.forEach((part, i) => {
+    acc += `/${part}`
+    if (badAt < 0 && unknown(acc)) { badAt = i }
+  })
+  const segments = parts.map((part, i) => ({
+    text: decode(part),
+    state: (badAt < 0 || i < badAt ? 'ok' : i === badAt ? 'bad' : 'rest') as SegState
+  }))
+  return {
+    segments,
+    badAt,
+    bad: badAt >= 0 ? decode(parts[badAt] ?? '') : '',
+    goodPrefix: badAt > 0 ? `/${parts.slice(0, badAt).map(decode).join('/')}` : '',
+    extra: route.fullPath.slice(route.path.length)
+  }
+})
+
+const distance = (a: string, b: string): number => {
+  const prev = Array.from({ length: b.length + 1 }, (_, j) => j)
+  for (let i = 1; i <= a.length; i++) {
+    let diag = prev[0] ?? 0
+    prev[0] = i
+    for (let j = 1; j <= b.length; j++) {
+      const up = prev[j] ?? 0
+      prev[j] = Math.min(up + 1, (prev[j - 1] ?? 0) + 1, diag + (a[i - 1] === b[j - 1] ? 0 : 1))
+      diag = up
+    }
+  }
+  return prev[b.length] ?? 0
+}
+
+// The closest real page for the first part that does not exist (a typo, a missing "s"); nothing when nothing is close
+const guess = computed(() => {
+  const { bad, badAt, goodPrefix } = trace.value
+  if (!bad || !isAuthenticated.value) { return null }
+  const want = bad.toLowerCase()
+  const limit = Math.max(2, Math.floor(want.length / 3))
+  let best: { path: string; label: string; d: number } | null = null
+  for (const target of GUESS_TARGETS.value) {
+    const parts = target.path.split('/').filter(Boolean)
+    if (parts.length !== badAt + 1 || (goodPrefix && !target.path.startsWith(`${goodPrefix}/`))) { continue }
+    const d = distance(want, (parts[badAt] ?? '').toLowerCase())
+    if (d <= limit && d < want.length && (!best || d < best.d)) { best = { ...target, d } }
+  }
+  return best
+})
+
+// ---- the finder ----
+const query = ref('')
+
+const shownGroups = computed(() => {
+  const q = query.value.trim().toLowerCase()
+  const match = (p: Page): boolean => q === '' || p.label.toLowerCase().includes(q) || p.path.toLowerCase().includes(q)
+  return NAV_SECTIONS
+    .map(section => ({
+      id: section.id as SectionId,
+      label: section.label,
+      pages: allowed.value.filter(p => sectionForPath(p.path)?.id === section.id && match(p))
+    }))
+    .filter(g => g.pages.length > 0)
+})
+
+const openFirst = (): void => {
+  const first = shownGroups.value[0]?.pages[0]
+  if (first) { void router.push(first.path) }
+}
 
 const homePath = computed(() => (isAuthenticated.value ? '/dashboard' : '/login'))
 
@@ -286,7 +412,7 @@ const goBack = () => {
   height: 16px;
 }
 
-/* One centred column, vertically centred in the viewport; nothing stretches */
+/* One card, vertically centred in the viewport */
 .not-found-page {
   display: flex;
   flex-direction: column;
@@ -301,101 +427,58 @@ const goBack = () => {
 
 .nf {
   display: grid;
-  gap: 20px;
-  align-items: center;
-  justify-items: center;
+  grid-template-columns: minmax(0, 1fr);
   width: 100%;
-  max-width: 460px;
+  max-width: 1000px;
   margin: 0 auto;
-  text-align: center;
+  overflow: hidden;
 }
 
-/* The lead object: the message and the way out in one white card */
+.nf.is-solo {
+  max-width: 480px;
+}
+
 .nf-lead {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  width: 100%;
-  padding: 28px 28px 28px;
+  justify-content: center;
+  min-width: 0;
+  padding: 36px 32px 32px;
 }
 
-/* Wide screens: ONE card, two zones. The message on the left, the shortcuts as a 2x2 of tiles on the right,
-   split by a hairline, the whole thing centred in the page. */
+.nf-find {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  padding: 28px 24px 24px;
+  background: var(--ui-surface-2);
+}
+
 @media (min-width: 1025px) {
-  .nf {
+  .nf:not(.is-solo) {
     grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
-    gap: 0;
-    align-items: stretch;
-    max-width: 1000px;
-    overflow: hidden;
-    border-radius: var(--ui-r-lead);
-    background: var(--ui-surface);
-    box-shadow: var(--ui-shadow-raised);
   }
 
   .nf-lead {
-    padding: 48px 44px 44px;
-    border-radius: 0;
-    background: transparent;
-    box-shadow: none;
+    padding: 44px 44px 40px;
   }
 
-  .list-wrap {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    padding: 40px 36px;
-    background: var(--ui-surface-2);
-  }
-
-  .list-wrap .list {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px;
-    overflow: visible;
-    background: transparent;
-  }
-
-  .list-wrap .go {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 12px;
-    min-height: 0;
-    padding: 18px 16px 16px;
-    border-radius: var(--ui-r-inner);
-    background: var(--ui-surface);
-  }
-
-  .list-wrap .go + .go::before,
-  .list-wrap .go-chev {
-    display: none;
-  }
-
-  .list-wrap .list-label,
-  .list-wrap .list-note {
-    padding-left: 4px;
+  .nf-find {
+    padding: 36px 32px 32px;
   }
 }
 
-.code-wrap {
-  display: grid;
-  place-items: center;
-  padding: 8px 56px;
-  border-radius: 999px;
-  /* a quiet wash of the section blue behind the numeral gives the page a centre of gravity */
-  background: radial-gradient(closest-side, color-mix(in srgb, var(--ui-blue) 9%, transparent), transparent);
-}
-
+/* ---- the numeral: quiet, so the headline leads ---- */
 .code {
   display: flex;
   gap: 0.04em;
   align-items: center;
-  font: 400 132px / 1 var(--ui-font-display);
+  font: 400 88px / 1 var(--ui-font-display);
   letter-spacing: -0.05em;
   color: color-mix(in srgb, var(--ui-ink) 62%, var(--ui-surface));
 }
 
-/* The zero is drawn, sized in the numerals' own em so it follows the font size at every width */
 .zero {
   width: 0.6em;
   height: 0.745em;
@@ -437,33 +520,79 @@ const goBack = () => {
 }
 
 .nf-title {
-  margin: 22px 0 0;
-  font: 700 34px/1.2 var(--ui-font-display);
+  margin: 20px 0 0;
+  font: 700 30px/1.2 var(--ui-font-display);
   letter-spacing: -0.035em;
 }
 
 .nf-reason {
-  max-width: 38ch;
-  margin: 8px 0 0;
-  font-size: 16px;
+  margin: 6px 0 0;
+  font-size: 15px;
   color: var(--ui-ink-2);
-  text-wrap: balance;
 }
 
-.asked {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  width: 100%;
-  margin-top: 20px;
-  padding: 12px 14px;
+/* ---- the address, taken apart ---- */
+.trace {
+  margin-top: 24px;
+}
+
+.trace-k {
+  margin: 0 0 8px;
   font-size: 14px;
-  background: var(--ui-surface-2);
+  font-weight: 600;
+  color: var(--ui-ink-2);
 }
 
-.asked .k {
-  flex: none;
-  color: var(--ui-ink-2);
+.trace-bar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 10px 10px 10px 16px;
+  border-radius: 14px;
+  background: var(--ui-surface-2);
+  box-shadow: inset 0 0 0 1px var(--ui-field-edge);
+}
+
+.trace-path {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font: 500 15px var(--ui-font-mono);
+  color: var(--ui-ink);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.trace-slash {
+  color: var(--ui-muted);
+}
+
+.seg.is-ok {
+  color: var(--ui-green-ink);
+}
+
+.seg.is-bad {
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: var(--ui-red-soft);
+  color: var(--ui-red-ink);
+  font-weight: 700;
+  text-decoration: line-through;
+  text-decoration-thickness: 1.5px;
+}
+
+.seg.is-rest {
+  color: var(--ui-muted);
+}
+
+.trace-extra {
+  color: var(--ui-muted);
+}
+
+.trace-note {
+  margin: 8px 0 0;
+  font-size: 14px;
+  color: var(--ui-red-ink);
 }
 
 .copy {
@@ -472,7 +601,6 @@ const goBack = () => {
   place-items: center;
   width: 32px;
   height: 32px;
-  margin: -6px -6px -6px 0;
   padding: 0;
   border: 0;
   border-radius: 10px;
@@ -491,140 +619,57 @@ const goBack = () => {
   outline-offset: 1px;
 }
 
-.asked .mono {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-align: left;
-  font-family: var(--ui-font-mono);
-  font-weight: 500;
-  color: var(--ui-ink);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* Shortcuts: one inset-grouped list (iOS Settings), a row per destination */
-.list-wrap {
-  width: 100%;
-  text-align: left;
-}
-
-.list-note {
-  text-wrap: balance;
-  margin: 12px 0 0;
-  padding: 0 16px;
-  font-size: 14px;
-  line-height: 1.5;
-  color: var(--ui-ink-2);
-}
-
-.list-label {
-  margin: 0 0 8px;
-  padding: 0 6px 0 16px;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--ui-ink-2);
-}
-
-.list {
-  --row-inset: 66px;
-}
-
-.go {
-  position: relative;
+/* ---- did you mean ---- */
+.guess {
   display: flex;
+  gap: 12px;
   align-items: center;
-  gap: 14px;
-  min-height: 64px;
-  padding: 10px 16px 10px 18px;
-  color: inherit;
+  margin-top: 12px;
+  padding: 12px 16px;
+  border-radius: 14px;
+  background: var(--ui-accent-soft);
+  color: var(--ui-ink);
   text-decoration: none;
   transition: background var(--ui-dur) var(--ui-ease);
 }
 
-.go + .go::before {
-  position: absolute;
-  top: 0;
-  right: 16px;
-  left: 68px;
-  height: 0.5px;
-  background: var(--ui-sep);
-  content: '';
+.guess:hover {
+  background: color-mix(in srgb, var(--ui-accent) 16%, var(--ui-surface));
 }
 
-.go:hover {
-  background: color-mix(in srgb, var(--ui-fill) 45%, transparent);
-}
-
-.go:focus-visible {
+.guess:focus-visible {
   outline: 2px solid var(--ui-accent);
-  outline-offset: -2px;
+  outline-offset: 2px;
 }
 
-.go-text {
+.guess-k {
+  flex: none;
+  font-size: 14px;
+  color: var(--ui-ink-2);
+}
+
+.guess-v {
   flex: 1;
   min-width: 0;
+  font-size: 15px;
+  font-weight: 700;
 }
 
-.go-chev {
+.guess-path {
+  margin-left: 8px;
+  font: 500 13px var(--ui-font-mono);
+  color: var(--ui-ink-2);
+}
+
+.guess .ico {
   flex: none;
-  width: 16px;
-  height: 16px;
-  color: var(--ui-muted);
-}
-
-.go-ico {
-  display: grid;
-  flex: none;
-  place-items: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 12px;
-}
-
-.go-ico svg {
-  width: 18px;
-  height: 18px;
-}
-
-/* Solid section hue tile, white glyph (same language as the page-title tile and the sidebar sections) */
-.go-ico {
-  color: #fff;
-}
-
-.go-ico.blue {
-  background: linear-gradient(180deg, color-mix(in srgb, var(--ui-blue) 82%, #fff), var(--ui-blue));
-}
-
-.go-ico.orange {
-  background: linear-gradient(180deg, color-mix(in srgb, var(--ui-orange) 82%, #fff), var(--ui-orange));
-}
-
-.go-ico.green {
-  background: linear-gradient(180deg, color-mix(in srgb, var(--ui-green) 82%, #fff), var(--ui-green));
-}
-
-.go-ico.indigo {
-  background: linear-gradient(180deg, color-mix(in srgb, var(--ui-indigo) 82%, #fff), var(--ui-indigo));
-}
-
-.go b {
-  display: block;
-  font-size: var(--ui-t-head);
-  font-weight: 600;
-}
-
-.go small {
-  font-size: 13px;
-  line-height: 1.4;
-  color: var(--ui-muted);
+  color: var(--ui-accent);
 }
 
 .nf-actions {
   display: flex;
   gap: 10px;
-  width: 100%;
-  margin-top: 20px;
+  margin-top: 24px;
 }
 
 .nf-actions > .btn {
@@ -632,13 +677,165 @@ const goBack = () => {
   justify-content: center;
 }
 
-@media (max-width: 480px) {
-  .code {
-    font-size: 96px;
+/* ---- the finder ---- */
+.find-label {
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.find-group {
+  margin-top: 6px;
+}
+
+.find-h {
+  margin: 0 0 8px 4px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ui-ink-2);
+}
+
+.find-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* an odd last tile takes the whole row, so no group ends with a hole beside it */
+.find-list > li:last-child:nth-child(odd) {
+  grid-column: 1 / -1;
+}
+
+.find-item {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  min-height: 46px;
+  padding: 6px 12px 6px 8px;
+  border-radius: 14px;
+  background: var(--ui-surface);
+  color: var(--ui-ink);
+  text-decoration: none;
+  transition: box-shadow var(--ui-dur) var(--ui-ease);
+}
+
+.find-item:hover {
+  box-shadow: inset 0 0 0 1.5px var(--tone);
+}
+
+.find-item:focus-visible {
+  outline: 2px solid var(--ui-accent);
+  outline-offset: 2px;
+}
+
+.find-ico {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--tone) 82%, #fff), var(--tone));
+  color: #fff;
+}
+
+.find-ico :deep(svg) {
+  width: 17px;
+  height: 17px;
+}
+
+.find-name {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 15px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tone-workspace {
+  --tone: var(--ui-blue);
+}
+
+.tone-growth {
+  --tone: var(--ui-orange);
+}
+
+.tone-team {
+  --tone: var(--ui-green);
+}
+
+.tone-system {
+  --tone: var(--ui-indigo);
+}
+
+.find-empty {
+  margin: 8px 4px;
+  font-size: 14px;
+  color: var(--ui-ink-2);
+}
+
+.find-note {
+  margin: 6px 4px 0;
+  padding-top: 8px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--ui-ink-2);
+}
+
+@media (min-width: 1025px) {
+  .nf:not(.is-solo) .code {
+    font-size: 120px;
   }
 
-  .asked {
+  .nf:not(.is-solo) .nf-title {
+    margin-top: 28px;
+    font-size: 34px;
+  }
+
+  .nf:not(.is-solo) .trace {
+    margin-top: 32px;
+  }
+}
+
+@media (max-width: 480px) {
+  .code {
+    font-size: 72px;
+  }
+
+  .nf-lead {
+    padding: 28px 20px 24px;
+  }
+
+  .nf-title {
+    font-size: 26px;
+  }
+
+  .guess {
     flex-wrap: wrap;
+    gap: 2px 12px;
+  }
+
+  .guess-v {
+    flex-basis: 100%;
+    order: 3;
+  }
+
+  .guess .ico {
+    margin-left: auto;
+    order: 2;
+  }
+}
+
+@media (max-width: 768px) {
+  .nf-find {
+    padding: 22px 16px 20px;
+  }
+
+  .find-item {
+    min-height: 48px;
   }
 }
 </style>

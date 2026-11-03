@@ -49,8 +49,9 @@
       </button>
     </div>
 
-    <!-- Type Filter -->
+    <!-- Type Filter (the mosaic above the list does this job when the stats are in) -->
     <select
+      v-if="showTypeSelect"
       :value="selectedType"
       class="ui-select filter-select"
       aria-label="通知類型"
@@ -102,7 +103,7 @@
 <script setup lang="ts">
 import { XIcon } from '@/components/icons'
 
-defineProps<{
+withDefaults(defineProps<{
   selectedType: string
   selectedPriority: string
   selectedReadStatus: boolean | undefined
@@ -111,7 +112,9 @@ defineProps<{
   priorities: Array<{ value: string; label: string }>
   /** Real totals from /notifications/stats for the tab counts */
   counts?: { total: number; unread: number } | null
-}>()
+  /** Hidden while the type mosaic is on the page */
+  showTypeSelect?: boolean
+}>(), { counts: null, showTypeSelect: true })
 
 defineEmits<{
   'update:selectedType': [value: string]

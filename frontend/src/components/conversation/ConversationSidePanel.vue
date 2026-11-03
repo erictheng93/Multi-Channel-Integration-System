@@ -1,61 +1,90 @@
 <template>
   <aside
-    class="side-panel ui-card"
+    class="side-panel"
     aria-label="客戶資訊"
   >
     <template v-if="conversation">
-      <div class="who">
-        <div
-          class="avatar"
-          :class="`ui-av-${avatarToneOf(customerName)}`"
-        >
-          {{ initial }}
-          <span
-            v-if="platform === 'line' || platform === 'facebook'"
-            class="ui-ch ch"
-            :class="platform === 'line' ? 'ui-ch-line' : 'ui-ch-fb'"
-          ><svg viewBox="0 0 24 24"><path d="M12 3C6.5 3 2 6.6 2 11c0 2.5 1.4 4.7 3.7 6.2L5 21l4.1-2.3c.9.2 1.9.3 2.9.3 5.5 0 10-3.6 10-8s-4.5-8-10-8Z" /></svg></span>
+      <!-- Who, and the shape of the conversation: the anchor of the panel -->
+      <section class="sp-card sp-lead">
+        <div class="who">
+          <div
+            class="avatar"
+            :class="`ui-av-${avatarToneOf(customerName)}`"
+          >
+            {{ initial }}
+            <span
+              v-if="platform === 'line' || platform === 'facebook'"
+              class="ui-ch ch"
+              :class="platform === 'line' ? 'ui-ch-line' : 'ui-ch-fb'"
+            ><svg viewBox="0 0 24 24"><path d="M12 3C6.5 3 2 6.6 2 11c0 2.5 1.4 4.7 3.7 6.2L5 21l4.1-2.3c.9.2 1.9.3 2.9.3 5.5 0 10-3.6 10-8s-4.5-8-10-8Z" /></svg></span>
+          </div>
+          <div class="who-text">
+            <div class="name">
+              {{ customerName }}
+            </div>
+            <div class="sub">
+              {{ platformLabel }}<template v-if="customerId">
+                · ID {{ customerId }}
+              </template>
+            </div>
+          </div>
         </div>
-        <div class="name">
-          {{ customerName }}
-        </div>
-        <div class="sub">
-          {{ platformLabel }}<template v-if="customerId">
-            · ID {{ customerId }}
-          </template>
-        </div>
-      </div>
 
-      <!-- At a glance: the four numbers an agent asks for first, each shown once -->
-      <dl
-        v-if="activity"
-        class="glance"
-        :aria-label="`往來 共 ${activity.customer + activity.agent} 則`"
-      >
-        <div>
-          <dd>{{ activity.customer }}</dd>
-          <dt>客戶來訊</dt>
-        </div>
-        <div>
-          <dd>{{ activity.agent }}</dd>
-          <dt>客服回覆</dt>
-        </div>
-        <div v-if="activity.firstReply">
-          <dd class="glance-text">
-            {{ activity.firstReply }}
-          </dd>
-          <dt>首次回覆</dt>
-        </div>
-        <div v-if="lastInboundText">
-          <dd class="glance-text">
-            {{ lastInboundText }}
-          </dd>
-          <dt>客戶最後來訊</dt>
-        </div>
-      </dl>
+        <template v-if="rhythm">
+          <h3 class="sp-h">
+            往來節奏<span class="legend"><i class="k-customer" />客戶<i class="k-agent" />客服</span>
+          </h3>
+          <div
+            class="rhythm"
+            role="img"
+            :aria-label="rhythm.aria"
+            :style="{ '--n': rhythm.cols.length }"
+          >
+            <span
+              v-for="col in rhythm.cols"
+              :key="col.key"
+              class="bar"
+              :class="col.side"
+              :style="{ gridColumn: col.index + 1 }"
+            />
+            <span
+              v-for="link in rhythm.links"
+              :key="link.key"
+              class="link"
+              :class="{ 'is-pending': link.pending }"
+              :style="{ gridColumn: `${link.from + 1} / ${link.to + 2}` }"
+            ><em>{{ link.text }}</em></span>
+          </div>
+          <div
+            class="rhythm-axis"
+            aria-hidden="true"
+          >
+            <span>{{ rhythm.first }}</span><span v-if="rhythm.capped || hasMore">最近 {{ rhythm.cols.length }} 則</span><span>{{ rhythm.last }}</span>
+          </div>
+          <dl
+            class="glance"
+            :aria-label="`往來 共 ${totalMessages} 則`"
+          >
+            <div>
+              <dt>客戶來訊</dt>
+              <dd>{{ activity?.customer ?? 0 }}</dd>
+            </div>
+            <div>
+              <dt>客服回覆</dt>
+              <dd>{{ activity?.agent ?? 0 }}</dd>
+            </div>
+            <div v-if="activity?.firstReply">
+              <dt>首次回覆</dt>
+              <dd>{{ activity.firstReply }}</dd>
+            </div>
+          </dl>
+        </template>
+      </section>
 
-      <section class="block">
-        <h3>歸屬</h3>
+      <section class="sp-card">
+        <h3 class="sp-h">
+          歸屬
+        </h3>
         <div class="assign-row">
           <span class="kv-k">負責團隊</span>
           <span
@@ -82,28 +111,10 @@
         </div>
       </section>
 
-      <!-- Timeline of the loaded messages: when the customer wrote and when the team answered (real times) -->
-      <section
-        v-if="timeline.length > 0"
-        class="block timeline-block"
-      >
-        <h3>
-          往來時間軸<small v-if="hasMore">僅已載入</small>
+      <section class="sp-card">
+        <h3 class="sp-h">
+          對話
         </h3>
-        <ol class="timeline">
-          <li
-            v-for="step in timeline"
-            :key="step.key"
-            :class="step.side"
-          >
-            <span class="t-time">{{ step.time }}</span>
-            <span class="t-label">{{ step.label }}</span>
-          </li>
-        </ol>
-      </section>
-
-      <section class="block">
-        <h3>對話</h3>
         <dl class="kv">
           <div>
             <dt>狀態</dt>
@@ -136,10 +147,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import type { Conversation } from '@/types'
 import type { Tag } from '@/api/tags'
-import { avatarToneOf, initialOf, platformName, relativeTime, statusOf } from '@/composables/conversation/useConversationRowMeta'
+import { avatarToneOf, initialOf, platformName, statusOf } from '@/composables/conversation/useConversationRowMeta'
 
 const props = defineProps<{
   conversation?: Conversation
@@ -184,28 +195,72 @@ const activity = computed(() => {
   return { customer: customer.length, agent: agent.length, firstReply }
 })
 
-const clock = (t: number): string => new Date(t).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', hour12: false })
+const totalMessages = computed(() => (activity.value?.customer ?? 0) + (activity.value?.agent ?? 0))
 
-// First customer message, first reply, latest reply, latest customer message (only the steps that exist, in time order)
-const timeline = computed(() => {
-  const list = props.messages ?? []
-  const of = (sender: string) => list.filter(m => m.senderType === sender).map(timeOf).filter(Number.isFinite).sort((a, b) => a - b)
-  const customer = of('customer')
-  const agent = of('agent')
-  const steps: { key: string; at: number; label: string; side: 'is-customer' | 'is-agent' }[] = []
-  if (customer[0] !== undefined) { steps.push({ key: 'c0', at: customer[0], label: props.hasMore ? '客戶來訊' : '客戶開始來訊', side: 'is-customer' }) }
-  const firstAgent = agent.find(t => t >= (customer[0] ?? 0))
-  if (firstAgent !== undefined) { steps.push({ key: 'a0', at: firstAgent, label: '客服首次回覆', side: 'is-agent' }) }
-  const lastAgent = agent[agent.length - 1]
-  if (lastAgent !== undefined && lastAgent !== firstAgent) { steps.push({ key: 'a1', at: lastAgent, label: '客服最近回覆', side: 'is-agent' }) }
-  const lastCustomer = customer[customer.length - 1]
-  if (lastCustomer !== undefined && lastCustomer !== customer[0]) { steps.push({ key: 'c1', at: lastCustomer, label: '客戶最後來訊', side: 'is-customer' }) }
-  return steps.sort((a, b) => a.at - b.at).map(s => ({ ...s, time: clock(s.at) }))
-})
+const gapText = (ms: number): string => {
+  const minutes = Math.round(ms / 60000)
+  if (minutes < 1) { return '< 1 分' }
+  if (minutes < 60) { return `${minutes} 分` }
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) { return minutes % 60 === 0 ? `${hours} 小時` : `${hours} 小時 ${minutes % 60} 分` }
+  return `${Math.floor(hours / 24)} 天`
+}
 
-const lastInboundText = computed(() => {
-  const times = (props.messages ?? []).filter(m => m.senderType === 'customer').map(timeOf).filter(Number.isFinite)
-  return times.length > 0 ? relativeTime(Math.max(...times), Date.now()) : ''
+const stamp = (t: number, withDate: boolean): string => {
+  const d = new Date(t)
+  const time = d.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', hour12: false })
+  return withDate ? `${d.getMonth() + 1}/${d.getDate()} ${time}` : time
+}
+
+// A clock for the "已等" end of the strip; half a minute is fine-grained enough for a label in minutes
+const now = ref(Date.now())
+let timer: ReturnType<typeof setInterval> | null = null
+onMounted(() => { timer = setInterval(() => { now.value = Date.now() }, 30_000) })
+onBeforeUnmount(() => { if (timer) { clearInterval(timer) } })
+
+const RHYTHM_MAX = 9
+
+type Side = 'is-customer' | 'is-agent'
+
+/**
+ * The shape of the conversation: the latest messages in order, customer above the line and the team below it.
+ * A bridge joins the first unanswered customer message of a run to the reply that answered it and says how long
+ * that took; a dashed bridge at the end is the wait that is still open. Built from the messages already loaded.
+ */
+const rhythm = computed(() => {
+  const all = (props.messages ?? [])
+    .map(m => ({ side: (m.senderType === 'customer' ? 'is-customer' : m.senderType === 'agent' ? 'is-agent' : '') as Side | '', t: timeOf(m) }))
+    .filter((m): m is { side: Side; t: number } => m.side !== '' && Number.isFinite(m.t))
+    .sort((a, b) => a.t - b.t)
+  if (all.length < 2) { return null }
+  const picked = all.slice(-RHYTHM_MAX)
+  const cols = picked.map((m, index) => ({ key: `${index}-${m.t}`, index, side: m.side, t: m.t }))
+  const links: { key: string; from: number; to: number; text: string; pending: boolean }[] = []
+  let runStart = -1
+  for (const col of cols) {
+    if (col.side === 'is-customer') {
+      if (runStart < 0) { runStart = col.index }
+    } else if (runStart >= 0) {
+      const start = cols[runStart]
+      if (start) { links.push({ key: `l${runStart}`, from: runStart, to: col.index, text: gapText(col.t - start.t), pending: false }) }
+      runStart = -1
+    }
+  }
+  const startOpen = runStart >= 0 ? cols[runStart] : undefined
+  if (startOpen && props.conversation?.status !== 'closed') {
+    links.push({ key: 'open', from: runStart, to: cols.length - 1, text: `已等 ${gapText(Math.max(0, now.value - startOpen.t))}`, pending: true })
+  }
+  const first = cols[0]?.t ?? 0
+  const last = cols[cols.length - 1]?.t ?? 0
+  const sameDay = new Date(first).toDateString() === new Date(last).toDateString()
+  return {
+    cols,
+    links,
+    capped: all.length > picked.length,
+    first: stamp(first, !sameDay),
+    last: stamp(last, !sameDay),
+    aria: `最近 ${cols.length} 則往來，客服回覆 ${links.filter(l => !l.pending).length} 次${links.some(l => l.pending) ? '，客戶仍在等待回覆' : ''}`
+  }
 })
 
 const customerSinceText = computed(() => {
@@ -224,52 +279,103 @@ const createdAtText = computed(() => {
 </script>
 
 <style scoped>
+/* A grey well holding three white cards: the shape of the conversation leads, the rest is reference */
 .side-panel {
   display: flex;
   flex-direction: column;
+  gap: 12px;
   min-height: 0;
-  padding: 22px 16px 16px;
+  padding: 12px;
   overflow-y: auto;
+}
+
+.sp-card {
+  flex: none;
+  padding: 16px 16px 18px;
+  border-radius: var(--ui-r-inner);
+  background: var(--ui-surface);
+}
+
+.sp-h {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin: 0 0 12px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ui-ink-2);
+}
+
+.legend {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ui-muted);
+}
+
+.legend i {
+  width: 14px;
+  height: 8px;
+  border-radius: 4px;
+}
+
+.legend .k-agent {
+  margin-left: 6px;
+  background: var(--ui-accent);
+}
+
+.legend .k-customer {
+  background: var(--ui-faint);
+}
+
+.sp-h small {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ui-muted);
+  font-variant-numeric: tabular-nums;
 }
 
 .who {
   display: flex;
-  flex-direction: column;
+  gap: 14px;
   align-items: center;
-  gap: 4px;
-  padding-bottom: 8px;
-  text-align: center;
+  margin-bottom: 18px;
 }
 
 .avatar {
   position: relative;
   display: grid;
+  flex: none;
   place-items: center;
-  width: 72px;
-  height: 72px;
-  margin-bottom: 8px;
+  width: 56px;
+  height: 56px;
   border-radius: 50%;
   color: #fff;
-  font: 600 28px var(--ui-font-display);
+  font: 600 22px var(--ui-font-display);
 }
 
 .avatar .ch {
   position: absolute;
-  right: -2px;
-  bottom: -2px;
-  width: 22px;
-  height: 22px;
-  border-radius: 8px;
+  right: -3px;
+  bottom: -3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 7px;
   box-shadow: 0 0 0 3px var(--ui-surface);
 }
 
 .avatar .ch svg {
-  width: 13px;
-  height: 13px;
+  width: 12px;
+  height: 12px;
+}
+
+.who-text {
+  min-width: 0;
 }
 
 .name {
-  max-width: 100%;
   overflow: hidden;
   font: 700 20px var(--ui-font-display);
   letter-spacing: -0.02em;
@@ -282,74 +388,104 @@ const createdAtText = computed(() => {
   color: var(--ui-muted);
 }
 
-.block {
-  margin-top: 16px;
-  padding: 14px 4px 0;
-  box-shadow: inset 0 0.5px 0 var(--ui-sep);
-}
-
-.block h3 {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  margin: 0 0 10px;
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  color: var(--ui-ink-2);
-}
-
-.block h3 small {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--ui-muted);
-  font-variant-numeric: tabular-nums;
-}
-
-/* At a glance: a 2x2 of the numbers split by hairlines (no grey slabs), the numerals carry the weight */
-.glance {
+/* ---- the rhythm strip ---- */
+.rhythm {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  margin: 12px 0 0;
+  grid-template-columns: repeat(var(--n), minmax(0, 1fr));
+  grid-template-rows: 20px 46px 20px;
+  column-gap: 4px;
+}
+
+.bar {
+  width: 100%;
+  height: 16px;
+  border-radius: 8px;
+}
+
+.bar.is-customer {
+  grid-row: 1;
+  align-self: end;
+  background: var(--ui-faint);
+}
+
+.bar.is-agent {
+  grid-row: 3;
+  align-self: start;
+  background: var(--ui-accent);
+}
+
+/* a bridge from the customer's first unanswered message to the reply, labelled with how long it took */
+.link {
+  position: relative;
+  display: flex;
+  grid-row: 2;
+  align-items: center;
+  justify-content: center;
+}
+
+.link::before {
+  position: absolute;
+  inset: 50% 10px auto;
+  height: 2px;
+  margin-top: -1px;
+  border-radius: 1px;
+  background: color-mix(in srgb, var(--ui-accent) 55%, transparent);
+  content: '';
+}
+
+.link em {
+  position: relative;
+  z-index: 1;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--ui-surface);
+  box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--ui-accent) 40%, transparent);
+  font-size: 13px;
+  font-style: normal;
+  font-weight: 600;
+  line-height: 18px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ui-accent-ink, var(--ui-accent));
+  white-space: nowrap;
+}
+
+.link.is-pending {
+  justify-content: flex-end;
+}
+
+.link.is-pending::before {
+  background: repeating-linear-gradient(90deg, var(--ui-orange-ink) 0 5px, transparent 5px 9px);
+}
+
+.link.is-pending em {
+  background: var(--ui-orange-soft);
+  box-shadow: none;
+  color: var(--ui-orange-ink);
+}
+
+.rhythm-axis {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 6px;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ui-muted);
+}
+
+.glance {
+  display: flex;
+  gap: 8px;
+  margin: 14px 0 0;
+  padding-top: 14px;
+  box-shadow: inset 0 0.5px 0 var(--ui-sep);
 }
 
 .glance > div {
   display: flex;
-  flex-direction: column-reverse;
+  flex: 1 1 0;
+  flex-direction: column;
   gap: 2px;
-  justify-content: flex-end;
   min-width: 0;
-  padding: 12px 8px 12px 4px;
-}
-
-.glance > div:nth-child(odd) {
-  box-shadow: inset -0.5px 0 0 var(--ui-sep);
-}
-
-.glance > div:nth-child(even) {
-  padding-left: 16px;
-}
-
-.glance > div:nth-child(-n + 2) {
-  box-shadow: inset 0 -0.5px 0 var(--ui-sep);
-}
-
-.glance > div:nth-child(1) {
-  box-shadow: inset -0.5px -0.5px 0 var(--ui-sep);
-}
-
-.glance dd {
-  margin: 0;
-  font: 700 28px / 1.1 var(--ui-font-display);
-  letter-spacing: -0.02em;
-  font-variant-numeric: tabular-nums;
-  color: var(--ui-ink);
-}
-
-.glance dd.glance-text {
-  font-size: 18px;
-  line-height: 30px;
-  white-space: nowrap;
 }
 
 .glance dt {
@@ -358,60 +494,12 @@ const createdAtText = computed(() => {
   white-space: nowrap;
 }
 
-/* Timeline: one rail, a dot per step (customer = grey, team = brand) */
-.timeline {
-  position: relative;
-  display: grid;
-  gap: 12px;
+.glance dd {
   margin: 0;
-  padding: 0 0 0 18px;
-  list-style: none;
-}
-
-.timeline::before {
-  position: absolute;
-  top: 8px;
-  bottom: 8px;
-  left: 4px;
-  width: 1.5px;
-  border-radius: 1px;
-  background: var(--ui-sep);
-  content: '';
-}
-
-.timeline li {
-  position: relative;
-  display: flex;
-  gap: 12px;
-  align-items: baseline;
-  font-size: 14px;
-}
-
-.timeline li::before {
-  position: absolute;
-  top: 6px;
-  left: -18px;
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  background: var(--ui-faint);
-  box-shadow: 0 0 0 3px var(--ui-surface);
-  content: '';
-}
-
-.timeline li.is-agent::before {
-  background: var(--ui-accent);
-}
-
-.t-time {
-  min-width: 42px;
-  font-weight: 600;
+  font: 700 20px / 1.2 var(--ui-font-display);
+  letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
-  color: var(--ui-ink);
-}
-
-.t-label {
-  color: var(--ui-ink-2);
+  white-space: nowrap;
 }
 
 .assign-row {
@@ -419,7 +507,6 @@ const createdAtText = computed(() => {
   gap: 10px;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 2px;
 }
 
 .assign-row + .tag-row {
@@ -483,13 +570,10 @@ const createdAtText = computed(() => {
   font-variant-numeric: tabular-nums;
 }
 
-.kv-tight {
-  gap: 10px;
-}
-
 .skeleton {
   display: grid;
   gap: 12px;
+  padding: 10px;
 }
 
 .sk {
