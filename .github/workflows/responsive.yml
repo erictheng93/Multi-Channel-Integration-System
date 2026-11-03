@@ -17,6 +17,9 @@ on:
       - 'frontend/src/**'
       - 'frontend/tests/e2e/playwright/**'
       - 'frontend/playwright.config.ts'
+      # dependency bumps (Playwright, Vue, Vite...) change what renders and what runs the checks
+      - 'frontend/package.json'
+      - 'frontend/bun.lock'
       - '.github/workflows/responsive.yml'
   push:
     branches: [main]
@@ -24,6 +27,9 @@ on:
       - 'frontend/src/**'
       - 'frontend/tests/e2e/playwright/**'
       - 'frontend/playwright.config.ts'
+      # dependency bumps (Playwright, Vue, Vite...) change what renders and what runs the checks
+      - 'frontend/package.json'
+      - 'frontend/bun.lock'
       - '.github/workflows/responsive.yml'
   schedule:
     # 04:00 Asia/Taipei: catches regressions in what is actually deployed (deploys are manual)
