@@ -272,12 +272,12 @@
               <p class="legend">
                 <span><i
                   class="sw"
-                  style="--c: var(--ui-accent)"
-                />入<b>{{ chart.lastIn === null ? '—' : fmt(chart.lastIn, 2) }}</b></span>
+                  style="--c: var(--ui-indigo)"
+                /><em>入站</em><b>{{ chart.lastIn === null ? '—' : fmt(chart.lastIn, 2) }}</b></span>
                 <span><i
                   class="sw"
-                  style="--c: var(--ui-muted)"
-                />出<b>{{ chart.lastOut === null ? '—' : fmt(chart.lastOut, 2) }}</b></span>
+                  style="--c: var(--ui-teal)"
+                /><em>出站</em><b>{{ chart.lastOut === null ? '—' : fmt(chart.lastOut, 2) }}</b></span>
                 <span
                   v-if="stats.peakEvents !== null"
                   class="peak"
@@ -497,8 +497,8 @@ const CONN_SERIES: WsChartSeries[] = [
   { key: 'conn', color: 'var(--ui-accent)', pick: p => p.activeConnections, area: true, label: '連線', unit: '條' }
 ]
 const EVENT_SERIES: WsChartSeries[] = [
-  { key: 'in', color: 'var(--ui-accent)', pick: p => p.eventsInPerS, area: true, label: '入', digits: 2, unit: '/秒' },
-  { key: 'out', color: 'var(--ui-muted)', pick: p => p.eventsOutPerS, area: true, label: '出', digits: 2, unit: '/秒' }
+  { key: 'in', color: 'var(--ui-indigo)', pick: p => p.eventsInPerS, area: true, label: '入', digits: 2, unit: '/秒' },
+  { key: 'out', color: 'var(--ui-teal)', pick: p => p.eventsOutPerS, area: true, label: '出', digits: 2, unit: '/秒' }
 ]
 const LATENCY_SERIES: WsChartSeries[] = [
   { key: 'lat', color: 'var(--ui-accent)', pick: p => p.avgProcessingMs, area: true, label: '延遲', unit: 'ms', peak: true }
@@ -566,9 +566,18 @@ function windowFor(pick: (_p: WsMetricsPointDto) => number | null) {
   const from = first && first.ts > base.from && first.ts < base.to ? first.ts : base.from
   return { from, to: base.to }
 }
-const connWindow = computed(() => windowFor(p => p.activeConnections))
-const eventWindow = computed(() => windowFor(p => (p.eventsInPerS === null || p.eventsOutPerS === null ? null : 1)))
-const latencyWindow = computed(() => windowFor(p => p.avgProcessingMs))
+/** One shared window: the three charts always show the same time axis, so a spike lines up from chart to chart */
+const sharedWindow = computed(() => {
+  const picks = [
+    windowFor(p => p.activeConnections),
+    windowFor(p => (p.eventsInPerS === null || p.eventsOutPerS === null ? null : 1)),
+    windowFor(p => p.avgProcessingMs)
+  ]
+  return { from: Math.min(...picks.map(w => w.from)), to: histWindow.value.to }
+})
+const connWindow = sharedWindow
+const eventWindow = sharedWindow
+const latencyWindow = sharedWindow
 
 const perAgent = computed(() => {
   const m = metrics.value
@@ -852,7 +861,7 @@ function formatTime(timestamp: number) {
   display: grid;
   grid-template-columns: 280px minmax(0, 1fr);
   gap: 20px 36px;
-  align-items: center;
+  align-items: stretch;
   padding: 24px 28px 14px;
 }
 
@@ -871,7 +880,7 @@ function formatTime(timestamp: number) {
 
 .board-num {
   margin-top: 4px;
-  font: 600 72px / 1 var(--ui-font-display);
+  font: 600 88px / 1 var(--ui-font-display);
   letter-spacing: -0.04em;
   font-variant-numeric: tabular-nums;
   color: var(--ui-ink);
@@ -900,10 +909,15 @@ function formatTime(timestamp: number) {
 .board-facts {
   display: flex;
   gap: 28px;
-  margin: 18px 0 0;
+  margin: auto 0 0;
   padding-top: 14px;
   border-top: 0.5px solid var(--ui-sep);
   align-self: stretch;
+}
+
+.board-main .lead-chips + .board-facts,
+.board-meaning + .board-facts {
+  margin-top: auto;
 }
 
 .board-facts dt {
@@ -1080,6 +1094,13 @@ function formatTime(timestamp: number) {
   color: var(--ui-ink);
 }
 
+.legend em {
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 600;
+  color: var(--ui-ink-2);
+}
+
 .legend .sw {
   align-self: center;
   flex: none;
@@ -1116,31 +1137,44 @@ function formatTime(timestamp: number) {
 
 .kpi-row {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  gap: 14px;
+  grid-template:
+    'ico label' auto
+    'value value' auto
+    'foot foot' auto / auto minmax(0, 1fr);
+  gap: 6px 12px;
   align-items: center;
-  padding-top: 18px;
-  padding-bottom: 18px;
+  padding-top: 20px;
+  padding-bottom: 20px;
 }
 
+.kpi-main {
+  display: contents;
+}
+
+.kpi-row .ui-kpi-ico { grid-area: ico; }
 .kpi-label {
+  grid-area: label;
   font-size: 15px;
   font-weight: 600;
 }
 
 .kpi-main .ui-kpi-foot {
-  margin-top: 2px;
+  grid-area: foot;
+  flex-wrap: wrap;
+  row-gap: 4px;
 }
 
 .kpi-value {
-  font: 600 28px / 1 var(--ui-font-display);
-  letter-spacing: -0.02em;
+  grid-area: value;
+  margin-top: 4px;
+  font: 600 44px / 1 var(--ui-font-display);
+  letter-spacing: -0.03em;
   font-variant-numeric: tabular-nums;
 }
 
 .kpi-value small {
-  margin-left: 4px;
-  font: 500 14px var(--ui-font-ui);
+  margin-left: 5px;
+  font: 500 16px var(--ui-font-ui);
   letter-spacing: 0;
   color: var(--ui-muted);
 }
@@ -1286,8 +1320,19 @@ function formatTime(timestamp: number) {
     margin-top: 16px;
   }
 
+  /* Phone: label and verdict on the left, the number on the right (one short row each) */
   .kpi-row {
-    gap: 12px;
+    grid-template:
+      'ico label value' auto
+      'ico foot value' auto / auto minmax(0, 1fr) auto;
+    gap: 2px 12px;
+    padding-top: 14px;
+    padding-bottom: 14px;
+  }
+
+  .kpi-value {
+    margin-top: 0;
+    font-size: 34px;
   }
 
   .ui-kpi-foot {

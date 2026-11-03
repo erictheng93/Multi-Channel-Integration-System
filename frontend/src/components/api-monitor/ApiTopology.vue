@@ -3,48 +3,6 @@
     <!-- Signature: the request path. Channels come in on the left, the API answers in the middle,
          Cloudflare services sit behind it on the right. A fault shows as a coloured line. -->
     <div class="topo">
-      <div class="col col-in">
-        <h2 class="col-title">
-          頻道進線
-        </h2>
-        <div class="nodes">
-          <div
-            v-for="n in inNodes"
-            :key="n.id"
-            class="node"
-            :class="`is-${n.tone}`"
-          >
-            <span
-              class="node-ico"
-              aria-hidden="true"
-            >
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              ><path :d="n.icon" /></svg>
-            </span>
-            <span class="node-main">
-              <b>{{ n.name }}</b>
-              <small :title="n.title">{{ n.state }}</small>
-            </span>
-            <span
-              v-if="n.ms !== null"
-              class="node-ms"
-            >{{ n.ms }}<small> ms</small></span>
-          </div>
-          <p
-            v-if="inNodes.length === 0"
-            class="node-none"
-          >
-            尚無資料
-          </p>
-        </div>
-      </div>
-
       <div class="core">
         <div class="core-kicker">
           整體狀態
@@ -87,6 +45,7 @@
               :class="`is-${row.tone}`"
             >
               <span class="p95-path">{{ row.path }}</span>
+              <b>{{ row.display }}</b>
               <span class="p95-track">
                 <i :style="{ width: row.pct }" />
                 <u
@@ -94,7 +53,6 @@
                   :style="{ left: ceiling.mark }"
                 />
               </span>
-              <b>{{ row.display }}</b>
             </li>
           </ol>
           <p class="p95-note">
@@ -104,46 +62,91 @@
         </figure>
       </div>
 
-      <div class="col col-out">
-        <h2 class="col-title">
-          後端服務
-        </h2>
-        <div class="nodes">
-          <div
-            v-for="n in outNodes"
-            :key="n.id"
-            class="node"
-            :class="`is-${n.tone}`"
-          >
-            <span
-              class="node-ico"
-              aria-hidden="true"
+      <div class="side">
+        <div class="col col-in">
+          <h2 class="col-title">
+            頻道進線
+          </h2>
+          <div class="nodes">
+            <div
+              v-for="n in inNodes"
+              :key="n.id"
+              class="node"
+              :class="`is-${n.tone}`"
             >
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              ><path
-                v-for="(d, i) in n.paths"
-                :key="i"
-                :d="d"
-              /></svg>
-            </span>
-            <span class="node-main">
-              <b>{{ n.name }}</b>
-              <small>{{ n.state }}</small>
-            </span>
-            <span class="node-ms">{{ n.ms }}<small> ms</small></span>
+              <span
+                class="node-ico"
+                aria-hidden="true"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                ><path :d="n.icon" /></svg>
+              </span>
+              <span class="node-main">
+                <b>{{ n.name }}</b>
+                <small :title="n.title">{{ n.state }}</small>
+              </span>
+              <span
+                v-if="n.ms !== null"
+                class="node-ms"
+              >{{ n.ms }}<small> ms</small></span>
+            </div>
+            <p
+              v-if="inNodes.length === 0"
+              class="node-none"
+            >
+              尚無資料
+            </p>
           </div>
-          <p
-            v-if="outNodes.length === 0"
-            class="node-none"
-          >
-            尚無資料
-          </p>
+        </div>
+
+
+        <div class="col col-out">
+          <h2 class="col-title">
+            後端服務
+          </h2>
+          <div class="nodes">
+            <div
+              v-for="n in outNodes"
+              :key="n.id"
+              class="node"
+              :class="`is-${n.tone}`"
+            >
+              <span
+                class="node-ico"
+                aria-hidden="true"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                ><path
+                  v-for="(d, i) in n.paths"
+                  :key="i"
+                  :d="d"
+                /></svg>
+              </span>
+              <span class="node-main">
+                <b>{{ n.name }}</b>
+                <small>{{ n.state }}</small>
+              </span>
+              <span class="node-ms">{{ n.ms }}<small> ms</small></span>
+            </div>
+            <p
+              v-if="outNodes.length === 0"
+              class="node-none"
+            >
+              尚無資料
+            </p>
+          </div>
         </div>
       </div>
     </div>
@@ -163,8 +166,8 @@
             class="ev-dot"
             aria-hidden="true"
           />
-          <span class="ev-msg">{{ e.message }}</span>
           <time :datetime="e.timestamp">{{ formatRelativeTime(e.timestamp) }}</time>
+          <span class="ev-msg">{{ e.message }}</span>
         </li>
       </ul>
     </div>
@@ -262,7 +265,7 @@ const ceiling = computed(() => ({
 const rows = computed(() =>
   source.value.map(e => ({
     key: e.id,
-    path: e.endpoint.replace(/^\/api/, ''),
+    path: e.endpoint,
     pct: e.responseTime <= 0 ? '2px' : `${Math.max(2, Math.round((e.responseTime / top.value) * 100))}%`,
     display: fmtMs(e.responseTime),
     tone: STATUS_TONE[e.status] ?? 'good',
@@ -280,8 +283,16 @@ const aria = computed(() => `端點 P95 回應時間：${rows.value.map(r => `${
 
 .topo {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+  gap: 0 40px;
   align-items: stretch;
+}
+
+.side {
+  display: grid;
+  align-content: start;
+  gap: 18px;
+  min-width: 0;
 }
 
 .col {
@@ -291,7 +302,7 @@ const aria = computed(() => `端點 P95 回應時間：${rows.value.map(r => `${
 }
 
 .col-title {
-  margin: 0 0 12px;
+  margin: 0 0 6px;
   font-size: 14px;
   font-weight: 600;
   color: var(--ui-muted);
@@ -301,7 +312,6 @@ const aria = computed(() => `端點 P95 回應時間：${rows.value.map(r => `${
   display: flex;
   flex: 1;
   flex-direction: column;
-  gap: 10px;
 }
 
 .node {
@@ -310,10 +320,9 @@ const aria = computed(() => `端點 P95 回應時間：${rows.value.map(r => `${
   flex: 1;
   gap: 12px;
   align-items: center;
-  min-height: 64px;
-  padding: 10px 14px;
-  border-radius: 16px;
-  background: color-mix(in srgb, var(--ui-fill) 55%, var(--ui-surface));
+  min-height: 50px;
+  padding: 7px 0;
+  border-top: 0.5px solid var(--ui-sep);
 }
 
 .node.is-warn { --c: var(--ui-orange); }
@@ -327,7 +336,7 @@ const aria = computed(() => `端點 P95 回應時間：${rows.value.map(r => `${
   height: 36px;
   place-items: center;
   border-radius: 11px;
-  background: var(--ui-surface);
+  background: color-mix(in srgb, var(--c) 12%, var(--ui-surface));
   color: var(--c);
 }
 
@@ -387,15 +396,13 @@ const aria = computed(() => `端點 P95 回應時間：${rows.value.map(r => `${
 }
 
 /* ---- centre ---- */
-.col-in { padding-right: 32px; }
-.col-out { padding-left: 32px; }
 
 .core {
   display: flex;
   flex-direction: column;
   min-width: 0;
-  padding: 0 32px;
-  border-inline: 0.5px solid var(--ui-sep);
+  padding: 0 40px 0 0;
+  border-inline-end: 0.5px solid var(--ui-sep);
 }
 
 .core-kicker {
@@ -473,7 +480,7 @@ const aria = computed(() => `端點 P95 回應時間：${rows.value.map(r => `${
 
 .p95 ol {
   display: grid;
-  gap: 8px;
+  gap: 12px;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -482,9 +489,9 @@ const aria = computed(() => `端點 P95 回應時間：${rows.value.map(r => `${
 .p95 li {
   --c: var(--ui-green);
   display: grid;
-  grid-template-columns: minmax(96px, 150px) minmax(0, 1fr) 64px;
-  gap: 12px;
-  align-items: center;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 5px 12px;
+  align-items: baseline;
   font-size: 13px;
 }
 
@@ -501,7 +508,8 @@ const aria = computed(() => `端點 P95 回應時間：${rows.value.map(r => `${
 
 .p95-track {
   position: relative;
-  height: 10px;
+  grid-column: 1 / -1;
+  height: 8px;
   border-radius: 999px;
   background: var(--ui-fill);
 }
@@ -515,10 +523,12 @@ const aria = computed(() => `端點 P95 回應時間：${rows.value.map(r => `${
 
 .p95-track u {
   position: absolute;
-  top: -4px;
-  bottom: -4px;
-  width: 0;
-  border-left: 1.5px dashed var(--ui-muted);
+  top: -3px;
+  bottom: -3px;
+  width: 2px;
+  margin-left: -1px;
+  border-radius: 1px;
+  background: var(--ui-ink-2);
 }
 
 .p95 li b {
@@ -535,11 +545,12 @@ const aria = computed(() => `端點 P95 回應時間：${rows.value.map(r => `${
 
 .p95-note u {
   display: inline-block;
-  width: 0;
-  height: 11px;
+  width: 2px;
+  height: 12px;
   margin-right: 6px;
-  border-left: 1.5px dashed var(--ui-muted);
-  vertical-align: -1px;
+  border-radius: 1px;
+  background: var(--ui-ink-2);
+  vertical-align: -2px;
 }
 
 /* ---- events ---- */
@@ -573,8 +584,8 @@ const aria = computed(() => `端點 P95 回應時間：${rows.value.map(r => `${
   --c: var(--ui-muted);
   display: grid;
   grid-template-columns: 10px minmax(0, 1fr);
-  gap: 2px 10px;
-  align-items: start;
+  gap: 3px 10px;
+  align-items: center;
   font-size: 14px;
   line-height: 1.4;
 }
@@ -586,12 +597,15 @@ const aria = computed(() => `端點 P95 回應時間：${rows.value.map(r => `${
 .ev-dot {
   width: 8px;
   height: 8px;
-  margin-top: 6px;
+  grid-row: 1;
   border-radius: 50%;
   background: var(--c);
 }
 
 .ev-msg {
+  text-wrap: pretty;
+  grid-column: 2;
+  grid-row: 2;
   display: -webkit-box;
   overflow: hidden;
   overflow-wrap: anywhere;
@@ -602,6 +616,7 @@ const aria = computed(() => `端點 P95 回應時間：${rows.value.map(r => `${
 
 .events time {
   grid-column: 2;
+  grid-row: 1;
   font-size: 13px;
   color: var(--ui-muted);
 }
@@ -611,24 +626,12 @@ const aria = computed(() => `端點 P95 回應時間：${rows.value.map(r => `${
 }
 
 @media (max-width: 1280px) {
+  .topo {
+    gap: 0 28px;
+  }
+
   .core {
-    padding-inline: 22px;
-  }
-
-  .col-in {
-    padding-right: 22px;
-  }
-
-  .col-out {
-    padding-left: 22px;
-  }
-
-  .p95 li {
-    grid-template-columns: minmax(70px, 110px) minmax(0, 1fr) 60px;
-  }
-
-  .node-ms small {
-    display: none;
+    padding-right: 28px;
   }
 }
 
@@ -639,23 +642,18 @@ const aria = computed(() => `端點 P95 回應時間：${rows.value.map(r => `${
 
   /* below the lines' room: the verdict leads, then the two lists side by side */
   .topo {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 18px;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 22px;
   }
 
-  .col-in,
-  .col-out {
-    padding: 0;
+  .side {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 28px;
   }
 
   .core {
     padding: 0;
     border: 0;
-  }
-
-  .core {
-    grid-column: 1 / -1;
-    order: -1;
   }
 
   .events ul {
@@ -677,32 +675,23 @@ const aria = computed(() => `端點 P95 回應時間：${rows.value.map(r => `${
     font-size: 34px;
   }
 
-  .topo {
+  .side {
     grid-template-columns: minmax(0, 1fr);
+    gap: 14px;
   }
 
-  .p95 li {
-    grid-template-columns: minmax(0, 1fr) 64px;
-    gap: 4px 10px;
+  .node-ico {
+    width: 32px;
+    height: 32px;
   }
 
-  .p95-track {
-    grid-column: 1 / -1;
-    grid-row: 2;
-  }
-
-  .p95 li b {
-    grid-column: 2;
-    grid-row: 1;
-  }
-
-  .nodes {
-    gap: 6px;
+  .node-main small {
+    -webkit-line-clamp: 1;
   }
 
   .node {
-    min-height: 52px;
-    padding: 8px 12px;
+    min-height: 46px;
+    padding: 6px 0;
   }
 
   .node-ms small {
