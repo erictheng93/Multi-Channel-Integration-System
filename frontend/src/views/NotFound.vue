@@ -27,8 +27,8 @@
                 class="nf-ring r1"
                 cx="50"
                 cy="62"
-                rx="58"
-                ry="76"
+                rx="52"
+                ry="68"
               />
               <ellipse
                 class="nf-ring r3"
@@ -362,8 +362,8 @@ const query = ref('')
 
 // A 404 is not a second sidebar: the six pages people open most are offered, the rest are one tap or one word away
 const FIRST_PAGES = ['/dashboard', '/conversations', '/notifications', '/tags', '/broadcasts', '/reports']
-// On a wide screen there is room for every destination, so nothing hides behind a button; a phone starts with the six
-const showAll = ref(typeof window !== 'undefined' && window.matchMedia?.('(min-width: 1025px)').matches === true)
+// Every width starts with the six: the full list is the sidebar's job, here it is one tap away
+const showAll = ref(false)
 const canExpand = computed(() => query.value.trim() === '' && !showAll.value && allowed.value.length > FIRST_PAGES.length)
 
 // One flat list in the sidebar's order; typing searches every page
@@ -490,7 +490,7 @@ const goBack = () => {
   display: flex;
   gap: 0.04em;
   align-items: center;
-  font: 400 88px / 1 var(--ui-font-display);
+  font: 600 88px / 1 var(--ui-font-display);
   letter-spacing: -0.04em;
   color: var(--ui-ink);
 }
@@ -498,7 +498,7 @@ const goBack = () => {
 .zero {
   width: 0.6em;
   height: 0.745em;
-  margin: 0 0.07em;
+  margin: 0 0.16em;
   overflow: visible;
 }
 
@@ -575,7 +575,6 @@ const goBack = () => {
   padding: 10px 10px 10px 16px;
   border-radius: 14px;
   background: var(--ui-surface-2);
-  box-shadow: inset 0 0 0 1px var(--ui-field-edge);
 }
 
 .trace-path {
@@ -805,7 +804,7 @@ const goBack = () => {
 
 @media (min-width: 1025px) {
   .nf:not(.is-solo) {
-    min-height: 640px;
+    min-height: 560px;
   }
 
   .nf:not(.is-solo) .code {
