@@ -159,7 +159,7 @@
     --ui-t-head: 15px;
     --ui-t-body: 14px;
     --ui-t-kpi: 34px;
-    /* Typography floor: 13px for meta, labels, table headers, chips. Chart axes may go to 11px. */
+    /* Typography floor: 13px for meta, labels, table headers, chips, chart axes and legends. */
     --ui-t-foot: 13px;
     --ui-t-cap: 13px;
     --ui-t-meta: 13px;
@@ -1624,13 +1624,15 @@
         'actions';
       row-gap: 4px;
     }
-    /* Phone section pages: the parent section label (the switcher) sits above the title */
+    /* Phone section pages: the section switcher is a capsule on the title row, so it never adds a line
+       above the title and every section page looks the same */
     .ui-page-head:has(.ui-page-switch) {
+      grid-template-columns: minmax(0, 1fr) auto;
       grid-template-areas:
-        'crumb'
-        'title'
-        'sub'
-        'actions';
+        'title crumb'
+        'sub sub'
+        'actions actions';
+      column-gap: 10px;
     }
     /* Phone: the subtitle may wrap to two lines (desktop stays one) so key information is never cut */
     .ui-page-sub {

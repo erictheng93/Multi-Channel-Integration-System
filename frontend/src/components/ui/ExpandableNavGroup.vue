@@ -92,7 +92,7 @@
     align-items: center;
     gap: 10px;
     width: 100%;
-    height: 32px;
+    height: 31px;
     padding: 0 10px;
     border: none;
     border-radius: 9px;

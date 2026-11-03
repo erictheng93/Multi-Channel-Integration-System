@@ -203,24 +203,35 @@ watch(() => route?.path, () => { menuOpen.value = false })
 .ui-page-switch {
   position: relative;
   grid-area: crumb;
-  justify-self: start;
+  justify-self: end;
   min-width: 0;
 }
 
+/* A capsule control (not a loose blue link): tinted fill, 44px hit area via the padded ::before */
 .ui-page-switch-btn {
+  position: relative;
   display: inline-flex;
   gap: 4px;
   align-items: center;
-  max-width: 100%;
-  min-height: 44px;
-  margin-top: -8px;
-  padding: 0;
+  height: 32px;
+  padding: 0 10px 0 14px;
   border: 0;
-  background: none;
-  color: var(--ui-accent);
-  font: 600 15px / 1 var(--ui-font-display);
+  border-radius: 999px;
+  background: var(--ui-fill);
+  color: var(--ui-ink);
+  font: 600 14px / 1 var(--ui-font-display);
   letter-spacing: 0;
   cursor: pointer;
+}
+
+.ui-page-switch-btn::before {
+  position: absolute;
+  inset: -6px -4px;
+  content: '';
+}
+
+.ui-page-switch-label {
+  white-space: nowrap;
 }
 
 .ui-page-switch-btn:focus-visible,
@@ -243,7 +254,7 @@ watch(() => route?.path, () => { menuOpen.value = false })
   position: absolute;
   z-index: 30;
   top: calc(100% + 6px);
-  left: 0;
+  right: 0;
   width: min(280px, calc(100vw - 2 * var(--ui-gutter, 16px)));
   margin: 0;
   padding: 6px 0;
@@ -251,7 +262,7 @@ watch(() => route?.path, () => { menuOpen.value = false })
   border-radius: 16px;
   background: var(--ui-surface);
   box-shadow: 0 16px 40px rgb(0 0 0 / 0.18), 0 0 0 0.5px var(--ui-sep);
-  transform-origin: 24px 0;
+  transform-origin: calc(100% - 24px) 0;
   animation: ui-page-switch-in 180ms var(--ui-ease);
   font: 400 16px / 1.4 var(--ui-font-ui);
   letter-spacing: 0;
