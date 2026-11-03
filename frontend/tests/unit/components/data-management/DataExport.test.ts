@@ -80,31 +80,50 @@ describe('DataExport.vue', () => {
 
   // ==================== 格式說明卡片 ====================
 
-  describe('格式與檔案內容', () => {
-    it('應該渲染四個格式選項', () => {
+  describe('格式說明卡片', () => {
+    it('應該渲染四張格式卡片', () => {
       wrapper = createWrapper()
-      const options = wrapper.findAll('.fmt-seg button')
-      expect(options.map(o => o.text())).toEqual(['JSON', 'CSV', 'TXT', 'PDF'])
+      const cards = wrapper.findAll('.ex-row')
+      expect(cards.length).toBe(4)
     })
 
-    it('預設顯示 JSON 的說明、適用場景與欄位', () => {
+    it('應該包含 JSON 格式卡片', () => {
       wrapper = createWrapper()
-      const sheet = wrapper.find('.fmt-sheet')
-      expect(sheet.text()).toContain('結構化')
-      expect(sheet.find('.fmt-use').text()).toContain('API 整合')
-      expect(sheet.text()).toContain('conversationId')
+      const cards = wrapper.findAll('.ex-row')
+      const jsonCard = cards.find(c => c.text().includes('JSON'))
+      expect(jsonCard).toBeTruthy()
+      expect(jsonCard!.text()).toContain('結構化')
     })
 
-    it.each([
-      ['CSV', '試算表'],
-      ['TXT', '純文字'],
-      ['PDF', '可攜式']
-    ])('切換到 %s 會換成該格式的說明', async (name, tagline) => {
+    it('應該包含 CSV 格式卡片', () => {
       wrapper = createWrapper()
-      const option = wrapper.findAll('.fmt-seg button').find(o => o.text() === name)
-      await option!.trigger('click')
-      expect(option!.attributes('aria-pressed')).toBe('true')
-      expect(wrapper.find('.fmt-sheet').text()).toContain(tagline)
+      const cards = wrapper.findAll('.ex-row')
+      const csvCard = cards.find(c => c.text().includes('CSV'))
+      expect(csvCard).toBeTruthy()
+      expect(csvCard!.text()).toContain('試算表')
+    })
+
+    it('應該包含 TXT 格式卡片', () => {
+      wrapper = createWrapper()
+      const cards = wrapper.findAll('.ex-row')
+      const txtCard = cards.find(c => c.text().includes('TXT'))
+      expect(txtCard).toBeTruthy()
+      expect(txtCard!.text()).toContain('純文字')
+    })
+
+    it('應該包含 PDF 格式卡片', () => {
+      wrapper = createWrapper()
+      const cards = wrapper.findAll('.ex-row')
+      const pdfCard = cards.find(c => c.text().includes('PDF'))
+      expect(pdfCard).toBeTruthy()
+      expect(pdfCard!.text()).toContain('可攜式')
+    })
+
+    it('每張卡片應該列出適用場景', () => {
+      wrapper = createWrapper()
+      const uses = wrapper.findAll('.ex-use')
+      expect(uses.length).toBe(4)
+      expect(uses[0]!.text()).toContain('API 整合')
     })
   })
 
@@ -142,7 +161,7 @@ describe('DataExport.vue', () => {
     it('按下開始匯出時帶入選取的格式與篩選', async () => {
       wrapper = createWrapper()
       await vi.runAllTimersAsync()
-      await wrapper.findAll('.fmt-seg button')[1]!.trigger('click')
+      await wrapper.findAll('.ex-row')[1]!.trigger('click')
       await wrapper.find('#ex-customer').setValue('7')
       await wrapper.find('.lead-cta').trigger('click')
       await vi.runAllTimersAsync()
