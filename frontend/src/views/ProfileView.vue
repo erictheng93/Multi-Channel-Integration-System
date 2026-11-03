@@ -77,7 +77,12 @@
                           :key="label"
                           :class="{ 'is-passed': i < row.rank, 'is-here': i === row.rank }"
                         >
-                          <span class="rung-dot" />
+                          <svg
+                            v-if="i === row.rank"
+                            class="ico rung-check"
+                            viewBox="0 0 24 24"
+                            aria-hidden="true"
+                          ><path d="m5 12.5 4.5 4.5L19 7.5" /></svg>
                           <span class="rung-label">{{ label }}</span>
                         </li>
                       </ol>
@@ -255,8 +260,18 @@
                 class="ui-group-label"
               >
                 修改密碼
+                <button
+                  type="button"
+                  class="pw-fold"
+                  :aria-expanded="pwOpen"
+                  aria-controls="pw-form"
+                  @click="pwOpen = !pwOpen"
+                >
+                  {{ pwOpen ? '收合' : '展開' }}
+                </button>
               </h2>
               <form
+                v-show="pwOpen"
                 id="pw-form"
                 class="ui-group pw-card"
                 @submit.prevent="onChangePassword"
@@ -473,6 +488,13 @@ const initial = computed(() => (profile.displayName.trim().charAt(0) || '?').toU
 const identitySub = computed(() => profile.email || '—')
 
 // The role ladder every team uses, lowest to highest (the same order the team page documents)
+// On a phone the password form starts folded (it is rarely needed and costs a screen); #security opens it
+const pwOpen = ref(true)
+onMounted(() => {
+  const phone = typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 768px)').matches
+  if (phone && route.hash !== '#security') { pwOpen.value = false }
+})
+
 const ROLE_STEPS = ['成員', '組長', '主管'] as const
 const ROLE_KEYS = ['member', 'lead', 'supervisor'] as const
 
@@ -822,6 +844,43 @@ watch(
   flex: 1;
 }
 
+/* labels sit on the same inset as the text inside their card */
+.profile-page .ui-group-label {
+  padding-left: 20px;
+}
+
+.profile-page .o-pass .ui-group-label {
+  padding-left: 24px;
+}
+
+/* the fold control only exists on a phone */
+.pw-fold {
+  display: none;
+  margin-left: auto;
+  padding: 0 4px;
+  min-height: 44px;
+  margin-top: -12px;
+  margin-bottom: -12px;
+  border: 0;
+  background: transparent;
+  color: var(--ui-accent);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+@media (max-width: 768px) {
+  .pw-fold {
+    display: inline-block;
+  }
+}
+
+.pw-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
 /* ---- the pass: the one elevated object, a wallet-style identity card ---- */
 .pass {
   position: relative;
@@ -839,7 +898,7 @@ watch(
   grid-template-columns: auto minmax(0, 1fr);
   gap: 8px 18px;
   align-items: center;
-  padding: 28px 28px 26px;
+  padding: 26px 24px 24px;
   background: var(--ui-accent-soft);
   color: var(--ui-ink);
 }
@@ -896,7 +955,7 @@ watch(
   flex: 1;
   flex-direction: column;
   gap: 14px;
-  padding: 22px 28px 20px;
+  padding: 22px 24px 20px;
 }
 
 .pass-k {
@@ -962,66 +1021,49 @@ watch(
   color: var(--ui-ink);
 }
 
+/* three read-only steps of one ladder: the steps up to my role are tinted, my own is solid, the rest are grey */
 .rungs {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
 .rungs li {
-  position: relative;
-  display: grid;
-  gap: 6px;
-  justify-items: center;
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  justify-content: center;
+  height: 32px;
+  border-radius: 999px;
+  background: var(--ui-fill);
+  color: var(--ui-ink-2);
 }
 
-/* the track runs from the middle of one dot to the middle of the next */
-.rungs li + li::before {
-  content: '';
-  position: absolute;
-  top: 6px;
-  right: 50%;
-  width: 100%;
-  height: 3px;
-  border-radius: 2px;
-  background: var(--ui-fill-strong);
+.rungs li.is-passed {
+  background: color-mix(in srgb, var(--tone) 18%, var(--ui-surface));
+  color: var(--ui-ink);
 }
 
-.rungs li.is-passed + li::before,
-.rungs li.is-here::before {
-  background: var(--tone);
+.rungs li.is-here {
+  background: color-mix(in srgb, var(--tone) 42%, var(--ui-surface));
+  color: var(--ui-ink);
 }
 
-.rung-dot {
-  position: relative;
-  z-index: 1;
-  width: 15px;
-  height: 15px;
-  border-radius: 50%;
-  background: var(--ui-surface);
-  box-shadow: inset 0 0 0 2.5px var(--ui-fill-strong);
-}
-
-.rungs li.is-passed .rung-dot {
-  background: var(--tone);
-  box-shadow: none;
-}
-
-.rungs li.is-here .rung-dot {
-  background: var(--tone);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--tone) 22%, transparent);
+.rung-check {
+  width: 14px;
+  height: 14px;
+  stroke-width: 2.6;
 }
 
 .rung-label {
   font-size: 13px;
   font-weight: 600;
-  color: var(--ui-muted);
 }
 
 .rungs li.is-here .rung-label {
-  color: var(--ui-ink);
   font-weight: 700;
 }
 
@@ -1036,7 +1078,7 @@ watch(
   gap: 14px;
   align-items: center;
   justify-content: space-between;
-  padding: 22px 28px 24px;
+  padding: 22px 24px 24px;
   box-shadow: inset 0 0.5px 0 var(--ui-sep);
 }
 
@@ -1321,12 +1363,8 @@ watch(
 .pw-rules .ico {
   width: 16px;
   height: 16px;
-  padding: 2px;
-  border-radius: 50%;
-  background: transparent;
-  box-shadow: inset 0 0 0 1.5px var(--ui-muted);
-  stroke: transparent;
-  stroke-width: 3;
+  stroke: var(--ui-muted);
+  stroke-width: 2.4;
 }
 
 .pw-rules li.is-met {
@@ -1334,9 +1372,7 @@ watch(
 }
 
 .pw-rules li.is-met .ico {
-  background: var(--ui-green);
-  box-shadow: none;
-  stroke: #fff;
+  stroke: var(--ui-green-ink, var(--ui-green));
 }
 
 /* password: the three fields stack at a readable width, the action closes the card */
@@ -1355,7 +1391,6 @@ watch(
 
 .form-actions {
   display: flex;
-  margin-top: auto;
   gap: 16px;
   align-items: center;
   justify-content: space-between;
