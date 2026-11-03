@@ -43,7 +43,7 @@ describe('ApiTopology', () => {
 
   it('lists the worst endpoints first with the 500 ms line when something is slower', () => {
     const wrapper = mountTopo([ep('1', '/api/a', 40, 'healthy'), ep('2', '/api/b', 1380, 'error'), ep('3', '/api/c', 612, 'warning')])
-    expect(wrapper.findAll('.p95 li').map((l) => l.find('.p95-path').text())).toEqual(['/b', '/c', '/a'])
+    expect(wrapper.findAll('.p95 li').map((l) => l.find('.p95-path').text())).toEqual(['/api/b', '/api/c', '/api/a'])
     expect(wrapper.find('.p95-note').text()).toContain('500 ms')
     expect(wrapper.find('.p95-note').text()).toContain('118 ms')
   })
