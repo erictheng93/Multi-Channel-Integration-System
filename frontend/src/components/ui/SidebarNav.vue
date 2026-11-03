@@ -364,7 +364,7 @@
     border-radius: 999px;
     background: var(--ui-red);
     color: #fff;
-    font: 600 11px/18px var(--ui-font-display);
+    font: 600 12px/18px var(--ui-font-display);
     text-align: center;
     font-variant-numeric: tabular-nums;
   }
