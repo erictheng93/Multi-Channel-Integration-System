@@ -221,10 +221,11 @@ const line = computed(() => {
 
 .tok {
   margin: 0;
-  padding: 2px 10px;
+  padding: 0 2px 2px;
   border: 0;
-  border-radius: 12px;
-  background: var(--ui-accent-soft);
+  border-radius: 6px;
+  background: transparent;
+  box-shadow: 0 2px 0 color-mix(in srgb, var(--ui-accent) 35%, transparent);
   color: var(--ui-accent);
   font: 600 22px / 1.3 var(--ui-font-display);
   letter-spacing: -0.02em;
@@ -234,11 +235,12 @@ const line = computed(() => {
 }
 
 .tok:hover {
-  background: color-mix(in srgb, var(--ui-accent) 14%, var(--ui-surface));
+  background: var(--ui-accent-soft);
 }
 
 .tok.is-open {
   background: var(--ui-orange-soft);
+  box-shadow: 0 2px 0 var(--ui-orange);
   color: var(--ui-orange-ink);
 }
 
