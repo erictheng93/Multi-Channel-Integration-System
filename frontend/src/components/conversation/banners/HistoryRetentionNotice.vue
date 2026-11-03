@@ -117,15 +117,14 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
+/* A quiet full-width strip pinned above the thread (not a pill floating beside the date chip) */
 .history-retention-notice {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
-  width: fit-content;
-  max-width: calc(100% - 32px);
-  margin: 8px auto 0;
-  padding: 2px 2px 2px 12px;
-  border-radius: 18px;
+  margin: 0;
+  padding: 2px 8px 2px 16px;
   background: var(--ui-accent-soft);
   color: var(--ui-ink);
   font-size: 13px;
@@ -172,8 +171,7 @@ onBeforeUnmount(() => {
 /* Phone: tighter margins; the boundary date sits in the title at every width */
 @media (max-width: 768px) {
   .history-retention-notice {
-    max-width: calc(100% - 24px);
-    margin-top: 8px;
+    padding-left: 12px;
   }
 }
 

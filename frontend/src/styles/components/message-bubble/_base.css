@@ -52,7 +52,7 @@
 
 /* Sent bubbles are a soft brand tint with ink text: a long thread stays calm, and the sender is still obvious at a glance */
 .message-outgoing .message-content {
-  background: color-mix(in srgb, var(--ui-accent) 24%, var(--ui-surface));
+  background: color-mix(in srgb, var(--ui-accent) 30%, var(--ui-surface));
   color: var(--ui-ink);
   border-color: transparent;
   box-shadow: none;
