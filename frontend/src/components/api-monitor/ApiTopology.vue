@@ -511,14 +511,15 @@ const aria = computed(() => `端點 P95 回應時間：${rows.value.map(r => `${
   grid-column: 1 / -1;
   height: 8px;
   border-radius: 999px;
-  background: var(--ui-fill);
+  background: color-mix(in srgb, var(--ui-fill) 55%, transparent);
 }
 
+/* state colour stays, softened: a slow endpoint reads as a longer bar, not a siren */
 .p95-track i {
   display: block;
   height: 100%;
   border-radius: inherit;
-  background: var(--c);
+  background: color-mix(in srgb, var(--c) 68%, var(--ui-surface));
 }
 
 .p95-track u {
@@ -556,16 +557,13 @@ const aria = computed(() => `端點 P95 回應時間：${rows.value.map(r => `${
 /* ---- events ---- */
 .events {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: 8px 24px;
-  align-items: start;
+  gap: 10px;
   padding-top: 16px;
   border-top: 0.5px solid var(--ui-sep);
 }
 
 .events h2 {
   margin: 0;
-  padding-top: 2px;
   font-size: 14px;
   font-weight: 600;
   color: var(--ui-muted);
@@ -574,18 +572,22 @@ const aria = computed(() => `端點 P95 回應時間：${rows.value.map(r => `${
 .events ul {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px 28px;
+  gap: 8px 20px;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
+/* each event is a small card-less column: time on the first line, the message under it */
 .events li {
   --c: var(--ui-muted);
   display: grid;
   grid-template-columns: 10px minmax(0, 1fr);
-  gap: 3px 10px;
+  gap: 4px 10px;
   align-items: center;
+  padding: 10px 14px 12px;
+  border-radius: 14px;
+  background: var(--ui-fill);
   font-size: 14px;
   line-height: 1.4;
 }
@@ -603,14 +605,10 @@ const aria = computed(() => `端點 P95 回應時間：${rows.value.map(r => `${
 }
 
 .ev-msg {
-  text-wrap: pretty;
-  grid-column: 2;
+  text-wrap: balance;
+  grid-column: 1 / -1;
   grid-row: 2;
-  display: -webkit-box;
-  overflow: hidden;
   overflow-wrap: anywhere;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
   color: var(--ui-ink);
 }
 
@@ -618,11 +616,7 @@ const aria = computed(() => `端點 P95 回應時間：${rows.value.map(r => `${
   grid-column: 2;
   grid-row: 1;
   font-size: 13px;
-  color: var(--ui-muted);
-}
-
-@media (min-width: 1025px) {
-  .ev-msg { min-height: 2.8em; }
+  color: var(--ui-ink-2);
 }
 
 @media (max-width: 1280px) {
@@ -659,10 +653,6 @@ const aria = computed(() => `端點 P95 回應時間：${rows.value.map(r => `${
   .events ul {
     grid-template-columns: minmax(0, 1fr);
   }
-
-  .events {
-    grid-template-columns: minmax(0, 1fr);
-  }
 }
 
 @media (max-width: 768px) {
@@ -680,13 +670,21 @@ const aria = computed(() => `端點 P95 回應時間：${rows.value.map(r => `${
     gap: 14px;
   }
 
+  /* phone: events are flat rows, not three grey blocks */
+  .events ul {
+    gap: 0;
+  }
+
+  .events li {
+    padding: 9px 0 10px;
+    border-radius: 0;
+    background: none;
+    border-top: 0.5px solid var(--ui-sep);
+  }
+
   .node-ico {
     width: 32px;
     height: 32px;
-  }
-
-  .node-main small {
-    -webkit-line-clamp: 1;
   }
 
   .node {

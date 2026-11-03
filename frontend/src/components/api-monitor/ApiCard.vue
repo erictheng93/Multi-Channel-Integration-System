@@ -39,10 +39,10 @@
         class="sr"
         :class="successClass"
       >
-        <span class="sr-l">成功率 </span>{{ endpoint.successRate }}%<span class="sr-n"> · {{ endpoint.requestCount.toLocaleString() }} 次/時</span>
+        <span class="sr-l">成功率 </span>{{ endpoint.successRate }}%<span class="sr-n"> 成功 · {{ endpoint.requestCount.toLocaleString() }} 次/時</span>
       </div>
 
-      <span class="m m-p95">{{ latency.value }}<small>{{ latency.unit }}</small></span>
+      <span class="m m-p95"><span class="m-k">P95 </span>{{ latency.value }}<small>{{ latency.unit }}</small></span>
       <span
         class="m m-rate hide-m"
         :class="successClass"
@@ -135,6 +135,37 @@ const successClass = computed(() => {
   gap: 12px;
   align-items: center;
   padding: 12px 22px;
+}
+
+.m-k {
+  display: none;
+}
+
+@media (min-width: 1025px) {
+  .ep {
+    grid-template-columns: 52px 290px minmax(0, 1fr) 90px 90px 110px 16px;
+    padding-top: 14px;
+    padding-bottom: 14px;
+  }
+
+  .ep-main {
+    display: contents;
+  }
+
+  .desc {
+    grid-column: 3;
+    grid-row: 1;
+    padding-right: 12px;
+  }
+
+  .path {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .m {
+    text-align: right;
+  }
 }
 
 .ep:focus-visible {
@@ -274,10 +305,6 @@ const successClass = computed(() => {
 }
 
 @media (max-width: 768px) {
-  .m {
-    text-align: right;
-  }
-
   .sr-n {
     display: inline;
   }
@@ -286,14 +313,25 @@ const successClass = computed(() => {
     display: none;
   }
 
-  /* Method pill sits above the path so the path owns the full middle column (no 3-4 line wrap) */
+  /* Phone: the first line is the measurement strip (method, P95, success, requests), then the path, then the description */
   .ep {
     grid-template-areas:
-      'meth sr m chev'
-      'main main m chev';
-    grid-template-columns: auto minmax(0, 1fr) 76px 16px;
-    gap: 6px 10px;
+      'meth m sr chev'
+      'main main main main';
+    grid-template-columns: auto auto minmax(0, 1fr) 16px;
+    gap: 6px 12px;
     padding: 12px 16px;
+  }
+
+  .m-k {
+    display: inline;
+    font-weight: 400;
+    color: var(--ui-muted);
+  }
+
+  .m {
+    text-align: left;
+    white-space: nowrap;
   }
 
   .meth {
