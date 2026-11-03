@@ -46,6 +46,7 @@
           :key="template.name"
           :template="template"
           :selected="selected.name === template.name"
+          :state="states[template.type] ?? null"
           @select="onSelect"
         />
       </div>
@@ -70,32 +71,6 @@
           </div>
         </dl>
 
-        <p
-          class="tpl-src"
-          :class="{ 'is-warn': latestState?.failed }"
-          :role="latestState?.failed ? 'alert' : 'status'"
-        >
-          <template v-if="latestLoading">
-            正在讀取最近一份報表…
-          </template>
-          <template v-else-if="latestState?.failed">
-            無法讀取最近一份報表的內容，你仍可直接產生新的報表。
-          </template>
-          <template v-else-if="!latestState?.report">
-            還沒有產生過。以 JSON 產生第一份後，樣張會填入實際數值。
-          </template>
-          <template v-else>
-            樣張數值取自
-            <router-link
-              :to="`/reports/${latestState.report.id}`"
-              class="tpl-src-link"
-            >
-              {{ latestState.report.title }}
-            </router-link>
-            <span class="tpl-src-ago"> ・ {{ relativeTime(latestState.report.completedAt ?? latestState.report.createdAt) }}</span>
-          </template>
-        </p>
-
         <section
           class="tpl-hist"
           aria-label="報表內容"
@@ -103,18 +78,25 @@
           <h3 class="tpl-cap">
             報表內容
           </h3>
-          <p class="tpl-inc">
-            <template
-              v-for="(item, index) in contents"
+          <ul class="tpl-inc">
+            <li
+              v-for="item in contents"
               :key="item.label"
             >
-              <span
-                v-if="index"
-                class="tpl-sep"
+              <svg
+                viewBox="0 0 16 16"
                 aria-hidden="true"
-              > ・ </span><b :title="item.hint">{{ item.label }}</b>
-            </template>
-          </p>
+              ><path
+                d="M3.5 8.5l3 3 6-7"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              /></svg>
+              <span><b>{{ item.label }}</b><small>{{ item.hint }}</small></span>
+            </li>
+          </ul>
         </section>
 
         <section
@@ -200,7 +182,7 @@ import type { ReportTemplate } from '@/types/reports';
 import ReportsAPI from '@/api/reports';
 import TemplateCard from './templates/TemplateCard.vue';
 import ReportSheet from './templates/ReportSheet.vue';
-import { useLatestReport, relativeTime } from './templates/latestReport';
+import { useLatestByType, relativeTime } from './templates/latestReport';
 import { DEFAULT_TEMPLATES, REPORT_CONTENTS, formatEstimatedTime } from './templates/templateHelpers';
 
 const router = useRouter();
@@ -229,7 +211,9 @@ const generatableTypes = generatable.types.map(option => option.value);
 const isSupported = (template: ReportTemplate) => generatableTypes.includes(template.type);
 const usableTemplates = computed(() => templates.value.filter(isSupported));
 const selected = ref<ReportTemplate | null>(null);
-const { state: latestState, loading: latestLoading } = useLatestReport(computed(() => selected.value?.type));
+const states = useLatestByType(computed(() => usableTemplates.value.map(template => template.type)));
+const latestState = computed(() => (selected.value ? states.value[selected.value.type] ?? null : null));
+const latestLoading = computed(() => !!selected.value && !latestState.value);
 const earlier = computed(() => (latestState.value?.recent ?? []).filter(item => item.id !== latestState.value?.report?.id).slice(0, 3));
 const docProps = computed(() => {
   const list = [{ k: '時間範圍', v: '近 30 天' }, { k: '輸出格式', v: 'JSON' }];
@@ -350,48 +334,41 @@ onMounted(() => {
   font-variant-numeric: tabular-nums;
 }
 
-.tpl-src {
-  margin: 0;
-  padding: 12px 14px;
-  border-radius: var(--ui-r-inner);
-  background: var(--ui-surface-2);
-  font-size: 14px;
-  color: var(--ui-ink-2);
-}
-
-.tpl-src.is-warn {
-  color: var(--ui-red-ink);
-}
-
-.tpl-src-link {
-  font-weight: 600;
-  color: var(--ui-accent);
-  text-decoration: none;
-  overflow-wrap: anywhere;
-}
-
-.tpl-src-link:hover {
-  text-decoration: underline;
-}
-
-.tpl-src-ago {
-  color: var(--ui-muted);
-}
-
 .tpl-inc {
+  display: grid;
+  gap: 12px;
   margin: 0;
-  font-size: 14px;
-  line-height: 1.7;
-  color: var(--ui-ink-2);
+  padding: 0;
+  list-style: none;
+}
+
+.tpl-inc li {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+}
+
+.tpl-inc svg {
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  color: var(--ui-green-ink);
+}
+
+.tpl-inc span {
+  display: grid;
+  gap: 1px;
 }
 
 .tpl-inc b {
+  font-size: 15px;
   font-weight: 600;
   color: var(--ui-ink);
-  white-space: nowrap;
 }
 
-.tpl-sep {
+.tpl-inc small {
+  font-size: 13px;
   color: var(--ui-muted);
 }
 
@@ -404,7 +381,7 @@ onMounted(() => {
 
 .tpl-hist {
   display: grid;
-  gap: 4px;
+  gap: 10px;
 }
 
 .tpl-cap {

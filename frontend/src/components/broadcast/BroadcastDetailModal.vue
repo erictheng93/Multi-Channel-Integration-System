@@ -112,7 +112,9 @@
                 {{ recipient.customerDisplayName || shortId(recipient.platformUserId) }}
               </div>
               <div class="ui-row-sub">
-                {{ platformLabel(recipient.platform) }} · {{ shortId(recipient.platformUserId) }}
+                {{ platformLabel(recipient.platform) }} · {{ shortId(recipient.platformUserId) }}<template v-if="recipient.sentAt">
+                  · {{ formatDate(recipient.sentAt) }}
+                </template>
               </div>
               <div
                 v-if="recipient.errorReason"
@@ -399,7 +401,7 @@ function reasonLabel(reason: BroadcastRecipientErrorReason): string {
 .recipient-list .recipient-row {
   flex: 1 1 auto;
   align-items: center;
-  max-height: 104px;
+  max-height: 92px;
 }
 
 .recipient-section .pagination {

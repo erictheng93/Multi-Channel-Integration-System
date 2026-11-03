@@ -27,6 +27,24 @@
         <span class="stor-n">{{ row.count }} 份</span>
       </li>
     </ul>
+    <h4
+      v-if="biggest.length"
+      class="stor-cap"
+    >
+      佔空間最多
+    </h4>
+    <ul
+      v-if="biggest.length"
+      class="stor-files"
+    >
+      <li
+        v-for="file in biggest"
+        :key="file.id"
+      >
+        <span class="stor-fn">{{ file.title }}</span>
+        <b>{{ file.size }}</b>
+      </li>
+    </ul>
     <p
       v-if="soonest"
       class="stor-foot"
@@ -51,6 +69,11 @@ const byFormat = computed(() => {
   const max = Math.max(1, ...counts.values())
   return [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([format, count]) => ({ format, count, pct: Math.round((count / max) * 100) }))
 })
+const biggest = computed(() => [...files.value]
+  .filter(r => (r.fileSize ?? 0) > 0)
+  .sort((a, b) => (b.fileSize ?? 0) - (a.fileSize ?? 0))
+  .slice(0, 2)
+  .map(r => ({ id: r.id, title: r.title, size: ReportsAPI.formatFileSize(r.fileSize ?? 0) })))
 const soonest = computed(() => {
   const times = files.value.map(r => (r.expiresAt ? new Date(r.expiresAt).getTime() : NaN)).filter(t => !Number.isNaN(t))
   if (!times.length) { return '' }
@@ -145,10 +168,57 @@ const soonest = computed(() => {
   color: var(--ui-ink-2);
 }
 
+.stor-cap {
+  margin: 18px 0 6px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ui-ink-2);
+}
+
+.stor-files {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.stor-files li {
+  display: flex;
+  gap: 12px;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 7px 0;
+  font-size: 14px;
+}
+
+.stor-files li + li {
+  box-shadow: 0 -0.5px 0 var(--ui-sep);
+}
+
+.stor-fn {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stor-files b {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
 .stor-foot {
   margin: auto 0 0;
   padding-top: 12px;
   font-size: 13px;
   color: var(--ui-muted);
+}
+
+/* the phone page is already long: the per-file ranking is a desktop rail filler */
+@media (max-width: 768px) {
+  .stor-cap,
+  .stor-files {
+    display: none;
+  }
 }
 </style>

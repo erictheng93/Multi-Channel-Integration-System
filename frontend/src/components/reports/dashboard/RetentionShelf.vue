@@ -478,6 +478,16 @@ const rows = computed(() => live.value.map(r => {
   align-self: stretch;
 }
 
+/* every row has a baseline, so the ones that are only a dot (running, failed) still sit on the grid */
+.sh-track::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  right: 0;
+  left: 0;
+  border-top: 2px dotted var(--ui-fill-strong);
+}
+
 .sh-today {
   position: absolute;
   top: 0;
@@ -491,8 +501,8 @@ const rows = computed(() => live.value.map(r => {
 .sh-left {
   position: absolute;
   top: 50%;
-  height: 10px;
-  margin-top: -5px;
+  height: 12px;
+  margin-top: -6px;
 }
 
 .sh-kept {

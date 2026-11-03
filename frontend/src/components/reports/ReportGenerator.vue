@@ -101,10 +101,11 @@
       label="產生報表"
     >
       <p
+        v-if="!isFormValid"
         class="generate-hint"
         role="status"
       >
-        {{ isFormValid ? selectionLine : missingHint }}
+        {{ missingHint }}
       </p>
       <button
         class="btn btn-primary"
@@ -247,13 +248,6 @@ const jumpToStep = async (step: 'type' | 'range' | 'format') => {
   await nextTick();
   card.querySelector<HTMLElement>('[role="radio"][tabindex="0"], input, button')?.focus({ preventScroll: true });
 };
-
-// What the phone action bar says it will make: type, range and format at a glance
-const selectionLine = computed(() => {
-  const range = ReportsAPI.getTimeRangeOptions().find(option => option.value === formData.timeRange)?.label ?? '';
-  const format = ReportsAPI.getAvailableFormats().find(option => option.value === formData.format)?.label ?? formData.format;
-  return [formData.type ? ReportsAPI.formatReportType(formData.type) : '', range, format].filter(Boolean).join(' ・ ');
-});
 
 // Methods
 let autoTitle = '';
