@@ -24,9 +24,19 @@
           <li
             v-for="item in contents"
             :key="item.label"
-            :title="item.hint"
           >
-            {{ item.label }}
+            <svg
+              viewBox="0 0 16 16"
+              aria-hidden="true"
+            ><path
+              d="M3.5 8.5l3 3 6-7"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            /></svg>
+            <span><b>{{ item.label }}</b><small>{{ item.hint }}</small></span>
           </li>
         </ul>
         <p class="sample-opts">
@@ -221,21 +231,41 @@ const formatDate = (dateString: string): string => {
 }
 
 .sample-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin: 0 0 6px;
+  display: grid;
+  gap: 12px;
+  margin: 0 0 12px;
   padding: 0;
   list-style: none;
 }
 
 .sample-chips li {
-  padding: 6px 12px;
-  border-radius: 999px;
-  background: var(--ui-fill);
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--ui-ink-2);
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+}
+
+.sample-chips svg {
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  color: var(--ui-green-ink);
+}
+
+.sample-chips span {
+  display: grid;
+  gap: 1px;
+}
+
+.sample-chips b {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ui-ink);
+}
+
+.sample-chips small {
+  font-size: 13px;
+  color: var(--ui-muted);
 }
 
 .sample-opts {
