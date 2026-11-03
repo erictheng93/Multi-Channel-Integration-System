@@ -16,21 +16,6 @@
       <div class="team-name">
         {{ team.name }}
       </div>
-      <div
-        class="team-desc"
-        :title="team.description || undefined"
-      >
-        {{ team.description || '尚未填寫描述' }}
-      </div>
-      <div
-        v-if="leaders.length > 0"
-        class="team-leaders"
-      >
-        <span
-          v-for="l in leaders"
-          :key="l.id"
-        ><small>{{ l.role }}</small> {{ l.name }}</span>
-      </div>
       <div class="team-meta">
         <span class="ui-pill">{{ team.memberCount || 0 }} 成員</span>
         <span
@@ -43,24 +28,6 @@
         >已停用</span>
       </div>
     </div>
-
-    <span
-      v-if="previewMembers.length > 0"
-      class="avs"
-    >
-      <TeamAvatar
-        v-for="m in previewMembers"
-        :key="m.id"
-        size="sm"
-        :name="m.name || m.loginId"
-        :seed="m.id"
-        :src="m.avatar"
-      />
-      <span
-        v-if="overflowCount > 0"
-        class="avs-more"
-      >+{{ overflowCount }}</span>
-    </span>
 
     <div
       class="team-acts"
@@ -176,14 +143,10 @@ import { createLogger } from '@/utils/logger'
     defineProps<{
       team: Team
       loading?: boolean
-      /** Up to a few members of this team, for the avatar stack. */
-      previewMembers?: TeamMember[]
       /** Open conversations of this team; null/undefined = unknown, nothing is drawn */
       openCount?: number | null
-      /** Who runs this team: supervisors and leads, highest rank first */
-      leaders?: { id: string, name: string, role: string }[]
     }>(),
-    { loading: false, previewMembers: () => [], openCount: null, leaders: () => [] }
+    { loading: false, openCount: null }
   )
   const emit = defineEmits<{
     'toggle-status': [team: Team]
@@ -206,7 +169,6 @@ import { createLogger } from '@/utils/logger'
   import { useQRCodeStore } from '@/stores/qrcode'
   import Dropdown from '@/components/ui/Dropdown.vue'
   import DropdownItem from '@/components/ui/DropdownItem.vue'
-  import TeamAvatar from '@/components/team/TeamAvatar.vue'
   import { teamMarkBackground, teamMarkInk } from '@/utils/team-tone'
   import type { Team, TeamMember, LiffQRCode } from '@/types'
 
@@ -219,7 +181,6 @@ import { createLogger } from '@/utils/logger'
   const teamModal = useTeamModal()
 
   // Members beyond the avatar stack
-  const overflowCount = computed(() => Math.max(0, (props.team.memberCount || 0) - props.previewMembers.length))
 
   // 當前用戶資訊
   const currentUser = computed(() => authStore.currentAgent)
@@ -513,28 +474,6 @@ import { createLogger } from '@/utils/logger'
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.team-desc {
-  overflow: hidden;
-  font-size: 13px;
-  color: var(--ui-muted);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.team-leaders {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 2px 16px;
-  margin-top: 4px;
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--ui-ink-2);
-}
-.team-leaders small {
-  margin-right: 2px;
-  font-size: 13px;
-  font-weight: 400;
-  color: var(--ui-muted);
-}
 .go {
   width: 16px;
   height: 16px;
@@ -546,31 +485,6 @@ import { createLogger } from '@/utils/logger'
   align-items: center;
   gap: 6px;
   margin-top: 8px;
-}
-.avs {
-  display: flex;
-  align-items: center;
-  padding-right: 8px;
-}
-.avs > :deep(*) {
-  margin-left: -6px;
-  box-shadow: 0 0 0 2px var(--ui-surface);
-}
-.avs > :deep(*:first-child) {
-  margin-left: 0;
-}
-.avs-more {
-  display: grid;
-  min-width: 28px;
-  height: 28px;
-  padding: 0 6px;
-  place-items: center;
-  border-radius: 14px;
-  background: var(--ui-fill-strong);
-  box-shadow: 0 0 0 2px var(--ui-surface);
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--ui-ink-2);
 }
 .team-acts {
   display: flex;
@@ -619,23 +533,12 @@ import { createLogger } from '@/utils/logger'
   .team-main {
     grid-area: main;
   }
-  /* the people are listed one section up; the phone card stays a short summary */
-  .avs {
-    display: none;
-  }
   .team-acts .go {
     display: none;
   }
   .team-acts {
     grid-area: acts;
     margin: -6px -8px 0 0;
-  }
-  .team-desc {
-    display: -webkit-box;
-    overflow: hidden;
-    white-space: normal;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
   }
 }
 </style>
