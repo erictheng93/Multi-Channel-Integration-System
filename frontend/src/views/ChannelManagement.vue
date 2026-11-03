@@ -174,19 +174,11 @@
             </div>
             <div class="chname">
               <b>{{ channelHeading(channel) }}</b>
-              <span>{{ PLATFORM_KIND[channel.platform] }}</span>
+              <span>{{ isUnnamed(channel) ? '尚未命名' : PLATFORM_KIND[channel.platform] }}</span>
               <span
                 class="ui-pill hd-pill"
                 :class="channel.isVerified ? 'ui-pill-green' : 'ui-pill-orange'"
               >{{ channel.isVerified ? '已驗證' : '未驗證' }}</span>
-              <button
-                v-if="isUnnamed(channel)"
-                type="button"
-                class="name-it"
-                @click.stop="editChannel(channel)"
-              >
-                命名此頻道
-              </button>
             </div>
             <div class="chtools">
               <button
@@ -254,7 +246,7 @@
                   role="menuitem"
                   @click="editChannel(channel)"
                 >
-                  編輯配置
+                  {{ isUnnamed(channel) ? '命名此頻道' : '編輯配置' }}
                 </button>
                 <button
                   role="menuitem"
@@ -366,14 +358,6 @@
               />
               <span>{{ channel.isActive ? '啟用中' : '已停用' }}</span>
             </label>
-            <button
-              v-if="!problemIds.has(channel.id)"
-              type="button"
-              class="btn btn-secondary btn-sm chverify"
-              @click="verifyChannel(channel)"
-            >
-              驗證配置
-            </button>
           </div>
         </article>
       </div>
@@ -553,12 +537,6 @@ const selectedPlatformLabel = computed(() =>
   width: 16px;
   height: 16px;
 }
-i.in {
-  background: var(--ui-blue);
-}
-i.out {
-  background: var(--ui-indigo);
-}
 
 .toolbar {
   display: flex;
@@ -610,20 +588,9 @@ i.out {
 }
 .chwarn .btn {
   min-height: 36px;
-  background: var(--ui-orange-ink);
-  color: #fff;
+  background: var(--ui-surface);
+  color: var(--ui-orange-ink);
   font-weight: 600;
-}
-.name-it {
-  display: block;
-  margin-top: 2px;
-  padding: 0;
-  border: 0;
-  background: none;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--ui-accent-ink, var(--ui-accent));
-  cursor: pointer;
 }
 
 /* Every card has the same parts in the same order, so rows line up without any grid trickery */
@@ -780,16 +747,6 @@ i.out {
   gap: 6px;
   padding: 12px 20px 12px;
 }
-.chverify {
-  min-height: 40px;
-  padding-inline: 14px;
-  background: transparent;
-  font-weight: 600;
-  color: var(--ui-accent);
-}
-.chverify:hover {
-  background: var(--ui-accent-soft);
-}
 .chfoot {
   margin-top: auto;
 }
@@ -816,26 +773,26 @@ i.out {
 @media (min-width: 1025px) {
   .chgrid {
     grid-template-columns: minmax(0, 1fr);
+    grid-auto-rows: 1fr;
     gap: 14px;
   }
   .chcard {
     display: grid;
     grid-template-columns: 250px minmax(0, 1fr) minmax(0, 1fr) 120px;
     grid-template-areas: 'head warn meta foot';
-    align-items: start;
+    align-items: center;
     column-gap: 28px;
     padding: 20px 22px;
   }
-  .chhead { grid-area: head; align-items: flex-start; padding: 0; align-self: start; }
+  .chhead { grid-area: head; align-items: flex-start; padding: 0; align-self: center; }
   .pills { display: none; }
   .hd-pill { display: inline-flex; margin-top: 8px; }
   .chname { display: grid; justify-items: start; }
   .chwarn { grid-area: warn; margin: 0; }
-  .meta { grid-area: meta; padding: 0; align-self: start; }
+  .meta { grid-area: meta; padding: 0; align-self: center; }
   .chcard:not(:has(.chwarn)) .meta { grid-column: 2 / 4; }
   .chfoot .toggle { justify-self: end; }
-  .chfoot { grid-area: foot; display: grid; justify-items: end; align-content: space-between; gap: 12px; margin: 0; padding: 0; height: 100%; }
-  .chfoot:not(:has(.chverify)) { align-content: start; }
+  .chfoot { grid-area: foot; display: grid; justify-items: end; align-content: center; margin: 0; padding: 0; }
 }
 
 @media (max-width: 1024px) {
@@ -852,9 +809,6 @@ i.out {
   .more-btn {
     width: 44px;
     height: 44px;
-  }
-  .chverify {
-    min-height: 44px;
   }
   /* phone cards: the ID and the numbers; the free-text description is one tap away in the details */
   .meta-row:nth-child(2) {
