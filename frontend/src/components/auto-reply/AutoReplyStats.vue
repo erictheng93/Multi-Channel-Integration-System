@@ -77,7 +77,7 @@
         <span
           v-if="week.ticks.length > 0"
           class="week-key"
-        ><i />今天已回覆 {{ week.ticks.length }} 則（取自最近日誌）</span>
+        ><i />每條藍線是今天已自動回覆的一則，共 {{ week.ticks.length }} 則</span>
       </div>
       <div
         class="week"
