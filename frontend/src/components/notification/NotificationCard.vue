@@ -337,7 +337,7 @@ const formattedTime = computed(() => {
   gap: 14px;
   align-items: flex-start;
   margin: 0;
-  padding: 14px 24px;
+  padding: 14px 24px 14px 34px;
   border-radius: 0;
   cursor: pointer;
   transition: background-color var(--ui-dur) var(--ui-ease);
@@ -347,7 +347,7 @@ const formattedTime = computed(() => {
   position: absolute;
   top: 0;
   right: 24px;
-  left: 78px;
+  left: 88px;
   height: 0.5px;
   background: var(--ui-sep);
   content: '';
@@ -375,14 +375,14 @@ const formattedTime = computed(() => {
 
 /* Unread is a faint wash across the row plus the dot by the time (no hard edge bar); a wash this light does not read as a selection */
 .notification-unread {
-  background: color-mix(in srgb, var(--ui-accent) 9%, var(--ui-surface));
+  background: color-mix(in srgb, var(--ui-accent) 6%, var(--ui-surface));
 }
 
 /* The Mail gutter dot: a glance down the left edge counts what still needs you */
 .notification-unread::after {
   position: absolute;
   top: 31px;
-  left: 8px;
+  left: 16px;
   width: 8px;
   height: 8px;
   border-radius: 50%;
@@ -736,16 +736,16 @@ const formattedTime = computed(() => {
 
 @media (max-width: 768px) {
   .notification-card {
-    padding: 14px 16px;
+    padding: 14px 16px 14px 28px;
   }
 
   .notification-card + .notification-card::before {
     right: 16px;
-    left: 70px;
+    left: 82px;
   }
 
   .notification-unread::after {
-    left: 4px;
+    left: 11px;
   }
 
   /* The title wraps (two lines at most) instead of cutting the customer name off */
