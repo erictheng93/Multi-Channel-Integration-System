@@ -131,8 +131,7 @@ const order = computed(() => {
   flex-direction: column;
   width: min(100% - 44px, 320px);
   min-height: 0;
-  max-height: 520px;
-  margin: auto;
+  margin: 0 auto;
   overflow: hidden;
   border-radius: 28px;
   background: var(--ui-surface);
@@ -188,7 +187,7 @@ const order = computed(() => {
   min-height: 200px;
   padding: 16px;
   overflow-y: auto;
-  background: #e8edf5;
+  background: #eef1f6;
 }
 
 .phone-input {
@@ -267,6 +266,12 @@ const order = computed(() => {
   color: #1c1c1e;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
+}
+
+@media (max-width: 1280px) {
+  .phone {
+    max-height: 520px;
+  }
 }
 
 .pic {
