@@ -92,7 +92,21 @@
                     stroke-linejoin="round"
                     role="img"
                     aria-label="含圖片"
-                  ><rect x="3" y="4" width="18" height="16" rx="3" /><circle cx="9" cy="10" r="1.6" /><path d="m21 16-5-5-8 9" /></svg>
+                  >
+                    <rect
+                      x="3"
+                      y="4"
+                      width="18"
+                      height="16"
+                      rx="3"
+                    />
+                    <circle
+                      cx="9"
+                      cy="10"
+                      r="1.6"
+                    />
+                    <path d="m21 16-5-5-8 9" />
+                  </svg>
                 </strong>
                 <span class="meta-line">
                   <span
