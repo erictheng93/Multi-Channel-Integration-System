@@ -28,11 +28,11 @@
       <ApiTopology
         :channels="controller.channels.value"
         :infrastructure="controller.infrastructure.value"
-        :endpoints="hasMetrics ? controller.endpoints.value : []"
         :events="controller.events.value"
         :verdict="leadValue"
         :tone="leadTone"
         :meaning="leadMeaning"
+        :counts="hasMetrics ? { healthy: statusCounts.healthy, warning: statusCounts.warning, error: statusCounts.error } : undefined"
         :avg-ms="hasMetrics ? controller.stats.value.avgResponseTime : 0"
         :busy="controller.loading.value && !controller.lastUpdated.value"
       />

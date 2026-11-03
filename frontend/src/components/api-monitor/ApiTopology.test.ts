@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
 import ApiTopology from './ApiTopology.vue'
-import type { ApiEndpoint, ChannelItem, InfrastructureItem } from '@/types/api-monitor'
+import type { ChannelItem, InfrastructureItem } from '@/types/api-monitor'
 
 const channels: ChannelItem[] = [
   { id: 'line', name: 'LINE', status: 'connected', details: 'LINE API reachable', latencyMs: 62, lastCheck: '' },
@@ -12,14 +12,9 @@ const infrastructure: InfrastructureItem[] = [
   { id: 'd1', name: 'D1 Database', status: 'healthy', latencyMs: 18, lastCheck: '' },
   { id: 'r2', name: 'R2 Storage', status: 'warning', latencyMs: 91, lastCheck: '' },
 ]
-const ep = (id: string, endpoint: string, responseTime: number, status: ApiEndpoint['status']): ApiEndpoint => ({
-  id, endpoint, method: 'GET', category: 'system', description: '', status, responseTime, avgResponseTime: 1, p50ResponseTime: 1,
-  successRate: 99, requestCount: 10, errorCount: 0, statusCodes: {}, lastCheck: '',
-})
-
-function mountTopo(endpoints: ApiEndpoint[] = []) {
+function mountTopo() {
   return mount(ApiTopology, {
-    props: { channels, infrastructure, endpoints, events: [], verdict: '部分降級', tone: 'warn', meaning: 'x', avgMs: 118 },
+    props: { channels, infrastructure, events: [], verdict: '部分降級', tone: 'warn', meaning: 'x', avgMs: 118 },
   })
 }
 
@@ -41,14 +36,19 @@ describe('ApiTopology', () => {
     expect(wrapper.findAll('.col-out .node')).toHaveLength(2)
   })
 
-  it('lists the worst endpoints first with the 500 ms line when something is slower', () => {
-    const wrapper = mountTopo([ep('1', '/api/a', 40, 'healthy'), ep('2', '/api/b', 1380, 'error'), ep('3', '/api/c', 612, 'warning')])
-    expect(wrapper.findAll('.p95 li').map((l) => l.find('.p95-path').text())).toEqual(['/api/b', '/api/c', '/api/a'])
-    expect(wrapper.find('.p95-axis').text()).toContain('500 ms')
-    expect(wrapper.find('.p95-note').text()).toContain('118 ms')
+  it('lists the recent events with a state class and shows the average response', () => {
+    const wrapper = mount(ApiTopology, {
+      props: {
+        channels, infrastructure, verdict: '部分降級', tone: 'warn', meaning: 'x', avgMs: 118, counts: { healthy: 3, warning: 1, error: 1 },
+        events: [{ id: 'e1', type: 'error', message: 'boom', timestamp: new Date().toISOString() }],
+      },
+    })
+    expect(wrapper.findAll('.events li')).toHaveLength(1)
+    expect(wrapper.find('.events li').classes()).toContain('is-error')
+    expect(wrapper.find('.mix-head').text()).toContain('118 ms')
   })
 
-  it('omits the P95 bars until endpoint metrics exist', () => {
-    expect(mountTopo().find('.p95').exists()).toBe(false)
+  it('omits the events block when nothing happened', () => {
+    expect(mountTopo().find('.events').exists()).toBe(false)
   })
 })
