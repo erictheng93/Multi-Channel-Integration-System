@@ -2,23 +2,39 @@
   <Transition name="fade-in">
     <div
       v-if="replies.length > 0"
-      ref="rail"
-      class="quick-replies"
-      :class="{ 'has-more': hasMore }"
-      role="group"
-      aria-label="快速回覆"
-      @scroll.passive="measure"
-      @wheel="onWheel"
+      class="quick-replies-wrap"
     >
-      <button
-        v-for="reply in replies"
-        :key="reply.id"
-        class="quick-reply-btn"
-        :title="reply.text"
-        :disabled="disabled"
-        @click="handleSelect(reply)"
+      <div
+        ref="rail"
+        class="quick-replies"
+        :class="{ 'has-more': hasMore }"
+        role="group"
+        aria-label="快速回覆"
+        @scroll.passive="measure"
+        @wheel="onWheel"
       >
-        {{ reply.text }}
+        <button
+          v-for="reply in replies"
+          :key="reply.id"
+          class="quick-reply-btn"
+          :title="reply.text"
+          :disabled="disabled"
+          @click="handleSelect(reply)"
+        >
+          {{ reply.text }}
+        </button>
+      </div>
+      <button
+        v-if="hasMore"
+        type="button"
+        class="quick-more"
+        aria-label="看更多快速回覆"
+        @click="scrollMore"
+      >
+        <svg
+          viewBox="0 0 24 24"
+          aria-hidden="true"
+        ><path d="m9 6 6 6-6 6" /></svg>
       </button>
     </div>
   </Transition>
@@ -87,6 +103,9 @@ const measure = (): void => {
   const el = rail.value
   hasMore.value = !!el && el.scrollWidth - el.clientWidth - el.scrollLeft > 4
 }
+const scrollMore = (): void => {
+  rail.value?.scrollBy({ left: Math.max(160, Math.round(rail.value.clientWidth * 0.7)), behavior: 'smooth' })
+}
 const onWheel = (e: WheelEvent): void => {
   const el = rail.value
   if (el && hasMore.value && Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
@@ -116,6 +135,38 @@ const handleSelect = (reply: QuickReply) => {
 <style scoped>
 /* Quick replies: one swipeable row of natural-width chips at every width (long text ellipsizes, the full
    text is in the tooltip). The fade at the right edge appears only while more chips wait off screen. */
+.quick-replies-wrap {
+  position: relative;
+  min-width: 0;
+}
+
+.quick-more {
+  position: absolute;
+  top: 10px;
+  right: 0;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--ui-surface);
+  box-shadow: var(--ui-shadow-pill);
+  color: var(--ui-accent);
+  cursor: pointer;
+}
+
+.quick-more svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentcolor;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
 .quick-replies {
   display: flex;
   gap: 8px;
@@ -143,7 +194,7 @@ const handleSelect = (reply: QuickReply) => {
 
 .quick-reply-btn {
   flex: 0 0 auto;
-  max-width: min(320px, 78vw);
+  max-width: min(260px, 70vw);
   min-height: 32px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -200,6 +251,11 @@ const handleSelect = (reply: QuickReply) => {
 }
 
 @media (pointer: coarse) {
+  .quick-more {
+    width: 44px;
+    height: 44px;
+  }
+
   .quick-reply-btn {
     min-height: 44px;
   }
