@@ -370,10 +370,10 @@ const ariaLabel = computed(() => {
 
 .rb-track {
   position: absolute;
-  top: 50px;
+  top: 52px;
   right: 0;
   left: 0;
-  height: 14px;
+  height: 10px;
   overflow: hidden;
   border-radius: 999px;
   background: var(--ui-fill);
@@ -383,7 +383,7 @@ const ariaLabel = computed(() => {
   display: block;
   height: 100%;
   border-radius: 999px;
-  background: var(--ui-blue);
+  background: color-mix(in srgb, var(--ui-blue) 42%, var(--ui-fill));
 }
 
 .rb-grid {
