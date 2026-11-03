@@ -71,6 +71,12 @@
           <span>輸入文字或加入圖片，客戶收到的樣子會即時出現在這裡。</span>
         </div>
       </div>
+      <div
+        class="phone-input"
+        aria-hidden="true"
+      >
+        <span>輸入訊息</span>
+      </div>
     </div>
     <p class="disclaimer">
       示意圖。實際字型、氣泡寬度與圖片裁切依客戶的 LINE 版本而異。
@@ -138,11 +144,11 @@ const order = computed(() => {
 /* A short phone while there is nothing to show, centred in the panel; it grows with real content */
 .phone {
   display: flex;
-  flex: 0 1 auto;
+  flex: 1 1 auto;
   flex-direction: column;
   width: min(100% - 44px, 320px);
   min-height: 0;
-  max-height: 640px;
+  max-height: 520px;
   margin: auto;
   overflow: hidden;
   border-radius: 28px;
@@ -187,7 +193,7 @@ const order = computed(() => {
   padding: 1px 8px;
   border-radius: 999px;
   background: var(--ui-green-soft);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--ui-green-ink);
 }
@@ -196,10 +202,26 @@ const order = computed(() => {
   display: flex;
   flex: 1;
   flex-direction: column;
-  min-height: 220px;
+  min-height: 200px;
   padding: 16px;
   overflow-y: auto;
   background: #e8edf5;
+}
+
+.phone-input {
+  flex: none;
+  padding: 10px 14px;
+  background: var(--ui-surface);
+  box-shadow: 0 -1px 0 var(--ui-sep);
+}
+
+.phone-input span {
+  display: block;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: var(--ui-fill);
+  font-size: 13px;
+  color: var(--ui-muted);
 }
 
 .thread {
@@ -277,7 +299,11 @@ const order = computed(() => {
 
 @media (max-width: 768px) {
   .chat-empty {
-    min-height: 112px;
+    min-height: 96px;
+  }
+
+  .chat {
+    min-height: 140px;
   }
 }
 
