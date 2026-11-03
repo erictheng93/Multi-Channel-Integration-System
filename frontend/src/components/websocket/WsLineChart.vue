@@ -22,6 +22,28 @@
       @pointerleave="hover = null"
       @pointercancel="hover = null"
     >
+      <defs>
+        <linearGradient
+          v-for="s in drawn"
+          :id="`${uid}-${s.key}`"
+          :key="`gr${s.key}`"
+          x1="0"
+          x2="0"
+          y1="0"
+          y2="1"
+        >
+          <stop
+            offset="0"
+            :stop-color="s.color"
+            :stop-opacity="drawn.length > 1 ? 0.2 : 0.28"
+          />
+          <stop
+            offset="1"
+            :stop-color="s.color"
+            stop-opacity="0.02"
+          />
+        </linearGradient>
+      </defs>
       <g class="g">
         <line
           v-for="tick in yAxis"
@@ -66,6 +88,13 @@
           :y="line.pos - 5"
         >{{ line.label }}</text>
       </g>
+      <text
+        v-if="gapLabel"
+        class="gap-label"
+        text-anchor="middle"
+        :x="gapLabel.x"
+        :y="geom.bottom - 10"
+      >尚無取樣</text>
       <template
         v-for="s in drawn"
         :key="s.key"
@@ -74,8 +103,7 @@
           v-for="(d, i) in s.areas"
           :key="`a${i}`"
           :d="d"
-          :fill="s.color"
-          :opacity="drawn.length > 1 ? 0.07 : 0.1"
+          :fill="`url(#${uid}-${s.key})`"
         />
         <path
           v-for="(d, i) in s.lines"
@@ -126,6 +154,11 @@
             :stroke="s.color"
             stroke-width="2.4"
           />
+          <text
+            :x="Math.min(Math.max(s.peak.x, geom.left + 44), geom.right - 44)"
+            :y="s.peak.y - 12"
+            text-anchor="middle"
+          >{{ s.peak.text }}</text>
         </g>
       </template>
       <g v-if="hoverView">
@@ -166,7 +199,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, useId } from 'vue'
 import type { WsMetricsPointDto, WsMetricsRange } from '@/api/presence'
 import { niceMax, xFor, yFor, xTicks, yTicks, type ChartGeometry } from '@/utils/ws-metrics-chart'
 
@@ -199,6 +232,8 @@ const props = defineProps<{
   /** Number of x labels (fewer on a phone) */
   xCount?: number
 }>()
+
+const uid = `wsg${useId().replace(/[^a-zA-Z0-9]/g, '')}`
 
 const r1 = (n: number) => Math.round(n * 10) / 10
 
@@ -245,6 +280,16 @@ const drawn = computed(() => props.series.map((s) => {
     last: lastRun ? (lastRun[lastRun.length - 1] ?? null) : null,
   }
 }))
+
+/** Where every series is still empty at the left of the plot (a restart, a late start): say so instead of leaving a blank */
+const gapLabel = computed(() => {
+  const firsts = props.points
+    .filter(p => props.series.some(s => { const v = s.pick(p); return v !== null && Number.isFinite(v) }))
+    .map(p => xFor(p.ts, props.from, props.to, props.geom))
+  const first = firsts.length > 0 ? Math.min(...firsts) : null
+  if (first === null || first - props.geom.left < 84) { return null }
+  return { x: r1((props.geom.left + first) / 2) }
+})
 
 const svgEl = ref<Element | null>(null)
 const hover = ref<number | null>(null)
@@ -310,13 +355,18 @@ const refLines = computed(() => (props.refs ?? [])
 }
 
 .ws-chart text {
-  fill: var(--ui-muted);
+  fill: var(--ui-ink-2);
   font: 500 var(--fs, 13px) var(--ui-font-ui);
   font-variant-numeric: tabular-nums;
 }
 
 .ws-chart .g line {
   stroke: var(--ui-sep);
+}
+
+.ws-chart .gap-label {
+  fill: var(--ui-muted);
+  font-weight: 400;
 }
 
 .ws-chart .peak text {
