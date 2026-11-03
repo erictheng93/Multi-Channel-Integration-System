@@ -34,10 +34,11 @@ describe('ApiTopology', () => {
     expect(out[1]).toContain('is-warn')
   })
 
-  it('draws one line stub per node on each side', () => {
+  it('shows the verdict with its state class and one node per channel and service', () => {
     const wrapper = mountTopo()
-    expect(wrapper.findAll('.gut-in i')).toHaveLength(3)
-    expect(wrapper.findAll('.gut-out i')).toHaveLength(2)
+    expect(wrapper.find('.core-verdict').classes()).toContain('is-warn')
+    expect(wrapper.findAll('.col-in .node')).toHaveLength(3)
+    expect(wrapper.findAll('.col-out .node')).toHaveLength(2)
   })
 
   it('lists the worst endpoints first with the 500 ms line when something is slower', () => {
