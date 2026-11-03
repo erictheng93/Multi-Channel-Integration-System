@@ -183,6 +183,18 @@
               <div class="kpi-value">
                 {{ eventsTotal === null ? '—' : fmt(eventsTotal, 2) }}
               </div>
+              <div
+                v-if="eventsSplit !== null"
+                class="meter meter-split"
+                role="img"
+                :aria-label="`入站佔 ${eventsSplit}%，出站佔 ${100 - eventsSplit}%`"
+              >
+                <span class="m-track"><i
+                  class="in"
+                  :style="{ width: `${eventsSplit}%` }"
+                /></span>
+                <span class="m-ticks"><em>入站 {{ eventsSplit }}%</em><em>出站 {{ 100 - eventsSplit }}%</em></span>
+              </div>
             </div>
 
             <div class="ui-row is-flush kpi-row">
@@ -222,6 +234,16 @@
               <div class="kpi-value">
                 {{ latencyKnown ? fmt(metrics?.averageLatency, 0) : '—' }}<small v-if="latencyKnown">ms</small>
               </div>
+              <div
+                v-if="latencyKnown"
+                class="meter"
+                :class="latency.tone"
+                role="img"
+                :aria-label="`0 到 ${LATENCY_SCALE} 毫秒的量尺，目前 ${fmt(metrics?.averageLatency, 0)} 毫秒`"
+              >
+                <span class="m-track"><i :style="{ width: latencyPct }" /><u style="left: 20%" /></span>
+                <span class="m-ticks"><em>0</em><em style="left: 20%">100</em><em>500 ms</em></span>
+              </div>
             </div>
 
             <div class="ui-row is-flush kpi-row">
@@ -256,6 +278,16 @@
               </div>
               <div class="kpi-value">
                 {{ errorRate === null ? '—' : (errorRate * 100).toFixed(2) }}<small v-if="errorRate !== null">%</small>
+              </div>
+              <div
+                v-if="errorRate !== null"
+                class="meter"
+                :class="errorStatus.tone"
+                role="img"
+                :aria-label="`0 到 ${ERROR_SCALE}% 的量尺，目前 ${(errorRate * 100).toFixed(2)}%`"
+              >
+                <span class="m-track"><i :style="{ width: errorPct }" /><u style="left: 20%" /></span>
+                <span class="m-ticks"><em>0</em><em style="left: 20%">1%</em><em>5%</em></span>
               </div>
             </div>
           </div>
@@ -528,26 +560,39 @@ const subtitle = computed(() => {
 /** 0 ms with no sampled events is "nothing measured", not a perfect latency. */
 const latencyKnown = computed(() => !!metrics.value && (sampled.value || metrics.value.averageLatency > 0))
 
+/** Meter scales: each bar ends at its "needs work" line (500 ms / 5%); the 100 ms / 1% mark sits at one fifth */
+const LATENCY_SCALE = 500
+const ERROR_SCALE = 5
+const clampPct = (n: number) => `${Math.min(100, Math.max(1.5, n))}%`
+const latencyPct = computed(() => clampPct(((metrics.value?.averageLatency ?? 0) / LATENCY_SCALE) * 100))
+const errorPct = computed(() => clampPct((((errorRate.value ?? 0) * 100) / ERROR_SCALE) * 100))
+/** Inbound share of all events, whole percent */
+const eventsSplit = computed(() =>
+  eventsIn.value === null || eventsTotal.value === null || eventsTotal.value <= 0
+    ? null
+    : Math.round((eventsIn.value / eventsTotal.value) * 100)
+)
+
 const latency = computed(() => {
   const ms = metrics.value?.averageLatency ?? 0
   if (ms < 100) {
-    return { label: '優秀', pill: 'ui-pill-green', hint: '低於 100 ms' }
+    return { label: '優秀', pill: 'ui-pill-green', tone: 'is-good', hint: '低於 100 ms' }
   }
   if (ms < 500) {
-    return { label: '良好', pill: 'ui-pill-orange', hint: '低於 500 ms' }
+    return { label: '良好', pill: 'ui-pill-orange', tone: 'is-warn', hint: '低於 500 ms' }
   }
-  return { label: '需改進', pill: 'ui-pill-red', hint: '超過 500 ms' }
+  return { label: '需改進', pill: 'ui-pill-red', tone: 'is-bad', hint: '超過 500 ms' }
 })
 
 const errorStatus = computed(() => {
   const rate = errorRate.value ?? 0
   if (rate < 0.01) {
-    return { label: '正常', pill: 'ui-pill-green', hint: '低於 1%' }
+    return { label: '正常', pill: 'ui-pill-green', tone: 'is-good', hint: '低於 1%' }
   }
   if (rate < 0.05) {
-    return { label: '注意', pill: 'ui-pill-orange', hint: '1% 以上' }
+    return { label: '注意', pill: 'ui-pill-orange', tone: 'is-warn', hint: '1% 以上' }
   }
-  return { label: '警告', pill: 'ui-pill-red', hint: '5% 以上' }
+  return { label: '警告', pill: 'ui-pill-red', tone: 'is-bad', hint: '5% 以上' }
 })
 
 const rangeLabel = computed(() => RANGE_OPTIONS.find(o => o.value === period.value)?.label ?? '')
@@ -1140,7 +1185,8 @@ function formatTime(timestamp: number) {
   grid-template:
     'ico label' auto
     'value value' auto
-    'foot foot' auto / auto minmax(0, 1fr);
+    'foot foot' auto
+    'meter meter' auto / auto minmax(0, 1fr);
   gap: 6px 12px;
   align-items: center;
   padding-top: 20px;
@@ -1170,6 +1216,71 @@ function formatTime(timestamp: number) {
   font: 600 44px / 1 var(--ui-font-display);
   letter-spacing: -0.03em;
   font-variant-numeric: tabular-nums;
+}
+
+/* a quiet scale under each live number: where it sits against the same thresholds the pill uses */
+.meter {
+  --c: var(--ui-green);
+  grid-area: meter;
+  margin-top: 10px;
+}
+
+.meter.is-warn { --c: var(--ui-orange); }
+.meter.is-bad { --c: var(--ui-red); }
+
+.m-track {
+  position: relative;
+  display: block;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--ui-fill);
+}
+
+.m-track i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: color-mix(in srgb, var(--c) 72%, var(--ui-surface));
+}
+
+.m-track u {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  width: 2px;
+  margin-left: -1px;
+  border-radius: 1px;
+  background: var(--ui-ink-2);
+}
+
+.m-ticks {
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  height: 20px;
+  margin-top: 4px;
+  font-size: 13px;
+  color: var(--ui-ink-2);
+}
+
+.m-ticks em {
+  font-style: normal;
+  white-space: nowrap;
+}
+
+.m-ticks em[style] {
+  position: absolute;
+  transform: translateX(-50%);
+}
+
+/* the in / out split uses the same two colours as the event chart */
+.meter-split .m-track {
+  overflow: hidden;
+  background: color-mix(in srgb, var(--ui-teal) 70%, var(--ui-surface));
+}
+
+.meter-split .m-track i {
+  background: color-mix(in srgb, var(--ui-indigo) 80%, var(--ui-surface));
 }
 
 .kpi-value small {
@@ -1324,7 +1435,8 @@ function formatTime(timestamp: number) {
   .kpi-row {
     grid-template:
       'ico label value' auto
-      'ico foot value' auto / auto minmax(0, 1fr) auto;
+      'ico foot value' auto
+      'meter meter meter' auto / auto minmax(0, 1fr) auto;
     gap: 2px 12px;
     padding-top: 14px;
     padding-bottom: 14px;
