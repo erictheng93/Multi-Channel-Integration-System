@@ -4,13 +4,18 @@
     role="group"
     aria-label="依類型篩選通知"
   >
+    <p
+      class="legend"
+      aria-hidden="true"
+    >
+      <span>依類型</span><span class="legend-keys"><i class="lg-all" />全部<i class="lg-unread" />未讀</span>
+    </p>
     <button
       v-for="row in list"
       :key="row.value"
       type="button"
       class="type"
       :class="{ 'is-selected': selected === row.value, 'is-dim': selected !== '' && selected !== row.value }"
-      :style="{ '--tone': toneOf(row.value) }"
       :aria-pressed="selected === row.value"
       :aria-label="`${row.label} ${row.total} 則${row.unread > 0 ? `，${row.unread} 則未讀` : ''}`"
       @click="emit('toggle', row.value)"
@@ -26,12 +31,6 @@
         :class="{ 'is-none': row.unread === 0 }"
       >{{ row.unread > 0 ? `${row.unread} 未讀` : '' }}</span>
     </button>
-    <p
-      class="legend"
-      aria-hidden="true"
-    >
-      <i class="lg-all" />全部<i class="lg-unread" />未讀
-    </p>
   </div>
 </template>
 
@@ -52,18 +51,6 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{ toggle: [value: string] }>()
-
-// One soft hue per type (graphics only, text stays ink); state colours (red/green) are not used here
-const TONES: Record<string, string> = {
-  new_message: '#0a84ff',
-  customer_responded: '#30b0c7',
-  conversation_assigned: '#5856d6',
-  mention: '#af52de',
-  system: '#8e8e93',
-  conversation_transferred: '#ff9500',
-  task_reminder: '#a2845e'
-}
-const toneOf = (value: string): string => TONES[value] ?? '#8e8e93'
 
 /**
  * One quiet row per type, biggest first. The bars share one scale (the biggest type), so the rows compare
@@ -89,7 +76,7 @@ const list = computed(() => {
   grid-template-columns: 84px minmax(0, 1fr) 32px 64px;
   gap: 12px;
   align-items: center;
-  min-height: 36px;
+  min-height: 40px;
   padding: 0 10px;
   border: 0;
   border-radius: 10px;
@@ -136,24 +123,32 @@ const list = computed(() => {
   display: block;
   height: 100%;
   border-radius: 5px;
-  background: color-mix(in srgb, var(--tone) 34%, var(--ui-surface));
+  background: color-mix(in srgb, var(--ui-accent) 26%, var(--ui-surface));
 }
 
 .type-bar b {
   display: block;
   height: 100%;
   border-radius: 5px;
-  background: var(--tone);
+  background: var(--ui-accent);
 }
 
+/* column heads: what the rows are, and what the two tones of a bar mean */
 .legend {
   display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0 10px 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ui-ink-2);
+}
+
+.legend-keys {
+  display: inline-flex;
   gap: 6px;
   align-items: center;
-  justify-content: flex-end;
-  margin: 8px 10px 0;
-  font-size: 13px;
-  color: var(--ui-ink-2);
 }
 
 .legend i {
@@ -163,16 +158,16 @@ const list = computed(() => {
   border-radius: 4px;
 }
 
-.legend i:first-child {
+.legend-keys i:first-child {
   margin-left: 0;
 }
 
 .lg-all {
-  background: color-mix(in srgb, var(--ui-muted) 30%, var(--ui-surface));
+  background: color-mix(in srgb, var(--ui-accent) 26%, var(--ui-surface));
 }
 
 .lg-unread {
-  background: var(--ui-muted);
+  background: var(--ui-accent);
 }
 
 .type-total {
@@ -199,17 +194,9 @@ const list = computed(() => {
 /* Phone: the same buttons wrap into chips (all of them visible, none clipped), biggest type first */
 @media (max-width: 768px) {
   .types {
-    flex-flow: row nowrap;
+    flex-flow: row wrap;
     gap: 8px;
-    padding: 12px 16px 4px;
-    overflow-x: auto;
-    scrollbar-width: none;
-    -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 40px), transparent);
-    mask-image: linear-gradient(90deg, #000 calc(100% - 40px), transparent);
-  }
-
-  .types::-webkit-scrollbar {
-    display: none;
+    padding: 4px 0 4px;
   }
 
   .legend {
