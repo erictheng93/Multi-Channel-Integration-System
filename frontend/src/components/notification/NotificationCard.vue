@@ -375,7 +375,7 @@ const formattedTime = computed(() => {
 
 /* Unread is a faint wash across the row plus the dot by the time (no hard edge bar); a wash this light does not read as a selection */
 .notification-unread {
-  background: color-mix(in srgb, var(--ui-accent) 6%, var(--ui-surface));
+  background: color-mix(in srgb, var(--ui-accent) 9%, var(--ui-surface));
 }
 
 /* The Mail gutter dot: a glance down the left edge counts what still needs you */

@@ -15,8 +15,10 @@ describe('NotificationMosaic', () => {
     const wrapper = mount(NotificationMosaic, { props: { rows, selected: '' } })
     const types = wrapper.findAll('.type')
     expect(types.map(t => t.find('.type-name').text())).toEqual(['新訊息', '客戶回覆', '對話指派', '提及'])
-    expect(types[0]?.find('.type-bar i').attributes('style')).toContain('width: 100%')
-    expect(types[3]?.find('.type-bar i').attributes('style')).toContain('width: 43%')
+    const stretches = wrapper.findAll('.mix i')
+    expect(stretches).toHaveLength(4)
+    expect(stretches[0]?.attributes('style')).toContain('flex: 14 1 0')
+    expect(stretches[3]?.attributes('style')).toContain('flex: 6 1 0')
   })
 
   it('toggles a type from its row and marks the chosen one', async () => {

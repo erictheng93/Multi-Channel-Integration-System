@@ -29,17 +29,27 @@
       >
         <div class="lead-fig">
           <h2 class="lead-label">
-            全部通知
+            未讀通知
           </h2>
           <p class="lead-num">
-            <span class="ui-num">{{ stats.total }}</span><small>則</small>
+            <span
+              class="ui-num"
+              :class="{ 'is-clear': stats.unread === 0 }"
+            >{{ stats.unread }}</span><small v-if="stats.unread > 0">則</small><small
+              v-else
+              class="lead-clear"
+            >全部已讀</small>
+          </p>
+          <p
+            v-if="urgentUnread > 0"
+            class="lead-hot"
+          >
+            含 {{ urgentUnread }} 則緊急
           </p>
           <dl class="lead-time">
             <div>
-              <dt>未讀</dt>
-              <dd :class="{ 'is-hot': urgentUnread > 0 }">
-                {{ stats.unread }}<small v-if="urgentUnread > 0">含 {{ urgentUnread }} 則緊急</small>
-              </dd>
+              <dt>全部</dt>
+              <dd>{{ stats.total }}</dd>
             </div>
             <div>
               <dt>今天</dt>
@@ -269,19 +279,19 @@ onUnmounted(() => {
 
 <style scoped>
 
-/* Lead: the total and the mosaic of types; the inbox list sits under it */
+/* Lead: what needs you (the unread count), then the inbox as one composition bar; the list sits under it */
 .notif-lead {
   display: grid;
-  grid-template-columns: 220px minmax(0, 1fr);
-  gap: 28px;
-  align-items: stretch;
+  grid-template-columns: 240px minmax(0, 1fr);
+  gap: 32px;
+  align-items: center;
   padding: 24px 28px;
 }
 
 .lead-fig {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 6px;
 }
 
 .lead-label {
@@ -306,29 +316,33 @@ onUnmounted(() => {
   color: var(--ui-ink-2);
 }
 
+.lead-num .lead-clear {
+  margin-left: 10px;
+  color: var(--ui-green-ink);
+  font-weight: 700;
+}
+
+.lead-hot {
+  margin: 0;
+  font: 600 14px var(--ui-font-display);
+  color: var(--ui-red-ink);
+}
+
+/* the rest of the inbox in one quiet line of three figures */
 .lead-time {
-  display: grid;
-  flex: 1;
-  grid-auto-rows: 1fr;
+  display: flex;
+  gap: 20px;
   margin: 10px 0 0;
 }
 
 .lead-time > div {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  box-shadow: inset 0 0.5px 0 var(--ui-sep);
+  display: grid;
+  gap: 2px;
 }
 
 .lead-time dt {
-  font-size: 14px;
+  font-size: 13px;
   color: var(--ui-ink-2);
-}
-
-.lead-time dd small {
-  margin-left: 8px;
-  font: 600 13px var(--ui-font-display);
-  color: var(--ui-red-ink);
 }
 
 .lead-time dd {
