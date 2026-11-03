@@ -44,7 +44,7 @@
       role="cell"
       class="row-cell time-cell"
     >
-      <span class="time-text"><span class="format-inline">{{ typeLabel }} · </span><span class="format-inline">{{ formatLabel }}<span class="size-inline">{{ report.fileSize ? ` ${formattedSize}` : '' }}</span> · </span>{{ formattedTime }}</span>
+      <span class="time-text"><span class="format-inline">{{ typeLabel }} · </span><span class="format-inline">{{ formatLabel }}<span class="size-inline">{{ report.fileSize ? ` ${formattedSize}` : '' }}</span> · </span><span class="time-when">{{ formattedTime }}</span></span>
       <span
         v-if="expiryText"
         class="expiry-text"
@@ -342,6 +342,14 @@ const canDelete = computed(() => {
     color var(--ui-dur) var(--ui-ease);
 }
 
+.time-when {
+  white-space: nowrap;
+}
+
+.action-btn--danger {
+  color: var(--ui-muted);
+}
+
 .action-btn svg {
   width: 19px;
   height: 19px;
@@ -390,6 +398,7 @@ const canDelete = computed(() => {
 
   .format-inline {
     display: inline;
+    white-space: nowrap;
     font-weight: 600;
     color: var(--ui-ink-2);
   }
