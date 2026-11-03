@@ -64,12 +64,12 @@
           />
           <span
             class="g-limit"
-            :class="{ 'is-late': EXPORT_LIMIT / gaugeScale > 0.7 }"
             :style="{ left: gaugePct(EXPORT_LIMIT) }"
-          ><em>單次上限 {{ EXPORT_LIMIT.toLocaleString() }}</em></span>
+          />
         </div>
         <p class="g-cap">
           <span v-if="count !== null"><i class="k-pick" />這份檔案 <b>{{ exportCount.toLocaleString() }}</b> 筆<template v-if="sharePct"> ，佔全部 {{ sharePct }}</template></span>
+          <span><i class="k-limit" />單次上限 <b>{{ EXPORT_LIMIT.toLocaleString() }}</b> 筆</span>
           <span v-if="totalAll !== null"><i class="k-all" />全部對話 <b>{{ totalAll.toLocaleString() }}</b> 筆</span>
         </p>
         <p
@@ -337,7 +337,7 @@ const EXPORT_LIMIT = 5000
 
 const selectedFormat = ref<FormatId>('json')
 // the file layout is part of the page on a desktop; on a phone it stays one tap away
-const fieldsOpen = ref(typeof window !== 'undefined' && window.innerWidth > 768)
+const fieldsOpen = ref(false)
 
 type Row = { key?: string; note: string }
 
@@ -819,7 +819,7 @@ async function runExport() {
   display: grid;
   gap: 12px;
   min-width: 0;
-  padding-top: 22px;
+  padding-top: 8px;
 }
 
 .g-track {
@@ -860,22 +860,6 @@ async function runExport() {
   border-left: 2px solid var(--ui-ink-2);
 }
 
-.g-limit em {
-  position: absolute;
-  top: -18px;
-  left: 0;
-  font-size: 13px;
-  font-style: normal;
-  font-weight: 600;
-  white-space: nowrap;
-  color: var(--ui-ink-2);
-  transform: translateX(-50%);
-}
-
-.g-limit.is-late em {
-  transform: translateX(-100%);
-}
-
 .g-cap {
   display: flex;
   flex-wrap: wrap;
@@ -904,6 +888,13 @@ async function runExport() {
 
 .k-pick {
   background: var(--ui-accent);
+}
+
+.g-cap .k-limit {
+  width: 2px;
+  height: 16px;
+  border-radius: 0;
+  background: var(--ui-ink-2);
 }
 
 .k-all {

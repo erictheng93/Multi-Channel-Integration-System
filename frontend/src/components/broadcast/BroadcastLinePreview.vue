@@ -1,12 +1,12 @@
 <template>
   <section
     class="ui-card preview-card"
-    :class="{ 'is-empty': !hasContent }"
+    :class="{ 'is-empty': !hasContent && !sample }"
     aria-labelledby="broadcast-line-preview-title"
   >
     <p class="pv-head">
       <b id="broadcast-line-preview-title">LINE 預覽</b>
-      <span>{{ hasContent ? `客戶看到的順序：${order}` : '你的草稿，客戶端的樣子' }}</span>
+      <span>{{ hasContent ? `客戶看到的順序：${order}` : sample ? '上一次群發在客戶端的樣子' : '你的草稿，客戶端的樣子' }}</span>
     </p>
 
     <div class="phone">
@@ -36,6 +36,17 @@
             :src="url"
             :alt="`預覽圖片 ${index + 1}`"
           >
+        </div>
+        <div
+          v-else-if="sample"
+          class="thread is-sample"
+        >
+          <div class="bubble">
+            {{ sample }}
+          </div>
+          <p class="last-note">
+            上一次群發的文字。開始輸入後，這裡會換成你的草稿。
+          </p>
         </div>
         <div
           v-else
@@ -75,6 +86,8 @@ import { getLineQuota } from '@/api/broadcasts'
 const props = defineProps<{
   content: string
   imageUrls: string[]
+  /** text of the newest broadcast, shown while the draft is empty */
+  sample?: string
 }>()
 
 // The official account name comes from the same quota snapshot the quota card shows
