@@ -45,6 +45,19 @@
             <p class="hl-meaning">
               {{ heroSubtitle }}
             </p>
+            <ol
+              class="chips"
+              aria-label="各服務狀態"
+            >
+              <li
+                v-for="row in rows"
+                :key="row.key"
+                class="chip"
+                :class="row.tone"
+              >
+                <i aria-hidden="true" />{{ stripName(row) }}<span class="sr-only">，{{ row.label }}</span>
+              </li>
+            </ol>
           </div>
           <dl
             v-if="latencyFacts.length > 0"
@@ -65,21 +78,6 @@
             </div>
           </dl>
         </div>
-
-        <ol
-          class="strip"
-          aria-label="各服務狀態"
-        >
-          <li
-            v-for="row in rows"
-            :key="row.key"
-            class="seg"
-            :class="row.tone"
-          >
-            <i aria-hidden="true" />
-            <span>{{ stripName(row) }}<span class="sr-only">，{{ row.label }}</span></span>
-          </li>
-        </ol>
       </template>
     </article>
 
@@ -104,14 +102,14 @@
             class="zones"
             aria-label="色區說明"
           >
-            <li><i class="z-ok" />&le; {{ SLOW_MS }} ms 正常</li>
-            <li><i class="z-warn" />{{ SLOW_MS }}&ndash;{{ FAULT_MS }} 偏慢</li>
-            <li><i class="z-bad" />&gt; {{ FAULT_MS }} 異常</li>
+            <li><i class="z-ok" />&le; {{ SLOW_MS }} ms</li>
+            <li><i class="z-warn" />{{ SLOW_MS }}&ndash;{{ FAULT_MS }} ms</li>
+            <li><i class="z-bad" />&gt; {{ FAULT_MS }} ms</li>
           </ul>
         </header>
         <ul class="hlist">
           <li
-            v-for="row in serviceRows"
+            v-for="row in rows"
             :key="row.key"
             class="hrow"
           >
@@ -155,11 +153,15 @@
               </div>
             </div>
             <span
+              v-if="row.latencyMs !== null"
               class="hbar"
               :class="barTone(row)"
-              :style="zoneStyle(latencyScale)"
               aria-hidden="true"
             ><i :style="{ width: barWidth(row.latencyMs, latencyScale) }" /></span>
+            <span
+              v-else
+              class="hbar-none"
+            >{{ row.key === 'lineWebhook' ? '尚未測試' : '沒有量測值' }}</span>
             <span
               class="lat-n"
               :class="barTone(row)"
@@ -172,102 +174,23 @@
             >{{ row.label }}</span>
           </li>
         </ul>
-      </section>
-
-      <aside
-        v-if="webhookRow"
-        class="ui-card hwh"
-        aria-label="LINE webhook"
-      >
-        <header class="hwh-head">
-          <span
-            class="hstat"
-            :class="webhookRow.tone"
-            aria-hidden="true"
+        <footer
+          v-if="webhookRow"
+          class="hfoot"
+        >
+          <p>
+            <b>LINE webhook 只在你按下時才測試。</b>會送出一次簽章請求並量測回應時間，同時重新檢查其餘服務；結果只代表剛才那一次。持續失敗請到 LINE Developers，對 Webhook URL 按「Verify」。
+          </p>
+          <button
+            type="button"
+            class="btn btn-secondary"
+            :aria-busy="controller.processing.value || undefined"
+            @click="runWebhookTest"
           >
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2.2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            >
-              <path
-                v-if="webhookRow.tone === 'ok'"
-                d="M5 12.5 10 17.5 19 7"
-              />
-              <template v-else-if="webhookRow.tone === 'unknown'">
-                <circle
-                  cx="12"
-                  cy="12"
-                  r="8.5"
-                />
-                <path d="M12 7.5V12l3 2" />
-              </template>
-              <path
-                v-else
-                d="M12 8v5M12 17h.01"
-              />
-            </svg>
-          </span>
-          <div class="hrow-main">
-            <h2 class="ui-card-title">
-              LINE webhook
-            </h2>
-            <div class="hrow-sub">
-              {{ webhookRow.sub }}
-            </div>
-          </div>
-          <span
-            class="ui-pill ui-pill-dot"
-            :class="pillClass(webhookRow)"
-          >{{ webhookRow.label }}</span>
-        </header>
-
-        <div
-          v-if="webhookRow.latencyMs !== null"
-          class="hwh-result"
-        >
-          <div class="hwh-ms">
-            <span
-              class="lat-n"
-              :class="barTone(webhookRow)"
-            >{{ webhookRow.latencyMs.toLocaleString() }}<small>ms</small></span>
-            <span
-              v-if="webhookRow.at"
-              class="hwh-at"
-            >今天 {{ webhookRow.at }} 測試</span>
-          </div>
-          <span
-            class="hbar"
-            :class="barTone(webhookRow)"
-            :style="zoneStyle(webhookScale)"
-            aria-hidden="true"
-          ><i :style="{ width: barWidth(webhookRow.latencyMs, webhookScale) }" /></span>
-        </div>
-        <p
-          v-else
-          class="hwh-idle"
-        >
-          這項只在你按下時才測試，會送出一次簽章請求並量測回應時間。
-        </p>
-
-        <ol class="hwh-steps">
-          <li>「測試 webhook」會連同其餘服務一起重新檢查。</li>
-          <li>持續失敗請到 LINE Developers，對 Webhook URL 按「Verify」。</li>
-          <li>測試結果只代表剛才那一次，不是持續監看。</li>
-        </ol>
-
-        <button
-          type="button"
-          class="btn btn-secondary hwh-btn"
-          :aria-busy="controller.processing.value || undefined"
-          @click="runWebhookTest"
-        >
-          {{ controller.processing.value ? '檢查中...' : webhookRow.latencyMs !== null ? '重新測試 webhook' : '測試 webhook' }}
-        </button>
-      </aside>
+            {{ controller.processing.value ? '檢查中...' : webhookRow.latencyMs !== null ? '重新測試 webhook' : '測試 webhook' }}
+          </button>
+        </footer>
+      </section>
     </div>
   </div>
 </template>
@@ -394,14 +317,6 @@ const counts = computed(() => ({
 /** Bar scale: the fault line, or the slowest service when it is past it, so all three zones are always on the track */
 const latencyScale = computed(() =>
   Math.max(FAULT_MS, ...serviceRows.value.map(row => row.latencyMs ?? 0)))
-const webhookScale = computed(() => Math.max(FAULT_MS, webhookRow.value?.latencyMs ?? 0))
-
-/** Track tint: green zone, orange zone, red zone, each ending where its threshold falls on this scale */
-function zoneStyle(scale: number): Record<string, string> {
-  const a = Math.round((SLOW_MS / scale) * 1000) / 10
-  const b = Math.round((FAULT_MS / scale) * 1000) / 10
-  return { '--za': `${a}%`, '--zb': `${b}%` }
-}
 
 const overallTone = computed<'ok' | 'warn' | 'bad' | 'unknown'>(() => {
   if (counts.value.critical > 0) {
@@ -551,7 +466,7 @@ onMounted(() => {
 .hl {
   display: grid;
   gap: 22px;
-  padding: 28px 32px 26px;
+  padding: 28px 32px;
 }
 
 .hl-empty {
@@ -563,7 +478,7 @@ onMounted(() => {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(320px, 460px);
   gap: 0 40px;
-  align-items: start;
+  align-items: center;
   min-width: 0;
 }
 
@@ -646,51 +561,46 @@ onMounted(() => {
   color: var(--ui-muted);
 }
 
-/* ---------- status strip: one segment per service ---------- */
-.strip {
-  display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: minmax(0, 1fr);
-  gap: 6px;
-  margin: 0;
+/* ---------- service chips: a dot and a name per service; a never-checked one is an outline, not a colour ---------- */
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 16px 0 0;
   padding: 0;
   list-style: none;
 }
 
-.seg {
-  display: grid;
-  gap: 8px;
-  min-width: 0;
-}
-
-.seg i {
-  display: block;
-  height: 12px;
-  border-radius: 6px;
-  background: var(--ui-green);
-}
-
-.seg.warn i {
-  background: var(--ui-orange);
-}
-
-.seg.bad i {
-  background: var(--ui-red);
-}
-
-/* never checked: an outline, because no colour is honest when nothing was measured */
-.seg.unknown i {
-  background: transparent;
-  box-shadow: inset 0 0 0 1.5px var(--ui-field-edge);
-}
-
-.seg > span {
-  overflow: hidden;
+.chip {
+  display: inline-flex;
+  gap: 7px;
+  align-items: center;
+  padding: 5px 12px 5px 10px;
+  border-radius: 999px;
+  background: var(--ui-fill);
   font-size: 13px;
   font-weight: 600;
   color: var(--ui-ink-2);
-  text-overflow: ellipsis;
-  white-space: nowrap;
+}
+
+.chip i {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--ui-green);
+}
+
+.chip.warn i {
+  background: var(--ui-orange);
+}
+
+.chip.bad i {
+  background: var(--ui-red);
+}
+
+.chip.unknown i {
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px var(--ui-field-edge);
 }
 
 .sr-only {
@@ -705,9 +615,7 @@ onMounted(() => {
 /* ---------- cards ---------- */
 .hgrid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(300px, 380px);
-  gap: 16px;
-  align-items: stretch;
+  grid-template-columns: minmax(0, 1fr);
   min-width: 0;
 }
 
@@ -736,30 +644,30 @@ onMounted(() => {
 }
 
 .zones i {
-  width: 14px;
-  height: 10px;
-  border-radius: 3px;
+  border-radius: 999px;
+}
+
+.zones i {
+  width: 18px;
+  height: 8px;
 }
 
 .z-ok {
-  background: var(--ui-green-soft);
-  box-shadow: inset 0 0 0 1px var(--ui-green);
+  background: var(--ui-green);
 }
 
 .z-warn {
-  background: var(--ui-orange-soft);
-  box-shadow: inset 0 0 0 1px var(--ui-orange);
+  background: var(--ui-orange);
 }
 
 .z-bad {
-  background: var(--ui-red-soft);
-  box-shadow: inset 0 0 0 1px var(--ui-red);
+  background: var(--ui-red);
 }
 
 .hlist {
   display: grid;
   margin: 0;
-  padding: 0 28px 14px;
+  padding: 0 28px 8px;
   list-style: none;
 }
 
@@ -825,19 +733,21 @@ onMounted(() => {
   color: var(--ui-muted);
 }
 
-/* the track carries the zones: green to 100 ms, orange to 300 ms, red beyond */
+/* neutral track: only the fill carries colour (green to 100 ms, orange to 300 ms, red beyond) */
 .hbar {
   flex: none;
   width: clamp(120px, 34%, 320px);
-  height: 12px;
+  height: 10px;
   overflow: hidden;
   border-radius: 999px;
-  background: linear-gradient(
-    to right,
-    var(--ui-green-soft) 0 var(--za, 33%),
-    var(--ui-orange-soft) var(--za, 33%) var(--zb, 100%),
-    var(--ui-red-soft) var(--zb, 100%) 100%
-  );
+  background: var(--ui-fill);
+}
+
+.hbar-none {
+  flex: none;
+  width: clamp(120px, 34%, 320px);
+  font-size: 13px;
+  color: var(--ui-muted);
 }
 
 .hbar i {
@@ -882,96 +792,32 @@ onMounted(() => {
   width: 62px;
 }
 
-/* ---------- webhook card ---------- */
-.hwh {
+/* ---------- webhook footer: why it is manual, and the button ---------- */
+.hfoot {
   display: flex;
-  flex-direction: column;
-  gap: 16px;
-  padding: 22px 24px;
-}
-
-.hwh-head {
-  display: flex;
-  gap: 12px;
+  gap: 20px;
   align-items: center;
-}
-
-.hwh-result {
-  display: grid;
-  gap: 10px;
-}
-
-.hwh-ms {
-  display: flex;
-  gap: 12px;
-  align-items: baseline;
   justify-content: space-between;
+  margin: 4px 16px 16px;
+  padding: 16px 20px;
+  border-radius: var(--ui-r-inner);
+  background: var(--ui-surface-2);
 }
 
-.hwh-ms .lat-n {
-  min-width: 0;
-  font-size: 34px;
-  letter-spacing: -0.03em;
-}
-
-.hwh-ms .lat-n small {
-  font-size: 15px;
-}
-
-.hwh-at {
-  font-size: 13px;
-  color: var(--ui-muted);
-  font-variant-numeric: tabular-nums;
-}
-
-.hwh .hbar {
-  width: 100%;
-}
-
-.hwh-idle {
+.hfoot p {
+  max-width: 62ch;
   margin: 0;
   font-size: 14px;
   line-height: 1.55;
   color: var(--ui-ink-2);
 }
 
-.hwh-btn {
-  margin-top: auto;
+.hfoot b {
+  color: var(--ui-ink);
 }
 
-.hwh-steps {
-  display: grid;
-  gap: 12px;
-  margin: 0;
-  padding: 16px 0 0;
-  box-shadow: inset 0 0.5px 0 var(--ui-sep);
-  list-style: none;
-  counter-reset: step;
-  font-size: 14px;
-  line-height: 1.5;
-  color: var(--ui-ink-2);
-  text-align: left;
-}
-
-.hwh-steps li {
-  display: grid;
-  grid-template-columns: 24px minmax(0, 1fr);
-  gap: 10px;
-  align-items: start;
-  counter-increment: step;
-}
-
-.hwh-steps li::before {
-  content: counter(step);
-  display: grid;
-  place-items: center;
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  background: var(--ui-fill);
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--ui-ink-2);
+.hfoot .btn {
+  flex: none;
 }
 
 @media (max-width: 1024px) {
@@ -1036,8 +882,17 @@ onMounted(() => {
     min-width: 0;
   }
 
-  .hwh {
-    padding: 20px 18px;
+  .hfoot {
+    flex-direction: column;
+    gap: 14px;
+    align-items: stretch;
+    margin: 4px 12px 12px;
+    padding: 16px;
+  }
+
+  /* the pill already says 未檢查; no second line for it on a phone */
+  .hrow .hbar-none {
+    display: none;
   }
 
 }

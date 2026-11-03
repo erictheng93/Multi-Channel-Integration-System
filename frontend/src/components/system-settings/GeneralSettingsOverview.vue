@@ -272,6 +272,11 @@ const tiles = computed<Tile[]>(() => [
   color: var(--ui-red-ink);
 }
 
+/* the fix pill already says it is not connected, so the red word is not repeated beside it */
+.ov-row:has(.ov-fix) .ov-state.red {
+  display: none;
+}
+
 .ov-state.muted {
   color: var(--ui-muted);
 }
@@ -285,9 +290,5 @@ const tiles = computed<Tile[]>(() => [
     white-space: normal;
   }
 
-  /* the fix pill already says it is not connected */
-  .ov-state.red {
-    display: none;
   }
-}
 </style>
