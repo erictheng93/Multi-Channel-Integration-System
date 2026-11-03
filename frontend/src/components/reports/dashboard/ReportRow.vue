@@ -329,11 +329,11 @@ const canDelete = computed(() => {
 
 .action-btn {
   display: grid;
-  width: 38px;
-  height: 38px;
+  width: 40px;
+  height: 40px;
   place-items: center;
   border: 0;
-  border-radius: 10px;
+  border-radius: 12px;
   background: transparent;
   color: var(--ui-ink-2);
   cursor: pointer;
@@ -347,12 +347,12 @@ const canDelete = computed(() => {
 }
 
 .action-btn--danger {
-  color: var(--ui-muted);
+  color: var(--ui-ink-2);
 }
 
 .action-btn svg {
-  width: 19px;
-  height: 19px;
+  width: 21px;
+  height: 21px;
 }
 
 .action-btn:hover:not(:disabled) {

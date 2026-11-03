@@ -387,9 +387,9 @@ defineEmits<{
 }
 
 .header-cell {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
-  color: var(--ui-ink-2);
+  color: var(--ui-ink);
 }
 
 @media (max-width: 768px) {
