@@ -75,7 +75,7 @@
             class="bal-side is-in"
             :aria-label="`客戶來訊 ${fmt(row.inN)} 則`"
           >
-            <span class="bal-num"><b>{{ fmt(row.inN) }}</b><small>累計 {{ fmt(row.inTotal) }}</small></span>
+            <span class="bal-num"><span class="bal-lbl">客戶來訊</span><b>{{ fmt(row.inN) }}</b><small>累計 {{ fmt(row.inTotal) }}</small></span>
             <span class="bal-track"><i
               class="bal-bar in"
               :style="{ '--r': ratio(row.inN) }"
@@ -89,7 +89,7 @@
               class="bal-bar out"
               :style="{ '--r': ratio(row.outN) }"
             /></span>
-            <span class="bal-num"><b>{{ fmt(row.outN) }}</b><small>累計 {{ fmt(row.outTotal) }}</small></span>
+            <span class="bal-num"><span class="bal-lbl">客服發送</span><b>{{ fmt(row.outN) }}</b><small>累計 {{ fmt(row.outTotal) }}</small></span>
           </div>
         </template>
         <div
@@ -221,12 +221,14 @@ const ratio = (n: number): number => (n === 0 ? 0 : Math.max(0.02, n / max.value
   border-radius: 4px;
 }
 
+/* one hue: customer messages are the solid blue, agent replies its light tint, so the pair reads as one conversation */
 .in {
   background: var(--ui-blue);
 }
 
 .out {
-  background: var(--ui-indigo);
+  background: color-mix(in srgb, var(--ui-blue) 38%, var(--ui-surface));
+  box-shadow: inset 0 0 0 1.5px var(--ui-blue);
 }
 
 .bal-none {
@@ -388,11 +390,22 @@ const ratio = (n: number): number => (n === 0 ? 0 : Math.max(0.02, n / max.value
   color: var(--ui-muted);
 }
 
+/* a disabled channel keeps the grid: one empty track across both sides, named */
 .bal-off {
   grid-column: 2 / 4;
-  padding: 0 14px;
-  font-size: 14px;
-  color: var(--ui-muted);
+  justify-content: center;
+  min-height: 22px;
+  height: 22px;
+  align-self: center;
+  border-radius: 8px;
+  background: var(--ui-fill);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ui-ink-2);
+}
+
+.bal-lbl {
+  display: none;
 }
 
 .bal-scale {
@@ -406,7 +419,7 @@ const ratio = (n: number): number => (n === 0 ? 0 : Math.max(0.02, n / max.value
   }
 }
 
-/* phone: identity and health on one line, the two bars beneath on the same axis */
+/* phone: identity and health on one line, then one full-width bar per side (same scale, both grow rightwards) */
 @media (max-width: 768px) {
   .bal {
     padding: 20px 16px 14px;
@@ -417,20 +430,21 @@ const ratio = (n: number): number => (n === 0 ? 0 : Math.max(0.02, n / max.value
   }
 
   .bal-axis {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr);
   }
 
-  .bal-axis > :first-child,
-  .bal-axis > :last-child {
+  .bal-axis > :not(.bal-scale) {
     display: none;
   }
 
   .bal-row {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    position: relative;
+    grid-template-columns: minmax(0, 1fr);
     grid-template-areas:
-      'id id'
-      'in out';
-    gap: 6px 0;
+      'id'
+      'in'
+      'out';
+    gap: 8px 0;
     padding: 14px 0 12px;
   }
 
@@ -445,38 +459,72 @@ const ratio = (n: number): number => (n === 0 ? 0 : Math.max(0.02, n / max.value
     right: 0;
   }
 
-  .bal-row {
-    position: relative;
+  .bal-side {
+    min-height: 0;
   }
 
   .bal-side.is-in {
     grid-area: in;
+    justify-content: flex-start;
+    padding-right: 0;
+    box-shadow: none;
   }
 
   .bal-side.is-out {
     grid-area: out;
+    flex-direction: row-reverse;
+    padding-left: 0;
+  }
+
+  .is-in .bal-track {
+    justify-content: flex-start;
+  }
+
+  .is-in .bal-bar {
+    border-radius: 3px 8px 8px 3px;
   }
 
   .bal-off {
     grid-area: in / in / out / out;
-    min-height: 0;
+    height: 28px;
   }
 
   .bal-track,
   .bal-bar {
-    height: 18px;
-  }
-
-  .bal-scale {
-    display: none;
+    height: 20px;
   }
 
   .bal-num {
-    min-width: 68px;
+    grid-template-columns: auto auto;
+    grid-template-areas:
+      'l n'
+      'l t';
+    align-items: center;
+    column-gap: 8px;
+    min-width: 132px;
+    text-align: left;
+  }
+
+  .is-in .bal-num {
+    text-align: left;
+  }
+
+  .bal-lbl {
+    display: block;
+    grid-area: l;
+    min-width: 56px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ui-ink-2);
   }
 
   .bal-num b {
+    grid-area: n;
     font-size: 17px;
+  }
+
+  .bal-num small {
+    grid-area: t;
   }
 }
 </style>

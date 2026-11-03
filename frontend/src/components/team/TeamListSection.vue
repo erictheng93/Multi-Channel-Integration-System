@@ -115,8 +115,6 @@
             :key="team.id"
             :team="team"
             :loading="loading"
-            :preview-members="previewMembersFor(team.id)"
-            :leaders="leadersFor(team.id)"
             :open-count="openByTeam ? (openByTeam.get(team.id) ?? 0) : null"
             class="draggable-card"
             @toggle-status="(t) => emit('toggle-status', t)"
@@ -142,7 +140,6 @@
 import { ref, watch, computed, nextTick } from 'vue'
 import { VueDraggable } from 'vue-draggable-plus'
 import type { Team } from '@/composables/team-management'
-import type { TeamMember } from '@/types'
 import type { SortOption, SortState, SortMode } from '@/composables/useListSorting'
 import { usePagination } from '@/composables/usePagination'
 import { useDebounce } from '@/composables/useDebounce'
@@ -153,7 +150,6 @@ import TeamCard from '@/components/team/TeamCard.vue'
 import SortDropdown from '@/components/ui/SortDropdown.vue'
 import TeamsIcon from '@/components/icons/TeamsIcon.vue'
 import { SearchIcon } from '@/components/icons'
-import { teamRoleText } from '@/utils/team-tone'
 
 interface Props {
   teams: Team[]
@@ -164,8 +160,6 @@ interface Props {
   currentSortLabel: string
   // Sort mode props
   sortMode: SortMode
-  /** All members, used to draw each team's avatar stack. */
-  members?: TeamMember[]
   /** Open conversations per team id; null until known */
   openByTeam?: Map<number, number> | null
 }
@@ -182,32 +176,12 @@ interface Emits {
   (_e: 'custom-order-change', _ids: string[]): void
 }
 
-const props = withDefaults(defineProps<Props>(), { members: () => [], openByTeam: null })
+const props = withDefaults(defineProps<Props>(), { openByTeam: null })
 
 const emit = defineEmits<Emits>()
 
-const PREVIEW_COUNT = 3
-
 /** Search and sort only earn their place once there are enough teams to look through */
 const SEARCH_MIN_TEAMS = 5
-
-function previewMembersFor(teamId: number): TeamMember[] {
-  return props.members
-    .filter(m => m.primaryTeamId === teamId || (m.teams ?? []).some(t => t.teamId === teamId))
-    .slice(0, PREVIEW_COUNT)
-}
-
-/** Supervisors first, then leads: the people who run the team, by name */
-function leadersFor(teamId: number): { id: string, name: string, role: string }[] {
-  const out: { id: string, name: string, role: string, rank: number }[] = []
-  for (const m of props.members) {
-    const t = (m.teams ?? []).find(x => x.teamId === teamId)
-    if (t && (t.roleInTeam === 'supervisor' || t.roleInTeam === 'lead')) {
-      out.push({ id: m.id, name: m.name || m.loginId, role: teamRoleText(t.roleInTeam), rank: t.roleInTeam === 'supervisor' ? 0 : 1 })
-    }
-  }
-  return out.sort((a, b) => a.rank - b.rank).slice(0, 3).map(({ rank: _rank, ...rest }) => rest)
-}
 
 // Template ref for scroll-into-view on page change
 const sectionRef = ref<HTMLElement | null>(null)
@@ -428,7 +402,7 @@ function handlePageChange(page: number) {
   gap: 12px;
   padding-bottom: 4px;
 }
-/* desktop: two cards side by side. Top block = mark, name, description, who runs it; footer row = faces left, counts right */
+/* desktop: two cards side by side. Mark, name and description on top; the counts sit under them, since the roster above already names who runs each team */
 @media (min-width: 769px) {
   .teams-list {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -437,35 +411,13 @@ function handlePageChange(page: number) {
   .team-section :deep(.team-card) {
     grid-template-columns: 56px minmax(0, 1fr) auto;
     grid-template-areas:
-      'mark name acts'
-      'mark desc desc'
-      'mark lead lead'
-      'foot foot foot';
+      'mark main acts';
     align-items: start;
     column-gap: 16px;
-    row-gap: 2px;
-    padding: 20px 20px 18px;
+    padding: 20px;
   }
-  .team-section :deep(.team-main) { display: contents; }
   .team-section :deep(.team-mark) { grid-area: mark; width: 56px; height: 56px; }
-  .team-section :deep(.team-name) { grid-area: name; align-self: center; }
-  .team-section :deep(.team-desc) { grid-area: desc; }
-  .team-section :deep(.team-leaders) { grid-area: lead; }
-  .team-section :deep(.team-meta) {
-    grid-area: foot;
-    justify-self: end;
-    align-self: center;
-    margin: 14px 0 0;
-  }
-  .team-section :deep(.avs) {
-    grid-area: foot;
-    align-self: center;
-    justify-self: start;
-    margin-top: 14px;
-    padding: 0;
-  }
-  .team-section :deep(.avs .team-avatar) { width: 32px; height: 32px; font-size: 13px; }
-  .team-section :deep(.avs-more) { min-width: 32px; height: 32px; border-radius: 16px; }
+  .team-section :deep(.team-main) { grid-area: main; }
   .team-section :deep(.team-acts) { grid-area: acts; margin: -4px -6px 0 0; }
   .team-section :deep(.team-acts .go) { display: none; }
 }

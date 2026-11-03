@@ -49,6 +49,7 @@
           >
             <span class="adv-label">{{ item.label }}</span>
             <span class="adv-value">{{ item.value }}</span>
+            <span class="adv-note">{{ item.note }}</span>
             <svg
               class="adv-chev"
               viewBox="0 0 24 24"
@@ -188,10 +189,10 @@ const ribbonEvents = computed<RibbonEvent[]>(() => {
 const advancedRows = computed(() => {
   const a = controller.settings.advanced
   return [
-    { label: '訊息可撤回時間', value: a.recallWindowSeconds > 0 ? `${a.recallWindowSeconds} 秒` : '關閉' },
-    { label: '訊息處理逾時', value: `${Math.round(a.messageTimeout / 1000)} 秒` },
-    { label: '登入有效期限', value: `${Math.round(a.sessionExpiry / 3600)} 小時` },
-    { label: '速率限制', value: a.enableRateLimit ? '已開啟' : '已關閉' },
+    { label: '訊息可撤回時間', value: a.recallWindowSeconds > 0 ? `${a.recallWindowSeconds} 秒` : '關閉', note: '延遲發送，期間可撤回' },
+    { label: '訊息處理逾時', value: `${Math.round(a.messageTimeout / 1000)} 秒`, note: '處理逾時前的等待時間' },
+    { label: '登入有效期限', value: `${Math.round(a.sessionExpiry / 3600)} 小時`, note: '登入狀態可保持的時間' },
+    { label: '速率限制', value: a.enableRateLimit ? '已開啟' : '已關閉', note: '限制過量請求以保護服務' },
   ]
 })
 </script>
@@ -263,6 +264,13 @@ const advancedRows = computed(() => {
 
 .adv-label {
   font-size: 13px;
+  font-weight: 600;
+  color: var(--ui-ink-2);
+}
+
+.adv-note {
+  font-size: 13px;
+  line-height: 1.4;
   color: var(--ui-muted);
 }
 

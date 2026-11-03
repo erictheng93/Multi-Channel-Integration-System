@@ -1,7 +1,8 @@
 <!--
   ActivityStatsCards.vue
   Signature of the activity page (admins): the period as a row of day tiles, shaded by how busy that day was
-  (a week heat calendar, one tile per day of dailyStats). The busiest day carries a ring, a day far below
+  (a week calendar, one tile per day of dailyStats): a quiet tile with the day's count and a meter under it, the
+  meter being the day's share of the busiest day, so the scale is a length, not a shade. The busiest day carries a ring, a day far below
   the average is orange and named. The sentence above gives the total, the members and the restorable count.
   Nothing is invented: every figure is the overview's totalActivities / activeUserCount / restorableCount / dailyStats.
 -->
@@ -48,6 +49,10 @@
           v-if="day.peak || day.low"
           class="wk-flag"
         >{{ day.peak ? '最忙' : '偏少' }}</span>
+        <span
+          class="wk-meter"
+          aria-hidden="true"
+        ><i /></span>
       </li>
     </ol>
     <div
@@ -60,12 +65,8 @@
       class="wk-foot"
     >
       <p class="wk-note">
-        {{ note || '顏色越深代表當天操作越多。' }}
+        {{ note || '每格底部的橫條是當天占最忙一天的比例。' }}
       </p>
-      <span
-        class="wk-scale"
-        aria-hidden="true"
-      >少<i /><i /><i /><i /><i />多</span>
     </div>
   </article>
 </template>
@@ -126,7 +127,7 @@ const note = computed(() => {
   if (avg <= 0 || low.count >= avg * 0.4) { return '' }
   const day = new Date(`${low.date}T00:00:00`)
   const name = Number.isNaN(day.getTime()) ? low.date : `週${WEEKDAYS[day.getDay()]}`
-  return `顏色越深代表當天操作越多。${name}僅 ${low.count.toLocaleString('en-US')} 筆，約為日均的 ${Math.round((low.count / avg) * 100)}%。`
+  return `每格底部的橫條是當天占最忙一天的比例。${name}僅 ${low.count.toLocaleString('en-US')} 筆，約為日均的 ${Math.round((low.count / avg) * 100)}%。`
 })
 
 const meaning = computed<string[]>(() => {
@@ -198,13 +199,14 @@ const meaning = computed<string[]>(() => {
 
 .wk-day {
   position: relative;
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 2px;
-  justify-items: center;
-  align-content: start;
-  padding: 14px 6px 12px;
+  align-items: center;
+  min-height: 150px;
+  padding: 14px 6px 14px;
   border-radius: 18px;
-  background: color-mix(in srgb, var(--ui-green) calc(var(--lv) * 30%), var(--ui-surface-2));
+  background: var(--ui-surface-2);
   text-align: center;
 }
 
@@ -212,9 +214,24 @@ const meaning = computed<string[]>(() => {
   box-shadow: 0 0 0 2px var(--ui-green-ink);
 }
 
-/* a quiet day is plain, not alarming: the flag names it, colour stays for the shade scale */
-.wk-day.is-low {
-  background: var(--ui-surface-2);
+/* the meter: the day's share of the busiest day, one hue, so quiet and busy days differ by length */
+.wk-meter {
+  display: block;
+  width: calc(100% - 28px);
+  height: 6px;
+  margin-top: auto;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--ui-fill-strong);
+}
+
+.wk-meter i {
+  display: block;
+  width: calc(var(--lv) * 100%);
+  min-width: 4px;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--ui-green);
 }
 
 .wk-wd {
@@ -278,26 +295,6 @@ const meaning = computed<string[]>(() => {
   color: var(--ui-muted);
 }
 
-.wk-scale {
-  display: inline-flex;
-  gap: 4px;
-  align-items: center;
-  font-size: 13px;
-  color: var(--ui-muted);
-}
-
-.wk-scale i {
-  width: 18px;
-  height: 12px;
-  border-radius: 4px;
-}
-
-.wk-scale i:nth-of-type(1) { background: color-mix(in srgb, var(--ui-green) 6%, var(--ui-surface-2)); }
-.wk-scale i:nth-of-type(2) { background: color-mix(in srgb, var(--ui-green) 12%, var(--ui-surface-2)); }
-.wk-scale i:nth-of-type(3) { background: color-mix(in srgb, var(--ui-green) 18%, var(--ui-surface-2)); }
-.wk-scale i:nth-of-type(4) { background: color-mix(in srgb, var(--ui-green) 24%, var(--ui-surface-2)); }
-.wk-scale i:nth-of-type(5) { background: color-mix(in srgb, var(--ui-green) 30%, var(--ui-surface-2)); }
-
 @media (max-width: 768px) {
   .wk {
     gap: 14px;
@@ -324,6 +321,15 @@ const meaning = computed<string[]>(() => {
   .wk-date,
   .wk-part:last-child {
     display: none;
+  }
+
+  .wk-day {
+    min-height: 0;
+  }
+
+  .wk-meter {
+    width: calc(100% - 14px);
+    margin-top: 8px;
   }
 
   .wk-flag {

@@ -227,7 +227,7 @@ const currentPage = computed(() => pagination.value?.page || 1)
 const headSummary = computed(() => {
   if (isAdmin.value && overview.value) {
     // the week card under the head already states the period total
-    return ''
+    return '誰在什麼時間做了什麼；點開一列可看詳情。'
   }
   if (!loading.value && pagination.value.total > 0) {
     return `目前篩選條件下共 ${pagination.value.total.toLocaleString('zh-TW')} 筆記錄。`

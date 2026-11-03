@@ -81,6 +81,12 @@
               · {{ lane.open }} 件處理中
             </template>
           </div>
+          <p
+            v-if="lane.description"
+            class="ro-team-desc"
+          >
+            {{ lane.description }}
+          </p>
         </div>
         <div
           v-for="rank in ranks"
@@ -183,6 +189,7 @@ const lanes = computed(() =>
       return {
         id: team.id,
         name: team.name,
+        description: team.description?.trim() ?? '',
         total: everyone.length,
         online: props.presenceAvailable ? everyone.filter(p => p.online).length : null,
         open: props.openByTeam ? (props.openByTeam.get(team.id) ?? 0) : null,
@@ -256,7 +263,7 @@ const sharedMembers = computed(() =>
 .ro-cols,
 .ro-lane {
   display: grid;
-  grid-template-columns: var(--team-w, 210px) var(--cols);
+  grid-template-columns: var(--team-w, 280px) var(--cols);
   gap: 0 18px;
   align-items: center;
 }
@@ -299,6 +306,13 @@ const sharedMembers = computed(() =>
 
 .ro-team-sub b {
   color: var(--ui-ink);
+}
+
+.ro-team-desc {
+  margin: 4px 0 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--ui-muted);
 }
 
 .ro-cell {
@@ -353,7 +367,7 @@ const sharedMembers = computed(() =>
 
   .ro-cols,
   .ro-lane {
-    --team-w: 160px;
+    --team-w: 200px;
 
     grid-template-columns: var(--team-w) var(--cols);
     gap: 0 12px;

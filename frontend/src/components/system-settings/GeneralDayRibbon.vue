@@ -31,7 +31,10 @@
           {{ zone.name }}時間
         </h2>
         <p class="rb-date">
-          {{ dateText }} · {{ modelValue }}
+          {{ dateText }} · {{ modelValue }}<span
+            v-if="restText"
+            class="rb-rest"
+          > · 今天還剩 {{ restText }}</span>
         </p>
       </div>
       <div class="rb-pick">
@@ -229,6 +232,14 @@ function clock(ms: number): string {
 const dayStart = computed(() => now.value - intoDay(now.value))
 const nowFrac = computed(() => Math.min(1, Math.max(0, intoDay(now.value) / DAY)))
 const nowText = computed(() => clock(now.value))
+/** Time left until the zone's next midnight, in words: the empty part of the track, said once */
+const restText = computed(() => {
+  const left = Math.max(0, DAY - intoDay(now.value))
+  const h = Math.floor(left / 3_600_000)
+  const m = Math.floor((left % 3_600_000) / 60_000)
+  if (h === 0 && m === 0) { return '' }
+  return h > 0 ? `${h} 小時 ${m} 分` : `${m} 分`
+})
 const dateText = computed(() => safeFormat(() => new Intl.DateTimeFormat('zh-TW', { timeZone: tz.value, month: 'long', day: 'numeric', weekday: 'long' }).format(new Date(now.value)), ''))
 
 function pct(f: number): string {
@@ -372,7 +383,7 @@ const ariaLabel = computed(() => {
   display: block;
   height: 100%;
   border-radius: 999px;
-  background: linear-gradient(90deg, color-mix(in srgb, var(--ui-blue) 30%, transparent), var(--ui-blue));
+  background: var(--ui-blue);
 }
 
 .rb-grid {
@@ -466,23 +477,21 @@ const ariaLabel = computed(() => {
   transform: translateX(-50%);
 }
 
-/* events: the same marks, said in words */
+/* events: the same marks, said in words, as one plain key under the ribbon */
 .rb-legend {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 36px;
   margin: 0;
-  padding: 0;
+  padding: 14px 14px 0;
   list-style: none;
+  box-shadow: inset 0 0.5px 0 var(--ui-sep);
 }
 
 .rb-legend li {
   display: flex;
   gap: 12px;
   align-items: center;
-  padding: 11px 14px;
-  border-radius: 14px;
-  background: var(--ui-surface-2);
   color: var(--ui-green-ink);
 }
 
@@ -550,6 +559,10 @@ const ariaLabel = computed(() => {
     font-size: 26px;
   }
 
+  .rb-rest {
+    display: none;
+  }
+
   .rb-pick {
     width: 100%;
   }
@@ -563,13 +576,9 @@ const ariaLabel = computed(() => {
   }
 
   .rb-legend {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 6px;
-  }
-
-  .rb-legend li {
-    gap: 12px;
-    padding: 8px 12px;
+    flex-direction: column;
+    gap: 10px;
+    padding: 14px 4px 0;
   }
 }
 </style>

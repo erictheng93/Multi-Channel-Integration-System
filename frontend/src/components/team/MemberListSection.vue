@@ -771,26 +771,47 @@ function handleSelectPage() {
   }
 }
 @media (max-width: 768px) {
+  /* the role ladder stays as one line of chips; its caption is the card's own subtitle */
   .legend {
     flex-basis: 100%;
-    flex-wrap: wrap;
     margin-left: 0;
   }
   .lg-k {
-    flex-basis: 100%;
-    margin-right: 0;
+    display: none;
   }
   .tools {
+    flex-wrap: wrap;
     padding-right: 16px;
     padding-left: 16px;
   }
-  .search-bar {
-    flex-basis: 100%;
-    max-width: none;
-  }
+  /* two rows, not four: search with the batch toggle, then the team tabs with the sort */
   .tools-end {
-    width: 100%;
-    margin-left: 0;
+    display: contents;
+  }
+  .search-bar {
+    flex: 1 1 calc(100% - 58px);
+    order: 1;
+    max-width: none;
+    height: 44px;
+  }
+  .tools-end > .btn {
+    order: 2;
+    flex: none;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    font-size: 0;
+    gap: 0;
+  }
+  .team-seg {
+    flex: 1 1 0;
+    order: 3;
+    min-width: 0;
+    mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
+  }
+  .tools-end > :deep(.sort-dropdown) {
+    flex: none;
+    order: 4;
   }
   .bulkbar {
     margin-right: 16px;
