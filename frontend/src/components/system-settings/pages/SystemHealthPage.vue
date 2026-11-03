@@ -1,9 +1,8 @@
 <!--
   SystemHealthPage.vue
-  Health check page. Signature: a latency radar. One axis per service, the distance from the centre is the
-  measured response time on one shared scale (rings at 25 / 50 / 75 / 100 % of the scale), so the shape of the
-  polygon shows at a glance which service is the slow one. A service that was never checked has no point,
-  only a dashed marker. The verdict, three facts and one row per service sit beside it.
+  Health check page. Signature: the verdict, three facts, and one row per service that carries its own latency
+  bar on one shared scale (full track = the slowest scale shown in the caption), so the slow service reads at
+  a glance. A service that was never checked has an empty track and says so in its pill.
   Opening the page runs the plain check; 立即檢查 (page head) also runs the on-demand LINE webhook test.
 -->
 
@@ -33,67 +32,6 @@
       </UiEmptyState>
 
       <template v-else>
-        <figure
-          class="radar"
-          :class="radarTone"
-          :aria-label="`各服務回應時間雷達圖，外圈 ${latencyScale} ms`"
-        >
-          <div class="radar-box">
-            <svg
-              class="radar-svg"
-              viewBox="0 0 100 100"
-              aria-hidden="true"
-            >
-              <circle
-                v-for="ring in RINGS"
-                :key="ring"
-                class="r-ring"
-                cx="50"
-                cy="50"
-                :r="RADIUS * ring"
-              />
-              <line
-                v-for="spot in spots"
-                :key="`ax-${spot.key}`"
-                class="r-axis"
-                x1="50"
-                y1="50"
-                :x2="spot.rimX"
-                :y2="spot.rimY"
-              />
-              <polygon
-                v-if="shape"
-                class="r-shape"
-                :points="shape"
-              />
-            </svg>
-            <span
-              v-for="spot in spots"
-              :key="`dot-${spot.key}`"
-              class="r-dot"
-              :class="[spot.tone, { 'is-empty': !spot.measured }]"
-              :style="{ left: `${spot.x}%`, top: `${spot.y}%` }"
-              aria-hidden="true"
-            />
-            <div
-              v-for="spot in spots"
-              :key="`lb-${spot.key}`"
-              class="r-label"
-              :class="spot.side"
-              :style="{ left: `${spot.lx}%`, top: `${spot.ly}%` }"
-            >
-              <span class="r-name">{{ spot.short }}</span>
-              <span
-                class="r-val"
-                :class="spot.tone"
-              >{{ spot.value }}</span>
-            </div>
-          </div>
-          <figcaption class="radar-cap">
-            離中心越遠越慢，外圈 {{ latencyScale }} ms
-          </figcaption>
-        </figure>
-
         <div class="hl-side">
           <header class="hl-top">
             <div
@@ -145,6 +83,9 @@
             </div>
           </dl>
 
+          <p class="hscale">
+            回應時間，各服務同一比例，滿格 = {{ latencyScale }} ms
+          </p>
           <ul
             class="hlist"
             aria-label="服務檢查"
@@ -197,6 +138,11 @@
                   > · {{ row.at }}</span>
                 </div>
               </div>
+              <span
+                class="hbar"
+                :class="barTone(row)"
+                aria-hidden="true"
+              ><i :style="{ width: barWidth(row) }" /></span>
               <span
                 class="lat-n"
                 :class="barTone(row)"
@@ -451,75 +397,11 @@ function pillClass(row: Row): string {
   return ''
 }
 
-/* ---------- latency radar ---------- */
-const RADIUS = 34
-const RINGS = [0.25, 0.5, 0.75, 1] as const
-const LABEL_RADIUS = 45
-
-const SHORT_NAME: Record<string, string> = {
-  database: 'D1',
-  cache: 'KV',
-  r2: 'R2',
-  'durable_object': 'DO',
-  queue: 'Queue',
-  lineWebhook: 'Webhook'
+/** Bar fill on the shared scale; a service with no measurement has an empty track */
+function barWidth(row: Row): string {
+  if (row.latencyMs === null) { return '0%' }
+  return `${Math.max(3, Math.min(100, Math.round((row.latencyMs / latencyScale.value) * 100)))}%`
 }
-
-interface Spot {
-  key: string
-  short: string
-  tone: 'ok' | 'warn' | 'bad'
-  measured: boolean
-  value: string
-  x: number
-  y: number
-  rimX: number
-  rimY: number
-  lx: number
-  ly: number
-  side: 'top' | 'bottom' | 'left' | 'right'
-}
-
-const spots = computed<Spot[]>(() => {
-  const count = rows.value.length
-  return rows.value.map((row, index) => {
-    const angle = (-90 + (360 / count) * index) * (Math.PI / 180)
-    const cos = Math.cos(angle)
-    const sin = Math.sin(angle)
-    const measured = row.latencyMs !== null
-    // a failed check with no measurement sits on the rim; a never-checked service sits at the half ring
-    const ratio = measured ? Math.min((row.latencyMs ?? 0) / latencyScale.value, 1) : row.tone === 'bad' ? 1 : 0.5
-    const tone = barTone(row)
-    const side = Math.abs(cos) < 0.2 ? (sin < 0 ? 'top' : 'bottom') : cos > 0 ? 'right' : 'left'
-    // top and bottom labels sit centred on the axis; side labels start beside the rim
-    const lr = side === 'top' || side === 'bottom' ? LABEL_RADIUS : LABEL_RADIUS - 7
-    return {
-      key: row.key,
-      short: SHORT_NAME[row.key] ?? shortName(row.name),
-      tone: tone === 'warn' || tone === 'bad' ? tone : 'ok',
-      measured,
-      value: measured ? `${row.latencyMs?.toLocaleString()} ms` : row.tone === 'bad' ? '異常' : '未檢查',
-      x: 50 + RADIUS * ratio * cos,
-      y: 50 + RADIUS * ratio * sin,
-      rimX: 50 + RADIUS * cos,
-      rimY: 50 + RADIUS * sin,
-      lx: 50 + lr * cos,
-      ly: 50 + lr * sin,
-      side
-    }
-  })
-})
-
-/** The polygon joins the measured services only, in axis order */
-const shape = computed(() => {
-  const measured = spots.value.filter(spot => spot.measured)
-  return measured.length >= 3 ? measured.map(spot => `${spot.x.toFixed(2)},${spot.y.toFixed(2)}`).join(' ') : ''
-})
-
-const radarTone = computed(() => {
-  if (counts.value.critical > 0) { return 'bad' }
-  return counts.value.warning > 0 ? 'warn' : 'ok'
-})
 
 // Plain check on open; the webhook test stays on-demand.
 onMounted(() => {
@@ -535,12 +417,8 @@ onMounted(() => {
   min-width: 0;
 }
 
-/* radar left, verdict + services right */
 .hl {
   display: grid;
-  grid-template-columns: minmax(320px, 440px) minmax(0, 1fr);
-  gap: 20px 40px;
-  align-items: center;
   padding: 28px 32px;
 }
 
@@ -548,140 +426,31 @@ onMounted(() => {
   grid-column: 1 / -1;
 }
 
-/* ---------- radar ---------- */
-.radar {
-  --tone: var(--ui-green);
-  --tone-soft: var(--ui-green-soft);
-
-  display: grid;
-  gap: 10px;
-  margin: 0;
-  min-width: 0;
-}
-
-.radar.warn {
-  --tone: var(--ui-orange);
-  --tone-soft: var(--ui-orange-soft);
-}
-
-.radar.bad {
-  --tone: var(--ui-red);
-  --tone-soft: var(--ui-red-soft);
-}
-
-.radar-box {
-  position: relative;
-  width: 100%;
-  aspect-ratio: 1;
-}
-
-.radar-svg {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  overflow: visible;
-}
-
-.r-ring {
-  fill: none;
-  stroke: var(--ui-sep);
-  stroke-width: 0.4;
-}
-
-.r-ring:last-of-type {
-  stroke-width: 0.6;
-}
-
-.r-axis {
-  stroke: var(--ui-sep);
-  stroke-width: 0.4;
-}
-
-.r-shape {
-  fill: var(--tone-soft);
-  stroke: var(--tone);
-  stroke-linejoin: round;
-  stroke-width: 0.9;
-}
-
-.r-dot {
-  position: absolute;
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  background: var(--ui-green);
-  box-shadow: 0 0 0 3px var(--ui-surface);
-  transform: translate(-50%, -50%);
-}
-
-.r-dot.warn {
-  background: var(--ui-orange);
-}
-
-.r-dot.bad {
-  background: var(--ui-red);
-}
-
-.r-dot.is-empty {
-  background: var(--ui-surface);
-  box-shadow: inset 0 0 0 2px var(--ui-faint);
-}
-
-.r-label {
-  position: absolute;
-  display: grid;
-  gap: 1px;
-  line-height: 1.2;
-  white-space: nowrap;
-}
-
-.r-label.top,
-.r-label.bottom {
-  justify-items: center;
-  text-align: center;
-  transform: translate(-50%, -50%);
-}
-
-.r-label.right {
-  transform: translate(0, -50%);
-}
-
-.r-label.left {
-  justify-items: end;
-  text-align: right;
-  transform: translate(-100%, -50%);
-}
-
-.r-name {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--ui-muted);
-}
-
-.r-val {
-  font: 600 15px var(--ui-font-display);
-  font-variant-numeric: tabular-nums;
-}
-
-.r-val.warn {
-  color: var(--ui-orange-ink);
-}
-
-.r-val.bad {
-  color: var(--ui-red-ink);
-}
-
-.radar-cap {
-  font-size: 13px;
-  text-align: center;
-  color: var(--ui-muted);
-}
-
 /* ---------- verdict ---------- */
 .hl-side {
   display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 460px);
+  gap: 0 40px;
+  align-items: start;
   min-width: 0;
+}
+
+.hl-side > .hlist,
+.hl-side > .hnote,
+.hl-side > .hscale {
+  grid-column: 1 / -1;
+}
+
+.hl-side > .hl-facts {
+  grid-column: 2;
+  grid-row: 1 / span 3;
+  margin: 0;
+}
+
+.hscale {
+  margin: 22px 0 2px;
+  font-size: 13px;
+  color: var(--ui-muted);
 }
 
 .hl-top {
@@ -878,6 +647,30 @@ onMounted(() => {
   font-variant-numeric: tabular-nums;
 }
 
+.hbar {
+  flex: none;
+  width: clamp(120px, 30%, 320px);
+  height: 10px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--ui-fill);
+}
+
+.hbar i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--ui-green);
+}
+
+.hbar.warn i {
+  background: var(--ui-orange);
+}
+
+.hbar.bad i {
+  background: var(--ui-red);
+}
+
 .lat-n {
   min-width: 56px;
   font: 600 15px var(--ui-font-display);
@@ -916,22 +709,24 @@ onMounted(() => {
 
 @media (max-width: 1024px) {
   .hl {
-    grid-template-columns: minmax(260px, 340px) minmax(0, 1fr);
-    gap: 20px 28px;
     padding: 24px;
+  }
+
+  .hl-side {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .hl-side > .hl-facts {
+    grid-column: 1;
+    grid-row: auto;
+    margin: 18px 0 6px;
   }
 }
 
-/* phone: the radar first, then the verdict, then the rows */
+/* phone: the verdict, the three facts, then the rows with their bars under the name */
 @media (max-width: 768px) {
   .hl {
-    grid-template-columns: minmax(0, 1fr);
     padding: 20px 18px;
-  }
-
-  .radar {
-    width: min(100%, 340px);
-    margin: 0 auto;
   }
 
   .hl-big {
@@ -952,11 +747,18 @@ onMounted(() => {
 
   .hrow {
     flex-wrap: wrap;
-    row-gap: 4px;
+    row-gap: 6px;
   }
 
   .hrow .ui-pill {
     width: auto;
+  }
+
+  .hbar {
+    order: 5;
+    flex: none;
+    width: calc(100% - 42px);
+    margin-left: 42px;
   }
 
   .lat-n {
