@@ -28,55 +28,57 @@
           {{ meaning }}
         </p>
 
-        <figure
-          v-if="rows.length > 0"
-          class="p95"
-          role="img"
-          :aria-label="aria"
+        <div
+          v-if="total > 0"
+          class="mix"
         >
-          <figcaption>
-            <span>端點 P95 回應時間</span>
-            <span>每條共用同一刻度</span>
-          </figcaption>
+          <div class="mix-head">
+            <span>端點健康</span>
+            <span v-if="avgMs">平均回應 <b>{{ avgMs }} ms</b></span>
+          </div>
+          <div
+            class="mix-bar"
+            role="img"
+            :aria-label="`${total} 個端點：` + segs.map(x => `${x.n} ${x.label}`).join('、')"
+          >
+            <i
+              v-for="seg in segs"
+              :key="seg.key"
+              :class="seg.key"
+              :style="{ flexGrow: seg.n }"
+            />
+          </div>
+          <ul class="mix-key">
+            <li
+              v-for="seg in segs"
+              :key="seg.key"
+              :class="seg.key"
+            >
+              <b>{{ seg.n }}</b> {{ seg.label }}
+            </li>
+          </ul>
+        </div>
+
+        <div
+          v-if="events.length > 0"
+          class="events"
+        >
+          <h2>近期事件</h2>
           <ol>
             <li
-              v-for="row in rows"
-              :key="row.key"
-              :class="`is-${row.tone}`"
+              v-for="e in events.slice(0, 3)"
+              :key="e.id"
+              :class="`is-${e.type}`"
             >
-              <span class="p95-path">{{ row.path }}</span>
-              <b>{{ row.display }}</b>
-              <span class="p95-track">
-                <i :style="{ width: row.pct }" />
-                <u
-                  v-if="ceiling.mark !== null"
-                  :style="{ left: ceiling.mark }"
-                />
-              </span>
+              <span
+                class="ev-dot"
+                aria-hidden="true"
+              />
+              <time :datetime="e.timestamp">{{ formatRelativeTime(e.timestamp) }}</time>
+              <span class="ev-msg">{{ e.message }}</span>
             </li>
           </ol>
-          <div
-            v-if="ceiling.mark !== null"
-            class="p95-axis"
-            aria-hidden="true"
-          >
-            <span class="ax-0">0</span>
-            <span
-              class="ax-mark"
-              :style="{ left: ceiling.mark }"
-            >500 ms 警戒線</span>
-            <span
-              v-if="ceiling.showTop"
-              class="ax-top"
-            >{{ ceiling.label }}</span>
-          </div>
-          <p
-            v-if="avgMs"
-            class="p95-note"
-          >
-            <span>全部端點平均回應 {{ avgMs }} ms</span>
-          </p>
-        </figure>
+        </div>
       </div>
 
       <div class="side">
@@ -167,33 +169,12 @@
         </div>
       </div>
     </div>
-
-    <div
-      v-if="events.length > 0"
-      class="events"
-    >
-      <h2>近期事件</h2>
-      <ul>
-        <li
-          v-for="e in events.slice(0, 3)"
-          :key="e.id"
-          :class="`is-${e.type}`"
-        >
-          <span
-            class="ev-dot"
-            aria-hidden="true"
-          />
-          <time :datetime="e.timestamp">{{ formatRelativeTime(e.timestamp) }}</time>
-          <span class="ev-msg">{{ e.message }}</span>
-        </li>
-      </ul>
-    </div>
   </article>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import type { ApiEndpoint, ChannelItem, InfrastructureItem, MonitorEvent } from '@/types/api-monitor'
+import type { ChannelItem, InfrastructureItem, MonitorEvent } from '@/types/api-monitor'
 import { formatRelativeTime, translateChannelDetail, translateChannelName, translateInfraName } from '@/utils/monitor-helpers'
 
 type Tone = 'good' | 'warn' | 'bad' | 'none'
@@ -201,22 +182,30 @@ type Tone = 'good' | 'warn' | 'bad' | 'none'
 const props = defineProps<{
   channels: ChannelItem[]
   infrastructure: InfrastructureItem[]
-  /** Endpoint rows for the P95 bars; empty until endpoint metrics are configured */
-  endpoints: ApiEndpoint[]
   events: MonitorEvent[]
   /** Average response time across the endpoints, ms */
   avgMs?: number
+  /** Endpoint count per state; absent until endpoint metrics exist */
+  counts?: { healthy: number; warning: number; error: number }
   verdict: string | null
   tone: Tone
   meaning?: string
   busy?: boolean
 }>()
 
-const WARN_MS = 500
-
 // ---- left: channels (webhook delivery can only be fine when every channel is) ----
 const CHAT = 'M12 3C6.5 3 2 6.6 2 11c0 2.5 1.4 4.7 3.7 6.2L5 21l4.1-2.3c.9.2 1.9.3 2.9.3 5.5 0 10-3.6 10-8s-4.5-8-10-8Z'
 const LINK = 'M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71'
+
+const total = computed(() => (props.counts ? props.counts.healthy + props.counts.warning + props.counts.error : 0))
+const segs = computed(() => {
+  const c = props.counts ?? { healthy: 0, warning: 0, error: 0 }
+  return [
+    { key: 'healthy', label: '正常', n: c.healthy },
+    { key: 'warning', label: '警告', n: c.warning },
+    { key: 'error', label: '錯誤', n: c.error },
+  ].filter(x => x.n > 0)
+})
 
 const inNodes = computed(() =>
   props.channels.map((c) => {
@@ -263,34 +252,6 @@ const outNodes = computed(() =>
     }
   }),
 )
-
-// ---- centre: the slowest endpoints, worst state first ----
-const STATUS_TONE = { healthy: 'good', warning: 'warn', error: 'bad' } as const
-const STATUS_ORDER = { error: 0, warning: 1, healthy: 2 } as const
-const fmtMs = (ms: number) => (ms >= 1000 ? `${(ms / 1000).toFixed(2)} s` : `${Math.round(ms)} ms`)
-
-const source = computed(() =>
-  [...props.endpoints]
-    .sort((a, b) => (STATUS_ORDER[a.status] ?? 3) - (STATUS_ORDER[b.status] ?? 3) || b.responseTime - a.responseTime)
-    .slice(0, 5),
-)
-const top = computed(() => Math.max(WARN_MS, ...source.value.map(e => e.responseTime)))
-const ceiling = computed(() => ({
-  label: fmtMs(top.value),
-  mark: top.value > WARN_MS ? `${(WARN_MS / top.value) * 100}%` : null,
-  // the right-hand end label would collide with the warning label when the line sits near the end
-  showTop: top.value > WARN_MS * 1.5,
-}))
-const rows = computed(() =>
-  source.value.map(e => ({
-    key: e.id,
-    path: e.endpoint,
-    pct: e.responseTime <= 0 ? '2px' : `${Math.max(2, Math.round((e.responseTime / top.value) * 100))}%`,
-    display: fmtMs(e.responseTime),
-    tone: STATUS_TONE[e.status] ?? 'good',
-  })),
-)
-const aria = computed(() => `端點 P95 回應時間：${rows.value.map(r => `${r.path} ${r.display}`).join('；')}`)
 </script>
 
 <style scoped>
@@ -313,9 +274,7 @@ const aria = computed(() => `端點 P95 回應時間：${rows.value.map(r => `${
   align-content: start;
   gap: 16px;
   min-width: 0;
-  padding: 18px 22px 8px;
-  border-radius: 22px;
-  background: color-mix(in srgb, var(--ui-fill) 42%, var(--ui-surface));
+  padding: 0;
 }
 
 .col {
@@ -359,8 +318,8 @@ const aria = computed(() => `端點 P95 回應時間：${rows.value.map(r => `${
   height: 36px;
   place-items: center;
   border-radius: 11px;
-  background: color-mix(in srgb, var(--c) 12%, var(--ui-surface));
-  color: var(--c);
+  background: var(--ui-fill);
+  color: var(--ui-ink-2);
 }
 
 .node-ico svg {
@@ -383,6 +342,16 @@ const aria = computed(() => `端點 P95 回應時間：${rows.value.map(r => `${
   white-space: nowrap;
 }
 
+.node-main small::before {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 6px;
+  border-radius: 50%;
+  background: var(--c);
+  content: '';
+}
+
 .node-main small {
   display: -webkit-box;
   overflow: hidden;
@@ -403,6 +372,8 @@ const aria = computed(() => `端點 P95 回應時間：${rows.value.map(r => `${
 
 .node-ms {
   flex: none;
+  min-width: 64px;
+  text-align: right;
   font: 600 16px var(--ui-font-display);
   font-variant-numeric: tabular-nums;
 }
@@ -477,119 +448,81 @@ const aria = computed(() => `端點 P95 回應時間：${rows.value.map(r => `${
   color: var(--ui-ink-2);
 }
 
-.p95 {
+.mix {
   display: grid;
   gap: 8px;
-  margin: 18px 0 0;
-  padding-top: 16px;
-  border-top: 0.5px solid var(--ui-sep);
+  margin-top: 22px;
 }
 
-.p95 figcaption,
-.p95-note {
+.mix-head {
   display: flex;
   justify-content: space-between;
   gap: 12px;
-  margin: 0;
-  font-size: 13px;
+  font-size: 14px;
+  font-weight: 600;
   color: var(--ui-muted);
 }
 
-.p95 figcaption span:first-child {
+.mix-head span + span {
+  font-weight: 400;
+  color: var(--ui-ink-2);
+}
+
+.mix-head b {
   font-weight: 600;
   color: var(--ui-ink);
 }
 
-.p95 ol {
-  display: grid;
-  gap: 12px;
+.mix-bar {
+  display: flex;
+  gap: 3px;
+  height: 14px;
+}
+
+.mix-bar i {
+  flex-basis: 0;
+  min-width: 10px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ui-green) 55%, var(--ui-surface));
+}
+
+.mix-bar i.warning { background: color-mix(in srgb, var(--ui-orange) 60%, var(--ui-surface)); }
+.mix-bar i.error { background: color-mix(in srgb, var(--ui-red) 55%, var(--ui-surface)); }
+
+.mix-key {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 18px;
   margin: 0;
   padding: 0;
   list-style: none;
-}
-
-.p95 li {
-  --c: var(--ui-green);
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 5px 12px;
-  align-items: baseline;
-  font-size: 13px;
-}
-
-.p95 li.is-warn { --c: var(--ui-orange); }
-.p95 li.is-bad { --c: var(--ui-red); }
-
-.p95-path {
-  overflow: hidden;
-  font: 13px var(--ui-font-mono);
-  color: var(--ui-ink-2);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.p95-track {
-  position: relative;
-  grid-column: 1 / -1;
-  height: 10px;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--ui-fill) 55%, transparent);
-}
-
-/* shared axis under the bars: where zero is, where the 500 ms line sits, where the full bar ends */
-.p95-axis {
-  position: relative;
-  height: 18px;
-  margin-top: -2px;
-  font-size: 13px;
-  color: var(--ui-ink-2);
-}
-
-.p95-axis span {
-  position: absolute;
-  top: 0;
-  white-space: nowrap;
-}
-
-.ax-0 { left: 0; }
-.ax-top { right: 0; }
-.ax-mark { transform: translateX(-50%); }
-
-/* state colour stays, softened: a slow endpoint reads as a longer bar, not a siren */
-.p95-track i {
-  display: block;
-  height: 100%;
-  border-radius: inherit;
-  background: color-mix(in srgb, var(--c) 52%, var(--ui-surface));
-}
-
-.p95-track u {
-  position: absolute;
-  top: -3px;
-  bottom: -3px;
-  width: 2px;
-  margin-left: -1px;
-  border-radius: 1px;
-  background: var(--ui-ink-2);
-}
-
-.p95 li b {
   font-size: 14px;
-  font-variant-numeric: tabular-nums;
-  text-align: right;
-}
-
-.p95-note {
-  flex-wrap: wrap;
-  justify-content: flex-start;
-  gap: 4px 20px;
   color: var(--ui-ink-2);
 }
 
-/* ---- events ---- */
+.mix-key li::before {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 6px;
+  border-radius: 50%;
+  background: var(--ui-green);
+  content: '';
+}
+
+.mix-key li.warning::before { background: var(--ui-orange); }
+.mix-key li.error::before { background: var(--ui-red); }
+
+.mix-key b {
+  color: var(--ui-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- events: a quiet timeline under the verdict; colour is the dot only ---- */
 .events {
   display: grid;
-  gap: 10px;
+  gap: 8px;
+  margin-top: 18px;
   padding-top: 16px;
   border-top: 0.5px solid var(--ui-sep);
 }
@@ -601,27 +534,27 @@ const aria = computed(() => `端點 P95 回應時間：${rows.value.map(r => `${
   color: var(--ui-muted);
 }
 
-.events ul {
+.events ol {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px 20px;
+  gap: 0;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
-/* each event is a small card-less column: time on the first line, the message under it */
 .events li {
   --c: var(--ui-muted);
   display: grid;
-  grid-template-columns: 10px minmax(0, 1fr);
-  gap: 4px 10px;
-  align-items: center;
-  padding: 10px 14px 12px;
-  border-radius: 14px;
-  background: color-mix(in srgb, var(--c) 9%, var(--ui-surface));
+  grid-template-columns: 10px 64px minmax(0, 1fr);
+  gap: 0 10px;
+  align-items: baseline;
+  padding: 9px 0;
   font-size: 14px;
   line-height: 1.4;
+}
+
+.events li + li {
+  border-top: 0.5px solid var(--ui-sep);
 }
 
 .events li.is-error { --c: var(--ui-red); }
@@ -631,24 +564,18 @@ const aria = computed(() => `端點 P95 回應時間：${rows.value.map(r => `${
 .ev-dot {
   width: 8px;
   height: 8px;
-  grid-row: 1;
   border-radius: 50%;
   background: var(--c);
 }
 
-.ev-msg {
-  text-wrap: balance;
-  grid-column: 1 / -1;
-  grid-row: 2;
-  overflow-wrap: anywhere;
-  color: var(--ui-ink);
-}
-
 .events time {
-  grid-column: 2;
-  grid-row: 1;
   font-size: 13px;
   color: var(--ui-ink-2);
+}
+
+.ev-msg {
+  overflow-wrap: anywhere;
+  color: var(--ui-ink);
 }
 
 @media (max-width: 1280px) {
@@ -674,9 +601,6 @@ const aria = computed(() => `端點 P95 回應時間：${rows.value.map(r => `${
     gap: 28px;
   }
 
-  .events ul {
-    grid-template-columns: minmax(0, 1fr);
-  }
 }
 
 @media (max-width: 768px) {
@@ -689,51 +613,35 @@ const aria = computed(() => `端點 P95 回應時間：${rows.value.map(r => `${
     font-size: 34px;
   }
 
-  /* phone order: verdict and bars, then what just happened, then the lists */
+  /* phone order: verdict, then the services (what to act on), then what just happened */
   .topo {
     display: contents;
   }
 
-  .core { order: 1; }
-  .events { order: 2; }
-  .side { order: 3; }
-
-  .side {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 14px;
-    padding: 14px 14px 6px;
-    border-radius: 18px;
+  .core {
+    display: contents;
   }
 
-  /* the three backend services fit one row of tiles */
-  .col-out .nodes {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 8px;
-  }
-
-  .col-out .node {
-    flex-direction: column;
-    gap: 6px;
-    align-items: flex-start;
-    padding: 10px 0 8px;
-  }
-
-  .col-out .node-main small {
-    white-space: nowrap;
-  }
-
-  /* phone: events are flat rows, not three grey blocks */
-  .events ul {
-    gap: 0;
-  }
+  .core-kicker { order: 1; margin-bottom: -8px; }
+  .core-verdict { order: 2; }
+  .core-meaning { order: 3; margin-top: -8px; }
+  .mix { order: 4; margin-top: 4px; }
+  .side { order: 5; grid-template-columns: minmax(0, 1fr); gap: 14px; padding-top: 4px; }
+  .events { order: 6; margin-top: 0; }
 
   .events li {
-    padding: 9px 0 10px;
-    border-radius: 0;
-    background: none;
-    border-top: 0.5px solid var(--ui-sep);
+    grid-template-columns: 10px minmax(0, 1fr);
+    gap: 2px 10px;
   }
+
+  .events time {
+    grid-column: 2;
+  }
+
+  .ev-msg {
+    grid-column: 2;
+  }
+
 
   .node-ico {
     width: 32px;

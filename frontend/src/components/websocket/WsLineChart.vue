@@ -88,13 +88,24 @@
           :y="line.pos - 5"
         >{{ line.label }}</text>
       </g>
-      <text
+      <g
         v-if="gapLabel"
-        class="gap-label"
-        text-anchor="middle"
-        :x="gapLabel.x"
-        :y="geom.bottom - 10"
-      >尚無取樣</text>
+        class="gap"
+      >
+        <rect
+          :x="geom.left"
+          :y="geom.top"
+          :width="gapLabel.w"
+          :height="geom.bottom - geom.top"
+          rx="8"
+        />
+        <text
+          class="gap-label"
+          text-anchor="middle"
+          :x="gapLabel.x"
+          :y="(geom.top + geom.bottom) / 2 + 4"
+        >尚無取樣</text>
+      </g>
       <template
         v-for="s in drawn"
         :key="s.key"
@@ -288,7 +299,7 @@ const gapLabel = computed(() => {
     .map(p => xFor(p.ts, props.from, props.to, props.geom))
   const first = firsts.length > 0 ? Math.min(...firsts) : null
   if (first === null || first - props.geom.left < 84) { return null }
-  return { x: r1((props.geom.left + first) / 2) }
+  return { x: r1((props.geom.left + first) / 2), w: r1(first - props.geom.left) }
 })
 
 const svgEl = ref<Element | null>(null)
@@ -364,9 +375,14 @@ const refLines = computed(() => (props.refs ?? [])
   stroke: var(--ui-sep);
 }
 
+.ws-chart .gap rect {
+  fill: var(--ui-fill);
+  opacity: 0.7;
+}
+
 .ws-chart .gap-label {
-  fill: var(--ui-muted);
-  font-weight: 400;
+  fill: var(--ui-ink-2);
+  font-weight: 500;
 }
 
 .ws-chart .peak text {
