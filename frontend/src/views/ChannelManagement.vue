@@ -309,6 +309,27 @@
             <span class="chwarn-text">近 24 小時沒有處理失敗或簽章被拒的紀錄。</span>
           </div>
 
+          <div
+            v-else
+            class="chwarn is-idle"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            ><circle
+              cx="12"
+              cy="12"
+              r="9"
+            /><path d="M9.5 9.5v5M14.5 9.5v5" /></svg>
+            <b class="chwarn-title">頻道已停用</b>
+            <span class="chwarn-text">目前不接收也不處理這個頻道的訊息，啟用後才會檢查 Webhook。</span>
+          </div>
+
           <div class="pills">
             <span
               class="ui-pill"
@@ -582,6 +603,11 @@ i.out {
   background: var(--ui-green-soft);
   color: var(--ui-green-ink);
 }
+.chwarn.is-idle {
+  grid-template-columns: 20px minmax(0, 1fr);
+  background: var(--ui-fill);
+  color: var(--ui-ink-2);
+}
 .chwarn .btn {
   min-height: 36px;
   background: var(--ui-orange-ink);
@@ -845,6 +871,7 @@ i.out {
   }
   /* a disabled channel is one slim row: who it is and its switch */
   .chcard.off .pills,
+  .chcard.off .chwarn,
   .chcard.off .meta {
     display: none;
   }
