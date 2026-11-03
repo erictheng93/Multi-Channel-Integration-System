@@ -62,8 +62,14 @@
           v-for="m in weeks.months"
           :key="m.col"
           class="cov-m"
-          :style="{ gridColumn: `${m.col} / span 3` }"
+          :style="{ gridColumn: `${m.col} / span 4` }"
         >{{ m.label }}</span>
+        <span
+          v-for="d in weekdays"
+          :key="d.row"
+          class="cov-d"
+          :style="{ gridRow: d.row }"
+        >{{ d.label }}</span>
         <i
           v-for="cell in weeks.cells"
           :key="cell.n"
@@ -72,6 +78,14 @@
           :style="{ gridColumn: cell.col, gridRow: cell.row }"
         />
       </div>
+      <p
+        class="cov-key"
+        aria-hidden="true"
+      >
+        <span><i class="on" />涵蓋的日子</span>
+        <span><i />其他日子</span>
+        <span><i class="today" />今天</span>
+      </p>
     </figure>
   </section>
 </template>
@@ -139,6 +153,9 @@ const span = computed(() => {
   return r ? { days: r[1] - r[0] + 1, from: fmt(r[0]), to: fmt(r[1]) } : { days: 0, from: '', to: '' }
 })
 
+// Monday-first rows; every other day is named so the rows read without a guess
+const weekdays = [{ row: 2, label: '一' }, { row: 4, label: '三' }, { row: 6, label: '五' }, { row: 8, label: '日' }]
+
 const caption = computed(() => (span.value.days ? `涵蓋 ${span.value.from} 至 ${span.value.to}，共 ${span.value.days} 天` : '尚未選擇期間'))
 
 // Monday-first week columns ending with this week; wider when the period reaches further back
@@ -156,16 +173,17 @@ const weeks = computed(() => {
     const monday = start + col * 7
     const mo = new Date(monday * DAY).getUTCMonth()
     if (mo !== lastMonth) {
-      if (months.length === 0 || col - (months[months.length - 1]?.col ?? 0) >= 3) { months.push({ col: col + 1, label: `${mo + 1} 月` }) }
+      if (months.length === 0 || col + 2 - (months[months.length - 1]?.col ?? 0) >= 4) { months.push({ col: col + 2, label: `${mo + 1} 月` }) }
       lastMonth = mo
     }
     for (let row = 0; row < 7; row += 1) {
       const n = monday + row
       if (n > t) { continue }
-      cells.push({ n, col: col + 1, row: row + 2, on: !!r && n >= r[0] && n <= r[1], today: n === t })
+      cells.push({ n, col: col + 2, row: row + 2, on: !!r && n >= r[0] && n <= r[1], today: n === t })
     }
   }
-  return { count, cells, months }
+  // a month label needs four columns of room; one that would run past the grid is left out
+  return { count, cells, months: months.filter(m => m.col + 3 <= count + 1) }
 })
 </script>
 
@@ -175,7 +193,7 @@ const weeks = computed(() => {
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 24px 56px;
   align-items: center;
-  padding: 28px 36px;
+  padding: 24px 36px;
 }
 
 .cov-kicker {
@@ -187,8 +205,8 @@ const weeks = computed(() => {
 
 .cov-sentence {
   display: grid;
-  gap: 10px;
-  margin: 14px 0 0;
+  gap: 8px;
+  margin: 12px 0 0;
   padding: 0;
   list-style: none;
 }
@@ -203,7 +221,7 @@ const weeks = computed(() => {
 .cov-pre {
   flex: none;
   width: 3.4em;
-  font: 400 22px / 1.3 var(--ui-font-display);
+  font: 400 18px / 1.3 var(--ui-font-display);
   color: var(--ui-ink-2);
 }
 
@@ -215,7 +233,7 @@ const weeks = computed(() => {
   border-radius: 12px;
   background: var(--ui-accent-soft);
   color: var(--ui-accent);
-  font: 600 28px / 1.3 var(--ui-font-display);
+  font: 600 22px / 1.3 var(--ui-font-display);
   letter-spacing: -0.02em;
   text-align: left;
   cursor: pointer;
@@ -256,10 +274,11 @@ const weeks = computed(() => {
 
 .cov-grid {
   display: grid;
-  grid-template-columns: repeat(var(--weeks), 27px);
-  grid-template-rows: 18px repeat(7, 27px);
+  grid-template-columns: 18px repeat(var(--weeks), 22px);
+  grid-template-rows: 18px repeat(7, 22px);
   gap: 3px;
   max-width: 100%;
+  padding-right: 4px;
 }
 
 .cov-m {
@@ -267,6 +286,44 @@ const weeks = computed(() => {
   font-size: 13px;
   white-space: nowrap;
   color: var(--ui-muted);
+}
+
+.cov-d {
+  grid-column: 1;
+  align-self: center;
+  font-size: 13px;
+  line-height: 1;
+  color: var(--ui-muted);
+}
+
+.cov-key {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  margin: 0;
+  font-size: 13px;
+  color: var(--ui-ink-2);
+}
+
+.cov-key span {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.cov-key i {
+  width: 12px;
+  height: 12px;
+  border-radius: 4px;
+  background: var(--ui-fill);
+}
+
+.cov-key i.on {
+  background: var(--ui-accent);
+}
+
+.cov-key i.today {
+  box-shadow: 0 0 0 1.5px var(--ui-ink);
 }
 
 .cov-c {
@@ -307,6 +364,10 @@ const weeks = computed(() => {
     max-width: 84px;
   }
 
+  .cov-key {
+    grid-column: 1 / -1;
+  }
+
   .cov-cap {
     flex: 1 0 100%;
     margin: 0;
@@ -325,11 +386,11 @@ const weeks = computed(() => {
   }
 
   .tok {
-    font-size: 22px;
+    font-size: 19px;
   }
 
   .cov-grid {
-    grid-template-columns: repeat(var(--weeks), minmax(0, 1fr));
+    grid-template-columns: 14px repeat(var(--weeks), minmax(0, 1fr));
     grid-template-rows: 16px repeat(7, auto);
     gap: 2px;
   }
