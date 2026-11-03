@@ -406,7 +406,7 @@ const formats: Array<{
   }
 ]
 
-const current = computed(() => formats.find(f => f.id === selectedFormat.value) ?? formats[0])
+const current = computed(() => formats.find(f => f.id === selectedFormat.value) ?? formats[0] as (typeof formats)[number])
 const selectedRows = computed(() => current.value?.rows ?? [])
 const selectedUnit = computed(() => current.value?.unit ?? '')
 const selectedName = computed(() => current.value?.name ?? '')
