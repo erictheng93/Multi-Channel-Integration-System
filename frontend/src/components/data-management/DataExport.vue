@@ -260,7 +260,6 @@
 
     <details
       class="ui-card ex-fields"
-      :open="detailsOpen"
     >
       <summary>
         <span>檔案內容</span>
@@ -329,7 +328,6 @@ import {
 } from '@/api/export'
 import { generatePdfExport } from '@/services/pdfExportService'
 
-const detailsOpen = typeof window === 'undefined' || typeof window.matchMedia !== 'function' || window.matchMedia('(min-width: 769px)').matches
 
 type FormatId = 'json' | 'csv' | 'txt' | 'pdf'
 
@@ -604,7 +602,7 @@ async function runExport() {
   display: grid;
   flex: 1;
   gap: 2px;
-  align-content: start;
+  grid-auto-rows: 1fr;
   padding: 4px 10px 12px;
 }
 
@@ -631,7 +629,7 @@ async function runExport() {
 
 .ex-row.is-on {
   background: var(--ui-sel-tint);
-  box-shadow: inset 0 0 0 2px var(--ui-accent);
+  box-shadow: var(--ui-sel-ring);
 }
 
 .ex-row:focus-visible {
@@ -837,7 +835,7 @@ async function runExport() {
 
 .g-all {
   border-radius: 999px;
-  background: var(--ui-fill-strong);
+  background: color-mix(in srgb, var(--ui-accent) 16%, var(--ui-surface));
 }
 
 .g-pick {
@@ -856,7 +854,7 @@ async function runExport() {
   top: -8px;
   bottom: -8px;
   width: 0;
-  border-left: 2px solid var(--ui-ink);
+  border-left: 2px solid var(--ui-ink-2);
 }
 
 .g-limit em {
@@ -906,7 +904,7 @@ async function runExport() {
 }
 
 .k-all {
-  background: var(--ui-fill-strong);
+  background: color-mix(in srgb, var(--ui-accent) 16%, var(--ui-surface));
 }
 
 .res-cta {
@@ -1007,7 +1005,7 @@ async function runExport() {
   width: 44px;
   height: 44px;
   border-radius: 12px;
-  font: 600 12px var(--ui-font-mono);
+  font: 600 13px var(--ui-font-mono);
 }
 
 .fmt-ico.blue {
