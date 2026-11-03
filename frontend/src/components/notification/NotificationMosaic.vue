@@ -20,7 +20,7 @@
         :key="row.value"
         :class="[`hue-${row.hue}`, { 'is-dim': selected !== '' && selected !== row.value }]"
         :style="{ flex: `${row.total} 1 0` }"
-      />
+      ><span v-if="row.total / total >= 0.12">{{ row.label }} {{ row.total }}</span></i>
     </div>
     <div class="legend-grid">
       <button
@@ -109,21 +109,30 @@ const total = computed(() => list.value.reduce((sum, r) => sum + r.total, 0))
 .mix {
   display: flex;
   gap: 3px;
-  height: 16px;
+  height: 32px;
 }
 
 .mix i {
-  min-width: 6px;
-  border-radius: 5px;
+  display: flex;
+  align-items: center;
+  min-width: 8px;
+  padding: 0 10px;
+  overflow: hidden;
+  border-radius: 6px;
+  color: var(--ui-ink);
+  font-size: 13px;
+  font-style: normal;
+  font-weight: 600;
+  white-space: nowrap;
   transition: opacity var(--ui-dur) var(--ui-ease);
 }
 
 .mix i:first-child {
-  border-radius: 8px 5px 5px 8px;
+  border-radius: 10px 6px 6px 10px;
 }
 
 .mix i:last-child {
-  border-radius: 5px 8px 8px 5px;
+  border-radius: 6px 10px 10px 6px;
 }
 
 .hue-blue {
@@ -148,13 +157,13 @@ const total = computed(() => list.value.reduce((sum, r) => sum + r.total, 0))
 
 .legend-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(176px, 1fr));
-  gap: 2px 8px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 2px 12px;
 }
 
 .type {
   display: grid;
-  grid-template-columns: 10px auto 1fr auto;
+  grid-template-columns: 10px minmax(0, 1fr) 2.4ch 64px;
   gap: 8px;
   align-items: center;
   min-height: 40px;
@@ -206,6 +215,7 @@ const total = computed(() => list.value.reduce((sum, r) => sum + r.total, 0))
 }
 
 .type-unread {
+  justify-self: end;
   padding: 1px 9px;
   border-radius: 999px;
   background: var(--ui-accent);
@@ -216,10 +226,10 @@ const total = computed(() => list.value.reduce((sum, r) => sum + r.total, 0))
 }
 
 .type-unread.is-none {
-  display: none;
+  visibility: hidden;
 }
 
-/* Phone: the bar stays, the types become one swipeable row of chips (fade at the edge says there is more) */
+/* Phone: the bar stays, the types wrap into chips (nothing is clipped; an accent dot marks unread) */
 @media (max-width: 768px) {
   .types {
     gap: 10px;
@@ -234,27 +244,25 @@ const total = computed(() => list.value.reduce((sum, r) => sum + r.total, 0))
     height: 12px;
   }
 
-  .legend-grid {
-    display: flex;
-    gap: 8px;
-    margin: 0 -16px;
-    padding: 0 16px 4px;
-    overflow-x: auto;
-    scrollbar-width: none;
-    -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 32px), transparent);
-    mask-image: linear-gradient(90deg, #000 calc(100% - 32px), transparent);
+  .mix i {
+    padding: 0;
+    font-size: 0;
   }
 
-  .legend-grid::-webkit-scrollbar {
-    display: none;
+  .legend-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 0;
+    padding: 0;
   }
 
   .type {
     display: inline-flex;
     flex: none;
-    gap: 8px;
-    min-height: 40px;
-    padding: 0 14px;
+    gap: 6px;
+    min-height: 36px;
+    padding: 0 12px;
     border-radius: 999px;
     background: var(--ui-surface);
     box-shadow: var(--ui-shadow-pill);
@@ -269,6 +277,22 @@ const total = computed(() => list.value.reduce((sum, r) => sum + r.total, 0))
     color: #fff;
   }
 
+  /* unread on a phone chip is a dot after the count (the label says how many) */
+  .type-unread {
+    width: 8px;
+    height: 8px;
+    padding: 0;
+    font-size: 0;
+  }
+
+  .type.is-selected .type-unread {
+    background: #fff;
+  }
+
+  .type-unread.is-none {
+    display: none;
+  }
+
   .type-name {
     font-size: 14px;
   }
@@ -280,6 +304,12 @@ const total = computed(() => list.value.reduce((sum, r) => sum + r.total, 0))
   .type.is-selected .type-unread {
     background: #fff;
     color: var(--ui-accent);
+  }
+}
+
+@media (pointer: coarse) {
+  .type {
+    min-height: 44px;
   }
 }
 </style>
