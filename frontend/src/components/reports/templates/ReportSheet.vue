@@ -37,7 +37,7 @@
           />{{ kpi.label }}
         </dt>
         <dd>
-          <b>{{ kpi.value === null ? '—' : kpi.value.toLocaleString('en-US') }}</b>
+          <b>{{ kpi.value === null ? '—' : kpi.value.toLocaleString('en-US') }}<em v-if="kpi.unit && kpi.value !== null">{{ kpi.unit }}</em></b>
           <small v-if="kpi.note">{{ kpi.note }}</small>
         </dd>
       </div>
@@ -214,7 +214,7 @@ import { readSheet, type Tone } from './sheetData'
 
 const props = defineProps<{ template: ReportTemplate; state: LatestReport | null; loading: boolean }>()
 
-interface Kpi { label: string; value: number | null; note?: string; tone?: Tone }
+interface Kpi { label: string; value: number | null; note?: string; tone?: Tone; unit?: string }
 
 const sheet = computed(() => readSheet(props.template.type, props.state))
 
@@ -231,12 +231,13 @@ const kpis = computed<Kpi[]>(() => {
       { label: '平均每人', value: on && count > 0 ? Math.round(s.agentSum / count) : null }
     ]
   }
-  const active = s.parts[0]?.value ?? 0
+  // distinct from the ring beside it (which already lists the three states): rate, backlog, daily pace
   const done = s.parts[1]?.value ?? 0
+  const open = Math.max(0, s.total - done)
   return [
-    { label: '對話總數', value: on ? s.total : null },
-    { label: '進行中', value: on ? active : null, note: on ? `佔 ${pct(active, s.total)}` : '', tone: 'blue' },
-    { label: '已結案', value: on ? done : null, note: on ? `佔 ${pct(done, s.total)}` : '', tone: 'green' }
+    { label: '結案率', value: on && s.total > 0 ? Math.round((done / s.total) * 100) : null, note: on ? `${done.toLocaleString('en-US')} / ${s.total.toLocaleString('en-US')}` : '', tone: 'green', unit: '%' },
+    { label: '未結案', value: on ? open : null, note: on ? '進行中與其他' : '', tone: 'blue' },
+    { label: '日均對話', value: on && s.days > 0 ? Math.round(s.total / s.days) : null, note: on && s.days > 0 ? `${s.total.toLocaleString('en-US')} 個 / ${s.days} 天` : '' }
   ]
 })
 
@@ -288,11 +289,22 @@ const more = computed(() => sheet.value.agents.length - SHOWN_AGENTS)
 }
 
 .sh-kind {
-  margin: 0;
+  display: block;
+  width: fit-content;
+  margin: 0 0 6px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: var(--ui-fill);
   font-size: 13px;
   font-weight: 600;
-  letter-spacing: 0.04em;
-  color: var(--section-ink);
+  color: var(--ui-ink-2);
+}
+
+.sh-kpi em {
+  margin-left: 2px;
+  font-size: 0.55em;
+  font-style: normal;
+  font-weight: 600;
 }
 
 .sh-name {
