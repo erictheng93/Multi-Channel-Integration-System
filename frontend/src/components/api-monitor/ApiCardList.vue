@@ -11,7 +11,7 @@
       <span
         v-if="scaleMs"
         class="only-xl"
-      >P50 至 P95</span>
+      >P95 長度（豎線為 500 ms）</span>
       <span>P95</span>
       <span class="hide-m">成功率</span>
       <span class="hide-m">請求數</span>
@@ -35,7 +35,7 @@
       class="count-line"
     >
       顯示 {{ endpoints.length }} / {{ total }} 個端點<template v-if="scaleMs">
-        <span class="only-xl-inline"> · 延遲條帶為 P50 至 P95，每列共用 0 – {{ scaleLabel }} 刻度</span>
+        <span class="only-xl-inline"> · 條長為 P95，每列共用 0 – {{ scaleLabel }} 刻度，豎線為 500 ms 警戒線</span>
       </template>
     </div>
   </div>
@@ -107,7 +107,7 @@ const scaleLabel = computed(() => {
 
 @media (min-width: 1281px) {
   .ep-head:has(.only-xl) {
-    grid-template-columns: 52px 290px minmax(0, 1fr) 150px 90px 90px 110px 16px;
+    grid-template-columns: 52px 250px minmax(0, 1fr) 190px 80px 80px 100px 16px;
   }
 
   .only-xl {
