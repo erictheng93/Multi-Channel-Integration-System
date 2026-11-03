@@ -272,16 +272,16 @@
               <p class="legend">
                 <span><i
                   class="sw"
-                  style="--c: var(--ui-indigo)"
+                  style="--c: var(--ui-accent)"
                 />入<b>{{ chart.lastIn === null ? '—' : fmt(chart.lastIn, 2) }}</b></span>
                 <span><i
                   class="sw"
-                  style="--c: var(--ui-teal)"
+                  style="--c: var(--ui-muted)"
                 />出<b>{{ chart.lastOut === null ? '—' : fmt(chart.lastOut, 2) }}</b></span>
                 <span
                   v-if="stats.peakEvents !== null"
                   class="peak"
-                >峰值 <b>{{ fmt(stats.peakEvents, 2) }}</b> / 秒</span>
+                >合計峰值 <b>{{ fmt(stats.peakEvents, 2) }}</b> / 秒</span>
               </p>
             </div>
             <div class="chart-wrap">
@@ -354,7 +354,7 @@
                 v-if="hasLatency"
                 class="axis-note"
               >
-                虛線為門檻：100 ms 優秀、500 ms 需改進。
+                空心圓為峰值；虛線為門檻：100 ms 優秀、500 ms 需改進。
               </p>
             </div>
           </div>
@@ -497,8 +497,8 @@ const CONN_SERIES: WsChartSeries[] = [
   { key: 'conn', color: 'var(--ui-accent)', pick: p => p.activeConnections, area: true, label: '連線', unit: '條' }
 ]
 const EVENT_SERIES: WsChartSeries[] = [
-  { key: 'in', color: 'var(--ui-indigo)', pick: p => p.eventsInPerS, area: true, label: '入', digits: 2, unit: '/秒', peak: true },
-  { key: 'out', color: 'var(--ui-teal)', pick: p => p.eventsOutPerS, area: true, label: '出', digits: 2, unit: '/秒' }
+  { key: 'in', color: 'var(--ui-accent)', pick: p => p.eventsInPerS, area: true, label: '入', digits: 2, unit: '/秒' },
+  { key: 'out', color: 'var(--ui-muted)', pick: p => p.eventsOutPerS, area: true, label: '出', digits: 2, unit: '/秒' }
 ]
 const LATENCY_SERIES: WsChartSeries[] = [
   { key: 'lat', color: 'var(--ui-accent)', pick: p => p.avgProcessingMs, area: true, label: '延遲', unit: 'ms', peak: true }
