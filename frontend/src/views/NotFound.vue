@@ -180,7 +180,7 @@
           </div>
         </div>
 
-        <!-- Every page you may open, grouped as the sidebar groups them; type to narrow, Enter opens the first -->
+        <!-- Every page you may open, in the sidebar's order (the icon's tint is its section); type to narrow, Enter opens the first -->
         <div
           v-if="isAuthenticated"
           class="nf-find"
@@ -198,37 +198,31 @@
             autocomplete="off"
             @keydown.enter.prevent="openFirst"
           >
-          <div
-            v-for="group in shownGroups"
-            :key="group.id"
-            class="find-group"
+          <ul
+            v-if="shownPages.length > 0"
+            class="find-list"
           >
-            <h2 class="find-h">
-              {{ group.label }}
-            </h2>
-            <ul class="find-list">
-              <li
-                v-for="page in group.pages"
-                :key="page.path"
+            <li
+              v-for="page in shownPages"
+              :key="page.path"
+            >
+              <router-link
+                :to="page.path"
+                class="find-item"
+                :class="`tone-${page.tone}`"
               >
-                <router-link
-                  :to="page.path"
-                  class="find-item"
-                  :class="`tone-${group.id}`"
+                <span
+                  class="find-ico"
+                  aria-hidden="true"
                 >
-                  <span
-                    class="find-ico"
-                    aria-hidden="true"
-                  >
-                    <component :is="page.icon" />
-                  </span>
-                  <span class="find-name">{{ page.label }}</span>
-                </router-link>
-              </li>
-            </ul>
-          </div>
+                  <component :is="page.icon" />
+                </span>
+                <span class="find-name">{{ page.label }}</span>
+              </router-link>
+            </li>
+          </ul>
           <p
-            v-if="shownGroups.length === 0"
+            v-if="shownPages.length === 0"
             class="find-empty"
             role="status"
           >
@@ -356,20 +350,19 @@ const guess = computed(() => {
 // ---- the finder ----
 const query = ref('')
 
-const shownGroups = computed(() => {
+// One flat list in the sidebar's order: every row is the same size, and the icon tint says which section it is in
+const shownPages = computed(() => {
   const q = query.value.trim().toLowerCase()
   const match = (p: Page): boolean => q === '' || p.label.toLowerCase().includes(q) || p.path.toLowerCase().includes(q)
-  return NAV_SECTIONS
-    .map(section => ({
-      id: section.id as SectionId,
-      label: section.label,
-      pages: allowed.value.filter(p => sectionForPath(p.path)?.id === section.id && match(p))
-    }))
-    .filter(g => g.pages.length > 0)
+  return NAV_SECTIONS.flatMap(section =>
+    allowed.value
+      .filter(p => sectionForPath(p.path)?.id === section.id && match(p))
+      .map(p => ({ ...p, tone: section.id as SectionId }))
+  )
 })
 
 const openFirst = (): void => {
-  const first = shownGroups.value[0]?.pages[0]
+  const first = shownPages.value[0]
   if (first) { void router.push(first.path) }
 }
 
@@ -415,6 +408,7 @@ const goBack = () => {
 /* One card, vertically centred in the viewport */
 .not-found-page {
   display: flex;
+  flex: none;
   flex-direction: column;
   justify-content: center;
   min-height: calc(100vh - var(--ui-topbar-h) - 2 * var(--ui-gutter));
@@ -431,6 +425,8 @@ const goBack = () => {
   width: 100%;
   max-width: 1000px;
   margin: 0 auto;
+  /* never squeezed by the centring column: the whole card is reachable by scrolling */
+  flex: none;
   overflow: hidden;
 }
 
@@ -474,9 +470,9 @@ const goBack = () => {
   display: flex;
   gap: 0.04em;
   align-items: center;
-  font: 400 88px / 1 var(--ui-font-display);
+  font: 700 88px / 1 var(--ui-font-display);
   letter-spacing: -0.05em;
-  color: color-mix(in srgb, var(--ui-ink) 62%, var(--ui-surface));
+  color: var(--ui-ink);
 }
 
 .zero {
@@ -493,7 +489,7 @@ const goBack = () => {
 }
 
 .nf-ring.r3 {
-  stroke-width: 9;
+  stroke-width: 12;
 }
 
 .nf-ring.r2 {
@@ -683,17 +679,6 @@ const goBack = () => {
   font-weight: 700;
 }
 
-.find-group {
-  margin-top: 6px;
-}
-
-.find-h {
-  margin: 0 0 8px 4px;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--ui-ink-2);
-}
-
 .find-list {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -737,8 +722,8 @@ const goBack = () => {
   width: 32px;
   height: 32px;
   border-radius: 10px;
-  background: linear-gradient(180deg, color-mix(in srgb, var(--tone) 82%, #fff), var(--tone));
-  color: #fff;
+  background: color-mix(in srgb, var(--tone) 14%, var(--ui-surface));
+  color: color-mix(in srgb, var(--tone) 78%, #000);
 }
 
 .find-ico :deep(svg) {
