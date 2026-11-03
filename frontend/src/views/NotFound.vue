@@ -362,7 +362,8 @@ const query = ref('')
 
 // A 404 is not a second sidebar: the six pages people open most are offered, the rest are one tap or one word away
 const FIRST_PAGES = ['/dashboard', '/conversations', '/notifications', '/tags', '/broadcasts', '/reports']
-const showAll = ref(false)
+// On a wide screen there is room for every destination, so nothing hides behind a button; a phone starts with the six
+const showAll = ref(typeof window !== 'undefined' && window.matchMedia?.('(min-width: 1025px)').matches === true)
 const canExpand = computed(() => query.value.trim() === '' && !showAll.value && allowed.value.length > FIRST_PAGES.length)
 
 // One flat list in the sidebar's order; typing searches every page
@@ -441,7 +442,7 @@ const goBack = () => {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   width: 100%;
-  max-width: 1000px;
+  max-width: 1080px;
   margin: 0 auto;
   /* never squeezed by the centring column: the whole card is reachable by scrolling */
   flex: none;
@@ -489,8 +490,8 @@ const goBack = () => {
   display: flex;
   gap: 0.04em;
   align-items: center;
-  font: 700 88px / 1 var(--ui-font-display);
-  letter-spacing: -0.05em;
+  font: 400 88px / 1 var(--ui-font-display);
+  letter-spacing: -0.04em;
   color: var(--ui-ink);
 }
 
@@ -508,7 +509,7 @@ const goBack = () => {
 }
 
 .nf-ring.r3 {
-  stroke-width: 12;
+  stroke-width: 13;
 }
 
 .nf-ring.r2 {
