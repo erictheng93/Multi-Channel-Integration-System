@@ -22,6 +22,16 @@
       >
         {{ team.description }}
       </p>
+      <div
+        v-if="share !== null"
+        class="team-load"
+      >
+        <span
+          class="tl-track"
+          aria-hidden="true"
+        ><i :style="{ width: `${Math.max(share, 3)}%`, background: toneColor }" /></span>
+        <span class="tl-text">佔全部處理中對話 <b>{{ share }}%</b></span>
+      </div>
       <div class="team-meta">
         <span class="ui-pill">{{ team.memberCount || 0 }} 成員</span>
         <span
@@ -151,8 +161,10 @@ import { createLogger } from '@/utils/logger'
       loading?: boolean
       /** Open conversations of this team; null/undefined = unknown, nothing is drawn */
       openCount?: number | null
+      /** Open conversations across every team: the denominator of the load bar */
+      openTotal?: number | null
     }>(),
-    { loading: false, openCount: null }
+    { loading: false, openCount: null, openTotal: null }
   )
   const emit = defineEmits<{
     'toggle-status': [team: Team]
@@ -175,7 +187,7 @@ import { createLogger } from '@/utils/logger'
   import { useQRCodeStore } from '@/stores/qrcode'
   import Dropdown from '@/components/ui/Dropdown.vue'
   import DropdownItem from '@/components/ui/DropdownItem.vue'
-  import { teamMarkBackground, teamMarkInk } from '@/utils/team-tone'
+  import { teamMarkBackground, teamMarkInk, teamToneColor } from '@/utils/team-tone'
   import type { Team, TeamMember, LiffQRCode } from '@/types'
 
   // Composables
@@ -207,6 +219,12 @@ import { createLogger } from '@/utils/logger'
   const generatingQR = ref(false)
   const qrStats = ref<{ scanCount: number; assignmentCount: number } | null>(null)
 
+  /** This team's share of all open conversations, in whole percent; null when either count is unknown or nothing is open */
+  const share = computed<number | null>(() =>
+    props.openCount !== null && props.openCount !== undefined && props.openTotal && props.openTotal > 0
+      ? Math.round((props.openCount / props.openTotal) * 100)
+      : null)
+  const toneColor = computed(() => teamToneColor(props.team.id))
   const markBackground = computed(() => teamMarkBackground(props.team.id))
   const markInk = computed(() => teamMarkInk(props.team.id))
 
@@ -494,6 +512,31 @@ import { createLogger } from '@/utils/logger'
   width: 16px;
   height: 16px;
   color: var(--ui-faint);
+}
+.team-load {
+  display: grid;
+  gap: 6px;
+  margin-top: 12px;
+}
+.tl-track {
+  display: block;
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--ui-fill);
+}
+.tl-track i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+}
+.tl-text {
+  font-size: 13px;
+  color: var(--ui-ink-2);
+  font-variant-numeric: tabular-nums;
+}
+.tl-text b {
+  color: var(--ui-ink);
 }
 .team-meta {
   display: flex;

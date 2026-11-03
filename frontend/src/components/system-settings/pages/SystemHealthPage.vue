@@ -37,7 +37,7 @@
           <div class="hl-verdict">
             <div
               class="hl-big"
-              :class="mixed ? 'mixed' : overallTone"
+              :class="overallTone"
               :aria-busy="(controller.processing.value && !controller.healthOverall.value) || undefined"
             >
               {{ heroValue ?? '—' }}
@@ -156,12 +156,24 @@
               v-if="row.latencyMs !== null"
               class="hbar"
               :class="barTone(row)"
+              :style="zoneVars"
               aria-hidden="true"
             ><i :style="{ width: barWidth(row.latencyMs, latencyScale) }" /></span>
             <span
               v-else
               class="hbar-none"
-            >{{ row.key === 'lineWebhook' ? '尚未測試' : '沒有量測值' }}</span>
+            >
+              <button
+                v-if="row.key === 'lineWebhook'"
+                type="button"
+                class="btn btn-secondary btn-sm"
+                :aria-busy="controller.processing.value || undefined"
+                @click="runWebhookTest"
+              >
+                {{ controller.processing.value ? '檢查中...' : '測試 webhook' }}
+              </button>
+              <template v-else>沒有量測值</template>
+            </span>
             <span
               class="lat-n"
               :class="barTone(row)"
@@ -182,12 +194,13 @@
             <b>LINE webhook 只在你按下時才測試。</b>會送出一次簽章請求並量測回應時間，同時重新檢查其餘服務；結果只代表剛才那一次。持續失敗請到 LINE Developers，對 Webhook URL 按「Verify」。
           </p>
           <button
+            v-if="webhookRow.latencyMs !== null"
             type="button"
-            class="btn btn-secondary"
+            class="btn btn-secondary btn-sm"
             :aria-busy="controller.processing.value || undefined"
             @click="runWebhookTest"
           >
-            {{ controller.processing.value ? '檢查中...' : webhookRow.latencyMs !== null ? '重新測試 webhook' : '測試 webhook' }}
+            {{ controller.processing.value ? '檢查中...' : '重新測試' }}
           </button>
         </footer>
       </section>
@@ -318,6 +331,12 @@ const counts = computed(() => ({
 const latencyScale = computed(() =>
   Math.max(FAULT_MS, ...serviceRows.value.map(row => row.latencyMs ?? 0)))
 
+/** Track zones painted in the legend's colours: boundaries at SLOW_MS and FAULT_MS on the shared scale */
+const zoneVars = computed(() => ({
+  '--z1': `${(SLOW_MS / latencyScale.value) * 100}%`,
+  '--z2': `${(FAULT_MS / latencyScale.value) * 100}%`
+}))
+
 const overallTone = computed<'ok' | 'warn' | 'bad' | 'unknown'>(() => {
   if (counts.value.critical > 0) {
     return 'bad'
@@ -354,7 +373,7 @@ const heroValue = computed<string | null>(() => {
     return '降級'
   }
   if (mixed.value) {
-    return `${counts.value.healthy} / ${rows.value.length} 項正常`
+    return `${counts.value.healthy} 項服務正常`
   }
   return overallTone.value === 'ok' ? '正常' : null
 })
@@ -409,7 +428,7 @@ const heroSubtitle = computed(() => {
     return `${attention.map(row => row.name).join('、')} 需要注意。`
   }
   if (unchecked.length > 0) {
-    return `${unchecked.map(row => row.name).join('、')} 還沒有測試結果，按「測試 webhook」補上。`
+    return `${unchecked.map(row => row.name).join('、')} 尚未測試，不計入上面的結果；在列表中按「測試 webhook」補上。`
   }
   return `${counts.value.healthy} 項服務運作正常。`
 })
@@ -498,10 +517,6 @@ onMounted(() => {
 
 .hl-big.bad {
   color: var(--ui-red-ink);
-}
-
-.hl-big.mixed {
-  color: var(--ui-ink);
 }
 
 .hl-big.unknown {
@@ -719,7 +734,7 @@ onMounted(() => {
 }
 
 .hrow-main {
-  flex: 1;
+  flex: 0 0 clamp(190px, 30%, 300px);
   min-width: 0;
 }
 
@@ -733,19 +748,20 @@ onMounted(() => {
   color: var(--ui-muted);
 }
 
-/* neutral track: only the fill carries colour (green to 100 ms, orange to 300 ms, red beyond) */
+/* the track is the legend: soft green to 100 ms, soft orange to 300 ms, soft red beyond; the fill is the measurement */
 .hbar {
-  flex: none;
-  width: clamp(120px, 34%, 320px);
-  height: 10px;
+  flex: 1;
+  min-width: 120px;
+  height: 12px;
   overflow: hidden;
   border-radius: 999px;
-  background: var(--ui-fill);
+  background: linear-gradient(90deg, var(--ui-green-soft) 0 var(--z1, 33%), color-mix(in srgb, var(--ui-orange-soft) 55%, transparent) var(--z1, 33%) var(--z2, 100%), var(--ui-red-soft) var(--z2, 100%) 100%);
 }
 
 .hbar-none {
-  flex: none;
-  width: clamp(120px, 34%, 320px);
+  display: flex;
+  flex: 1;
+  min-width: 120px;
   font-size: 13px;
   color: var(--ui-muted);
 }
@@ -792,23 +808,22 @@ onMounted(() => {
   width: 62px;
 }
 
-/* ---------- webhook footer: why it is manual, and the button ---------- */
+/* ---------- webhook footnote: why it is manual (a plain note under the list, the test button lives in the row) ---------- */
 .hfoot {
   display: flex;
-  gap: 20px;
+  gap: 16px;
   align-items: center;
   justify-content: space-between;
-  margin: 4px 16px 16px;
-  padding: 16px 20px;
-  border-radius: var(--ui-r-inner);
-  background: var(--ui-surface-2);
+  margin: 0 28px;
+  padding: 14px 0 22px;
+  box-shadow: inset 0 0.5px 0 var(--ui-sep);
 }
 
 .hfoot p {
-  max-width: 62ch;
+  max-width: 78ch;
   margin: 0;
-  font-size: 14px;
-  line-height: 1.55;
+  font-size: 13px;
+  line-height: 1.6;
   color: var(--ui-ink-2);
 }
 
@@ -871,6 +886,10 @@ onMounted(() => {
     width: auto;
   }
 
+  .hrow-main {
+    flex: 1;
+  }
+
   .hrow .hbar {
     order: 5;
     flex: none;
@@ -884,15 +903,31 @@ onMounted(() => {
 
   .hfoot {
     flex-direction: column;
-    gap: 14px;
     align-items: stretch;
-    margin: 4px 12px 12px;
-    padding: 16px;
+    margin: 0 18px;
+    padding: 14px 0 18px;
   }
 
-  /* the pill already says 未檢查; no second line for it on a phone */
+  /* six chips across a phone: an even 3 x 2 grid, no orphan */
+  .chips {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .chip {
+    justify-content: center;
+  }
+
+  /* the webhook row: the test button sits full width under the name, where the bar would be */
   .hrow .hbar-none {
-    display: none;
+    flex: none;
+    order: 5;
+    width: calc(100% - 42px);
+    margin-left: 42px;
+  }
+
+  .hrow .hbar-none .btn {
+    width: 100%;
   }
 
 }

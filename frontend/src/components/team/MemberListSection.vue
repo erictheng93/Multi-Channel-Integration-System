@@ -220,7 +220,7 @@
             <span>成員</span>
             <span>權限</span>
             <span>團隊與職務</span>
-            <span>最後登入</span>
+            <span>在線 / 最後登入</span>
             <span />
           </div>
 
@@ -541,11 +541,11 @@ function handleSelectPage() {
 
 <style scoped>
 .member-section {
-  --member-cols: minmax(260px, 1.1fr) 108px minmax(260px, 1.1fr) minmax(120px, 0.5fr) 40px;
+  --member-cols: minmax(260px, 1.2fr) 104px minmax(220px, 1fr) 132px 40px;
   padding-bottom: 6px;
 }
 .member-section:has(.selection-mode) {
-  --member-cols: 24px minmax(260px, 1.1fr) 108px minmax(260px, 1.1fr) minmax(120px, 0.5fr) 40px;
+  --member-cols: 24px minmax(260px, 1.2fr) 104px minmax(220px, 1fr) 132px 40px;
 }
 
 .legend {
@@ -790,12 +790,12 @@ function handleSelectPage() {
     padding-right: 16px;
     padding-left: 16px;
   }
-  /* two rows, not four: search with the batch toggle, then the team tabs with the sort */
+  /* search on its own row; the sort and batch controls keep their words (no icon-only buttons), then the team tabs */
   .tools-end {
     display: contents;
   }
   .search-bar {
-    flex: 1 1 calc(100% - 112px);
+    flex: 1 1 100%;
     order: 1;
     max-width: none;
     height: 44px;
@@ -803,11 +803,14 @@ function handleSelectPage() {
   .tools-end > .btn {
     order: 2;
     flex: none;
-    width: 44px;
-    height: 44px;
-    padding: 0;
-    font-size: 0;
-    gap: 0;
+    height: 40px;
+  }
+  .tools-end > :deep(.sort-dropdown) {
+    flex: none;
+    order: 2;
+  }
+  .tools-end > :deep(.sort-dropdown .sort-button) {
+    height: 40px;
   }
   /* team tabs get their own full-width row so every name reads whole; only a long list scrolls, and then it fades */
   .team-seg {
@@ -817,38 +820,6 @@ function handleSelectPage() {
   }
   .team-seg.is-long {
     mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
-  }
-  /* the sort control collapses to an icon beside the batch toggle (its label stays for screen readers) */
-  .tools-end > :deep(.sort-dropdown) {
-    flex: none;
-    order: 2;
-  }
-  .tools-end > :deep(.sort-dropdown .sort-button) {
-    width: 44px;
-    height: 44px;
-    padding: 0;
-    justify-content: center;
-  }
-  .tools-end > :deep(.sort-dropdown .sort-icon) {
-    display: none;
-  }
-  .tools-end > :deep(.sort-dropdown .sort-button::before) {
-    content: '⇅';
-    font-size: 20px;
-    line-height: 1;
-    color: var(--ui-ink-2);
-  }
-  .tools-end > :deep(.sort-dropdown .sort-label) {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip-path: inset(50%);
-  }
-  .tools-end > :deep(.sort-dropdown .sort-order-badge),
-  .tools-end > :deep(.sort-dropdown .custom-badge),
-  .tools-end > :deep(.sort-dropdown .chevron-icon) {
-    display: none;
   }
   .bulkbar {
     margin-right: 16px;
