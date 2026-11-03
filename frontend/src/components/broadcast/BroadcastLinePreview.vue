@@ -197,7 +197,7 @@ const order = computed(() => {
   display: flex;
   flex: 1;
   flex-direction: column;
-  min-height: 140px;
+  min-height: 200px;
   padding: 16px;
   overflow-y: auto;
   background: #eef1f6;
