@@ -258,31 +258,31 @@
       </section>
     </div>
 
-        <details
+    <details
       class="ui-card ex-fields"
       :open="detailsOpen"
     >
-          <summary>
-            <span>檔案內容</span>
-            <small>{{ selectedUnit }}</small>
-          </summary>
-          <div class="sheet-body">
-          <code class="sheet-shape">{{ shape }}</code>
-          <dl class="sheet-rows">
-            <div
-              v-for="row in selectedRows"
-              :key="row.note"
-              class="sheet-row"
-            >
-              <dt v-if="row.key">
-                {{ row.key }}
-              </dt>
-              <dd :class="{ 'is-wide': !row.key }">
-                {{ row.note }}
-              </dd>
-            </div>
-          </dl>
+      <summary>
+        <span>檔案內容</span>
+        <small>{{ selectedUnit }}</small>
+      </summary>
+      <div class="sheet-body">
+        <code class="sheet-shape">{{ shape }}</code>
+        <dl class="sheet-rows">
+          <div
+            v-for="row in selectedRows"
+            :key="row.note"
+            class="sheet-row"
+          >
+            <dt v-if="row.key">
+              {{ row.key }}
+            </dt>
+            <dd :class="{ 'is-wide': !row.key }">
+              {{ row.note }}
+            </dd>
           </div>
+        </dl>
+      </div>
     </details>
 
     <UiActionBar
