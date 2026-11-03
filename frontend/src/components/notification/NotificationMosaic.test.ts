@@ -11,23 +11,23 @@ const rows = [
 ]
 
 describe('NotificationMosaic', () => {
-  it('lays the three biggest types in the top band and the rest below, skipping empty types', () => {
+  it('lists the types biggest first, skipping empty ones, on one shared scale', () => {
     const wrapper = mount(NotificationMosaic, { props: { rows, selected: '' } })
-    const bands = wrapper.findAll('.band')
-    expect(bands).toHaveLength(2)
-    expect(bands[0]?.findAll('.tile').map(t => t.find('.tile-name').text())).toEqual(['新訊息', '客戶回覆', '對話指派'])
-    expect(bands[1]?.findAll('.tile')).toHaveLength(1)
+    const types = wrapper.findAll('.type')
+    expect(types.map(t => t.find('.type-name').text())).toEqual(['新訊息', '客戶回覆', '對話指派', '提及'])
+    expect(types[0]?.find('.type-bar i').attributes('style')).toContain('width: 100%')
+    expect(types[3]?.find('.type-bar i').attributes('style')).toContain('width: 43%')
   })
 
-  it('toggles a type from its tile and marks the chosen one', async () => {
+  it('toggles a type from its row and marks the chosen one', async () => {
     const wrapper = mount(NotificationMosaic, { props: { rows, selected: 'mention' } })
-    await wrapper.findAll('.tile')[0]?.trigger('click')
+    await wrapper.findAll('.type')[0]?.trigger('click')
     expect(wrapper.emitted('toggle')?.[0]).toEqual(['new_message'])
-    expect(wrapper.find('.tile.is-selected .tile-name').text()).toBe('提及')
+    expect(wrapper.find('.type.is-selected .type-name').text()).toBe('提及')
   })
 
   it('names the unread count in the button label', () => {
     const wrapper = mount(NotificationMosaic, { props: { rows, selected: '' } })
-    expect(wrapper.find('.tile').attributes('aria-label')).toBe('新訊息 14 則，1 則未讀')
+    expect(wrapper.find('.type').attributes('aria-label')).toBe('新訊息 14 則，1 則未讀')
   })
 })

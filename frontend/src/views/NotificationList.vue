@@ -293,7 +293,7 @@ onUnmounted(() => {
 }
 
 .lead-num {
-  margin: 2px 0 0;
+  margin: 2px 0 auto;
   font: 600 56px / 1 var(--ui-font-display);
   letter-spacing: -0.03em;
   font-variant-numeric: tabular-nums;
