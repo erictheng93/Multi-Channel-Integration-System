@@ -232,10 +232,10 @@ const formatDate = (dateString: string): string => {
 .sample-chips li {
   padding: 6px 12px;
   border-radius: 999px;
-  background: var(--ui-green-soft);
+  background: var(--ui-fill);
   font-size: 14px;
-  font-weight: 600;
-  color: var(--ui-green-ink);
+  font-weight: 500;
+  color: var(--ui-ink-2);
 }
 
 .sample-opts {
