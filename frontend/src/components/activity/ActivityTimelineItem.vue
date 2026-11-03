@@ -154,7 +154,6 @@ const formattedDetails = computed(() =>
 const quietStatus = computed(() => {
   switch (restoreState.value.kind) {
     case 'expired': return '已過期'
-    case 'irreversible': return '不可還原'
     case 'already-restored': return '已還原'
     default: return ''
   }

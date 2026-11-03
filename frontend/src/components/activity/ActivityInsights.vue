@@ -37,7 +37,7 @@
             <span
               class="ins-bar"
               aria-hidden="true"
-            ><i :style="{ width: row.width }" /></span>
+            ><i :style="{ width: row.width, '--bar': row.hue }" /></span>
           </button>
         </li>
       </ul>
@@ -99,7 +99,7 @@
 import { computed } from 'vue'
 import type { ActivityOverview } from '@/api/activities'
 import { isActivityRestoreEnabled } from '@/config/runtime'
-import { getActionLabel } from './utils'
+import { getActionIconStyle, getActionLabel } from './utils'
 
 const props = withDefaults(defineProps<{
   overview: ActivityOverview | null
@@ -128,13 +128,19 @@ function totalOf(count: number): string {
 }
 
 
+/** The bar wears the hue of the action's own icon tile, so a type reads the same here and in the log */
+function hueOf(action: string): string {
+  const token = /var\((--[\w-]+)\)/.exec(getActionIconStyle(action).colorClass)?.[1] ?? '--ui-accent'
+  return `var(${token.replace(/-ink$/, '')})`
+}
+
 const actions = computed(() => {
   const stats = props.overview?.actionStats ?? {}
   const rows = Object.entries(stats)
     .filter(([, count]) => count > 0)
     .sort((a, b) => b[1] - a[1])
     .slice(0, SHOWN)
-    .map(([key, count]) => ({ key, label: getActionLabel(key), count, share: totalOf(count) }))
+    .map(([key, count]) => ({ key, label: getActionLabel(key), count, share: totalOf(count), hue: hueOf(key) }))
   return scaled(rows)
 })
 
@@ -239,8 +245,8 @@ const members = computed(() => {
   display: block;
   height: 100%;
   border-radius: inherit;
-  background: var(--section-hue, var(--ui-accent));
-  opacity: 0.85;
+  background: var(--bar, var(--section-hue, var(--ui-accent)));
+  opacity: 0.9;
 }
 
 .ins-n small {
