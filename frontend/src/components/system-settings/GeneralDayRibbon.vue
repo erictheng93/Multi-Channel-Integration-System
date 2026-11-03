@@ -365,12 +365,12 @@ const ariaLabel = computed(() => {
 
 .rb-stage {
   position: relative;
-  height: 92px;
+  height: 96px;
 }
 
 .rb-track {
   position: absolute;
-  top: 52px;
+  top: 56px;
   right: 0;
   left: 0;
   height: 10px;
@@ -388,7 +388,7 @@ const ariaLabel = computed(() => {
 
 .rb-grid {
   position: absolute;
-  inset: 40px 0 0;
+  inset: 44px 0 0;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -423,13 +423,13 @@ const ariaLabel = computed(() => {
 .rb-needle {
   position: relative;
   width: 2px;
-  height: 20px;
+  height: 8px;
   background: var(--ui-ink);
 }
 
 .rb-pin {
   position: absolute;
-  top: 57px;
+  top: 61px;
   z-index: 2;
   display: grid;
   place-items: center;

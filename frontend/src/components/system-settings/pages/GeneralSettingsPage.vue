@@ -38,6 +38,11 @@
       class="g-adv"
       title="目前生效的進階參數"
     >
+      <template #action>
+        <router-link to="/settings/advanced">
+          調整參數
+        </router-link>
+      </template>
       <ul class="adv-list">
         <li
           v-for="item in advancedRows"
@@ -256,10 +261,23 @@ const advancedRows = computed(() => {
   outline-offset: -2px;
 }
 
+.adv-item {
+  transition: background-color 0.2s ease-out;
+}
+
+.adv-item:hover {
+  background: var(--ui-surface-2);
+}
+
+/* the cell is a link: the chevron sits in a small round fill so it reads as a control, not a glyph */
 .adv-chev {
-  width: 16px;
-  height: 16px;
-  color: var(--ui-muted);
+  box-sizing: content-box;
+  width: 14px;
+  height: 14px;
+  padding: 5px;
+  border-radius: 50%;
+  background: var(--ui-fill);
+  color: var(--ui-ink-2);
 }
 
 .adv-value,
@@ -326,6 +344,11 @@ const advancedRows = computed(() => {
 
   .adv-value {
     font-size: 20px;
+  }
+
+  /* the label already says what each value is; the one-line gloss is desktop-only on a phone page this long */
+  .adv-note {
+    display: none;
   }
 }
 </style>
