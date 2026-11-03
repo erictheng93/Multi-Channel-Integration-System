@@ -373,16 +373,9 @@ const formattedTime = computed(() => {
   color: var(--ui-accent);
 }
 
-/* A bar on the leading edge: unread is seen before it is read */
-.notification-unread::after {
-  position: absolute;
-  top: 14px;
-  bottom: 14px;
-  left: 8px;
-  width: 3px;
-  border-radius: 2px;
-  background: var(--ui-accent);
-  content: '';
+/* Unread is a faint wash across the row plus the dot by the time (no hard edge bar); a wash this light does not read as a selection */
+.notification-unread {
+  background: color-mix(in srgb, var(--ui-accent) 5%, var(--ui-surface));
 }
 
 /* Urgent: the same pastel tile language, in red, whatever the type (the pill says why) */
