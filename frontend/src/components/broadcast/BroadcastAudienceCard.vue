@@ -13,8 +13,8 @@
     </h2>
 
     <div
+      v-if="preview"
       class="ledger"
-      :class="{ 'is-wait': !preview }"
     >
       <div class="cell">
         <b>{{ preview ? preview.total : '—' }}</b>
@@ -38,12 +38,17 @@
       </div>
     </div>
 
-    <p
-      v-if="!preview"
-      class="ledger-wait"
-    >
-      {{ loading ? '計算受眾中...' : '選擇目標標籤後，算出符合、略過與實際收件的人數。' }}
-    </p>
+    <template v-else>
+      <p
+        class="formula"
+        aria-hidden="true"
+      >
+        <span>符合標籤</span><i>−</i><span>略過</span><i>=</i><b>實際收到</b>
+      </p>
+      <p class="ledger-wait">
+        {{ loading ? '計算受眾中...' : '選擇目標標籤後，算出符合、略過與實際收件的人數。' }}
+      </p>
+    </template>
 
     <div
       v-if="preview"
@@ -149,11 +154,11 @@ const notes = computed(() => {
 /* The tear-off stub of the broadcast: the arithmetic from audience to recipients */
 .audience-card {
   margin-top: 0;
-  padding: 20px 24px 22px;
+  padding: 20px 24px 18px;
 }
 
 .ledger-wait {
-  margin: 14px 0 0;
+  margin: 8px 0 0;
   font-size: 14px;
   line-height: 1.5;
   color: var(--ui-ink-2);
@@ -190,23 +195,24 @@ const notes = computed(() => {
   color: var(--ui-muted);
 }
 
-/* nothing calculated yet: the figures are drawn as quiet placeholder bars */
-.is-wait b {
-  display: block;
-  width: 56px;
-  height: 12px;
-  margin: 0 0 12px;
-  border-radius: 999px;
-  background: var(--ui-fill);
-  font-size: 0;
+.formula {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin: 0;
+  font-size: 15px;
+  color: var(--ui-ink-2);
 }
 
-.is-wait .op {
-  padding-bottom: 32px;
+.formula i {
+  font-style: normal;
+  color: var(--ui-muted);
 }
 
-.is-wait .is-send b {
-  background: var(--ui-accent-soft);
+.formula b {
+  font-weight: 600;
+  color: var(--ui-accent-ink, var(--ui-accent));
 }
 
 .is-skip b {
