@@ -869,13 +869,9 @@ onUnmounted(() => {
     padding: 0;
   }
 
-  /* visually hidden, still announced; clip-path instead of overflow so it is not "clipped content" */
+  /* icon-only on phone; the button's aria-label carries the name */
   .conversations :deep(.refresh-text) {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    clip-path: inset(50%);
-    white-space: nowrap;
+    display: none;
   }
 
   .filter-card {
