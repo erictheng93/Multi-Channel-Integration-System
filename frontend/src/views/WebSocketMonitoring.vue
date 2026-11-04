@@ -437,6 +437,9 @@ const LATENCY_REFS = [{ value: 100, label: '優秀 100 ms' }, { value: 500, labe
 
 let refreshInterval: ReturnType<typeof setInterval> | null = null
 let pollCount = 0
+/** /health-detail wakes every Durable Object plus D1/KV/R2, so it runs at most once a minute */
+const HEALTH_INTERVAL_MS = 60_000
+let lastHealthAt = 0
 
 const sampled = computed(() => (metrics.value?.windowSeconds ?? 0) > 0)
 const eventsIn = computed(() => (sampled.value ? metrics.value?.messagesThroughput.inbound ?? 0 : null))
@@ -537,11 +540,15 @@ const stats = computed(() => {
   }
 })
 
-/** Service verdict from /websocket/health (null until the first answer) */
+/**
+ * Service verdict from the admin-only /websocket/health-detail (null until the first answer).
+ * Not /websocket/health: that is a liveness probe which always answers "healthy".
+ */
 const healthStatus = ref<string | null>(null)
 const service = computed(() => {
   if (healthStatus.value === 'healthy') { return { label: '服務正常', pill: 'ui-pill-green' } }
   if (healthStatus.value === 'degraded') { return { label: '服務降級', pill: 'ui-pill-orange' } }
+  if (healthStatus.value === 'unhealthy') { return { label: '服務異常', pill: 'ui-pill-red' } }
   return null
 })
 
@@ -584,9 +591,11 @@ async function refreshData() {
   error.value = null
 
   try {
+    const healthDue = Date.now() - lastHealthAt >= HEALTH_INTERVAL_MS
     const [metricsRes, healthRes] = await Promise.all([
       apiClient.get<{ connections?: Metrics }>('/websocket/metrics'),
-      apiClient.get('/websocket/health')
+      // A failed probe must not blank the metrics; it is retried on the next poll.
+      healthDue ? apiClient.get('/websocket/health-detail').catch(() => null) : null
     ])
 
     // GET /websocket/metrics -> { status, data: { connections, locks, ... } }
@@ -598,10 +607,13 @@ async function refreshData() {
         ? connections.registeredConnections - previous
         : null
 
-    const healthObj = healthRes as { status?: string; data?: { status?: string } }
-    healthStatus.value = healthObj.data?.status ?? healthObj.status ?? null
+    // GET /websocket/health-detail -> { status: 'ok', data: { overall: { status } } }
+    if (healthRes) {
+      lastHealthAt = Date.now()
+      healthStatus.value = (healthRes as { data?: { overall?: { status?: string } } }).data?.overall?.status ?? null
+    }
     if (metrics.value) {
-      checkAlerts(metrics.value, healthRes)
+      checkAlerts(metrics.value, healthStatus.value)
     }
   } catch (err: unknown) {
     error.value = (err as {response?: {data?: {error?: string}}}).response?.data?.error || '無法載入監控資料'
@@ -641,7 +653,7 @@ async function loadHistory() {
   }
 }
 
-function checkAlerts(current: Metrics, health: unknown) {
+function checkAlerts(current: Metrics, health: string | null) {
   // Rates are only meaningful once the broadcaster has a reference window
   if (current.windowSeconds > 0 && current.errorRate > 0.1) {
     addAlert({
@@ -663,13 +675,12 @@ function checkAlerts(current: Metrics, health: unknown) {
     })
   }
 
-  const healthObj = health as { status?: string; data?: { status?: string } }
-  if ((healthObj.data?.status ?? healthObj.status) === 'degraded') {
+  if (health === 'degraded' || health === 'unhealthy') {
     addAlert({
       id: 'service-degraded',
-      severity: 'warning',
-      title: '服務降級',
-      message: 'WebSocket 服務處於降級狀態',
+      severity: health === 'unhealthy' ? 'error' : 'warning',
+      title: health === 'unhealthy' ? '服務異常' : '服務降級',
+      message: health === 'unhealthy' ? 'WebSocket 服務處於異常狀態' : 'WebSocket 服務處於降級狀態',
       timestamp: Date.now()
     })
   }
