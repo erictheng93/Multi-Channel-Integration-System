@@ -61,11 +61,6 @@ export const DEFAULT_NOTIFICATION_CONFIG = {
     defaultChannels: ['websocket'],
     fallbackEnabled: true,
     fallbackChannels: ['websocket']
-  },
-  cache: {
-    defaultTTL: 300, // 5 minutes
-    statsTTL: 60, // 1 minute
-    recentNotificationsTTL: 60 // 60 seconds (Cloudflare KV 最小 TTL)
   }
 };
 
@@ -83,7 +78,6 @@ export const NOTIFICATIONS_MODULE_INFO = {
     'Real-time WebSocket notifications',
     'Email notifications (prepared)',
     'Push notifications (prepared)',
-    'Advanced caching with KV',
     'Flexible routing rules',
     'Bulk operations',
     'Notification templates',
