@@ -94,9 +94,10 @@
             <span class="wday">{{ row.name }}</span>
             <span class="wtrack">
               <span
-                v-if="row.open"
+                v-for="(seg, si) in row.segments"
+                :key="si"
                 class="wopen"
-                :style="{ left: row.left + '%', width: row.width + '%' }"
+                :style="{ left: seg.left + '%', width: seg.width + '%' }"
               />
               <i
                 v-for="(t, i) in row.today ? week.ticks : []"
@@ -105,7 +106,7 @@
                 :style="{ left: t + '%' }"
               />
             </span>
-            <span class="wtime">{{ row.open ? `${row.startText}–${row.endText}` : '休息' }}</span>
+            <span class="wtime">{{ row.open ? row.timeText : '休息' }}</span>
           </li>
         </ol>
         <div
@@ -182,19 +183,31 @@ const week = computed(() => {
   const plan = props.weekPlan
   if (!plan || plan.days.length === 0) { return null }
   const rows = plan.days.map((d) => {
-    const usable = d.open && d.end > d.start
+    // Mirrors the backend (schedule-service.ts): end <= start crosses midnight and is evaluated against
+    // THIS day's entry for both halves, so the post-midnight part [0, end] is drawn on the same row.
+    // end === start therefore matches every minute of the day (open all day).
+    const wraps = d.end <= d.start
+    const allDay = d.end === d.start
+    const segments = !d.open
+      ? []
+      : allDay
+        ? [{ left: 0, width: 100 }]
+        : wraps
+          ? [{ left: 0, width: pct(d.end) }, { left: pct(d.start), width: 100 - pct(d.start) }]
+          : [{ left: pct(d.start), width: pct(d.end) - pct(d.start) }]
+    const startText = pad(d.start)
+    const endText = pad(d.end)
     return {
       day: d.day,
       name: NAMES[d.day] ?? '',
       today: d.day === plan.today,
-      open: usable,
-      left: pct(d.start),
-      width: pct(d.end) - pct(d.start),
-      startText: pad(d.start),
-      endText: pad(d.end),
+      open: d.open,
+      segments,
+      timeText: allDay ? '全天營業' : wraps ? `${startText}–${endText}（跨日）` : `${startText}–${endText}`,
+      ariaText: !d.open ? '休息' : allDay ? '全天營業' : `${startText} 到 ${endText}${wraps ? '，跨日' : ''}`,
     }
   })
-  const label = `本週營業時間：${rows.map(r => `${r.name}${r.open ? `${r.startText} 到 ${r.endText}` : '休息'}`).join('，')}。現在 ${pad(plan.now)}。`
+  const label = `本週營業時間：${rows.map(r => `${r.name}${r.ariaText}`).join('，')}。現在 ${pad(plan.now)}。`
   return { rows, now: pct(plan.now), nowText: pad(plan.now), ticks: plan.replies.map(pct), label }
 })
 
@@ -405,7 +418,7 @@ const hoursNote = computed(() => {
 
 .week {
   --label: 52px;
-  --times: 104px;
+  --times: 140px;
   position: relative;
   flex: 1;
   margin-top: 40px;

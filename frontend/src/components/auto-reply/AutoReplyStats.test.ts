@@ -83,6 +83,28 @@ describe('AutoReplyStats -- week timetable', () => {
     expect(wrapper.find('.week').attributes('aria-label')).toContain('週日休息')
   })
 
+  it('draws a midnight-crossing schedule as two segments on the same row, not as rest', () => {
+    const plan = { ...weekPlan, days: weekPlan.days.map((d) => (d.day === 1 ? { ...d, open: true, start: 1320, end: 360 } : d)) }
+    const wrapper = mount(AutoReplyStats, {
+      props: { activeRules: 5, todayReplies: 3, isBusinessHours: true, successRate: null, weekPlan: plan },
+    })
+    const row = wrapper.findAll('.wrow')[0]
+    expect(row?.text()).not.toContain('休息')
+    expect(row?.find('.wtime').text()).toBe('22:00–06:00（跨日）')
+    expect(row?.findAll('.wopen')).toHaveLength(2)
+    expect(wrapper.find('.week').attributes('aria-label')).toContain('週一22:00 到 06:00，跨日')
+  })
+
+  it('treats start === end as open all day, like the backend', () => {
+    const plan = { ...weekPlan, days: weekPlan.days.map((d) => (d.day === 1 ? { ...d, open: true, start: 480, end: 480 } : d)) }
+    const wrapper = mount(AutoReplyStats, {
+      props: { activeRules: 5, todayReplies: 3, isBusinessHours: true, successRate: null, weekPlan: plan },
+    })
+    const row = wrapper.findAll('.wrow')[0]
+    expect(row?.find('.wtime').text()).toBe('全天營業')
+    expect(row?.findAll('.wopen')).toHaveLength(1)
+  })
+
   it('asks for a schedule when none is saved', async () => {
     const wrapper = mount(AutoReplyStats, {
       props: { activeRules: 5, todayReplies: 3, isBusinessHours: false, successRate: null, weekPlan: null },
