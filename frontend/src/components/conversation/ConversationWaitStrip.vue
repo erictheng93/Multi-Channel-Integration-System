@@ -27,9 +27,10 @@
  * nobody has answered yet, on an open conversation. Tapping it opens the customer sheet with the round history.
  */
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { withoutSignOffs } from '@/utils/waiting-messages'
 
 const props = defineProps<{
-  messages: ReadonlyArray<{ senderType?: string; createdAt?: string | number | Date; timestamp?: number | Date }>
+  messages: ReadonlyArray<{ senderType?: string; content?: string; messageType?: string; createdAt?: string | number | Date; timestamp?: number | Date }>
   closed?: boolean
 }>()
 
@@ -48,9 +49,9 @@ const timeOf = (m: { createdAt?: string | number | Date; timestamp?: number | Da
 
 const wait = computed(() => {
   if (props.closed) { return null }
-  const spoken = props.messages
+  const spoken = withoutSignOffs(props.messages
     .filter(m => (m.senderType === 'customer' || m.senderType === 'agent') && Number.isFinite(timeOf(m)))
-    .sort((a, b) => timeOf(a) - timeOf(b))
+    .sort((a, b) => timeOf(a) - timeOf(b)))
   let count = 0
   for (let i = spoken.length - 1; i >= 0 && spoken[i]?.senderType === 'customer'; i--) { count += 1 }
   if (count === 0) { return null }
