@@ -3,6 +3,7 @@
     class="btn btn-secondary btn-sm refresh-btn"
     :class="{ 'loading': loading }"
     :disabled="loading"
+    :aria-label="loading ? '重新整理中…' : '重新整理'"
     @click="handleRefresh"
   >
     <svg
