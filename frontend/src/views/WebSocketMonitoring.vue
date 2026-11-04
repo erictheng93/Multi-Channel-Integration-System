@@ -591,7 +591,10 @@ async function refreshData() {
   error.value = null
 
   try {
-    const healthDue = Date.now() - lastHealthAt >= HEALTH_INTERVAL_MS
+    const dispatchedAt = Date.now()
+    const healthDue = dispatchedAt - lastHealthAt >= HEALTH_INTERVAL_MS
+    // Reserve the slot at dispatch so a slow probe is never overlapped by the next poll
+    if (healthDue) { lastHealthAt = dispatchedAt }
     const [metricsRes, healthRes] = await Promise.all([
       apiClient.get<{ connections?: Metrics }>('/websocket/metrics'),
       // A failed probe must not blank the metrics; it is retried on the next poll.
@@ -608,9 +611,13 @@ async function refreshData() {
         : null
 
     // GET /websocket/health-detail -> { status: 'ok', data: { overall: { status } } }
-    if (healthRes) {
-      lastHealthAt = Date.now()
-      healthStatus.value = (healthRes as { data?: { overall?: { status?: string } } }).data?.overall?.status ?? null
+    // apiClient resolves { success: false, error, status } on failure; keep the previous verdict and retry next poll
+    if (healthDue) {
+      if (healthRes && (healthRes as { success?: boolean }).success !== false) {
+        healthStatus.value = (healthRes as { data?: { overall?: { status?: string } } }).data?.overall?.status ?? null
+      } else {
+        lastHealthAt = 0
+      }
     }
     if (metrics.value) {
       checkAlerts(metrics.value, healthStatus.value)
