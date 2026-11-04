@@ -869,12 +869,12 @@ onUnmounted(() => {
     padding: 0;
   }
 
+  /* visually hidden, still announced; clip-path instead of overflow so it is not "clipped content" */
   .conversations :deep(.refresh-text) {
     position: absolute;
     width: 1px;
     height: 1px;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
+    clip-path: inset(50%);
     white-space: nowrap;
   }
 
