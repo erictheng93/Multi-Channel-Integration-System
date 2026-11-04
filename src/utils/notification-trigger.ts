@@ -17,7 +17,7 @@ type NotificationTriggerEnv = Bindings;
  */
 export function createNotificationService(env: NotificationTriggerEnv): NotificationService {
   const channelService = new NotificationChannelService();
-  return new NotificationService(env.DB, env.CACHE, channelService);
+  return new NotificationService(env.DB, channelService);
 }
 
 /**

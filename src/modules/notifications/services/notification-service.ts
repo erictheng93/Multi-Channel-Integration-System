@@ -16,23 +16,22 @@ import { createContextLogger } from '@/utils/logger'
 
 const log = createContextLogger('NotificationService')
 
-import { NotificationCache } from '@modules/notifications/repositories/notification-cache';
 import { NotificationChannelService } from '@modules/notifications/services/notification-channel-service';
 import { NotificationValidator } from '@modules/notifications/utils/notification-validator';
 
 export class NotificationService {
   private repository: NotificationRepository;
-  private cache: NotificationCache;
   private channelService: NotificationChannelService;
   private validator: NotificationValidator;
 
+  // No KV cache: the previous one never invalidated (its pattern delete was a
+  // stub), so mark-read / delete reverted on refresh for up to 5 minutes.
+  // These are per-user indexed D1 reads; cache only with real invalidation.
   constructor(
     database: D1Database,
-    kvNamespace: KVNamespace,
     channelService: NotificationChannelService
   ) {
     this.repository = new NotificationRepository(database);
-    this.cache = new NotificationCache(kvNamespace);
     this.channelService = channelService;
     this.validator = new NotificationValidator();
   }
@@ -57,14 +56,6 @@ export class NotificationService {
       // 使用預設通道
       await this.channelService.sendToDefault(notification);
     }
-
-    // 快取新通知
-    await this.cache.cacheNotification(request.userId, notification, 300);
-
-    // 清除相關快取
-    await this.cache.invalidateListCache(request.userId);
-    await this.cache.invalidateStatsCache(request.userId);
-    await this.cache.invalidateUnreadCountCache(request.userId);
 
     return notificationId;
   }
@@ -112,56 +103,15 @@ export class NotificationService {
       }
     }
 
-    // 清除受影響用戶的快取
-    const userIds = [...new Set(request.notifications.map(n => n.userId))];
-    await Promise.allSettled(
-      userIds.map(userId => this.cache.invalidateUserCache(userId))
-    );
-
     return results;
   }
 
   async getById(id: string, userId: string | number): Promise<NotificationBase | null> {
-    // 先檢查快取
-    const cached = await this.cache.getCachedNotification(userId, id);
-    if (cached) {
-      return cached;
-    }
-
-    // 從資料庫取得
-    const notification = await this.repository.findById(id, userId);
-    if (notification) {
-      // 快取結果
-      await this.cache.cacheNotification(userId, notification);
-    }
-
-    return notification;
+    return this.repository.findById(id, userId);
   }
 
   async getByQuery(query: NotificationQuery): Promise<NotificationListResponse> {
-    // 生成快取鍵
-    const queryHash = this.cache.generateQueryHash({ ...query });
-
-    // 檢查快取
-    const cached = await this.cache.getCachedNotificationList(query.userId, queryHash);
-    if (cached) {
-      return {
-        notifications: cached.notifications,
-        pagination: this.calculatePagination(cached.total, query.page || 1, query.pageSize || 20)
-      };
-    }
-
-    // 從資料庫查詢
     const result = await this.repository.findByQuery(query);
-
-    // 快取結果
-    await this.cache.cacheNotificationList(
-      query.userId,
-      queryHash,
-      result.notifications,
-      result.total,
-      300
-    );
 
     return {
       notifications: result.notifications,
@@ -170,62 +120,22 @@ export class NotificationService {
   }
 
   async markAsRead(id: string, userId: string | number): Promise<boolean> {
-    const success = await this.repository.markAsRead(id, userId);
-
-    if (success) {
-      // 清除相關快取
-      await this.cache.invalidateNotificationCache(userId, id);
-    }
-
-    return success;
+    return this.repository.markAsRead(id, userId);
   }
 
   async markAllAsRead(userId: string | number, type?: NotificationType): Promise<number> {
-    const count = await this.repository.markAllAsRead(userId, type);
-
-    if (count > 0) {
-      // 清除相關快取
-      await this.cache.invalidateUserCache(userId);
-    }
-
-    return count;
+    return this.repository.markAllAsRead(userId, type);
   }
 
   async delete(id: string, userId: string | number): Promise<boolean> {
-    const success = await this.repository.delete(id, userId);
-
-    if (success) {
-      // 清除相關快取
-      await this.cache.invalidateNotificationCache(userId, id);
-    }
-
-    return success;
+    return this.repository.delete(id, userId);
   }
 
   async getUnreadCount(userId: string | number, type?: NotificationType): Promise<number> {
-    // 檢查快取
-    const cached = await this.cache.getCachedUnreadCount(userId, type);
-    if (cached !== null) {
-      return cached;
-    }
-
-    // 從資料庫取得
-    const count = await this.repository.getUnreadCount(userId, type);
-
-    // 快取結果
-    await this.cache.cacheUnreadCount(userId, count, type);
-
-    return count;
+    return this.repository.getUnreadCount(userId, type);
   }
 
   async getStats(userId: string | number): Promise<NotificationStats> {
-    // 檢查快取
-    const cached = await this.cache.getCachedStats(userId);
-    if (cached) {
-      return cached;
-    }
-
-    // 從資料庫取得統計資料
     const rawStats = await this.repository.getStatsByUserId(userId);
 
     const stats: NotificationStats = {
@@ -269,32 +179,16 @@ export class NotificationService {
       }
     };
 
-    // 快取統計資料
-    await this.cache.cacheStats(userId, stats, 60);
-
     return stats;
   }
 
   async getRecentNotifications(userId: string | number, limit: number = 10): Promise<NotificationBase[]> {
-    // 檢查快取
-    const cached = await this.cache.getCachedRecentNotifications(userId, limit);
-    if (cached) {
-      return cached;
-    }
-
-    // 從資料庫取得
-    const notifications = await this.repository.getRecentNotifications(userId, limit);
-
-    // 快取結果
-    await this.cache.cacheRecentNotifications(userId, limit, notifications, 30);
-
-    return notifications;
+    return this.repository.getRecentNotifications(userId, limit);
   }
 
   async cleanupExpired(): Promise<number> {
     const deletedCount = await this.repository.deleteExpired();
 
-    // 注意：這會影響所有用戶的快取，在生產環境中需要更智能的快取失效策略
     log.info(`Cleaned up ${deletedCount} expired notifications`);
 
     return deletedCount;
