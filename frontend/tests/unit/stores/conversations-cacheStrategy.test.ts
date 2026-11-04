@@ -242,20 +242,22 @@ describe('createCacheStrategy', () => {
       expect(result.fromCache).toBe(true)
     })
 
-    it('returns early when cache is fresh (no API call)', async () => {
+    it('still calls the API when the cache is fresh (cache is a first paint only)', async () => {
+      // A list entry is written on fetch only, so a mark-read / close made since then is not in it.
       mockConversationCache.getConversationList.mockReturnValue({
         data: [makeConversation({ id: 'fresh-cached' })],
         needsUpdate: false
       })
+      mockConversationList.mockResolvedValue({ success: true, data: { items: [], total: 0, page: 1, pageSize: 20 } })
 
       const deps = makeDeps()
       const strategy = createCacheStrategy(deps)
 
       const result = await strategy.loadWithCache({})
 
+      expect(mockConversationList).toHaveBeenCalledTimes(1)
       expect(result.fromCache).toBe(true)
       expect(result.fresh).toBe(true)
-      expect(mockConversationList).not.toHaveBeenCalled()
     })
 
     it('handles API error gracefully when no cache', async () => {
