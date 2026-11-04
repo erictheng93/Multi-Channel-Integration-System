@@ -135,7 +135,7 @@
           aria-haspopup="menu"
           :aria-expanded="menuOpen"
           :aria-label="`更多操作：${notification.title}`"
-          @click="menuOpen = !menuOpen"
+          @click="toggleMenu"
         >
           <svg
             viewBox="0 0 24 24"
@@ -161,7 +161,9 @@
         </button>
         <div
           v-if="menuOpen"
+          ref="menuEl"
           class="more-menu"
+          :class="{ 'is-up': menuUp }"
           role="menu"
         >
           <button
@@ -187,7 +189,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import type { Notification, NotificationType } from '@/stores/notifications'
 import {
   CheckIcon,
@@ -248,6 +250,24 @@ function onDeleteClick(): void {
 // Overflow menu (phone): closes on any outside tap
 const menuOpen = ref(false)
 const moreEl = ref<HTMLElement | null>(null)
+const menuEl = ref<HTMLElement | null>(null)
+// The list container clips (overflow: hidden, for its rounded corners), so on the last rows the menu opens upward
+const menuUp = ref(false)
+async function toggleMenu(): Promise<void> {
+  if (menuOpen.value) { menuOpen.value = false; return }
+  menuUp.value = false
+  menuOpen.value = true
+  await nextTick()
+  const menu = menuEl.value
+  const trigger = moreEl.value
+  if (!menu || !trigger) { return }
+  const clip = trigger.closest('.notif-main')?.getBoundingClientRect()
+  const limit = Math.min(clip ? clip.bottom : Infinity, window.innerHeight)
+  const need = menu.getBoundingClientRect().height
+  const below = limit - trigger.getBoundingClientRect().bottom
+  const above = trigger.getBoundingClientRect().top - (clip ? Math.max(clip.top, 0) : 0)
+  menuUp.value = below < need && above > below
+}
 function onDocPointer(e: Event): void {
   if (menuOpen.value && moreEl.value && !moreEl.value.contains(e.target as HTMLElement)) { menuOpen.value = false }
 }
@@ -651,6 +671,11 @@ const formattedTime = computed(() => {
   border-radius: 14px;
   background: var(--ui-surface);
   box-shadow: var(--ui-shadow-raised);
+}
+
+.more-menu.is-up {
+  top: auto;
+  bottom: 100%;
 }
 
 .more-menu button {
