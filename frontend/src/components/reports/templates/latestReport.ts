@@ -13,8 +13,6 @@ export interface LatestReport {
   recent: ReportBase[];
 }
 
-const cache = new Map<ReportType, LatestReport>();
-
 export const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
@@ -41,7 +39,7 @@ async function fetchLatest(type: ReportType): Promise<LatestReport> {
   }
 }
 
-/** Reactive loader: re-runs whenever the template type changes; results are cached per type */
+/** Reactive loader: re-runs whenever the template type changes; each page entry refetches so a freshly generated report shows up; failures are never kept */
 export function useLatestReport(type: Ref<ReportType | undefined>) {
   const state = ref<LatestReport | null>(null);
   const loading = ref(false);
@@ -50,12 +48,9 @@ export function useLatestReport(type: Ref<ReportType | undefined>) {
   watch(type, async next => {
     if (!next) { state.value = null; return; }
     const mine = ++token;
-    const hit = cache.get(next);
-    if (hit) { state.value = hit; loading.value = false; return; }
     loading.value = true;
     const result = await fetchLatest(next);
     if (mine !== token) { return; }
-    cache.set(next, result);
     state.value = result;
     loading.value = false;
   }, { immediate: true });
@@ -63,13 +58,12 @@ export function useLatestReport(type: Ref<ReportType | undefined>) {
   return { state, loading };
 }
 
-/** Several types at once (the picker thumbnails): one reactive map, each type loaded through the same cache */
+/** Several types at once (the picker thumbnails): one reactive map, each type fetched fresh on every entry */
 export function useLatestByType(types: Ref<ReportType[]>) {
   const states = ref<Partial<Record<ReportType, LatestReport>>>({});
   watch(types, async list => {
     await Promise.all(list.map(async type => {
-      const result = cache.get(type) ?? await fetchLatest(type);
-      cache.set(type, result);
+      const result = await fetchLatest(type);
       states.value = { ...states.value, [type]: result };
     }));
   }, { immediate: true });
