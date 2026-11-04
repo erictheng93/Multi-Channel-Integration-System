@@ -156,6 +156,20 @@ describe('Conversations Store', () => {
       expect(callArgs.tagIds).toEqual([1, 2, 3])
     })
 
+    it('should pass unassigned=true (not teamId) for the unassigned lane', async () => {
+      mockConversationApi.list.mockResolvedValue({ success: true, data: [] })
+
+      const { useConversationsStore } = await import('./conversations')
+      const store = useConversationsStore()
+
+      store.filters.unassigned = true
+      await store.loadConversations()
+
+      const callArgs = mockConversationApi.list.mock.calls[0]?.[0] || {}
+      expect(callArgs.unassigned).toBe(true)
+      expect(callArgs.teamId).toBeUndefined()
+    })
+
     it('should not pass empty tagIds to API', async () => {
       const mockResponse = {
         success: true,

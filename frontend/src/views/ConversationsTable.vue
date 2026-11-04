@@ -35,7 +35,7 @@
           :now="clock"
           :team-names="teamNameById"
           :team-open="teamOpenById"
-          :selected-team="filterComposable.filters.value.teamId"
+          :selected-team="selectedLane"
           @open="goToConversation"
           @team="toggleTeam"
           @stale="selectView('stale')"
@@ -313,8 +313,15 @@ const teamOpenById = computed(() => new Map(
   (counts.value?.byTeam ?? []).map(t => [t.teamId ?? 0, t.open] as const)
 ))
 
+// Lane 0 = the unassigned pool, which is its own filter: teamId cannot express "no team"
+const selectedLane = computed(() => filterComposable.filters.value.unassigned
+  ? 0
+  : filterComposable.filters.value.teamId)
+
 function toggleTeam(filterId: number) {
-  filterComposable.updateFilter('teamId', filterComposable.filters.value.teamId === filterId ? undefined : filterId)
+  const next = selectedLane.value === filterId ? undefined : filterId
+  filterComposable.updateFilter('unassigned', next === 0 ? true : undefined)
+  filterComposable.updateFilter('teamId', next === 0 ? undefined : next)
 }
 
 // One short line; the queue itself is the board above the list

@@ -78,6 +78,8 @@ export interface ConversationListParams {
   status?: ConversationStatusForApi | ''
   platform?: Platform
   teamId?: number
+  /** true = only the unassigned shared pool (assigned_team_id IS NULL); teamId cannot express it */
+  unassigned?: boolean
   search?: string
   tagIds?: number[]
   customerName?: string
@@ -232,6 +234,9 @@ export function buildConversationQuery(params: ConversationListParams | Conversa
   }
   if (listParams.teamId) {
     queryParams.append('teamId', listParams.teamId.toString())
+  }
+  if (listParams.unassigned === true) {
+    queryParams.append('unassigned', 'true')
   }
   if (listParams.search) {
     queryParams.append('search', listParams.search)

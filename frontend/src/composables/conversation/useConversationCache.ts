@@ -101,6 +101,7 @@ export function useConversationCache(): ConversationCacheComposable {
     if (filters.platform) {filterParts.push(`platform=${filters.platform}`)}
     // Note: Individual assignment (assignedTo) removed - use teamId instead
     if (filters.teamId) {filterParts.push(`team=${filters.teamId}`)}
+    if (filters.unassigned) {filterParts.push('unassigned=1')}
     if (filters.tagIds && filters.tagIds.length > 0) {
       filterParts.push(`tags=${filters.tagIds.join(',')}`)
     }
