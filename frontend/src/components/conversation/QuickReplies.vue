@@ -108,7 +108,12 @@ const scrollMore = (): void => {
 }
 const onWheel = (e: WheelEvent): void => {
   const el = rail.value
-  if (el && hasMore.value && Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+  if (!el || Math.abs(e.deltaY) <= Math.abs(e.deltaX)) { return }
+  // Only take the wheel when the rail can move that way, so the page still scrolls at either edge
+  const canScroll = e.deltaY < 0
+    ? el.scrollLeft > 0
+    : el.scrollLeft + el.clientWidth < el.scrollWidth - 1
+  if (canScroll) {
     el.scrollLeft += e.deltaY
     e.preventDefault()
   }
