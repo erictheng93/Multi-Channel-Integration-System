@@ -6,135 +6,137 @@
     <div class="shell">
       <!-- Brand stage: the abrasive wheel with every channel converging on one hub -->
       <section class="stage">
-        <svg
-          class="motif"
-          viewBox="0 0 640 640"
-          aria-hidden="true"
-          focusable="false"
-        >
-          <defs>
-            <radialGradient
-              id="lg-band"
+        <div class="art">
+          <svg
+            class="motif"
+            viewBox="0 0 640 640"
+            aria-hidden="true"
+            focusable="false"
+          >
+            <defs>
+              <radialGradient
+                id="lg-band"
+                cx="320"
+                cy="320"
+                r="262"
+                gradientUnits="userSpaceOnUse"
+              >
+                <stop
+                  offset="0.42"
+                  stop-color="#1d5fd1"
+                  stop-opacity="0.95"
+                />
+                <stop
+                  offset="1"
+                  stop-color="#0b2f6b"
+                  stop-opacity="0.95"
+                />
+              </radialGradient>
+              <linearGradient
+                id="lg-hub"
+                x1="0"
+                y1="0"
+                x2="1"
+                y2="1"
+              >
+                <stop
+                  offset="0"
+                  stop-color="#ffffff"
+                />
+                <stop
+                  offset="1"
+                  stop-color="#c9dcf7"
+                />
+              </linearGradient>
+            </defs>
+            <g class="grit">
+              <path
+                :d="gritPath"
+                class="grit-ticks"
+              />
+            </g>
+            <circle
+              class="wheel-body"
               cx="320"
               cy="320"
               r="262"
-              gradientUnits="userSpaceOnUse"
-            >
-              <stop
-                offset="0.42"
-                stop-color="#1d5fd1"
-                stop-opacity="0.95"
-              />
-              <stop
-                offset="1"
-                stop-color="#0b2f6b"
-                stop-opacity="0.95"
-              />
-            </radialGradient>
-            <linearGradient
-              id="lg-hub"
-              x1="0"
-              y1="0"
-              x2="1"
-              y2="1"
-            >
-              <stop
-                offset="0"
-                stop-color="#ffffff"
-              />
-              <stop
-                offset="1"
-                stop-color="#c9dcf7"
-              />
-            </linearGradient>
-          </defs>
-          <g class="grit">
-            <path
-              :d="gritPath"
-              class="grit-ticks"
-            />
-          </g>
-          <circle
-            class="wheel-body"
-            cx="320"
-            cy="320"
-            r="262"
-            fill="url(#lg-band)"
-          />
-          <circle
-            class="wheel-edge"
-            cx="320"
-            cy="320"
-            r="262"
-          />
-          <circle
-            class="wheel-ring"
-            cx="320"
-            cy="320"
-            r="226"
-          />
-          <circle
-            class="wheel-ring"
-            cx="320"
-            cy="320"
-            r="190"
-          />
-          <circle
-            class="wheel-ring"
-            cx="320"
-            cy="320"
-            r="154"
-          />
-          <g
-            v-for="f in flows"
-            :key="f.id"
-          >
-            <path
-              :d="f.d"
-              class="flow"
-              :class="f.cls"
+              fill="url(#lg-band)"
             />
             <circle
-              :cx="f.x"
-              :cy="f.y"
-              r="7"
-              class="node"
-              :class="f.cls"
+              class="wheel-edge"
+              cx="320"
+              cy="320"
+              r="262"
             />
-          </g>
-          <circle
-            class="hub"
-            cx="320"
-            cy="320"
-            r="116"
-            fill="url(#lg-hub)"
-          />
-          <circle
-            class="hub-ring"
-            cx="320"
-            cy="320"
-            r="98"
-          />
-          <circle
-            v-for="b in bolts"
-            :key="b.id"
-            class="bolt"
-            :cx="b.x"
-            :cy="b.y"
-            r="7"
-          />
-          <circle
-            class="arbor"
-            cx="320"
-            cy="320"
-            r="52"
-          />
-          <path
-            class="arbor-glyph"
-            transform="translate(320 320) scale(1.9) translate(-12 -12)"
-            d="M12 3C6.5 3 2 6.6 2 11c0 2.5 1.4 4.7 3.7 6.2L5 21l4.1-2.3c.9.2 1.9.3 2.9.3 5.5 0 10-3.6 10-8s-4.5-8-10-8Z"
-          />
-        </svg>
+            <circle
+              class="wheel-ring"
+              cx="320"
+              cy="320"
+              r="226"
+            />
+            <circle
+              class="wheel-ring"
+              cx="320"
+              cy="320"
+              r="190"
+            />
+            <circle
+              class="wheel-ring"
+              cx="320"
+              cy="320"
+              r="154"
+            />
+            <g
+              v-for="f in flows"
+              :key="f.id"
+            >
+              <path
+                :d="f.d"
+                class="flow"
+                :class="f.cls"
+              />
+              <circle
+                :cx="f.x"
+                :cy="f.y"
+                r="7"
+                class="node"
+                :class="f.cls"
+              />
+            </g>
+            <circle
+              class="hub"
+              cx="320"
+              cy="320"
+              r="116"
+              fill="url(#lg-hub)"
+            />
+            <circle
+              class="hub-ring"
+              cx="320"
+              cy="320"
+              r="98"
+            />
+            <circle
+              v-for="b in bolts"
+              :key="b.id"
+              class="bolt"
+              :cx="b.x"
+              :cy="b.y"
+              r="7"
+            />
+            <circle
+              class="arbor"
+              cx="320"
+              cy="320"
+              r="52"
+            />
+            <path
+              class="arbor-glyph"
+              transform="translate(320 320) scale(1.9) translate(-12 -12)"
+              d="M12 3C6.5 3 2 6.6 2 11c0 2.5 1.4 4.7 3.7 6.2L5 21l4.1-2.3c.9.2 1.9.3 2.9.3 5.5 0 10-3.6 10-8s-4.5-8-10-8Z"
+            />
+          </svg>
+        </div>
 
         <div class="brand-top">
           <div class="brand-mark">
@@ -158,33 +160,6 @@
 
       <!-- Sign-in panel -->
       <section class="panel">
-        <button
-          type="button"
-          class="theme-btn"
-          :aria-label="isLightMode ? '切換至深色模式' : '切換至淺色模式'"
-          @click="toggleTheme"
-        >
-          <svg
-            v-if="isLightMode"
-            class="ico"
-            viewBox="0 0 24 24"
-          >
-            <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z" />
-          </svg>
-          <svg
-            v-else
-            class="ico"
-            viewBox="0 0 24 24"
-          >
-            <circle
-              cx="12"
-              cy="12"
-              r="4"
-            />
-            <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
-          </svg>
-        </button>
-
         <div class="auth">
           <h2>登入</h2>
           <p class="lede">
@@ -317,10 +292,38 @@
               <code>Loading: {{ loading }} | Valid: {{ isValid }} | Theme: {{ isLightMode ? 'light' : 'dark' }}</code>
             </div>
           </form>
+
+          <div class="auth-foot">
+            <span>Daiwan Abrasives Corp</span>
+            <button
+              type="button"
+              class="theme-btn"
+              :aria-label="isLightMode ? '切換至深色模式' : '切換至淺色模式'"
+              @click="toggleTheme"
+            >
+              <svg
+                v-if="isLightMode"
+                class="ico"
+                viewBox="0 0 24 24"
+              >
+                <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z" />
+              </svg>
+              <svg
+                v-else
+                class="ico"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  cx="12"
+                  cy="12"
+                  r="4"
+                />
+                <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
+              </svg>
+              <span>{{ isLightMode ? '深色模式' : '淺色模式' }}</span>
+            </button>
+          </div>
         </div>
-        <p class="panel-foot">
-          Daiwan Abrasives Corp
-        </p>
       </section>
     </div>
 
@@ -577,14 +580,24 @@ const handleLogin = async (event?: Event) => {
   color: #fff;
 }
 
-.motif {
+/* The dial sits whole in the space between the brand row and the copy; its lower
+   edge dissolves into the headline's quiet zone instead of running under the words. */
+.art {
   position: absolute;
   z-index: -1;
-  top: 24px;
-  right: -70px;
-  width: 580px;
-  height: 580px;
+  top: 64px;
+  right: 24px;
+  bottom: 280px;
+  left: 24px;
   pointer-events: none;
+}
+
+.motif {
+  display: block;
+  width: 100%;
+  height: 100%;
+  -webkit-mask-image: linear-gradient(to bottom, #000 74%, transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 74%, transparent 100%);
 }
 
 .grit {
@@ -714,13 +727,13 @@ const handleLogin = async (event?: Event) => {
 }
 
 .brand-copy h1 {
-  font: 700 60px/1.1 var(--ui-font-display);
+  font: 700 52px/1.12 var(--ui-font-display);
   letter-spacing: -0.04em;
 }
 
 .brand-copy p {
   max-width: 25em;
-  margin-top: 18px;
+  margin-top: 16px;
   text-wrap: pretty;
   font-size: 17px;
   line-height: 1.6;
@@ -731,7 +744,7 @@ const handleLogin = async (event?: Event) => {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
-  margin-top: 28px;
+  margin-top: 24px;
 }
 
 .chan {
@@ -769,47 +782,44 @@ const handleLogin = async (event?: Event) => {
 }
 
 .theme-btn {
-  position: absolute;
-  top: 24px;
-  right: 24px;
-  display: grid;
-  place-items: center;
-  width: 44px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   height: 44px;
+  padding: 0 16px 0 14px;
   border: 0;
-  border-radius: 50%;
-  background: var(--ui-surface);
-  box-shadow: var(--ui-shadow-pill);
+  border-radius: 999px;
+  background: var(--ui-fill);
+  font: 600 14px/1 var(--ui-font-ui);
   color: var(--ui-ink-2);
   cursor: pointer;
-  transition: box-shadow var(--ui-dur) var(--ui-ease);
+  transition: background var(--ui-dur) var(--ui-ease);
 }
 
 .theme-btn:hover {
-  box-shadow: var(--ui-shadow-raised);
+  background: var(--ui-sep);
 }
 
 .auth {
   width: min(420px, 100%);
-  margin: auto;
+  margin: 0 auto;
 }
 
-/* Sits on the same line as the channel chips on the stage */
-.panel-foot {
-  position: absolute;
-  right: 0;
-  bottom: 52px;
-  left: 0;
+/* Corp line and theme switch share one footer row directly under the form */
+.auth-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 36px;
   font-size: 13px;
   font-weight: 500;
-  line-height: 38px;
-  text-align: center;
-  color: var(--ui-ink-2);
+  color: var(--ui-muted);
 }
 
 .auth h2 {
-  font: 700 44px/1.15 var(--ui-font-display);
-  letter-spacing: -0.035em;
+  font: 700 36px/1.15 var(--ui-font-display);
+  letter-spacing: -0.03em;
 }
 
 .lede {
@@ -819,20 +829,20 @@ const handleLogin = async (event?: Event) => {
 }
 
 .auth :deep(.ui-field > label) {
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 600;
-  color: var(--ui-ink-2);
+  color: var(--ui-ink);
 }
 
 .auth .ui-input::placeholder {
-  color: var(--ui-placeholder);
+  color: var(--ui-muted);
   opacity: 1;
 }
 
 .auth form {
   display: grid;
-  gap: 18px;
-  margin-top: 32px;
+  gap: 22px;
+  margin-top: 36px;
 }
 
 .auth .ui-input {
@@ -964,27 +974,47 @@ const handleLogin = async (event?: Event) => {
 
   .stage {
     flex: none;
-    gap: 36px;
-    padding: 24px 24px 32px;
-    border-radius: 0 0 32px 32px;
+    gap: 18px;
+    min-height: 26vh;
+    min-height: 26dvh;
+    padding: 20px 24px 24px;
+    border-radius: 0 0 28px 28px;
+  }
+
+  /* A half dial that meets the right edge exactly: the crop is the composition */
+  .art {
+    top: -30px;
+    right: -104px;
+    bottom: auto;
+    left: auto;
+    width: 216px;
+    height: 216px;
   }
 
   .motif {
-    top: -46px;
-    right: -140px;
-    width: 340px;
-    height: 340px;
+    -webkit-mask-image: none;
+    mask-image: none;
   }
 
   .brand-mark {
-    width: 44px;
-    height: 44px;
-    border-radius: 14px;
+    width: 40px;
+    height: 40px;
+    border-radius: 13px;
+  }
+
+  .brand-mark svg {
+    width: 22px;
+    height: 22px;
   }
 
   .brand-copy h1 {
-    font-size: 32px;
+    font-size: 28px;
     line-height: 1.15;
+    white-space: nowrap;
+  }
+
+  .brand-copy h1 br {
+    display: none;
   }
 
   .brand-copy p {
@@ -992,70 +1022,57 @@ const handleLogin = async (event?: Event) => {
   }
 
   .channels {
-    flex-direction: column;
-    align-items: flex-start;
+    flex-wrap: nowrap;
     gap: 8px;
-    margin-top: 18px;
+    margin-top: 14px;
   }
 
   .chan {
-    height: 34px;
+    height: 32px;
+    gap: 6px;
+    padding: 0 12px 0 8px;
+    font-size: 13px;
+    white-space: nowrap;
   }
 
   .panel {
     flex: 1;
-    padding: 32px 24px 40px;
-  }
-
-  .auth {
-    margin: 0 auto;
-  }
-
-  .theme-btn {
-    top: 28px;
-    right: 24px;
-  }
-
-  .panel-foot {
-    position: static;
-    margin-top: auto;
-    padding-top: 28px;
-    line-height: 1.4;
+    justify-content: center;
+    padding: 32px 24px 36px;
   }
 
   .auth h2 {
-    font-size: 32px;
+    font-size: 30px;
+  }
+
+  .auth form {
+    margin-top: 30px;
+  }
+
+  .auth-foot {
+    margin-top: 28px;
   }
 }
 
 /* Tablet: a roomier band and the form centred in the remaining height */
 @media (min-width: 641px) and (max-width: 1024px) {
   .stage {
-    padding: 32px 40px 40px;
+    padding: 32px 40px 36px;
   }
 
-  .motif {
-    top: -70px;
-    right: -90px;
-    width: 460px;
-    height: 460px;
+  .art {
+    top: 24px;
+    right: -110px;
+    width: 280px;
+    height: 280px;
   }
 
   .brand-copy h1 {
-    font-size: 44px;
+    font-size: 40px;
   }
 
   .panel {
     padding: 40px;
-  }
-
-  .auth {
-    margin: auto;
-  }
-
-  .theme-btn {
-    top: 20px;
-    right: 24px;
   }
 }
 </style>
