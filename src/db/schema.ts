@@ -307,7 +307,12 @@ export const notifications = sqliteTable('notifications', {
   expiresAt: text('expires_at'),
   createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
   updatedAt: text('updated_at'),
-});
+}, (table) => ({
+  // Migration 0074: unread count / recent (bell poll) and the list page read
+  // in index order, so LIMIT stops early instead of sorting every row.
+  userReadCreatedIdx: index('idx_notifications_user_read_created').on(table.userId, table.isRead, table.createdAt),
+  userCreatedIdx: index('idx_notifications_user_created').on(table.userId, table.createdAt),
+}));
 
 // Tags table - 標籤系統
 // SEMANTIC CONTRACT: isActive=false → temporarily disabled (recoverable)
