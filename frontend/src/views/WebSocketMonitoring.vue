@@ -688,8 +688,12 @@ function checkAlerts(current: Metrics, health: string | null) {
 
 function addAlert(alert: Alert) {
   // 避免重複添加相同 ID 的告警
-  if (!alerts.value.find(a => a.id === alert.id)) {
+  const index = alerts.value.findIndex(a => a.id === alert.id)
+  if (index === -1) {
     alerts.value.unshift(alert)
+  } else if (alerts.value[index]?.severity !== alert.severity) {
+    // Same condition escalated or eased (degraded <-> unhealthy): update in place
+    alerts.value[index] = alert
   }
 }
 
