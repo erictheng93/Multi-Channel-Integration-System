@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
+import { nextTick } from 'vue'
 import { mount } from '@vue/test-utils'
 import type { WaitingConversation } from '@shared/api-contracts'
 import ConversationQueueBoard from './ConversationQueueBoard.vue'
@@ -54,6 +55,33 @@ describe('ConversationQueueBoard', () => {
     const calm = mountBoard([])
     expect(calm.find('.board').exists()).toBe(false)
     expect(calm.text()).toContain('都有人回覆了')
+  })
+
+  it('observes the time axis even when the lanes only appear after mount', async () => {
+    const observe = vi.fn()
+    const unobserve = vi.fn()
+    const disconnect = vi.fn()
+    class FakeObserver {
+      observe = observe
+      unobserve = unobserve
+      disconnect = disconnect
+    }
+    vi.stubGlobal('ResizeObserver', FakeObserver)
+    try {
+      const wrapper = mountBoard([])
+      expect(observe).not.toHaveBeenCalled()
+      await wrapper.setProps({ items: [item('a', '林', 5, 1)], total: 1 })
+      await nextTick()
+      expect(observe).toHaveBeenCalledTimes(1)
+      expect(observe.mock.calls[0]?.[0]).toBe(wrapper.find('.axis-track').element)
+      await wrapper.setProps({ items: [], total: 0 })
+      await nextTick()
+      expect(unobserve).toHaveBeenCalledTimes(1)
+      wrapper.unmount()
+      expect(disconnect).toHaveBeenCalled()
+    } finally {
+      vi.unstubAllGlobals()
+    }
   })
 
   it('never disables the primary action and hides it when nobody waits', () => {

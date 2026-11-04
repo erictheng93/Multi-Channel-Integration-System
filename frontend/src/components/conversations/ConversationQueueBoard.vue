@@ -147,7 +147,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import type { WaitingConversation } from '@shared/api-contracts'
 import { formatWaitText } from '@/composables/dashboard/useDashboardOverview'
 import { UNREAD_HINT, WAITING_HINT, avatarToneOf, initialOf, platformName } from '@/composables/conversation/useConversationRowMeta'
@@ -190,13 +190,16 @@ const trackW = ref(640)
 const axisEl = ref<HTMLElement | null>(null)
 let observer: globalThis.ResizeObserver | null = null
 const measure = () => { if (axisEl.value) { trackW.value = Math.max(240, axisEl.value.clientWidth) } }
-onMounted(() => {
+// The axis lives under v-if="lanes.length > 0", so it can appear, disappear and reappear after mount
+watch(axisEl, (el, old) => {
+  if (old) { observer?.unobserve(old) }
+  if (!el) { return }
   measure()
-  if (axisEl.value && typeof window.ResizeObserver !== 'undefined') {
-    observer = new window.ResizeObserver(measure)
-    observer.observe(axisEl.value)
+  if (typeof window.ResizeObserver !== 'undefined') {
+    observer ??= new window.ResizeObserver(measure)
+    observer.observe(el)
   }
-})
+}, { flush: 'post', immediate: true })
 onBeforeUnmount(() => observer?.disconnect())
 
 const xOfStep = (step: number): number => PAD + (step / LAST) * (trackW.value - 2 * PAD)
