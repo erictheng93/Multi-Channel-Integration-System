@@ -49,78 +49,78 @@ app.get('/info', (c) => {
 
 // 獲取通知統計
 app.get('/stats', jwtAuth, async (c) => {
-  const handlers = createNotificationHandlerMethods(c.env.DB, c.env.CACHE);
+  const handlers = createNotificationHandlerMethods(c.env.DB);
   return handlers.getStats(c);
 });
 
 // 獲取未讀數量
 app.get('/unread-count', jwtAuth, async (c) => {
-  const handlers = createNotificationHandlerMethods(c.env.DB, c.env.CACHE);
+  const handlers = createNotificationHandlerMethods(c.env.DB);
   return handlers.getUnreadCount(c);
 });
 
 // 獲取最近通知
 app.get('/recent', jwtAuth, async (c) => {
-  const handlers = createNotificationHandlerMethods(c.env.DB, c.env.CACHE);
+  const handlers = createNotificationHandlerMethods(c.env.DB);
   return handlers.getRecent(c);
 });
 
 // 批量創建通知
 app.post('/bulk', jwtAuth, async (c) => {
-  const handlers = createNotificationHandlerMethods(c.env.DB, c.env.CACHE);
+  const handlers = createNotificationHandlerMethods(c.env.DB);
   return handlers.createBulk(c);
 });
 
 // 通道統計
 app.get('/channels/stats', jwtAuth, async (c) => {
-  const handlers = createNotificationHandlerMethods(c.env.DB, c.env.CACHE);
+  const handlers = createNotificationHandlerMethods(c.env.DB);
   return handlers.getChannelStats(c);
 });
 
 // 批量標記已讀
 app.put('/mark-all-read', jwtAuth, async (c) => {
-  const handlers = createNotificationHandlerMethods(c.env.DB, c.env.CACHE);
+  const handlers = createNotificationHandlerMethods(c.env.DB);
   return handlers.markAllAsRead(c);
 });
 
 // 清理過期通知
 app.delete('/cleanup', jwtAuth, async (c) => {
-  const handlers = createNotificationHandlerMethods(c.env.DB, c.env.CACHE);
+  const handlers = createNotificationHandlerMethods(c.env.DB);
   return handlers.cleanup(c);
 });
 
 // 新訊息通知
 app.post('/new-message', jwtAuth, async (c) => {
-  const handlers = createNotificationHandlerMethods(c.env.DB, c.env.CACHE);
+  const handlers = createNotificationHandlerMethods(c.env.DB);
   return handlers.notifyNewMessage(c);
 });
 
 // 對話指派通知
 app.post('/conversation-assigned', jwtAuth, async (c) => {
-  const handlers = createNotificationHandlerMethods(c.env.DB, c.env.CACHE);
+  const handlers = createNotificationHandlerMethods(c.env.DB);
   return handlers.notifyConversationAssigned(c);
 });
 
 // 系統通知
 app.post('/system', jwtAuth, async (c) => {
-  const handlers = createNotificationHandlerMethods(c.env.DB, c.env.CACHE);
+  const handlers = createNotificationHandlerMethods(c.env.DB);
   return handlers.notifySystem(c);
 });
 
 // 通知設定
 app.get('/settings', jwtAuth, async (c) => {
-  const handlers = createNotificationHandlerMethods(c.env.DB, c.env.CACHE);
+  const handlers = createNotificationHandlerMethods(c.env.DB);
   return handlers.getSettings(c);
 });
 
 app.put('/settings', jwtAuth, async (c) => {
-  const handlers = createNotificationHandlerMethods(c.env.DB, c.env.CACHE);
+  const handlers = createNotificationHandlerMethods(c.env.DB);
   return handlers.updateSettings(c);
 });
 
 // 系統公告廣播 (Admin Only)
 app.post('/broadcast', jwtAuth, async (c) => {
-  const handlers = createNotificationHandlerMethods(c.env.DB, c.env.CACHE);
+  const handlers = createNotificationHandlerMethods(c.env.DB);
   return handlers.broadcast(c);
 });
 
@@ -128,7 +128,7 @@ app.post('/broadcast', jwtAuth, async (c) => {
 
 // 測試通道
 app.post('/channels/:channelType/test', jwtAuth, async (c) => {
-  const handlers = createNotificationHandlerMethods(c.env.DB, c.env.CACHE);
+  const handlers = createNotificationHandlerMethods(c.env.DB);
   return handlers.testChannel(c);
 });
 
@@ -136,7 +136,7 @@ app.post('/channels/:channelType/test', jwtAuth, async (c) => {
 
 // 標記為已讀
 app.put('/:id/read', jwtAuth, async (c) => {
-  const handlers = createNotificationHandlerMethods(c.env.DB, c.env.CACHE);
+  const handlers = createNotificationHandlerMethods(c.env.DB);
   return handlers.markAsRead(c);
 });
 
@@ -144,13 +144,13 @@ app.put('/:id/read', jwtAuth, async (c) => {
 
 // 獲取單個通知
 app.get('/:id', jwtAuth, async (c) => {
-  const handlers = createNotificationHandlerMethods(c.env.DB, c.env.CACHE);
+  const handlers = createNotificationHandlerMethods(c.env.DB);
   return handlers.getById(c);
 });
 
 // 刪除通知
 app.delete('/:id', jwtAuth, async (c) => {
-  const handlers = createNotificationHandlerMethods(c.env.DB, c.env.CACHE);
+  const handlers = createNotificationHandlerMethods(c.env.DB);
   return handlers.delete(c);
 });
 
@@ -158,13 +158,13 @@ app.delete('/:id', jwtAuth, async (c) => {
 
 // 獲取通知列表
 app.get('/', jwtAuth, async (c) => {
-  const handlers = createNotificationHandlerMethods(c.env.DB, c.env.CACHE);
+  const handlers = createNotificationHandlerMethods(c.env.DB);
   return handlers.list(c);
 });
 
 // 創建通知
 app.post('/', jwtAuth, async (c) => {
-  const handlers = createNotificationHandlerMethods(c.env.DB, c.env.CACHE);
+  const handlers = createNotificationHandlerMethods(c.env.DB);
   return handlers.create(c);
 });
 
