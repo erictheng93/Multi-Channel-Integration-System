@@ -39,6 +39,12 @@ interface NotificationRow {
   updated_at?: string | null;
 }
 
+// D1 reports affected rows in meta.changes; drizzle passes the D1Result through, so
+// result.changes is always undefined (mark-read and delete used to return 404 after succeeding).
+function changedRows(result: unknown): number {
+  return (result as { meta?: { changes?: number } }).meta?.changes ?? 0;
+}
+
 export class NotificationRepository {
   private db: DbCompat;
 
@@ -213,7 +219,7 @@ export class NotificationRepository {
         eq(notifications.userId, userId.toString())
       ));
 
-    return (result.changes ?? 0) > 0;
+    return changedRows(result) > 0;
   }
 
   async markAllAsRead(userId: string | number, type?: NotificationType): Promise<number> {
@@ -235,7 +241,7 @@ export class NotificationRepository {
       })
       .where(and(...whereConditions));
 
-    return result.changes || 0;
+    return changedRows(result);
   }
 
   async delete(id: string, userId: string | number): Promise<boolean> {
@@ -246,7 +252,7 @@ export class NotificationRepository {
         eq(notifications.userId, userId.toString())
       ));
 
-    return (result.changes ?? 0) > 0;
+    return changedRows(result) > 0;
   }
 
   async deleteExpired(): Promise<number> {
@@ -254,7 +260,7 @@ export class NotificationRepository {
       .delete(notifications)
       .where(sql`expires_at IS NOT NULL AND expires_at <= datetime('now')`);
 
-    return result.changes || 0;
+    return changedRows(result);
   }
 
   async getUnreadCount(userId: string | number, type?: NotificationType): Promise<number> {
