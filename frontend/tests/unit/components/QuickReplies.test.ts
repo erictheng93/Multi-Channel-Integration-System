@@ -468,4 +468,35 @@ describe('QuickReplies', () => {
       expect(wrapper.emitted('select')).toHaveLength(3)
     })
   })
+
+  describe('Wheel scrolling', () => {
+    const wheel = (scrollLeft: number, deltaY: number): { prevented: boolean; scrollLeft: number } => {
+      const wrapper = mount(QuickReplies, { props: { replies: mockReplies } })
+      const rail = wrapper.find('.quick-replies').element as HTMLElement
+      Object.defineProperty(rail, 'scrollWidth', { value: 500, configurable: true })
+      Object.defineProperty(rail, 'clientWidth', { value: 200, configurable: true })
+      rail.scrollLeft = scrollLeft
+      const event = new WheelEvent('wheel', { deltaY, deltaX: 0, cancelable: true, bubbles: true })
+      rail.dispatchEvent(event)
+      return { prevented: event.defaultPrevented, scrollLeft: rail.scrollLeft }
+    }
+
+    it('scrolls back left with a negative wheel at the right end', () => {
+      const result = wheel(300, -40)
+      expect(result.prevented).toBe(true)
+      expect(result.scrollLeft).toBe(260)
+    })
+
+    it('lets the page scroll up when the rail is already at the left edge', () => {
+      expect(wheel(0, -40).prevented).toBe(false)
+    })
+
+    it('lets the page scroll down when the rail is already at the right edge', () => {
+      expect(wheel(300, 40).prevented).toBe(false)
+    })
+
+    it('scrolls right with a positive wheel while more chips remain', () => {
+      expect(wheel(0, 40).prevented).toBe(true)
+    })
+  })
 })
