@@ -4,7 +4,7 @@
 import { Hono } from 'hono';
 import { HTTP_STATUS } from '@/constants/http-status';
 import { globalErrorHandler } from '@/core/error-handler';
-import { eq, desc, asc, and, or, like, sql, count, type SQL } from 'drizzle-orm';
+import { eq, desc, asc, and, or, like, sql, count, isNull, type SQL } from 'drizzle-orm';
 import { createDbClient } from '@/db/drizzle-factory';
 import { conversations, customers, teams } from '@/db/schema';
 import type { Bindings } from '@/types';
@@ -526,6 +526,9 @@ conversationQueriesHandler.get('/', jwtAuth, async (c) => {
     const teamIdParam = c.req.query('teamId');
     const teamIdQuery = teamIdParam ? Number.parseInt(teamIdParam, 10) : undefined;
 
+    // unassigned=true: only the shared pool. Still ANDed with the visibility condition below.
+    const unassignedOnly = c.req.query('unassigned')?.trim() === 'true';
+
     const customerNameQuery = c.req.query('customerName')?.trim() || '';
     const updatedAfter = c.req.query('updatedAfter')?.trim() || '';
     const updatedBefore = c.req.query('updatedBefore')?.trim() || '';
@@ -567,7 +570,8 @@ conversationQueriesHandler.get('/', jwtAuth, async (c) => {
       ...(platformQuery ? [sql`${customers.platform} = ${platformQuery}`] : []),
       ...(teamIdQuery !== undefined && Number.isFinite(teamIdQuery)
         ? [sql`${conversations.assignedTeamId} = ${teamIdQuery}`]
-        : [])
+        : []),
+      ...(unassignedOnly ? [isNull(conversations.assignedTeamId)] : [])
     ];
 
     const listFilter = and(...listConditions);

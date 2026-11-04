@@ -92,4 +92,11 @@ describe('awaiting=stale list (逾期待回覆)', () => {
     expect(buildConversationQuery({ awaiting: 'stale', page: 1, pageSize: 20 })).toContain('awaiting=stale');
     expect(buildConversationQuery({ page: 1 })).not.toContain('awaiting');
   });
+
+  it('serializes the unassigned lane as unassigned=true, never teamId=0', () => {
+    const q = buildConversationQuery({ unassigned: true, page: 1 });
+    expect(q).toContain('unassigned=true');
+    expect(q).not.toContain('teamId');
+    expect(buildConversationQuery({ page: 1 })).not.toContain('unassigned');
+  });
 });

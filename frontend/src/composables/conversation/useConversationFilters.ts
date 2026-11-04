@@ -52,6 +52,7 @@ const DEFAULT_FILTERS: ConversationFilters = {
   status: '',
   platform: '',
   teamId: undefined,
+  unassigned: undefined,
   tagIds: [],
   search: '',
   customerName: '',
@@ -77,6 +78,7 @@ export function useConversationFilters(): ConversationFiltersComposable {
       filters.value.status !== '' ||
       filters.value.platform !== '' ||
       filters.value.teamId !== undefined ||
+      filters.value.unassigned === true ||
       (filters.value.tagIds !== undefined && filters.value.tagIds.length > 0) ||
       (filters.value.search !== undefined && filters.value.search.trim() !== '') ||
       (filters.value.customerName !== undefined && filters.value.customerName.trim() !== '') ||

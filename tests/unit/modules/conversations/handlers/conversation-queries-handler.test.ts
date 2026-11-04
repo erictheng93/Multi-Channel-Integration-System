@@ -1,5 +1,7 @@
 import Database from 'better-sqlite3';
 import { Hono, type Context, type Next } from 'hono';
+import { SQLiteSyncDialect } from 'drizzle-orm/sqlite-core';
+import type { SQL } from 'drizzle-orm';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Bindings } from '@/types';
 
@@ -396,6 +398,25 @@ describe('conversation list pagination', () => {
     const pageChain = mockDrizzle.chains[0];
     expect(pageChain?.limit).toHaveBeenCalledWith(20);
     expect(pageChain?.offset).toHaveBeenCalledWith(40);
+  });
+
+  it('unassigned=true adds IS NULL on top of the visibility condition; teamId=0 adds nothing useful', async () => {
+    const whereSql = async (qs: string): Promise<string> => {
+      const mockDrizzle = createMockDrizzle([createConversationRows(1), [{ value: 1 }]]);
+      handlerMocks.createDbClient.mockReturnValue(mockDrizzle);
+      const d1 = createMockD1();
+      const res = await makeApp({ DB: d1.db } as unknown as Bindings).request(`/api/conversations?page=1&${qs}`);
+      expect(res.status).toBe(200);
+      const where = mockDrizzle.chains[0]?.where as ReturnType<typeof vi.fn>;
+      return new SQLiteSyncDialect().sqlToQuery(where.mock.calls[0]?.[0] as SQL).sql;
+    };
+
+    const plain = await whereSql('scope=open');
+    const unassigned = await whereSql('scope=open&unassigned=true');
+    // Visibility (agent with no teams) already contributes one IS NULL; the filter adds a second, ANDed.
+    const nullCount = (q: string) => (q.match(/"assigned_team_id" is null/gi) ?? []).length;
+    expect(nullCount(unassigned)).toBe(nullCount(plain) + 1);
+    expect(await whereSql('scope=open&unassigned=false')).toBe(plain);
   });
 
   it('does not limit the query when the caller sends no pagination params', async () => {

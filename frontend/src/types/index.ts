@@ -81,6 +81,7 @@ export interface ConversationFilters {
   status?: 'active' | 'assigned' | 'pending' | '' | undefined;
   // Note: assignedTo removed - only team-based filtering is supported now
   teamId?: number | undefined; // 團隊篩選
+  unassigned?: boolean; // 只看未指派（共用池）；teamId 無法表達 NULL
   platform?: Platform | '' | undefined;
   tagIds?: number[];  // 標籤篩選
   search?: string; // 搜尋關鍵字 (客戶名稱、訊息內容)
