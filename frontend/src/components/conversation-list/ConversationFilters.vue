@@ -121,9 +121,8 @@
           class="trigger-stats"
           title="目前列表顯示的對話數"
         >
-          <span class="stat-label">顯示</span>
           <span class="stat-num">{{ totalConversations }}</span>
-          <span class="stat-label">件</span>
+          <span class="stat-label">件對話</span>
         </div>
         <div
           v-if="unreadCount > 0"
@@ -132,6 +131,8 @@
           <span class="stat-num">{{ unreadCount }}</span>
           <span class="stat-label">未讀</span>
         </div>
+
+        <span class="trigger-filter-label">篩選</span>
 
         <!-- Expand chevron -->
         <svg
@@ -737,7 +738,8 @@ function clearAll() {
 }
 
 .trigger-stats {
-  display: flex;
+  /* the tabs above already carry the counts; an unlabelled number beside the search read as noise */
+  display: none;
   align-items: baseline;
   gap: 4px;
   font-size: 13px;
@@ -754,10 +756,22 @@ function clearAll() {
   color: var(--ui-accent);
 }
 
+.trigger-filter-label {
+  display: inline-flex;
+  align-items: center;
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: var(--ui-fill);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ui-ink);
+}
+
 .trigger-chevron {
   width: 16px;
   height: 16px;
-  color: var(--ui-faint);
+  color: var(--ui-muted);
   transition: transform var(--ui-dur) var(--ui-ease);
 }
 
@@ -1049,9 +1063,4 @@ function clearAll() {
   }
 }
 
-@media (max-width: 480px) {
-  .trigger-stats {
-    display: none;
-  }
-}
 </style>

@@ -42,12 +42,12 @@
             :value="description"
             class="ui-textarea"
             placeholder="輸入報表描述"
-            rows="3"
+            rows="1"
             @input="$emit('update:description', ($event.target as HTMLTextAreaElement).value)"
           />
         </div>
 
-        <div class="ui-field">
+        <div class="ui-field span-all">
           <span
             id="timeRangeLabel"
             class="field-label"
@@ -62,9 +62,10 @@
               :key="option.value"
               type="button"
               :aria-pressed="timeRange === option.value"
+              :aria-label="option.label"
               @click="pickRange(option.value)"
             >
-              {{ option.label }}
+              {{ shortLabel(option.label) }}
             </button>
             <button
               type="button"
@@ -73,7 +74,7 @@
               aria-controls="more-ranges"
               @click="moreOpen = !moreOpen"
             >
-              {{ moreRangeActive ? moreRangeLabel : '更多' }}
+              {{ moreRangeActive ? shortLabel(moreRangeLabel) : '其他' }}
             </button>
           </div>
           <ReportChoiceGroup
@@ -82,11 +83,17 @@
             class="more-ranges"
             :model-value="timeRange"
             :options="otherRanges"
-            label="更多時間範圍"
+            label="其他時間範圍"
             compact
             :columns="3"
             @update:model-value="emit('update:timeRange', $event as ReportTimeRange)"
           />
+          <p
+            v-if="rangeSpan"
+            class="field-hint range-span"
+          >
+            統計 {{ rangeSpan }}
+          </p>
           <p
             v-if="errors.timeRange"
             class="error-message"
@@ -97,7 +104,7 @@
 
         <div
           v-if="timeRange === 'custom'"
-          class="ui-field"
+          class="ui-field span-all"
         >
           <label for="startDate">自訂日期範圍</label>
           <div class="date-range">
@@ -161,9 +168,6 @@
       >
         {{ errors.format }}
       </p>
-    </section>
-
-    <section class="ui-card step-card">
       <button
         type="button"
         class="adv-toggle"
@@ -171,7 +175,6 @@
         aria-controls="advanced-body"
         @click="advancedOpen = !advancedOpen"
       >
-        <span class="step-n">4</span>
         <span class="adv-text">
           <span class="ui-card-title">進階選項<span class="adv-tag">選填</span></span>
           <span class="ui-card-sub">{{ advancedSummary }}</span>
@@ -372,7 +375,25 @@ const COMMON_RANGES = ['last_24_hours', 'last_7_days', 'last_30_days', 'last_90_
 const commonRanges = computed(() => timeRangeOptions.value.filter(o => COMMON_RANGES.includes(o.value)));
 const otherRanges = computed(() => timeRangeOptions.value.filter(o => !COMMON_RANGES.includes(o.value)));
 const moreOpen = ref(false);
+// 過去30天 -> 30天: the control stays on one row at phone width, the full label stays in aria-label
+const shortLabel = (label: string) => label.replace(/^過去/, '');
 const advancedOpen = ref(false);
+// The calendar span the chosen range covers, so "30天" is never abstract
+const DAYS = new Map<string, number>([['last_24_hours', 1], ['last_7_days', 7], ['last_30_days', 30], ['last_90_days', 90]]);
+const spanFmt = new Intl.DateTimeFormat('zh-TW', { timeZone: 'Asia/Taipei', month: 'numeric', day: 'numeric' });
+const rangeSpan = computed(() => {
+  const end = new Date();
+  let start: Date | null = null;
+  let days = DAYS.get(props.timeRange) ?? 0;
+  if (days) {
+    start = new Date(end.getTime() - days * 864e5);
+  } else if (props.timeRange === 'current_month') {
+    const tpe = new Date(end.getTime() + 8 * 36e5);
+    start = new Date(Date.UTC(tpe.getUTCFullYear(), tpe.getUTCMonth(), 1) - 8 * 36e5);
+    days = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / 864e5));
+  }
+  return start ? `${spanFmt.format(start)} – ${spanFmt.format(end)} ・ 共 ${days} 天` : '';
+});
 // Steps 2 and 3 read as done once the report has a title (the format always has a value)
 const stepTwoDone = computed(() => props.title.trim().length > 0);
 const advancedSummary = computed(() => {
@@ -411,24 +432,34 @@ const updateOption = (key: string, value: unknown) => {
 .range-seg {
   display: flex;
   flex-wrap: wrap;
-  width: fit-content;
-  max-width: 100%;
+  width: 100%;
+}
+
+.range-seg {
+  gap: 4px;
+  padding: 4px;
+}
+
+.range-seg > button {
+  flex: 1 1 0;
+  justify-content: center;
+  height: 40px;
+  font-size: 14px;
+  font-weight: 600;
 }
 
 .more-ranges {
   margin-top: 10px;
 }
 
-@media (max-width: 768px) {
-  .range-seg {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    width: 100%;
-  }
+.parameter-form .ui-textarea {
+  min-height: 44px;
+}
 
+@media (max-width: 768px) {
   .range-seg > button {
     justify-content: center;
-    padding: 0 6px;
+    padding: 0 4px;
   }
 }
 
@@ -440,31 +471,31 @@ const updateOption = (key: string, value: unknown) => {
 .step-n {
   display: grid;
   flex: none;
-  width: 26px;
-  height: 26px;
+  width: 32px;
+  height: 32px;
   place-items: center;
   border-radius: 50%;
-  background: var(--ui-fill);
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--ui-muted);
-}
-
-.step-n.done {
-  background: var(--ui-accent);
-  font-size: 0;
+  background: var(--ui-ink);
+  font: 700 15px / 1 var(--ui-font-display);
   color: #fff;
 }
 
-.step-n.done::after {
-  font-size: 13px;
-  content: '\2713';
+/* A satisfied step turns brand blue and keeps its number: a tick means finished work, and nothing is finished before the report exists */
+.step-n.done {
+  background: var(--ui-accent);
+  color: #fff;
 }
 
 .step-body {
   display: grid;
-  gap: 16px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: 16px 20px;
   padding: 4px 22px 22px;
+}
+
+.span-all {
+  grid-column: 1 / -1;
 }
 
 .req {
@@ -507,6 +538,10 @@ const updateOption = (key: string, value: unknown) => {
   color: var(--ui-ink-2);
 }
 
+.range-span {
+  font-variant-numeric: tabular-nums;
+}
+
 .field-hint {
   margin: 0;
   font-size: 13px;
@@ -515,13 +550,15 @@ const updateOption = (key: string, value: unknown) => {
 
 .adv-toggle {
   display: flex;
-  width: 100%;
+  width: calc(100% - 44px);
+  margin: 0 22px;
   align-items: center;
   gap: 12px;
-  padding: 18px 22px;
+  padding: 16px 0 18px;
   border: 0;
-  border-radius: inherit;
-  background: none;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: 0 -0.5px 0 var(--ui-sep);
   color: inherit;
   font: inherit;
   text-align: left;
@@ -541,7 +578,7 @@ const updateOption = (key: string, value: unknown) => {
 }
 
 .adv-text .ui-card-title {
-  font: 600 17px / 1.25 var(--ui-font-display);
+  font: 600 15px / 1.25 var(--ui-font-display);
   letter-spacing: -0.01em;
 }
 
@@ -615,13 +652,19 @@ const updateOption = (key: string, value: unknown) => {
 
 @media (max-width: 768px) {
   .adv-toggle {
-    padding: 16px;
+    width: calc(100% - 32px);
+    margin: 0 16px;
+    padding: 14px 0 16px;
   }
 
   .step-body,
   .adv-grid {
     padding-right: 16px;
     padding-left: 16px;
+  }
+
+  .step-body {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .adv-grid {
@@ -635,6 +678,11 @@ const updateOption = (key: string, value: unknown) => {
   .format-options {
     padding-right: 16px;
     padding-left: 16px;
+  }
+
+  /* Two formats sit side by side: a shorter phone form */
+  .format-options :deep(.choice-group) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 

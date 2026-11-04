@@ -13,7 +13,10 @@
 
       <div class="conversation-info">
         <div class="customer-details">
-          <div class="customer-avatar">
+          <div
+            class="customer-avatar"
+            :class="`ui-av-${avatarToneOf(conversation?.customer?.name || conversation?.user?.name || '未知用戶')}`"
+          >
             {{ customerInitials }}
           </div>
           <div class="customer-meta">
@@ -55,77 +58,80 @@
     </div>
 
     <div class="header-actions">
-      <!-- 指派管理按鈕 - Redesigned -->
-      <div
-        v-if="conversation"
-        class="assign-action-wrapper"
-      >
-        <!-- Note: Individual assignment (assignedUserId) removed - only team-based assignment is supported now -->
-        <button
-          class="assign-action-btn"
-          :class="{
-            'has-assignment': conversation.assignedTeamId,
-            'opened': showAssignPanel
-          }"
-          @click="toggleAssignPanel"
-        >
-          <!-- Status Indicator Dot -->
-          <span
-            class="status-dot"
-            :class="{ 'active': conversation.assignedTeamId }"
-          />
-
-          <!-- User Icon with Animation Container -->
-          <span class="icon-container">
-            <UserPlusIcon class="action-icon" />
-          </span>
-
-          <!-- Text with Truncation -->
-          <span class="button-text">
-            <span v-if="conversation.assignedTeamId && conversation.assignedTeam?.name">
-              {{ conversation.assignedTeam.name }}
-            </span>
-            <span v-else>指派管理</span>
-          </span>
-
-          <!-- Dropdown Icon with Smooth Rotation -->
-          <span class="chevron-container">
-            <ChevronDownIcon
-              :class="showAssignPanel ? 'dropdown-icon rotated' : 'dropdown-icon'"
-            />
-          </span>
-        </button>
-      </div>
-
-      <!-- 指派面板 - 使用 Teleport 移到 body 層級 -->
-      <Teleport to="body">
+      <!-- Routing tools (team + tags) read as one grouped control -->
+      <div class="action-group">
+        <!-- 指派管理按鈕 - Redesigned -->
         <div
-          v-if="showAssignPanel && conversation"
-          ref="assignPanelRef"
-          class="assign-panel-dropdown"
-          :style="assignPanelStyle"
-          @click.stop
+          v-if="conversation"
+          class="assign-action-wrapper"
         >
-          <AdvancedAssignActions
-            :conversation="conversation"
-            @assigned="handleAssigned"
-            @unassigned="handleUnassigned"
-            @error="handleAssignError"
+          <!-- Note: Individual assignment (assignedUserId) removed - only team-based assignment is supported now -->
+          <button
+            class="assign-action-btn"
+            :class="{
+              'has-assignment': conversation.assignedTeamId,
+              'opened': showAssignPanel
+            }"
+            @click="toggleAssignPanel"
+          >
+            <!-- Status Indicator Dot -->
+            <span
+              class="status-dot"
+              :class="{ 'active': conversation.assignedTeamId }"
+            />
+
+            <!-- User Icon with Animation Container -->
+            <span class="icon-container">
+              <UserPlusIcon class="action-icon" />
+            </span>
+
+            <!-- Text with Truncation -->
+            <span class="button-text">
+              <span v-if="conversation.assignedTeamId && conversation.assignedTeam?.name">
+                {{ conversation.assignedTeam.name }}
+              </span>
+              <span v-else>指派管理</span>
+            </span>
+
+            <!-- Dropdown Icon with Smooth Rotation -->
+            <span class="chevron-container">
+              <ChevronDownIcon
+                :class="showAssignPanel ? 'dropdown-icon rotated' : 'dropdown-icon'"
+              />
+            </span>
+          </button>
+        </div>
+
+        <!-- 指派面板 - 使用 Teleport 移到 body 層級 -->
+        <Teleport to="body">
+          <div
+            v-if="showAssignPanel && conversation"
+            ref="assignPanelRef"
+            class="assign-panel-dropdown"
+            :style="assignPanelStyle"
+            @click.stop
+          >
+            <AdvancedAssignActions
+              :conversation="conversation"
+              @assigned="handleAssigned"
+              @unassigned="handleUnassigned"
+              @error="handleAssignError"
+            />
+          </div>
+        </Teleport>
+
+        <!-- 客戶標籤管理按鈕 -->
+        <div
+          v-if="conversation?.customer?.id && customerIdNumber"
+          class="tag-selector-wrapper"
+        >
+          <TagSelector
+            v-model="selectedTagIds"
+            :customer-id="customerIdNumber"
+            button-label="標籤"
+            @change="handleTagsChange"
           />
         </div>
-      </Teleport>
-
-      <!-- 客戶標籤管理按鈕 -->
-      <div
-        v-if="conversation?.customer?.id && customerIdNumber"
-        class="tag-selector-wrapper"
-      >
-        <TagSelector
-          v-model="selectedTagIds"
-          :customer-id="customerIdNumber"
-          button-label="標籤"
-          @change="handleTagsChange"
-        />
       </div>
       <span
         class="actions-spacer"
@@ -225,8 +231,7 @@
       <!-- 結案 / 重新開啟: isolated at the far right -->
       <button
         v-if="conversation"
-        class="btn btn-sm close-toggle-btn"
-        :class="isClosed ? 'btn-secondary' : 'btn-primary'"
+        class="btn btn-secondary close-toggle-btn"
         :disabled="togglingClosed"
         @click="handleToggleClosed"
       >
@@ -260,6 +265,7 @@ const emit = defineEmits<{
 const frontendLogger = createLogger('ConversationHeader')
 import { computed, ref, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { ArrowLeftIcon, InfoIcon, RefreshIcon, UserPlusIcon, ChevronDownIcon, SearchIcon, DownloadIcon, MailIcon, CheckIcon } from '@/components/icons'
+import { avatarToneOf } from '@/composables/conversation/useConversationRowMeta'
 import PlatformBadge from '../ui/PlatformBadge.vue'
 import StatusBadge from '../ui/StatusBadge.vue'
 import AssignmentBadge from '../ui/AssignmentBadge.vue'
@@ -587,7 +593,6 @@ defineExpose({
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  background: linear-gradient(160deg, #5aa8ff, #1d6fe0);
   color: #fff;
   font: 600 15px var(--ui-font-display);
 }
@@ -610,6 +615,32 @@ defineExpose({
   flex-wrap: wrap;
   align-items: center;
   gap: 6px;
+}
+
+/* One grouped capsule for the routing tools (team + tags) */
+.action-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 999px;
+  background: var(--ui-fill);
+}
+
+.action-group .assign-action-btn,
+.action-group .tag-selector-wrapper :deep(.tag-trigger-btn) {
+  background: transparent;
+}
+
+.action-group .assign-action-btn:hover,
+.action-group .tag-selector-wrapper :deep(.tag-trigger-btn:hover) {
+  background: var(--ui-fill-strong);
+}
+
+.action-group .assign-action-btn.has-assignment,
+.action-group .tag-selector-wrapper :deep(.tag-trigger-btn.has-tags) {
+  background: transparent;
+  color: var(--ui-ink);
 }
 
 /* Pushes 更多 and 結案 to the far right edge */
@@ -693,8 +724,17 @@ defineExpose({
 
 /* Status as a filled pill (no outline) */
 .customer-badges :deep(.status-badge) {
+  gap: 6px;
+  padding: 5px 11px;
   border-color: transparent;
-  font-weight: 500;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.customer-badges :deep(.status-indicator) {
+  width: 7px;
+  height: 7px;
+  background: currentColor !important;
 }
 
 .customer-badges :deep(.status-open),
@@ -735,12 +775,13 @@ defineExpose({
 }
 
 .tag-selector-wrapper :deep(.tag-trigger-btn.has-tags) {
-  background: var(--ui-accent-soft);
-  color: var(--ui-accent);
+  color: var(--ui-ink);
 }
 
 .close-toggle-btn {
   display: inline-flex;
+  min-height: 36px;
+  padding: 0 14px;
   margin-left: 6px;
   align-items: center;
   gap: 6px;
@@ -860,13 +901,48 @@ defineExpose({
 
 @media (max-width: 768px) {
   .conversation-header {
-    padding: 10px 12px;
+    gap: 4px;
+    padding: calc(8px + env(safe-area-inset-top)) 12px 10px;
   }
 
+  .customer-avatar {
+    width: 36px;
+    height: 36px;
+    font-size: 14px;
+  }
+
+  .customer-badges {
+    margin-top: 2px;
+  }
+
+  /* Two bands: identity + the two icon tools on top, the labelled actions (assign, tags, close) below */
   .header-actions {
-    width: 100%;
-    flex-wrap: nowrap;
-    justify-content: flex-start;
+    display: contents;
+  }
+
+  .header-left {
+    flex: 0 0 calc(100% - 104px);
+  }
+
+  .header-actions .info-btn {
+    order: 2;
+  }
+
+  .more-wrapper {
+    order: 3;
+  }
+
+  .action-group {
+    order: 4;
+  }
+
+  .close-toggle-btn {
+    order: 6;
+    margin-left: auto;
+  }
+
+  .actions-spacer {
+    display: none;
   }
 
   /* One row keeps the message area usable with the keyboard open, so the team name gives way, not 結案 */
@@ -876,9 +952,13 @@ defineExpose({
 
   .assign-action-btn {
     width: 100%;
-    max-width: 170px;
+    max-width: 128px;
     min-width: 0;
+    gap: 6px;
+    padding-right: 8px;
+    padding-left: 8px;
   }
+
 
   .assign-panel-dropdown {
     left: 50%;

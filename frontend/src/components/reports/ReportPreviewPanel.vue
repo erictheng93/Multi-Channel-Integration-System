@@ -2,58 +2,54 @@
   <aside class="preview-section">
     <section class="ui-lead preview-card">
       <div class="lead-head">
-        <h3 class="lead-title">
-          即將產生
+        <p class="lead-kicker">
+          報表標題
+        </p>
+        <h3
+          class="lead-title"
+          :class="{ 'is-empty': !title.trim() }"
+        >
+          {{ title.trim() || '填寫標題後即可產生' }}
         </h3>
-        <p class="lead-sub">
-          依目前設定，必填項目填完即可產生
+      </div>
+
+      <div
+        v-if="reportType"
+        class="sample"
+      >
+        <h4 class="sample-cap">
+          報表會包含
+        </h4>
+        <ul class="sample-chips">
+          <li
+            v-for="item in contents"
+            :key="item.label"
+          >
+            <svg
+              viewBox="0 0 16 16"
+              aria-hidden="true"
+            ><path
+              d="M3.5 8.5l3 3 6-7"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            /></svg>
+            <span><b>{{ item.label }}</b><small>{{ item.hint }}</small></span>
+          </li>
+        </ul>
+        <p class="sample-opts">
+          {{ optionsLine }}
         </p>
       </div>
       <p
-        v-if="missing.length > 0"
-        class="need"
-        role="status"
+        v-else
+        class="sample-empty"
       >
-        還需要：{{ missing.join('、') }}
+        選擇類型後，這裡會列出報表包含的內容。
       </p>
-      <dl class="kv">
-        <div
-          v-if="reportType"
-          class="kv-row"
-        >
-          <dt>報表類型</dt>
-          <dd>{{ reportTypeLabel }}</dd>
-        </div>
-        <div
-          v-if="title.trim()"
-          class="kv-row"
-        >
-          <dt>標題</dt>
-          <dd>{{ title }}</dd>
-        </div>
-        <div
-          v-if="timeRange"
-          class="kv-row"
-        >
-          <dt>時間範圍</dt>
-          <dd>{{ timeRangeLabel }}</dd>
-        </div>
-        <div class="kv-row">
-          <dt>格式</dt>
-          <dd>{{ formatLabel }}</dd>
-        </div>
-        <div class="kv-row">
-          <dt>內容</dt>
-          <dd>{{ contentLabel }}</dd>
-        </div>
-        <div
-          v-if="options?.maxRecords"
-          class="kv-row"
-        >
-          <dt>筆數上限</dt>
-          <dd>{{ options.maxRecords.toLocaleString('en-US') }}</dd>
-        </div>
-      </dl>
+
       <slot name="action" />
     </section>
 
@@ -85,15 +81,15 @@
     </section>
 
     <div
-      v-if="recentReports.length > 0"
+      v-if="shownRecent.length > 0"
       class="recent-wrap"
     >
       <h3 class="ui-group-label">
-        最近報表
+        {{ reportType ? `最近的${reportTypeLabel}` : '最近報表' }}
       </h3>
       <ul class="ui-group recent-list">
         <li
-          v-for="report in recentReports.slice(0, 5)"
+          v-for="report in shownRecent"
           :key="report.id"
         >
           <button
@@ -120,6 +116,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import ReportsAPI from '@/api/reports';
+import { REPORT_CONTENTS } from './templates/templateHelpers';
 import type {
   ReportType,
   ReportFormat,
@@ -145,19 +142,20 @@ defineEmits<{
   'view-report': [reportId: string];
 }>();
 
-// What the primary action still needs; shown as one line instead of a column of empty rows
-const missing = computed(() => [
-  !props.reportType && '報表類型',
-  !props.title.trim() && '標題'
-].filter((item): item is string => !!item));
+// Same type as the one being set up (the list is long on the dashboard already); all types until one is chosen
+const shownRecent = computed(() => {
+  const same = props.reportType ? props.recentReports.filter(item => item.type === props.reportType) : props.recentReports
+  return same.slice(0, 4)
+});
 
-// Required fields done / required: the same two the "還需要" line names
+const contents = computed(() => (props.reportType ? REPORT_CONTENTS[props.reportType] ?? [] : []));
 
-const contentLabel = computed(() => {
+const optionsLine = computed(() => {
   const o = props.options;
-  if (!o) { return '預設' }
+  if (!o) { return '' }
   const parts = [o.includeSummary && '摘要', o.includeCharts && '圖表', o.includeDetails && '明細'].filter(Boolean);
-  return parts.length > 0 ? parts.join('、') : '僅基本資料';
+  const body = parts.length > 0 ? parts.join('、') : '僅基本資料';
+  return o.maxRecords ? `${body} ・ 上限 ${o.maxRecords.toLocaleString('en-US')} 筆` : body;
 });
 
 const reportTypeLabel = computed(() => {
@@ -165,18 +163,6 @@ const reportTypeLabel = computed(() => {
     return '';
   }
   return ReportsAPI.formatReportType(props.reportType);
-});
-
-const formatLabel = computed(() => {
-  const formats = ReportsAPI.getAvailableFormats() || [];
-  const found = formats.find(f => f.value === props.format);
-  return found?.label || props.format;
-});
-
-const timeRangeLabel = computed(() => {
-  const ranges = ReportsAPI.getTimeRangeOptions() || [];
-  const found = ranges.find(r => r.value === props.timeRange);
-  return found?.label || props.timeRange;
 });
 
 const statusLabel = (status: string): string => ReportsAPI.formatReportStatus(status).label;
@@ -203,80 +189,99 @@ const formatDate = (dateString: string): string => {
 }
 
 .preview-card {
-  padding: 22px 0 0;
+  padding: 24px 0 0;
 }
 
 .lead-head {
-  padding: 0 24px 12px;
+  padding: 0 24px 14px;
 }
 
-.lead-title {
+.lead-kicker {
   margin: 0;
-  font: 700 20px / 1.2 var(--ui-font-display);
-  letter-spacing: -0.02em;
-}
-
-.lead-sub {
-  margin: 2px 0 0;
   font-size: 13px;
+  font-weight: 600;
   color: var(--ui-muted);
 }
 
-.need {
-  margin: 0 22px 4px;
-  padding: 10px 14px;
-  border-radius: var(--ui-r-inner);
-  background: var(--ui-surface-2);
-  box-shadow: inset 0 0 0 1px var(--ui-sep);
-  font-size: 13.5px;
+.lead-title {
+  margin: 2px 0 0;
+  font: 700 24px / 1.2 var(--ui-font-display);
+  letter-spacing: -0.025em;
+}
+
+.lead-title.is-empty {
+  color: var(--ui-muted);
+}
+
+.lead-title.is-empty {
+  font-weight: 600;
+}
+
+
+.sample {
+  padding: 4px 24px 0;
+  box-shadow: 0 -0.5px 0 var(--ui-sep);
+}
+
+.sample-cap {
+  margin: 14px 0 6px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ui-ink-2);
+}
+
+.sample-chips {
+  display: grid;
+  gap: 12px;
+  margin: 0 0 12px;
+  padding: 0;
+  list-style: none;
+}
+
+.sample-chips li {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+}
+
+.sample-chips svg {
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  color: var(--ui-green-ink);
+}
+
+.sample-chips span {
+  display: grid;
+  gap: 1px;
+}
+
+.sample-chips b {
+  font-size: 15px;
   font-weight: 600;
   color: var(--ui-ink);
 }
 
-.need::before {
-  display: inline-block;
-  width: 8px;
-  height: 8px;
-  margin-right: 8px;
-  border-radius: 50%;
-  background: var(--ui-orange);
-  content: '';
-}
-
-.kv {
-  margin: 0;
-  padding: 0 22px;
-}
-
-.kv-row {
-  display: flex;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 12px 0;
-  font-size: 13.5px;
-  box-shadow: 0 0.5px 0 var(--ui-sep);
-}
-
-.kv-row:last-child {
-  box-shadow: none;
-}
-
-.kv-row dt {
-  flex: none;
+.sample-chips small {
+  font-size: 13px;
   color: var(--ui-muted);
 }
 
-.kv-row dd {
-  margin: 0;
-  min-width: 0;
-  overflow-wrap: anywhere;
+.sample-opts {
+  margin: 4px 0 0;
+  padding: 12px 0 14px;
+  font-size: 14px;
   font-weight: 600;
-  text-align: right;
+  box-shadow: 0 -0.5px 0 var(--ui-sep);
 }
 
-.kv-row dd.is-empty {
-  font-weight: 400;
+.sample-empty {
+  margin: 0;
+  padding: 16px 24px 8px;
+  font-size: 14px;
   color: var(--ui-muted);
+  box-shadow: 0 -0.5px 0 var(--ui-sep);
 }
 
 .progress-content {
@@ -384,5 +389,12 @@ const formatDate = (dateString: string): string => {
 .recent-meta {
   font-size: 13px;
   color: var(--ui-muted);
+}
+
+@media (max-width: 768px) {
+  /* Past reports are not part of filling the form in on a phone */
+  .recent-wrap {
+    display: none;
+  }
 }
 </style>

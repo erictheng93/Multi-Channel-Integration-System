@@ -16,7 +16,7 @@
       <button
         v-if="hasUnread"
         type="button"
-        class="btn btn-primary btn-sm"
+        class="btn btn-secondary btn-sm"
         :disabled="markingAllRead"
         @click="$emit('mark-all-read')"
       >

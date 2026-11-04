@@ -44,7 +44,7 @@ function historyOf(activeConnections: number) {
 }
 
 function peakShown(wrapper: ReturnType<typeof mount>): string | undefined {
-  return wrapper.findAll('.fact').find(f => f.text().includes('連線峰值'))?.find('b').text()
+  return wrapper.findAll('span').find(s => /^近 .+峰值/.test(s.text()))?.find('b').text()
 }
 
 describe('WebSocketMonitoring.vue history', () => {

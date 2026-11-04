@@ -24,84 +24,54 @@
         {{ controller.error.value }}
       </div>
 
-      <!-- Lead: the overall verdict, endpoints healthy as an arc, and the four clickable counts -->
-      <RingLead
-        kicker="整體狀態"
-        :value="leadValue ?? '—'"
-        :busy="controller.loading.value && !controller.lastUpdated.value"
+      <!-- Lead: the request path (channels in, endpoints in the middle, Cloudflare services behind) with the verdict -->
+      <ApiTopology
+        :channels="controller.channels.value"
+        :infrastructure="controller.infrastructure.value"
+        :events="controller.events.value"
+        :verdict="leadValue"
         :tone="leadTone"
         :meaning="leadMeaning"
-        summary="端點狀態"
-        :rings="endpointRings"
-        :center-value="statusCounts.all > 0 ? `${statusCounts.healthy}/${statusCounts.all}` : undefined"
-        center-label="正常"
-        :size="144"
+        :counts="hasMetrics ? { healthy: statusCounts.healthy, warning: statusCounts.warning, error: statusCounts.error } : undefined"
+        :avg-ms="hasMetrics ? controller.stats.value.avgResponseTime : 0"
+        :busy="controller.loading.value && !controller.lastUpdated.value"
+      />
+
+      <ApiMetricsSetup
+        v-if="!hasMetrics && !controller.loading.value"
+        :error="controller.metricsError.value"
+      />
+
+      <section
+        v-else-if="hasMetrics"
+        aria-label="端點狀態"
       >
-        <div
-          v-if="hasMetrics"
-          class="lead-stats"
-        >
-          <ApiStatsGrid
-            :stats="controller.stats.value"
-            @stat-click="handleStatClick"
+        <h2 class="ui-group-label">
+          端點狀態
+          <span class="label-note">點選一列查看延遲分布與狀態碼</span>
+        </h2>
+        <div class="ui-group endpoints">
+          <ApiFilter
+            :filters="controller.filters.value"
+            :counts="statusCounts"
+            @update:filters="handleFilterUpdate"
           />
-        </div>
-      </RingLead>
-
-      <section class="bento">
-        <div class="s8 stack">
-          <ApiMetricsSetup
-            v-if="!hasMetrics && !controller.loading.value"
-            :error="controller.metricsError.value"
+          <ApiCardList
+            :endpoints="controller.filteredApis.value"
+            :expanded-card="controller.expandedCard.value"
+            :total="controller.endpoints.value.length"
+            :scale-ms="latencyScale"
+            @toggle-card="controller.toggleCard"
           />
-
-          <section
-            v-else-if="hasMetrics"
-            aria-label="端點狀態"
-          >
-            <h2 class="ui-group-label">
-              端點狀態
-              <span class="label-note">點選一列查看延遲分布與狀態碼</span>
-            </h2>
-            <div class="ui-group endpoints">
-              <ApiFilter
-                :filters="controller.filters.value"
-                :counts="statusCounts"
-                @update:filters="handleFilterUpdate"
-              />
-              <ApiCardList
-                :endpoints="controller.filteredApis.value"
-                :expanded-card="controller.expandedCard.value"
-                :total="controller.endpoints.value.length"
-                @toggle-card="controller.toggleCard"
-              />
-            </div>
-          </section>
-
-          <div
-            v-else
-            class="ui-card loading"
-          >
-            載入中...
-          </div>
-        </div>
-
-        <div class="s4 stack">
-          <InfrastructureCard :infrastructure="controller.infrastructure.value" />
-          <ChannelIntegrationsCard :channels="controller.channels.value" />
-        </div>
-        <div class="s12">
-          <RecentEventsCard :events="controller.events.value" />
         </div>
       </section>
 
-      <!-- Statistics Detail Modal -->
-      <ApiModal
-        v-if="controller.modal.value.show"
-        :modal-state="controller.modal.value"
-        :total-apis="controller.endpoints.value.length"
-        @close="controller.closeModal"
-      />
+      <div
+        v-else
+        class="ui-card loading"
+      >
+        載入中...
+      </div>
     </div>
   </AppLayout>
 </template>
@@ -112,18 +82,12 @@ import { useApiMonitorController } from '@/composables/useApiMonitorController'
 import AppLayout from '@/components/ui/AppLayout.vue'
 import {
   ApiHeader,
-  ApiStatsGrid,
   ApiFilter,
   ApiCardList,
-  ApiModal,
-  InfrastructureCard,
-  ChannelIntegrationsCard,
-  RecentEventsCard,
 } from '@/components/api-monitor'
 import ApiMetricsSetup from '@/components/api-monitor/ApiMetricsSetup.vue'
-import RingLead from '@/components/lead/RingLead.vue'
-import type { ServiceRing } from '@/components/ui/ServiceRings.vue'
-import type { ApiStatus, FilterState } from '@/types/api-monitor'
+import ApiTopology from '@/components/api-monitor/ApiTopology.vue'
+import type { FilterState } from '@/types/api-monitor'
 
 // Initialize controller
 const controller = useApiMonitorController()
@@ -143,6 +107,9 @@ const statusCounts = computed(() => {
   }
 })
 
+/** One latency scale for every row band: the slowest P95, never below the 500 ms alarm line */
+const latencyScale = computed(() => Math.max(500, ...controller.endpoints.value.map(e => e.responseTime)))
+
 const LEAD_LABEL = { operational: '運作正常', degraded: '部分降級', outage: '服務中斷' } as const
 const LEAD_TONE = { operational: 'good', degraded: 'warn', outage: 'bad' } as const
 
@@ -151,17 +118,6 @@ const leadValue = computed<string | null>(() =>
   controller.lastUpdated.value ? LEAD_LABEL[controller.systemStatus.value] : null,
 )
 const leadTone = computed(() => (leadValue.value ? LEAD_TONE[controller.systemStatus.value] : 'none'))
-
-/** One arc: endpoints currently healthy of all tracked (only when endpoint metrics exist) */
-const endpointRings = computed<ServiceRing[]>(() => {
-  if (!hasMetrics.value || statusCounts.value.all === 0) { return [] }
-  const { healthy, warning, all, error } = statusCounts.value
-  const rings: ServiceRing[] = [{ label: '端點正常', value: healthy, total: all, of: '個端點', hue: 'var(--ui-green)' }]
-  if (warning + error > 0) {
-    rings.push({ label: '需要注意', value: warning + error, total: all, of: '個端點', hue: error > 0 ? 'var(--ui-red)' : 'var(--ui-orange)' })
-  }
-  return rings
-})
 
 /** One line of why: the failing components (the header subtitle carries the endpoint counts) */
 const leadMeaning = computed(() => {
@@ -185,11 +141,6 @@ onUnmounted(() => {
 })
 
 // Event Handlers
-function handleStatClick(type: string) {
-  if (type === 'all') {return}
-  controller.showStatDetails(type as ApiStatus)
-}
-
 function handleFilterUpdate(filters: FilterState) {
   controller.filters.value = filters
 }
@@ -209,52 +160,16 @@ function handleFilterUpdate(filters: FilterState) {
   padding-top: 14px;
 }
 
-.lead-stats {
-  margin-top: 14px;
-}
-
 .label-note {
   font-size: 13px;
   font-weight: 400;
   color: var(--ui-muted);
 }
 
-.bento {
-  display: grid;
-  grid-template-columns: repeat(12, minmax(0, 1fr));
-  gap: 16px;
-  align-items: start;
-}
-
-.s8 {
-  grid-column: span 8;
-}
-
-.s4 {
-  grid-column: span 4;
-}
-
-.s12 {
-  grid-column: span 12;
-}
-
-.stack {
-  display: grid;
-  gap: 16px;
-  min-width: 0;
-}
-
 .loading {
   padding: 40px;
   text-align: center;
   color: var(--ui-muted);
-}
-
-@media (max-width: 1280px) {
-  .s8,
-  .s4 {
-    grid-column: span 12;
-  }
 }
 
 </style>

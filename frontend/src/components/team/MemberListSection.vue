@@ -13,19 +13,22 @@
           共 {{ members.length }} 位成員，{{ sortCaption }}
         </div>
       </div>
-      <div class="ui-card-end legend">
-        <svg
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
+      <div
+        class="ui-card-end legend"
+        aria-label="團隊內角色，權限由低到高：成員、組長、主管"
+      >
+        <span class="lg-k">團隊內角色・權限由低到高</span>
+        <span class="lg-c lg-member">成員</span>
+        <span
+          class="lg-a"
           aria-hidden="true"
-        ><circle
-          cx="12"
-          cy="12"
-          r="9"
-        /><path d="M12 8v5M12 16.5h.01" /></svg>團隊角色：成員 → 組長 → 主管
+        >›</span>
+        <span class="lg-c lg-lead">組長</span>
+        <span
+          class="lg-a"
+          aria-hidden="true"
+        >›</span>
+        <span class="lg-c lg-sup">主管</span>
       </div>
     </div>
 
@@ -61,6 +64,7 @@
       <div
         v-if="teamFilterOptions.length > 0"
         class="ui-seg team-seg"
+        :class="{ 'is-long': teamFilterOptions.length > 3 }"
         role="group"
         aria-label="依團隊篩選"
       >
@@ -214,10 +218,9 @@
           >
             <span v-if="isSelectionMode" />
             <span>成員</span>
-            <span>系統角色</span>
-            <span>團隊與角色</span>
-            <span>狀態</span>
-            <span>最後登入</span>
+            <span>權限</span>
+            <span>團隊與職務</span>
+            <span>在線 / 最後登入</span>
             <span />
           </div>
 
@@ -235,7 +238,7 @@
             @end="onDragEnd"
           >
             <TeamMemberCard
-              v-for="member in localMembers"
+              v-for="member in shownMembers"
               :key="member.id"
               :member="member"
               :all-teams="allTeams"
@@ -254,9 +257,18 @@
           </VueDraggable>
         </template>
 
+        <button
+          v-if="hiddenOnPhone > 0"
+          type="button"
+          class="more-members"
+          @click="phoneExpanded = true"
+        >
+          顯示其餘 {{ hiddenOnPhone }} 位成員
+        </button>
+
         <!-- Pagination Controls -->
         <div
-          v-if="paginationInfo.totalPages <= 1 && filteredMembers.length > 0"
+          v-if="paginationInfo.totalPages <= 1 && filteredMembers.length > 0 && hiddenOnPhone === 0"
           class="mfoot"
         >
           顯示 1 – {{ filteredMembers.length }}，共 {{ filteredMembers.length }} 位
@@ -273,7 +285,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, computed, nextTick } from 'vue'
+import { ref, watch, computed, nextTick, onMounted, onUnmounted } from 'vue'
+import { BREAKPOINTS } from '@/config/breakpoints'
 import { VueDraggable } from 'vue-draggable-plus'
 import type { TeamMember, Team } from '@/types'
 import type { SortOption, SortState, SortMode } from '@/composables/useListSorting'
@@ -446,6 +459,23 @@ watch(
   { deep: true }
 )
 
+// Phone: the list opens with the first few members; the rest is one tap away (drag is off on phones)
+const PHONE_ROWS = 12
+const isPhone = ref(false)
+const phoneExpanded = ref(false)
+let phoneQuery: ReturnType<typeof window.matchMedia> | null = null
+function syncPhone() { isPhone.value = phoneQuery?.matches ?? false }
+onMounted(() => {
+  if (typeof window.matchMedia !== 'function') {return}
+  phoneQuery = window.matchMedia(`(max-width: ${BREAKPOINTS.md}px)`)
+  syncPhone()
+  phoneQuery.addEventListener('change', syncPhone)
+})
+onUnmounted(() => phoneQuery?.removeEventListener('change', syncPhone))
+const capped = computed(() => isPhone.value && !phoneExpanded.value && !props.isSelectionMode && localMembers.value.length > PHONE_ROWS + 1)
+const shownMembers = computed(() => (capped.value ? localMembers.value.slice(0, PHONE_ROWS) : localMembers.value))
+const hiddenOnPhone = computed(() => (capped.value ? localMembers.value.length - PHONE_ROWS : 0))
+
 // Handle drag start - no action needed
 function onDragStart() {
   // Optional: Add visual feedback
@@ -511,21 +541,67 @@ function handleSelectPage() {
 
 <style scoped>
 .member-section {
-  --member-cols: minmax(210px, 1.5fr) 96px minmax(180px, 1.3fr) 90px 110px 40px;
+  --member-cols: minmax(260px, 1.2fr) 104px minmax(220px, 1fr) 132px 40px;
   padding-bottom: 6px;
 }
 .member-section:has(.selection-mode) {
-  --member-cols: 24px minmax(210px, 1.5fr) 96px minmax(180px, 1.3fr) 90px 110px 40px;
+  --member-cols: 24px minmax(260px, 1.2fr) 104px minmax(220px, 1fr) 132px 40px;
 }
 
 .legend {
   font-size: 13px;
   color: var(--ui-muted);
 }
-.legend svg {
-  width: 13px;
-  height: 13px;
+.legend {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.lg-k {
+  margin-right: 4px;
+  font-weight: 600;
+  color: var(--ui-ink-2);
+}
+.lg-c {
+  display: inline-flex;
+  flex: none;
+  gap: 6px;
+  align-items: center;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ui-ink-2);
+}
+/* a static key (dot + word), deliberately not a pill: the ranks are shown, never picked, here */
+.lg-c::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ui-faint);
+}
+.lg-lead::before {
+  background: var(--ui-green);
+}
+.lg-sup::before {
+  background: var(--ui-indigo);
+}
+.lg-a {
   color: var(--ui-faint);
+}
+.more-members {
+  display: block;
+  width: calc(100% - 32px);
+  min-height: 44px;
+  margin: 4px 16px 8px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--ui-fill);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ui-ink);
+  cursor: pointer;
 }
 
 /* Tools row */
@@ -574,7 +650,9 @@ function handleSelectPage() {
   outline: none;
 }
 .search-input::placeholder {
+  overflow: hidden;
   color: var(--ui-muted);
+  text-overflow: ellipsis;
 }
 .search-clear {
   position: relative;
@@ -699,17 +777,49 @@ function handleSelectPage() {
   }
 }
 @media (max-width: 768px) {
+  /* the role ladder stays as one line of chips; its caption is the card's own subtitle */
+  .legend {
+    flex-basis: 100%;
+    margin-left: 0;
+  }
+  .lg-k {
+    display: none;
+  }
   .tools {
+    flex-wrap: wrap;
     padding-right: 16px;
     padding-left: 16px;
   }
-  .search-bar {
-    flex-basis: 100%;
-    max-width: none;
-  }
+  /* search on its own row; the sort and batch controls keep their words (no icon-only buttons), then the team tabs */
   .tools-end {
-    width: 100%;
-    margin-left: 0;
+    display: contents;
+  }
+  .search-bar {
+    flex: 1 1 100%;
+    order: 1;
+    max-width: none;
+    height: 44px;
+  }
+  .tools-end > .btn {
+    order: 2;
+    flex: none;
+    height: 40px;
+  }
+  .tools-end > :deep(.sort-dropdown) {
+    flex: none;
+    order: 2;
+  }
+  .tools-end > :deep(.sort-dropdown .sort-button) {
+    height: 40px;
+  }
+  /* team tabs get their own full-width row so every name reads whole; only a long list scrolls, and then it fades */
+  .team-seg {
+    flex: 1 1 100%;
+    order: 4;
+    min-width: 0;
+  }
+  .team-seg.is-long {
+    mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
   }
   .bulkbar {
     margin-right: 16px;

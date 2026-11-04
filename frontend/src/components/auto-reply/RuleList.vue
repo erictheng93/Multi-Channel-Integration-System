@@ -1,43 +1,5 @@
 <template>
   <div class="rule-list">
-    <!-- Toolbar -->
-    <div class="rule-list__toolbar">
-      <div class="rule-list__filters">
-        <input
-          class="ui-input rule-list__search"
-          aria-label="搜尋規則"
-          type="text"
-          placeholder="搜尋規則"
-          :value="searchQuery"
-          @input="emit('update:searchQuery', ($event.target as HTMLInputElement).value)"
-        >
-        <select
-          class="ui-select rule-list__filter-select"
-          aria-label="規則類型"
-          :value="filterTriggerType"
-          @change="emit('update:filterTriggerType', ($event.target as HTMLSelectElement).value)"
-        >
-          <option value="">
-            所有類型
-          </option>
-          <option
-            v-for="opt in TRIGGER_TYPE_OPTIONS"
-            :key="opt.value"
-            :value="opt.value"
-          >
-            {{ opt.label }}
-          </option>
-        </select>
-      </div>
-      <button
-        class="btn btn-primary"
-        type="button"
-        @click="emit('start-create')"
-      >
-        ＋ 新增規則
-      </button>
-    </div>
-
     <!-- New rule editor -->
     <div
       v-if="isCreating"
@@ -62,25 +24,71 @@
       />
     </div>
 
-    <!-- Rule list -->
-    <h2
-      v-if="rules.length > 0"
-      class="ui-group-label rule-list__label"
-    >
-      規則
-      <span class="rule-list__count">{{ rules.length }}</span>
-    </h2>
-    <div
-      v-if="rules.length > 0"
-      class="ui-group rule-list__items"
-    >
+    <!-- Rule list: the search and type filter are the card's own toolbar, with the count -->
+    <div class="ui-group rule-list__items">
+      <div class="rule-list__toolbar">
+        <div class="rule-list__filters">
+          <div class="rule-list__search-wrap">
+            <svg
+              class="rule-list__search-ico"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              aria-hidden="true"
+            ><circle
+              cx="11"
+              cy="11"
+              r="7"
+            /><path d="m20 20-3.5-3.5" /></svg>
+            <input
+              class="ui-input rule-list__search"
+              aria-label="搜尋規則"
+              type="text"
+              placeholder="搜尋規則"
+              :value="searchQuery"
+              @input="emit('update:searchQuery', ($event.target as HTMLInputElement).value)"
+            >
+          </div>
+          <select
+            class="ui-select rule-list__filter-select"
+            aria-label="規則類型"
+            :value="filterTriggerType"
+            @change="emit('update:filterTriggerType', ($event.target as HTMLSelectElement).value)"
+          >
+            <option value="">
+              所有類型
+            </option>
+            <option
+              v-for="opt in TRIGGER_TYPE_OPTIONS"
+              :key="opt.value"
+              :value="opt.value"
+            >
+              {{ opt.label }}
+            </option>
+          </select>
+        </div>
+        <span class="rule-list__count">{{ rules.length }} 條規則<template v-if="hits">，次數取自最近 {{ hitsWindow ?? 50 }} 筆日誌</template></span>
+      </div>
+
+      <div class="rule-list__cols">
+        <span>比對順序，圓圈是優先序</span>
+        <span v-if="hits">最近觸發</span>
+      </div>
+
       <RuleCard
-        v-for="rule in rules"
+        v-for="(rule, i) in rules"
         :key="rule.id"
+        :first="i === 0"
+        :last="i === rules.length - 1"
         :rule="rule"
         :is-expanded="expandedRuleId === rule.id"
         :form-data="formData"
         :saving="saving"
+        :hits="hits ? (hits[rule.id] ?? 0) : null"
+        :hits-max="hitsMax"
+        :hits-window="hitsWindow"
         @toggle-expand="emit('expand-rule', rule)"
         @toggle-active="emit('toggle-active', rule)"
         @save="emit('save')"
@@ -97,7 +105,7 @@
 
     <!-- Empty state -->
     <UiEmptyState
-      v-else-if="!isCreating"
+      v-if="rules.length === 0 && !isCreating"
       class="ui-card rule-list__empty"
       title="尚未建立自動回覆規則"
       description="規則會在客戶來訊符合條件時自動回覆。"
@@ -127,13 +135,17 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
 import UiEmptyState from '@/components/ui/UiEmptyState.vue'
 import { TRIGGER_TYPE_OPTIONS, type AutoReplyRule } from '@/api/autoReply'
 import RuleEditor from './RuleEditor.vue'
 import type { RuleFormData } from './RuleEditor.vue'
 import RuleCard from './RuleCard.vue'
 
-defineProps<{
+const props = defineProps<{
+  /** Fires per rule id in the newest logs; null while the log view is filtered */
+  hits?: Record<number, number> | null
+  hitsWindow?: number
   rules: AutoReplyRule[]
   expandedRuleId: number | null
   isCreating: boolean
@@ -159,6 +171,9 @@ const emit = defineEmits<{
   'update-action-content': [index: number, content: string]
   'update-field': [field: string, value: unknown]
 }>()
+
+const hitsMax = computed(() => Math.max(0, ...Object.values(props.hits ?? {})))
+
 </script>
 
 <style scoped>
@@ -168,60 +183,79 @@ const emit = defineEmits<{
   gap: 16px;
 }
 
-/* the label sits tight on its group, not a full page gap above it */
-.rule-list__label {
-  margin: 4px 0 -8px;
-}
-
 .rule-list__count {
-  min-width: 20px;
-  padding: 0 7px;
-  border-radius: 999px;
-  background: var(--section-hue-soft);
-  font-size: 13px;
-  font-weight: 600;
-  line-height: 20px;
-  text-align: center;
-  color: var(--section-ink);
+  flex: none;
+  margin-left: auto;
+  font-size: 14px;
+  color: var(--ui-muted);
   font-variant-numeric: tabular-nums;
 }
 
-
+/* the toolbar is the top row of the rules card */
 .rule-list__toolbar {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
   gap: 12px;
-  padding: 12px 14px;
+  padding: 12px 22px;
+  border-bottom: 0.5px solid var(--ui-sep);
 }
 
 .rule-list__filters {
   display: flex;
-  flex: 1;
-  flex-wrap: wrap;
+  flex: 0 1 560px;
   align-items: center;
   gap: 10px;
   min-width: 0;
 }
 
+.rule-list__search-wrap {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.rule-list__search-ico {
+  position: absolute;
+  top: 50%;
+  left: 13px;
+  width: 16px;
+  height: 16px;
+  color: var(--ui-muted);
+  pointer-events: none;
+  transform: translateY(-50%);
+}
+
 .rule-list__search {
-  flex: 1 1 220px;
-  max-width: 340px;
-  height: 40px;
+  height: 36px;
+  padding-left: 36px;
   border-radius: 999px;
-  background: var(--ui-surface);
 }
 
 .rule-list__filter-select {
   width: auto;
-  min-width: 140px;
-  height: 40px;
+  min-width: 132px;
+  height: 36px;
   border-radius: 999px;
-  background-color: var(--ui-surface);
 }
 
 .rule-list__items {
-  padding: 4px 0;
+  flex: 1;
+  padding: 0 0 4px;
+}
+
+/* column captions for the rows below: the rail on the left, the recent-trigger count on the right */
+.rule-list__cols {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 22px 4px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ui-muted);
+}
+
+.rule-list__cols span:last-child {
+  width: 74px;
+  text-align: right;
 }
 
 .rule-list__new-card {
@@ -240,14 +274,24 @@ const emit = defineEmits<{
 }
 
 @media (max-width: 768px) {
-  .rule-list__search,
-  .rule-list__filter-select {
-    flex: 1 1 100%;
-    max-width: none;
+  /* Phone: the search takes the row, the type filter sits beside it as a compact chip */
+  .rule-list__toolbar {
+    padding: 10px 12px;
   }
 
-  .rule-list__toolbar > .btn {
-    width: 100%;
+  .rule-list__filters {
+    flex: 1 1 auto;
+  }
+
+  .rule-list__count,
+  .rule-list__cols {
+    display: none;
+  }
+
+  .rule-list__filter-select {
+    flex: none;
+    width: 128px;
+    min-width: 0;
   }
 }
 

@@ -10,9 +10,37 @@
           <button
             class="btn btn-secondary"
             :disabled="loading"
+            aria-label="重新整理"
             @click="refresh"
           >
+            <svg
+              class="btn-ico"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            ><path d="M21 12a9 9 0 0 1-15.5 6.2L3 16M3 12a9 9 0 0 1 15.5-6.2L21 8M21 3v5h-5M3 21v-5h5" /></svg>
             重新整理
+          </button>
+          <button
+            v-if="!loading && activeTab === 'rules'"
+            class="btn btn-primary"
+            type="button"
+            @click="ruleEditor.startCreate()"
+          >
+            <svg
+              class="btn-ico"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.4"
+              stroke-linecap="round"
+              aria-hidden="true"
+            ><path d="M12 5v14M5 12h14" /></svg>
+            新增規則
           </button>
         </template>
       </UiPageHead>
@@ -36,6 +64,8 @@
           :is-business-hours="stats.isBusinessHours"
           :business-hours="stats.businessHours"
           :success-rate="stats.successRate"
+          :week-plan="weekPlan"
+          @open-schedules="switchTab('schedules')"
         />
 
         <!-- Tabs -->
@@ -77,31 +107,45 @@
 
           <!-- Tab Content -->
           <div class="tab-content">
-            <!-- Rules Tab -->
-            <RuleList
+            <!-- Rules Tab: the list, and beside it a message tester and the newest triggers -->
+            <div
               v-if="activeTab === 'rules'"
-              :rules="filteredRules"
-              :expanded-rule-id="ruleEditor.expandedRuleId.value"
-              :is-creating="ruleEditor.isCreating.value"
-              :form-data="ruleEditor.formData"
-              :saving="ruleEditor.saving.value"
-              :search-query="searchQuery"
-              :filter-trigger-type="filterTriggerType"
-              @update:search-query="searchQuery = $event"
-              @update:filter-trigger-type="filterTriggerType = $event"
-              @start-create="ruleEditor.startCreate()"
-              @expand-rule="ruleEditor.expandRule($event)"
-              @toggle-active="ruleEditor.toggleRuleActive($event)"
-              @collapse="ruleEditor.collapseRule()"
-              @save="handleSaveRule"
-              @delete="handleDeleteRule"
-              @add-condition="(type: string, value: string) => ruleEditor.addCondition(type as 'exact' | 'contains' | 'regex' | 'message_type', value)"
-              @remove-condition="(index: number) => ruleEditor.removeCondition(index)"
-              @add-action="(type: string) => ruleEditor.addAction(type as 'reply_text' | 'reply_image' | 'reply_flex')"
-              @remove-action="(index: number) => ruleEditor.removeAction(index)"
-              @update-action-content="(index: number, content: string) => ruleEditor.updateActionContent(index, content)"
-              @update-field="handleUpdateField"
-            />
+              class="rules-grid"
+            >
+              <RuleList
+                :hits="ruleHits"
+                :hits-window="store.logs.length"
+                :rules="filteredRules"
+                :expanded-rule-id="ruleEditor.expandedRuleId.value"
+                :is-creating="ruleEditor.isCreating.value"
+                :form-data="ruleEditor.formData"
+                :saving="ruleEditor.saving.value"
+                :search-query="searchQuery"
+                :filter-trigger-type="filterTriggerType"
+                @update:search-query="searchQuery = $event"
+                @update:filter-trigger-type="filterTriggerType = $event"
+                @start-create="ruleEditor.startCreate()"
+                @expand-rule="ruleEditor.expandRule($event)"
+                @toggle-active="ruleEditor.toggleRuleActive($event)"
+                @collapse="ruleEditor.collapseRule()"
+                @save="handleSaveRule"
+                @delete="handleDeleteRule"
+                @add-condition="(type: string, value: string) => ruleEditor.addCondition(type as 'exact' | 'contains' | 'regex' | 'message_type', value)"
+                @remove-condition="(index: number) => ruleEditor.removeCondition(index)"
+                @add-action="(type: string) => ruleEditor.addAction(type as 'reply_text' | 'reply_image' | 'reply_flex')"
+                @remove-action="(index: number) => ruleEditor.removeAction(index)"
+                @update-action-content="(index: number, content: string) => ruleEditor.updateActionContent(index, content)"
+                @update-field="handleUpdateField"
+              />
+              <RuleAside
+                v-if="store.rules.length > 0"
+                :rules="store.rules"
+                :logs="store.logs"
+                :is-business-hours="stats.isBusinessHours"
+                @open-rule="openRule"
+                @open-logs="switchTab('logs')"
+              />
+            </div>
 
             <!-- Schedules Tab -->
             <ScheduleGrid
@@ -152,8 +196,9 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import AppLayout from '@/components/ui/AppLayout.vue'
 import LoadingSpinner from '@/components/ui/LoadingSpinner.vue'
 import ConfirmDialog from '@/components/ui/ConfirmDialog.vue'
-import AutoReplyStats from '@/components/auto-reply/AutoReplyStats.vue'
+import AutoReplyStats, { type WeekPlan } from '@/components/auto-reply/AutoReplyStats.vue'
 import RuleList from '@/components/auto-reply/RuleList.vue'
+import RuleAside from '@/components/auto-reply/RuleAside.vue'
 import ScheduleGrid from '@/components/auto-reply/ScheduleGrid.vue'
 import LogTable from '@/components/auto-reply/LogTable.vue'
 import { useAutoReplyController } from '@/composables/autoReply/useAutoReplyController'
@@ -192,6 +237,52 @@ const headline = computed(() => {
   const today = stats.value.todayReplies > 0 ? `今天已自動回覆 ${stats.value.todayReplies} 則，` : ''
   return `${summary}${today}優先序數字越小越先比對。`
 })
+
+// The week of opening windows plus "now" and today's reply times, all read in the team's timezone
+const weekPlan = computed<WeekPlan | null>(() => {
+  void stats.value
+  if (store.schedules.length === 0) { return null }
+  const tz = stats.value.businessHours?.timezone || store.schedules[0]?.timezone || 'Asia/Taipei'
+  const fmt = (d: Date) => {
+    try {
+      const parts = new Intl.DateTimeFormat('en-US', { timeZone: tz, weekday: 'short', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(d)
+      const get = (t: string) => parts.find(p => p.type === t)?.value ?? ''
+      return {
+        weekday: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].indexOf(get('weekday')),
+        minutes: Number(get('hour')) * 60 + Number(get('minute')),
+        date: `${get('year')}-${get('month')}-${get('day')}`,
+      }
+    } catch {
+      return { weekday: d.getDay(), minutes: d.getHours() * 60 + d.getMinutes(), date: d.toDateString() }
+    }
+  }
+  const now = fmt(new Date())
+  const toMin = (t: string) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5))
+  const days = [1, 2, 3, 4, 5, 6, 0].map((day) => {
+    const row = store.schedules.find(sc => sc.dayOfWeek === day)
+    return { day, open: !!row?.isActive, start: row ? toMin(row.startTime) : 0, end: row ? toMin(row.endTime) : 0 }
+  })
+  const replies = store.logs
+    .map(log => fmt(new Date(log.created_at)))
+    .filter(t => t.date === now.date)
+    .map(t => t.minutes)
+  return { days, today: now.weekday, now: now.minutes, replies }
+})
+
+// How often each rule fired in the newest logs; unknown while the log view is filtered or on a later page
+const ruleHits = computed<Record<number, number> | null>(() => {
+  if (filterRuleId.value || filterPlatform.value || store.logsPagination.page > 1 || store.logs.length === 0) { return null }
+  const map: Record<number, number> = {}
+  for (const log of store.logs) {
+    if (log.rule_id !== null) { map[log.rule_id] = (map[log.rule_id] ?? 0) + 1 }
+  }
+  return map
+})
+
+function openRule(id: number) {
+  const rule = store.rules.find(r => r.id === id)
+  if (rule) { ruleEditor.expandRule(rule) }
+}
 
 async function refresh() {
   await initialize()
@@ -247,6 +338,11 @@ onUnmounted(() => cleanup())
 </script>
 
 <style scoped>
+.btn-ico {
+  width: 15px;
+  height: 15px;
+  flex: none;
+}
 
 .loading-container {
   display: flex;
@@ -261,6 +357,11 @@ onUnmounted(() => cleanup())
   gap: 16px;
 }
 
+.tabs-bar > button {
+  min-height: 40px;
+  font-size: 14px;
+}
+
 .tabs-bar {
   align-self: flex-start;
   max-width: 100%;
@@ -271,6 +372,24 @@ onUnmounted(() => cleanup())
   min-height: 200px;
 }
 
+.rules-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: 16px;
+  align-items: stretch;
+}
+
+@media (max-width: 1280px) {
+  .rules-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* the tester sits above the rules it tries, not under a long list */
+  .rules-grid > :deep(.rule-aside) {
+    order: -1;
+  }
+}
+
 @media (max-width: 768px) {
 
   .tabs-bar {
@@ -279,8 +398,36 @@ onUnmounted(() => cleanup())
 
   .tabs-bar > button {
     flex: 1;
+    gap: 4px;
     justify-content: center;
     min-height: 44px;
+    padding: 0 6px;
+    white-space: nowrap;
+  }
+}
+
+/* Phone: the title and its action share one row (the shared head drops actions under the subtitle) */
+@media (max-width: 768px) {
+  /* the phone header keeps one action: refresh is a desktop control (the lists reload on every visit) */
+  .auto-reply-page :deep(.ui-page-actions > .btn-secondary) {
+    display: none;
+  }
+
+  .auto-reply-page :deep(.ui-page-head) {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      'title actions'
+      'sub sub';
+    align-items: center;
+  }
+
+  .auto-reply-page :deep(.ui-page-actions) {
+    padding-top: 0;
+    min-height: 0;
+  }
+
+  .auto-reply-page :deep(.ui-page-actions > .btn-primary) {
+    flex: none;
   }
 }
 </style>

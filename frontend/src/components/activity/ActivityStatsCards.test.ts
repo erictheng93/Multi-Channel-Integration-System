@@ -35,24 +35,20 @@ function mountCards(props: { overview: ActivityOverview | null; loading: boolean
 }
 
 describe('ActivityStatsCards', () => {
-  it('leads with the total activity count with thousands separators', () => {
+  it('states the total activity count with thousands separators', () => {
     const wrapper = mountCards({ overview: makeOverview({ totalActivities: 1284 }), loading: false })
-    expect(wrapper.find('.rl-num').text()).toContain('1,284')
+    expect(wrapper.find('.wk-sum b').text()).toBe('1,284')
   })
 
-  it('draws an arc for the top member and the top action, each against the total', () => {
-    const wrapper = mountCards({ overview: makeOverview(), loading: false })
-    const text = wrapper.find('.sr-legend').text()
-    expect(text).toContain('最活躍：Alice')
-    expect(text).toContain('40')
-    expect(text).toContain('最常見：訊息發送')
-    expect(text).toContain('50')
-    expect(wrapper.findAll('.sr-item')).toHaveLength(2)
+  it('states the daily average as a plain fact', () => {
+    const wrapper = mountCards({ overview: makeOverview({ dailyStats: [{ date: '2026-03-19', count: 20 }, { date: '2026-03-20', count: 50 }] }), loading: false })
+    expect(wrapper.find('.wk-sum').text()).toContain('日均 35 筆')
   })
 
-  it('names the period, the member count and the real restorable count', () => {
+  it('names the member count and the real restorable count', () => {
     const wrapper = mountCards({ overview: makeOverview({ restorableCount: 7 }), loading: false })
-    expect(wrapper.find('.rl-meaning').text()).toBe('近 7 天 · 2 位成員 · 7 筆可還原')
+    expect(wrapper.find('.wk-sum').text()).toContain('2 位成員')
+    expect(wrapper.find('.wk-sum').text()).toContain('7 筆可還原')
   })
 
   it('hides the restorable count while the restore feature is off', () => {
@@ -62,23 +58,33 @@ describe('ActivityStatsCards', () => {
     restore.enabled = true
   })
 
-  it('draws no rings when there was no activity (a share of zero means nothing)', () => {
-    const wrapper = mountCards({ overview: makeOverview({ totalActivities: 0, topUsers: [], actionStats: {} }), loading: false })
-    expect(wrapper.find('.sr-legend').exists()).toBe(false)
+  it('draws no tiles when there was no activity', () => {
+    const wrapper = mountCards({ overview: makeOverview({ totalActivities: 0, dailyStats: [] }), loading: false })
+    expect(wrapper.find('.wk-days').exists()).toBe(false)
   })
 
-  it('draws one bar per day from dailyStats', () => {
-    const wrapper = mountCards({ overview: makeOverview(), loading: false })
-    expect(wrapper.findAll('.bars i')).toHaveLength(2)
+  it('draws one labelled tile per day from dailyStats and marks the busiest', () => {
+    const wrapper = mountCards({ overview: makeOverview({ dailyStats: [{ date: '2026-03-19', count: 20 }, { date: '2026-03-20', count: 50 }] }), loading: false })
+    expect(wrapper.findAll('.wk-day')).toHaveLength(2)
+    expect(wrapper.find('.wk-day.is-peak .wk-wd').text()).toBe('週五')
   })
 
-  it('shows a busy lead while loading', () => {
+  it('flags a day far below the average and names it', () => {
+    const wrapper = mountCards({
+      overview: makeOverview({ dailyStats: [{ date: '2026-03-18', count: 100 }, { date: '2026-03-19', count: 100 }, { date: '2026-03-20', count: 10 }] }),
+      loading: false
+    })
+    expect(wrapper.find('.wk-day.is-low .wk-flag').text()).toBe('偏少')
+    expect(wrapper.find('.wk-note').text()).toContain('僅 10 筆')
+  })
+
+  it('shows a busy card while loading', () => {
     const wrapper = mountCards({ overview: null, loading: true })
-    expect(wrapper.find('.rl-num').attributes('aria-busy')).toBe('true')
+    expect(wrapper.find('.wk').attributes('aria-busy')).toBe('true')
   })
 
   it('hides entirely when overview is null and loading is false', () => {
     const wrapper = mountCards({ overview: null, loading: false })
-    expect(wrapper.find('.stats-grid').exists()).toBe(false)
+    expect(wrapper.find('.wk').exists()).toBe(false)
   })
 })

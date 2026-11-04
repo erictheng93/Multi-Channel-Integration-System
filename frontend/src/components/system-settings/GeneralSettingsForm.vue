@@ -1,8 +1,9 @@
 <!--
   GeneralSettingsForm.vue
 
-  General system settings: identity and region. Saved through the page-head 儲存變更 button
-  (a submit button pointing at this form by id).
+  General system settings: name, contact and language. The time zone select lives in the day ribbon above
+  (it is attached to this form by id), so a change anywhere counts as one dirty form. Saved through the
+  floating 儲存變更 bar (a submit button pointing at this form by id).
 -->
 
 <template>
@@ -14,7 +15,7 @@
     <SettingsGroup title="系統識別">
       <SettingsRow
         label="系統名稱"
-        :hint="`顯示在側邊欄與登入頁，最多 40 字元（已輸入 ${localSettings.systemName.length}）`"
+        :hint="`系統的顯示名稱，${localSettings.systemName.length} / 40 字`"
         for-id="systemName"
       >
         <input
@@ -41,41 +42,26 @@
           required
         >
       </SettingsRow>
-    </SettingsGroup>
-
-    <SettingsGroup title="地區與語言">
-      <SettingsRow
-        label="時區"
-        :hint="clockHint"
-        for-id="timezone"
-      >
-        <select
-          id="timezone"
-          v-model="localSettings.timezone"
-          class="ui-select"
-          required
-        >
-          <option
-            v-for="zone in TIMEZONES"
-            :key="zone.value"
-            :value="zone.value"
-          >
-            {{ zone.label }}
-          </option>
-        </select>
-      </SettingsRow>
       <SettingsRow
         label="介面語言"
-        hint="目前僅支援繁體中文"
+        hint="目前僅提供繁體中文"
+        for-id="language"
       >
-        <span class="lang-value">繁體中文</span>
+        <select
+          id="language"
+          class="ui-select"
+        >
+          <option value="zh-TW">
+            繁體中文
+          </option>
+        </select>
       </SettingsRow>
     </SettingsGroup>
   </form>
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, watch } from 'vue'
+import { reactive, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { GeneralSettings } from '@/types/system-settings'
 import SettingsGroup from './SettingsGroup.vue'
@@ -95,15 +81,6 @@ const emit = defineEmits<{
 }>()
 
 const { t } = useI18n()
-
-const TIMEZONES = [
-  { value: 'Asia/Taipei', label: 'Asia/Taipei (UTC+8)' },
-  { value: 'Asia/Tokyo', label: 'Asia/Tokyo (UTC+9)' },
-  { value: 'Asia/Shanghai', label: 'Asia/Shanghai (UTC+8)' },
-  { value: 'Asia/Hong_Kong', label: 'Asia/Hong Kong (UTC+8)' },
-  { value: 'Asia/Singapore', label: 'Asia/Singapore (UTC+8)' },
-  { value: 'UTC', label: 'UTC (UTC+0)' }
-]
 
 const localSettings = reactive<GeneralSettings>({
   systemName: '',
@@ -130,23 +107,6 @@ watch(
   { deep: true }
 )
 
-/** Live hint: the current time in the chosen zone, read once per selection (no ticking timer) */
-const clockHint = computed(() => {
-  try {
-    const at = new Intl.DateTimeFormat('zh-TW', {
-      timeZone: localSettings.timezone || 'Asia/Taipei',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false
-    }).format(new Date())
-    return `所選時區的目前時間：${at}`
-  } catch {
-    return '用於顯示時間與報表日期'
-  }
-})
-
 function handleSave() {
   emit('save')
 }
@@ -155,25 +115,38 @@ function handleSave() {
 <style scoped>
 .general-form {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 20px 16px;
-  align-items: start;
+  min-width: 0;
 }
 
-.lang-value {
-  width: 100%;
-  font-size: 15px;
-  color: var(--ui-muted);
-  text-align: right;
+/* fields sit flat on the white card; the 1px boundary stays (WCAG 1.4.11) */
+.general-form :deep(.ui-input),
+.general-form :deep(.ui-select) {
+  background-color: var(--ui-surface);
 }
 
-@media (max-width: 1024px) {
-  .general-form {
-    grid-template-columns: minmax(0, 1fr);
-  }
+/* controls stay a readable width so hints keep one line */
+.general-form :deep(.srow-c) {
+  width: min(300px, 100%);
+}
 
-  .lang-value {
-    text-align: left;
+@media (max-width: 768px) {
+  .general-form :deep(.srow-c) {
+    width: 100%;
   }
+}
+
+/* the card takes the column's height and its rows share it, so it ends level with the list beside it */
+.general-form :deep(.settings-group) {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+.general-form :deep(.ui-card) {
+  display: flex;
+  flex-direction: column;
+}
+
+.general-form :deep(.srow) {
+  flex: 1;
 }
 </style>

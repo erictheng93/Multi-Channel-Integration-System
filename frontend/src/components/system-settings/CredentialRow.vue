@@ -8,6 +8,7 @@
 
 <template>
   <SettingsRow
+    :class="{ 'is-masked': showMasked }"
     :label="label"
     :hint="hint"
     :for-id="showMasked ? undefined : inputId"
@@ -33,12 +34,11 @@
     </template>
     <template v-if="showMasked">
       <div class="cred-state">
-        <span class="ui-pill ui-pill-green ui-pill-dot">已設定</span>
         <code class="cred-last4">{{ maskedText }}</code>
       </div>
       <button
         type="button"
-        class="btn btn-secondary"
+        class="btn btn-secondary cred-replace"
         :disabled="disabled"
         @click="startReplace"
       >
@@ -145,7 +145,7 @@ function cancelReplace() {
   height: 18px;
 }
 
-/* the stored value: a state pill and the last four characters, pushed against the replace button */
+/* the stored value: the last four characters (the leading tile is green once set), pushed against the replace button */
 .cred-state {
   display: flex;
   flex: 1;
@@ -156,11 +156,60 @@ function cancelReplace() {
 }
 
 .cred-last4 {
-  font: 13px var(--ui-font-mono);
+  padding: 6px 12px;
+  border-radius: 10px;
+  background: var(--ui-fill);
+  font: 600 16px var(--ui-font-mono);
   letter-spacing: 0.06em;
-  color: var(--ui-ink-2);
+  color: var(--ui-ink);
 }
 
+
+/* a replace action in the accent colour, not a pale grey capsule */
+.cred-replace {
+  min-height: 40px;
+  padding-inline: 12px;
+  background: transparent;
+  color: var(--ui-accent-ink, var(--ui-accent));
+  font-weight: 600;
+}
+
+/* the description keeps the whole row width; only the value and its action share a trailing slot */
+.is-masked :deep(.srow-c) {
+  width: auto;
+}
+
+/* phone: label and description on top at full width, value left and 更換 right underneath */
+@media (max-width: 768px) {
+  /* a stored credential is one line: name on the left, last four and 更換 on the right (the hint is for entering a new one) */
+  .is-masked.srow {
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .is-masked :deep(.srow-h) {
+    display: none;
+  }
+
+  .is-masked :deep(.srow-c) {
+    flex: none;
+    width: auto;
+  }
+
+  .cred-state {
+    flex: none;
+  }
+
+  .cred-last4 {
+    padding: 5px 10px;
+    font-size: 15px;
+  }
+
+  .cred-replace {
+    min-height: 44px;
+  }
+}
 
 .mono {
   font-family: var(--ui-font-mono);

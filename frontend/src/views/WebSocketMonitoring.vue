@@ -49,346 +49,103 @@
         {{ error }}
       </div>
 
-      <!-- Lead: registered connections now against this range's peak -->
-      <RingLead
-        kicker="已註冊連線"
-        :value="metrics ? metrics.registeredConnections : '—'"
-        :unit="metrics ? '條' : ''"
-        :busy="isRefreshing && !metrics"
-        :tone="metrics ? '' : 'none'"
-        :meaning="metrics ? `${metrics.onlineAgents} 位在線客服，多分頁與裝置各算一條` : ''"
-        summary="連線數"
-        :rings="connectionRings"
-        :size="144"
-      >
-        <span
-          v-if="metrics && connectionDelta !== null"
-          class="ui-delta lead-delta"
-          :class="connectionDelta >= 0 ? 'ui-delta-up' : 'ui-delta-down'"
-        >{{ connectionDelta > 0 ? '+' : '' }}{{ connectionDelta }} 比上次刷新</span>
-      </RingLead>
-
-      <!-- Rates: one grouped row each, with its own trend -->
-      <section aria-label="即時指標">
-        <h2 class="ui-group-label">
-          即時指標
-          <span class="label-note">每 {{ POLL_SECONDS }} 秒更新，走勢為{{ rangeLabel }}</span>
-        </h2>
-        <div class="ui-group">
-          <div class="ui-row is-flush kpi-row">
-            <span
-              class="ui-kpi-ico green"
-              aria-hidden="true"
-            >
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              ><path d="M7 4v16M7 20l-3-3M7 20l3-3M17 20V4M17 4l-3 3M17 4l3 3" /></svg>
-            </span>
-            <div class="kpi-main">
-              <div class="kpi-label">
-                事件 / 秒
-              </div>
-              <div class="ui-kpi-foot">
-                <template v-if="eventsTotal === null">
-                  {{ metrics ? RESAMPLE_HINT : '' }}
-                </template>
-                <template v-else>
-                  入 <b>{{ fmt(eventsIn, 2) }}</b> / 出 <b>{{ fmt(eventsOut, 2) }}</b>
-                </template>
-              </div>
+      <!-- Lead: the registered connections now, and the trend that explains them, in one object -->
+      <section class="bento">
+        <article class="ui-lead board s12">
+          <div class="board-main">
+            <div class="board-kicker">
+              已註冊連線
             </div>
-            <div class="kpi-value">
-              {{ eventsTotal === null ? '—' : fmt(eventsTotal, 2) }}
+            <div
+              class="board-num"
+              :class="{ 'is-none': !metrics }"
+            >
+              {{ metrics ? metrics.registeredConnections : '—' }}<small v-if="metrics">條</small>
             </div>
-            <svg
-              v-if="sparks.events.line"
-              class="spark is-accent"
-              :viewBox="`0 0 ${SPARK.width} ${SPARK.height}`"
-              preserveAspectRatio="none"
-              role="img"
-              :aria-label="`事件 / 秒，${rangeLabel}走勢`"
+            <p
+              v-if="metrics"
+              class="board-meaning"
             >
-              <path
-                :d="sparks.events.area"
-                class="spark-area"
-              />
-              <path
-                :d="sparks.events.line"
-                class="spark-line"
-              />
-            </svg>
-            <span
-              v-else
-              class="spark-gap"
-            />
-          </div>
-
-          <div class="ui-row is-flush kpi-row">
-            <span
-              class="ui-kpi-ico orange"
-              aria-hidden="true"
+              多分頁與裝置各算一條連線
+            </p>
+            <div
+              v-if="metrics"
+              class="lead-chips"
             >
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              ><circle
-                cx="12"
-                cy="12"
-                r="9"
-              /><path d="M12 7v5l3 2" /></svg>
-            </span>
-            <div class="kpi-main">
-              <div class="kpi-label">
-                平均處理延遲
+              <span
+                v-if="service"
+                class="ui-pill ui-pill-dot"
+                :class="service.pill"
+              >{{ service.label }}</span>
+              <span
+                v-if="connectionDelta !== null"
+                class="ui-delta"
+                :class="connectionDelta >= 0 ? 'ui-delta-up' : 'ui-delta-down'"
+              >{{ connectionDelta > 0 ? '+' : '' }}{{ connectionDelta }} 比上次刷新</span>
+            </div>
+            <dl
+              v-if="metrics"
+              class="board-facts"
+            >
+              <div>
+                <dt>在線客服</dt>
+                <dd>{{ metrics.onlineAgents }}<small>位</small></dd>
               </div>
-              <div class="ui-kpi-foot">
-                <template v-if="metrics && !latencyKnown">
-                  {{ RESAMPLE_HINT }}
-                </template>
-                <template v-else-if="metrics">
+              <div v-if="perAgent !== null">
+                <dt>每位平均</dt>
+                <dd>{{ perAgent }}<small>條</small></dd>
+              </div>
+              <div>
+                <dt>錯誤率</dt>
+                <dd>{{ errorRate === null ? '—' : (errorRate * 100).toFixed(2) }}<small v-if="errorRate !== null">%</small></dd>
+                <dd class="fact-note">
                   <span
-                    class="ui-pill ui-pill-dot"
-                    :class="latency.pill"
-                  >{{ latency.label }}</span><span class="foot-hint">{{ latency.hint }}</span>
-                </template>
-              </div>
-            </div>
-            <div class="kpi-value">
-              {{ latencyKnown ? fmt(metrics?.averageLatency, 0) : '—' }}<small v-if="latencyKnown">ms</small>
-            </div>
-            <svg
-              v-if="sparks.latency.line"
-              class="spark is-orange"
-              :viewBox="`0 0 ${SPARK.width} ${SPARK.height}`"
-              preserveAspectRatio="none"
-              role="img"
-              :aria-label="`平均處理延遲，${rangeLabel}走勢`"
-            >
-              <path
-                :d="sparks.latency.area"
-                class="spark-area"
-              />
-              <path
-                :d="sparks.latency.line"
-                class="spark-line"
-              />
-            </svg>
-            <span
-              v-else
-              class="spark-gap"
-            />
-          </div>
-
-          <div class="ui-row is-flush kpi-row">
-            <span
-              class="ui-kpi-ico red"
-              aria-hidden="true"
-            >
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              ><path d="M12 3 2 20h20Z" /><path d="M12 10v4M12 17h.01" /></svg>
-            </span>
-            <div class="kpi-main">
-              <div class="kpi-label">
-                錯誤率
-              </div>
-              <div class="ui-kpi-foot">
-                <template v-if="errorRate === null">
-                  {{ metrics ? RESAMPLE_HINT : '' }}
-                </template>
-                <template v-else>
-                  <span
+                    v-if="errorRate !== null"
                     class="ui-pill ui-pill-dot"
                     :class="errorStatus.pill"
-                  >{{ errorStatus.label }}</span><span class="foot-hint">{{ errorStatus.hint }}</span>
-                </template>
+                  >{{ errorStatus.label }}</span>
+                  <template v-else>
+                    {{ RESAMPLE_HINT }}
+                  </template>
+                </dd>
+              </div>
+            </dl>
+          </div>
+          <div class="board-chart">
+            <div class="card-head">
+              <p class="range-facts">
+                <span class="rf-title">連線趨勢</span>
+                <span v-if="stats.peakConnections !== null">近 {{ rangeLabel }}峰值 <b>{{ stats.peakConnections }}</b></span>
+                <span v-if="stats.avgConnections !== null">平均 <b>{{ stats.avgConnections }}</b></span>
+              </p>
+              <div
+                class="ui-seg"
+                role="group"
+                aria-label="時間範圍"
+              >
+                <button
+                  v-for="option in RANGE_OPTIONS"
+                  :key="option.value"
+                  type="button"
+                  :aria-pressed="period === option.value"
+                  @click="changePeriod(option.value)"
+                >
+                  {{ option.label }}
+                </button>
               </div>
             </div>
-            <div class="kpi-value">
-              {{ errorRate === null ? '—' : (errorRate * 100).toFixed(2) }}<small v-if="errorRate !== null">%</small>
-            </div>
-            <svg
-              v-if="sparks.error.line"
-              class="spark is-red"
-              :viewBox="`0 0 ${SPARK.width} ${SPARK.height}`"
-              preserveAspectRatio="none"
-              role="img"
-              :aria-label="`錯誤率，${rangeLabel}走勢`"
-            >
-              <path
-                :d="sparks.error.area"
-                class="spark-area"
-              />
-              <path
-                :d="sparks.error.line"
-                class="spark-line"
-              />
-            </svg>
-            <span
-              v-else
-              class="spark-gap"
-            />
-          </div>
-        </div>
-      </section>
-
-      <section class="bento">
-        <!-- 歷史趨勢 -->
-        <section class="s8">
-          <div class="label-row">
-            <h2 class="ui-group-label">
-              歷史趨勢
-              <span class="label-note">已註冊連線與每秒事件量（每 5 分鐘取樣一次）</span>
-            </h2>
-            <div
-              class="ui-seg"
-              role="group"
-              aria-label="時間範圍"
-            >
-              <button
-                v-for="option in RANGE_OPTIONS"
-                :key="option.value"
-                type="button"
-                :aria-pressed="period === option.value"
-                @click="changePeriod(option.value)"
-              >
-                {{ option.label }}
-              </button>
-            </div>
-          </div>
-          <div class="ui-group chart-card">
-            <div class="legend">
-              <span><i class="swatch-area" />已註冊連線<b
-                v-if="chart.lastConnections !== null"
-                class="is-conn"
-              >{{ chart.lastConnections }}</b></span><span><i class="swatch-line" />事件 / 秒<b
-                v-if="chart.lastEvents !== null"
-                class="is-evt"
-              >{{ fmt(chart.lastEvents, 2) }}</b></span>
-            </div>
             <div class="chart-wrap">
-              <svg
-                v-if="chart.connections.count > 0"
-                class="chart"
-                :viewBox="`0 0 ${geom.width} ${geom.height}`"
-                role="img"
-                :aria-label="`${rangeLabel}已註冊連線與每秒事件趨勢`"
-              >
-                <g class="g">
-                  <line
-                    v-for="tick in chart.yLeft"
-                    :key="`g${tick.pos}`"
-                    :x1="geom.left"
-                    :x2="geom.right"
-                    :y1="tick.pos"
-                    :y2="tick.pos"
-                  />
-                </g>
-                <g
-                  text-anchor="end"
-                  class="ax-left"
-                >
-                  <text
-                    v-for="tick in chart.yLeft"
-                    :key="`l${tick.pos}`"
-                    :x="geom.left - 8"
-                    :y="tick.pos + 4"
-                  >{{ tick.label }}</text>
-                </g>
-                <g
-                  v-if="!phone"
-                  text-anchor="start"
-                  class="ax-right"
-                >
-                  <text
-                    v-for="tick in chart.yRight"
-                    :key="`r${tick.pos}`"
-                    :x="geom.right + 8"
-                    :y="tick.pos + 4"
-                  >{{ tick.label }}</text>
-                </g>
-                <g text-anchor="middle">
-                  <text
-                    v-for="tick in chart.x"
-                    :key="`x${tick.pos}`"
-                    :x="tick.pos"
-                    :y="geom.bottom + 24"
-                  >{{ tick.label }}</text>
-                </g>
-                <path
-                  v-for="(d, i) in chart.connections.areas"
-                  :key="`a${i}`"
-                  :d="d"
-                  fill="var(--ui-accent)"
-                  opacity="0.1"
-                />
-                <path
-                  v-for="(d, i) in chart.connections.lines"
-                  :key="`c${i}`"
-                  :d="d"
-                  fill="none"
-                  stroke="var(--ui-accent)"
-                  stroke-width="2.4"
-                  stroke-linejoin="round"
-                  stroke-linecap="round"
-                />
-                <path
-                  v-for="(d, i) in phoneEvents"
-                  :key="`e${i}`"
-                  :d="d"
-                  fill="none"
-                  stroke="var(--ui-indigo)"
-                  stroke-width="2.2"
-                  stroke-linejoin="round"
-                  stroke-linecap="round"
-                />
-                <circle
-                  v-for="(dot, i) in chart.connections.dots"
-                  :key="`cd${i}`"
-                  :cx="dot.x"
-                  :cy="dot.y"
-                  r="2.6"
-                  fill="var(--ui-accent)"
-                />
-                <circle
-                  v-for="(dot, i) in phoneEventDots"
-                  :key="`ed${i}`"
-                  :cx="dot.x"
-                  :cy="dot.y"
-                  r="2.4"
-                  fill="var(--ui-indigo)"
-                />
-                <circle
-                  v-if="chart.connections.last"
-                  :cx="chart.connections.last.x"
-                  :cy="chart.connections.last.y"
-                  r="4"
-                  fill="var(--ui-accent)"
-                />
-                <circle
-                  v-if="chart.events.last && !phone"
-                  :cx="chart.events.last.x"
-                  :cy="chart.events.last.y"
-                  r="4"
-                  fill="var(--ui-indigo)"
-                  stroke="var(--ui-surface)"
-                  stroke-width="1.5"
-                />
-              </svg>
+              <WsLineChart
+                v-if="hasHistory"
+                :points="history"
+                :from="connWindow.from"
+                :to="connWindow.to"
+                :range="period"
+                :series="CONN_SERIES"
+                :geom="connGeom"
+                :x-count="phone ? 4 : 5"
+                :chart-label="`${rangeLabel}已註冊連線趨勢`"
+              />
               <div
                 v-else
                 class="ui-empty"
@@ -396,140 +153,138 @@
                 <h3>{{ historyLoading ? '載入中...' : historyError ? '無法載入歷史資料' : '這段時間還沒有取樣資料' }}</h3>
                 <p>{{ historyError || '系統每 5 分鐘記錄一次連線快照，累積後會顯示在這裡。' }}</p>
               </div>
-              <!-- Phone: one axis cannot carry both series, so events get their own small chart on the same time range -->
-              <template v-if="phone && chart.connections.count > 0">
-                <div class="legend legend-second">
-                  <span><i class="swatch-line" />事件 / 秒<b
-                    v-if="chart.lastEvents !== null"
-                    class="is-evt"
-                  >{{ fmt(chart.lastEvents, 2) }}</b></span>
-                </div>
-                <svg
-                  v-if="phoneChart.events.count > 0"
-                  class="chart"
-                  :viewBox="`0 0 ${PHONE_EVENTS.width} ${PHONE_EVENTS.height}`"
-                  role="img"
-                  :aria-label="`${rangeLabel}每秒事件趨勢`"
-                >
-                  <g class="g">
-                    <line
-                      v-for="tick in phoneChart.yEvents"
-                      :key="`pg${tick.pos}`"
-                      :x1="PHONE_EVENTS.left"
-                      :x2="PHONE_EVENTS.right"
-                      :y1="tick.pos"
-                      :y2="tick.pos"
-                    />
-                  </g>
-                  <g text-anchor="end">
-                    <text
-                      v-for="tick in phoneChart.yEvents"
-                      :key="`pl${tick.pos}`"
-                      :x="PHONE_EVENTS.left - 8"
-                      :y="tick.pos + 4"
-                    >{{ tick.label }}</text>
-                  </g>
-                  <g text-anchor="middle">
-                    <text
-                      v-for="tick in phoneChart.x"
-                      :key="`px${tick.pos}`"
-                      :x="tick.pos"
-                      :y="PHONE_EVENTS.bottom + 22"
-                    >{{ tick.label }}</text>
-                  </g>
-                  <path
-                    v-for="(d, i) in phoneChart.events.areas"
-                    :key="`pa${i}`"
-                    :d="d"
-                    fill="var(--ui-indigo)"
-                    opacity="0.1"
-                  />
-                  <path
-                    v-for="(d, i) in phoneChart.events.lines"
-                    :key="`pe${i}`"
-                    :d="d"
-                    fill="none"
-                    stroke="var(--ui-indigo)"
-                    stroke-width="2.2"
-                    stroke-linejoin="round"
-                    stroke-linecap="round"
-                  />
-                  <circle
-                    v-for="(dot, i) in phoneChart.events.dots"
-                    :key="`pd${i}`"
-                    :cx="dot.x"
-                    :cy="dot.y"
-                    r="2.4"
-                    fill="var(--ui-indigo)"
-                  />
-                  <circle
-                    v-if="phoneChart.events.last"
-                    :cx="phoneChart.events.last.x"
-                    :cy="phoneChart.events.last.y"
-                    r="4"
-                    fill="var(--ui-indigo)"
-                    stroke="var(--ui-surface)"
-                    stroke-width="1.5"
-                  />
-                </svg>
-                <p
-                  v-else
-                  class="axis-note"
-                >
-                  這段時間沒有事件取樣資料。
-                </p>
-              </template>
+            </div>
+          </div>
+        </article>
+
+        <!-- 事件量 -->
+        <section class="s6">
+          <h2 class="ui-group-label">
+            事件量
+            <span class="label-note">每秒收發事件數</span>
+          </h2>
+          <div class="ui-group chart-card">
+            <div class="card-head kpi-head">
+              <p class="cur">
+                <b>{{ eventsTotal === null ? '—' : fmt(eventsTotal, 2) }}</b>
+                <span>事件 / 秒</span>
+                <span
+                  v-if="stats.peakEvents !== null"
+                  class="peak"
+                >合計峰值 <b>{{ fmt(stats.peakEvents, 2) }}</b> / 秒</span>
+              </p>
               <p
-                v-if="chart.connections.count > 0"
+                v-if="eventsTotal !== null"
+                class="legend"
+              >
+                <span><i
+                  class="sw"
+                  style="--c: var(--ui-indigo)"
+                /><em>入站</em><strong>{{ fmt(eventsIn, 2) }}</strong></span>
+                <span><i
+                  class="sw"
+                  style="--c: var(--ui-teal)"
+                /><em>出站</em><strong>{{ fmt(eventsOut, 2) }}</strong></span>
+                <span
+                  v-if="eventsSplit !== null"
+                  class="split-note"
+                >入站佔 {{ eventsSplit }}%</span>
+              </p>
+              <p
+                v-else-if="metrics"
+                class="legend"
+              >
+                {{ RESAMPLE_HINT }}
+              </p>
+            </div>
+            <div class="chart-wrap">
+              <WsLineChart
+                v-if="hasEvents"
+                :points="history"
+                :from="eventWindow.from"
+                :to="eventWindow.to"
+                :range="period"
+                :series="EVENT_SERIES"
+                :geom="halfGeom"
+                :x-count="phone ? 4 : 5"
+                :chart-label="`${rangeLabel}每秒事件趨勢`"
+              />
+              <div
+                v-else
+                class="ui-empty"
+              >
+                <h3>這段時間沒有事件取樣</h3>
+                <p>服務重啟後的第一次取樣沒有事件數，下一次取樣會補上。</p>
+              </div>
+              <p
+                v-if="hasEvents"
                 class="axis-note"
               >
-                {{ phone ? '事件資料缺漏的時段（例如服務重啟後的第一次取樣）不連線。' : '藍色左軸：連線數；紫色右軸：事件 / 秒。事件資料缺漏的時段（例如服務重啟後的第一次取樣）不連線。' }}
+                缺漏的取樣不連線，也不畫成 0。
               </p>
             </div>
           </div>
         </section>
 
-        <!-- 即時概況 -->
-        <section class="s4">
+        <!-- 處理延遲 -->
+        <section class="s6">
           <h2 class="ui-group-label">
-            即時概況
-            <span class="label-note">來自 MessageBroadcaster</span>
+            處理延遲
+            <span class="label-note">平均處理時間（毫秒）</span>
           </h2>
-          <div class="ui-group facts-card">
-            <div
-              v-if="metrics"
-              class="facts"
-            >
-              <div class="fact">
-                <span>在線客服</span><b>{{ metrics.onlineAgents }}</b>
-              </div>
-              <div class="fact">
-                <span>已註冊連線</span><b>{{ metrics.registeredConnections }}</b>
-              </div>
-              <div class="fact">
-                <span>取樣視窗</span><b>{{ sampled ? `${metrics.windowSeconds} 秒` : '—' }}</b>
-              </div>
-              <h3 class="fact-group">
-                {{ rangeLabel }}內
-              </h3>
-              <div class="fact">
-                <span>連線峰值</span><b>{{ stats.peakConnections ?? '—' }}</b>
-              </div>
-              <div class="fact">
-                <span>平均連線</span><b>{{ stats.avgConnections ?? '—' }}</b>
-              </div>
-              <div class="fact">
-                <span>事件峰值 / 秒</span><b>{{ stats.peakEvents === null ? '—' : fmt(stats.peakEvents, 2) }}</b>
-              </div>
-              <p class="fact-note">
-                連線數為已註冊的連線（客服連線加對話房間），不代表每一條都有即時 socket。
+          <div class="ui-group chart-card">
+            <div class="card-head kpi-head">
+              <p class="cur">
+                <b>{{ latencyKnown ? fmt(metrics?.averageLatency, 0) : '—' }}</b>
+                <span>ms</span>
+                <span
+                  v-if="stats.peakLatency !== null"
+                  class="peak"
+                >峰值 <b>{{ fmt(stats.peakLatency, 0) }}</b> ms</span>
+              </p>
+              <p
+                v-if="latencyKnown"
+                class="legend"
+              >
+                <span
+                  class="ui-pill ui-pill-dot"
+                  :class="latency.pill"
+                >{{ latency.label }}</span>
+                <span>{{ latency.hint }}</span>
+              </p>
+              <p
+                v-else-if="metrics"
+                class="legend"
+              >
+                {{ RESAMPLE_HINT }}
               </p>
             </div>
-            <div
-              v-else
-              class="ui-empty"
-            >
-              <p>{{ isRefreshing ? '載入中...' : '尚無資料' }}</p>
+            <div class="chart-wrap">
+              <WsLineChart
+                v-if="hasLatency"
+                :points="history"
+                :from="latencyWindow.from"
+                :to="latencyWindow.to"
+                :range="period"
+                :series="LATENCY_SERIES"
+                :geom="halfGeom"
+                :refs="LATENCY_REFS"
+                :x-count="phone ? 4 : 5"
+                :chart-label="`${rangeLabel}平均處理延遲趨勢`"
+              />
+              <div
+                v-else
+                class="ui-empty"
+              >
+                <h3>這段時間沒有延遲取樣</h3>
+                <p>有事件經過後才會有處理時間。</p>
+              </div>
+              <p
+                v-if="hasLatency"
+                class="axis-note"
+              >
+                空心圓為峰值；虛線為門檻：100 ms 優秀、500 ms 需改進。
+              </p>
             </div>
           </div>
         </section>
@@ -597,9 +352,8 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { apiClient } from '@/api'
 import { presenceApi, type WsMetricsPointDto, type WsMetricsRange } from '@/api/presence'
 import AppLayout from '@/components/ui/AppLayout.vue'
-import RingLead from '@/components/lead/RingLead.vue'
-import type { ServiceRing } from '@/components/ui/ServiceRings.vue'
-import { CHART, CHART_COMPACT, RANGE_MS, SPARK, buildSeries, buildSpark, xTicks, yTicks } from '@/utils/ws-metrics-chart'
+import WsLineChart, { type WsChartSeries } from '@/components/websocket/WsLineChart.vue'
+import { RANGE_MS } from '@/utils/ws-metrics-chart'
 import type { ChartGeometry } from '@/utils/ws-metrics-chart'
 
 interface Metrics {
@@ -652,18 +406,34 @@ const historyError = ref<string | null>(null)
 /** Window end for the chart; moves with each history load */
 const historyNow = ref(Date.now())
 
-/** Phone: a taller single-axis chart for connections, plus a second small chart for events */
-const PHONE_EVENTS: ChartGeometry = { width: 360, height: 150, left: 34, right: 348, top: 12, bottom: 116 }
+/** Chart geometry: the wide trend card, the two half-width cards, and one phone size for all three */
+const CONN_WIDE: ChartGeometry = { width: 800, height: 236, left: 40, right: 786, top: 14, bottom: 194 }
+const HALF_WIDE: ChartGeometry = { width: 520, height: 230, left: 40, right: 508, top: 14, bottom: 188 }
+const PHONE_GEOM: ChartGeometry = { width: 330, height: 190, left: 32, right: 322, top: 12, bottom: 152 }
 const PHONE_QUERY = '(max-width: 768px)'
 const phone = ref(typeof window !== 'undefined' && window.matchMedia?.(PHONE_QUERY).matches === true)
 let phoneQuery: ReturnType<typeof window.matchMedia> | null = null
 function onPhoneChange(event: { matches: boolean }) {
   phone.value = event.matches
 }
-/** Events line on the combined (wide) chart only; the phone draws events in their own chart */
-const phoneEvents = computed(() => (phone.value ? [] : chart.value.events.lines))
-const phoneEventDots = computed(() => (phone.value ? [] : chart.value.events.dots))
-const geom = computed(() => (phone.value ? CHART_COMPACT : CHART))
+const connGeom = computed(() => (phone.value ? PHONE_GEOM : CONN_WIDE))
+const halfGeom = computed(() => (phone.value ? PHONE_GEOM : HALF_WIDE))
+
+const eventsOf = (p: WsMetricsPointDto): number | null =>
+  p.eventsInPerS === null || p.eventsOutPerS === null ? null : p.eventsInPerS + p.eventsOutPerS
+
+const CONN_SERIES: WsChartSeries[] = [
+  { key: 'conn', color: 'var(--ui-accent)', pick: p => p.activeConnections, area: true, label: '連線', unit: '條' }
+]
+const EVENT_SERIES: WsChartSeries[] = [
+  { key: 'in', color: 'var(--ui-indigo)', pick: p => p.eventsInPerS, area: true, label: '入', digits: 2, unit: '/秒' },
+  { key: 'out', color: 'var(--ui-teal)', pick: p => p.eventsOutPerS, area: true, label: '出', digits: 2, unit: '/秒' }
+]
+const LATENCY_SERIES: WsChartSeries[] = [
+  { key: 'lat', color: 'var(--ui-ink-2)', pick: p => p.avgProcessingMs, area: false, label: '延遲', unit: 'ms', peak: true }
+]
+/** The same thresholds the live row uses (under 100 ms is excellent, over 500 ms needs work) */
+const LATENCY_REFS = [{ value: 100, label: '優秀 100 ms' }, { value: 500, label: '需改進 500 ms' }]
 
 let refreshInterval: ReturnType<typeof setInterval> | null = null
 let pollCount = 0
@@ -687,118 +457,92 @@ const subtitle = computed(() => {
 /** 0 ms with no sampled events is "nothing measured", not a perfect latency. */
 const latencyKnown = computed(() => !!metrics.value && (sampled.value || metrics.value.averageLatency > 0))
 
+/** Inbound share of all events, whole percent */
+const eventsSplit = computed(() =>
+  eventsIn.value === null || eventsTotal.value === null || eventsTotal.value <= 0
+    ? null
+    : Math.round((eventsIn.value / eventsTotal.value) * 100)
+)
+
 const latency = computed(() => {
   const ms = metrics.value?.averageLatency ?? 0
   if (ms < 100) {
-    return { label: '優秀', pill: 'ui-pill-green', hint: '低於 100 ms' }
+    return { label: '優秀', pill: 'ui-pill-green', tone: 'is-good', hint: '低於 100 ms' }
   }
   if (ms < 500) {
-    return { label: '良好', pill: 'ui-pill-orange', hint: '低於 500 ms' }
+    return { label: '良好', pill: 'ui-pill-orange', tone: 'is-warn', hint: '低於 500 ms' }
   }
-  return { label: '需改進', pill: 'ui-pill-red', hint: '超過 500 ms' }
+  return { label: '需改進', pill: 'ui-pill-red', tone: 'is-bad', hint: '超過 500 ms' }
 })
 
 const errorStatus = computed(() => {
   const rate = errorRate.value ?? 0
   if (rate < 0.01) {
-    return { label: '正常', pill: 'ui-pill-green', hint: '低於 1%' }
+    return { label: '正常', pill: 'ui-pill-green', tone: 'is-good', hint: '低於 1%' }
   }
   if (rate < 0.05) {
-    return { label: '注意', pill: 'ui-pill-orange', hint: '1% 以上' }
+    return { label: '注意', pill: 'ui-pill-orange', tone: 'is-warn', hint: '1% 以上' }
   }
-  return { label: '警告', pill: 'ui-pill-red', hint: '5% 以上' }
+  return { label: '警告', pill: 'ui-pill-red', tone: 'is-bad', hint: '5% 以上' }
 })
 
 const rangeLabel = computed(() => RANGE_OPTIONS.find(o => o.value === period.value)?.label ?? '')
 
-const chart = computed(() => {
-  const points = history.value
-  // The x-range ends at the newest real sample, so the lines run to the edge of the plot
-  const newest = points.length > 0 ? (points[points.length - 1]?.ts ?? historyNow.value) : historyNow.value
-  const to = newest
-  const from = to - RANGE_MS[period.value]
-  const g = geom.value
-  const connections = buildSeries(points, p => p.activeConnections, from, to, g)
-  const events = buildSeries(
-    points,
-    p => (p.eventsInPerS === null || p.eventsOutPerS === null ? null : p.eventsInPerS + p.eventsOutPerS),
-    from,
-    to,
-    g
-  )
-  const lastValue = (pick: (_p: WsMetricsPointDto) => number | null): number | null => {
-    for (let i = points.length - 1; i >= 0; i--) {
-      const point = points[i]
-      const value = point ? pick(point) : null
-      if (value !== null && Number.isFinite(value)) {
-        return value
-      }
-    }
-    return null
-  }
-  return {
-    connections,
-    events,
-    lastConnections: lastValue(p => p.activeConnections),
-    lastEvents: lastValue(p => (p.eventsInPerS === null || p.eventsOutPerS === null ? null : p.eventsInPerS + p.eventsOutPerS)),
-    yLeft: yTicks(connections.max, undefined, g),
-    yRight: yTicks(events.max, undefined, g),
-    x: xTicks(from, to, period.value, 5, g)
-  }
-})
-
-/** The same window the main chart draws, shared by the KPI sparklines and the phone events chart */
+/** The window the charts draw: ends at the newest real sample, so the lines run to the edge of the plot */
 const histWindow = computed(() => {
   const points = history.value
   const to = points.length > 0 ? (points[points.length - 1]?.ts ?? historyNow.value) : historyNow.value
   return { from: to - RANGE_MS[period.value], to }
 })
 
-const eventsOf = (p: WsMetricsPointDto): number | null =>
-  p.eventsInPerS === null || p.eventsOutPerS === null ? null : p.eventsInPerS + p.eventsOutPerS
+/** Each chart starts at its own first real sample: a series that began later than the range does not leave an empty left of the plot */
+function windowFor(pick: (_p: WsMetricsPointDto) => number | null) {
+  const base = histWindow.value
+  const first = history.value.find(p => pick(p) !== null)
+  const from = first && first.ts > base.from && first.ts < base.to ? first.ts : base.from
+  return { from, to: base.to }
+}
+/** One shared window: the three charts always show the same time axis, so a spike lines up from chart to chart */
+const sharedWindow = computed(() => {
+  const picks = [
+    windowFor(p => p.activeConnections),
+    windowFor(p => (p.eventsInPerS === null || p.eventsOutPerS === null ? null : 1)),
+    windowFor(p => p.avgProcessingMs)
+  ]
+  return { from: Math.min(...picks.map(w => w.from)), to: histWindow.value.to }
+})
+const connWindow = sharedWindow
+const eventWindow = sharedWindow
+const latencyWindow = sharedWindow
 
-/** Shape of each KPI over the selected range, from the same history samples as the main chart */
-const sparks = computed(() => {
-  const { from, to } = histWindow.value
-  return {
-    events: buildSpark(history.value, eventsOf, from, to),
-    latency: buildSpark(history.value, p => p.avgProcessingMs, from, to),
-    error: buildSpark(history.value, p => (p.errorRate === null ? null : p.errorRate * 100), from, to)
-  }
+const perAgent = computed(() => {
+  const m = metrics.value
+  return m && m.onlineAgents > 0 ? (m.registeredConnections / m.onlineAgents).toFixed(1).replace(/\.0$/, '') : null
 })
 
-const phoneChart = computed(() => {
-  const { from, to } = histWindow.value
-  const events = buildSeries(history.value, eventsOf, from, to, PHONE_EVENTS)
-  return {
-    events,
-    yEvents: yTicks(events.max, undefined, PHONE_EVENTS),
-    x: xTicks(from, to, period.value, 4, PHONE_EVENTS)
-  }
-})
+const hasHistory = computed(() => history.value.length > 0)
+const hasEvents = computed(() => history.value.some(p => eventsOf(p) !== null))
+const hasLatency = computed(() => history.value.some(p => p.avgProcessingMs !== null))
 
-/** Peak and mean over the loaded history (client-side, no extra request) */
-/** One arc: connections now against the highest sample of the chosen range (same series, so they compare) */
-const connectionRings = computed<ServiceRing[]>(() => {
-  const peak = stats.value.peakConnections
-  if (!metrics.value || peak === null || peak <= 0) { return [] }
-  return [{
-    label: `目前連線（${rangeLabel.value}峰值）`,
-    value: metrics.value.activeConnections,
-    total: Math.max(peak, metrics.value.activeConnections),
-    of: '條',
-    hue: 'var(--section-hue)'
-  }]
-})
-
+/** Peaks and mean over the loaded history (client-side, no extra request) */
 const stats = computed(() => {
   const conns = history.value.map(p => p.activeConnections).filter(v => Number.isFinite(v))
   const evts = history.value.map(eventsOf).filter((v): v is number => v !== null && Number.isFinite(v))
+  const lats = history.value.map(p => p.avgProcessingMs).filter((v): v is number => v !== null && Number.isFinite(v))
   return {
     peakConnections: conns.length > 0 ? Math.max(...conns) : null,
     avgConnections: conns.length > 0 ? Math.round(conns.reduce((a, b) => a + b, 0) / conns.length) : null,
-    peakEvents: evts.length > 0 ? Math.max(...evts) : null
+    peakEvents: evts.length > 0 ? Math.max(...evts) : null,
+    peakLatency: lats.length > 0 ? Math.max(...lats) : null
   }
+})
+
+/** Service verdict from /websocket/health (null until the first answer) */
+const healthStatus = ref<string | null>(null)
+const service = computed(() => {
+  if (healthStatus.value === 'healthy') { return { label: '服務正常', pill: 'ui-pill-green' } }
+  if (healthStatus.value === 'degraded') { return { label: '服務降級', pill: 'ui-pill-orange' } }
+  return null
 })
 
 onMounted(async () => {
@@ -854,6 +598,8 @@ async function refreshData() {
         ? connections.registeredConnections - previous
         : null
 
+    const healthObj = healthRes as { status?: string; data?: { status?: string } }
+    healthStatus.value = healthObj.data?.status ?? healthObj.status ?? null
     if (metrics.value) {
       checkAlerts(metrics.value, healthRes)
     }
@@ -1012,9 +758,13 @@ function formatTime(timestamp: number) {
   }
 }
 
-.lead-delta {
-  align-self: flex-start;
-  margin-top: 10px;
+/* verdict and movement under the lead number */
+.lead-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin-top: 12px;
 }
 
 .label-note {
@@ -1023,66 +773,145 @@ function formatTime(timestamp: number) {
   color: var(--ui-muted);
 }
 
-.label-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px 16px;
-  align-items: flex-end;
-  justify-content: space-between;
-  margin-bottom: 8px;
-}
-
-.label-row .ui-group-label {
-  margin: 0;
-  white-space: nowrap;
-}
-
-.chart-card {
-  padding-top: 16px;
-}
-
-.s4 > .ui-group-label {
-  margin-top: 16px;
-}
-
-.facts-card {
-  height: calc(100% - 44px);
-}
-
-/* A rate row: icon, name with its verdict, the number, then the trend */
-.kpi-row {
+/* The board: the number now on the left, the trend that explains it on the right */
+.board {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto 220px;
-  gap: 16px;
-  padding-top: 16px;
-  padding-bottom: 16px;
+  grid-template-columns: 280px minmax(0, 1fr);
+  gap: 20px 36px;
+  align-items: stretch;
+  padding: 24px 28px 14px;
 }
 
-.kpi-label {
+.board-main {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
+}
+
+.board-kicker {
   font-size: 15px;
   font-weight: 600;
+  color: var(--section-ink);
 }
 
-.kpi-main .ui-kpi-foot {
-  margin-top: 2px;
-}
-
-.kpi-value {
-  font: 600 28px / 1 var(--ui-font-display);
-  letter-spacing: -0.02em;
+.board-num {
+  margin-top: 4px;
+  font: 600 64px / 1 var(--ui-font-display);
+  letter-spacing: -0.04em;
   font-variant-numeric: tabular-nums;
+  color: var(--ui-ink);
 }
 
-.kpi-value small {
-  margin-left: 4px;
-  font: 500 14px var(--ui-font-ui);
+.board-num.is-none {
+  color: var(--ui-faint);
+}
+
+.board-num small {
+  margin-left: 6px;
+  font-size: 22px;
+  font-weight: 500;
   letter-spacing: 0;
   color: var(--ui-muted);
 }
 
-.kpi-row .spark {
-  height: 36px;
-  margin-top: 0;
+.board-meaning {
+  margin: 8px 0 0;
+  font-size: 15px;
+  line-height: 1.45;
+  color: var(--ui-ink-2);
+  text-wrap: pretty;
+}
+
+.board-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px 24px;
+  margin: auto 0 0;
+  padding-top: 14px;
+  border-top: 0.5px solid var(--ui-sep);
+  align-self: stretch;
+}
+
+.board-main .lead-chips + .board-facts,
+.board-meaning + .board-facts {
+  margin-top: auto;
+}
+
+.board-facts dt {
+  font-size: 13px;
+  color: var(--ui-muted);
+}
+
+.board-facts dd {
+  margin: 2px 0 0;
+  font: 600 24px / 1.1 var(--ui-font-display);
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.board-facts small {
+  margin-left: 3px;
+  font: 500 14px var(--ui-font-ui);
+  color: var(--ui-muted);
+}
+
+.board-chart {
+  position: relative;
+  min-width: 0;
+  padding-left: 32px;
+}
+
+.board-chart::before {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: 0;
+  width: 0.5px;
+  background: var(--ui-sep);
+  content: '';
+}
+
+.board-chart .card-head,
+.board-chart .chart-wrap {
+  padding-right: 0;
+  padding-left: 0;
+}
+
+.board-chart .card-head {
+  padding-top: 0;
+}
+
+.range-facts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 18px;
+  margin: 0;
+  font-size: 14px;
+  color: var(--ui-muted);
+}
+
+.range-facts b,
+.peak b {
+  font: 600 22px / 1 var(--ui-font-display);
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  color: var(--ui-ink);
+}
+
+.range-facts .rf-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ui-ink);
+}
+
+.peak {
+  margin-left: 6px;
+  padding-left: 18px;
+  border-left: 0.5px solid var(--ui-sep);
+  font-size: 13px;
+  color: var(--ui-muted);
 }
 
 .error-message {
@@ -1093,37 +922,19 @@ function formatTime(timestamp: number) {
   color: var(--ui-red-ink);
 }
 
-.ui-kpi-ico.blue {
-  background: var(--ui-accent-soft);
-  color: var(--ui-accent);
-}
-
-.ui-kpi-ico.green {
-  background: var(--ui-green-soft);
-  color: var(--ui-green-ink);
-}
-
-.ui-kpi-ico.orange {
-  background: var(--ui-orange-soft);
-  color: var(--ui-orange-ink);
-}
-
-.ui-kpi-ico.red {
-  background: var(--ui-red-soft);
-  color: var(--ui-red-ink);
-}
-
-.ui-kpi-foot b {
-  font-weight: 600;
-  color: var(--ui-ink-2);
-  font-variant-numeric: tabular-nums;
-}
-
 .bento {
   display: grid;
   grid-template-columns: repeat(12, minmax(0, 1fr));
-  gap: 16px;
+  gap: 4px 16px;
   align-items: stretch;
+}
+
+.s8,
+.s4,
+.s6 {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
 }
 
 .s8 {
@@ -1131,178 +942,122 @@ function formatTime(timestamp: number) {
 }
 
 .s4 {
-  display: flex;
-  flex-direction: column;
   grid-column: span 4;
+}
+
+.s6 {
+  grid-column: span 6;
+  margin-top: 12px;
 }
 
 .s12 {
   grid-column: span 12;
 }
 
+.s12 + .s12,
+.s12 + .s6 {
+  margin-top: 12px;
+}
+
+/* chart cards: one head row (the newest value, the range control), then the plot */
+.chart-card {
+  flex: 1;
+}
+
+.card-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 16px;
+  min-height: 34px;
+  padding: 16px 22px 0;
+}
+
+.cur {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 0;
+  font-size: 13px;
+  color: var(--ui-muted);
+}
+
+.cur b {
+  font: 600 28px / 1 var(--ui-font-display);
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  color: var(--ui-ink);
+}
+
 .legend {
   display: flex;
   flex-wrap: wrap;
-  gap: 16px;
-  padding: 0 22px 4px;
+  gap: 8px 22px;
+  margin: 0;
   font-size: 13px;
   color: var(--ui-muted);
 }
 
 .legend span {
   display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.legend i {
-  flex: none;
+  align-items: baseline;
+  gap: 8px;
 }
 
 .legend b {
-  font-weight: 600;
+  font: 600 28px / 1 var(--ui-font-display);
+  letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
+  color: var(--ui-ink);
 }
 
-.legend b.is-conn {
-  color: var(--ui-accent);
+.legend em {
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 600;
+  color: var(--ui-ink-2);
 }
 
-.legend b.is-evt {
-  color: var(--ui-indigo);
-}
-
-.legend i.swatch-area {
-  width: 16px;
-  height: 10px;
-  border-top: 2.4px solid var(--ui-accent);
-  background: color-mix(in srgb, var(--ui-accent) 14%, transparent);
-}
-
-.legend i.swatch-line {
-  width: 16px;
-  height: 0;
-  border-top: 2.2px solid var(--ui-indigo);
-}
-
-.legend-second {
-  padding: 14px 0 0;
+.legend .sw {
+  align-self: center;
+  flex: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--c);
 }
 
 .chart-wrap {
-  padding: 4px 22px 18px;
-}
-
-svg.chart {
-  display: block;
-  width: 100%;
-  height: auto;
-  overflow: visible;
-}
-
-svg.chart text {
-  fill: var(--ui-muted);
-  font: 500 11px var(--ui-font-ui);
-  font-variant-numeric: tabular-nums;
-}
-
-svg.chart .g line {
-  stroke: var(--ui-sep);
-}
-
-/* each axis wears its series colour, so a reader never has to guess which scale a line belongs to */
-svg.chart .ax-left text {
-  fill: var(--ui-accent);
-}
-
-svg.chart .ax-right text {
-  fill: var(--ui-indigo);
-}
-
-/* KPI sparkline: pinned to the card floor, so a taller card grows a chart instead of an empty strip */
-.spark {
-  display: block;
-  width: 100%;
-  height: 40px;
-  margin-top: auto;
-  overflow: visible;
-}
-
-.spark-line {
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 2;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  vector-effect: non-scaling-stroke;
-}
-
-.spark-area {
-  fill: currentColor;
-  opacity: 0.1;
-}
-
-.spark.is-accent {
-  color: var(--ui-accent);
-}
-
-.spark.is-orange {
-  color: var(--ui-orange);
-}
-
-.spark.is-red {
-  color: var(--ui-red);
-}
-
-.fact-group {
-  margin: 14px 0 0;
-  padding-bottom: 2px;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--ui-muted);
+  padding: 12px 22px 18px;
 }
 
 .axis-note {
-  margin: 6px 0 0;
-  font-size: 12px;
-  color: var(--ui-muted);
-}
-
-.facts {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  padding: 0 22px 20px;
-}
-
-.foot-hint {
-  white-space: nowrap;
-}
-
-.fact {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 10px 0;
-  font-size: 13.5px;
-  box-shadow: inset 0 -0.5px 0 var(--ui-sep);
-}
-
-.fact span {
-  color: var(--ui-muted);
-}
-
-.fact b {
-  font-variant-numeric: tabular-nums;
-}
-
-.fact-note {
-  margin: auto 0 0;
-  padding-top: 12px;
+  margin: 8px 0 0;
   font-size: 13px;
-  line-height: 1.55;
   color: var(--ui-muted);
+}
+
+.legend strong {
+  font: 600 20px / 1 var(--ui-font-display);
+  font-variant-numeric: tabular-nums;
+  color: var(--ui-ink);
+}
+
+.split-note {
+  color: var(--ui-ink-2);
+}
+
+.board-facts dd.fact-note {
+  margin-top: 4px;
+  font: 400 13px var(--ui-font-ui);
+  color: var(--ui-muted);
+}
+
+.kpi-head {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
 }
 
 .alerts {
@@ -1385,70 +1140,81 @@ svg.chart .ax-right text {
 
 @media (max-width: 1280px) {
   .s8,
-  .s4 {
+  .s4,
+  .s6 {
     grid-column: span 12;
+  }
+
+}
+
+@media (max-width: 1024px) {
+  .board {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 22px 24px 14px;
+  }
+
+  .board-chart {
+    padding: 16px 0 0;
+  }
+
+  .board-chart::before {
+    top: 0;
+    right: 0;
+    bottom: auto;
+    left: 0;
+    width: auto;
+    height: 0.5px;
   }
 }
 
 @media (max-width: 768px) {
-  .kpi-row {
-    grid-template-columns: auto minmax(0, 1fr) auto;
-    gap: 12px;
+  /* Phone: same order as the desktop (board, events, latency) */
+  .s6,
+  .s4,
+  .s8 {
+    margin-top: 16px;
   }
 
-  .kpi-row .spark,
-  .kpi-row .spark-gap {
-    grid-column: 1 / -1;
+  .board {
+    padding: 20px 16px 8px;
   }
 
-  .s4 > .ui-group-label {
-    margin-top: 0;
+  .board-num {
+    font-size: 52px;
   }
 
-  .label-row .label-note {
-    display: none;
+  .peak {
+    margin-left: 0;
+    padding-left: 0;
+    border-left: 0;
   }
 
-  .facts-card {
-    height: auto;
+  .board-chart .card-head .ui-seg {
+    width: 100%;
   }
 
-  .ui-kpi-foot {
-    flex-wrap: wrap;
-    row-gap: 4px;
+  .card-head {
+    padding: 14px 16px 0;
   }
 
-  .legend,
+  .card-head .ui-seg {
+    width: 100%;
+  }
+
+  .card-head .ui-seg > button {
+    flex: 1;
+    justify-content: center;
+    min-height: 44px;
+    padding: 0 6px;
+  }
+
   .chart-wrap,
-  .facts {
-    padding-right: 16px;
-    padding-left: 16px;
-  }
-
   .al {
-    padding: 14px 16px;
+    padding: 12px 16px 14px;
   }
 
   .al + .al::before {
     left: 62px;
-  }
-
-  .ui-card-end,
-  .ui-card-end .ui-seg {
-    width: 100%;
-    margin-left: 0;
-  }
-
-  .ui-card-end .ui-seg > button {
-    flex: 1;
-    justify-content: center;
-    padding: 0 6px;
-  }
-}
-
-@media (max-width: 768px) {
-  svg.chart text {
-    font-size: 11px;
   }
 }
 </style>

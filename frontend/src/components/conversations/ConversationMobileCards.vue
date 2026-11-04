@@ -28,7 +28,10 @@
           >
         </label>
 
-        <div class="avatar">
+        <div
+          class="avatar"
+          :class="`ui-av-${avatarToneOf(getCustomerName(conversation))}`"
+        >
           {{ initialOf(getCustomerName(conversation)) }}
           <span
             v-if="platformOf(conversation) === 'line' || platformOf(conversation) === 'facebook'"
@@ -63,10 +66,10 @@
             </template>{{ getLastMessageText(conversation) }}
           </div>
           <div class="card-pills">
-            <!-- Pills only for exceptions (waiting / stale); quiet text for everything else -->
+            <!-- One treatment for every state: the same dot-and-text pill -->
             <template v-if="replyStateOf(conversation, now).state === 'stale'">
               <span
-                class="ui-pill"
+                class="ui-pill ui-pill-dot"
                 :title="STALE_HINT"
               >{{ replyStateOf(conversation, now).text }}</span>
               <span
@@ -74,15 +77,19 @@
                 class="ui-pill ui-pill-red never-pill"
               >從未回覆</span>
             </template>
+            <!-- Answered rows go quiet (a check and text); only rows that still need a reply carry a coloured pill -->
             <span
-              v-else-if="replyStateOf(conversation, now).state === 'waiting'"
-              class="ui-pill ui-pill-orange"
-              :title="WAITING_HINT"
-            >{{ replyStateOf(conversation, now).text }}</span>
+              v-else-if="replyStateOf(conversation, now).state === 'replied'"
+              class="replied-text state-text"
+            ><svg
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+            ><path d="m5 12.5 4.5 4.5L19 7.5" /></svg>{{ replyStateOf(conversation, now).text }}</span>
             <span
               v-else
-              class="state-text"
-              :class="`state-${replyStateOf(conversation, now).state}`"
+              class="ui-pill ui-pill-dot state-text"
+              :class="[pillTone(replyStateOf(conversation, now).state, conversation), `state-${replyStateOf(conversation, now).state}`]"
+              :title="replyStateOf(conversation, now).state === 'waiting' ? WAITING_HINT : undefined"
             >{{ replyStateOf(conversation, now).text }}</span>
             <span
               v-if="conversation.assignedTeam?.name"
@@ -108,6 +115,7 @@ import {
   WAITING_HINT,
   freeReplySeconds,
   initialOf,
+  avatarToneOf,
   STALE_HINT,
   replyStateOf,
   relativeTime,
@@ -130,6 +138,14 @@ const emit = defineEmits<{
 }>()
 
 const { now } = useRowClock(toRef(props, 'conversations'))
+
+// Emphasis follows urgency: a fresh wait is a quiet dot-and-text, only a wait past 30 minutes becomes a red capsule
+const URGENT_WAIT_SECONDS = 1800
+const pillTone = (state: string, conversation: Conversation): string => {
+  if (state !== 'waiting') { return state === 'replied' ? 'ui-pill-green' : '' }
+  const since = conversation.awaitingSince ? Date.parse(conversation.awaitingSince) : NaN
+  return !Number.isNaN(since) && (now.value - since) / 1000 >= URGENT_WAIT_SECONDS ? 'ui-pill-red' : 'ui-pill-orange'
+}
 
 // 選取模式下，點擊整張卡片切換選取而非導覽
 const handleCardClick = (id: string) => {
@@ -236,7 +252,6 @@ const getLastMessageText = (conversation: Conversation) => {
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  background: linear-gradient(160deg, #b9b6f5, #6e6bd8);
   color: #fff;
   font: 600 15px var(--ui-font-display);
 }
@@ -312,7 +327,7 @@ const getLastMessageText = (conversation: Conversation) => {
 }
 
 .last-message.from-agent {
-  color: var(--ui-muted);
+  color: var(--ui-ink-2);
 }
 
 .card-pills {
@@ -323,28 +338,33 @@ const getLastMessageText = (conversation: Conversation) => {
   margin-top: 6px;
 }
 
-.state-text,
 .team-text {
   font-size: 13px;
   color: var(--ui-muted);
 }
 
-.state-text {
+/* Unread is one signal, as on desktop: the count badge, with the name set heavier */
+.conversation-card.has-unread .customer-name {
+  font-weight: 700;
+}
+
+.replied-text {
   display: inline-flex;
+  gap: 4px;
   align-items: center;
-  gap: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ui-muted);
 }
 
-.state-text::before {
-  content: '';
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--ui-faint);
-}
-
-.state-text.state-replied::before {
-  background: var(--ui-green);
+.replied-text svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: var(--ui-green-ink);
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .team-text:not(.unassigned) {

@@ -8,18 +8,17 @@
 <template>
   <AppLayout>
     <div class="ui-page profile-page ui-rise">
-      <!-- Page Header -->
       <UiPageHead
         title="個人設定"
         subtitle="修改顯示名稱與密碼，其餘由管理員管理"
       />
 
-      <!-- Lead: who you are -->
+      <!-- The pass: who is signed in, what they can do in each team, and how long the session lasts -->
       <article
-        class="ui-lead identity-lead"
-        aria-label="帳號身分"
+        class="pass"
+        aria-label="我的帳號"
       >
-        <div class="identity">
+        <section class="pz pz-id">
           <div class="avatar">
             {{ initial }}
           </div>
@@ -27,52 +26,78 @@
             <div class="identity-name">
               {{ profile.displayName || '—' }}
             </div>
-            <div
-              class="identity-presence"
-              :class="`presence--${connection.tone}`"
-            >
-              <span
-                class="presence-dot"
-                aria-hidden="true"
-              />
+            <div class="identity-sub">
               {{ identitySub }}
             </div>
+            <span class="pass-role">{{ roleLabel }}</span>
           </div>
-        </div>
+        </section>
 
-        <div
-          class="admin-line"
+        <section
+          class="pz pz-roles"
           data-testid="admin-managed"
+          aria-labelledby="access-title"
         >
-          <div class="admin-head">
-            <svg
-              class="ico"
-              viewBox="0 0 24 24"
-              aria-hidden="true"
-            ><rect
-              x="4"
-              y="11"
-              width="16"
-              height="9"
-              rx="2"
-            /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></svg>
-            由管理員管理
-          </div>
-          <dl class="admin-list">
-            <div
-              v-for="item in adminItems"
-              :key="item.label"
-              class="admin-item"
+          <h2
+            id="access-title"
+            class="pass-k"
+          >
+            各團隊中的角色<small>由管理員設定</small>
+          </h2>
+          <ul class="ladders">
+            <li
+              v-for="row in teamRows"
+              :key="row.id"
+              class="ladder"
             >
-              <dt class="admin-label">
-                {{ item.label }}
-              </dt>
-              <dd class="admin-value">
-                {{ item.value }}
-              </dd>
-            </div>
-          </dl>
-        </div>
+              <div class="ladder-head">
+                <span class="team-name">{{ row.name }}<em v-if="row.isPrimary">主要</em></span>
+                <span class="team-role">{{ row.role }}</span>
+              </div>
+              <ol
+                v-if="row.rank >= 0"
+                class="rungs"
+                :aria-label="`${row.name}：${row.role}`"
+              >
+                <li
+                  v-for="(label, i) in ROLE_STEPS"
+                  :key="label"
+                  :class="{ 'is-passed': i < row.rank, 'is-here': i === row.rank }"
+                >
+                  <span
+                    class="rung-dot"
+                    aria-hidden="true"
+                  />
+                  <span class="rung-label">{{ label }}</span>
+                </li>
+              </ol>
+            </li>
+            <li
+              v-if="!teamRows.length"
+              class="ladder-empty"
+            >
+              尚未加入任何團隊
+            </li>
+          </ul>
+        </section>
+
+        <footer
+          id="session"
+          class="pz pz-session"
+        >
+          <div class="session-text">
+            <span class="session-k">登入有效至</span>
+            <span class="session-v">{{ sessionParts.time }}</span>
+            <span class="session-s">{{ sessionParts.date }}</span>
+          </div>
+          <button
+            type="button"
+            class="btn btn-secondary session-out"
+            @click="onSignOut"
+          >
+            登出這個瀏覽器
+          </button>
+        </footer>
       </article>
 
       <div class="profile-cols">
@@ -80,6 +105,7 @@
           <!-- 基本資料 -->
           <section
             id="basic"
+            class="o-basic"
             aria-labelledby="basic-title"
           >
             <h2
@@ -89,63 +115,76 @@
               基本資料
             </h2>
             <form
-              class="ui-group"
+              class="ui-group name-card"
               @submit.prevent="onSaveProfile"
             >
-              <div class="ui-row form-row">
+              <div class="form-row">
                 <label
                   class="row-label"
                   for="display-name"
                 >顯示名稱</label>
-                <div class="row-control">
-                  <input
-                    id="display-name"
-                    v-model.trim="profile.displayName"
-                    type="text"
-                    maxlength="50"
-                    class="ui-input"
-                    :class="{ 'is-invalid': profileErrors.displayName }"
-                    autocomplete="name"
-                    aria-required="true"
-                    :disabled="profileSaving"
+                <div class="name-line">
+                  <div class="row-control">
+                    <input
+                      id="display-name"
+                      v-model.trim="profile.displayName"
+                      type="text"
+                      maxlength="50"
+                      class="ui-input"
+                      :class="{ 'is-invalid': profileErrors.displayName }"
+                      autocomplete="name"
+                      aria-required="true"
+                      :aria-describedby="profileErrors.displayName ? 'display-name-error' : 'display-name-hint'"
+                      :disabled="profileSaving"
+                    >
+                    <span
+                      v-if="profileErrors.displayName"
+                      id="display-name-error"
+                      class="form-error"
+                    >
+                      {{ profileErrors.displayName }}
+                    </span>
+                  </div>
+                  <div
+                    class="save-slot"
+                    :class="{ 'is-open': profileChanged || profileSaving }"
+                    :inert="!(profileChanged || profileSaving)"
                   >
-                  <span
-                    v-if="profileErrors.displayName"
-                    class="form-error"
-                  >
-                    {{ profileErrors.displayName }}
-                  </span>
+                    <button
+                      type="button"
+                      class="btn btn-ghost"
+                      :disabled="profileSaving"
+                      @click="resetProfile"
+                    >
+                      重設
+                    </button>
+                    <button
+                      type="submit"
+                      class="btn btn-primary"
+                      :disabled="profileSaving"
+                    >
+                      {{ profileSaving ? '儲存中…' : '儲存' }}
+                    </button>
+                  </div>
+                </div>
+                <p
+                  id="display-name-hint"
+                  class="field-hint"
+                >
+                  會出現在你送出的訊息署名 · {{ profile.displayName.length }} / 50
+                </p>
+                <div class="sign-preview">
+                  <span class="sign-k">客戶看到的署名</span>
+                  <span class="sign-v">{{ profile.displayName || '—' }}</span>
                 </div>
               </div>
-              <div
-                v-if="profileChanged || profileSaving"
-                class="ui-row form-actions"
-              >
-                <button
-                  type="button"
-                  class="btn btn-ghost"
-                  :disabled="profileSaving"
-                  @click="resetProfile"
-                >
-                  重設
-                </button>
-                <button
-                  type="submit"
-                  class="btn btn-primary"
-                  :disabled="profileSaving"
-                >
-                  {{ profileSaving ? '儲存中…' : '儲存變更' }}
-                </button>
-              </div>
             </form>
-            <p class="ui-group-foot">
-              顯示名稱會出現在你送出的訊息署名 · {{ profile.displayName.length }} / 50
-            </p>
           </section>
 
-          <!-- 通知偏好 — the settings already live on the notifications page -->
+          <!-- 通知偏好: the settings already live on the notifications page; this is one status row -->
           <section
             id="notification-prefs"
+            class="o-notify"
             aria-labelledby="prefs-title"
           >
             <h2
@@ -154,55 +193,77 @@
             >
               通知偏好
             </h2>
-            <div class="ui-group">
+            <div class="ui-group notify-card">
               <div
-                class="ui-row"
-                :class="`device-${devicePerm.tone}`"
+                class="notify-head"
                 data-testid="device-notify"
               >
                 <span
-                  class="device-dot"
+                  class="notify-ico"
                   aria-hidden="true"
-                />
-                <div class="ui-row-main row-label-strong">
-                  這台裝置
+                >
+                  <svg
+                    viewBox="0 0 24 24"
+                    class="ico"
+                  ><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" /><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" /></svg>
+                </span>
+                <div class="notify-main">
+                  <div class="row-label-strong">
+                    這台裝置的桌面通知
+                  </div>
+                  <p class="notify-hint">
+                    {{ devicePerm.hint }}
+                  </p>
                 </div>
-                <div class="ui-row-value">
-                  {{ devicePerm.label }}
-                </div>
+                <span
+                  class="ui-pill ui-pill-dot"
+                  :class="devicePerm.tone === 'on' ? 'ui-pill-green' : ''"
+                >{{ devicePerm.label }}</span>
               </div>
               <RouterLink
-                class="ui-row is-nav row-link"
+                class="notify-link"
                 :to="{ path: '/notifications', query: { settings: '1' } }"
               >
-                <div class="ui-row-main row-label-strong">
-                  開啟通知設定
-                </div>
+                通知類型與提醒方式
+                <svg
+                  class="ico"
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+                ><path d="m9 6 6 6-6 6" /></svg>
               </RouterLink>
             </div>
-            <p class="ui-group-foot">
-              {{ devicePerm.hint }}
-            </p>
           </section>
         </div>
 
-        <div class="profile-col">
-          <!-- 安全性 -->
-          <section
-            id="security"
-            aria-labelledby="security-title"
+        <!-- 安全性 -->
+        <section
+          id="security"
+          class="o-security"
+          aria-labelledby="security-title"
+        >
+          <h2
+            id="security-title"
+            class="ui-group-label"
           >
-            <h2
-              id="security-title"
-              class="ui-group-label"
+            修改密碼
+            <button
+              type="button"
+              class="pw-fold"
+              :aria-expanded="pwOpen"
+              aria-controls="pw-form"
+              @click="pwOpen = !pwOpen"
             >
-              修改密碼
-            </h2>
-            <form
-              class="ui-group"
-              @submit.prevent="onChangePassword"
-            >
-              <div class="ui-row form-row">
+              {{ pwOpen ? '收合' : '展開' }}
+            </button>
+          </h2>
+          <form
+            v-show="pwOpen"
+            id="pw-form"
+            class="ui-group pw-card"
+            @submit.prevent="onChangePassword"
+          >
+            <div class="pw-grid">
+              <div class="form-cell">
                 <label
                   class="row-label"
                   for="current-password"
@@ -215,7 +276,7 @@
                       :type="show.current ? 'text' : 'password'"
                       class="ui-input"
                       :class="{ 'is-invalid': passwordErrors.currentPassword }"
-                      placeholder="用來確認是你本人操作"
+                      placeholder="輸入目前的密碼"
                       autocomplete="current-password"
                       aria-required="true"
                       :disabled="passwordSaving"
@@ -245,7 +306,7 @@
                 </div>
               </div>
 
-              <div class="ui-row form-row">
+              <div class="form-cell">
                 <label
                   class="row-label"
                   for="new-password"
@@ -301,7 +362,7 @@
                 </div>
               </div>
 
-              <div class="ui-row form-row">
+              <div class="form-cell">
                 <label
                   class="row-label"
                   for="confirm-password"
@@ -343,22 +404,43 @@
                   </span>
                 </div>
               </div>
+            </div>
 
-              <div class="ui-row form-actions">
-                <button
-                  type="submit"
-                  class="btn btn-primary"
-                  :disabled="passwordSaving"
-                >
-                  {{ passwordSaving ? '修改中…' : '修改密碼' }}
-                </button>
-              </div>
-            </form>
-            <p class="ui-group-foot">
-              修改後會自動登出，需用新密碼重新登入。
-            </p>
-          </section>
-        </div>
+            <ul
+              class="pw-rules"
+              aria-label="密碼規則"
+            >
+              <li
+                v-for="rule in passwordRules"
+                :key="rule.key"
+                :class="{ 'is-met': rule.met }"
+              >
+                <span
+                  class="rule-dot"
+                  aria-hidden="true"
+                ><svg
+                  class="ico"
+                  viewBox="0 0 24 24"
+                ><path d="m6 12.5 4 4L18 8" /></svg></span>
+                {{ rule.text }}
+                <span class="sr-only">{{ rule.met ? '已符合' : '尚未符合' }}</span>
+              </li>
+            </ul>
+
+            <div class="form-actions">
+              <p class="form-actions-note">
+                修改後會自動登出，需用新密碼重新登入。
+              </p>
+              <button
+                type="submit"
+                class="btn btn-primary"
+                :disabled="passwordSaving"
+              >
+                {{ passwordSaving ? '修改中…' : '修改密碼' }}
+              </button>
+            </div>
+          </form>
+        </section>
       </div>
     </div>
   </AppLayout>
@@ -370,8 +452,7 @@ import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppLayout from '@/components/ui/AppLayout.vue'
 import { useAuthStore } from '@/stores/auth'
-import { useWebSocketStore } from '@/stores/websocket'
-import { useConnectionStatus } from '@/composables/useConnectionStatus'
+import { teamRoleText } from '@/utils/team-tone'
 import { useToast } from '@/composables/useToast'
 import { apiClient } from '@/api/base'
 import { authApi } from '@/api/auth'
@@ -386,33 +467,66 @@ const authStore = useAuthStore()
 const { showSuccess, showError } = useToast()
 
 // ============== 基本資料 ==============
-// Presence = own websocket state; teams from /auth/me teams[]
-const connection = useConnectionStatus(useWebSocketStore())
+// Teams from /auth/me teams[]
 const teams = computed(() => authStore.currentAgent?.teams ?? [])
 const initial = computed(() => (profile.displayName.trim().charAt(0) || '?').toUpperCase())
-// Avatar caption = presence only; the team lives in the one admin-managed summary line
-const identitySub = computed(() => connection.value.label)
+// Avatar caption = the sign-in email (a person's profile is not a connection status); role and team sit below
+const identitySub = computed(() => profile.email || '—')
 
-// Email, role and teams are admin-managed: one read-only line instead of three locked fields
-const adminItems = computed(() => {
-  const parts = [
-    { label: '電子郵件', value: profile.email || '—' },
-    { label: '角色', value: roleLabel.value },
-  ]
-  if (teams.value.length > 0) { parts.push({ label: '團隊', value: teams.value.map((t) => t.name).join('、') }) }
-  return parts
+// The role ladder every team uses, lowest to highest (the same order the team page documents)
+// On a phone the password form starts folded (it is rarely needed and costs a screen); #security opens it
+const pwOpen = ref(true)
+onMounted(() => {
+  const phone = typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 768px)').matches
+  if (phone && route.hash !== '#security') { pwOpen.value = false }
 })
+
+const ROLE_STEPS = ['成員', '組長', '主管'] as const
+const ROLE_KEYS = ['member', 'lead', 'supervisor'] as const
+
+// One row per team with my role in it (admins without a team role show 管理員, without a ladder)
+const teamRows = computed(() =>
+  teams.value.map((t) => {
+    const role = authStore.currentAgent?.teamRoles?.[t.id]
+    const rank = role ? (ROLE_KEYS as readonly string[]).indexOf(role) : -1
+    return {
+      id: t.id,
+      name: t.name,
+      isPrimary: t.id === authStore.currentAgent?.primaryTeamId,
+      role: role ? teamRoleText(role) : roleLabel.value,
+      rank,
+    }
+  }),
+)
+
+// The session clock split for the lead: the time is the figure, the date its caption
+const sessionParts = computed(() => {
+  const exp = authStore.sessionExpiry
+  if (!exp) { return { time: '有效', date: '登入狀態有效' } }
+  const d = new Date(exp)
+  const pad = (n: number): string => String(n).padStart(2, '0')
+  return { time: `${pad(d.getHours())}:${pad(d.getMinutes())}`, date: `${d.getMonth() + 1}/${d.getDate()} · 這個瀏覽器` }
+})
+
+async function onSignOut(): Promise<void> {
+  try {
+    await authStore.logout()
+  } catch (err) {
+    logger.warn('Sign out failed (continuing anyway)', { error: err })
+  }
+  router.push('/login')
+}
 
 // 這台裝置的桌面通知權限（瀏覽器 Notification.permission，只讀）
 const devicePerm = computed(() => {
   const perm = typeof Notification === 'undefined' ? 'unsupported' : Notification.permission
   const shared = '桌面通知只套用於這台裝置，其餘跟著你的帳號。'
-  if (perm === 'granted') { return { label: '桌面通知已開啟', tone: 'on', hint: shared } }
+  if (perm === 'granted') { return { label: '已開啟', tone: 'on', hint: shared } }
   if (perm === 'denied') {
-    return { label: '桌面通知已被瀏覽器封鎖', tone: 'off', hint: '要接收桌面通知，請點網址列左側的圖示，把「通知」改為允許後重新整理頁面。' }
+    return { label: '已封鎖', tone: 'off', hint: '被瀏覽器封鎖：點網址列左側圖示，將「通知」改為允許。' }
   }
-  if (perm === 'unsupported') { return { label: '瀏覽器不支援桌面通知', tone: 'off', hint: shared } }
-  return { label: '桌面通知尚未開啟', tone: 'off', hint: shared }
+  if (perm === 'unsupported') { return { label: '瀏覽器不支援', tone: 'off', hint: shared } }
+  return { label: '尚未開啟', tone: 'off', hint: shared }
 })
 
 // 密碼顯示/隱藏（僅本地 UI 狀態）
@@ -542,6 +656,13 @@ const passwordStrength = computed<StrengthInfo>(() => {
   return { level: 'strong', percent: 100, label: '強' }
 })
 
+// The three rules the server-side check applies, shown live (a rule turns to a check as it is met)
+const passwordRules = computed(() => [
+  { key: 'len', text: '至少 8 個字元', met: passwordForm.newPassword.length >= 8 },
+  { key: 'diff', text: '與目前密碼不同', met: passwordForm.newPassword.length > 0 && passwordForm.newPassword !== passwordForm.currentPassword },
+  { key: 'same', text: '兩次輸入一致', met: passwordForm.confirmPassword.length > 0 && passwordForm.newPassword === passwordForm.confirmPassword },
+])
+
 function validatePassword(): boolean {
   passwordErrors.currentPassword = undefined
   passwordErrors.newPassword = undefined
@@ -662,11 +783,18 @@ watch(
   stroke-linejoin: round;
 }
 
+.profile-page {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* below the pass: the name and the device on the left, the password on the right; both columns end on one line */
 .profile-cols {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 20px 16px;
-  align-items: start;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 20px;
+  align-items: stretch;
 }
 
 .profile-col {
@@ -676,20 +804,136 @@ watch(
   min-width: 0;
 }
 
-/* ---- lead: identity ---- */
-.identity-lead {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 24px 40px;
-  align-items: center;
-  padding: 26px 36px;
+.profile-cols > section,
+.profile-col > section {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
 }
 
-.identity {
+/* the last card of each column takes the slack, so both columns end on the same line */
+.profile-col > section:last-child,
+.profile-cols > .o-security {
+  flex: 1;
+}
+
+.profile-cols section .ui-group {
+  flex: 1;
+}
+
+/* labels sit on the same inset as the text inside their card */
+.profile-page .ui-group-label {
+  padding-left: 20px;
+}
+
+/* the fold control only exists on a phone */
+.pw-fold {
+  display: none;
+  margin-left: auto;
+  padding: 0 4px;
+  min-height: 44px;
+  margin-top: -12px;
+  margin-bottom: -12px;
+  border: 0;
+  background: transparent;
+  color: var(--ui-accent);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+@media (max-width: 768px) {
+  .pw-fold {
+    display: inline-block;
+  }
+
+  /* collapsed or not, the password section is a card row with a chevron; the whole row is the tap target */
+  .profile-page #security-title {
+    position: relative;
+    align-items: center;
+    min-height: 56px;
+    margin-bottom: 8px;
+    padding: 0 20px;
+    border-radius: 20px;
+    background: var(--ui-surface);
+    box-shadow: var(--ui-shadow-card);
+    color: var(--ui-ink);
+    font-size: 16px;
+    letter-spacing: 0;
+    text-transform: none;
+  }
+
+  .pw-fold {
+    margin-top: 0;
+    margin-bottom: 0;
+    padding-right: 22px;
+  }
+
+  .pw-fold::before {
+    position: absolute;
+    inset: 0;
+    border-radius: 20px;
+    content: '';
+  }
+
+  .pw-fold::after {
+    position: absolute;
+    top: 50%;
+    right: 22px;
+    width: 8px;
+    height: 8px;
+    border-right: 2px solid currentcolor;
+    border-bottom: 2px solid currentcolor;
+    transform: translateY(-70%) rotate(45deg);
+    transition: transform var(--ui-dur) var(--ui-ease);
+    content: '';
+  }
+
+  .pw-fold[aria-expanded='true']::after {
+    transform: translateY(-30%) rotate(-135deg);
+  }
+}
+
+.pw-card {
   display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+/* ---- the pass: one wide ticket, three zones split by a perforation (who / what they may do / how long) ---- */
+.pass {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(340px, 1.25fr) minmax(0, 1.7fr) minmax(200px, 0.75fr);
+  min-width: 0;
+  border-radius: 28px;
+  background: var(--ui-surface);
+  box-shadow: var(--ui-shadow-card);
+}
+
+.pz {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+  padding: 28px;
+}
+
+/* the perforation: a dashed line with a notch cut at each end */
+.pz + .pz::before {
+  position: absolute;
+  inset: 22px auto 22px 0;
+  width: 0;
+  border-left: 2px dashed var(--ui-fill-strong);
+  content: '';
+}
+
+.pz-id {
+  flex-direction: row;
+  justify-content: flex-start;
   gap: 20px;
   align-items: center;
-  min-width: 0;
 }
 
 .avatar {
@@ -699,166 +943,244 @@ watch(
   width: 84px;
   height: 84px;
   border-radius: 50%;
-  background: linear-gradient(160deg, #5aa8ff, #1d6fe0);
+  background: var(--ui-accent);
   color: #fff;
-  font: 600 34px var(--ui-font-display);
+  font: 600 36px var(--ui-font-display);
 }
 
 .identity-text {
   display: grid;
-  gap: 6px;
+  gap: 4px;
+  justify-items: start;
   min-width: 0;
 }
 
 .identity-name {
+  max-width: 100%;
   overflow: hidden;
-  font: 700 34px / 1.15 var(--ui-font-display);
-  letter-spacing: -0.03em;
+  font: 700 30px / 1.2 var(--ui-font-display);
+  letter-spacing: -0.025em;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.identity-presence {
+.identity-sub {
+  max-width: 100%;
+  font-size: 14px;
+  color: var(--ui-ink-2);
+  overflow-wrap: anywhere;
+}
+
+.pass-role {
+  margin-top: 4px;
+  padding: 3px 12px;
+  border-radius: 999px;
+  background: var(--ui-accent-soft);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ui-accent);
+}
+
+/* access: one ladder per team, my rung filled (the same three steps for every team) */
+.pz-roles {
+  gap: 14px;
+}
+
+.pass-k {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  justify-content: space-between;
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ui-muted);
+}
+
+.pass-k small {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.ladders {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(176px, 1fr));
+  gap: 20px 32px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ladder {
+  display: grid;
+  gap: 10px;
+  align-content: start;
+}
+
+.ladder-head {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.team-name {
   display: inline-flex;
   gap: 8px;
   align-items: center;
+  min-width: 0;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.team-name em {
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--ui-accent-soft);
+  font-size: 13px;
+  font-style: normal;
+  font-weight: 700;
+  color: var(--ui-accent);
+}
+
+.team-role {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ui-ink);
+}
+
+/* a read-only rank track (not buttons): a line through three dots, the steps up to my role filled, my own ringed */
+.rungs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rungs li {
+  position: relative;
+  display: grid;
+  gap: 6px;
+  justify-items: center;
+  color: var(--ui-ink-2);
+}
+
+.rungs li::before {
+  content: '';
+  position: absolute;
+  top: 7px;
+  right: 50%;
+  left: -50%;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--ui-fill-strong);
+}
+
+.rungs li:first-child::before {
+  display: none;
+}
+
+.rungs li.is-passed::before,
+.rungs li.is-here::before {
+  background: var(--ui-accent);
+}
+
+.rung-dot {
+  position: relative;
+  z-index: 1;
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  background: var(--ui-surface);
+  box-shadow: inset 0 0 0 3px var(--ui-fill-strong);
+}
+
+.rungs li.is-passed .rung-dot {
+  background: var(--ui-accent);
+  box-shadow: none;
+}
+
+.rungs li.is-here .rung-dot {
+  background: var(--ui-accent);
+  box-shadow: 0 0 0 4px var(--ui-accent-soft);
+}
+
+.rung-label {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.rungs li.is-here .rung-label {
+  font-weight: 700;
+  color: var(--ui-ink);
+}
+
+.ladder-empty {
   font-size: 14px;
   color: var(--ui-muted);
 }
 
-.presence-dot {
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  background: var(--ui-faint);
-}
-
-.presence--online .presence-dot,
-.presence--success .presence-dot,
-.presence--good .presence-dot {
-  background: var(--ui-green);
-}
-
-.presence--warning .presence-dot,
-.presence--connecting .presence-dot {
-  background: var(--ui-orange);
-}
-
-/* admin-managed facts: a quiet definition list with its own hairline */
-.admin-line {
-  position: relative;
-  display: grid;
+/* session: the stub of the ticket */
+.pz-session {
   gap: 14px;
-  margin: 0;
-  padding-left: 40px;
+  align-items: flex-start;
 }
 
-.admin-list {
+.session-text {
   display: grid;
-  gap: 16px;
-  margin: 0;
+  gap: 2px;
 }
 
-.admin-line::before {
-  position: absolute;
-  top: 2px;
-  bottom: 2px;
-  left: 0;
-  width: 0.5px;
-  background: var(--ui-sep);
-  content: '';
-}
-
-.admin-head {
-  display: inline-flex;
-  gap: 6px;
-  align-items: center;
+.session-k {
   font-size: 13px;
   font-weight: 600;
   color: var(--ui-muted);
 }
 
-.admin-item {
-  display: grid;
-  grid-template-columns: 76px minmax(0, 1fr);
-  gap: 12px;
-  align-items: baseline;
+.session-v {
+  font: 700 34px / 1.15 var(--ui-font-display);
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
 }
 
-.admin-label {
-  font-size: 13px;
-  color: var(--ui-muted);
-}
-
-.admin-value {
-  margin: 0;
-  overflow-wrap: anywhere;
-  font-size: 15px;
-  font-weight: 500;
-  color: var(--ui-ink);
+.session-s {
+  font-size: 14px;
+  color: var(--ui-ink-2);
 }
 
 /* ---- grouped form rows ---- */
-.form-row {
-  align-items: flex-start;
-  padding-top: 18px;
-  padding-bottom: 18px;
+.form-row,
+.form-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  min-width: 0;
+  padding: 18px 20px;
 }
 
 .row-label {
-  flex: none;
-  width: 104px;
-  padding-top: 10px;
-  font-size: 16px;
-  font-weight: 500;
+  font-size: 14px;
+  font-weight: 600;
   color: var(--ui-ink);
 }
 
 .row-control {
   display: grid;
-  flex: 1;
   gap: 6px;
   min-width: 0;
 }
 
 .row-label-strong {
-  font-size: 15px;
-  font-weight: 500;
-}
-
-.ui-group .ui-row.form-row + .ui-row::before,
-.ui-group .ui-row + .ui-row::before {
-  left: var(--row-pad-x);
-}
-
-.ui-row.is-nav {
-  color: var(--section-ink);
-  text-decoration: none;
-}
-
-.ui-row.is-nav .row-label-strong {
-  color: var(--section-ink);
-}
-
-.row-link:hover {
-  background: var(--section-hue-soft);
-}
-
-.form-actions {
-  justify-content: flex-end;
-  padding-top: 16px;
-  padding-bottom: 18px;
+  font-size: 16px;
+  font-weight: 600;
 }
 
 /* placeholders are hints people need to read: secondary ink, not faint */
 .ui-input::placeholder {
-  color: var(--ui-muted);
-  opacity: 1;
-}
-
-.ui-group-foot {
-  margin-top: 8px;
   color: var(--ui-ink-2);
+  opacity: 1;
 }
 
 .form-error {
@@ -942,83 +1264,326 @@ watch(
   color: var(--ui-ink-2);
 }
 
-/* notification device state */
-.device-dot {
+/* fields sit white on the white card; the 1px boundary does the separating */
+.profile-page .ui-input {
+  background: var(--ui-surface);
+}
+
+/* display name: input and its save action share one line */
+.name-line {
+  display: flex;
+  align-items: flex-start;
+}
+
+.name-line .row-control {
+  flex: 1;
+}
+
+.field-hint {
+  margin: 0;
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--ui-ink-2);
+}
+
+.sign-preview {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 6px;
+  padding: 10px 14px;
+  border-radius: var(--ui-r-inner);
+  background: var(--ui-surface-2);
+}
+
+.sign-k {
+  font-size: 13px;
+  color: var(--ui-ink-2);
+}
+
+.sign-v {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 15px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 儲存 only exists while the name is changed; its slot slides open so the input never jumps */
+.save-slot {
+  display: flex;
+  gap: 8px;
+  max-width: 0;
+  overflow: hidden;
+  visibility: hidden;
+  opacity: 0;
+  /* visibility flips after the fade so the closed buttons leave layout audits and tab order */
+  transition: max-width var(--ui-dur) var(--ui-ease), opacity var(--ui-dur) var(--ui-ease), visibility 0s linear var(--ui-dur);
+}
+
+.save-slot.is-open {
+  max-width: 200px;
+  margin-left: 10px;
+  visibility: visible;
+  opacity: 1;
+  transition-delay: 0s;
+}
+
+/* device notification: one status row and one link, nothing to learn here */
+.notify-card {
+  display: flex;
+  flex-direction: column;
+}
+
+.notify-head {
+  display: flex;
+  flex: 1;
+  gap: 12px;
+  align-items: center;
+  padding: 16px 20px;
+}
+
+.notify-ico {
+  display: grid;
   flex: none;
-  width: 9px;
-  height: 9px;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: var(--ui-surface-2);
+  color: var(--ui-ink-2);
+}
+
+.notify-ico .ico {
+  width: 18px;
+  height: 18px;
+}
+
+.notify-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.notify-hint {
+  text-wrap: pretty;
+  margin: 2px 0 0;
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--ui-muted);
+}
+
+.notify-link {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 48px;
+  margin-top: auto;
+  padding: 0 20px;
+  box-shadow: inset 0 0.5px 0 var(--ui-sep);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ui-accent);
+  text-decoration: none;
+}
+
+.notify-link:focus-visible {
+  outline: 2px solid var(--ui-accent);
+  outline-offset: -2px;
+}
+
+/* the three rules, live: chips that fill with a check as each is met */
+.pw-rules {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0 20px 18px;
+  list-style: none;
+}
+
+.pw-rules li {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  height: 32px;
+  padding: 0 12px 0 8px;
+  border-radius: 999px;
+  background: var(--ui-fill);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ui-ink-2);
+}
+
+.rule-dot {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 16px;
+  height: 16px;
   border-radius: 50%;
-  background: var(--ui-faint);
+  box-shadow: inset 0 0 0 2px var(--ui-field-edge);
 }
 
-.device-on .device-dot {
-  background: var(--ui-green);
+.rule-dot .ico {
+  width: 11px;
+  height: 11px;
+  stroke: #fff;
+  stroke-width: 3;
+  opacity: 0;
 }
 
-.device-off .device-dot {
-  background: var(--ui-orange);
+.pw-rules li.is-met {
+  background: var(--ui-green-soft);
+  color: var(--ui-green-ink, var(--ui-ink));
 }
 
-@media (max-width: 1024px) {
-  .profile-cols {
-    grid-template-columns: minmax(0, 1fr);
+.pw-rules li.is-met .rule-dot {
+  background: var(--ui-green-ink, var(--ui-green));
+  box-shadow: none;
+}
+
+.pw-rules li.is-met .rule-dot .ico {
+  opacity: 1;
+}
+
+/* password: the three fields stack at a readable width, the action closes the card */
+.pw-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.pw-grid .form-cell + .form-cell {
+  padding-top: 0;
+}
+
+.pw-grid .form-cell {
+  padding: 18px 20px 18px;
+}
+
+.form-actions {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px 18px;
+  box-shadow: inset 0 0.5px 0 var(--ui-sep);
+}
+
+.form-actions-note {
+  margin: 0;
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--ui-ink-2);
+}
+
+@media (max-width: 1280px) {
+  .pass {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   }
 
-  .identity-lead {
-    padding: 28px;
+  .pz-roles {
+    grid-column: 1 / -1;
+    order: 3;
+  }
+
+  .pz-session {
+    order: 2;
+  }
+
+  /* the horizontal perforation under the identity row */
+  .pz-roles::before {
+    inset: 0 22px auto;
+    width: auto;
+    height: 0;
+    border-top: 2px dashed var(--ui-fill-strong);
+    border-left: 0;
   }
 }
 
 @media (max-width: 768px) {
-  .identity-lead {
-    grid-template-columns: minmax(0, 1fr);
-    padding: 22px 20px;
+  /* one column in the order a person acts in: the pass, the name, the password, the device */
+  .profile-cols {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
   }
 
-  .identity {
-    gap: 16px;
+  .profile-col {
+    display: contents;
+  }
+
+  .profile-col > #basic {
+    order: 1;
+  }
+
+  .profile-cols > #security {
+    order: 2;
+  }
+
+  .profile-col > #notification-prefs {
+    order: 3;
+  }
+
+  .pass {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .pz {
+    padding: 20px;
+  }
+
+  .pz-id {
+    order: 1;
+  }
+
+  .pz-roles {
+    order: 2;
+  }
+
+  .pz-session {
+    flex-direction: row;
+    gap: 14px;
+    align-items: center;
+    justify-content: space-between;
+    order: 3;
+  }
+
+  .pz + .pz::before {
+    inset: 0 22px auto;
+    width: auto;
+    height: 0;
+    border-top: 2px dashed var(--ui-fill-strong);
+    border-left: 0;
   }
 
   .avatar {
-    width: 72px;
-    height: 72px;
-    font-size: 30px;
+    width: 64px;
+    height: 64px;
+    font-size: 28px;
   }
 
   .identity-name {
+    font-size: 24px;
+  }
+
+  .session-v {
     font-size: 26px;
   }
 
-  .admin-line {
-    padding-top: 18px;
-    padding-left: 0;
+  .form-actions {
+    flex-direction: column-reverse;
+    align-items: stretch;
   }
 
-  .admin-line::before {
-    top: 0;
-    right: 0;
-    bottom: auto;
-    width: auto;
-    height: 0.5px;
-  }
-
-  .form-row {
-    flex-direction: column;
-    gap: 6px;
-  }
-
-  .row-label {
-    width: auto;
-    padding-top: 0;
-    font-size: 14px;
-  }
-
-  .row-control {
+  .form-actions .btn {
     width: 100%;
   }
 
-  .form-actions .btn-primary {
-    flex: 1;
+  .profile-page {
+    padding-bottom: 28px;
   }
 }
 </style>

@@ -1,26 +1,13 @@
 <template>
   <section
     class="ui-card preview-card"
+    :class="{ 'is-empty': !hasContent && !sample }"
     aria-labelledby="broadcast-line-preview-title"
   >
-    <div class="ui-card-head">
-      <div>
-        <h2
-          id="broadcast-line-preview-title"
-          class="ui-card-title"
-        >
-          LINE 預覽
-        </h2>
-        <p class="ui-card-sub">
-          <template v-if="hasContent">
-            客戶看到的順序：{{ order }}
-          </template>
-          <template v-else>
-            即時顯示客戶端的樣子
-          </template>
-        </p>
-      </div>
-    </div>
+    <p class="pv-head">
+      <b id="broadcast-line-preview-title">LINE 預覽</b>
+      <span>{{ hasContent ? `客戶看到的順序：${order}` : sample ? '上一次群發在客戶端的樣子' : '你的草稿，客戶端的樣子' }}</span>
+    </p>
 
     <div class="phone">
       <div class="phone-head">
@@ -50,12 +37,40 @@
             :alt="`預覽圖片 ${index + 1}`"
           >
         </div>
-        <p
-          v-else
-          class="bubble bubble-empty"
+        <div
+          v-else-if="sample"
+          class="thread is-sample"
         >
-          輸入文字或加入圖片後，會在這裡預覽
-        </p>
+          <div class="bubble">
+            {{ sample }}
+          </div>
+          <p class="last-note">
+            上一次群發的文字。開始輸入後，這裡會換成你的草稿。
+          </p>
+        </div>
+        <div
+          v-else
+          class="chat-empty"
+        >
+          <svg
+            class="chat-empty-ico"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.6"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          ><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20.5l1.4-4.6A8 8 0 1 1 21 12Z" /></svg>
+          <b>還沒有內容</b>
+          <span>輸入文字或加入圖片，客戶收到的樣子會即時出現在這裡。</span>
+        </div>
+      </div>
+      <div
+        class="phone-input"
+        aria-hidden="true"
+      >
+        <span>輸入訊息</span>
       </div>
     </div>
     <p class="disclaimer">
@@ -71,6 +86,8 @@ import { getLineQuota } from '@/api/broadcasts'
 const props = defineProps<{
   content: string
   imageUrls: string[]
+  /** text of the newest broadcast, shown while the draft is empty */
+  sample?: string
 }>()
 
 // The official account name comes from the same quota snapshot the quota card shows
@@ -101,16 +118,32 @@ const order = computed(() => {
 .preview-card {
   display: flex;
   flex-direction: column;
-  padding-bottom: 16px;
+  padding: 16px 0;
+  box-shadow: 0 -0.5px 0 var(--ui-sep);
 }
 
+.pv-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 10px;
+  align-items: baseline;
+  margin: 0 22px 14px;
+  font-size: 13px;
+  color: var(--ui-ink-2);
+}
+
+.pv-head b {
+  font: 600 15px / 1.3 var(--ui-font-display);
+  color: var(--ui-ink);
+}
+
+/* A short phone while there is nothing to show, centred in the panel; it grows with real content */
 .phone {
   display: flex;
-  flex: 1;
+  flex: none;
   flex-direction: column;
   width: min(100% - 44px, 300px);
-  min-height: 300px;
-  max-height: 460px;
+  min-height: 0;
   margin: 0 auto;
   overflow: hidden;
   border-radius: 28px;
@@ -155,7 +188,7 @@ const order = computed(() => {
   padding: 1px 8px;
   border-radius: 999px;
   background: var(--ui-green-soft);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--ui-green-ink);
 }
@@ -164,9 +197,27 @@ const order = computed(() => {
   display: flex;
   flex: 1;
   flex-direction: column;
+  justify-content: flex-end;
+  min-height: 230px;
   padding: 16px;
   overflow-y: auto;
-  background: #e8edf5;
+  background: #eef1f6;
+}
+
+.phone-input {
+  flex: none;
+  padding: 10px 14px;
+  background: var(--ui-surface);
+  box-shadow: 0 -1px 0 var(--ui-sep);
+}
+
+.phone-input span {
+  display: block;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: var(--ui-fill);
+  font-size: 13px;
+  color: var(--ui-muted);
 }
 
 .thread {
@@ -175,12 +226,48 @@ const order = computed(() => {
   justify-items: start;
 }
 
-.bubble-empty {
+.chat-empty {
+  display: grid;
+  flex: 1;
+  align-content: center;
+  justify-items: center;
+  gap: 6px;
+  min-height: 160px;
+  padding: 16px 8px;
+  text-align: center;
+  color: #3a3a3c;
+}
+
+.chat-empty-ico {
+  width: 34px;
+  height: 34px;
+  margin-bottom: 4px;
+  color: #6b7280;
+}
+
+.chat-empty b {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1c1c1e;
+}
+
+.chat-empty span {
+  max-width: 200px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.last-cap {
   margin: 0;
-  max-width: 78%;
-  border: 1.5px dashed rgba(60, 60, 67, 0.4);
-  background: transparent;
-  color: var(--ui-ink-2);
+  font-size: 13px;
+  font-weight: 600;
+  color: #3a3a3c;
+}
+
+.last-note {
+  margin: 0;
+  font-size: 13px;
+  color: #3a3a3c;
 }
 
 .bubble {
@@ -195,6 +282,12 @@ const order = computed(() => {
   overflow-wrap: anywhere;
 }
 
+@media (max-width: 1280px) {
+  .phone {
+    max-height: 520px;
+  }
+}
+
 .pic {
   display: block;
   width: 62%;
@@ -206,8 +299,32 @@ const order = computed(() => {
   object-fit: cover;
 }
 
+@media (max-width: 768px) {
+  /* nothing typed yet: the frame would be an empty box between the form and the records, so only its caption stays */
+  .preview-card.is-empty .phone,
+  .preview-card.is-empty .disclaimer {
+    display: none;
+  }
+
+  .preview-card.is-empty {
+    padding-bottom: 12px;
+  }
+
+  .preview-card.is-empty .pv-head {
+    margin-bottom: 0;
+  }
+
+  .chat-empty {
+    min-height: 96px;
+  }
+
+  .chat {
+    min-height: 200px;
+  }
+}
+
 .disclaimer {
-  margin: 10px 22px 0;
+  margin: 12px 22px 0;
   font-size: 13px;
   color: var(--ui-muted);
 }

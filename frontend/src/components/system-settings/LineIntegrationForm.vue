@@ -29,10 +29,10 @@
         :icon="field.icon"
         :disabled="saving || testing"
       />
+      <p class="cred-note">
+        更換憑證後請按「測試連線」確認新憑證可用，再儲存變更。
+      </p>
     </div>
-    <p class="ui-group-foot">
-      更換憑證後請按「測試連線」確認新憑證可用，再儲存變更。
-    </p>
   </form>
 </template>
 
@@ -97,6 +97,30 @@ function handleSave() {
 
 <style scoped>
 .integration-form {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
   min-width: 0;
+}
+
+.integration-form .ui-group {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
+
+/* rows share the card's height so a taller webhook card never leaves a gap above the footnote */
+.integration-form .ui-group :deep(.srow) {
+  flex: 1;
+}
+
+/* the footnote sits inside the card, pushed to its bottom edge so both columns end together */
+.cred-note {
+  margin: auto 0 0;
+  padding: 14px 22px;
+  box-shadow: inset 0 0.5px 0 var(--ui-sep);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ui-muted);
 }
 </style>

@@ -109,8 +109,8 @@ function onKey(event: KeyboardEvent, current: string) {
   padding: 14px;
   border: 0;
   border-radius: var(--ui-r-inner);
-  background: var(--ui-surface-2);
-  box-shadow: inset 0 0 0 0.5px var(--ui-sep);
+  background: var(--ui-surface);
+  box-shadow: inset 0 0 0 1px var(--ui-field-edge);
   color: inherit;
   font: inherit;
   text-align: left;
@@ -127,7 +127,7 @@ function onKey(event: KeyboardEvent, current: string) {
 }
 
 .choice-tile:hover:not(.selected) {
-  background: var(--ui-fill);
+  background: var(--ui-surface-2);
 }
 
 .choice-tile.selected {

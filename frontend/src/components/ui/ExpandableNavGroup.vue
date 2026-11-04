@@ -92,14 +92,14 @@
     align-items: center;
     gap: 10px;
     width: 100%;
-    height: 32px;
+    height: 31px;
     padding: 0 10px;
     border: none;
     border-radius: 9px;
     background: transparent;
     color: var(--ui-ink-2);
     font: inherit;
-    font-size: 13.5px;
+    font-size: 14px;
     font-weight: 500;
     text-align: left;
     text-decoration: none;
@@ -174,7 +174,7 @@
     padding: 5px 10px;
     border-radius: 8px;
     color: var(--ui-muted);
-    font-size: 13px;
+    font-size: 13.5px;
     text-decoration: none;
     transition:
       background-color var(--ui-dur) var(--ui-ease),

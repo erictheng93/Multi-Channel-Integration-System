@@ -5,102 +5,279 @@
     :class="{ 'bare-shell': !isAuthenticated }"
   >
     <div class="ui-page not-found-page">
-      <section class="nf">
-        <div class="code-wrap">
-          <DiscRing
-            class="hero-disc"
-            tone="accent"
-            :size="190"
-            :weight="1.4"
-            fade="strong"
-            :grain="false"
-          />
-          <div class="code">
-            4<span>0</span>4
-          </div>
-        </div>
-        <h1 class="nf-title">
-          找不到這個頁面
-        </h1>
-        <p class="nf-reason">
-          可能原因：網址輸入有誤、頁面已被移除，或你沒有權限查看。
-        </p>
-        <div class="asked ui-well">
-          <span class="k">你開啟的網址</span>
-          <span
-            class="mono"
-            :title="route.fullPath"
-          >{{ route.fullPath }}</span>
-        </div>
-
-        <div
-          v-if="links.length > 0"
-          class="list"
-        >
-          <router-link
-            v-for="link in links"
-            :key="link.to"
-            :to="link.to"
-            class="go"
+      <section
+        class="nf ui-lead"
+        :class="{ 'is-solo': !isAuthenticated }"
+      >
+        <div class="nf-lead">
+          <!-- The zero is a lost signal: a ring with a quiet echo inside. Decoration; the number is read as 404 -->
+          <div
+            class="code"
+            role="img"
+            aria-label="404"
           >
-            <span
-              class="go-ico"
-              :class="link.tone"
+            <span aria-hidden="true">4</span>
+            <svg
+              class="zero"
+              viewBox="0 0 100 124"
               aria-hidden="true"
+              focusable="false"
             >
-              <!-- eslint-disable vue/no-v-html -->
+              <ellipse
+                class="nf-ring r1"
+                cx="50"
+                cy="62"
+                rx="52"
+                ry="68"
+              />
+              <ellipse
+                class="nf-ring r3"
+                cx="50"
+                cy="62"
+                rx="42"
+                ry="56"
+              />
+              <ellipse
+                class="nf-ring r2"
+                cx="50"
+                cy="62"
+                rx="24"
+                ry="33"
+              />
+              <circle
+                class="nf-dot"
+                cx="50"
+                cy="62"
+                r="7"
+              />
+            </svg>
+            <span aria-hidden="true">4</span>
+          </div>
+          <h1 class="nf-title">
+            找不到這個頁面
+          </h1>
+          <p class="nf-reason">
+            網址輸入有誤、頁面已被移除，或你沒有權限查看。
+          </p>
+
+          <!-- The address, taken apart: the parts that exist, and the first one that does not -->
+          <div class="trace">
+            <p class="trace-k">
+              你開啟的網址
+            </p>
+            <div class="trace-bar">
+              <code
+                class="trace-path"
+                :title="route.fullPath"
+              ><template
+                v-for="(seg, i) in trace.segments"
+                :key="i"
+              ><span class="trace-slash">/</span><span
+                class="seg"
+                :class="`is-${seg.state}`"
+              >{{ seg.text }}</span></template><span
+                v-if="trace.segments.length === 0"
+                class="trace-slash"
+              >/</span><span
+                v-if="trace.extra"
+                class="trace-extra"
+              >{{ trace.extra }}</span></code>
+              <button
+                type="button"
+                class="copy"
+                :aria-label="copied ? '已複製網址' : '複製網址'"
+                @click="copyUrl"
+              >
+                <svg
+                  v-if="!copied"
+                  class="ico"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                ><rect
+                  x="9"
+                  y="9"
+                  width="11"
+                  height="11"
+                  rx="2.5"
+                /><path d="M5 15V6.5A2.5 2.5 0 0 1 7.5 4H15" /></svg>
+                <svg
+                  v-else
+                  class="ico"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2.4"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                ><path d="m5 12.5 4.5 4.5L19 7" /></svg>
+              </button>
+            </div>
+            <p
+              v-if="trace.bad && trace.goodPrefix"
+              class="trace-note"
+            >
+              「{{ trace.goodPrefix }}」存在，但底下沒有「{{ trace.bad }}」
+            </p>
+          </div>
+
+          <router-link
+            v-if="guess"
+            :to="guess.path"
+            class="guess"
+          >
+            <span class="guess-k">你是不是要找</span>
+            <span class="guess-v">{{ guess.label }}<span class="guess-path">{{ guess.path }}</span></span>
+            <svg
+              class="ico"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            ><path d="m9 6 6 6-6 6" /></svg>
+          </router-link>
+
+          <div class="nf-actions">
+            <button
+              type="button"
+              class="btn btn-secondary"
+              @click="goBack"
+            >
               <svg
+                class="ico"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
                 stroke-width="2"
                 stroke-linecap="round"
                 stroke-linejoin="round"
-                v-html="link.icon"
-              />
-              <!-- eslint-enable vue/no-v-html -->
-            </span>
-            <div>
-              <b>{{ link.title }}</b>
-              <small>{{ link.text }}</small>
-            </div>
-          </router-link>
+                aria-hidden="true"
+              ><path d="M19 12H5M11 6l-6 6 6 6" /></svg>
+              返回上頁
+            </button>
+            <router-link
+              :to="homePath"
+              class="btn btn-primary"
+            >
+              <svg
+                class="ico"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              ><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1Z" /></svg>
+              {{ isAuthenticated ? '回到儀表板' : '前往登入' }}
+            </router-link>
+          </div>
         </div>
 
-        <div class="nf-actions">
+        <!-- Every page you may open, in the sidebar's order (the icon's tint is its section); type to narrow, Enter opens the first -->
+        <div
+          v-if="isAuthenticated"
+          class="nf-find"
+        >
+          <div
+            v-if="recents.length > 0 && query.trim() === ''"
+            class="recent"
+          >
+            <h2 class="find-label">
+              最近造訪
+            </h2>
+            <ul class="recent-list">
+              <li
+                v-for="page in recents"
+                :key="page.path"
+              >
+                <router-link
+                  :to="page.path"
+                  class="find-item"
+                >
+                  <span
+                    class="find-ico"
+                    aria-hidden="true"
+                  >
+                    <component :is="page.icon" />
+                  </span>
+                  <span class="find-name">{{ page.label }}</span>
+                  <svg
+                    class="ico recent-go"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2.2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    aria-hidden="true"
+                  ><path d="m9 6 6 6-6 6" /></svg>
+                </router-link>
+              </li>
+            </ul>
+          </div>
+          <label
+            class="find-label"
+            for="nf-search"
+          >要去哪裡？</label>
+          <input
+            id="nf-search"
+            v-model="query"
+            type="search"
+            class="ui-input find-input"
+            placeholder="輸入頁面名稱，例如「標籤」"
+            autocomplete="off"
+            @keydown.enter.prevent="openFirst"
+          >
+          <ul
+            v-if="shownPages.length > 0"
+            class="find-list"
+          >
+            <li
+              v-for="page in shownPages"
+              :key="page.path"
+            >
+              <router-link
+                :to="page.path"
+                class="find-item"
+                :class="`tone-${page.tone}`"
+              >
+                <span
+                  class="find-ico"
+                  aria-hidden="true"
+                >
+                  <component :is="page.icon" />
+                </span>
+                <span class="find-name">{{ page.label }}</span>
+              </router-link>
+            </li>
+          </ul>
           <button
+            v-if="canExpand"
             type="button"
-            class="btn btn-secondary"
-            @click="goBack"
+            class="find-more"
+            @click="showAll = true"
           >
-            <svg
-              class="ico"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              aria-hidden="true"
-            ><path d="M19 12H5M11 6l-6 6 6 6" /></svg>
-            返回上頁
+            顯示全部 {{ allowed.length }} 個頁面
           </button>
-          <router-link
-            :to="homePath"
-            class="btn btn-primary"
+          <p
+            v-if="shownPages.length === 0"
+            class="find-empty"
+            role="status"
           >
-            <svg
-              class="ico"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              aria-hidden="true"
-            ><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1Z" /></svg>
-            {{ isAuthenticated ? '回到儀表板' : '前往登入' }}
-          </router-link>
+            沒有符合「{{ query.trim() }}」的頁面
+          </p>
+          <p class="find-note">
+            看不到想找的頁面？可能是你的帳號沒有權限，請聯絡管理員開通。
+          </p>
         </div>
       </section>
     </div>
@@ -108,21 +285,21 @@
 </template>
 
 <script setup lang="ts">
-import DiscRing from '@/components/ui/DiscRing.vue'
-import { computed } from 'vue'
+import { computed, ref, type Component } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import AppLayout from '@/components/ui/AppLayout.vue'
 import { useAuthStore } from '@/stores/auth'
+import { NAV_SECTIONS, sectionForPath, type SectionId } from '@/config/nav-sections'
+import { NAV_ICONS } from '@/config/nav-icons'
+import { SECTION_NAV } from '@/config/section-nav'
+import { readRecentPaths } from '@/utils/recent-pages'
 
-interface QuickLink {
-  to: string
-  title: string
-  text: string
-  tone: 'blue' | 'green' | 'orange' | 'indigo'
-  /** Inner SVG markup, static */
-  icon: string
-  adminOnly?: boolean
+interface Page {
+  path: string
+  label: string
+  icon: Component
+  adminOnly: boolean
 }
 
 const route = useRoute()
@@ -130,44 +307,148 @@ const router = useRouter()
 const authStore = useAuthStore()
 const { isAuthenticated, isAdmin } = storeToRefs(authStore)
 
-const QUICK_LINKS: QuickLink[] = [
-  {
-    to: '/conversations',
-    title: '對話',
-    text: 'LINE 與 Messenger 客戶訊息',
-    tone: 'blue',
-    icon: '<path d="M21 12a8 8 0 0 1-11.6 7.1L4 20.5l1.4-4.6A8 8 0 1 1 21 12Z"/>'
-  },
-  {
-    to: '/notifications',
-    title: '通知',
-    text: '指派、提及與系統提醒',
-    tone: 'blue',
-    icon: '<path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/>'
-  },
-  {
-    to: '/tags',
-    title: '客戶標籤',
-    text: '分類與客戶經營',
-    tone: 'orange',
-    icon: '<path d="M12.6 2.6A2 2 0 0 0 11.2 2H4a2 2 0 0 0-2 2v7.2a2 2 0 0 0 .6 1.4l8.7 8.7a2.4 2.4 0 0 0 3.4 0l6.6-6.6a2.4 2.4 0 0 0 0-3.4Z"/><circle cx="7.5" cy="7.5" r="1.2"/>'
-  },
-  {
-    to: '/settings',
-    title: '系統設定',
-    text: '整合、備份與健康檢查',
-    tone: 'indigo',
-    icon: '<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M2 12h3M19 12h3M4.9 19.1 7 17M17 7l2.1-2.1"/>',
-    adminOnly: true
-  }
-]
+// The same destinations the sidebar offers (admin-only ones are for admins only: a non-admin would bounce to the dashboard)
+const PAGES: readonly Page[] = [
+  { path: '/dashboard', label: '儀表板', adminOnly: false },
+  { path: '/conversations', label: '對話', adminOnly: false },
+  { path: '/notifications', label: '通知', adminOnly: false },
+  { path: '/tags', label: '客戶標籤', adminOnly: false },
+  { path: '/broadcasts', label: '群發訊息', adminOnly: false },
+  { path: '/auto-reply', label: '自動回覆', adminOnly: true },
+  { path: '/reports', label: SECTION_NAV.reports.label, adminOnly: false },
+  { path: '/team', label: '團隊成員', adminOnly: true },
+  { path: '/channels', label: '頻道', adminOnly: true },
+  { path: '/activities', label: '活動記錄', adminOnly: true },
+  { path: '/data', label: SECTION_NAV.data.label, adminOnly: false },
+  { path: '/monitoring/api', label: 'API 監控', adminOnly: true },
+  { path: '/monitoring/websocket', label: '即時連線監控', adminOnly: true },
+  { path: '/settings', label: SECTION_NAV.settings.label, adminOnly: true }
+].map(p => ({ ...p, icon: NAV_ICONS[p.path] as Component }))
 
-/** Only pages this user can open (admin-only pages would bounce a non-admin to the dashboard); none when signed out. */
-const links = computed(() =>
-  isAuthenticated.value ? QUICK_LINKS.filter(link => !link.adminOnly || isAdmin.value) : []
-)
+const allowed = computed(() => PAGES.filter(p => !p.adminOnly || isAdmin.value))
+
+// Sub-pages are only used to guess what a mistyped address meant
+const GUESS_TARGETS = computed(() => [
+  ...allowed.value.map(p => ({ path: p.path, label: p.label })),
+  ...(Object.values(SECTION_NAV)).flatMap(section =>
+    section.items.filter(i => !i.adminOnly || isAdmin.value).map(i => ({ path: i.path, label: i.label }))
+  ).filter(i => isAdmin.value || !i.path.startsWith('/settings'))
+])
+
+// ---- the address, taken apart ----
+type SegState = 'ok' | 'bad' | 'rest'
+
+const unknown = (path: string): boolean => {
+  const matched = router.resolve(path).matched
+  return matched.length === 0 || matched.some(m => m.name === 'NotFound')
+}
+
+const trace = computed(() => {
+  const parts = route.path.split('/').filter(Boolean)
+  const decode = (s: string): string => { try { return decodeURIComponent(s) } catch { return s } }
+  let acc = ''
+  let badAt = -1
+  parts.forEach((part, i) => {
+    acc += `/${part}`
+    if (badAt < 0 && unknown(acc)) { badAt = i }
+  })
+  const segments = parts.map((part, i) => ({
+    text: decode(part),
+    state: (badAt < 0 || i < badAt ? 'ok' : i === badAt ? 'bad' : 'rest') as SegState
+  }))
+  return {
+    segments,
+    badAt,
+    bad: badAt >= 0 ? decode(parts[badAt] ?? '') : '',
+    goodPrefix: badAt > 0 ? `/${parts.slice(0, badAt).map(decode).join('/')}` : '',
+    extra: route.fullPath.slice(route.path.length)
+  }
+})
+
+const distance = (a: string, b: string): number => {
+  const prev = Array.from({ length: b.length + 1 }, (_, j) => j)
+  for (let i = 1; i <= a.length; i++) {
+    let diag = prev[0] ?? 0
+    prev[0] = i
+    for (let j = 1; j <= b.length; j++) {
+      const up = prev[j] ?? 0
+      prev[j] = Math.min(up + 1, (prev[j - 1] ?? 0) + 1, diag + (a[i - 1] === b[j - 1] ? 0 : 1))
+      diag = up
+    }
+  }
+  return prev[b.length] ?? 0
+}
+
+// The closest real page for the first part that does not exist (a typo, a missing "s"); nothing when nothing is close
+const guess = computed(() => {
+  const { bad, badAt, goodPrefix } = trace.value
+  if (!bad || !isAuthenticated.value) { return null }
+  const want = bad.toLowerCase()
+  const limit = Math.max(2, Math.floor(want.length / 3))
+  let best: { path: string; label: string; d: number } | null = null
+  for (const target of GUESS_TARGETS.value) {
+    const parts = target.path.split('/').filter(Boolean)
+    if (parts.length !== badAt + 1 || (goodPrefix && !target.path.startsWith(`${goodPrefix}/`))) { continue }
+    const d = distance(want, (parts[badAt] ?? '').toLowerCase())
+    if (d <= limit && d < want.length && (!best || d < best.d)) { best = { ...target, d } }
+  }
+  return best
+})
+
+// ---- the finder ----
+const query = ref('')
+
+// The last pages this browser opened: each resolves to the closest known page (a conversation counts as 對話), up to three
+const recents = computed(() => {
+  const out: Page[] = []
+  for (const raw of readRecentPaths()) {
+    const hit = allowed.value
+      .filter(p => raw === p.path || raw.startsWith(`${p.path}/`))
+      .sort((a, b) => b.path.length - a.path.length)[0]
+    if (hit && !out.some(o => o.path === hit.path) && hit.path !== route.path) { out.push(hit) }
+    if (out.length === 3) { break }
+  }
+  return out
+})
+
+// A 404 is not a second sidebar: the six pages people open most are offered, the rest are one tap or one word away
+const FIRST_PAGES = ['/dashboard', '/conversations', '/notifications', '/tags', '/broadcasts', '/reports']
+// Every width starts with the six: the full list is the sidebar's job, here it is one tap away
+const showAll = ref(false)
+const canExpand = computed(() => query.value.trim() === '' && !showAll.value && allowed.value.length > FIRST_PAGES.length)
+
+// One flat list in the sidebar's order; typing searches every page
+const shownPages = computed(() => {
+  const q = query.value.trim().toLowerCase()
+  const narrow = q === '' && !showAll.value
+  const match = (p: Page): boolean => q === ''
+    ? !narrow || FIRST_PAGES.includes(p.path)
+    : p.label.toLowerCase().includes(q) || p.path.toLowerCase().includes(q)
+  return NAV_SECTIONS.flatMap(section =>
+    allowed.value
+      .filter(p => sectionForPath(p.path)?.id === section.id && match(p))
+      .map(p => ({ ...p, tone: section.id as SectionId }))
+  )
+})
+
+const openFirst = (): void => {
+  const first = shownPages.value[0]
+  if (first) { void router.push(first.path) }
+}
 
 const homePath = computed(() => (isAuthenticated.value ? '/dashboard' : '/login'))
+
+// Copy the address that was asked for (handy for a bug report); the icon confirms for 1.6 s
+const copied = ref(false)
+const copyUrl = async () => {
+  try {
+    await navigator.clipboard.writeText(`${window.location.origin}${route.fullPath}`)
+    copied.value = true
+    window.setTimeout(() => { copied.value = false }, 1600)
+  } catch {
+    copied.value = false
+  }
+}
 
 const goBack = () => {
   if (window.history.length > 1) {
@@ -194,9 +475,10 @@ const goBack = () => {
   height: 16px;
 }
 
-/* One centred column, vertically centred in the viewport; nothing stretches */
+/* One card, vertically centred in the viewport */
 .not-found-page {
   display: flex;
+  flex: none;
   flex-direction: column;
   justify-content: center;
   min-height: calc(100vh - var(--ui-topbar-h) - 2 * var(--ui-gutter));
@@ -208,199 +490,447 @@ const goBack = () => {
 }
 
 .nf {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  width: 100%;
+  max-width: 1080px;
+  margin: 0 auto;
+  /* never squeezed by the centring column: the whole card is reachable by scrolling */
+  flex: none;
+  overflow: hidden;
+}
+
+.nf.is-solo {
+  max-width: 480px;
+}
+
+.nf-lead {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  width: 100%;
-  max-width: 760px;
-  margin: 0 auto;
-  text-align: center;
+  justify-content: center;
+  min-width: 0;
+  padding: 36px 32px 32px;
 }
 
-/* The rings live in the numerals' own box, so they can never reach the sentence below */
-.code-wrap {
-  position: relative;
-  display: grid;
-  place-items: center;
-  padding: 8px 80px;
+.nf-find {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  padding: 28px 24px 24px;
+  background: var(--ui-surface);
+  box-shadow: inset 0 0.5px 0 var(--ui-sep);
 }
 
+@media (min-width: 1025px) {
+  .nf:not(.is-solo) {
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+  }
+
+  .nf-lead {
+    padding: 44px 44px 40px;
+  }
+
+  .nf-find {
+    justify-content: center;
+    padding: 36px 32px 32px;
+    box-shadow: inset 0.5px 0 0 var(--ui-sep);
+  }
+}
+
+/* ---- the numeral: quiet, so the headline leads ---- */
 .code {
-  position: relative;
-  font: 600 160px / 1 var(--ui-font-display);
-  letter-spacing: -0.05em;
-  font-variant-numeric: tabular-nums;
+  display: flex;
+  gap: 0.04em;
+  align-items: center;
+  font: 600 88px / 1 var(--ui-font-display);
+  letter-spacing: -0.04em;
   color: var(--ui-ink);
 }
 
-.code span {
-  color: var(--ui-accent);
+.zero {
+  width: 0.6em;
+  height: 0.745em;
+  margin: 0 0.16em;
+  overflow: visible;
 }
 
-.hero-disc {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 320px !important;
-  height: 320px !important;
-  translate: -50% -50%;
-  opacity: 0.8;
-  pointer-events: none;
+.nf-ring {
+  fill: none;
+  stroke: var(--ui-blue);
+  transform-origin: 50px 62px;
+}
+
+.nf-ring.r3 {
+  stroke-width: 13;
+}
+
+.nf-ring.r2 {
+  stroke-width: 3;
+  opacity: 0.4;
+}
+
+.nf-ring.r1 {
+  stroke-width: 2;
+  opacity: 0.18;
+}
+
+.nf-dot {
+  fill: var(--ui-blue);
+}
+
+/* The echo goes out once on arrival and settles; nothing loops */
+@media (prefers-reduced-motion: no-preference) {
+  .nf-ring.r2 {
+    animation: nf-ping 900ms var(--ui-ease) 150ms both;
+  }
+
+  .nf-ring.r1 {
+    animation: nf-ping 1100ms var(--ui-ease) 300ms both;
+  }
+}
+
+@keyframes nf-ping {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
 }
 
 .nf-title {
-  margin: 18px 0 0;
-  font: 700 34px/1.2 var(--ui-font-display);
+  margin: 20px 0 0;
+  font: 700 30px/1.2 var(--ui-font-display);
   letter-spacing: -0.035em;
 }
 
 .nf-reason {
-  max-width: 38ch;
-  margin: 8px 0 0;
+  margin: 6px 0 0;
   font-size: 15px;
-  color: var(--ui-muted);
-  text-wrap: balance;
-}
-
-.asked {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  width: min(100%, 420px);
-  margin-top: 18px;
-  padding: 12px 14px;
-  font-size: 13px;
-  background: var(--ui-fill);
-}
-
-.asked .k {
-  flex: none;
   color: var(--ui-ink-2);
 }
 
-.asked .mono {
+/* ---- the address, taken apart ---- */
+.trace {
+  margin-top: 24px;
+}
+
+.trace-k {
+  margin: 0 0 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ui-ink-2);
+}
+
+.trace-bar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 10px 10px 10px 16px;
+  border-radius: 14px;
+  background: var(--ui-surface-2);
+}
+
+.trace-path {
+  flex: 1;
   min-width: 0;
   overflow: hidden;
-  font-family: var(--ui-font-mono);
-  font-weight: 500;
+  font: 500 15px var(--ui-font-mono);
   color: var(--ui-ink);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-/* Compact shortcut tiles: 4 across on desktop, 2 x 2 on phone */
-.list {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
-  width: 100%;
-  margin-top: 28px;
+.trace-slash {
+  color: var(--ui-muted);
 }
 
-.go {
+.seg.is-ok {
+  color: var(--ui-green-ink);
+}
+
+.seg.is-bad {
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: var(--ui-red-soft);
+  color: var(--ui-red-ink);
+  font-weight: 700;
+}
+
+.seg.is-rest {
+  color: var(--ui-muted);
+}
+
+.trace-extra {
+  color: var(--ui-muted);
+}
+
+.trace-note {
+  margin: 8px 0 0;
+  font-size: 14px;
+  color: var(--ui-ink-2);
+}
+
+.copy {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--ui-ink-2);
+  cursor: pointer;
+  transition: background var(--ui-dur) var(--ui-ease);
+}
+
+.copy:hover {
+  background: var(--ui-fill);
+}
+
+.copy:focus-visible {
+  outline: 2px solid var(--ui-accent);
+  outline-offset: 1px;
+}
+
+/* ---- did you mean ---- */
+.guess {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 10px;
-  padding: 16px;
-  border-radius: 18px;
-  background: var(--ui-surface);
-  color: inherit;
-  text-align: left;
+  gap: 12px;
+  align-items: center;
+  margin-top: 12px;
+  padding: 12px 16px;
+  border-radius: 14px;
+  background: var(--ui-accent-soft);
+  color: var(--ui-ink);
   text-decoration: none;
   transition: background var(--ui-dur) var(--ui-ease);
 }
 
-.go:hover {
-  background: var(--ui-surface-2);
+.guess:hover {
+  background: color-mix(in srgb, var(--ui-accent) 16%, var(--ui-surface));
 }
 
-.go:focus-visible {
+.guess:focus-visible {
   outline: 2px solid var(--ui-accent);
   outline-offset: 2px;
 }
 
-.go-ico {
-  display: grid;
+.guess-k {
   flex: none;
-  place-items: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 12px;
+  font-size: 14px;
+  color: var(--ui-ink-2);
 }
 
-.go-ico svg {
-  width: 18px;
-  height: 18px;
+.guess-v {
+  flex: 1;
+  min-width: 0;
+  font-size: 15px;
+  font-weight: 700;
 }
 
-/* Solid section hue tile, white glyph (same language as the page-title tile and the sidebar sections) */
-.go-ico {
-  color: #fff;
+.guess-path {
+  margin-left: 8px;
+  font: 500 13px var(--ui-font-mono);
+  color: var(--ui-ink-2);
 }
 
-.go-ico.blue {
-  background: var(--ui-blue);
-}
-
-.go-ico.orange {
-  background: var(--ui-orange);
-}
-
-.go-ico.indigo {
-  background: var(--ui-indigo);
-}
-
-.go b {
-  display: block;
-  font-size: var(--ui-t-head);
-  font-weight: 600;
-}
-
-.go small {
-  font-size: 13px;
-  line-height: 1.4;
-  color: var(--ui-muted);
+.guess .ico {
+  flex: none;
+  color: var(--ui-accent);
 }
 
 .nf-actions {
   display: flex;
   gap: 10px;
-  justify-content: center;
-  margin-top: 28px;
+  margin-top: 24px;
 }
 
-@media (max-width: 768px) {
-  .list {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+.nf-actions > .btn {
+  flex: 1 1 0;
+  justify-content: center;
+}
+
+/* ---- the finder ---- */
+.find-label {
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.find-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* an odd last tile takes the whole row, so no group ends with a hole beside it */
+.find-list > li:last-child:nth-child(odd) {
+  grid-column: 1 / -1;
+}
+
+.find-item {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  min-height: 46px;
+  padding: 6px 12px 6px 8px;
+  border-radius: 14px;
+  background: var(--ui-surface-2);
+  color: var(--ui-ink);
+  text-decoration: none;
+  transition: box-shadow var(--ui-dur) var(--ui-ease);
+}
+
+.find-item:hover {
+  box-shadow: inset 0 0 0 1.5px var(--tone);
+}
+
+.find-item:focus-visible {
+  outline: 2px solid var(--ui-accent);
+  outline-offset: 2px;
+}
+
+.find-ico {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--tone) 14%, var(--ui-surface-2));
+  color: color-mix(in srgb, var(--tone) 78%, #000);
+}
+
+.find-ico :deep(svg) {
+  width: 17px;
+  height: 17px;
+}
+
+.find-name {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 15px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recent {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.recent-list {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.recent-go {
+  flex: none;
+  margin-left: auto;
+  color: var(--ui-ink-2);
+}
+
+/* one calm hue for every destination: colour is not information here */
+.find-item {
+  --tone: var(--ui-accent);
+}
+
+.find-more {
+  align-self: flex-start;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ui-accent);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.find-more:hover {
+  background: var(--ui-accent-soft);
+}
+
+.find-empty {
+  margin: 8px 4px;
+  font-size: 14px;
+  color: var(--ui-ink-2);
+}
+
+.find-note {
+  margin: 6px 4px 0;
+  padding-top: 8px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--ui-ink-2);
+}
+
+@media (min-width: 1025px) {
+  /* the card is the page: it fills the viewport, so there is no void above and below it */
+  .nf:not(.is-solo) {
+    min-height: calc(100dvh - var(--ui-topbar-h) - 2 * var(--ui-gutter));
   }
 
-  .nf-actions {
-    width: 100%;
+  .nf:not(.is-solo) .code {
+    font-size: 176px;
   }
 
-  .nf-actions > .btn {
-    flex: 1 1 0;
-    justify-content: center;
+  .nf:not(.is-solo) .nf-title {
+    margin-top: 28px;
+    font-size: 34px;
+  }
+
+  .nf:not(.is-solo) .trace {
+    margin-top: 32px;
   }
 }
 
 @media (max-width: 480px) {
   .code {
-    font-size: 96px;
+    font-size: 72px;
   }
 
-  .code-wrap {
-    padding: 8px 40px;
+  .nf-lead {
+    padding: 28px 20px 24px;
   }
 
-  .hero-disc {
-    width: 200px !important;
-    height: 200px !important;
+  .nf-title {
+    font-size: 26px;
   }
 
-  .asked {
+  .guess {
     flex-wrap: wrap;
+    gap: 2px 12px;
+  }
+
+  .guess-v {
+    flex-basis: 100%;
+    order: 3;
+  }
+
+  .guess .ico {
+    margin-left: auto;
+    order: 2;
+  }
+}
+
+@media (max-width: 768px) {
+  .nf-find {
+    padding: 22px 16px 20px;
+  }
+
+  .find-item {
+    min-height: 48px;
   }
 }
 </style>

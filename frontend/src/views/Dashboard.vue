@@ -101,6 +101,7 @@
             summary="待回覆概況"
             :rings="ringsData"
             :size="150"
+            tagged
           />
           <div
             v-else-if="summary.error.value"
@@ -846,11 +847,10 @@ onBeforeUnmount(() => {
 /* ---- lead ---- */
 .lead {
   display: grid;
-  grid-template-columns: auto auto;
-  justify-content: center;
-  gap: 24px 72px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 24px 40px;
   align-items: center;
-  padding: 22px 40px;
+  padding: 24px 32px;
 }
 
 .lead-main {
@@ -907,8 +907,8 @@ onBeforeUnmount(() => {
   position: relative;
   display: flex;
   align-items: center;
-  justify-content: center;
   min-width: 0;
+  padding-left: 40px;
 }
 
 /* hairline between the number and the rings */
@@ -916,7 +916,7 @@ onBeforeUnmount(() => {
   position: absolute;
   top: 4px;
   bottom: 4px;
-  left: -36px;
+  left: 0;
   width: 0.5px;
   background: var(--ui-sep);
   content: '';

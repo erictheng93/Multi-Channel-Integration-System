@@ -21,95 +21,117 @@
         @open-settings="showSettings = true"
       />
 
-      <!-- Filters Section -->
-      <NotificationFilters
-        v-model:selected-type="filters.selectedType.value"
-        v-model:selected-priority="filters.selectedPriority.value"
-        v-model:selected-read-status="filters.selectedReadStatus.value"
-        :has-active-filters="filters.hasActiveFilters.value"
-        :notification-types="filters.notificationTypes"
-        :priorities="filters.priorities"
-        :counts="stats ? { total: stats.total, unread: stats.unread } : null"
-        @apply-filters="filters.applyFilters"
-        @clear-filters="filters.clearFilters"
-      />
-
-      <!-- Notifications List -->
-      <section
-        class="notifications-section ui-card"
-        role="region"
-        aria-label="通知列表"
-        aria-live="polite"
-        :aria-busy="loading"
-      >
-        <!-- Loading State -->
-        <div
-          v-if="loading && notifications.length === 0"
-          class="loading-state"
-          role="status"
-          aria-live="polite"
-        >
-          <LoadingSpinner size="lg" />
-          <p>載入通知中...</p>
-        </div>
-
-        <!-- Empty State -->
-        <NotificationEmptyState
-          v-else-if="notifications.length === 0"
-          :has-active-filters="filters.hasActiveFilters.value"
-          @clear-filters="filters.clearFilters"
+      <div class="notif-grid">
+        <!-- The inbox at a glance: what needs you, then every type and priority as a filter row -->
+        <NotificationRail
+          v-if="stats && typeRows.length > 0"
+          class="notif-rail"
+          :unread="stats.unread"
+          :urgent-unread="urgentUnread"
+          :times="times"
+          :types="typeRows"
+          :priorities="priorityRows"
+          :selected-type="filters.selectedType.value"
+          :selected-priority="filters.selectedPriority.value"
+          @toggle-type="toggleType"
+          @toggle-priority="togglePriority"
         />
 
-        <!-- Notifications grouped by day (Asia/Taipei) -->
-        <div
-          v-else
-          class="notifications-list"
-        >
-          <div
-            v-for="group in groups"
-            :key="group.key"
-            class="day-group"
-          >
-            <h2 class="day-label">
-              {{ group.label }}
-            </h2>
-            <TransitionGroup name="notification-list">
-              <NotificationCard
-                v-for="item in group.items"
-                :key="item.notification.id"
-                :notification="item.notification"
-                :index="item.index"
-                :is-focused="keyboard.focusedNotificationIndex.value === item.index"
-                @click="actions.handleNotificationClick"
-                @mark-read="actions.handleMarkRead"
-                @delete="actions.handleDelete"
-                @set-ref="keyboard.setNotificationRef"
-              />
-            </TransitionGroup>
-          </div>
+        <div class="notif-main ui-card">
+          <NotificationFilters
+            v-model:selected-type="filters.selectedType.value"
+            v-model:selected-priority="filters.selectedPriority.value"
+            v-model:selected-read-status="filters.selectedReadStatus.value"
+            :has-active-filters="filters.hasActiveFilters.value"
+            :notification-types="filters.notificationTypes"
+            :priorities="filters.priorities"
+            :counts="stats ? { total: stats.total, unread: stats.unread } : null"
+            :show-type-select="!hasRail"
+            :show-priority-select="!hasRail"
+            :result-count="pagination.total"
+            @apply-filters="filters.applyFilters"
+            @clear-filters="filters.clearFilters"
+          />
 
-          <!-- Load More -->
-          <div
-            v-if="canLoadMore"
-            class="load-more-section"
+          <!-- Notifications List -->
+          <section
+            class="notifications-section"
+            role="region"
+            aria-label="通知列表"
+            aria-live="polite"
+            :aria-busy="loading"
           >
-            <button
-              class="btn btn-secondary btn-sm"
-              :disabled="loadingMore"
-              @click="actions.handleLoadMore"
+            <!-- Loading State -->
+            <div
+              v-if="loading && notifications.length === 0"
+              class="loading-state"
+              role="status"
+              aria-live="polite"
             >
-              <LoadingSpinner
-                v-if="loadingMore"
-                size="sm"
-              />
-              <span v-else>載入更多</span>
-            </button>
-            <p class="load-more-info">
-              已顯示 {{ notifications.length }} / {{ pagination.total }} 則通知
-            </p>
-          </div>
+              <LoadingSpinner size="lg" />
+              <p>載入通知中...</p>
+            </div>
+
+            <!-- Empty State -->
+            <NotificationEmptyState
+              v-else-if="notifications.length === 0"
+              :has-active-filters="filters.hasActiveFilters.value"
+              @clear-filters="filters.clearFilters"
+            />
+
+            <!-- Notifications grouped by day (Asia/Taipei) -->
+            <div
+              v-else
+              class="notifications-list"
+            >
+              <div
+                v-for="group in groups"
+                :key="group.key"
+                class="day-group"
+              >
+                <h2 class="day-label">
+                  {{ group.label }}
+                  <span class="day-count">{{ group.items.length }} 則</span>
+                </h2>
+                <TransitionGroup name="notification-list">
+                  <NotificationCard
+                    v-for="item in group.items"
+                    :key="item.notification.id"
+                    :notification="item.notification"
+                    :index="item.index"
+                    :is-focused="keyboard.focusedNotificationIndex.value === item.index"
+                    @click="actions.handleNotificationClick"
+                    @mark-read="actions.handleMarkRead"
+                    @delete="actions.handleDelete"
+                    @set-ref="keyboard.setNotificationRef"
+                  />
+                </TransitionGroup>
+              </div>
+
+              <!-- Load More -->
+              <div
+                v-if="canLoadMore"
+                class="load-more-section"
+              >
+                <button
+                  class="btn btn-secondary"
+                  :disabled="loadingMore"
+                  @click="actions.handleLoadMore"
+                >
+                  <LoadingSpinner
+                    v-if="loadingMore"
+                    size="sm"
+                  />
+                  <span v-else>載入更多</span>
+                </button>
+                <p class="load-more-info">
+                  已顯示 {{ notifications.length }} / {{ pagination.total }} 則通知
+                </p>
+              </div>
+            </div>
+          </section>
         </div>
-      </section>
+      </div>
 
       <!-- Settings Modal -->
       <NotificationSettingsModal
@@ -133,6 +155,7 @@ import {
   NotificationCard,
   NotificationEmptyState
 } from '@/components/notification'
+import NotificationRail from '@/components/notification/NotificationRail.vue'
 import NotificationSettingsModal from '@/components/notification/NotificationSettingsModal.vue'
 import type { Notification } from '@/stores/notifications'
 
@@ -156,6 +179,47 @@ const {
   settings,
   keyboard
 } = controller
+
+// ==================== Rail ====================
+
+const typeRows = computed(() =>
+  filters.notificationTypes
+    .map((t) => ({
+      ...t,
+      total: stats.value?.byType?.[t.value as keyof NonNullable<typeof stats.value>['byType']]?.total ?? 0,
+      unread: stats.value?.byType?.[t.value as keyof NonNullable<typeof stats.value>['byType']]?.unread ?? 0
+    }))
+    .filter((row) => row.total > 0)
+)
+
+const priorityRows = computed(() =>
+  filters.priorities.map((p) => ({
+    ...p,
+    total: stats.value?.byPriority?.[p.value as keyof NonNullable<typeof stats.value>['byPriority']]?.total ?? 0,
+    unread: stats.value?.byPriority?.[p.value as keyof NonNullable<typeof stats.value>['byPriority']]?.unread ?? 0
+  }))
+)
+
+const hasRail = computed(() => !!stats.value && typeRows.value.length > 0)
+
+const times = computed(() => [
+  { label: '全部', value: stats.value?.total ?? 0 },
+  { label: '今天', value: stats.value?.timeRange?.today ?? 0 },
+  { label: '本週', value: stats.value?.timeRange?.thisWeek ?? 0 },
+  { label: '本月', value: stats.value?.timeRange?.thisMonth ?? 0 }
+])
+
+const urgentUnread = computed(() => stats.value?.byPriority?.urgent?.unread ?? 0)
+
+function toggleType(value: string): void {
+  filters.selectedType.value = (filters.selectedType.value === value ? '' : value) as typeof filters.selectedType.value
+  filters.applyFilters()
+}
+
+function togglePriority(value: string): void {
+  filters.selectedPriority.value = (filters.selectedPriority.value === value ? '' : value) as typeof filters.selectedPriority.value
+  filters.applyFilters()
+}
 
 // ==================== Day grouping ====================
 
@@ -207,9 +271,29 @@ onUnmounted(() => {
 
 <style scoped>
 
+/* Two columns: the list takes the room, the rail (the page's one elevated object) rides beside it */
+.notif-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  grid-template-areas: "main rail";
+  gap: var(--ui-page-gap);
+  align-items: start;
+}
+
+.notif-rail {
+  grid-area: rail;
+  position: sticky;
+  top: calc(var(--ui-topbar-h) + 16px);
+}
+
+.notif-main {
+  grid-area: main;
+  min-width: 0;
+  overflow: hidden;
+}
+
 .notifications-section {
   min-height: 240px;
-  overflow: hidden;
 }
 
 .loading-state {
@@ -231,11 +315,20 @@ onUnmounted(() => {
 }
 
 .day-label {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
   margin: 0;
-  padding: 16px 22px 6px;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--ui-ink-2);
+  padding: 18px 24px 6px;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ui-ink);
+}
+
+.day-count {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ui-muted);
 }
 
 /* A footer strip, not a lone pill in an empty card: the count on the left, the action on the right */
@@ -273,6 +366,17 @@ onUnmounted(() => {
 
 .notification-list-move {
   transition: transform 0.3s var(--ui-ease);
+}
+
+@media (max-width: 1024px) {
+  .notif-grid {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "rail" "main";
+  }
+
+  .notif-rail {
+    position: static;
+  }
 }
 
 @media (max-width: 768px) {

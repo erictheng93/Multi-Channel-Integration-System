@@ -28,18 +28,17 @@ describe('AutoReplyStats -- lead', () => {
     expect(wrapper.find('.lead-num').text()).toContain('99')
   })
 
-  it('draws one arc per real ratio: active rules and successful replies', () => {
+  it('shows the real figures once: active rules as pips, failed replies as text', () => {
     const wrapper = mountStats({ activeRules: 5, totalRules: 6, todayReplies: 47, todayFailed: 1 })
-    const label = wrapper.find('[role="img"]').attributes('aria-label') ?? ''
-    expect(label).toContain('啟用規則 5')
-    expect(label).toContain('共 6')
-    expect(label).toContain('今日回覆成功 47')
-    expect(label).toContain('共 48')
+    const labels = wrapper.findAll('[role="img"]').map((n) => n.attributes('aria-label') ?? '').join('|')
+    expect(labels).toContain('啟用 5 條，共 6 條')
+    expect(wrapper.text()).toContain('1 則失敗')
   })
 
-  it('omits rings that have no data behind them', () => {
+  it('omits the result bar when nothing was attempted', () => {
     const wrapper = mountStats({ successRate: null })
-    expect(wrapper.find('[role="img"]').exists()).toBe(false)
+    const labels = wrapper.findAll('[role="img"]').map((n) => n.attributes('aria-label') ?? '').join('|')
+    expect(labels).not.toContain('成功')
   })
 })
 
@@ -54,5 +53,42 @@ describe('AutoReplyStats -- business hours', () => {
     const wrapper = mountStats({ isBusinessHours: false })
     expect(wrapper.find('.hours-state').text()).toContain('非營業時間')
     expect(wrapper.find('.hours-state').classes()).toContain('is-closed')
+  })
+})
+
+describe('AutoReplyStats -- week timetable', () => {
+  const weekPlan = {
+    days: [1, 2, 3, 4, 5, 6, 0].map((day) => ({ day, open: day !== 0, start: 510, end: 1050 })),
+    today: 1,
+    now: 600,
+    replies: [560, 575, 590],
+  }
+
+  it('draws one row per weekday, marks today and rests a closed day', () => {
+    const wrapper = mount(AutoReplyStats, {
+      props: { activeRules: 5, todayReplies: 3, isBusinessHours: true, successRate: null, weekPlan },
+    })
+    expect(wrapper.findAll('.wrow')).toHaveLength(7)
+    expect(wrapper.find('.wrow.is-today .wday').text()).toBe('週一')
+    expect(wrapper.findAll('.wrow')[6]?.text()).toContain('休息')
+    expect(wrapper.find('.wrow .wtime').text()).toBe('08:30–17:30')
+  })
+
+  it('places now on the day scale and one tick per reply sent today', () => {
+    const wrapper = mount(AutoReplyStats, {
+      props: { activeRules: 5, todayReplies: 3, isBusinessHours: true, successRate: null, weekPlan },
+    })
+    expect(wrapper.find('.week-now b').text()).toBe('現在 10:00')
+    expect(wrapper.findAll('.wtick')).toHaveLength(3)
+    expect(wrapper.find('.week').attributes('aria-label')).toContain('週日休息')
+  })
+
+  it('asks for a schedule when none is saved', async () => {
+    const wrapper = mount(AutoReplyStats, {
+      props: { activeRules: 5, todayReplies: 3, isBusinessHours: false, successRate: null, weekPlan: null },
+    })
+    expect(wrapper.find('.week').exists()).toBe(false)
+    await wrapper.find('.lead-empty button').trigger('click')
+    expect(wrapper.emitted('open-schedules')).toHaveLength(1)
   })
 })

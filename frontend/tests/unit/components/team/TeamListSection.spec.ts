@@ -112,6 +112,12 @@ function makeTeams(count: number): Team[] {
   }))
 }
 
+/** search and sort only render from 5 teams; filler rows never match the queries below */
+function withFiller(teams: Team[]): Team[] {
+  const extra = Array.from({ length: Math.max(0, 5 - teams.length) }, (_, i) => ({ id: 900 + i, name: `Zz${i}`, description: `Zz${i}`, isActive: true, createdAt: '2026-01-01', updatedAt: '2026-01-01' }))
+  return [...teams, ...extra]
+}
+
 function defaultProps(overrides: Record<string, unknown> = {}) {
   return {
     teams: makeTeams(5),
@@ -191,7 +197,7 @@ describe('TeamListSection — search bar + pagination', () => {
         { id: 2, name: 'Beta', description: 'Desc B', isActive: true, createdAt: '2026-01-01', updatedAt: '2026-01-01' },
         { id: 3, name: 'Gamma', description: 'Desc C', isActive: true, createdAt: '2026-01-01', updatedAt: '2026-01-01' },
       ]
-      const wrapper = createWrapper({ teams })
+      const wrapper = createWrapper({ teams: withFiller(teams) })
 
       await findSearchInput(wrapper).setValue('Alpha')
       await flushDebounce()
@@ -205,7 +211,7 @@ describe('TeamListSection — search bar + pagination', () => {
         { id: 1, name: 'Team A', description: 'Engineering', isActive: true, createdAt: '2026-01-01', updatedAt: '2026-01-01' },
         { id: 2, name: 'Team B', description: 'Marketing', isActive: true, createdAt: '2026-01-01', updatedAt: '2026-01-01' },
       ]
-      const wrapper = createWrapper({ teams })
+      const wrapper = createWrapper({ teams: withFiller(teams) })
 
       await findSearchInput(wrapper).setValue('Marketing')
       await flushDebounce()
@@ -215,14 +221,19 @@ describe('TeamListSection — search bar + pagination', () => {
     })
 
     it('returns all teams when query is empty', async () => {
-      const teams = makeTeams(4)
+      const teams = makeTeams(5)
       const wrapper = createWrapper({ teams })
 
       await findSearchInput(wrapper).setValue('')
       await flushDebounce()
 
       const cards = wrapper.findAllComponents(TeamCardStub)
-      expect(cards).toHaveLength(4)
+      expect(cards).toHaveLength(5)
+    })
+
+    it('hides search below five teams', () => {
+      const wrapper = createWrapper({ teams: makeTeams(4) })
+      expect(wrapper.find('.search-bar').exists()).toBe(false)
     })
 
     it('is case-insensitive', async () => {
@@ -230,7 +241,7 @@ describe('TeamListSection — search bar + pagination', () => {
         { id: 1, name: 'Alpha Team', description: '', isActive: true, createdAt: '2026-01-01', updatedAt: '2026-01-01' },
         { id: 2, name: 'Beta Team', description: '', isActive: true, createdAt: '2026-01-01', updatedAt: '2026-01-01' },
       ]
-      const wrapper = createWrapper({ teams })
+      const wrapper = createWrapper({ teams: withFiller(teams) })
 
       await findSearchInput(wrapper).setValue('alpha')
       await flushDebounce()

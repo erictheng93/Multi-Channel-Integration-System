@@ -79,10 +79,9 @@ describe('QuickReplies', () => {
         },
       })
 
-      // Three suggestions plus the 更多 toggle; 更多 reveals the rest
-      expect(wrapper.findAll('.quick-reply-btn')).toHaveLength(4)
-      await wrapper.find('.quick-reply-more').trigger('click')
-      expect(wrapper.findAll('.quick-reply-btn')).toHaveLength(21)
+      // Every suggestion is in one swipeable row (no 更多 toggle)
+      expect(wrapper.findAll('.quick-reply-btn')).toHaveLength(20)
+      expect(wrapper.find('.quick-reply-more').exists()).toBe(false)
     })
   })
 
@@ -335,7 +334,7 @@ describe('QuickReplies', () => {
 
       const button = wrapper.find('.quick-reply-btn')
       expect(button.text()).toBe(specialText)
-      expect(button.html()).not.toContain('<script>')
+      expect(button.find('script').exists()).toBe(false)
     })
 
     it('should handle replies with duplicate IDs', () => {
