@@ -315,60 +315,6 @@ export function generateRandomString(length: number = 32): string {
   return result;
 }
 
-// 用戶認證相關的資料庫操作
-// Simplified from 3-tier to 2-tier role system
-export async function createUser(
-  db: D1Database,
-  userData: {
-    email: string;
-    password: string;
-    displayName: string;
-    role: 'admin' | 'agent';
-    teamId?: number;
-  }
-): Promise<DbUser> {
-  const hashedPassword = await hashPassword(userData.password);
-  const now = nowISO();
-  const userId = crypto.randomUUID();
-  const drizzleDb = createDbClient(db);
-
-  await drizzleDb
-    .insert(agents)
-    .values({
-      id: userId,
-      email: userData.email,
-      passwordHash: hashedPassword,
-      displayName: userData.displayName,
-      role: userData.role,
-      createdAt: now,
-      updatedAt: now
-    });
-
-  // If teamId provided, create agent_teams membership (isPrimary=true)
-  if (userData.teamId) {
-    await drizzleDb.insert(agentTeams).values({
-      agentId: userId,
-      teamId: userData.teamId,
-      roleInTeam: 'member',
-      isPrimary: true,
-      joinedAt: now
-    });
-  }
-
-  // Fetch the created user
-  const createdUser = await drizzleDb
-    .select()
-    .from(agents)
-    .where(eq(agents.id, userId))
-    .get();
-  
-  if (!createdUser) {
-    throw new Error('Failed to retrieve created user');
-  }
-  
-  return getUserById(db, createdUser.id);
-}
-
 export async function getUserById(db: D1Database, userId: number | string): Promise<DbUser> {
   const drizzleDb = createDbClient(db);
   

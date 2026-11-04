@@ -34,6 +34,12 @@ export function d1Of(db: Database.Database, log?: QueryLog[]): D1Database {
       run: async () => {
         log?.push({ sql: query });
         return { success: true, ...run() };
+      },
+      // Drizzle reads UPDATE ... RETURNING rows through raw().
+      raw: async () => {
+        log?.push({ sql: query });
+        const stmt = db.prepare(query);
+        return stmt.reader ? stmt.raw().all(...params) : (stmt.run(...params), []);
       }
     };
   };
@@ -63,6 +69,7 @@ export const MIGRATION_ROLLUP = '0069_add_message_daily_stats.sql';
 export const MIGRATION_AWAITING = '0070_add_conversation_awaiting_since.sql';
 export const MIGRATION_MARKERS = '0071_add_conversation_message_markers.sql';
 export const MIGRATION_HYGIENE = '0072_signoff_not_awaiting_and_auto_close_index.sql';
+export const MIGRATION_EDIT = '0073_awaiting_recompute_on_customer_edit.sql';
 
 /** Base tables as they exist before migrations 0069/0070 (only the columns the dashboard reads). */
 export function createBaseSchema(db: Database.Database): void {
@@ -94,7 +101,7 @@ export interface SchemaOptions {
   rollup?: boolean;
   awaiting?: boolean;
   markers?: boolean;
-  /** 0072: sign-off rule in the awaiting triggers + auto-close index (needs awaiting; markers for auto-close) */
+  /** 0072 + 0073: sign-off rule in the awaiting triggers (incl. on edit) + auto-close index (needs awaiting; markers for auto-close) */
   hygiene?: boolean;
 }
 
@@ -108,6 +115,7 @@ export function createDashboardDb(options: SchemaOptions = {}): Database.Databas
   if (options.hygiene) {
     db.exec('CREATE TABLE IF NOT EXISTS agents (id TEXT PRIMARY KEY, email TEXT, password_hash TEXT, display_name TEXT, role TEXT, is_active INTEGER, created_at TEXT, updated_at TEXT)');
     db.exec(readMigration(MIGRATION_HYGIENE));
+    db.exec(readMigration(MIGRATION_EDIT));
   }
   return db;
 }

@@ -1,7 +1,7 @@
 // Agent CRUD Service - 客服代理 CRUD 操作服務
 // Agent CRUD Operations Service
 
-import { notSystemAgent } from '@/constants/system-agent';
+import { assertNotSystemAgent, notSystemAgent } from '@/constants/system-agent';
 import { eq, and, desc, sql } from 'drizzle-orm';
 import type { DrizzleD1Database } from 'drizzle-orm/d1';
 import {
@@ -163,6 +163,7 @@ export class AgentService implements AgentServiceInterface {
   }
 
   async updateAgent(id: string, data: UpdateAgentRequest): Promise<Agent> {
+    assertNotSystemAgent(id);
     try {
       // 檢查 agent 是否存在
       const existingAgent = await this.db
@@ -245,6 +246,7 @@ export class AgentService implements AgentServiceInterface {
   }
 
   async deleteAgent(id: string): Promise<boolean> {
+    assertNotSystemAgent(id);
     try {
       // Clean up all FK references before deleting (RESTRICT constraints)
       // Step 1: Delete notifications
@@ -497,6 +499,7 @@ export class AgentService implements AgentServiceInterface {
       const now = nowISO();
       for (const agentId of agentIds) {
         try {
+          assertNotSystemAgent(agentId);
           // Remove all existing team memberships, then add new one as primary
           await this.db.delete(agentTeams).where(eq(agentTeams.agentId, agentId));
           await this.db.insert(agentTeams).values({

@@ -17,6 +17,9 @@ on:
       - 'frontend/src/**'
       - 'frontend/tests/e2e/playwright/**'
       - 'frontend/playwright.config.ts'
+      # dependency bumps (Playwright, Vue, Vite...) change what renders and what runs the checks
+      - 'frontend/package.json'
+      - 'frontend/bun.lock'
       - '.github/workflows/responsive.yml'
   push:
     branches: [main]
@@ -24,6 +27,9 @@ on:
       - 'frontend/src/**'
       - 'frontend/tests/e2e/playwright/**'
       - 'frontend/playwright.config.ts'
+      # dependency bumps (Playwright, Vue, Vite...) change what renders and what runs the checks
+      - 'frontend/package.json'
+      - 'frontend/bun.lock'
       - '.github/workflows/responsive.yml'
   schedule:
     # 04:00 Asia/Taipei: catches regressions in what is actually deployed (deploys are manual)
@@ -34,8 +40,11 @@ permissions:
   contents: read
 
 concurrency:
-  group: responsive-${{ github.ref }}
-  cancel-in-progress: true
+  # The checkout (PR/push) and the deployed site (schedule/dispatch) are different checks:
+  # one must never cancel the other, or a commit ends up "cancelled" and never swept.
+  group: responsive-${{ github.ref }}-${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && 'deployed' || 'checkout' }}
+  # Only a newer PR push makes the older run worthless; every main commit keeps its own result.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   hermetic:
@@ -119,3 +128,12 @@ jobs:
             export PLAYWRIGHT_BASE_URL="https://mcis.daiwandist.com"
           fi
           cd frontend && bunx playwright test tests/e2e/playwright/responsive/layout.spec.ts --reporter=list
+
+      # Without the trace a red nightly is undiagnosable: the runner and test-results/ are gone.
+      - name: Upload Playwright traces
+        if: failure() && steps.account.outputs.configured == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: responsive-sweep-traces
+          path: frontend/test-results/
+          retention-days: 7

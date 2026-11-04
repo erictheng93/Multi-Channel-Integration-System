@@ -1,6 +1,7 @@
 // Activities Module - Restore Helper Factories
 
 import type { RestoreHandler } from './restore-registry'
+import { assertNotSystemAgent } from '@/constants/system-agent'
 
 const TABLES = new Set([
   'agents',
@@ -81,6 +82,13 @@ function assertColumn(table: string, column: string): void {
   }
 }
 
+// The row a restore writes comes from previousState, so the system actor is refused on that id.
+function requireTargetId(table: string, state: Record<string, unknown>): unknown {
+  const id = requireValue(state, 'id')
+  if (table === 'agents') assertNotSystemAgent(String(id))
+  return id
+}
+
 function requireValue(state: Record<string, unknown>, key: string): unknown {
   const value = state[key]
   if (value === undefined || value === null) {
@@ -103,7 +111,7 @@ export function restoreSoftDeleted(table: string): RestoreHandler {
   assertTable(table)
   return {
     buildMutation(db, previousState) {
-      const id = requireValue(previousState, 'id')
+      const id = requireTargetId(table, previousState)
       return db
         .prepare(`UPDATE ${table} SET deleted_at = NULL WHERE id = ?`)
         .bind(id)
@@ -116,7 +124,7 @@ export function softDelete(table: string): RestoreHandler {
   assertTable(table)
   return {
     buildMutation(db, previousState) {
-      const id = requireValue(previousState, 'id')
+      const id = requireTargetId(table, previousState)
       return db
         .prepare(`UPDATE ${table} SET deleted_at = ? WHERE id = ?`)
         .bind(new Date().toISOString(), id)
@@ -129,7 +137,7 @@ export function restoreFields(table: string): RestoreHandler {
   assertTable(table)
   return {
     buildMutation(db, previousState) {
-      const id = requireValue(previousState, 'id')
+      const id = requireTargetId(table, previousState)
       const entries = Object.entries(previousState).filter(([key]) => key !== 'id')
       if (entries.length === 0) {
         throw new Error(`restoreFields(${table}): no fields to restore`)
@@ -151,7 +159,7 @@ export function restoreField(table: string, field: string): RestoreHandler {
   assertColumn(table, field)
   return {
     buildMutation(db, previousState) {
-      const id = requireValue(previousState, 'id')
+      const id = requireTargetId(table, previousState)
       if (!(field in previousState)) {
         throw new Error(`restoreField(${table}.${field}): previousState field missing`)
       }
@@ -201,6 +209,7 @@ export const addTeamMembership: RestoreHandler = {
 
   buildMutation(db, previousState) {
     const agentId = requireValue(previousState, 'agent_id')
+    assertNotSystemAgent(String(agentId))
     const teamId = requireValue(previousState, 'team_id')
     const roleInTeam = requireValue(previousState, 'role_in_team')
     const isPrimary = previousState.is_primary

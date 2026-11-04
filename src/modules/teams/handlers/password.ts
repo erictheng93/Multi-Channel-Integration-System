@@ -8,7 +8,8 @@ import { getUserById, verifyJWT } from '@/utils/auth';
 import { bumpTokensValidAfter } from '@/utils/auth-jwt';
 import { revokeUserWebSocketSessions } from '@/services/websocket-access-revocation';
 import { createDbClient } from '@/db/drizzle-factory';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
+import { notSystemAgent } from '@/constants/system-agent';
 import { blockSystemAgentTarget } from '@/middleware/block-system-agent';
 import { agents } from '@/db/schema';
 import { hashPassword, verifyPassword } from '@/modules/auth/services/auth';
@@ -122,7 +123,7 @@ passwordHandler.post('/:memberId/reset', jwtAuth, requireManagerOrAdmin(), async
     const [updated] = await db
       .update(agents)
       .set(updateData)
-      .where(eq(agents.id, memberId))
+      .where(and(eq(agents.id, memberId), notSystemAgent(agents.id)))
       .returning();
 
     if (!updated) {
