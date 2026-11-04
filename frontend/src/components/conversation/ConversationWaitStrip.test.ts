@@ -17,4 +17,18 @@ describe('ConversationWaitStrip', () => {
     expect(mount(ConversationWaitStrip, { props: { messages: [ago(12, 'customer'), ago(5, 'agent')] } }).find('button').exists()).toBe(false)
     expect(mount(ConversationWaitStrip, { props: { messages: [ago(12, 'customer')], closed: true } }).find('button').exists()).toBe(false)
   })
+
+  it('does not start a wait for a thanks or sticker after an agent reply', () => {
+    const thanks = { ...ago(5, 'customer'), messageType: 'text', content: '謝謝' }
+    const sticker = { ...ago(4, 'customer'), messageType: 'sticker' }
+    expect(mount(ConversationWaitStrip, { props: { messages: [ago(30, 'customer'), ago(20, 'agent'), thanks, sticker] } }).find('button').exists()).toBe(false)
+  })
+
+  it('counts from the real question that follows a thanks', () => {
+    const thanks = { ...ago(15, 'customer'), messageType: 'text', content: '謝謝' }
+    const ask = { ...ago(9, 'customer'), messageType: 'text', content: '那可以退貨嗎' }
+    const wrapper = mount(ConversationWaitStrip, { props: { messages: [ago(30, 'agent'), thanks, ask] } })
+    expect(wrapper.text()).toContain('已等 9 分')
+    expect(wrapper.text()).toContain('1 則未回')
+  })
 })

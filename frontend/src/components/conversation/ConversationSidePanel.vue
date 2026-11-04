@@ -196,6 +196,7 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import type { Conversation } from '@/types'
 import type { Tag } from '@/api/tags'
 import { avatarToneOf, initialOf, platformName, statusOf } from '@/composables/conversation/useConversationRowMeta'
+import { withoutSignOffs } from '@/utils/waiting-messages'
 
 const props = defineProps<{
   conversation?: Conversation
@@ -205,7 +206,7 @@ const props = defineProps<{
   /** More history exists on the server, so messageCount is only what is loaded */
   hasMore: boolean
   /** Loaded messages, used for the customer/agent split and the first-reply time */
-  messages?: ReadonlyArray<{ senderType?: string; createdAt?: string | number | Date; timestamp?: number | Date }>
+  messages?: ReadonlyArray<{ senderType?: string; content?: string; messageType?: string; createdAt?: string | number | Date; timestamp?: number | Date }>
   /** Show the customer's name and avatar (the thread header already does on desktop) */
   showWho?: boolean
 }>()
@@ -282,10 +283,11 @@ const WAIT_ROWS = 4
 
 /** The thread as a time-ordered list of who spoke when (customer / agent only) */
 const sides = computed(() =>
-  (props.messages ?? [])
-    .map(m => ({ side: m.senderType === 'customer' ? 'customer' : m.senderType === 'agent' ? 'agent' : '', t: timeOf(m) }))
-    .filter(m => m.side !== '' && Number.isFinite(m.t))
-    .sort((a, b) => a.t - b.t)
+  withoutSignOffs(
+    (props.messages ?? [])
+      .filter(m => (m.senderType === 'customer' || m.senderType === 'agent') && Number.isFinite(timeOf(m)))
+      .sort((a, b) => timeOf(a) - timeOf(b))
+  ).map(m => ({ side: m.senderType === 'customer' ? 'customer' : 'agent', t: timeOf(m) }))
 )
 
 /**

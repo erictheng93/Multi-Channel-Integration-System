@@ -35,6 +35,20 @@ describe('ConversationSidePanel reply speed', () => {
   })
 })
 
+describe('ConversationSidePanel sign-offs', () => {
+  it('shows no open wait for a thanks after an agent reply', () => {
+    const thanks = { senderType: 'customer' as const, createdAt: BASE - 5 * 60_000, messageType: 'text', content: '謝謝' }
+    const wrapper = mountPanel([msg('customer', -90), msg('agent', -80), thanks] as ReturnType<typeof msg>[])
+    expect(wrapper.find('.wait.is-pending').exists()).toBe(false)
+  })
+
+  it('starts the open wait at the real question', () => {
+    const ask = { senderType: 'customer' as const, createdAt: Date.now() - 9 * 60_000, messageType: 'text', content: '那可以退貨嗎' }
+    const wrapper = mountPanel([msg('customer', -90), msg('agent', -80), ask] as ReturnType<typeof msg>[])
+    expect(wrapper.find('.wait.is-pending').exists()).toBe(true)
+  })
+})
+
 describe('ConversationSidePanel reply state anchor', () => {
   it('counts the open wait up in the waiting tone', () => {
     const wrapper = mountPanel([msg('customer', -90), msg('agent', -80), msg('customer', -30), msg('customer', -29)])
