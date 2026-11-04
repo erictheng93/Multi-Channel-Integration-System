@@ -1317,14 +1317,18 @@ watch(
   gap: 8px;
   max-width: 0;
   overflow: hidden;
+  visibility: hidden;
   opacity: 0;
-  transition: max-width var(--ui-dur) var(--ui-ease), opacity var(--ui-dur) var(--ui-ease);
+  /* visibility flips after the fade so the closed buttons leave layout audits and tab order */
+  transition: max-width var(--ui-dur) var(--ui-ease), opacity var(--ui-dur) var(--ui-ease), visibility 0s linear var(--ui-dur);
 }
 
 .save-slot.is-open {
   max-width: 200px;
   margin-left: 10px;
+  visibility: visible;
   opacity: 1;
+  transition-delay: 0s;
 }
 
 /* device notification: one status row and one link, nothing to learn here */
