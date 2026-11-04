@@ -147,7 +147,7 @@ export class NotificationRepository {
     // 排除過期通知
     const expiredCondition = or(
       sql`expires_at IS NULL`,
-      sql`expires_at > datetime('now')`
+      sql`julianday(expires_at) > julianday('now')`
     );
     if (expiredCondition) {
       whereConditions.push(expiredCondition);
@@ -288,7 +288,7 @@ export class NotificationRepository {
     // 排除過期通知
     const expiredCondition = or(
       sql`expires_at IS NULL`,
-      sql`expires_at > datetime('now')`
+      sql`julianday(expires_at) > julianday('now')`
     );
     if (expiredCondition) {
       whereConditions.push(expiredCondition);
@@ -315,7 +315,7 @@ export class NotificationRepository {
         eq(notifications.isRead, false),
         or(
           sql`expires_at IS NULL`,
-          sql`expires_at > datetime('now')`
+          sql`julianday(expires_at) > julianday('now')`
         )
       ))
       .orderBy(desc(notifications.createdAt))
@@ -392,7 +392,7 @@ export class NotificationRepository {
         SUM(CASE WHEN created_at >= ${weekStart} THEN 1 ELSE 0 END) as this_week,
         SUM(CASE WHEN created_at >= ${monthStart} THEN 1 ELSE 0 END) as this_month
       FROM notifications
-      WHERE user_id = ${userId.toString()} AND (expires_at IS NULL OR expires_at > datetime('now'))
+      WHERE user_id = ${userId.toString()} AND (expires_at IS NULL OR julianday(expires_at) > julianday('now'))
     `);
 
     return result;
