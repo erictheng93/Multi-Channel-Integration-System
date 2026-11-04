@@ -363,6 +363,48 @@ describe('Conversations Store', () => {
     })
   })
 
+  describe('Re-entering the list (loadWithCache)', () => {
+    it('does not resurrect a mark-read from the persisted list cache within 30 s', async () => {
+      // The global setup stubs localStorage as a no-op; a reload test needs one that keeps data.
+      const store_ = new Map<string, string>()
+      vi.stubGlobal('localStorage', {
+        getItem: (k: string) => store_.get(k) ?? null,
+        setItem: (k: string, v: string) => { store_.set(k, v) },
+        removeItem: (k: string) => { store_.delete(k) },
+        clear: () => store_.clear(),
+        key: (i: number) => [...store_.keys()][i] ?? null,
+        get length() { return store_.size }
+      })
+      vi.resetModules()
+
+      const serverList = [{ id: 'conv-1', status: 'active', platform: 'line', unreadCount: 3 }]
+      mockConversationApi.list.mockImplementation(async () => ({
+        success: true,
+        data: { items: serverList.map(c => ({ ...c })), total: 1, page: 1, pageSize: 20 }
+      }))
+      mockConversationApi.markAsRead.mockImplementation(async () => {
+        serverList[0]!.unreadCount = 0
+        return { success: true }
+      })
+
+      const { useConversationsStore } = await import('./conversations')
+      const store = useConversationsStore()
+
+      await store.loadWithCache({})          // first visit: list cached with unread 3
+      await store.markAsRead('conv-1')       // server and memory: unread 0
+      expect(store.conversations[0]?.unreadCount).toBe(0)
+
+      // F5 a few seconds later: fresh module graph, cacheManager re-reads localStorage
+      vi.resetModules()
+      setActivePinia(createPinia())
+      const reloaded = (await import('./conversations')).useConversationsStore()
+      await reloaded.loadWithCache({})
+      expect(reloaded.conversations[0]?.unreadCount).toBe(0)
+      expect(mockConversationApi.list).toHaveBeenCalledTimes(2)
+      vi.unstubAllGlobals()
+    })
+  })
+
   describe('Close rollback unread restoration', () => {
     const makeConv = (id: string, unreadCount: number) => ({
       id, userId: '1', status: 'active', platform: 'line', unreadCount,

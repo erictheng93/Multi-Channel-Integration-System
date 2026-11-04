@@ -95,16 +95,16 @@ export function createCacheStrategy(deps: CacheStrategyDeps) {
   const loadWithCache = async (cacheFilters: ConversationFilters = {}, page = 1) => {
     frontendLogger.debug(`[ConversationsStore] Smart cache loading with filters:`, cacheFilters)
 
-    // 1. Load from cache immediately (包含 userId 防止跨用戶數據污染)
+    // 1. Paint from cache immediately (包含 userId 防止跨用戶數據污染)
+    // The cache is only a first paint, never a substitute for the API call:
+    // list entries are written on fetch only, so a mark-read / close / assign
+    // made since then is missing from it. Skipping the call while the entry
+    // was "fresh" (< 30 s) brought those changes back after F5 or re-entering
+    // /conversations.
     const cached = conversationCache.getConversationList(cacheFilters, getCurrentUserId())
     if (cached.data) {
       frontendLogger.debug(`[ConversationsStore] Cache hit, showing ${cached.data.length} cached conversations`)
       conversations.value = cached.data
-
-      if (!cached.needsUpdate) {
-        frontendLogger.debug(`[ConversationsStore] Cache is fresh, no API call needed`)
-        return { fromCache: true, fresh: true }
-      }
     }
 
     // 2. Background update (even with cache)
