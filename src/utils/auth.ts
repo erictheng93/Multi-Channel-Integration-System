@@ -1,7 +1,7 @@
 import { eq, ne, and, sql } from 'drizzle-orm';
 import { createDbClient } from '../db/drizzle-factory';
 import { agents, teams, agentTeams } from '../db/schema';
-import { SYSTEM_AGENT_ID, isSystemAgentId } from '../constants/system-agent';
+import { SYSTEM_AGENT_ID, isSystemAgentId, notSystemAgent } from '../constants/system-agent';
 import { convertAgent } from './drizzle-converters';
 import type { DbUser, TeamRoleInTeam } from '../types';
 import { nowISO, nowMs } from '@/utils/timestamp'
@@ -63,7 +63,7 @@ export async function createUser(
   const softDeleted = await drizzleDb
     .select({ id: agents.id })
     .from(agents)
-    .where(and(eq(agents.email, userData.email), sql`${agents.deletedAt} IS NOT NULL`))
+    .where(and(eq(agents.email, userData.email), sql`${agents.deletedAt} IS NOT NULL`, notSystemAgent(agents.id)))
     .get();
 
   let userId: string;

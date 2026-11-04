@@ -205,12 +205,14 @@ export const useConversationsStore = defineStore('conversations', () => {
   const nextAwaitingSince = (
     current: string | null | undefined,
     message: { content?: string; messageType?: string; senderType?: 'customer' | 'agent'; senderId?: string },
-    timestamp: number
+    timestamp: number,
+    hasHumanReply: boolean
   ): string | null | undefined => {
     if (current === undefined) { return undefined }
     if (message.senderType === 'agent') { return message.senderId === AUTO_REPLY_SENDER_ID ? current : null }
     if (message.senderType !== 'customer' || current) { return current }
-    return isSignOffMessage(message.messageType, message.content) ? null : new Date(timestamp).toISOString()
+    // First contact (no human reply yet) always waits, sticker or thanks included — same as the backend trigger.
+    return hasHumanReply && isSignOffMessage(message.messageType, message.content) ? null : new Date(timestamp).toISOString()
   }
 
   const updateConversationFromWebSocketMessage = (
@@ -252,7 +254,8 @@ export const useConversationsStore = defineStore('conversations', () => {
       ...conversation,
       lastMessageAt: nowTimestamp,
       updatedAt: nowTimestamp,
-      firstResponseAt: messageData.senderType === 'agent'
+      // first_response_at is the first HUMAN reply; auto-replies do not count
+      firstResponseAt: messageData.senderType === 'agent' && messageData.senderId !== AUTO_REPLY_SENDER_ID
         ? (conversation.firstResponseAt || nowTimestamp)
         : conversation.firstResponseAt,
       lastMessage: messageData.content ? {
@@ -273,7 +276,7 @@ export const useConversationsStore = defineStore('conversations', () => {
         ...messageData,
         senderType: messageData.senderType ??
           (messageData.sender ? (messageData.sender.role === 'customer' ? 'customer' : 'agent') : undefined)
-      }, nowTimestamp),
+      }, nowTimestamp, Boolean(conversation.firstResponseAt)),
       unreadCount: incrementUnread && messageData.senderType === 'customer'
         ? (conversation.unreadCount || 0) + 1
         : conversation.unreadCount || 0

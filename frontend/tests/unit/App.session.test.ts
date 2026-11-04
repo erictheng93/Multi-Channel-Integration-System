@@ -34,10 +34,10 @@ vi.mock('@/composables/useAccountStatusMonitor', () => ({
   useAccountStatusMonitor: () => ({ showDisabledModal: ref(false) })
 }))
 vi.mock('@/services/preloadService', () => ({
-  preloadService: { warmup: vi.fn().mockResolvedValue(undefined), cleanup: vi.fn() }
+  preloadService: { init: vi.fn().mockResolvedValue(undefined), cleanup: vi.fn() }
 }))
 vi.mock('@/services/tagCacheService', () => ({
-  tagCacheService: { warmup: vi.fn().mockResolvedValue(undefined), cleanup: vi.fn() }
+  tagCacheService: { init: vi.fn().mockResolvedValue(undefined), cleanup: vi.fn() }
 }))
 
 import App from '@/App.vue'
