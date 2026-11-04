@@ -3,7 +3,7 @@
 > **此文件由程式產生，請勿手動編輯。**
 > 重新產生：`bun run db:doc:schema`（正式庫）或 `bun scripts/generate-schema-doc.ts`（本地鏡像）
 >
-> **產生時間**: 2026-11-02T04:49:00.488Z
+> **產生時間**: 2026-11-04T05:19:19.007Z
 > **資料來源**: REMOTE production D1 (mcis-db)
 >
 > 內容直接讀自資料庫的 `sqlite_master` 與 pragma 函式，**不是**讀 `src/db/schema.ts`
@@ -18,7 +18,7 @@
 | 項目 | 數量 |
 |---|---|
 | 資料表 | 45 |
-| 索引 | 131 |
+| 索引 | 132 |
 | 視圖 | 3 |
 | 外鍵關係 | 72 |
 | CHECK 約束 | 0 |
@@ -1505,8 +1505,9 @@ CREATE TABLE `metrics` (
 
 **索引**:
 
+- `idx_notifications_user_created` — (user_id, created_at)
 - `idx_notifications_user_priority` — (user_id, priority)
-- `idx_notifications_user_unread` *(partial)* — (user_id, is_read) WHERE is_read = 0
+- `idx_notifications_user_read_created` — (user_id, is_read, created_at)
 
 <details><summary>CREATE TABLE</summary>
 
