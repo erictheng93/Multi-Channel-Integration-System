@@ -3,229 +3,325 @@
     class="login-page"
     :data-theme="isLightMode ? 'light' : 'dark'"
   >
-    <button
-      type="button"
-      class="theme-btn"
-      :aria-label="isLightMode ? '切換至深色模式' : '切換至淺色模式'"
-      @click="toggleTheme"
-    >
-      <svg
-        v-if="isLightMode"
-        class="ico"
-        viewBox="0 0 24 24"
-      >
-        <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z" />
-      </svg>
-      <svg
-        v-else
-        class="ico"
-        viewBox="0 0 24 24"
-      >
-        <circle
-          cx="12"
-          cy="12"
-          r="4"
-        />
-        <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
-      </svg>
-    </button>
-
-    <div class="stage">
-      <div class="wrap">
-        <!-- Brand side (desktop only) -->
-        <section class="brand-side">
-          <!-- The abrasive disc anchors the brand panel and bleeds off its outer edge (the panel clips it) -->
-          <div
-            class="zone"
-            aria-hidden="true"
-          >
-            <DiscRing
-              class="wheel"
-              variant="hero"
-              :spin-seconds="180"
-              spin
-            />
-          </div>
-
-          <div class="brand-top">
-            <div class="brand-mark">
-              <svg viewBox="0 0 24 24"><path d="M12 3C6.5 3 2 6.6 2 11c0 2.5 1.4 4.7 3.7 6.2L5 21l4.1-2.3c.9.2 1.9.3 2.9.3 5.5 0 10-3.6 10-8s-4.5-8-10-8Z" /></svg>
-            </div>
-            <div class="brand-name">
-              多渠道客服
-            </div>
-          </div>
-
-          <div class="brand-copy">
-            <h1>全通路客服整合平台</h1>
-            <p>LINE 官方帳號與 Messenger 的客戶對話，集中在同一個工作台回覆與追蹤。</p>
-            <div class="channels">
-              <span class="ui-chip"><span class="ui-ch ui-ch-line"><svg viewBox="0 0 24 24"><path d="M12 3C6.5 3 2 6.6 2 11c0 2.5 1.4 4.7 3.7 6.2L5 21l4.1-2.3c.9.2 1.9.3 2.9.3 5.5 0 10-3.6 10-8s-4.5-8-10-8Z" /></svg></span>LINE 官方帳號</span>
-              <span class="ui-chip"><span class="ui-ch ui-ch-fb"><svg viewBox="0 0 24 24"><path d="M12 3C6.5 3 2 6.6 2 11c0 2.5 1.4 4.7 3.7 6.2L5 21l4.1-2.3c.9.2 1.9.3 2.9.3 5.5 0 10-3.6 10-8s-4.5-8-10-8Z" /></svg></span>Facebook Messenger</span>
-            </div>
-          </div>
-
-          <div class="brand-foot">
-            Daiwan Abrasives Corp
-          </div>
-        </section>
-
-        <!-- Form side -->
-        <section class="form-side">
-          <div class="m-brand">
-            <div
-              class="m-disc"
-              aria-hidden="true"
+    <div class="shell">
+      <!-- Brand stage: the abrasive wheel with every channel converging on one hub -->
+      <section class="stage">
+        <svg
+          class="motif"
+          viewBox="0 0 640 640"
+          aria-hidden="true"
+          focusable="false"
+        >
+          <defs>
+            <radialGradient
+              id="lg-band"
+              cx="320"
+              cy="320"
+              r="262"
+              gradientUnits="userSpaceOnUse"
             >
-              <DiscRing
-                variant="hero"
-                :size="360"
+              <stop
+                offset="0.42"
+                stop-color="#1d5fd1"
+                stop-opacity="0.95"
               />
-            </div>
-            <div class="brand-mark">
-              <svg viewBox="0 0 24 24"><path d="M12 3C6.5 3 2 6.6 2 11c0 2.5 1.4 4.7 3.7 6.2L5 21l4.1-2.3c.9.2 1.9.3 2.9.3 5.5 0 10-3.6 10-8s-4.5-8-10-8Z" /></svg>
-            </div>
-            <b>全通路客服整合平台</b>
-          </div>
-
-          <div class="auth">
-            <h2>登入</h2>
-            <p class="lede">
-              使用公司帳號繼續進入客服工作台。
-            </p>
-
-            <form
-              novalidate
-              @submit.prevent="handleLogin"
+              <stop
+                offset="1"
+                stop-color="#0b2f6b"
+                stop-opacity="0.95"
+              />
+            </radialGradient>
+            <linearGradient
+              id="lg-hub"
+              x1="0"
+              y1="0"
+              x2="1"
+              y2="1"
             >
-              <div
-                class="ui-field"
-                :class="{ invalid: emailError }"
+              <stop
+                offset="0"
+                stop-color="#ffffff"
+              />
+              <stop
+                offset="1"
+                stop-color="#c9dcf7"
+              />
+            </linearGradient>
+          </defs>
+          <g class="grit">
+            <path
+              :d="gritPath"
+              class="grit-ticks"
+            />
+          </g>
+          <circle
+            class="wheel-body"
+            cx="320"
+            cy="320"
+            r="262"
+            fill="url(#lg-band)"
+          />
+          <circle
+            class="wheel-edge"
+            cx="320"
+            cy="320"
+            r="262"
+          />
+          <circle
+            class="wheel-ring"
+            cx="320"
+            cy="320"
+            r="226"
+          />
+          <circle
+            class="wheel-ring"
+            cx="320"
+            cy="320"
+            r="190"
+          />
+          <circle
+            class="wheel-ring"
+            cx="320"
+            cy="320"
+            r="154"
+          />
+          <g
+            v-for="f in flows"
+            :key="f.id"
+          >
+            <path
+              :d="f.d"
+              class="flow"
+              :class="f.cls"
+            />
+            <circle
+              :cx="f.x"
+              :cy="f.y"
+              r="7"
+              class="node"
+              :class="f.cls"
+            />
+          </g>
+          <circle
+            class="hub"
+            cx="320"
+            cy="320"
+            r="116"
+            fill="url(#lg-hub)"
+          />
+          <circle
+            class="hub-ring"
+            cx="320"
+            cy="320"
+            r="98"
+          />
+          <circle
+            v-for="b in bolts"
+            :key="b.id"
+            class="bolt"
+            :cx="b.x"
+            :cy="b.y"
+            r="7"
+          />
+          <circle
+            class="arbor"
+            cx="320"
+            cy="320"
+            r="52"
+          />
+          <path
+            class="arbor-glyph"
+            transform="translate(320 320) scale(1.9) translate(-12 -12)"
+            d="M12 3C6.5 3 2 6.6 2 11c0 2.5 1.4 4.7 3.7 6.2L5 21l4.1-2.3c.9.2 1.9.3 2.9.3 5.5 0 10-3.6 10-8s-4.5-8-10-8Z"
+          />
+        </svg>
+
+        <div class="brand-top">
+          <div class="brand-mark">
+            <svg viewBox="0 0 24 24"><path d="M12 3C6.5 3 2 6.6 2 11c0 2.5 1.4 4.7 3.7 6.2L5 21l4.1-2.3c.9.2 1.9.3 2.9.3 5.5 0 10-3.6 10-8s-4.5-8-10-8Z" /></svg>
+          </div>
+          <div class="brand-name">
+            <b>多渠道客服</b>
+            <span>Daiwan Abrasives</span>
+          </div>
+        </div>
+
+        <div class="brand-copy">
+          <h1>全通路客服<br>整合平台</h1>
+          <p>LINE 官方帳號與 Messenger 的客戶對話，集中在同一個工作台回覆與追蹤。</p>
+          <div class="channels">
+            <span class="chan"><span class="ui-ch ui-ch-line"><svg viewBox="0 0 24 24"><path d="M12 3C6.5 3 2 6.6 2 11c0 2.5 1.4 4.7 3.7 6.2L5 21l4.1-2.3c.9.2 1.9.3 2.9.3 5.5 0 10-3.6 10-8s-4.5-8-10-8Z" /></svg></span>LINE 官方帳號</span>
+            <span class="chan"><span class="ui-ch ui-ch-fb"><svg viewBox="0 0 24 24"><path d="M12 3C6.5 3 2 6.6 2 11c0 2.5 1.4 4.7 3.7 6.2L5 21l4.1-2.3c.9.2 1.9.3 2.9.3 5.5 0 10-3.6 10-8s-4.5-8-10-8Z" /></svg></span>Facebook Messenger</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Sign-in panel -->
+      <section class="panel">
+        <button
+          type="button"
+          class="theme-btn"
+          :aria-label="isLightMode ? '切換至深色模式' : '切換至淺色模式'"
+          @click="toggleTheme"
+        >
+          <svg
+            v-if="isLightMode"
+            class="ico"
+            viewBox="0 0 24 24"
+          >
+            <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z" />
+          </svg>
+          <svg
+            v-else
+            class="ico"
+            viewBox="0 0 24 24"
+          >
+            <circle
+              cx="12"
+              cy="12"
+              r="4"
+            />
+            <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
+          </svg>
+        </button>
+
+        <div class="auth">
+          <h2>登入</h2>
+          <p class="lede">
+            使用公司帳號繼續進入客服工作台。
+          </p>
+
+          <form
+            novalidate
+            @submit.prevent="handleLogin"
+          >
+            <div
+              class="ui-field"
+              :class="{ invalid: emailError }"
+            >
+              <label for="email">電子郵件</label>
+              <input
+                id="email"
+                v-model="formData.email"
+                class="ui-input"
+                type="email"
+                autocomplete="email"
+                placeholder="name@dacit.net"
+                required
+                :disabled="loading"
+                :aria-invalid="!!emailError"
+                @focus="emailFocused = true"
+                @blur="emailFocused = false; emailTouched = true"
               >
-                <label for="email">電子郵件</label>
+              <span
+                v-if="emailError"
+                class="ui-hint field-error"
+              >{{ emailError }}</span>
+            </div>
+
+            <div
+              class="ui-field"
+              :class="{ invalid: passwordError }"
+            >
+              <label for="password">密碼</label>
+              <div class="pw">
                 <input
-                  id="email"
-                  v-model="formData.email"
+                  id="password"
+                  v-model="formData.password"
                   class="ui-input"
-                  type="email"
-                  autocomplete="email"
-                  placeholder="name@dacit.net"
+                  :type="showPassword ? 'text' : 'password'"
+                  autocomplete="current-password"
+                  placeholder="輸入密碼"
                   required
                   :disabled="loading"
-                  :aria-invalid="!!emailError"
-                  @focus="emailFocused = true"
-                  @blur="emailFocused = false; emailTouched = true"
+                  :aria-invalid="!!passwordError"
+                  @focus="passwordFocused = true"
+                  @blur="passwordFocused = false; passwordTouched = true"
                 >
-                <span
-                  v-if="emailError"
-                  class="ui-hint field-error"
-                >{{ emailError }}</span>
-              </div>
-
-              <div
-                class="ui-field"
-                :class="{ invalid: passwordError }"
-              >
-                <label for="password">密碼</label>
-                <div class="pw">
-                  <input
-                    id="password"
-                    v-model="formData.password"
-                    class="ui-input"
-                    :type="showPassword ? 'text' : 'password'"
-                    autocomplete="current-password"
-                    required
-                    :disabled="loading"
-                    :aria-invalid="!!passwordError"
-                    @focus="passwordFocused = true"
-                    @blur="passwordFocused = false; passwordTouched = true"
-                  >
-                  <button
-                    type="button"
-                    class="pw-toggle"
-                    :aria-label="showPassword ? '隱藏密碼' : '顯示密碼'"
-                    :disabled="loading"
-                    @click="showPassword = !showPassword"
-                  >
-                    <svg
-                      v-if="!showPassword"
-                      class="ico"
-                      viewBox="0 0 24 24"
-                    >
-                      <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z" />
-                      <circle
-                        cx="12"
-                        cy="12"
-                        r="3"
-                      />
-                    </svg>
-                    <svg
-                      v-else
-                      class="ico"
-                      viewBox="0 0 24 24"
-                    >
-                      <path d="M9.9 5.2A9.7 9.7 0 0 1 12 5c6.4 0 10 7 10 7a17 17 0 0 1-3.2 4M6.6 6.6C3.7 8.4 2 12 2 12s3.6 7 10 7a9.8 9.8 0 0 0 5.4-1.6M3 3l18 18" />
-                    </svg>
-                  </button>
-                </div>
-                <span
-                  v-if="passwordError"
-                  class="ui-hint field-error"
-                >{{ passwordError }}</span>
-              </div>
-
-              <Transition name="alert-reveal">
-                <div
-                  v-if="error && !loading"
-                  class="alert"
-                  role="alert"
-                  aria-live="assertive"
+                <button
+                  type="button"
+                  class="pw-toggle"
+                  :aria-label="showPassword ? '隱藏密碼' : '顯示密碼'"
+                  :disabled="loading"
+                  @click="showPassword = !showPassword"
                 >
                   <svg
+                    v-if="!showPassword"
                     class="ico"
                     viewBox="0 0 24 24"
                   >
+                    <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z" />
                     <circle
                       cx="12"
                       cy="12"
-                      r="10"
+                      r="3"
                     />
-                    <path d="M12 8v4M12 16h.01" />
                   </svg>
-                  <span>{{ error }}</span>
-                </div>
-              </Transition>
+                  <svg
+                    v-else
+                    class="ico"
+                    viewBox="0 0 24 24"
+                  >
+                    <path d="M9.9 5.2A9.7 9.7 0 0 1 12 5c6.4 0 10 7 10 7a17 17 0 0 1-3.2 4M6.6 6.6C3.7 8.4 2 12 2 12s3.6 7 10 7a9.8 9.8 0 0 0 5.4-1.6M3 3l18 18" />
+                  </svg>
+                </button>
+              </div>
+              <span
+                v-if="passwordError"
+                class="ui-hint field-error"
+              >{{ passwordError }}</span>
+            </div>
 
-              <button
-                type="submit"
-                class="btn btn-primary submit-btn"
-                :class="{ 'is-loading': loading }"
-                :disabled="loading"
+            <Transition name="alert-reveal">
+              <div
+                v-if="error && !loading"
+                class="alert"
+                role="alert"
+                aria-live="assertive"
               >
-                <span class="btn-text">{{ submitLabel }}</span>
                 <svg
                   class="ico"
                   viewBox="0 0 24 24"
-                  aria-hidden="true"
                 >
-                  <path d="M5 12h14M13 6l6 6-6 6" />
+                  <circle
+                    cx="12"
+                    cy="12"
+                    r="10"
+                  />
+                  <path d="M12 8v4M12 16h.01" />
                 </svg>
-              </button>
-
-              <div
-                v-if="isDev && $route.query.debug === '1'"
-                class="debug-info"
-              >
-                <code>Loading: {{ loading }} | Valid: {{ isValid }} | Theme: {{ isLightMode ? 'light' : 'dark' }}</code>
+                <span>{{ error }}</span>
               </div>
-            </form>
-          </div>
+            </Transition>
 
-          <div class="m-foot">
-            Daiwan Abrasives Corp
-          </div>
-        </section>
-      </div>
+            <button
+              type="submit"
+              class="btn btn-primary submit-btn"
+              :class="{ 'is-loading': loading }"
+              :disabled="loading"
+            >
+              <span class="btn-text">{{ submitLabel }}</span>
+              <svg
+                class="ico"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              >
+                <path d="M5 12h14M13 6l6 6-6 6" />
+              </svg>
+            </button>
+
+            <div
+              v-if="isDev && $route.query.debug === '1'"
+              class="debug-info"
+            >
+              <code>Loading: {{ loading }} | Valid: {{ isValid }} | Theme: {{ isLightMode ? 'light' : 'dark' }}</code>
+            </div>
+          </form>
+        </div>
+        <p class="panel-foot">
+          Daiwan Abrasives Corp
+        </p>
+      </section>
     </div>
 
     <!-- Forced Password Change Modal -->
@@ -247,9 +343,43 @@ import { useI18n } from '@/composables/useI18n'
 import { useModernForm } from '@/composables/useModernVue'
 import { useLoginAttempts } from '@/composables/useLoginAttempts'
 import ForcedPasswordChange from '@/components/auth/ForcedPasswordChange.vue'
-import DiscRing from '@/components/ui/DiscRing.vue'
 import { ROLES } from '@/constants/roles'
 import { validateLoginEmail, validateLoginPassword } from '@/utils/login-validation'
+
+// ===== Brand motif geometry (static, computed once) =====
+const polar = (r: number, deg: number): [number, number] => {
+  const a = (deg * Math.PI) / 180
+  return [320 + r * Math.cos(a), 320 + r * Math.sin(a)]
+}
+const fx = (n: number) => n.toFixed(1)
+
+// Grit ticks around the rim: 144 hairlines, every sixth one longer
+const gritPath = Array.from({ length: 144 }, (_, i) => {
+  const deg = i * 2.5
+  const [x1, y1] = polar(270, deg)
+  const [x2, y2] = polar(i % 6 === 0 ? 300 : 286, deg)
+  return `M${fx(x1)} ${fx(y1)}L${fx(x2)} ${fx(y2)}`
+}).join('')
+
+// Twelve channels (LINE green, Messenger blue) run from the rim into the one hub
+const flows = Array.from({ length: 12 }, (_, i) => {
+  const deg = i * 30 + 8
+  const [x0, y0] = polar(262, deg)
+  const [cx, cy] = polar(200, deg + 26)
+  const [x1, y1] = polar(116, deg + 46)
+  return {
+    id: i,
+    x: x0,
+    y: y0,
+    cls: i % 2 === 0 ? 'is-line' : 'is-fb',
+    d: `M${fx(x0)} ${fx(y0)}Q${fx(cx)} ${fx(cy)} ${fx(x1)} ${fx(y1)}`
+  }
+})
+
+const bolts = Array.from({ length: 6 }, (_, i) => {
+  const [x, y] = polar(78, i * 60 + 30)
+  return { id: i, x, y }
+})
 
 // ===== Composables =====
 const { login, loading, error, clearError } = useAuth()
@@ -399,8 +529,11 @@ const handleLogin = async (event?: Event) => {
 <style scoped>
 .login-page {
   position: relative;
+  display: grid;
+  place-items: center;
   min-height: 100vh;
   min-height: 100dvh;
+  padding: 24px;
   background: var(--ui-canvas);
   color: var(--ui-ink);
   font-family: var(--ui-font-ui);
@@ -416,24 +549,229 @@ const handleLogin = async (event?: Event) => {
   stroke-linejoin: round;
 }
 
-.stage {
-  /* Desktop: a full-height split. Brand panel (inset, tinted, clips the disc) beside the form column */
+/* One object: the brand stage and the sign-in panel share a single rounded shell */
+.shell {
   display: grid;
-  grid-template-columns: minmax(0, 1.15fr) minmax(440px, 1fr);
-  min-height: 100vh;
-  min-height: 100dvh;
+  grid-template-columns: minmax(0, 1.12fr) minmax(0, 1fr);
+  width: min(1280px, 100%);
+  height: clamp(640px, calc(100vh - 48px), 860px);
+  height: clamp(640px, calc(100dvh - 48px), 860px);
   overflow: hidden;
+  border-radius: 36px;
+  background: var(--ui-surface);
+  box-shadow: var(--ui-shadow-raised);
 }
 
-.wrap {
-  display: contents;
+/* ---------- Brand stage (always deep blue: the one high-contrast block) ---------- */
+.stage {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 48px 56px 52px;
+  overflow: hidden;
+  background:
+    radial-gradient(120% 90% at 78% 28%, #13408a 0%, rgba(19, 64, 138, 0) 62%),
+    linear-gradient(165deg, #0c2a58 0%, #06173a 58%, #040d22 100%);
+  color: #fff;
+}
+
+.motif {
+  position: absolute;
+  z-index: -1;
+  top: 24px;
+  right: -70px;
+  width: 580px;
+  height: 580px;
+  pointer-events: none;
+}
+
+.grit {
+  transform-box: view-box;
+  transform-origin: 50% 50%;
+  animation: grit-turn 240s linear infinite;
+}
+
+.grit-ticks {
+  fill: none;
+  stroke: #9cc2f7;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+}
+
+.wheel-edge {
+  fill: none;
+  stroke: #fff;
+  stroke-width: 2.5;
+}
+
+.wheel-ring {
+  fill: none;
+  stroke: #fff;
+  stroke-opacity: 0.26;
+  stroke-width: 1.2;
+}
+
+.flow {
+  fill: none;
+  stroke-width: 3;
+  stroke-linecap: round;
+}
+
+.flow.is-line {
+  stroke: #3ddc84;
+}
+
+.flow.is-fb {
+  stroke: #5eb0ff;
+}
+
+.node.is-line {
+  fill: #3ddc84;
+}
+
+.node.is-fb {
+  fill: #5eb0ff;
+}
+
+.hub {
+  stroke: #fff;
+  stroke-width: 3;
+}
+
+.hub-ring {
+  fill: none;
+  stroke: #0c2a58;
+  stroke-opacity: 0.22;
+  stroke-width: 1.5;
+}
+
+.bolt {
+  fill: #0c2a58;
+  fill-opacity: 0.85;
+}
+
+.arbor {
+  fill: #0066cc;
+  stroke: #0c2a58;
+  stroke-width: 5;
+}
+
+.arbor-glyph {
+  fill: #fff;
+}
+
+@keyframes grit-turn {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .grit {
+    animation: none;
+  }
+}
+
+.brand-top {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.brand-mark {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 15px;
+  background: #0066cc;
+  box-shadow: 0 0 0 1.5px rgba(255, 255, 255, 0.85);
+}
+
+.brand-mark svg {
+  width: 26px;
+  height: 26px;
+  fill: #fff;
+}
+
+.brand-name {
+  display: grid;
+  gap: 2px;
+}
+
+.brand-name b {
+  font: 700 18px/1.2 var(--ui-font-display);
+  letter-spacing: -0.01em;
+}
+
+.brand-name span {
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  color: #c9dcf7;
+}
+
+.brand-copy h1 {
+  font: 700 60px/1.1 var(--ui-font-display);
+  letter-spacing: -0.04em;
+}
+
+.brand-copy p {
+  max-width: 25em;
+  margin-top: 18px;
+  text-wrap: pretty;
+  font-size: 17px;
+  line-height: 1.6;
+  color: #dbe8fb;
+}
+
+.channels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 28px;
+}
+
+.chan {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 38px;
+  padding: 0 16px 0 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.28);
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.chan .ui-ch {
+  width: 22px;
+  height: 22px;
+  border-radius: 7px;
+}
+
+.chan .ui-ch svg {
+  width: 13px;
+  height: 13px;
+}
+
+/* ---------- Sign-in panel ---------- */
+.panel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 48px 56px;
 }
 
 .theme-btn {
-  position: fixed;
-  top: 20px;
+  position: absolute;
+  top: 24px;
   right: 24px;
-  z-index: 5;
   display: grid;
   place-items: center;
   width: 44px;
@@ -451,139 +789,32 @@ const handleLogin = async (event?: Event) => {
   box-shadow: var(--ui-shadow-raised);
 }
 
-/* Brand side: the inset panel */
-.brand-side {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  margin: 16px 0 16px 16px;
-  padding: 44px 56px 40px;
-  overflow: hidden;
-  border-radius: 32px;
-  background: var(--ui-accent-soft);
-}
-
-.brand-top {
-  position: relative;
-  z-index: 1;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.brand-mark {
-  display: grid;
-  place-items: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 10px;
-  background: var(--ui-accent);
-}
-
-.brand-mark svg {
-  width: 18px;
-  height: 18px;
-  fill: #fff;
-}
-
-.brand-name {
-  font: 600 15px var(--ui-font-display);
-}
-
-.brand-copy {
-  position: relative;
-  z-index: 1;
-  max-width: 460px;
-}
-
-.brand-copy h1 {
-  font: 700 52px/1.12 var(--ui-font-display);
-  letter-spacing: -0.04em;
-}
-
-.brand-copy p {
-  max-width: 34ch;
-  margin-top: 14px;
-  font-size: 16px;
-  line-height: 1.6;
-  color: var(--ui-ink-2);
-}
-
-.channels {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 26px;
-}
-
-.channels .ui-chip {
-  height: 32px;
-  padding: 0 12px 0 8px;
-  cursor: default;
-}
-
-.brand-foot {
-  position: relative;
-  z-index: 1;
-  font-size: var(--ui-t-cap);
-  font-weight: 500;
-  color: var(--ui-ink-2);
-}
-
-/* The hero disc sits in the panel's lower right and runs off its outer edge on purpose
-   (the panel clips it); a mask fades it before it reaches the copy. */
-.zone {
-  position: absolute;
-  right: -240px;
-  bottom: -200px;
-  width: 760px;
-  height: 760px;
-  pointer-events: none;
-  -webkit-mask-image: linear-gradient(to left, #000 0%, #000 55%, transparent 92%);
-  mask-image: linear-gradient(to left, #000 0%, #000 55%, transparent 92%);
-}
-
-.wheel {
-  width: 100%;
-  height: 100%;
-}
-
-/* Dark: the rim turns white for contrast on the black canvas */
-.login-page[data-theme='dark'] .wheel,
-.login-page[data-theme='dark'] .m-disc {
-  --ui-disc-a: #fff;
-  --ui-disc-b: var(--ui-accent);
-}
-
-/* Form side */
-.form-side {
-  position: relative;
-  z-index: 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  width: min(480px, 100%);
-  margin: 0 auto;
-  padding: 40px 24px;
-}
-
 .auth {
-  width: 100%;
-  padding: 40px 36px 34px;
-  border-radius: var(--ui-r-lead);
-  background: var(--ui-surface);
-  box-shadow: var(--ui-shadow-raised);
+  width: min(420px, 100%);
+  margin: auto;
+}
+
+/* Sits on the same line as the channel chips on the stage */
+.panel-foot {
+  position: absolute;
+  right: 0;
+  bottom: 52px;
+  left: 0;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 38px;
+  text-align: center;
+  color: var(--ui-ink-2);
 }
 
 .auth h2 {
-  font: 700 34px/1.15 var(--ui-font-display);
+  font: 700 44px/1.15 var(--ui-font-display);
   letter-spacing: -0.035em;
 }
 
 .lede {
-  margin-top: 8px;
-  font-size: 15px;
+  margin-top: 10px;
+  font-size: 16px;
   color: var(--ui-ink-2);
 }
 
@@ -594,20 +825,20 @@ const handleLogin = async (event?: Event) => {
 }
 
 .auth .ui-input::placeholder {
-  color: var(--ui-muted);
+  color: var(--ui-placeholder);
   opacity: 1;
 }
 
 .auth form {
   display: grid;
-  gap: 16px;
-  margin-top: 24px;
+  gap: 18px;
+  margin-top: 32px;
 }
 
 .auth .ui-input {
-  height: 46px;
+  height: 54px;
   border-radius: 14px;
-  font-size: 15px;
+  font-size: 16px;
 }
 
 .pw {
@@ -615,17 +846,17 @@ const handleLogin = async (event?: Event) => {
 }
 
 .pw .ui-input {
-  padding-right: 48px;
+  padding-right: 52px;
 }
 
 .pw-toggle {
   position: absolute;
   top: 50%;
-  right: 4px;
+  right: 6px;
   display: grid;
   place-items: center;
-  width: 38px;
-  height: 38px;
+  width: 40px;
+  height: 40px;
   border: 0;
   border-radius: 10px;
   background: transparent;
@@ -677,12 +908,11 @@ const handleLogin = async (event?: Event) => {
   transform: translateY(-4px);
 }
 
-/* Disabled "繼續" reads as an iOS grey control until the form is valid */
 .auth .submit-btn {
-  height: 48px;
-  margin-top: 4px;
+  height: 54px;
+  margin-top: 6px;
   border-radius: 14px;
-  font-size: 15.5px;
+  font-size: 16px;
 }
 
 .submit-btn .ico {
@@ -693,12 +923,20 @@ const handleLogin = async (event?: Event) => {
   transform: translateX(3px);
 }
 
-/* Disabled colours come from the global .btn:disabled (neutral iOS fill). While submitting we
-   keep the brand blue so the spinner state still reads as in progress. */
+/* While submitting the button keeps the brand blue so the loading state still reads as in progress. */
 .submit-btn.is-loading:disabled {
   background: var(--ui-accent);
   color: #fff;
   opacity: 0.75;
+}
+
+/* Dark: white label on the lighter dark-mode blue misses 4.5:1, so the button keeps the light-mode blue */
+.login-page[data-theme='dark'] .auth .submit-btn:not(.is-loading) {
+  background: #0066cc;
+}
+
+.login-page[data-theme='dark'] .auth .submit-btn:hover:not(:disabled) {
+  background: #0058b0;
 }
 
 .debug-info {
@@ -706,95 +944,118 @@ const handleLogin = async (event?: Event) => {
   color: var(--ui-muted);
 }
 
-.m-brand,
-.m-foot {
-  display: none;
-}
-
-.m-brand {
-  position: relative;
-  isolation: isolate;
-}
-
-/* Phone: the disc is centred on the logo and fades out below it (decorative, never behind
-   the card or the form text) */
-.m-disc {
-  position: absolute;
-  left: 50%;
-  top: 46px;
-  z-index: -1;
-  margin: -180px 0 0 -180px;
-  opacity: 0.85;
-  pointer-events: none;
-  /* radial fade: the whole disc dissolves into the canvas instead of being cut by the screen top */
-  -webkit-mask-image: radial-gradient(circle at center, #000 14%, transparent 34%);
-  mask-image: radial-gradient(circle at center, #000 14%, transparent 34%);
-}
-
+/* ---------- Tablet and phone: the stage becomes a compact top band ---------- */
 @media (max-width: 1024px) {
-  .stage {
+  .login-page {
     display: block;
-    padding: 0 16px;
+    padding: 0;
   }
 
-  .wrap {
-    display: block;
-  }
-
-  .form-side {
+  .shell {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: auto;
     min-height: 100vh;
     min-height: 100dvh;
-    padding: 24px 0;
+    border-radius: 0;
+    box-shadow: none;
   }
 
-  .brand-side {
-    display: none;
+  .stage {
+    flex: none;
+    gap: 36px;
+    padding: 24px 24px 32px;
+    border-radius: 0 0 32px 32px;
   }
 
-  .m-brand {
-    display: block;
-    margin-bottom: 24px;
-    padding-top: 24px;
-    text-align: center;
+  .motif {
+    top: -46px;
+    right: -140px;
+    width: 340px;
+    height: 340px;
   }
 
-  .m-brand .brand-mark {
+  .brand-mark {
     width: 44px;
     height: 44px;
-    margin: 0 auto 28px;
     border-radius: 14px;
   }
 
-  .m-brand .brand-mark svg {
-    width: 24px;
-    height: 24px;
+  .brand-copy h1 {
+    font-size: 32px;
+    line-height: 1.15;
   }
 
-  .m-brand b {
-    display: block;
-    font: 700 20px/1.2 var(--ui-font-display);
-    letter-spacing: -0.02em;
+  .brand-copy p {
+    display: none;
   }
 
-  .m-foot {
-    display: flex;
-    justify-content: center;
-    margin-top: 24px;
-    font-size: var(--ui-t-cap);
-    font-weight: 500;
-    color: var(--ui-muted);
+  .channels {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    margin-top: 18px;
+  }
+
+  .chan {
+    height: 34px;
+  }
+
+  .panel {
+    flex: 1;
+    padding: 32px 24px 40px;
+  }
+
+  .auth {
+    margin: 0 auto;
   }
 
   .theme-btn {
-    top: 14px;
-    right: 14px;
+    top: 28px;
+    right: 24px;
+  }
+
+  .panel-foot {
+    position: static;
+    margin-top: auto;
+    padding-top: 28px;
+    line-height: 1.4;
+  }
+
+  .auth h2 {
+    font-size: 32px;
   }
 }
 
-@media (max-width: 480px) {
+/* Tablet: a roomier band and the form centred in the remaining height */
+@media (min-width: 641px) and (max-width: 1024px) {
+  .stage {
+    padding: 32px 40px 40px;
+  }
+
+  .motif {
+    top: -70px;
+    right: -90px;
+    width: 460px;
+    height: 460px;
+  }
+
+  .brand-copy h1 {
+    font-size: 44px;
+  }
+
+  .panel {
+    padding: 40px;
+  }
+
   .auth {
-    padding: 28px 22px 24px;
-    border-radius: 24px;
+    margin: auto;
+  }
+
+  .theme-btn {
+    top: 20px;
+    right: 24px;
   }
 }
 </style>
