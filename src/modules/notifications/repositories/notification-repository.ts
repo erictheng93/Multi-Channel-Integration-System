@@ -45,6 +45,9 @@ function changedRows(result: unknown): number {
   return (result as { meta?: { changes?: number } }).meta?.changes ?? 0;
 }
 
+/** Notifications are kept this long after creation before an expired one is deleted. */
+export const NOTIFICATION_RETENTION_DAYS = 30;
+
 export class NotificationRepository {
   private db: DbCompat;
 
@@ -255,10 +258,23 @@ export class NotificationRepository {
     return changedRows(result) > 0;
   }
 
-  async deleteExpired(): Promise<number> {
+  /**
+   * Delete notifications that have expired AND are older than the retention window.
+   * Expired rows are already hidden by every read, so this only reclaims storage and
+   * rows_read; the extra retention keeps them around for support questions first.
+   * julianday() because writers store ISO strings ('...T...Z') while datetime('now')
+   * is 'YYYY-MM-DD HH:MM:SS'; a plain string compare is off by up to a day.
+   * Bounded per call (limit) so the nightly cron drains a backlog over several runs.
+   */
+  async deleteExpired(retentionDays: number = NOTIFICATION_RETENTION_DAYS, limit: number = 5000): Promise<number> {
     const result = await this.db
       .delete(notifications)
-      .where(sql`expires_at IS NOT NULL AND expires_at <= datetime('now')`);
+      .where(sql`id IN (
+        SELECT id FROM notifications
+        WHERE julianday(expires_at) <= julianday('now')
+          AND created_at <= datetime('now', ${`-${retentionDays} days`})
+        LIMIT ${limit}
+      )`);
 
     return changedRows(result);
   }

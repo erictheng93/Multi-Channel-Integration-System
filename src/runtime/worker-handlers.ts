@@ -13,6 +13,7 @@ import { healAwaitingSince } from '@modules/dashboard/services/awaiting-service'
 import { autoCloseIdleConversations } from '@modules/conversations/services/auto-close-service';
 import { checkSchemaTriggers } from '@/health-checkers/schema-integrity';
 import { RowsReadMeter } from '@/utils/d1-rows-read';
+import { NotificationRepository } from '@modules/notifications/repositories/notification-repository';
 import type { Bindings } from '../types';
 import type { LineQueuePayload } from '../types/bindings';
 import { createContextLogger } from '../utils/logger';
@@ -103,6 +104,14 @@ async function runNightlyHeal(env: Bindings): Promise<void> {
     await autoCloseIdleConversations(env, Date.now(), meter);
   } catch (error) {
     log.error('Idle conversation auto-close failed', {}, error instanceof Error ? error : new Error(String(error)));
+  }
+  // Delete expired notifications older than 30 days. One bounded DELETE (max 5000 rows) per night,
+  // so a backlog drains over a few runs; no alarm.
+  try {
+    const deleted = await new NotificationRepository(env.DB).deleteExpired();
+    log.info('Expired notifications deleted', { deleted });
+  } catch (error) {
+    log.error('Expired notification cleanup failed', {}, error instanceof Error ? error : new Error(String(error)));
   }
   // A rebuild or restore can silently drop migration-only triggers (it happened on 2026-06-17). The heals above
   // repair the data either way; this makes the lost trigger visible instead of silently degrading.
