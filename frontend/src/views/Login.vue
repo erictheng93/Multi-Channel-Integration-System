@@ -4,138 +4,15 @@
     :data-theme="isLightMode ? 'light' : 'dark'"
   >
     <div class="shell">
-      <!-- Brand stage: the abrasive wheel with every channel converging on one hub -->
+      <!-- Brand stage: the round-8 abrasive disc (shared DiscRing) on the deep-blue panel -->
       <section class="stage">
         <div class="art">
-          <svg
+          <DiscRing
             class="motif"
-            viewBox="0 0 640 640"
-            aria-hidden="true"
-            focusable="false"
-          >
-            <defs>
-              <radialGradient
-                id="lg-band"
-                cx="320"
-                cy="320"
-                r="262"
-                gradientUnits="userSpaceOnUse"
-              >
-                <stop
-                  offset="0.42"
-                  stop-color="#1d5fd1"
-                  stop-opacity="0.95"
-                />
-                <stop
-                  offset="1"
-                  stop-color="#0b2f6b"
-                  stop-opacity="0.95"
-                />
-              </radialGradient>
-              <linearGradient
-                id="lg-hub"
-                x1="0"
-                y1="0"
-                x2="1"
-                y2="1"
-              >
-                <stop
-                  offset="0"
-                  stop-color="#ffffff"
-                />
-                <stop
-                  offset="1"
-                  stop-color="#c9dcf7"
-                />
-              </linearGradient>
-            </defs>
-            <g class="grit">
-              <path
-                :d="gritPath"
-                class="grit-ticks"
-              />
-            </g>
-            <circle
-              class="wheel-body"
-              cx="320"
-              cy="320"
-              r="262"
-              fill="url(#lg-band)"
-            />
-            <circle
-              class="wheel-edge"
-              cx="320"
-              cy="320"
-              r="262"
-            />
-            <circle
-              class="wheel-ring"
-              cx="320"
-              cy="320"
-              r="226"
-            />
-            <circle
-              class="wheel-ring"
-              cx="320"
-              cy="320"
-              r="190"
-            />
-            <circle
-              class="wheel-ring"
-              cx="320"
-              cy="320"
-              r="154"
-            />
-            <g
-              v-for="f in flows"
-              :key="f.id"
-            >
-              <path
-                :d="f.d"
-                class="flow"
-                :class="f.cls"
-              />
-              <circle
-                :cx="f.x"
-                :cy="f.y"
-                r="7"
-                class="node"
-                :class="f.cls"
-              />
-            </g>
-            <circle
-              class="hub"
-              cx="320"
-              cy="320"
-              r="116"
-              fill="url(#lg-hub)"
-            />
-            <circle
-              class="hub-ring"
-              cx="320"
-              cy="320"
-              r="98"
-            />
-            <circle
-              v-for="b in bolts"
-              :key="b.id"
-              class="bolt"
-              :cx="b.x"
-              :cy="b.y"
-              r="7"
-            />
-            <circle
-              class="arbor"
-              cx="320"
-              cy="320"
-              r="52"
-            />
-            <path
-              class="arbor-glyph"
-              transform="translate(320 320) scale(1.9) translate(-12 -12)"
-              d="M12 3C6.5 3 2 6.6 2 11c0 2.5 1.4 4.7 3.7 6.2L5 21l4.1-2.3c.9.2 1.9.3 2.9.3 5.5 0 10-3.6 10-8s-4.5-8-10-8Z"
-            />
-          </svg>
+            variant="hero"
+            :spin-seconds="180"
+            spin
+          />
         </div>
 
         <div class="brand-top">
@@ -346,43 +223,9 @@ import { useI18n } from '@/composables/useI18n'
 import { useModernForm } from '@/composables/useModernVue'
 import { useLoginAttempts } from '@/composables/useLoginAttempts'
 import ForcedPasswordChange from '@/components/auth/ForcedPasswordChange.vue'
+import DiscRing from '@/components/ui/DiscRing.vue'
 import { ROLES } from '@/constants/roles'
 import { validateLoginEmail, validateLoginPassword } from '@/utils/login-validation'
-
-// ===== Brand motif geometry (static, computed once) =====
-const polar = (r: number, deg: number): [number, number] => {
-  const a = (deg * Math.PI) / 180
-  return [320 + r * Math.cos(a), 320 + r * Math.sin(a)]
-}
-const fx = (n: number) => n.toFixed(1)
-
-// Grit ticks around the rim: 144 hairlines, every sixth one longer
-const gritPath = Array.from({ length: 144 }, (_, i) => {
-  const deg = i * 2.5
-  const [x1, y1] = polar(270, deg)
-  const [x2, y2] = polar(i % 6 === 0 ? 300 : 286, deg)
-  return `M${fx(x1)} ${fx(y1)}L${fx(x2)} ${fx(y2)}`
-}).join('')
-
-// Twelve channels (LINE green, Messenger blue) run from the rim into the one hub
-const flows = Array.from({ length: 12 }, (_, i) => {
-  const deg = i * 30 + 8
-  const [x0, y0] = polar(262, deg)
-  const [cx, cy] = polar(200, deg + 26)
-  const [x1, y1] = polar(116, deg + 46)
-  return {
-    id: i,
-    x: x0,
-    y: y0,
-    cls: i % 2 === 0 ? 'is-line' : 'is-fb',
-    d: `M${fx(x0)} ${fx(y0)}Q${fx(cx)} ${fx(cy)} ${fx(x1)} ${fx(y1)}`
-  }
-})
-
-const bolts = Array.from({ length: 6 }, (_, i) => {
-  const [x, y] = polar(78, i * 60 + 30)
-  return { id: i, x, y }
-})
 
 // ===== Composables =====
 const { login, loading, error, clearError } = useAuth()
@@ -585,7 +428,7 @@ const handleLogin = async (event?: Event) => {
 .art {
   position: absolute;
   z-index: -1;
-  top: 64px;
+  top: 112px;
   right: 24px;
   bottom: 280px;
   left: 24px;
@@ -600,91 +443,10 @@ const handleLogin = async (event?: Event) => {
   mask-image: linear-gradient(to bottom, #000 74%, transparent 100%);
 }
 
-.grit {
-  transform-box: view-box;
-  transform-origin: 50% 50%;
-  animation: grit-turn 240s linear infinite;
-}
-
-.grit-ticks {
-  fill: none;
-  stroke: #9cc2f7;
-  stroke-width: 1.6;
-  stroke-linecap: round;
-}
-
-.wheel-edge {
-  fill: none;
-  stroke: #fff;
-  stroke-width: 2.5;
-}
-
-.wheel-ring {
-  fill: none;
-  stroke: #fff;
-  stroke-opacity: 0.26;
-  stroke-width: 1.2;
-}
-
-.flow {
-  fill: none;
-  stroke-width: 3;
-  stroke-linecap: round;
-}
-
-.flow.is-line {
-  stroke: #3ddc84;
-}
-
-.flow.is-fb {
-  stroke: #5eb0ff;
-}
-
-.node.is-line {
-  fill: #3ddc84;
-}
-
-.node.is-fb {
-  fill: #5eb0ff;
-}
-
-.hub {
-  stroke: #fff;
-  stroke-width: 3;
-}
-
-.hub-ring {
-  fill: none;
-  stroke: #0c2a58;
-  stroke-opacity: 0.22;
-  stroke-width: 1.5;
-}
-
-.bolt {
-  fill: #0c2a58;
-  fill-opacity: 0.85;
-}
-
-.arbor {
-  fill: #0066cc;
-  stroke: #0c2a58;
-  stroke-width: 5;
-}
-
-.arbor-glyph {
-  fill: #fff;
-}
-
-@keyframes grit-turn {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .grit {
-    animation: none;
-  }
+/* The round-8 disc, drawn white-to-accent so it reads on the deep-blue stage */
+.motif {
+  --ui-disc-a: #fff;
+  --ui-disc-b: #5eb0ff;
 }
 
 .brand-top {
