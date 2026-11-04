@@ -62,6 +62,69 @@ describe('WebSocketMonitoring.vue service health', () => {
     expect(calls('/websocket/health')).toBe(0)
   })
 
+  it('keeps the previous verdict and retries next poll when the client resolves a failure shape', async () => {
+    let failing = false
+    vi.mocked(apiClient.get).mockImplementation(async (url: string) => {
+      if (url === '/websocket/metrics') { return { data: { connections } } }
+      if (failing) { return { success: false, error: 'boom', status: 500 } }
+      return { status: 'ok', data: { overall: { status: 'degraded' } } }
+    })
+    const wrapper = mount(WebSocketMonitoring)
+    await flushPromises()
+    expect(wrapper.text()).toContain('服務降級')
+    // Force the next probe to be due, then fail it
+    vi.useFakeTimers()
+    vi.setSystemTime(Date.now() + 61_000)
+    failing = true
+    const refresh = wrapper.findAll('button').find(b => b.text().includes('重新整理'))
+    await refresh!.trigger('click')
+    await flushPromises()
+    expect(calls('/websocket/health-detail')).toBe(2)
+    expect(wrapper.text()).toContain('服務降級')
+    // Failure did not consume the interval: the very next refresh probes again
+    await refresh!.trigger('click')
+    await flushPromises()
+    expect(calls('/websocket/health-detail')).toBe(3)
+    vi.useRealTimers()
+  })
+
+  it('does not launch a second probe while one is in flight', async () => {
+    let release: (_v: unknown) => void = () => {}
+    const slow = new Promise(r => { release = r })
+    vi.mocked(apiClient.get).mockImplementation(async (url: string) => {
+      if (url === '/websocket/metrics') { return { data: { connections } } }
+      return slow
+    })
+    const wrapper = mount(WebSocketMonitoring)
+    await flushPromises()
+    const refresh = wrapper.findAll('button').find(b => b.text().includes('重新整理'))
+    await refresh!.trigger('click')
+    await flushPromises()
+    expect(calls('/websocket/health-detail')).toBe(1)
+    release({ status: 'ok', data: { overall: { status: 'healthy' } } })
+    await flushPromises()
+  })
+
+  it('updates the service alert when the verdict escalates from degraded to unhealthy', async () => {
+    let overall = 'degraded'
+    vi.mocked(apiClient.get).mockImplementation(async (url: string) => {
+      if (url === '/websocket/metrics') { return { data: { connections } } }
+      return { status: 'ok', data: { overall: { status: overall } } }
+    })
+    const wrapper = mount(WebSocketMonitoring)
+    await flushPromises()
+    expect(wrapper.text()).toContain('WebSocket 服務處於降級狀態')
+    vi.useFakeTimers()
+    vi.setSystemTime(Date.now() + 61_000)
+    overall = 'unhealthy'
+    const refresh = wrapper.findAll('button').find(b => b.text().includes('重新整理'))
+    await refresh!.trigger('click')
+    await flushPromises()
+    expect(wrapper.text()).toContain('WebSocket 服務處於異常狀態')
+    expect(wrapper.text()).not.toContain('WebSocket 服務處於降級狀態')
+    vi.useRealTimers()
+  })
+
   it('keeps showing metrics when the health probe fails', async () => {
     vi.mocked(apiClient.get).mockImplementation(async (url: string) => {
       if (url === '/websocket/metrics') { return { data: { connections } } }
