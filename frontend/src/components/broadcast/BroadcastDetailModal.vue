@@ -112,7 +112,9 @@
                 {{ recipient.customerDisplayName || shortId(recipient.platformUserId) }}
               </div>
               <div class="ui-row-sub">
-                {{ platformLabel(recipient.platform) }} · {{ shortId(recipient.platformUserId) }}
+                {{ platformLabel(recipient.platform) }} · {{ shortId(recipient.platformUserId) }}<template v-if="recipient.sentAt">
+                  · {{ formatDate(recipient.sentAt) }}
+                </template>
               </div>
               <div
                 v-if="recipient.errorReason"
@@ -277,7 +279,8 @@ function reasonLabel(reason: BroadcastRecipientErrorReason): string {
 .modal-backdrop.is-inline {
   position: static;
   z-index: auto;
-  display: block;
+  display: flex;
+  align-items: stretch;
   padding: 0;
   background: none;
 }
@@ -291,6 +294,9 @@ function reasonLabel(reason: BroadcastRecipientErrorReason): string {
 }
 
 .is-inline .detail-modal {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
   width: 100%;
   max-height: none;
   overflow: visible;
@@ -377,6 +383,27 @@ function reasonLabel(reason: BroadcastRecipientErrorReason): string {
   font-size: 13px;
   color: var(--ui-muted);
   font-variant-numeric: tabular-nums;
+}
+
+.recipient-section {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
+
+/* the rows share the card's height with the records beside it, so the two cards end on one line */
+.recipient-list {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
+
+.recipient-list .recipient-row {
+  align-items: center;
+}
+
+.recipient-section .pagination {
+  margin-top: auto;
 }
 
 .pagination span {

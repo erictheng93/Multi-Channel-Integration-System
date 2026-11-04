@@ -57,6 +57,13 @@
     </div>
 
     <div
+      v-if="$slots.toolbar"
+      class="section-toolbar"
+    >
+      <slot name="toolbar" />
+    </div>
+
+    <div
       v-if="loading"
       class="state-box loading-state"
     >
@@ -129,21 +136,15 @@
       >
         <div
           role="columnheader"
-          class="header-cell title-cell"
-        >
-          報表
-        </div>
-        <div
-          role="columnheader"
           class="header-cell"
         >
           狀態
         </div>
         <div
           role="columnheader"
-          class="header-cell"
+          class="header-cell title-cell"
         >
-          格式
+          報表
         </div>
         <div
           role="columnheader"
@@ -153,14 +154,10 @@
         </div>
         <div
           role="columnheader"
-          class="header-cell size-cell"
-        >
-          大小
-        </div>
-        <div
-          role="columnheader"
           class="header-cell actions-cell"
-        />
+        >
+          操作
+        </div>
       </div>
       <ReportRow
         v-for="report in reports"
@@ -322,20 +319,46 @@ defineEmits<{
 </script>
 
 <style scoped>
+/* visible: the filter popover opens inside the card and must not be clipped by a short list */
 .reports-section {
-  overflow: hidden;
   padding-bottom: 6px;
+}
+
+.section-toolbar {
+  padding: 2px 22px 14px;
 }
 
 .section-controls {
   flex-wrap: wrap;
 }
 
+/* One row of capsule controls at one height and one size */
+.section-controls {
+  gap: 8px;
+}
+
+.section-controls > .btn,
+.sort-select,
+.view-toggle {
+  height: 36px;
+  border-radius: 999px;
+  font-size: 14px;
+}
+
 .sort-select {
   width: auto;
-  height: 34px;
-  border-radius: 10px;
-  font-size: 13px;
+  padding: 0 32px 0 16px;
+}
+
+.view-toggle {
+  align-items: center;
+  padding: 2px;
+}
+
+.view-toggle > button {
+  height: 32px;
+  border-radius: 999px;
+  font-size: 14px;
 }
 
 .section-footer {
@@ -357,29 +380,46 @@ defineEmits<{
 
 .list-header {
   display: grid;
-  grid-template-columns: minmax(0, 2.4fr) 110px 70px minmax(100px, 1fr) 80px 76px;
+  grid-template-columns: 96px minmax(0, 1fr) 150px 84px;
   gap: 12px;
   padding: 10px 22px;
   box-shadow: inset 0 -0.5px 0 var(--ui-sep);
 }
 
 .header-cell {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
-  color: var(--ui-muted);
-}
-
-.header-cell.size-cell {
-  text-align: left;
+  color: var(--ui-ink);
 }
 
 @media (max-width: 768px) {
+  /* Export, sort and view mode share one line */
+  .section-controls {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .section-controls > .btn {
+    padding: 0 14px;
+  }
+
+  .sort-select {
+    width: 100%;
+    padding-left: 12px;
+  }
+
   .list-header {
     display: none;
   }
 
   .reports-grid {
     padding: 4px 16px 16px;
+  }
+
+  .section-toolbar {
+    padding: 2px 16px 12px;
   }
 }
 </style>

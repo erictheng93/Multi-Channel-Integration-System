@@ -43,17 +43,12 @@
         </template>
       </UiPageHead>
 
-      <!-- Lead: how much came through in the last 24 h, and how many channels are on and verified -->
-      <RingLead
+      <!-- Signature: customer messages vs agent replies per channel, one shared axis -->
+      <ChannelBalance
         v-if="!isLoading && !loadFailed && channels.length > 0"
-        kicker="近 24 小時訊息"
-        :value="leadVolume.total === null ? '—' : formatCount(leadVolume.total)"
-        :unit="leadVolume.total === null ? '' : '則'"
-        :meaning="leadVolume.meaning"
-        :tone="leadVolume.total === null ? 'none' : ''"
-        summary="頻道概況"
-        :rings="channelRings"
-        :size="144"
+        :total="leadVolume.total"
+        :in-n="leadVolume.inN"
+        :out-n="leadVolume.outN"
       />
 
       <!-- Platform Filter -->
@@ -71,7 +66,7 @@
             全部 <span class="ui-seg-n">{{ channels.length }}</span>
           </button>
           <button
-            v-for="p in PLATFORM_FILTERS"
+            v-for="p in visiblePlatformFilters"
             :key="p.id"
             type="button"
             :aria-pressed="selectedPlatform === p.id"
@@ -80,49 +75,13 @@
             {{ p.label }} <span class="ui-seg-n">{{ getChannelCount(p.id) }}</span>
           </button>
         </div>
-      </div>
-
-      <!-- Webhook problems: one place, with the one primary action; the cards stay uniform -->
-      <section
-        v-if="!isLoading && !loadFailed && problemChannels.length > 0"
-        class="alerts"
-        aria-label="Webhook 需注意"
-      >
-        <article
-          v-for="channel in problemChannels"
-          :key="channel.id"
-          class="ui-card alert-row"
+        <p
+          v-if="volumeMax > 0"
+          class="scale-note"
         >
-          <span
-            class="alert-ico"
-            aria-hidden="true"
-          >
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            ><path d="M12 3 2 20h20Z" /><path d="M12 10v4M12 17h.01" /></svg>
-          </span>
-          <div class="alert-main">
-            <div class="alert-title">
-              {{ channelTitle(channel) }} · Webhook 需注意
-            </div>
-            <div class="alert-text">
-              {{ webhookProblems(channel).join(' ') }}
-            </div>
-          </div>
-          <button
-            type="button"
-            class="btn btn-primary btn-sm"
-            @click="verifyChannel(channel)"
-          >
-            重新驗證
-          </button>
-        </article>
-      </section>
+          各頻道長條同一比例，滿格 = {{ formatCount(volumeMax) }} 則
+        </p>
+      </div>
 
       <!-- Loading State -->
       <UiEmptyState
@@ -219,8 +178,12 @@
               ><path d="M12 3C6.5 3 2 6.6 2 11c0 2.5 1.4 4.7 3.7 6.2L5 21l4.1-2.3c.9.2 1.9.3 2.9.3 5.5 0 10-3.6 10-8s-4.5-8-10-8Z" /></svg>
             </div>
             <div class="chname">
-              <b>{{ channelTitle(channel) }}</b>
-              <span>{{ PLATFORM_KIND[channel.platform] }}</span>
+              <b>{{ channelHeading(channel) }}</b>
+              <span>{{ isUnnamed(channel) ? '尚未命名' : PLATFORM_KIND[channel.platform] }}</span>
+              <span
+                class="ui-pill hd-pill"
+                :class="channel.isVerified ? 'ui-pill-green' : 'ui-pill-orange'"
+              >{{ channel.isVerified ? '已驗證' : '未驗證' }}</span>
             </div>
             <div class="chtools">
               <button
@@ -288,7 +251,7 @@
                   role="menuitem"
                   @click="editChannel(channel)"
                 >
-                  編輯配置
+                  {{ isUnnamed(channel) ? '命名此頻道' : '編輯配置' }}
                 </button>
                 <button
                   role="menuitem"
@@ -299,6 +262,109 @@
                 </button>
               </div>
             </div>
+          </div>
+
+          <div
+            class="chvol"
+            :class="{ 'is-idle': !volumeOf(channel) }"
+          >
+            <template v-if="volumeOf(channel)">
+              <div class="vrow">
+                <span class="vl">客戶來訊</span>
+                <span class="vt"><i
+                  class="vb is-in"
+                  :style="{ width: volumeWidth(volumeOf(channel)!.inN) }"
+                /></span>
+                <b class="vn">{{ formatCount(volumeOf(channel)!.inN) }}</b>
+              </div>
+              <div class="vrow">
+                <span class="vl">客服發送</span>
+                <span class="vt"><i
+                  class="vb is-out"
+                  :style="{ width: volumeWidth(volumeOf(channel)!.outN) }"
+                /></span>
+                <b class="vn">{{ formatCount(volumeOf(channel)!.outN) }}</b>
+              </div>
+              <p class="vnote">
+                累計 {{ formatCount(volumeOf(channel)!.inTotal) }} 來 / {{ formatCount(volumeOf(channel)!.outTotal) }} 發 · {{ volumeOf(channel)!.lastAt }}
+              </p>
+            </template>
+            <p
+              v-else
+              class="vnote"
+            >
+              {{ channel.isActive ? '暫時無法取得訊息量' : '已停用，不計入訊息量' }}
+            </p>
+          </div>
+
+          <div
+            v-if="problemIds.has(channel.id)"
+            class="chwarn"
+            role="alert"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            ><path d="M12 3 2 20h20Z" /><path d="M12 10v4M12 17h.01" /></svg>
+            <b class="chwarn-title">Webhook 需注意</b>
+            <button
+              type="button"
+              class="btn btn-secondary btn-sm"
+              @click="verifyChannel(channel)"
+            >
+              重新驗證
+            </button>
+            <span class="chwarn-text">{{ webhookProblems(channel).join(' ') }}</span>
+          </div>
+
+          <div
+            v-else-if="channel.isActive"
+            class="chwarn is-ok"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            ><path d="M5 12.5 10 17.5 19 7" /></svg>
+            <b class="chwarn-title">Webhook 無異常</b>
+            <span class="chwarn-text">近 24 小時沒有處理失敗或簽章被拒的紀錄。</span>
+          </div>
+
+          <div
+            v-else
+            class="chwarn is-idle"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            ><circle
+              cx="12"
+              cy="12"
+              r="9"
+            /><path d="M9.5 9.5v5M14.5 9.5v5" /></svg>
+            <b class="chwarn-title">頻道已停用</b>
+            <span class="chwarn-text">目前不接收也不處理這個頻道的訊息，啟用後才會檢查 Webhook。</span>
+          </div>
+
+          <div class="pills">
+            <span
+              class="ui-pill"
+              :class="channel.isVerified ? 'ui-pill-green' : 'ui-pill-orange'"
+            >{{ channel.isVerified ? '已驗證' : '未驗證' }}</span>
           </div>
 
           <!-- Card Body -->
@@ -316,54 +382,6 @@
             </div>
           </div>
 
-          <div class="pills">
-            <span
-              class="ui-pill"
-              :class="channel.isActive ? 'ui-pill-green ui-pill-dot' : ''"
-            >{{ channel.isActive ? '啟用中' : '已停用' }}</span>
-            <span
-              class="ui-pill"
-              :class="channel.isVerified ? 'ui-pill-green' : 'ui-pill-orange'"
-            >{{ channel.isVerified ? '已驗證' : '未驗證' }}</span>
-            <span
-              v-if="channel.webhookHealth && hasWebhookProblem(channel)"
-              class="ui-pill ui-pill-orange ui-pill-dot"
-            >Webhook 需注意</span>
-          </div>
-
-          <!-- Activity: platform totals, so a disabled channel shows none of it -->
-          <div class="activity">
-            <div
-              v-if="channel.isActive"
-              class="stats"
-            >
-              <div class="stat-i">
-                <div class="l">
-                  客戶來訊 · 24 小時
-                </div>
-                <div class="n">
-                  {{ activityValue(channel, 'customerMessages24h') }}
-                </div>
-                <div class="s">
-                  累計 {{ activityValue(channel, 'customerMessagesTotal') }}
-                </div>
-              </div>
-              <div class="stat-i">
-                <div class="l">
-                  客服發送 · 24 小時
-                </div>
-                <div class="n">
-                  {{ activityValue(channel, 'agentMessages24h') }}
-                </div>
-                <div class="s">
-                  累計 {{ activityValue(channel, 'agentMessagesTotal') }}
-                </div>
-              </div>
-            </div>
-            <div class="last">
-              {{ activityCaption(channel) }}
-            </div>
-          </div>
 
           <!-- Card Footer: the on/off switch with its label, and the one action -->
           <div class="chfoot">
@@ -378,58 +396,9 @@
               />
               <span>{{ channel.isActive ? '啟用中' : '已停用' }}</span>
             </label>
-            <button
-              type="button"
-              class="btn btn-secondary btn-sm"
-              @click="verifyChannel(channel)"
-            >
-              驗證配置
-            </button>
           </div>
         </article>
       </div>
-
-      <!-- Message volume by channel: the same real 24 h counters the cards show, side by side -->
-      <section
-        v-if="!isLoading && !loadFailed && volumeRows.length > 0"
-        aria-label="近 24 小時各頻道訊息量"
-      >
-        <h2 class="ui-group-label">
-          各頻道訊息量
-          <span class="vol-legend">
-            <span><i class="sw sw-in" />客戶來訊</span>
-            <span><i class="sw sw-out" />客服發送</span>
-          </span>
-        </h2>
-        <ul class="ui-group vol-list">
-          <li
-            v-for="row in volumeRows"
-            :key="row.id"
-            class="vol-row"
-          >
-            <span class="vol-name">{{ row.name }}</span>
-            <span class="vol-bars">
-              <span class="vol-line">
-                <span class="vol-track"><span
-                  class="vol-bar in"
-                  :style="{ width: `${row.inPct}%` }"
-                /></span>
-                <b class="vol-n">{{ row.inText }}</b>
-              </span>
-              <span class="vol-line">
-                <span class="vol-track"><span
-                  class="vol-bar out"
-                  :style="{ width: `${row.outPct}%` }"
-                /></span>
-                <b class="vol-n">{{ row.outText }}</b>
-              </span>
-            </span>
-          </li>
-        </ul>
-        <p class="ui-group-foot">
-          條長為各頻道 24 小時內的相對比例。
-        </p>
-      </section>
 
       <!-- Channel Config Dialog -->
       <ChannelConfigDialog
@@ -454,12 +423,11 @@
 <script setup lang="ts">
 import UiEmptyState from '@/components/ui/UiEmptyState.vue'
 import UiPageHead from '@/components/ui/UiPageHead.vue'
-import RingLead from '@/components/lead/RingLead.vue'
-import type { ServiceRing } from '@/components/ui/ServiceRings.vue'
 import { computed } from 'vue'
 import AppLayout from '@/components/ui/AppLayout.vue'
 import ChannelConfigDialog from '@/components/channels/ChannelConfigDialog.vue'
 import ChannelDetailsModal from '@/components/channels/ChannelDetailsModal.vue'
+import ChannelBalance from '@/components/channels/ChannelBalance.vue'
 import { formatLastLogin } from '@/utils/team-tone'
 import { platformVolume24h } from '@/utils/channel-volume'
 import { useChannelManagement } from '@/composables/useChannelManagement'
@@ -505,10 +473,26 @@ const PLATFORM_FILTERS: Array<{ id: ChannelPlatform; label: string }> = [
   { id: 'whatsapp', label: 'WhatsApp' }
 ]
 
+/** A platform with no channel is not a tab (an empty WhatsApp tab read as an unavailable feature) */
+const visiblePlatformFilters = computed(() =>
+  PLATFORM_FILTERS.filter(p => getChannelCount(p.id) > 0 || selectedPlatform.value === p.id))
+
+const problemIds = computed(() => new Set(problemChannels.value.map(c => c.id)))
+
 /** Optional display name lives in configMetadata.name; fall back to the platform. */
 function channelTitle(channel: ChannelIntegration): string {
   const name = channel.configMetadata?.name
   return typeof name === 'string' && name.trim() ? name.trim() : `${PLATFORM_KIND[channel.platform]}（未命名）`
+}
+
+function isUnnamed(channel: ChannelIntegration): boolean {
+  const name = channel.configMetadata?.name
+  return !(typeof name === 'string' && name.trim())
+}
+
+/** Card heading: the display name, or the plain platform name when none was given (a prompt offers to name it) */
+function channelHeading(channel: ChannelIntegration): string {
+  return isUnnamed(channel) ? PLATFORM_KIND[channel.platform] : channelTitle(channel)
 }
 
 function channelDescription(channel: ChannelIntegration): string {
@@ -534,10 +518,10 @@ function webhookProblems(channel: ChannelIntegration): string[] {
   const problems: string[] = []
   if (health.processingFailures24h > 0) {
     const last = health.lastProcessingFailureAt ? `，最近一次 ${formatLastLogin(health.lastProcessingFailureAt)}` : ''
-    problems.push(`近 24 小時有 ${health.processingFailures24h} 次 webhook 處理失敗${last}。`)
+    problems.push(`近 24 小時 ${health.processingFailures24h} 次處理失敗${last}。`)
   }
   if (health.signatureFailureMinutes24h > 0) {
-    problems.push(`近 24 小時有 ${health.signatureFailureMinutes24h} 個時段的簽章驗證被拒，請確認 Channel Secret 設定。`)
+    problems.push(`${health.signatureFailureMinutes24h} 個時段簽章被拒，請確認 Channel Secret。`)
   }
   return problems
 }
@@ -548,69 +532,50 @@ function hasWebhookProblem(channel: ChannelIntegration): boolean {
 
 const problemChannels = computed(() => channels.value.filter(hasWebhookProblem))
 
-type ActivityKey = 'customerMessages24h' | 'customerMessagesTotal' | 'agentMessages24h' | 'agentMessagesTotal'
-
-/** Real counters only: a disabled channel or one without activity data shows a dash, never a made-up zero */
-function activityValue(channel: ChannelIntegration, key: ActivityKey): string {
-  if (!channel.isActive || !channel.activity) { return '—' }
-  return formatCount(channel.activity[key])
+/** One row per channel for the balance board: the same real counters the lead totals use (disabled channels are listed, not charted) */
+interface ChannelVolume {
+  inN: number
+  outN: number
+  inTotal: number
+  outTotal: number
+  lastAt: string
 }
 
-function activityCaption(channel: ChannelIntegration): string {
-  if (!channel.isActive) { return '已停用 · 啟用後才會顯示訊息量' }
-  if (!channel.activity) { return '暫時無法取得訊息量' }
-  const at = channel.activity.lastActivityAt
-  return `平台合計 · 最後活動 ${at ? formatLastLogin(at) : '尚無活動'}`
-}
-
-/** Active channels with activity data, bars scaled to the largest 24 h figure on the page */
-const volumeRows = computed(() => {
-  const rows = channels.value.filter(c => c.isActive && c.activity)
-  const max = Math.max(1, ...rows.flatMap(c => [c.activity?.customerMessages24h ?? 0, c.activity?.agentMessages24h ?? 0]))
-  return rows.map((c) => {
-    const inN = c.activity?.customerMessages24h ?? 0
-    const outN = c.activity?.agentMessages24h ?? 0
-    return {
-      id: c.id,
-      name: channelTitle(c),
-      inText: formatCount(inN),
-      outText: formatCount(outN),
-      inPct: inN === 0 ? 0 : Math.max(2, Math.round((inN / max) * 100)),
-      outPct: outN === 0 ? 0 : Math.max(2, Math.round((outN / max) * 100))
-    }
-  })
+/** Last-24h counters per active channel; a disabled or unreporting channel has none (never a made-up zero) */
+const volumes = computed(() => {
+  const map = new Map<number, ChannelVolume>()
+  for (const c of channels.value) {
+    const act = c.isActive ? c.activity : undefined
+    if (!act) { continue }
+    map.set(c.id, {
+      inN: act.customerMessages24h ?? 0,
+      outN: act.agentMessages24h ?? 0,
+      inTotal: act.customerMessagesTotal ?? 0,
+      outTotal: act.agentMessagesTotal ?? 0,
+      lastAt: `最後活動 ${act.lastActivityAt ? formatLastLogin(act.lastActivityAt) : '尚無活動'}`
+    })
+  }
+  return map
 })
+const volumeOf = (channel: ChannelIntegration): ChannelVolume | undefined => volumes.value.get(channel.id)
+
+/** One scale for every bar: the biggest single side among the channels */
+const volumeMax = computed(() => Math.max(0, ...[...volumes.value.values()].flatMap(v => [v.inN, v.outN])))
+const volumeWidth = (n: number): string => (n === 0 || volumeMax.value === 0 ? '0%' : `${Math.max(3, Math.round((n / volumeMax.value) * 100))}%`)
 
 /** Never a made-up zero: no total when no active channel reports activity */
 const leadVolume = computed(() => {
   const volume = platformVolume24h(channels.value)
-  if (!volume) { return { total: null, meaning: '沒有啟用中的頻道提供訊息量' } }
-  return {
-    total: volume.customer + volume.agent,
-    meaning: `客戶來訊 ${formatCount(volume.customer)} · 客服發送 ${formatCount(volume.agent)}`
-  }
+  if (!volume) { return { total: null, inN: 0, outN: 0, meaning: '沒有啟用中的頻道提供訊息量' } }
+  const { customer: inN, agent: outN } = volume
+  return { total: inN + outN, inN, outN, meaning: `客戶來訊 ${formatCount(inN)} · 客服發送 ${formatCount(outN)}` }
 })
 
-const channelRings = computed<ServiceRing[]>(() => {
-  const total = channels.value.length
-  return [
-    { label: '啟用中', value: channels.value.filter(c => c.isActive).length, total, of: '個頻道', hue: 'var(--section-hue)' },
-    { label: '已驗證', value: channels.value.filter(c => c.isVerified).length, total, of: '個頻道', hue: 'var(--ui-blue)' }
-  ]
-})
-
+/** The webhook problem has its own alert under the lead, so the head only counts channels */
 const channelSummary = computed(() => {
   const total = channels.value.length
   const active = channels.value.filter(c => c.isActive).length
-  const problem = channels.value.filter(hasWebhookProblem)
-  let text = `${total} 個頻道，${active} 個啟用中`
-  const [first] = problem
-  if (problem.length === 1 && first) {
-    text += `；${channelTitle(first)} 近 24 小時有 webhook 失敗紀錄，建議重新驗證`
-  } else if (problem.length > 1) {
-    text += `；${problem.length} 個頻道近 24 小時有 webhook 失敗紀錄，建議重新驗證`
-  }
-  return `${text}。`
+  return `${total} 個頻道，${active} 個啟用中。`
 })
 
 const selectedPlatformLabel = computed(() =>
@@ -636,42 +601,102 @@ const selectedPlatformLabel = computed(() =>
   scrollbar-width: none;
 }
 
-.alerts {
+/* The webhook warning lives on the card it concerns */
+.chwarn {
   display: grid;
-  gap: 12px;
-}
-.alert-row {
-  display: flex;
-  gap: 14px;
+  grid-template-columns: 20px minmax(0, 1fr) auto;
+  gap: 6px 10px;
   align-items: center;
-  padding: 14px 18px;
-}
-.alert-ico {
-  display: grid;
-  flex: none;
-  place-items: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 11px;
+  margin: 4px 20px 0;
+  padding: 10px 10px 12px 14px;
+  border-radius: 14px;
   background: var(--ui-orange-soft);
   color: var(--ui-orange-ink);
 }
-.alert-ico svg {
-  width: 19px;
-  height: 19px;
+.chwarn > svg {
+  width: 20px;
+  height: 20px;
 }
-.alert-main {
-  flex: 1;
-  min-width: 0;
-}
-.alert-title {
+.chwarn-title {
   font: 600 15px / 1.3 var(--ui-font-display);
 }
-.alert-text {
-  margin-top: 2px;
-  font-size: 13px;
-  line-height: 1.5;
+.chwarn-text {
+  grid-column: 1 / -1;
+  padding-right: 4px;
+  font-size: 13.5px;
+  line-height: 1.45;
+  color: var(--ui-ink);
+}
+.chwarn.is-ok {
+  grid-template-columns: 20px minmax(0, 1fr);
+  background: var(--ui-green-soft);
+  color: var(--ui-green-ink);
+}
+.chwarn.is-idle {
+  grid-template-columns: 20px minmax(0, 1fr);
+  background: var(--ui-fill);
   color: var(--ui-ink-2);
+}
+.chwarn .btn {
+  min-height: 36px;
+  background: var(--ui-surface);
+  color: var(--ui-orange-ink);
+  font-weight: 600;
+}
+
+.scale-note {
+  margin: 0 0 0 auto;
+  font-size: 13px;
+  color: var(--ui-ink-2);
+}
+
+/* the card's own 24 h numbers: two bars on one shared scale, same colours as the summary above */
+.chvol {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  padding: 0 20px;
+}
+.vrow {
+  display: grid;
+  grid-template-columns: 4.6em minmax(0, 1fr) 3.2em;
+  gap: 10px;
+  align-items: center;
+  font-size: 14px;
+  color: var(--ui-ink-2);
+}
+.vt {
+  display: block;
+  height: 12px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--ui-fill-strong);
+}
+.vb {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+}
+.vb.is-in {
+  background: var(--ui-blue);
+}
+.vb.is-out {
+  background: color-mix(in srgb, var(--ui-blue) 38%, var(--ui-surface));
+}
+.vn {
+  font: 600 15px var(--ui-font-display);
+  color: var(--ui-ink);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.vnote {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--ui-ink-2);
+}
+.chvol.is-idle {
+  align-content: center;
 }
 
 /* Every card has the same parts in the same order, so rows line up without any grid trickery */
@@ -687,7 +712,6 @@ const selectedPlatformLabel = computed(() =>
 }
 /* Disabled channel: muted text, not opacity (opacity drops text below WCAG AA contrast) */
 .chcard.off .chhead,
-.chcard.off .stats,
 .chcard.off .meta,
 .chcard.off .toggle {
   color: var(--ui-muted);
@@ -744,8 +768,8 @@ const selectedPlatformLabel = computed(() =>
 }
 .more-btn {
   display: grid;
-  width: 34px;
-  height: 34px;
+  width: 40px;
+  height: 40px;
   place-items: center;
   border: 0;
   border-radius: 10px;
@@ -801,12 +825,12 @@ const selectedPlatformLabel = computed(() =>
   display: flex;
   align-items: baseline;
   gap: 10px;
-  font-size: 13px;
+  font-size: 14px;
 }
 .meta-row .k {
   width: 84px;
   flex: none;
-  color: var(--ui-muted);
+  color: var(--ui-ink-2);
   white-space: nowrap;
 }
 .meta-row .v.none {
@@ -820,65 +844,17 @@ const selectedPlatformLabel = computed(() =>
 }
 .mono {
   font-family: var(--ui-font-mono);
+  font-size: 14px;
+  letter-spacing: 0.02em;
 }
 .pills {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  padding: 12px 20px 0;
+  padding: 12px 20px 12px;
 }
-.activity {
-  min-width: 0;
-}
-.activity {
+.chfoot {
   margin-top: auto;
-}
-.stats {
-  position: relative;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  margin: 16px 20px 0;
-  padding: 14px 0 10px;
-  box-shadow: inset 0 0.5px 0 var(--ui-sep);
-}
-.stat-i + .stat-i {
-  position: relative;
-  padding-left: 16px;
-}
-.stat-i + .stat-i::before {
-  content: '';
-  position: absolute;
-  top: 2px;
-  bottom: 2px;
-  left: 0;
-  width: 0.5px;
-  background: var(--ui-sep);
-}
-.stat-i .l {
-  font-size: 13px;
-  color: var(--ui-muted);
-}
-.stat-i .n {
-  font: 600 22px / 1.2 var(--ui-font-display);
-  letter-spacing: -0.02em;
-  font-variant-numeric: tabular-nums;
-}
-.stat-i .s {
-  font-size: 13px;
-  color: var(--ui-muted);
-  font-variant-numeric: tabular-nums;
-}
-.last {
-  padding: 0 20px 14px;
-  font-size: 13px;
-  color: var(--ui-muted);
-  font-variant-numeric: tabular-nums;
-}
-/* a disabled channel has no counters: one quiet line states it is off, under the same hairline */
-.chcard.off .last {
-  margin: 16px 20px 0;
-  padding: 14px 0 16px;
-  box-shadow: inset 0 0.5px 0 var(--ui-sep);
 }
 .chfoot {
   display: flex;
@@ -896,107 +872,91 @@ const selectedPlatformLabel = computed(() =>
   color: var(--ui-ink-2);
 }
 
-/* Volume comparison */
-.vol-legend {
-  display: inline-flex;
-  gap: 14px;
-  margin-left: auto;
-  font-size: 13px;
-  font-weight: 400;
-  color: var(--ui-muted);
-}
-.vol-legend span {
-  display: inline-flex;
-  gap: 6px;
-  align-items: center;
-}
-.sw {
-  width: 10px;
-  height: 10px;
-  border-radius: 3px;
-}
-.sw-in,
-.vol-bar.in {
-  background: var(--ui-accent);
-}
-.sw-out,
-.vol-bar.out {
-  background: var(--ui-indigo);
-}
-.vol-list {
-  display: grid;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-.vol-row {
-  display: grid;
-  grid-template-columns: minmax(140px, 220px) minmax(0, 1fr);
-  gap: 20px;
-  align-items: center;
-  padding: 14px 22px;
-}
-.vol-row + .vol-row {
-  box-shadow: inset 0 0.5px 0 var(--ui-sep);
-}
-.vol-name {
-  overflow: hidden;
-  font-size: 14px;
-  font-weight: 600;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.vol-bars {
-  display: grid;
-  gap: 6px;
-}
-.vol-line {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 52px;
-  gap: 12px;
-  align-items: center;
-}
-.vol-n {
-  font-size: 13px;
-  font-weight: 600;
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-}
-.vol-track {
-  display: block;
-  height: 8px;
-  overflow: hidden;
-  border-radius: 999px;
-  background: var(--ui-fill);
-}
-.vol-bar {
-  display: block;
-  height: 100%;
-  border-radius: 999px;
+/* the verified pill lives under the name on desktop rows, in its own line on cards */
+.hd-pill { display: none; }
+
+/* desktop: one wide row per channel (identity | webhook state and ids | 24 h numbers | switch), so a short card never leaves a void and a disabled channel is simply a shorter row */
+@media (min-width: 1025px) {
+  .chgrid {
+    grid-template-columns: minmax(0, 1fr);
+    grid-auto-rows: auto;
+    gap: 14px;
+  }
+  .chcard {
+    display: grid;
+    grid-template-columns: 250px minmax(0, 1.1fr) minmax(0, 1fr) 120px;
+    grid-template-areas:
+      'head vol warn foot'
+      'head vol meta foot';
+    row-gap: 10px;
+    align-items: center;
+    column-gap: 28px;
+    padding: 20px 22px;
+  }
+  .chhead { grid-area: head; align-items: flex-start; padding: 0; align-self: center; }
+  .pills { display: none; }
+  .hd-pill { display: inline-flex; margin-top: 8px; }
+  .chname { display: grid; justify-items: start; }
+  .chwarn { grid-area: warn; margin: 0; }
+  .meta { grid-area: meta; padding: 0; align-self: start; }
+  .chwarn { align-self: end; }
+  .chvol { grid-area: vol; }
+  .chfoot .toggle { justify-self: end; }
+  .chfoot { grid-area: foot; display: grid; justify-items: end; align-content: center; margin: 0; padding: 0; }
 }
 
+@media (max-width: 1024px) {
+}
 @media (max-width: 1280px) {
   .chgrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 @media (max-width: 768px) {
+  .toolbar .ui-seg button {
+    min-height: 44px;
+  }
+  .more-btn {
+    width: 44px;
+    height: 44px;
+  }
+  /* phone cards: the ID and the numbers; the free-text description is one tap away in the details */
+  .meta-row:nth-child(2) {
+    display: none;
+  }
+  .chhead {
+    padding-bottom: 8px;
+  }
+  .pills {
+    padding-top: 10px;
+  }
   .chgrid {
     grid-template-columns: minmax(0, 1fr);
   }
-  .alert-row {
-    flex-wrap: wrap;
+  /* a disabled channel is one slim row: who it is and its switch */
+  .chcard.off .pills,
+  .chcard.off .chwarn,
+  .chcard.off .meta {
+    display: none;
   }
-  .alert-main {
-    flex-basis: calc(100% - 60px);
+  .chcard.off .chfoot {
+    padding-top: 0;
   }
-  .alert-row .btn {
-    margin-left: 50px;
+  .chcard.off .chvol {
+    display: none;
   }
-  .vol-row {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 8px;
-    padding: 12px 16px;
+  .scale-note {
+    flex-basis: 100%;
+    margin: 0;
+  }
+  .chvol {
+    padding: 4px 16px 0;
+  }
+  .chwarn {
+    margin: 4px 16px 0;
+  }
+  .chwarn .btn {
+    min-height: 44px;
   }
 }
 </style>

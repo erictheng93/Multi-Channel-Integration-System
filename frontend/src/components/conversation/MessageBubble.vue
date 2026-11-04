@@ -9,6 +9,7 @@
       'message-image': actualMessageType === 'image' && !isRecalledMessage,
       'message-file': actualMessageType === 'file',
       'message-recalled': isRecalledMessage,
+      'is-group-end': showMeta,
     }"
     @contextmenu="handleRightClick"
     @mouseenter="showActions = true"
@@ -26,6 +27,12 @@
     </div>
 
     <div class="message-content">
+      <!-- The customer's initial sits at the foot of their run, like the iMessage thread it is modelled on -->
+      <span
+        v-if="!isOutgoing && showMeta && !showSender"
+        class="thread-avatar"
+        aria-hidden="true"
+      >{{ senderInitials }}</span>
       <!-- 已撤回：不論原始類型，一律以灰色占位文字取代內容
            （DB 端 content 可能已被改寫為英文占位字串，不直接顯示） -->
       <div

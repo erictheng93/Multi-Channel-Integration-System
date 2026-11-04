@@ -37,6 +37,73 @@
 
 <template>
   <header class="ui-page-head">
+    <!-- Phone, section pages (報表 / 資料管理 / 系統設定): the parent section sits above the
+         title like an iOS large-title parent label and opens the sibling pages. The title keeps
+         the full row, so it never truncates. -->
+    <span
+      v-if="switcherItems.length > 1"
+      ref="pull"
+      class="ui-page-switch"
+    >
+      <button
+        type="button"
+        class="ui-page-switch-btn"
+        :aria-label="`${sectionLabel}，切換分頁`"
+        aria-haspopup="true"
+        :aria-expanded="menuOpen"
+        :aria-controls="menuId"
+        @click="menuOpen = !menuOpen"
+        @keydown.esc="closeMenu(true)"
+      >
+        <span class="ui-page-switch-label">{{ sectionLabel }}</span>
+        <svg
+          class="ui-page-switch-chev"
+          :class="{ 'is-open': menuOpen }"
+          width="14"
+          height="14"
+          viewBox="0 0 12 12"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        ><path d="m2.5 4.5 3.5 3.5 3.5-3.5" /></svg>
+      </button>
+      <ul
+        v-if="menuOpen"
+        :id="menuId"
+        class="ui-page-switch-menu"
+        @keydown.esc="closeMenu(true)"
+      >
+        <li
+          v-for="item in switcherItems"
+          :key="item.path"
+        >
+          <router-link
+            :to="item.path"
+            :aria-current="item.path === route.path ? 'page' : undefined"
+            :class="{ 'is-on': item.path === route.path }"
+            @click="closeMenu(false)"
+          >
+            <span>{{ item.label }}</span>
+            <svg
+              v-if="item.path === route.path"
+              class="ui-page-switch-check"
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.6"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            ><path d="m5 12.5 4.5 4.5L19 7" /></svg>
+          </router-link>
+        </li>
+      </ul>
+    </span>
     <h1 class="ui-page-title">
       <span
         v-if="icon"
@@ -65,9 +132,12 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
+import { getActivePinia } from 'pinia'
 import { navIconForPath } from '@/config/nav-icons'
+import { useAuthStore } from '@/stores/auth'
+import { SECTION_NAV, sectionNavItems, sectionNavKeyForPath } from '@/config/section-nav'
 
 const props = withDefaults(defineProps<{
   title?: string
@@ -83,4 +153,156 @@ const props = withDefaults(defineProps<{
 // The tile is the page's own nav glyph on the section hue (config/nav-icons.ts + nav-sections.ts)
 const route = useRoute()
 const icon = computed(() => (props.tile ? navIconForPath(route?.path ?? '') : undefined))
+
+// Phone section switcher (see the template). Outside an app with pinia (isolated component
+// tests) nobody is an admin.
+const authStore = getActivePinia() ? useAuthStore() : null
+const sectionKey = computed(() => sectionNavKeyForPath(route?.path ?? ''))
+// read synchronously so the switcher is there on first paint (no pop-in that shifts the page head)
+const isPhone = ref(typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 768px)').matches)
+const switcherItems = computed(() =>
+  isPhone.value && sectionKey.value
+    ? sectionNavItems(sectionKey.value, authStore?.currentAgent?.role === 'admin')
+    : [],
+)
+const sectionLabel = computed(() => (sectionKey.value ? SECTION_NAV[sectionKey.value].label : ''))
+
+const menuOpen = ref(false)
+const menuId = 'ui-page-switch-menu'
+const pull = ref<HTMLElement | null>(null)
+const closeMenu = (refocus: boolean) => {
+  menuOpen.value = false
+  if (refocus) { pull.value?.querySelector<HTMLElement>('button')?.focus() }
+}
+const onDocPointer = (e: Event) => {
+  if (menuOpen.value && pull.value && !pull.value.contains(e.target as globalThis.Node)) { menuOpen.value = false }
+}
+let mq: globalThis.MediaQueryList | null = null
+const onMq = () => { isPhone.value = !!mq?.matches }
+onMounted(() => {
+  document.addEventListener('pointerdown', onDocPointer)
+  if (typeof window.matchMedia === 'function') {
+    mq = window.matchMedia('(max-width: 768px)')
+    onMq()
+    mq.addEventListener('change', onMq)
+  }
+})
+onBeforeUnmount(() => {
+  document.removeEventListener('pointerdown', onDocPointer)
+  mq?.removeEventListener('change', onMq)
+})
+watch(() => route?.path, () => { menuOpen.value = false })
 </script>
+
+<style scoped>
+.ui-page-head:has(.ui-page-switch-menu) {
+  /* the open menu must paint above the cards that follow (they animate into their own stacking contexts) */
+  position: relative;
+  z-index: 40;
+}
+
+.ui-page-switch {
+  position: relative;
+  grid-area: crumb;
+  justify-self: end;
+  min-width: 0;
+}
+
+/* A capsule control (not a loose blue link): tinted fill, 44px hit area via the padded ::before */
+.ui-page-switch-btn {
+  position: relative;
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  height: 32px;
+  padding: 0 10px 0 14px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--ui-fill);
+  color: var(--ui-ink);
+  font: 600 14px / 1 var(--ui-font-display);
+  letter-spacing: 0;
+  cursor: pointer;
+}
+
+.ui-page-switch-btn::before {
+  position: absolute;
+  inset: -6px -4px;
+  content: '';
+}
+
+.ui-page-switch-label {
+  white-space: nowrap;
+}
+
+.ui-page-switch-btn:focus-visible,
+.ui-page-switch-menu a:focus-visible {
+  outline: 2px solid var(--ui-accent);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+
+.ui-page-switch-chev {
+  flex: none;
+  transition: transform 200ms ease-out;
+}
+
+.ui-page-switch-chev.is-open {
+  transform: rotate(180deg);
+}
+
+.ui-page-switch-menu {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 6px);
+  right: 0;
+  width: min(280px, calc(100vw - 2 * var(--ui-gutter, 16px)));
+  margin: 0;
+  padding: 6px 0;
+  list-style: none;
+  border-radius: 16px;
+  background: var(--ui-surface);
+  box-shadow: 0 16px 40px rgb(0 0 0 / 0.18), 0 0 0 0.5px var(--ui-sep);
+  transform-origin: calc(100% - 24px) 0;
+  animation: ui-page-switch-in 180ms var(--ui-ease);
+  font: 400 16px / 1.4 var(--ui-font-ui);
+  letter-spacing: 0;
+}
+
+.ui-page-switch-menu li {
+  margin: 0 16px;
+}
+
+.ui-page-switch-menu li + li {
+  box-shadow: inset 0 0.5px 0 var(--ui-sep);
+}
+
+.ui-page-switch-menu a {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 46px;
+  margin: 0 -16px;
+  padding: 0 16px;
+  color: var(--ui-ink);
+  text-decoration: none;
+}
+
+.ui-page-switch-menu a.is-on {
+  color: var(--section-ink, var(--ui-accent));
+  font-weight: 600;
+}
+
+@keyframes ui-page-switch-in {
+  from {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ui-page-switch-menu {
+    animation: none;
+  }
+}
+</style>

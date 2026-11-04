@@ -191,7 +191,7 @@ function resetToAuto() {
 }
 
 .custom-badge {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
   letter-spacing: -2px;
 }

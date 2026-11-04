@@ -8,29 +8,20 @@
       @create-report="handleCreateReport"
     />
 
-    <!-- Lead: this month's reports + rings of completed / processing / failed -->
-    <StatsLead
+    <!-- Lead: every report as a bar from creation to download expiry on one day axis -->
+    <RetentionShelf
       :stats="stats"
+      :reports="reports"
       :loaded="loaded"
+      :get-report-type-label="getReportTypeLabel"
       @show-failed-reports="showFailedReports"
+      @open="handleViewReport"
     />
 
     <!-- 主要內容區域 -->
     <div class="main-content">
       <!-- 左側：篩選和報表列表 -->
       <div class="content-left">
-        <!-- 篩選控制面板 -->
-        <FiltersSection
-          :filters="filters"
-          :search-query="searchQuery"
-          :has-active-filters="hasActiveFilters"
-          :grouped-report-types="groupedReportTypes"
-          :get-report-type-icon="getReportTypeIcon"
-          @update:filters="applyFilters"
-          @update:search-query="debounceSearch"
-          @reset-filters="resetFilters"
-        />
-
         <!-- 報表列表容器 -->
         <ReportsSection
           :reports="reports"
@@ -57,6 +48,18 @@
           @update:sort-order="sortOrder = $event"
           @export-all="exportAllReports"
         >
+          <template #toolbar>
+            <FiltersSection
+              :filters="filters"
+              :search-query="searchQuery"
+              :has-active-filters="hasActiveFilters"
+              :grouped-report-types="groupedReportTypes"
+              :get-report-type-icon="getReportTypeIcon"
+              @update:filters="applyFilters"
+              @update:search-query="debounceSearch"
+              @reset-filters="resetFilters"
+            />
+          </template>
           <template
             v-if="pagination.totalPages > 1"
             #footer
@@ -81,18 +84,18 @@
               @filter-by-type="handleFilterByType"
             />
           </template>
-          <!-- 最近活動：由報表列表的真實狀態推導 -->
+          <!-- 需要留意：由報表列表的真實狀態推導（手機版移到列表上方） -->
           <template
-            v-if="recentActivities.length > 0"
-            #recent-activity
+            v-if="attention.length > 0"
+            #quick-actions
           >
-            <RecentActivityWidget
-              :activities="recentActivities"
-              :get-status-icon="getStatusIcon"
-              :format-relative-time="formatRelativeTime"
-              @view-report="handleViewReport"
+            <AttentionList
+              class="rail-attn"
+              :items="attention"
+              @open="handleViewReport"
             />
           </template>
+          <StorageWidget :reports="reports" />
         </SidebarWidgets>
       </div>
     </div>
@@ -118,13 +121,14 @@ import type { PopularType } from './dashboard/PopularTypesWidget.vue'
 
 // 导入子组件
 import DashboardHeader from './dashboard/DashboardHeader.vue'
-import StatsLead from './dashboard/StatsLead.vue'
+import RetentionShelf from './dashboard/RetentionShelf.vue'
 import FiltersSection from './dashboard/FiltersSection.vue'
 import ReportsSection from './dashboard/ReportsSection.vue'
 import PaginationControls from '@/components/ui/PaginationControls.vue'
 import SidebarWidgets from './dashboard/SidebarWidgets.vue'
 import PopularTypesWidget from './dashboard/PopularTypesWidget.vue'
-import RecentActivityWidget, { type RecentActivity } from './dashboard/RecentActivityWidget.vue'
+import StorageWidget from './dashboard/StorageWidget.vue'
+import AttentionList from './dashboard/AttentionList.vue'
 import ConfirmDialog from '@/components/ui/ConfirmDialog.vue'
 
 // Emits
@@ -218,21 +222,22 @@ const reportToDelete = ref<ReportBase | null>(null)
 // The lead metric stays a skeleton until the first list response has arrived
 const loaded = computed(() => !loading.value || reports.value.length > 0 || stats.totalReports > 0)
 
-// Feed derived from the loaded report rows (newest first); the status is the row's own
-const recentActivities = computed<RecentActivity[]>(() =>
-  reports.value
-    .filter(report => report.status === 'completed' || report.status === 'generating' || report.status === 'failed')
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-    .slice(0, 8)
-    .map(report => ({
-      id: report.id,
-      reportId: report.id,
-      title: report.title,
-      typeLabel: getReportTypeLabel(report.type),
-      status: report.status === 'completed' || report.status === 'failed' ? report.status : 'generating',
-      time: report.createdAt
-    }))
-)
+// What needs a look, derived from the loaded rows: failures, work in progress, downloads about to expire
+const attention = computed(() => {
+  const soon = Date.now() + 3 * 864e5
+  const items: Array<{ id: string; title: string; note: string; tone: 'red' | 'orange' | 'grey'; rank: number }> = []
+  for (const report of reports.value) {
+    const when = formatRelativeTime(report.createdAt)
+    if (report.status === 'failed') {
+      items.push({ id: report.id, title: report.title, note: `產生失敗 ・ ${when}`, tone: 'red', rank: 0 })
+    } else if (report.status === 'generating' || report.status === 'pending') {
+      items.push({ id: report.id, title: report.title, note: `生成中 ・ ${when}開始`, tone: 'orange', rank: 1 })
+    } else if (report.status === 'completed' && report.expiresAt && new Date(report.expiresAt).getTime() < soon) {
+      items.push({ id: report.id, title: report.title, note: `下載連結即將到期 ・ ${new Date(report.expiresAt).getMonth() + 1}/${new Date(report.expiresAt).getDate()}`, tone: 'grey', rank: 2 })
+    }
+  }
+  return items.sort((x, y) => x.rank - y.rank).slice(0, 5)
+})
 
 const popularTypes = computed<PopularType[]>(() =>
   stats.popularTypes.map(item => ({
@@ -248,10 +253,10 @@ const popularTypes = computed<PopularType[]>(() =>
  */
 const subtitle = computed(() => {
   if (stats.totalReports === 0) { return '' }
-  const parts = [`已產生 ${stats.totalReports} 份報表`]
-  if (stats.failedReports > 0) { parts.push(`其中 ${stats.failedReports} 份失敗`) }
-  if (stats.pendingReports > 0) { parts.push(`${stats.pendingReports} 份正在處理`) }
-  return `${parts.join('，')}。`
+  const parts: string[] = []
+  if (stats.failedReports > 0) { parts.push(`${stats.failedReports} 份失敗需要處理`) }
+  if (stats.pendingReports > 0) { parts.push(`${stats.pendingReports} 份正在產生`) }
+  return parts.length > 0 ? `${parts.join('，')}。` : '所有報表都已完成。'
 })
 
 // ========================================
@@ -308,22 +313,36 @@ function handleFilterByType(type: string) {
   min-width: 0;
 }
 
-/* Both columns end on the same line; the last widget absorbs the difference (capped for long lists) */
+/* the list takes the leftover height so both columns end on one line */
+.content-left > :last-child {
+  flex: 1;
+}
+
+/* both columns end on the same line: the last widget takes the remaining height */
+.content-right :deep(.ui-card-title) {
+  font-size: 17px;
+}
+
 .content-right {
   display: flex;
   flex-direction: column;
 }
 
-.content-right :deep(.sidebar-widgets),
-.content-right :deep(.widgets-container) {
+.content-right :deep(.sidebar-widgets) {
   display: flex;
   flex: 1;
   flex-direction: column;
 }
 
+.content-right :deep(.widgets-container) {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 16px;
+}
+
 .content-right :deep(.widget-wrapper:last-child) {
   flex: 1;
-  max-height: 720px;
 }
 
 @media (max-width: 1280px) {
@@ -331,8 +350,5 @@ function handleFilterByType(type: string) {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .content-right :deep(.widget-wrapper:last-child) {
-    max-height: none;
-  }
 }
 </style>

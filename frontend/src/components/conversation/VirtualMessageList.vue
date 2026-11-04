@@ -2,6 +2,9 @@
   <div
     ref="scrollContainer"
     class="virtual-message-list"
+    role="log"
+    aria-label="訊息記錄"
+    tabindex="0"
   >
     <!-- Search Results Header -->
     <div
@@ -540,20 +543,15 @@ defineExpose({
 .date-separator-item {
   display: flex;
   justify-content: center;
-  padding: 1.25rem 0;
+  padding: 0.5rem 0;
   position: sticky;
   top: 0;
   z-index: 5;
-  background: linear-gradient(to bottom,
-    rgba(250, 251, 252, 0.95) 0%,
-    rgba(250, 251, 252, 0.8) 50%,
-    transparent 100%);
-  backdrop-filter: blur(8px);
 }
 
 /* Spacious Message Item Container */
 .message-item {
-  padding: 1rem 1rem 0;
+  padding: 0.75rem 1rem 0;
   display: flex;
   flex-direction: column;
   position: relative;

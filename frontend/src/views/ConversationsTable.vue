@@ -24,6 +24,23 @@
           </template>
         </UiPageHead>
 
+        <!-- The queue as a picture: who is waiting, for how long, in whose lane. Real waits from /conversations/waiting. -->
+        <ConversationQueueBoard
+          v-if="counts"
+          :items="waitingItems"
+          :total="waitingTotal"
+          :stale-count="staleCount"
+          :stale-open="scope === 'stale'"
+          :unread="unreadStore.total"
+          :now="clock"
+          :team-names="teamNameById"
+          :team-open="teamOpenById"
+          :selected-team="filterComposable.filters.value.teamId"
+          @open="goToConversation"
+          @team="toggleTeam"
+          @stale="selectView('stale')"
+        />
+
         <!-- 分頁籤：預設「處理中」，已結案的對話不佔據最顯眼的位置 -->
         <div class="conv-stack">
           <section class="ui-group filter-card">
@@ -160,7 +177,20 @@
                 />
 
                 <p class="list-foot">
-                  {{ LEGEND_TEXT }}
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    aria-hidden="true"
+                  ><circle
+                    cx="12"
+                    cy="12"
+                    r="9"
+                  /><path d="M12 11v5M12 8h.01" /></svg>
+                  <span>{{ LEGEND_TEXT }}</span>
                 </p>
               </div>
             </div>
@@ -227,9 +257,8 @@ import { useToast } from '@/composables/useToast'
 import { useConfirmDialog } from '@/composables/useConfirmDialog'
 import { conversationApi } from '@/api/conversations'
 import { useUnreadStore } from '@/stores/unread'
-import { formatWaitText } from '@/composables/dashboard/useDashboardOverview'
 import { LEGEND_TEXT } from '@/composables/conversation/useConversationRowMeta'
-import { WAITING_WINDOW_DAYS, type ConversationStats } from '@shared/api-contracts'
+import { WAITING_WINDOW_DAYS, type ConversationStats, type WaitingConversation } from '@shared/api-contracts'
 import { tagCacheService } from '@/services/tagCacheService'
 import type { ConversationFilters as ConversationFiltersType } from '@/types'
 
@@ -238,6 +267,7 @@ import RefreshButton from '@/components/ui/RefreshButton.vue'
 import ErrorBoundary from '@/components/ErrorBoundary.vue'
 import HamsterLoader from '@/components/ui/HamsterLoader.vue'
 import ConversationSyncIndicator from '@/components/conversations/ConversationSyncIndicator.vue'
+import ConversationQueueBoard from '@/components/conversations/ConversationQueueBoard.vue'
 import ConversationDesktopTable from '@/components/conversations/ConversationDesktopTable.vue'
 import ConversationMobileCards from '@/components/conversations/ConversationMobileCards.vue'
 import { ConversationFilters } from '@/components/conversation-list'
@@ -250,35 +280,47 @@ const unreadStore = useUnreadStore()
 // 待回覆 (team-wide) comes from /conversations/waiting; 未讀 (personal) from the shared unread store.
 const counts = ref<ConversationStats | null>(null)
 const waitingTotal = ref(0)
-const waitingSince = ref<string | null>(null)
+const waitingItems = ref<WaitingConversation[]>([])
 const staleCount = ref(0)
 const clock = ref(Date.now())
 let clockTimer: ReturnType<typeof setInterval> | null = null
 
+// The board draws the longest-waiting conversations; the rest stay in the list below
+const BOARD_LIMIT = 24
+
 async function loadCounts() {
   try {
-    const [statsRes, waitingRes] = await Promise.all([conversationApi.getStats(), conversationApi.getWaiting(1)])
+    const [statsRes, waitingRes] = await Promise.all([conversationApi.getStats(), conversationApi.getWaiting(BOARD_LIMIT)])
     if (statsRes.success && statsRes.data) { counts.value = statsRes.data }
     if (waitingRes.success && waitingRes.data) {
       waitingTotal.value = waitingRes.data.total
-      waitingSince.value = waitingRes.data.items[0]?.waitingSince ?? null
+      waitingItems.value = waitingRes.data.items
       staleCount.value = waitingRes.data.stale?.count ?? 0
+      clock.value = Date.now()
     }
   } catch (err) {
     console.warn('Failed to load conversation counts:', err)
   }
 }
 
-const oldestWaitText = computed(() =>
-  waitingSince.value ? formatWaitText(Math.max(0, (clock.value - Date.parse(waitingSince.value)) / 1000)) : '')
+// Team names come from the conversations already loaded (their assignedTeam)
+const teamNameById = computed(() => new Map(
+  conversations.value.flatMap(c => (c.assignedTeam?.id && c.assignedTeam.name ? [[c.assignedTeam.id, c.assignedTeam.name] as const] : []))
+))
 
-// One line (<= 60 chars); the 未讀 / 待回覆 definitions live in the table header tooltip
+// Open conversations per team (0 = the unassigned pool), the number under each lane name
+const teamOpenById = computed(() => new Map(
+  (counts.value?.byTeam ?? []).map(t => [t.teamId ?? 0, t.open] as const)
+))
+
+function toggleTeam(filterId: number) {
+  filterComposable.updateFilter('teamId', filterComposable.filters.value.teamId === filterId ? undefined : filterId)
+}
+
+// One short line; the queue itself is the board above the list
 const subtitle = computed(() => {
   if (!counts.value) { return '' }
-  const parts = [`${counts.value.open} 件處理中`, `${waitingTotal.value} 件待回覆`]
-  if (oldestWaitText.value) { parts.push(`最久等 ${oldestWaitText.value}`) }
-  if (unreadStore.total > 0) { parts.push(`我的未讀 ${unreadStore.total}`) }
-  return parts.join(' · ')
+  return `${counts.value.open} 件處理中`
 })
 
 function tabCount(value: ListView): number | null {
@@ -623,7 +665,7 @@ onUnmounted(() => {
   position: relative;
 }
 
-/* One group holds the controls and the list: the filter block heads it, a hairline divides them */
+/* Queue board on top, the list under it */
 .conv-stack {
   display: flex;
   flex-direction: column;
@@ -658,6 +700,8 @@ onUnmounted(() => {
 
 .scope-tab {
   flex: none;
+  justify-content: center;
+  min-width: 92px;
   white-space: nowrap;
 }
 
@@ -734,12 +778,24 @@ onUnmounted(() => {
 }
 
 .list-foot {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
   margin: 0;
   padding: 12px 22px 14px;
   font-size: 13px;
+  line-height: 1.5;
   color: var(--ui-muted);
-  text-align: center;
+  text-align: left;
   box-shadow: inset 0 0.5px 0 var(--ui-sep);
+}
+
+
+.list-foot svg {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  margin-top: 2px;
 }
 
 /* Selection toggle (layout only; button look comes from global .btn) */
@@ -793,6 +849,31 @@ onUnmounted(() => {
 }
 
 @media (max-width: 768px) {
+  /* The head actions share the title row: 選取 stays a word, 重新整理 becomes an icon (still named for screen readers) */
+  .conversations :deep(.ui-page-head) {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      'title actions'
+      'sub sub';
+  }
+
+  .conversations :deep(.ui-page-actions) {
+    flex-wrap: nowrap;
+    gap: 8px;
+    padding-top: 0;
+  }
+
+  .conversations :deep(.refresh-btn) {
+    width: 44px;
+    min-width: 44px;
+    padding: 0;
+  }
+
+  /* icon-only on phone; the button's aria-label carries the name */
+  .conversations :deep(.refresh-text) {
+    display: none;
+  }
+
   .filter-card {
     padding: 12px;
   }
@@ -803,12 +884,34 @@ onUnmounted(() => {
     width: 100%;
   }
 
+  /* Label over count: four tabs share the row evenly, nothing is clipped */
   .filter-top > .ui-seg .scope-tab {
-    flex: 1 0 auto;
+    flex: 1 1 0;
+    flex-direction: column;
     justify-content: center;
-    padding-right: 4px;
-    padding-left: 4px;
+    gap: 0;
+    min-width: 0;
+    padding: 4px 2px;
     font-size: 13px;
+    line-height: 1.25;
+  }
+
+  /* Stat tab: the count leads (large), the label sits under it */
+  .filter-top > .ui-seg .scope-tab .ui-seg-n {
+    order: -1;
+    margin-left: 0;
+    font: 700 18px/1.2 var(--ui-font-display);
+  }
+
+  .filter-top > .ui-seg .scope-tab:not(.is-on) .ui-seg-n {
+    color: var(--ui-ink-2);
+  }
+
+  /* The search and filters stay in reach while the list scrolls */
+  .filter-card {
+    position: sticky;
+    top: 8px;
+    z-index: 6;
   }
 
   .scope-tab.is-stale {

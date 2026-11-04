@@ -196,7 +196,7 @@
   onMounted(() => {
     void nextTick(() => { revealActive(); scheduleSettle() })
     if (typeof window.ResizeObserver !== 'undefined' && navEl.value) {
-      resizeObserver = new window.ResizeObserver(updateFades)
+      resizeObserver = new window.ResizeObserver(() => { updateFades(); scheduleSettle() })
       resizeObserver.observe(navEl.value)
     }
   })
@@ -325,12 +325,12 @@
     display: flex;
     align-items: center;
     gap: 10px;
-    height: 32px;
+    height: 31px;
     padding: 0 10px;
     margin-bottom: 1px;
     border-radius: 9px;
     color: var(--ui-ink-2);
-    font-size: 13.5px;
+    font-size: 14px;
     font-weight: 500;
     text-decoration: none;
     overflow: hidden;
@@ -364,7 +364,7 @@
     border-radius: 999px;
     background: var(--ui-red);
     color: #fff;
-    font: 600 11px/18px var(--ui-font-display);
+    font: 600 13px/18px var(--ui-font-display);
     text-align: center;
     font-variant-numeric: tabular-nums;
   }

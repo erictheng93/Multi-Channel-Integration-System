@@ -205,15 +205,13 @@ describe('TagConversationsModal', () => {
       expect(wrapper.find('.customer-name').text()).toBe('Charlie')
     })
 
-    it('renders active status badge with 進行中 label', async () => {
+    it('omits the badge for the default active status', async () => {
       mockGetTagConversations.mockResolvedValue(makeApiResponse([
         makeConversation({ status: 'active' }),
       ]))
       const wrapper = await openModal()
       await flushPromises()
-      const badge = wrapper.find('.status-badge')
-      expect(badge.text()).toBe('進行中')
-      expect(badge.classes()).toContain('status-active')
+      expect(wrapper.find('.status-badge').exists()).toBe(false)
     })
 
     it('renders closed status badge with 已結案 label', async () => {

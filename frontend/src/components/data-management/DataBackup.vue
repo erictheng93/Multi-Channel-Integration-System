@@ -6,26 +6,21 @@
     />
     <UiSectionNav section="data" />
 
-
     <!-- Lead: the newest automatic backup, the 30-day coverage arc and the one primary action -->
-    <RingLead
+    <BackupLanes
       kicker="最近自動備份"
       :value="leadValue"
-      :tone="statusTone === 'ok' ? 'good' : (statusTone === 'warn' ? 'warn' : 'none')"
+      :tone="statusTone === 'warn' ? 'warn' : ''"
       :meaning="leadMeaning"
       :busy="loading && !data"
-      summary="近 30 天備份"
-      :rings="coverageRings"
-      :center-value="coverageCenter"
-      center-label="有備份"
-      :size="144"
+      :items="data?.items ?? []"
+      :policy="policy"
     >
-      <p
-        v-if="storageLine"
-        class="lead-storage"
-      >
-        {{ storageLine }}
-      </p>
+      <span
+        v-if="data && data.lastAuto"
+        class="ui-pill lead-state"
+        :class="statusPill.className"
+      >{{ statusPill.label }}</span>
       <p
         v-if="message"
         class="message"
@@ -60,52 +55,7 @@
           >手動備份保留 {{ policy.retentionDays.manual }} 天</span>
         </div>
       </template>
-    </RingLead>
-
-    <!-- Retention strip: one cell per day, bar height = that day's total size -->
-    <section
-      v-if="data"
-      aria-label="每日備份"
-    >
-      <h2 class="ui-group-label">
-        近 {{ strip.length }} 天備份
-        <span class="label-note">{{ stripSummary }}</span>
-        <button
-          v-if="dayFilter"
-          type="button"
-          class="ui-chip label-chip"
-          @click="dayFilter = ''"
-        >
-          {{ dayFilterLabel }} ✕
-        </button>
-      </h2>
-      <div class="ui-group strip-card">
-        <ol
-          class="strip"
-          aria-label="每日備份狀態，點選可只看該日"
-        >
-          <li
-            v-for="cell in strip"
-            :key="cell.key"
-          >
-            <button
-              type="button"
-              class="cell"
-              :class="{ has: cell.count > 0, on: dayFilter === cell.key }"
-              :aria-pressed="dayFilter === cell.key"
-              :aria-label="cell.aria"
-              :disabled="cell.count === 0"
-              @click="dayFilter = dayFilter === cell.key ? '' : cell.key"
-            >
-              <span class="bar">
-                <i :style="{ height: cell.height + '%' }" />
-              </span>
-              <span class="num">{{ cell.day }}</span>
-            </button>
-          </li>
-        </ol>
-      </div>
-    </section>
+    </BackupLanes>
 
     <div class="list-row">
       <section class="list-card">
@@ -278,56 +228,102 @@
       </section>
 
       <div class="side-col">
-        <aside
-          v-if="data && summary.total > 0"
-          aria-label="備份概覽"
+        <!-- Calendar: one tile per day under its weekday (green = has a backup, orange = none, grey = before the first backup) -->
+        <details
+          v-if="data"
+          class="cal"
+          aria-label="每日備份"
+          :open="calOpen"
+          @toggle="calOpen = ($event.target as HTMLDetailsElement).open"
         >
-          <h2 class="ui-group-label">
-            備份概覽
-          </h2>
-          <div class="ui-group sum-card">
-            <div class="sum-big">
-              {{ formatBytes(summary.size) }}<small>{{ summary.total.toLocaleString() }} 份</small>
-            </div>
-            <p class="sum-span">
-              {{ summary.span }}
+          <summary class="ui-group-label cal-head">
+            近 {{ strip.length }} 天備份
+            <button
+              v-if="dayFilter"
+              type="button"
+              class="ui-chip label-chip"
+              @click.prevent="dayFilter = ''"
+            >
+              {{ dayFilterLabel }} ✕
+            </button>
+            <span class="cal-count">{{ coverageDays.have }} / {{ coverageDays.total }} 天</span>
+          </summary>
+          <div class="ui-group cal-card">
+            <p class="cal-sum">
+              <b>{{ coverageDays.have }}</b><span> / {{ coverageDays.total }} 天有備份</span>
+              <span class="cal-since">{{ calRange }}</span>
+              <span
+                v-if="coverageDays.before > 0"
+                class="cal-since"
+              >前 {{ coverageDays.before }} 天備份尚未啟用，不列入</span>
+              <span
+                class="cal-gap"
+                :class="{ 'is-miss': missingDays.length > 0 }"
+              >{{ missingDays.length === 0 ? '每天都有備份，沒有缺口' : `缺少 ${missingDays.join('、')} 的備份` }}</span>
             </p>
-            <ul class="sum-list">
+            <div
+              class="cal-week"
+              aria-hidden="true"
+            >
+              <span
+                v-for="w in WEEKDAYS"
+                :key="w"
+              >{{ w }}</span>
+            </div>
+            <ol
+              class="strip"
+              aria-label="每日備份狀態，點選可只看該日"
+            >
               <li
-                v-for="row in summary.tiers"
-                :key="row.key"
+                v-for="(cell, i) in strip"
+                :key="cell.key"
+                :style="i === 0 ? { gridColumnStart: cell.col + 1 } : undefined"
               >
-                <span class="sum-row">
-                  <span>{{ row.label }}</span>
-                  <span class="sum-n">{{ row.count }} 份 · {{ formatBytes(row.size) }}</span>
-                </span>
-                <span
-                  class="sum-bar"
-                  aria-hidden="true"
-                ><i :style="{ width: row.share + '%' }" /></span>
+                <button
+                  type="button"
+                  class="cell"
+                  :class="{ has: cell.count > 0, on: dayFilter === cell.key, today: cell.today, before: cell.before }"
+                  :title="cell.aria"
+                  :aria-pressed="dayFilter === cell.key"
+                  :aria-label="cell.aria"
+                  :disabled="cell.count === 0"
+                  @click="dayFilter = dayFilter === cell.key ? '' : cell.key"
+                >
+                  <span class="num">{{ cell.label }}</span>
+                </button>
               </li>
-            </ul>
+            </ol>
+            <p class="cal-key">
+              <span><i class="k-has" />有備份</span>
+              <span><i class="k-miss" />沒有備份</span>
+              <span v-if="coverageDays.before > 0"><i class="k-before" />尚未啟用</span>
+              <span><i class="k-today" />今天</span>
+            </p>
           </div>
-        </aside>
+        </details>
+
+        <!-- The newest file of every kind: the answer to "is each kind of backup still running" -->
         <section
-          v-if="policy"
-          aria-label="保留期限"
+          v-if="latestByTier.length > 0"
+          class="latest"
+          aria-label="各類最新備份"
         >
           <h2 class="ui-group-label">
-            保留期限
-            <span class="label-note">設定值</span>
+            各類最新備份
           </h2>
-          <div class="ui-group keep-card">
-            <dl class="keep-list">
-              <div
-                v-for="row in retentionRows"
-                :key="row.key"
-              >
-                <dt>{{ row.label }}</dt>
-                <dd>{{ row.days }} 天</dd>
-              </div>
-            </dl>
-          </div>
+          <ul class="ui-group latest-card">
+            <li
+              v-for="row in latestByTier"
+              :key="row.tier"
+            >
+              <span
+                class="ui-pill"
+                :class="tierPill(row.tier)"
+              >{{ tierLabel(row.tier) }}</span>
+              <span class="lt-when">{{ formatDate(row.uploaded) }}</span>
+              <span class="lt-size">{{ formatBytes(row.size) }}</span>
+            </li>
+          </ul>
         </section>
       </div>
     </div>
@@ -338,8 +334,7 @@
 import UiEmptyState from '@/components/ui/UiEmptyState.vue'
 import UiPageHead from '@/components/ui/UiPageHead.vue'
 import UiSectionNav from '@/components/ui/UiSectionNav.vue'
-import RingLead from '@/components/lead/RingLead.vue'
-import type { ServiceRing } from '@/components/ui/ServiceRings.vue'
+import BackupLanes from './BackupLanes.vue'
 import { computed, onMounted, ref } from 'vue'
 import { listBackups, runBackup, downloadBackup, type BackupItem, type BackupList } from '@/api/backup'
 
@@ -367,16 +362,8 @@ const TIER_LABELS: Record<string, string> = {
   assignments: '指派',
   manual: '手動'
 }
+const WEEKDAYS = ['一', '二', '三', '四', '五', '六', '日']
 const TIER_ORDER = ['manual', 'daily', 'monthly', 'members', 'tags', 'assignments']
-const RETENTION_LABELS: Record<string, string> = {
-  daily: '每日備份保留',
-  monthly: '每月備份保留',
-  manual: '手動備份保留',
-  members: '人員備份保留',
-  tags: '標籤備份保留',
-  assignments: '指派備份保留'
-}
-
 interface DayGroup {
   key: string
   label: string
@@ -390,7 +377,13 @@ interface StripCell {
   day: number
   count: number
   size: number
-  height: number
+  today: boolean
+  /** 0 = Monday ... 6 = Sunday */
+  col: number
+  /** a day before the first backup ever made: not a miss, the schedule did not exist yet */
+  before: boolean
+  /** the day number, or month/day on the 1st and on the first tile */
+  label: string
   aria: string
 }
 
@@ -426,16 +419,6 @@ const scheduleText = computed(() => {
   return `每日 ${p.schedule.localTime}（${zone}）自動執行`
 })
 
-const retentionRows = computed(() => {
-  const p = policy.value
-  if (!p) {
-    return []
-  }
-  return (Object.keys(RETENTION_LABELS) as Array<keyof typeof p.retentionDays>)
-    .filter(key => typeof p.retentionDays[key] === 'number')
-    .map(key => ({ key, label: (RETENTION_LABELS[key] ?? key).replace('保留', ''), days: p.retentionDays[key] }))
-})
-
 /** Healthy when the newest automatic backup is recent; derived from the real timestamp. */
 const statusPill = computed(() => {
   const last = data.value?.lastAuto
@@ -464,6 +447,22 @@ const tierChips = computed(() => {
     { key: 'all', label: '全部', count: data.value?.count ?? 0 },
     ...keys.map(key => ({ key, label: tierLabel(key), count: counts[key] ?? 0 }))
   ]
+})
+
+const calRange = computed(() => {
+  const first = strip.value[0]
+  const last = strip.value[strip.value.length - 1]
+  const md = (key: string) => `${Number(key.slice(5, 7))}/${Number(key.slice(8, 10))}`
+  return first && last ? `${md(first.key)} 至 ${md(last.key)}` : ''
+})
+
+/** Newest file per kind of backup (the list arrives newest first) */
+const latestByTier = computed(() => {
+  const seen = new Map<string, BackupItem>()
+  for (const item of data.value?.items ?? []) {
+    if (!seen.has(item.tier)) { seen.set(item.tier, item) }
+  }
+  return [...seen.values()].sort((a, b) => tierRank(a.tier) - tierRank(b.tier))
 })
 
 const visibleItems = computed(() => {
@@ -543,35 +542,6 @@ const sections = computed<Section[]>(() => {
   return out
 })
 
-/** Totals over every listed file (not just the page shown), grouped by type */
-const summary = computed(() => {
-  const items = data.value?.items ?? []
-  const size = items.reduce((sum, item) => sum + item.size, 0)
-  const byTier = new Map<string, { count: number; size: number }>()
-  let oldest = Infinity
-  let newest = -Infinity
-  for (const item of items) {
-    const entry = byTier.get(item.tier) ?? { count: 0, size: 0 }
-    entry.count += 1
-    entry.size += item.size
-    byTier.set(item.tier, entry)
-    const at = new Date(item.uploaded).getTime()
-    oldest = Math.min(oldest, at)
-    newest = Math.max(newest, at)
-  }
-  const tiers = Array.from(byTier.entries())
-    .sort((a, b) => tierRank(a[0]) - tierRank(b[0]))
-    .map(([key, entry]) => ({
-      key,
-      label: tierLabel(key),
-      count: entry.count,
-      size: entry.size,
-      share: size > 0 ? Math.max(3, Math.round((entry.size / size) * 100)) : 0
-    }))
-  const span = items.length > 0 ? `${shortDate(new Date(oldest))} 至 ${shortDate(new Date(newest))}，共 ${tiers.length} 種類型` : ''
-  return { total: items.length, size, span, tiers }
-})
-
 /** The last N calendar days (N = daily retention, at most 30), oldest to newest, from the real file list */
 const strip = computed<StripCell[]>(() => {
   const items = data.value?.items ?? []
@@ -584,11 +554,12 @@ const strip = computed<StripCell[]>(() => {
     entry.size += item.size
     perDay.set(key, entry)
   }
-  const max = Math.max(1, ...Array.from(perDay.values()).map(entry => entry.size))
+  const firstDay = items.length > 0 ? dayKey(new Date(Math.min(...items.map(item => new Date(item.uploaded).getTime())))) : ''
   const cells: StripCell[] = []
   for (let i = span - 1; i >= 0; i--) {
     const d = new Date(Date.now() - i * 24 * 3600 * 1000)
     const key = dayKey(d)
+    const dow = (new Date(`${key}T12:00:00+08:00`).getUTCDay() + 6) % 7
     const entry = perDay.get(key)
     const count = entry?.count ?? 0
     const size = entry?.size ?? 0
@@ -597,18 +568,14 @@ const strip = computed<StripCell[]>(() => {
       day: Number(key.slice(8, 10)),
       count,
       size,
-      height: size > 0 ? Math.max(18, Math.round((size / max) * 100)) : 0,
-      aria: entry ? `${dayLabel(d)} ${dayDate(d)}，${count} 份，${formatBytes(size)}` : `${dayDate(d)}，沒有備份`
+      today: i === 0,
+      before: !entry && firstDay !== '' && key < firstDay,
+      col: dow,
+      label: Number(key.slice(8, 10)) === 1 || i === span - 1 ? `${Number(key.slice(5, 7))}/${Number(key.slice(8, 10))}` : String(Number(key.slice(8, 10))),
+      aria: entry ? `${dayLabel(d)} ${dayDate(d)}，${count} 份，${formatBytes(size)}` : (!entry && firstDay !== '' && key < firstDay ? `${dayDate(d)}，備份尚未啟用` : `${dayDate(d)}，沒有備份`)
     })
   }
   return cells
-})
-
-const stripSummary = computed(() => {
-  const cells = strip.value
-  const have = cells.filter(cell => cell.count > 0).length
-  const missing = cells.length - have
-  return missing === 0 ? `每天都有備份，共 ${cells.length} 天` : `${cells.length} 天中有 ${have} 天有備份，${missing} 天沒有`
 })
 
 const leadValue = computed(() => {
@@ -619,33 +586,32 @@ const leadValue = computed(() => {
 const leadMeaning = computed(() => {
   if (!data.value) { return '' }
   if (!data.value.lastAuto) { return '尚未有自動備份記錄' }
-  return [scheduleText.value, statusPill.value.label === '已逾期' ? '已逾期' : ''].filter(Boolean).join(' · ')
+  const auto = new Date(data.value.lastAuto.uploaded).getTime()
+  const manual = data.value.items.find(item => item.tier === 'manual')
+  const newer = manual && new Date(manual.uploaded).getTime() > auto ? `之後有手動備份 ${formatDate(manual.uploaded)}` : ''
+  return [scheduleText.value, newer, statusPill.value.label === '已逾期' ? '已逾期' : ''].filter(Boolean).join(' · ')
 })
 
-const storageLine = computed(() =>
-  data.value && summary.value.total > 0
-    ? `儲存 ${formatBytes(summary.value.size)} · ${summary.value.total.toLocaleString()} 份備份`
-    : '')
+/** Days that should have a backup and have none (today is excused until its run has had time to land) */
+const missingDays = computed(() =>
+  strip.value
+    .filter(cell => cell.count === 0 && !cell.before && !cell.today)
+    .slice(0, 4)
+    .map(cell => cell.label.includes('/') ? cell.label : `${cell.key.slice(5, 7).replace(/^0/, '')}/${cell.label}`),
+)
 
 /** One arc: days of the last 30 (or the daily retention) that have at least one backup */
-const coverageDays = computed(() => ({
-  have: strip.value.filter(cell => cell.count > 0).length,
-  total: strip.value.length
-}))
-
-const coverageRings = computed<ServiceRing[]>(() => {
-  if (!data.value || coverageDays.value.total === 0) { return [] }
-  const ratio = coverageDays.value.have / coverageDays.value.total
-  return [{
-    label: `近 ${coverageDays.value.total} 天有備份`,
-    value: coverageDays.value.have,
-    total: coverageDays.value.total,
-    of: '天',
-    hue: ratio >= 0.9 ? 'var(--ui-green)' : (ratio >= 0.7 ? 'var(--ui-orange)' : 'var(--ui-red)')
-  }]
+const coverageDays = computed(() => {
+  const before = strip.value.filter(cell => cell.before).length
+  return {
+    have: strip.value.filter(cell => cell.count > 0).length,
+    total: strip.value.length - before,
+    before
+  }
 })
 
-const coverageCenter = computed(() => `${coverageDays.value.have}/${coverageDays.value.total}`)
+/** The calendar is a filter for the list: open on desktop, folded behind its heading on a phone */
+const calOpen = ref(typeof window === 'undefined' || typeof window.matchMedia !== 'function' ? true : !window.matchMedia('(max-width: 768px)').matches)
 
 const dayFilterLabel = computed(() => {
   if (!dayFilter.value) {
@@ -800,12 +766,6 @@ onMounted(load)
   align-items: center;
 }
 
-.lead-storage {
-  margin: 4px 0 0;
-  font-size: 13px;
-  color: var(--ui-muted);
-}
-
 .label-note {
   font-size: 13px;
   font-weight: 400;
@@ -846,111 +806,178 @@ onMounted(load)
   color: var(--ui-red-ink);
 }
 
-/* Retention policy: configuration constants, listed as a compact two-column key/value block */
-.keep-card {
-  padding: 20px 22px;
+/* Calendar: weekday columns, one tile per day (green = has a backup, orange = none) */
+.cal-card {
+  padding: 16px 18px 14px;
 }
 
-.keep-list {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 0;
-  margin: 0;
-}
-
-.keep-list > div {
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 7px 0;
+.cal-sum {
+  margin: 0 0 12px;
   font-size: 13.5px;
-  box-shadow: 0 0.5px 0 var(--ui-sep);
-}
-
-.keep-list dt {
   color: var(--ui-muted);
 }
 
-.keep-list dd {
-  margin: 0;
+.cal-gap {
+  display: block;
+  margin-top: 6px;
+  font-size: 14px;
   font-weight: 600;
+  color: var(--ui-green-ink);
+}
+
+.cal-gap.is-miss {
+  color: var(--ui-orange-ink);
+}
+
+.cal-since {
+  display: block;
+  margin-top: 2px;
+  font-size: 13px;
+}
+
+.cal-head {
+  cursor: pointer;
+  list-style: none;
+}
+
+.cal-head::-webkit-details-marker {
+  display: none;
+}
+
+.cal-count {
+  display: none;
+  margin-left: auto;
+  font-weight: 500;
+  color: var(--ui-muted);
+}
+
+.cal-sum b {
+  font: 600 26px var(--ui-font-display);
+  letter-spacing: -0.02em;
+  color: var(--ui-ink);
   font-variant-numeric: tabular-nums;
 }
 
-/* Day strip */
+.cal-week,
 .strip {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
-  grid-auto-flow: column;
-  gap: 6px;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.cal-week {
+  margin-bottom: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: center;
+  color: var(--ui-muted);
+}
+
+.strip {
   margin: 0;
-  padding: 18px 22px 20px;
+  padding: 0;
   list-style: none;
+}
+
+.cal-key {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px 12px;
+  margin: 12px 0 0;
+  font-size: 13px;
+  color: var(--ui-muted);
+}
+
+.cal-key span {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.cal-key {
+  font-size: 13px;
+  color: var(--ui-ink-2);
+}
+
+.cal-key i {
+  width: 16px;
+  height: 16px;
+  border-radius: 5px;
+}
+
+.k-has {
+  background: color-mix(in srgb, var(--ui-green) 22%, var(--ui-surface));
+}
+
+.k-miss {
+  background: var(--ui-orange-soft);
+  box-shadow: inset 0 0 0 1.5px var(--ui-orange);
+}
+
+.k-before {
+  background: var(--ui-fill);
+}
+
+.k-today {
+  background: var(--ui-surface-2);
+  box-shadow: inset 0 0 0 2px var(--ui-ink);
 }
 
 .cell {
   display: grid;
+  place-items: center;
   width: 100%;
-  gap: 6px;
-  justify-items: center;
+  height: 42px;
   padding: 0;
   border: 0;
-  background: none;
-  color: var(--ui-muted);
+  border-radius: 11px;
+  background: var(--ui-orange-soft);
+  color: var(--ui-orange-ink);
   font: inherit;
-  cursor: pointer;
-}
-
-.cell:disabled {
   cursor: default;
 }
 
-.bar {
-  position: relative;
-  display: flex;
-  align-items: flex-end;
-  width: 100%;
-  height: 64px;
-  overflow: hidden;
-  border-radius: 8px;
+.cell.before {
   background: var(--ui-fill);
+  color: var(--ui-muted);
 }
 
-.cell:not(.has) .bar {
-  background: none;
-  box-shadow: inset 0 0 0 1.5px var(--ui-fill-strong);
+.cell.has {
+  position: relative;
+  background: color-mix(in srgb, var(--ui-green) 15%, var(--ui-surface));
+  color: var(--ui-ink);
+  cursor: pointer;
+  transition: background var(--ui-dur) var(--ui-ease), color var(--ui-dur) var(--ui-ease);
 }
 
-.bar i {
-  display: block;
-  width: 100%;
-  border-radius: 6px 6px 0 0;
-  background: color-mix(in srgb, var(--ui-green) 70%, var(--ui-surface));
-  transition: background var(--ui-dur) var(--ui-ease);
+.cell.has:hover {
+  background: color-mix(in srgb, var(--ui-green) 24%, var(--ui-surface));
 }
 
-.cell.has:hover .bar i,
-.cell.on .bar i {
+.cell.today {
+  box-shadow: inset 0 0 0 2px var(--ui-ink);
+}
+
+.cell.on,
+.cell.on:hover {
   background: var(--ui-accent);
+  color: #fff;
 }
 
-.cell.on .bar {
-  box-shadow: 0 0 0 2px var(--ui-accent);
-}
-
-.cell:focus-visible .bar {
+.cell:focus-visible {
   outline: 2px solid var(--ui-accent);
   outline-offset: 2px;
 }
 
 .num {
-  font-size: 11.5px;
+  font-size: 14px;
+  white-space: nowrap;
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
 
-.cell.on .num {
-  font-weight: 700;
-  color: var(--ui-accent);
+.lead-state {
+  margin-top: 10px;
 }
 
 .list-body {
@@ -984,10 +1011,10 @@ onMounted(load)
   color: var(--ui-orange-ink);
 }
 
-/* Recent days stay open; older days fold into weeks. The list sits beside a sticky summary. */
+/* Recent days stay open; older days fold into weeks. The list sits beside a sticky calendar. */
 .list-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 300px;
+  grid-template-columns: minmax(0, 1fr) 320px;
   gap: 16px;
   align-items: start;
 }
@@ -1058,73 +1085,39 @@ onMounted(load)
   background: var(--ui-surface-2);
 }
 
-/* Sticky summary */
+.latest-card {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 6px 18px 8px;
+  list-style: none;
+}
+
+.latest-card li {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 0;
+  font-size: 14px;
+}
+
+.lt-when {
+  color: var(--ui-ink-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.lt-size {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Sticky calendar */
 .side-col {
   position: sticky;
   top: 16px;
   display: grid;
   gap: 16px;
-}
-
-.sum-card {
-  padding: 20px 22px;
-}
-
-.sum-big {
-  font: 600 28px / 1.2 var(--ui-font-display);
-  letter-spacing: -0.02em;
-  font-variant-numeric: tabular-nums;
-}
-
-.sum-big small {
-  margin-left: 8px;
-  font: 500 14px var(--ui-font-ui);
-  letter-spacing: 0;
-  color: var(--ui-muted);
-}
-
-.sum-span {
-  margin: 4px 0 14px;
-  font-size: 13px;
-  color: var(--ui-muted);
-}
-
-.sum-list {
-  display: grid;
-  gap: 12px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.sum-row {
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
-  font-size: 13.5px;
-  font-weight: 500;
-}
-
-.sum-n {
-  font-weight: 400;
-  color: var(--ui-muted);
-  font-variant-numeric: tabular-nums;
-}
-
-.sum-bar {
-  display: block;
-  height: 6px;
-  margin-top: 6px;
-  overflow: hidden;
-  border-radius: 999px;
-  background: var(--ui-fill);
-}
-
-.sum-bar i {
-  display: block;
-  height: 100%;
-  border-radius: 999px;
-  background: var(--ui-accent);
 }
 
 .day-head {
@@ -1147,7 +1140,7 @@ onMounted(load)
 }
 
 .day-sum {
-  font-size: 12.5px;
+  font-size: 13px;
   color: var(--ui-muted);
   font-variant-numeric: tabular-nums;
 }
@@ -1173,15 +1166,24 @@ onMounted(load)
   width: 100%;
 }
 
+.brow-main {
+  display: flex;
+  gap: 4px 12px;
+  align-items: baseline;
+  min-width: 0;
+}
+
 .brow-name {
+  flex: none;
   font-size: 14px;
   font-weight: 600;
 }
 
 .brow-file {
+  min-width: 0;
   overflow: hidden;
-  font: 12px / 1.4 var(--ui-font-mono);
-  color: var(--ui-muted);
+  font: 13px / 1.4 var(--ui-font-mono);
+  color: var(--ui-ink-2);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -1198,7 +1200,7 @@ onMounted(load)
 }
 
 .brow-stat small {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--ui-muted);
 }
 
@@ -1223,25 +1225,54 @@ onMounted(load)
     grid-template-columns: minmax(0, 1fr);
   }
 
+  /* the calendar comes first: they say how the backups are doing before the file list does */
   .side-col {
     position: static;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+    order: -1;
   }
 }
 
 @media (max-width: 768px) {
+  /* the file list below already shows each kind's newest file */
+  .latest {
+    display: none;
+  }
+
   .lead-act .btn {
     width: 100%;
     justify-content: center;
   }
 
-  .strip {
-    grid-auto-flow: row;
-    grid-template-columns: repeat(10, minmax(0, 1fr));
-    gap: 8px 4px;
-    padding: 16px 16px 18px;
+  .side-col {
+    grid-template-columns: minmax(0, 1fr);
   }
 
-  .bar {
+  .cal-card {
+    padding: 14px 14px 12px;
+  }
+
+  /* folded by default on a phone, the heading carries the count */
+  .cal-count {
+    display: inline;
+  }
+
+  .cal-head::after {
+    width: 8px;
+    height: 8px;
+    margin-left: 4px;
+    border-right: 2px solid var(--ui-muted);
+    border-bottom: 2px solid var(--ui-muted);
+    content: '';
+    transform: rotate(45deg) translateY(-2px);
+  }
+
+  .cal[open] .cal-head::after {
+    transform: rotate(-135deg);
+  }
+
+  .cell {
     height: 40px;
   }
 
@@ -1256,23 +1287,43 @@ onMounted(load)
     padding-left: 10px;
   }
 
-  /* the type is already in the name; the file name wraps instead of clipping */
+  /* the type is already in the name; the file name takes a full-width line of its own so it never wraps */
   .brow {
-    grid-template-columns: minmax(0, 1fr) auto 36px;
-    gap: 8px;
+    display: grid;
+    grid-template:
+      'name stat dl' auto
+      'file file file' auto / minmax(0, 1fr) auto 36px;
+    gap: 2px 8px;
+  }
+
+  .brow-main {
+    display: contents;
+  }
+
+  .brow-name {
+    grid-area: name;
+    align-self: center;
+  }
+
+  .brow-file {
+    grid-area: file;
+    overflow: hidden;
+    font-size: 13px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .brow-stat {
+    grid-area: stat;
+  }
+
+  .brow-dl {
+    grid-area: dl;
   }
 
   .brow-type {
     display: none;
   }
 
-  .brow-file {
-    overflow-wrap: anywhere;
-    white-space: normal;
-  }
-
-  .keep-list {
-    gap: 2px 16px;
-  }
 }
 </style>

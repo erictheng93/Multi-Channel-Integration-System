@@ -58,13 +58,13 @@
         </label>
       </div>
 
-      <label class="ui-field">
+      <label class="ui-field field-grow">
         <span class="lbl">訊息內容 <small>選填，可只發圖片</small></span>
         <textarea
           v-model.trim="content"
           class="ui-textarea"
           maxlength="2000"
-          rows="6"
+          rows="4"
           placeholder="輸入文字（選填，可只發圖片）"
         />
         <span class="ui-hint hint-split"><span>LINE 單則文字上限 2,000 字</span><span class="num">{{ content.length }} / 2000</span></span>
@@ -150,14 +150,6 @@
               >
             </label>
           </li>
-          <li
-            v-for="slot in emptySlots"
-            :key="`slot-${slot}`"
-            class="image-slot"
-            aria-hidden="true"
-          >
-            {{ slot }}
-          </li>
         </ul>
         <div
           role="status"
@@ -197,7 +189,7 @@
             將發送給 <b>{{ currentPreview.sendable }}</b> 位 LINE 客戶，送出時會凍結名單。
           </template>
           <template v-else-if="missing.length">
-            還需要：<b class="missing">{{ missing.join('、') }}</b>
+            <span class="need">還需要：<b class="missing">{{ missing.join('、') }}</b></span>
           </template>
           <template v-else-if="imagesBusy">
             圖片上傳完成後即可發送。
@@ -428,10 +420,6 @@
     if (!content.value && !images.value.length) {items.push('文字或圖片')}
     return items
   })
-  // The unused slots after the add tile, numbered, so the 4-image limit reads as a row
-  const emptySlots = computed(() =>
-    Array.from({ length: Math.max(MAX_IMAGES - images.value.length - 1, 0) }, (_, i) => images.value.length + i + 2)
-  )
   const imagesBusy = computed(() => !imagesReady.value)
 
   const canSubmit = computed(
@@ -505,11 +493,16 @@
 
 <style scoped>
   .compose-card {
+    display: flex;
+    flex-direction: column;
     padding-bottom: 0;
   }
 
+  /* the message box takes whatever height the preview column adds, so the card never ends in blank space */
   .compose-form {
-    display: grid;
+    display: flex;
+    flex: 1;
+    flex-direction: column;
     gap: 18px;
     padding: 4px 22px 0;
   }
@@ -544,7 +537,16 @@
   }
 
   .ui-textarea {
-    min-height: 150px;
+    min-height: 96px;
+  }
+
+  .field-grow {
+    flex: 1;
+    grid-template-rows: auto minmax(96px, 1fr) auto;
+  }
+
+  .field-grow .ui-textarea {
+    resize: none;
   }
 
   .image-grid {
@@ -554,18 +556,6 @@
     margin: 0;
     padding: 0;
     list-style: none;
-  }
-
-  .image-slot {
-    display: grid;
-    aspect-ratio: 1;
-    place-items: center;
-    border: 1.5px dashed rgba(60, 60, 67, 0.22);
-    border-radius: var(--ui-r-inner);
-    background: transparent;
-    font-size: var(--ui-t-meta);
-    font-variant-numeric: tabular-nums;
-    color: var(--ui-muted);
   }
 
   .image-tile,
@@ -655,8 +645,20 @@
   }
 
   .image-add {
-    background: var(--ui-surface);
+    background: var(--ui-surface-2);
     box-shadow: inset 0 0 0 1px var(--ui-sep);
+  }
+
+  /* Nothing picked yet: the add control is one wide row, not a lone square with empty siblings */
+  .image-grid:has(> .image-add:only-child) .image-add {
+    grid-column: 1 / -1;
+    aspect-ratio: auto;
+    min-height: 56px;
+  }
+
+  .image-grid:has(> .image-add:only-child) .image-picker {
+    grid-auto-flow: column;
+    gap: 8px;
   }
 
   .image-picker {
@@ -730,13 +732,18 @@
 
   .foot-note {
     margin: 0;
-    font-size: 13px;
-    color: var(--ui-muted);
+    font-size: 14px;
+    color: var(--ui-ink-2);
+  }
+
+  /* An unmet requirement is a plain hint, not a warning: the button keeps its colour and validates on press */
+  .need {
+    color: var(--ui-ink-2);
   }
 
   .foot-note b.missing {
     font-weight: 600;
-    color: var(--ui-orange-ink);
+    color: var(--ui-ink);
   }
 
   .foot-note b {
@@ -756,6 +763,17 @@
     }
     .image-grid {
       gap: 8px;
+    }
+    .foot-note {
+      flex: 1 0 100%;
+    }
+    /* the send action stays within reach while the long form scrolls */
+    .compose-foot {
+      position: sticky;
+      bottom: 0;
+      z-index: 2;
+      background: var(--ui-surface);
+      border-radius: 0 0 var(--ui-r-group) var(--ui-r-group);
     }
     .actions {
       width: 100%;

@@ -123,9 +123,9 @@ describe('RuleList -- rendering', () => {
 // ===========================================================================
 
 describe('RuleList -- emitted events', () => {
-  it('emits start-create on create button click', async () => {
-    const wrapper = mountRuleList()
-    await wrapper.find('.rule-list__toolbar .btn-primary').trigger('click')
+  it('emits start-create from the empty-state button (the toolbar add button moved to the page header)', async () => {
+    const wrapper = mountRuleList({ rules: [] })
+    await wrapper.find('.rule-list__empty .btn-primary').trigger('click')
     expect(wrapper.emitted('start-create')).toBeTruthy()
     expect(wrapper.emitted('start-create')).toHaveLength(1)
   })

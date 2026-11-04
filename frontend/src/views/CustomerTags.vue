@@ -23,18 +23,11 @@
       />
 
       <!-- Stats Overview -->
-      <TagsStats :stats="stats" />
-
-      <!-- Toolbar -->
-      <TagsToolbar
-        v-model:search-query="search.searchQuery.value"
-        :has-selection="selection.hasSelection.value"
-        :selection-count="selection.selectionCount.value"
-        :is-searching="search.isSearching.value"
-        :filtered-count="search.filteredTags.value.length"
-        :total-count="stats.totalTags"
-        @bulk-delete="openBulkDeleteModal"
-        @clear-selection="selection.clearSelection"
+      <TagsStats
+        :stats="stats"
+        :tags="allTags"
+        :active-tag-id="conversationsTag?.id ?? null"
+        @select="openMapTag"
       />
 
       <!-- Tags List + conversations side panel -->
@@ -48,6 +41,18 @@
           aria-label="標籤列表"
           :aria-busy="loading"
         >
+          <!-- Search + bulk actions share the list column -->
+          <TagsToolbar
+            v-model:search-query="search.searchQuery.value"
+            :has-selection="selection.hasSelection.value"
+            :selection-count="selection.selectionCount.value"
+            :is-searching="search.isSearching.value"
+            :filtered-count="search.filteredTags.value.length"
+            :total-count="stats.totalTags"
+            @bulk-delete="openBulkDeleteModal"
+            @clear-selection="selection.clearSelection"
+          />
+
           <!-- Loading State -->
           <div
             v-if="loading && tags.length === 0"
@@ -68,7 +73,6 @@
             @select-tag="selection.toggleTagSelection"
             @edit-tag="openEditModal"
             @delete-tag="openDeleteModal"
-            @view-stats="openStatsModal"
             @view-conversations="openConversationsModal"
           />
         </div>
@@ -171,7 +175,6 @@ const {
   openCreateModal,
   openEditModal,
   openDeleteModal,
-  openStatsModal,
   openConversationsModal,
   openBulkDeleteModal,
   initialize,
@@ -233,6 +236,12 @@ watch(allTags, (list) => {
 
 // ==================== Methods ====================
 
+// A tile on the tag map opens that tag's customers (side panel on desktop, sheet below)
+const openMapTag = (id: number) => {
+  const tag = allTags.value.find((t) => t.id === id)
+  if (tag) { openConversationsModal(tag) }
+}
+
 // Edit / delete from the detail panel or sheet (the sheet closes first on phones)
 const editActiveTag = () => {
   const tag = conversationsTag.value
@@ -292,8 +301,8 @@ onUnmounted(() => {
   position: relative;
   min-width: 0;
   min-height: 420px;
-  /* tops line up with the first group row, below the group label */
-  margin-top: 29px;
+  /* the panel starts level with the search box and runs as far as the list */
+  margin-top: 0;
 }
 
 /* The panel is exactly as tall as the tag grid; a long list scrolls inside it */
@@ -307,6 +316,20 @@ onUnmounted(() => {
   width: 100%;
   height: 100%;
   max-height: none;
+}
+
+.tags-content {
+  display: grid;
+  gap: 12px;
+  align-content: start;
+}
+
+.tags-content :deep(.search-box) {
+  max-width: none;
+}
+
+.tags-content :deep(.toolbar-section) {
+  flex-wrap: nowrap;
 }
 
 .loading-state {
@@ -326,5 +349,25 @@ onUnmounted(() => {
 
 /* ==================== Responsive Design ==================== */
 @media (max-width: 768px) {
+}
+
+/* Phone: the title and its action share one row (the shared head drops actions under the subtitle) */
+@media (max-width: 768px) {
+  .customer-tags :deep(.ui-page-head) {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      'title actions'
+      'sub sub';
+    align-items: center;
+  }
+
+  .customer-tags :deep(.ui-page-actions) {
+    padding-top: 0;
+    min-height: 0;
+  }
+
+  .customer-tags :deep(.ui-page-actions > .btn-primary) {
+    flex: none;
+  }
 }
 </style>

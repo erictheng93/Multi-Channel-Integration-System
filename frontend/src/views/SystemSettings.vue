@@ -10,9 +10,24 @@
     <div class="ui-page system-settings">
       <UiPageHead
         :subtitle="section ? section.subtitle : ''"
+        :tile="!brand"
       >
         <template #title>
-          {{ section?.title ?? '系統設定' }}
+          <span
+            v-if="brand"
+            class="brand-tile"
+            :class="`is-${brand}`"
+            aria-hidden="true"
+          >
+            <svg
+              v-if="brand === 'line'"
+              viewBox="0 0 24 24"
+            ><path d="M12 3C6.5 3 2 6.6 2 11c0 2.5 1.4 4.7 3.7 6.2L5 21l4.1-2.3c.9.2 1.9.3 2.9.3 5.5 0 10-3.6 10-8s-4.5-8-10-8Z" /></svg>
+            <svg
+              v-else
+              viewBox="0 0 24 24"
+            ><path d="M12 2C6.4 2 2 6.1 2 11.7c0 2.9 1.2 5.4 3.2 7.2V22l3-1.6c1.2.3 2.4.5 3.8.5 5.6 0 10-4.1 10-9.7S17.6 2 12 2Zm1 12.4-2.6-2.7-5 2.7 5.5-5.8 2.6 2.7 4.9-2.7Z" /></svg>
+          </span>{{ section?.title ?? '系統設定' }}
         </template>
         <template
           v-if="section && section.key === 'health'"
@@ -21,8 +36,8 @@
           <button
             type="button"
             class="btn btn-primary"
-            :disabled="controller.processing.value"
-            @click="controller.healthCheck(true)"
+            :aria-busy="controller.processing.value || undefined"
+            @click="!controller.processing.value && controller.healthCheck(true)"
           >
             <svg
               class="act-ico"
@@ -72,6 +87,7 @@
           class="settings-actions"
           label="儲存設定"
         >
+          <span class="settings-state">有尚未儲存的變更</span>
           <button
             type="button"
             class="btn btn-secondary"
@@ -113,6 +129,12 @@ const route = useRoute()
 const section = computed(() => findSettingsSection(route.name))
 
 // Pages with a form and a save button (everything but the health check)
+/** The two integration pages wear their platform's mark instead of the generic gear */
+const brand = computed<'line' | 'facebook' | null>(() => {
+  const key = section.value?.key
+  return key === 'line' || key === 'facebook' ? key : null
+})
+
 const isForm = computed(() => !!section.value && section.value.key !== 'health')
 // Facebook and advanced keep one readable column; general and LINE lay out a context column beside it
 const isNarrow = computed(() => section.value?.key === 'facebook' || section.value?.key === 'advanced')
@@ -189,10 +211,60 @@ onUnmounted(() => controller.cleanup())
   min-width: 0;
 }
 
+.brand-tile {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  margin-right: 14px;
+  border-radius: 11px;
+  vertical-align: middle;
+  box-shadow: inset 0 0 0 0.5px rgba(0, 0, 0, 0.08);
+}
+.brand-tile.is-line {
+  background: var(--ui-line);
+}
+.brand-tile.is-facebook {
+  background: var(--ui-messenger);
+}
+.brand-tile svg {
+  width: 24px;
+  height: 24px;
+  fill: #fff;
+}
+@media (max-width: 768px) {
+  .brand-tile {
+    width: 34px;
+    height: 34px;
+    margin-right: 11px;
+    border-radius: 10px;
+  }
+  .brand-tile svg {
+    width: 21px;
+    height: 21px;
+  }
+}
+
 @media (min-width: 769px) {
   .settings-actions {
-    max-width: 720px;
+    position: sticky;
+    bottom: 16px;
+    z-index: 4;
+    padding: 10px 14px 10px 20px;
+    border-radius: 18px;
+    background: var(--ui-glass);
+    box-shadow: var(--ui-shadow-raised);
+    backdrop-filter: saturate(180%) blur(20px);
+    -webkit-backdrop-filter: saturate(180%) blur(20px);
   }
+}
+
+.settings-state {
+  margin-right: auto;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ui-orange-ink);
 }
 
 /* Form pages: one readable column instead of a 500px gap between label and control */

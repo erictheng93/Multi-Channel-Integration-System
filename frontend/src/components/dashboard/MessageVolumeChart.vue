@@ -112,7 +112,7 @@
         <text
           v-if="lastPoint"
           :x="lastPoint.x + 2"
-          :y="lastPoint.y - 30"
+          :y="endLabelY"
           text-anchor="end"
           class="end-label"
         >今天 {{ fmt(lastPoint.value) }}</text>
@@ -226,6 +226,13 @@ const areaPath = computed(() => points.value.length === 0
 
 const lastPoint = computed(() => points.value[points.value.length - 1] ?? null)
 
+// The line arrives from the upper left, so the label sits below the last point (on the area fill),
+// never on the line; near the baseline there is no room below, so it goes above
+const endLabelY = computed(() => {
+  const y = lastPoint.value?.y ?? 0
+  return y + 26 < Y_BASE.value - 6 ? y + 26 : y - 14
+})
+
 type Anchor = 'start' | 'middle' | 'end'
 const xLabels = computed(() => {
   const rows = props.data.current
@@ -332,7 +339,7 @@ const ariaLabel = computed(() =>
 
 .chart text {
   fill: var(--ui-muted);
-  font: 500 12px var(--ui-font-ui);
+  font: 500 13px var(--ui-font-ui);
   font-variant-numeric: tabular-nums;
 }
 

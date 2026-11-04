@@ -87,8 +87,10 @@
     --ui-sep: rgba(60, 60, 67, 0.1);
     --ui-ink: #1c1c1e;
     --ui-ink-2: #3a3a3c;
-    /* WCAG AA: iOS #8E8E93 is 3.3:1 on white; #636366 is 6.0:1 (5.0:1 on the grey fills) */
-    --ui-muted: #636366;
+    /* Hero / lead numbers default to ink: colour is for STATE only (overdue red, healthy green). Use var(--ui-num-ink) or .ui-num */
+    --ui-num-ink: var(--ui-ink);
+    /* WCAG AA: iOS #8E8E93 is 3.3:1 on white; #58585d is 7.1:1 (5.9:1 on the grey fills), so secondary labels stay readable at 14px */
+    --ui-muted: #58585d;
     --ui-faint: #aeaeb2;
     --ui-placeholder: #6c6c70; /* 4.9:1 on --ui-surface-2: placeholder text is text */
     --ui-field-edge: #8e8e93; /* 3.3:1 on white: an input boundary a user can see */
@@ -116,16 +118,19 @@
     --ui-messenger: #0866ff;
 
     --ui-p-lavender: #eee8fb;
-    --ui-p-lavender-ink: #5c4f7c;
+    --ui-p-lavender-ink: #473b66; /* 8.4:1 on --ui-p-lavender */
     --ui-p-peach: #fff1e0;
-    --ui-p-peach-ink: #86643e; /* 4.8:1 on --ui-p-peach */
+    --ui-p-peach-ink: #6b4a1c; /* 7.2:1 on --ui-p-peach */
     --ui-p-mint: #e6f5ea;
-    --ui-p-mint-ink: #3f7452;
+    --ui-p-mint-ink: #2c5a3c; /* 7.1:1 on --ui-p-mint */
     --ui-p-sky: #e4f0fd;
-    --ui-p-sky-ink: #3e6488;
+    --ui-p-sky-ink: #2a4d72; /* 7.6:1 on --ui-p-sky */
     --ui-p-rose: #fde9ec;
-    --ui-p-rose-ink: #8a4a57;
+    --ui-p-rose-ink: #783445; /* 7.6:1 on --ui-p-rose */
 
+    /* pills and tags: status ink pushed toward black (light) / white (dark) for >= 7:1 on their tint */
+    --ui-pill-shade: #000;
+    --ui-w-mid: 500; /* the tier between body (400) and headings (600/700): secondary text, labels */
     --ui-shadow-card: 0 0 0 0.5px rgba(0, 0, 0, 0.03), 0 1px 2px rgba(0, 0, 0, 0.03), 0 4px 16px rgba(0, 0, 0, 0.05);
     --ui-shadow-raised: 0 0 0 0.5px rgba(0, 0, 0, 0.04), 0 2px 6px rgba(0, 0, 0, 0.05), 0 12px 32px rgba(0, 0, 0, 0.07);
     --ui-shadow-pill: 0 1px 2px rgba(0, 0, 0, 0.06), 0 2px 8px rgba(0, 0, 0, 0.04);
@@ -154,11 +159,11 @@
     --ui-t-head: 15px;
     --ui-t-body: 14px;
     --ui-t-kpi: 34px;
-    /* Typography floor: 13px for meta, labels, table headers, chips. Chart axes may go to 11px. */
+    /* Typography floor: 13px for meta, labels, table headers, chips, chart axes and legends. */
     --ui-t-foot: 13px;
     --ui-t-cap: 13px;
     --ui-t-meta: 13px;
-    --ui-t-nav-label: 11.5px;
+    --ui-t-nav-label: 13px;
 
     /* Page frame: every routed page uses the same gutter and the same content width */
     --ui-gutter: 28px;
@@ -189,7 +194,7 @@
     --ui-sep: rgba(84, 84, 88, 0.45);
     --ui-ink: #f2f2f7;
     --ui-ink-2: #d1d1d6;
-    --ui-muted: #98989f;
+    --ui-muted: #a6a6ad;
     --ui-faint: #636366;
     --ui-placeholder: #9a9aa1;
     --ui-field-edge: #6e6e73;
@@ -220,6 +225,7 @@
     --ui-p-sky-ink: #9cc4ec;
     --ui-p-rose: #35202a;
     --ui-p-rose-ink: #f0afc0;
+    --ui-pill-shade: #fff;
     --ui-shadow-card: 0 0 0 0.5px rgba(255, 255, 255, 0.06), 0 4px 16px rgba(0, 0, 0, 0.4);
     --ui-shadow-raised: 0 0 0 0.5px rgba(255, 255, 255, 0.08), 0 12px 32px rgba(0, 0, 0, 0.5);
     --ui-shadow-pill: 0 0 0 0.5px rgba(255, 255, 255, 0.08), 0 2px 8px rgba(0, 0, 0, 0.4);
@@ -838,8 +844,8 @@
   }
   /* the quiet note after a group label stays secondary, still AA */
   .ui-group-label .label-note {
-    font-size: 13px;
-    font-weight: 400;
+    font-size: 14px;
+    font-weight: var(--ui-w-mid);
     color: var(--ui-muted);
   }
   .ui-group-label .ui-link {
@@ -849,9 +855,10 @@
   .ui-group-foot {
     margin: 8px 0 0;
     padding: 0 16px;
-    font-size: 13px;
-    line-height: 18px;
+    font-size: 14px;
+    line-height: 20px;
     color: var(--ui-muted);
+    font-weight: var(--ui-w-mid);
   }
   .ui-card-pad {
     padding: 20px 22px;
@@ -870,7 +877,8 @@
   }
   .ui-card-head .ui-card-sub {
     margin-top: 2px;
-    font-size: var(--ui-t-foot);
+    font-size: 14px;
+    font-weight: var(--ui-w-mid);
     color: var(--ui-muted);
   }
   .ui-card-head .ui-card-end {
@@ -878,6 +886,10 @@
     align-items: center;
     gap: 8px;
     margin-left: auto;
+  }
+  .ui-num {
+    color: var(--ui-num-ink);
+    font-variant-numeric: tabular-nums;
   }
   .ui-link {
     display: inline-flex;
@@ -947,6 +959,7 @@
     color: var(--ui-muted);
     text-overflow: ellipsis;
     white-space: nowrap;
+    font-weight: var(--ui-w-mid);
   }
   /* Settings-style row: label left, current value right (muted), optional chevron */
   .ui-row-value {
@@ -957,6 +970,7 @@
     color: var(--ui-muted);
     text-overflow: ellipsis;
     white-space: nowrap;
+    font-weight: var(--ui-w-mid);
   }
   .ui-row.is-nav::after {
     content: '';
@@ -989,37 +1003,44 @@
     text-align: right;
     white-space: nowrap;
     font-variant-numeric: tabular-nums;
+    font-weight: var(--ui-w-mid);
   }
 
   /* Pills and tags */
   .ui-pill {
     display: inline-flex;
     align-items: center;
-    gap: 5px;
-    height: 22px;
-    padding: 0 9px;
+    gap: 6px;
+    height: 24px;
+    padding: 0 10px;
     border-radius: 999px;
     background: var(--ui-fill);
     font-size: 13px;
-    font-weight: 500;
-    color: var(--ui-ink-2);
+    font-weight: 600;
+    color: var(--ui-ink);
     white-space: nowrap;
   }
   .ui-pill-blue {
     background: var(--ui-accent-soft);
-    color: var(--ui-accent);
+    color: color-mix(in srgb, var(--ui-accent) 72%, var(--ui-pill-shade));
   }
   .ui-pill-green {
     background: var(--ui-green-soft);
-    color: var(--ui-green-ink);
+    color: color-mix(in srgb, var(--ui-green-ink) 72%, var(--ui-pill-shade));
   }
   .ui-pill-orange {
     background: var(--ui-orange-soft);
-    color: var(--ui-orange-ink);
+    color: color-mix(in srgb, var(--ui-orange-ink) 72%, var(--ui-pill-shade));
   }
   .ui-pill-red {
     background: var(--ui-red-soft);
-    color: var(--ui-red-ink);
+    color: color-mix(in srgb, var(--ui-red-ink) 72%, var(--ui-pill-shade));
+  }
+  /* A quiet state: the dot and the text, no capsule (used where only the urgent rows should shout) */
+  .ui-pill.is-calm {
+    padding-left: 0;
+    background: transparent;
+    color: var(--ui-orange-ink);
   }
   .ui-pill-dot::before {
     content: '';
@@ -1031,13 +1052,13 @@
   .ui-tag {
     display: inline-flex;
     align-items: center;
-    height: 22px;
-    padding: 0 9px;
+    height: 24px;
+    padding: 0 10px;
     border-radius: 999px;
     background: var(--ui-fill);
     font-size: 13px;
-    font-weight: 500;
-    color: var(--ui-ink-2);
+    font-weight: 600;
+    color: var(--ui-ink);
   }
   .ui-tag-lavender {
     background: var(--ui-p-lavender);
@@ -1091,14 +1112,36 @@
   .ui-seg > button[aria-selected='true'] {
     background: var(--ui-sel-bg);
     color: var(--ui-ink);
-    font-weight: 500;
+    font-weight: 700;
     box-shadow: var(--ui-shadow-pill);
+  }
+  .ui-seg > button.is-on .ui-seg-n,
+  .ui-seg > button[aria-pressed='true'] .ui-seg-n,
+  .ui-seg > button[aria-selected='true'] .ui-seg-n {
+    color: var(--section-ink, var(--ui-accent));
+    font-weight: 700;
   }
   .ui-seg .ui-seg-n {
     font-size: 13px;
     color: var(--ui-muted);
     font-variant-numeric: tabular-nums;
   }
+
+  /* Avatar tones: a stable pastel tint per person (see avatarToneOf), tinted ink on the wash, AA on every pair. */
+  .ui-av-0 { background: #e4e3fa; color: #3f3da8 !important; }
+  .ui-av-1 { background: #d7eef2; color: #0b5566 !important; }
+  .ui-av-2 { background: #f9e0db; color: #8e2f22 !important; }
+  .ui-av-3 { background: #fbe8cf; color: #8a4509 !important; }
+  .ui-av-4 { background: #f8dde9; color: #8c2253 !important; }
+  .ui-av-5 { background: #dce8fb; color: #1b4fc0 !important; }
+  .ui-av-6 { background: #e6e9ee; color: #465061 !important; }
+  [data-theme='dark'] .ui-av-0 { background: #34336b; color: #cfcdfb !important; }
+  [data-theme='dark'] .ui-av-1 { background: #174652; color: #bfe8f0 !important; }
+  [data-theme='dark'] .ui-av-2 { background: #5a2a22; color: #f6cfc8 !important; }
+  [data-theme='dark'] .ui-av-3 { background: #583514; color: #f6dab3 !important; }
+  [data-theme='dark'] .ui-av-4 { background: #5a2440; color: #f4cadd !important; }
+  [data-theme='dark'] .ui-av-5 { background: #1f3a73; color: #c5d9fa !important; }
+  [data-theme='dark'] .ui-av-6 { background: #3a404c; color: #d5dae3 !important; }
 
   /* Filter chip */
   .ui-chip {
@@ -1307,7 +1350,7 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 500;
     color: var(--ui-ink-2);
   }
@@ -1338,7 +1381,7 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    font-size: 13px;
+    font-size: 14px;
     color: var(--ui-muted);
   }
   .ui-delta {
@@ -1439,7 +1482,7 @@
   .ui-empty p {
     max-width: 40ch;
     margin: 0;
-    font-size: 13px;
+    font-size: 14px;
     line-height: 1.5;
     color: var(--ui-muted);
   }
@@ -1580,6 +1623,16 @@
         'sub'
         'actions';
       row-gap: 4px;
+    }
+    /* Phone section pages: the section switcher is a capsule on the title row, so it never adds a line
+       above the title and every section page looks the same */
+    .ui-page-head:has(.ui-page-switch) {
+      grid-template-columns: minmax(0, 1fr) auto;
+      grid-template-areas:
+        'title crumb'
+        'sub sub'
+        'actions actions';
+      column-gap: 10px;
     }
     /* Phone: the subtitle may wrap to two lines (desktop stays one) so key information is never cut */
     .ui-page-sub {

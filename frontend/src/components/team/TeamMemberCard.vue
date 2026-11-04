@@ -73,59 +73,78 @@
         <b>{{ displayName }}<span
           v-if="isCurrentUser"
           class="you"
-        >你</span></b>
+        >你</span><span
+          v-if="phoneRole"
+          class="m-role"
+          :class="phoneRole.cls"
+        >{{ phoneRole.text }}</span></b>
         <span class="mail">{{ member.email || '無電子郵件' }}</span>
+        <span
+          class="m-last"
+          :title="lastLoginTitle"
+        ><template v-if="phoneTeams">{{ phoneTeams }}・</template><template v-if="member.status !== 'active'">{{ getStatusText(member.status) }}・</template>{{ lastLogin }}</span>
       </div>
     </div>
 
-    <div
-      class="sysrole"
-      :class="{ 'is-default': member.role !== 'admin' }"
-    >
-      <span
-        class="ui-pill"
-        :class="{ 'ui-pill-blue': member.role === 'admin' }"
-      >{{ getRoleText(member.role) }}</span>
-    </div>
-
-    <div class="teams">
-      <template v-if="visibleTeams.length > 0">
+    <div class="roles">
+      <div class="rank">
         <span
-          v-for="t in visibleTeams"
-          :key="t.teamId"
-          class="ui-tag"
-          :class="teamTagClass(t.teamId)"
-        >{{ t.teamName || `團隊 ${t.teamId}` }}<span class="tr-in"> · {{ teamRoleText(t.roleInTeam) }}</span></span>
+          v-if="member.role === 'admin'"
+          class="ui-pill ui-pill-blue"
+        >{{ getRoleText(member.role) }}</span>
         <span
-          v-if="hiddenTeamCount > 0"
+          v-else
+          class="rank-agent"
+        >{{ getRoleText(member.role) }}</span>
+      </div>
+      <div class="memberships">
+        <template v-if="visibleTeams.length > 0">
+          <span
+            v-for="t in visibleTeams"
+            :key="t.teamId"
+            class="tg"
+          ><i
+            class="tg-dot"
+            :style="{ background: teamToneColor(t.teamId) }"
+            aria-hidden="true"
+          /><span class="tg-name">{{ t.teamName || `團隊 ${t.teamId}` }}</span><span
+            class="rl"
+            :class="`rl-${t.roleInTeam}`"
+          >{{ teamRoleText(t.roleInTeam) }}</span></span>
+          <span
+            v-if="hiddenTeamCount > 0"
+            class="tr"
+          >+{{ hiddenTeamCount }}</span>
+        </template>
+        <span
+          v-else-if="member.primaryTeamName"
+          class="tg"
+        ><i
+          class="tg-dot"
+          :style="{ background: teamToneColor(member.primaryTeamId ?? 0) }"
+          aria-hidden="true"
+        /><span class="tg-name">{{ member.primaryTeamName }}</span></span>
+        <span
+          v-else
           class="tr"
-        >+{{ hiddenTeamCount }}</span>
-      </template>
-      <span
-        v-else-if="member.primaryTeamName"
-        class="ui-tag"
-      >{{ member.primaryTeamName }}</span>
-      <span
-        v-else
-        class="tr"
-      >未加入團隊</span>
-    </div>
-
-    <div
-      class="stcell"
-      :class="{ 'is-active': member.status === 'active' }"
-    >
-      <span
-        class="ui-pill"
-        :class="statusClass"
-      >{{ getStatusText(member.status) }}</span>
+        >未加入團隊</span>
+      </div>
     </div>
 
     <div
       class="last"
       :title="lastLoginTitle"
     >
-      {{ lastLogin }}
+      <span
+        v-if="member.status !== 'active'"
+        class="ui-pill"
+        :class="statusClass"
+      >{{ getStatusText(member.status) }}</span>
+      <span
+        v-if="presence === 'online' && member.status === 'active'"
+        class="on-now"
+      ><i aria-hidden="true" />在線</span>
+      <span v-else>{{ lastLogin }}</span>
     </div>
 
     <div
@@ -199,7 +218,7 @@ import MemberEditModal from '@/components/team/member-edit/MemberEditModal.vue'
 import Dropdown from '@/components/ui/Dropdown.vue'
 import DropdownItem from '@/components/ui/DropdownItem.vue'
 import TeamAvatar from '@/components/team/TeamAvatar.vue'
-import { formatLastLogin, teamRoleText, teamTagClass } from '@/utils/team-tone'
+import { formatLastLogin, teamRoleText, teamToneColor } from '@/utils/team-tone'
 import type { TeamMember, Team } from '@/types'
 
 interface Props {
@@ -297,8 +316,24 @@ const sortedTeams = computed(() => {
   return list.sort((a, b) => Number(b.isPrimary) - Number(a.isPrimary))
 })
 const MAX_TEAMS = 2
+/** Phone rows carry the teams in the meta line (the chips column is gone there) */
+const phoneTeams = computed(() => {
+  const names = (props.member.teams ?? []).map(t => t.teamName).filter(Boolean)
+  return names.length > 0 ? names.join('、') : (props.member.primaryTeamName ?? '')
+})
+
 const visibleTeams = computed(() => sortedTeams.value.slice(0, MAX_TEAMS))
 const hiddenTeamCount = computed(() => Math.max(0, sortedTeams.value.length - MAX_TEAMS))
+
+/** Phone shows one role pill beside the name: system admin first, then the highest team role (plain members get none) */
+const phoneRole = computed<{ text: string, cls: string } | null>(() => {
+  if (props.member.role === 'admin') { return { text: getRoleText(props.member.role), cls: 'rl-admin' } }
+  const roles = sortedTeams.value.map(t => t.roleInTeam)
+  const top = roles.includes('supervisor') ? 'supervisor' : roles.includes('lead') ? 'lead' : null
+  if (top) { return { text: teamRoleText(top), cls: `rl-${top}` } }
+  // a plain member still gets a chip, so every row answers "what is this person's rank"
+  return sortedTeams.value.length > 0 ? { text: teamRoleText('member'), cls: 'rl-member' } : null
+})
 
 const lastLogin = computed(() => formatLastLogin(props.member.lastLoginAt))
 const lastLoginTitle = computed(() =>
@@ -361,8 +396,7 @@ const getRoleText = (role: string) => {
 .member-row.is-off :deep(.team-avatar) {
   filter: saturate(0.35);
 }
-.member-row.is-off .teams,
-.member-row.is-off .sysrole {
+.member-row.is-off .roles {
   filter: saturate(0.4);
 }
 
@@ -439,7 +473,7 @@ const getRoleText = (role: string) => {
   display: block;
   overflow: hidden;
   font-size: 13px;
-  color: var(--ui-muted);
+  color: var(--ui-ink-2);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -449,50 +483,138 @@ const getRoleText = (role: string) => {
   font-weight: 600;
   color: var(--ui-muted);
 }
-.teams {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px 10px;
+/* desktop: the two cells sit in the grid themselves; below 1280 they travel together on one line */
+.roles {
+  display: contents;
 }
-.tr-in {
+.rank {
+  min-width: 0;
+}
+.rank-agent {
+  font-size: 13.5px;
+  color: var(--ui-ink-2);
+}
+/* team is plain text with its colour dot; the role beside it is the filled chip, so rank reads before team */
+.memberships {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-start;
+  min-width: 0;
+  padding: 10px 0;
+}
+.tg {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.tg-dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+.tg-name {
+  font-size: 14px;
   font-weight: 500;
-  opacity: 0.8;
+  color: var(--ui-ink);
+}
+/* role ramp: admin blue, supervisor indigo, lead green, member plain text (colour follows rank, not decoration) */
+.rl {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ui-ink-2);
+}
+.rl-member {
+  font-weight: 500;
+}
+.rl-lead,
+.rl-supervisor,
+.rl-admin,
+.m-role {
+  padding: 2px 9px;
+  border-radius: 999px;
+  line-height: 1.4;
+}
+.rl-lead {
+  background: var(--ui-green-soft);
+  color: color-mix(in srgb, var(--ui-green-ink) 72%, var(--ui-pill-shade));
+}
+.rl-supervisor {
+  background: var(--ui-indigo-soft);
+  color: color-mix(in srgb, var(--ui-indigo-ink) 72%, var(--ui-pill-shade));
+}
+.rl-admin {
+  background: var(--ui-accent-soft);
+  color: color-mix(in srgb, var(--ui-accent) 72%, var(--ui-pill-shade));
+}
+.rl-member {
+  padding: 0;
+  background: none;
+  line-height: 1.4;
+  color: var(--ui-ink-2);
+}
+.m-last {
+  display: none;
+  font-size: 13px;
+  color: var(--ui-muted);
+  font-variant-numeric: tabular-nums;
+}
+.m-role {
+  display: none;
+  margin-left: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  vertical-align: 1px;
 }
 .tr {
   font-size: 13px;
   color: var(--ui-muted);
 }
-.stcell,
-.sysrole {
-  display: flex;
-  align-items: center;
-}
 .last {
   display: flex;
+  gap: 8px;
   align-items: center;
   font-size: 13px;
-  color: var(--ui-muted);
+  color: var(--ui-ink-2);
   font-variant-numeric: tabular-nums;
 }
 .macts {
   display: flex;
   justify-content: flex-end;
 }
+.on-now {
+  display: inline-flex;
+  gap: 7px;
+  align-items: center;
+  font-weight: 600;
+  color: var(--ui-green-ink);
+}
+.on-now i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ui-green);
+}
+/* the menu is quiet until the row is hovered or focused: no column of lone grey discs */
 .more-btn {
   display: grid;
   width: 34px;
   height: 34px;
   place-items: center;
   border: 0;
-  border-radius: 10px;
+  border-radius: 50%;
   background: transparent;
   color: var(--ui-ink-2);
   cursor: pointer;
   transition: background var(--ui-dur) var(--ui-ease);
 }
-.more-btn:hover {
+.more-btn:hover,
+.member-row:hover .more-btn {
   background: var(--ui-fill);
+}
+.more-btn:hover {
+  background: var(--ui-fill-strong);
 }
 .more-btn:disabled {
   cursor: not-allowed;
@@ -522,31 +644,74 @@ const getRoleText = (role: string) => {
     order: 1;
     margin-left: auto;
   }
-  .sysrole,
-  .teams,
-  .stcell,
+  .roles,
   .last {
     order: 2;
   }
+  .roles {
+    display: flex;
+    flex: 1 1 0;
+    flex-wrap: wrap;
+    gap: 6px 16px;
+    align-items: center;
+    min-width: 55%;
+  }
+  .memberships {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 6px 14px;
+    padding: 0;
+  }
   .last {
+    flex: none;
     margin-left: auto;
   }
 }
 @media (max-width: 768px) {
+  /* Phone: two lines per member (name + rank pill, email), last login inline on the right */
   .member-row {
-    padding: 14px 16px;
+    flex-wrap: nowrap;
+    padding: 12px 16px;
+    column-gap: 10px;
   }
   .member-row + .member-row::before {
     left: 16px;
   }
-  .drag-handle {
+  .drag-handle,
+  .roles,
+  .last {
     display: none;
   }
-  /* Phone rows keep to two chips: the plain "active" state is the default, only a deactivated
-     account needs a pill of its own. */
-  .stcell.is-active,
-  .sysrole.is-default {
-    display: none;
+  .m-role {
+    display: inline-block;
+  }
+  /* the full address stays readable: login time moves under it instead of squeezing it */
+  .who .mail {
+    overflow: visible;
+    overflow-wrap: anywhere;
+    white-space: normal;
+  }
+  .m-last {
+    display: block;
+  }
+  .who {
+    flex: 1 1 0;
+  }
+  .last {
+    order: 1;
+    margin-left: 0;
+    font-size: 13px;
+    white-space: nowrap;
+  }
+  .macts {
+    order: 2;
+    margin-left: 0;
+  }
+  .more-btn {
+    width: 44px;
+    height: 44px;
+    margin-right: -6px;
+    background: transparent;
   }
 }
 </style>

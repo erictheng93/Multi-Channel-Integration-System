@@ -16,35 +16,17 @@
       <div class="team-name">
         {{ team.name }}
       </div>
-      <div
+      <p
+        v-if="team.description?.trim()"
         class="team-desc"
-        :title="team.description || undefined"
       >
-        {{ team.description || '尚未填寫描述' }}
-      </div>
-      <div class="team-meta">
-        <span
-          class="ui-pill"
-          :class="team.isActive ? 'ui-pill-green ui-pill-dot' : ''"
-        >{{ team.isActive ? '活躍' : '停用' }}</span>
-        <span class="ui-pill">{{ team.memberCount || 0 }} 成員</span>
-        <span
-          v-if="previewMembers.length > 0"
-          class="avs"
-        >
-          <TeamAvatar
-            v-for="m in previewMembers"
-            :key="m.id"
-            size="sm"
-            :name="m.name || m.loginId"
-            :seed="m.id"
-            :src="m.avatar"
-          />
-          <span
-            v-if="overflowCount > 0"
-            class="avs-more"
-          >+{{ overflowCount }}</span>
-        </span>
+        {{ team.description }}
+      </p>
+      <div
+        v-if="!team.isActive"
+        class="team-meta"
+      >
+        <span class="ui-pill">已停用</span>
       </div>
     </div>
 
@@ -52,13 +34,16 @@
       class="team-acts"
       @click.stop
     >
-      <button
-        type="button"
-        class="btn btn-secondary btn-sm"
-        @click="showTeamDetails"
-      >
-        編輯團隊
-      </button>
+      <svg
+        class="go"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2.4"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        aria-hidden="true"
+      ><path d="m9 6 6 6-6 6" /></svg>
       <Dropdown
         placement="bottom-end"
         :disabled="loading"
@@ -159,10 +144,8 @@ import { createLogger } from '@/utils/logger'
     defineProps<{
       team: Team
       loading?: boolean
-      /** Up to a few members of this team, for the avatar stack. */
-      previewMembers?: TeamMember[]
     }>(),
-    { loading: false, previewMembers: () => [] }
+    { loading: false }
   )
   const emit = defineEmits<{
     'toggle-status': [team: Team]
@@ -185,7 +168,6 @@ import { createLogger } from '@/utils/logger'
   import { useQRCodeStore } from '@/stores/qrcode'
   import Dropdown from '@/components/ui/Dropdown.vue'
   import DropdownItem from '@/components/ui/DropdownItem.vue'
-  import TeamAvatar from '@/components/team/TeamAvatar.vue'
   import { teamMarkBackground, teamMarkInk } from '@/utils/team-tone'
   import type { Team, TeamMember, LiffQRCode } from '@/types'
 
@@ -198,7 +180,6 @@ import { createLogger } from '@/utils/logger'
   const teamModal = useTeamModal()
 
   // Members beyond the avatar stack
-  const overflowCount = computed(() => Math.max(0, (props.team.memberCount || 0) - props.previewMembers.length))
 
   // 當前用戶資訊
   const currentUser = computed(() => authStore.currentAgent)
@@ -460,10 +441,10 @@ import { createLogger } from '@/utils/logger'
 <style scoped>
 .team-card {
   display: grid;
-  grid-template-columns: 52px minmax(0, 1fr) auto;
+  grid-template-columns: 52px minmax(0, 1fr) auto auto;
   gap: 14px;
   align-items: center;
-  padding: 18px 20px;
+  padding: 14px 20px;
   cursor: pointer;
 }
 /* an off team stays legible: only the mark loses its colour, text keeps AA contrast */
@@ -493,11 +474,19 @@ import { createLogger } from '@/utils/logger'
   white-space: nowrap;
 }
 .team-desc {
+  display: -webkit-box;
+  margin: 3px 0 0;
   overflow: hidden;
-  font-size: 13px;
+  font-size: 14px;
+  line-height: 1.45;
   color: var(--ui-muted);
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+.go {
+  width: 16px;
+  height: 16px;
+  color: var(--ui-faint);
 }
 .team-meta {
   display: flex;
@@ -505,31 +494,6 @@ import { createLogger } from '@/utils/logger'
   align-items: center;
   gap: 6px;
   margin-top: 8px;
-}
-.avs {
-  display: flex;
-  align-items: center;
-  margin-left: 8px;
-}
-.avs > :deep(*) {
-  margin-left: -6px;
-  box-shadow: 0 0 0 2px var(--ui-surface);
-}
-.avs > :deep(*:first-child) {
-  margin-left: 0;
-}
-.avs-more {
-  display: grid;
-  min-width: 28px;
-  height: 28px;
-  padding: 0 6px;
-  place-items: center;
-  border-radius: 14px;
-  background: var(--ui-fill-strong);
-  box-shadow: 0 0 0 2px var(--ui-surface);
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--ui-ink-2);
 }
 .team-acts {
   display: flex;
@@ -542,14 +506,14 @@ import { createLogger } from '@/utils/logger'
   height: 34px;
   place-items: center;
   border: 0;
-  border-radius: 10px;
-  background: transparent;
+  border-radius: 50%;
+  background: var(--ui-fill);
   color: var(--ui-ink-2);
   cursor: pointer;
   transition: background var(--ui-dur) var(--ui-ease);
 }
 .more-btn:hover {
-  background: var(--ui-fill);
+  background: var(--ui-fill-strong);
 }
 .more-btn:disabled {
   cursor: not-allowed;
@@ -564,27 +528,26 @@ import { createLogger } from '@/utils/logger'
   /* The whole card opens the team, so the phone keeps only the overflow menu, top right: no crowded action row */
   .team-card {
     grid-template-columns: 44px minmax(0, 1fr) auto;
+    grid-template-areas: 'mark main acts';
     align-items: start;
     padding: 16px;
   }
   .team-mark {
+    grid-area: mark;
     width: 44px;
     height: 44px;
     border-radius: 14px;
     font-size: 18px;
   }
-  .team-acts .btn {
+  .team-main {
+    grid-area: main;
+  }
+  .team-acts .go {
     display: none;
   }
   .team-acts {
+    grid-area: acts;
     margin: -6px -8px 0 0;
-  }
-  .team-desc {
-    display: -webkit-box;
-    overflow: hidden;
-    white-space: normal;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
   }
 }
 </style>

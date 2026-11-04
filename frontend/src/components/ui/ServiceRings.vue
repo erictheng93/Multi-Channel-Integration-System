@@ -260,7 +260,7 @@ onBeforeUnmount(() => { window.cancelAnimationFrame(frame) })
 }
 .sr-center-label {
   margin-top: 3px;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--ui-muted);
 }
 
@@ -308,8 +308,8 @@ onBeforeUnmount(() => { window.cancelAnimationFrame(frame) })
   flex-wrap: wrap;
   align-items: baseline;
   gap: 6px;
+  flex-wrap: wrap;
   font-variant-numeric: tabular-nums;
-  white-space: nowrap;
 }
 .sr-num strong {
   font: 600 26px / 1.1 var(--ui-font-display);

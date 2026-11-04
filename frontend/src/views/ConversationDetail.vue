@@ -65,6 +65,13 @@
           </div>
         </Transition>
 
+        <!-- The wait where the rail is not shown (tablet, phone): tap for the round history -->
+        <ConversationWaitStrip
+          :messages="messages"
+          :closed="conversation?.status === 'closed'"
+          @open="showInfoSheet = true"
+        />
+
         <!-- LINE 6-month history retention notice (informational, no DB record) -->
         <HistoryRetentionNotice :platform="conversation?.platform" />
 
@@ -224,6 +231,7 @@
         :tags="customerTags"
         :message-count="messages.length > 0 ? messages.length : null"
         :has-more="httpMessages.hasMore.value"
+        :messages="messages"
       />
     </div>
 
@@ -257,10 +265,12 @@
             </button>
             <ConversationSidePanel
               class="info-sheet-panel"
+              show-who
               :conversation="conversation"
               :tags="customerTags"
               :message-count="messages.length > 0 ? messages.length : null"
               :has-more="httpMessages.hasMore.value"
+              :messages="messages"
             />
           </div>
         </div>
@@ -326,6 +336,7 @@ import VirtualMessageList from '@/components/conversation/VirtualMessageList.vue
 import MessageInput from '@/components/conversation/MessageInput.vue'
 import ConversationHeader from '@/components/conversation/ConversationHeader.vue'
 import ConversationSidePanel from '@/components/conversation/ConversationSidePanel.vue'
+import ConversationWaitStrip from '@/components/conversation/ConversationWaitStrip.vue'
 import type { Tag } from '@/api/tags'
 import ExportDialog from '@/components/conversation/ExportDialog.vue'
 import HistoryRetentionNotice from '@/components/conversation/banners/HistoryRetentionNotice.vue'
@@ -841,11 +852,11 @@ defineExpose({
   gap: 5px;
   margin-bottom: 8px;
   padding: 0 10px;
-  height: 22px;
+  height: 24px;
   border-radius: 9999px;
   background: var(--ui-green-soft);
   color: var(--ui-green-ink);
-  font-size: 11.5px;
+  font-size: 13px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
@@ -1008,32 +1019,24 @@ defineExpose({
 }
 
 @media (min-width: 1281px) {
-  /* One surface: chat and customer rail share a single card, the rail is a tinted column inside it,
-     so there is never a second card ending early */
+  /* Two floating cards on the canvas, the same height: the thread (flat) and the customer rail (the one elevated
+     object, as on the notifications page). The rail ends where the thread ends. */
   .detail-layout {
-    grid-template-columns: minmax(0, 1fr) 296px;
-    gap: 0;
-    overflow: hidden;
+    grid-template-columns: minmax(0, 1fr) 344px;
+    gap: 16px;
+  }
+
+  .detail-layout > .detail-side {
     border-radius: var(--ui-r-lead);
     background: var(--ui-surface);
     box-shadow: var(--ui-shadow-raised);
-  }
-
-  .detail-layout > .conversation-detail,
-  .detail-layout > .detail-side {
-    border-radius: 0;
-    box-shadow: none;
-  }
-
-  .detail-layout > .detail-side {
-    background: var(--ui-surface-2);
-    box-shadow: inset 0.5px 0 0 var(--ui-sep);
   }
 
   .detail-side {
     display: flex;
     align-self: stretch;
     max-height: 100%;
+    overflow: hidden;
   }
 }
 

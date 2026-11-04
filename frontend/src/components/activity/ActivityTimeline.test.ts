@@ -16,6 +16,10 @@ vi.mock('@/components/icons', () => {
     CogIcon: stub,
     UserPlusIcon: stub,
     UserIcon: stub,
+    TagIcon: stub,
+    TrashIcon: stub,
+    ClockIcon: stub,
+    SendIcon: stub,
     FileIcon: stub,
   }
 })

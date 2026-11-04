@@ -13,12 +13,6 @@
       @keydown.space.prevent="$emit('toggle')"
     >
       <span
-        class="sd"
-        :class="endpoint.status"
-        :title="statusText"
-      />
-
-      <span
         class="meth"
         :class="endpoint.method.toLowerCase()"
       >{{ endpoint.method }}</span>
@@ -31,19 +25,38 @@
           >
             <span class="seg">{{ seg }}</span><wbr>
           </template>
+          <span
+            v-if="endpoint.status !== 'healthy'"
+            class="flag"
+            :class="endpoint.status"
+          >{{ statusText }}</span>
         </div>
         <div class="desc">
           {{ endpoint.description }}
         </div>
-        <div
-          class="sr"
-          :class="successClass"
-        >
-          成功率 {{ endpoint.successRate }}%
-        </div>
+      </div>
+      <div
+        class="sr"
+        :class="successClass"
+      >
+        <span class="sr-l">成功率 </span>{{ endpoint.successRate }}%<span class="sr-n"> 成功 · {{ endpoint.requestCount.toLocaleString() }} 次/時</span>
       </div>
 
-      <span class="m m-p95">{{ endpoint.responseTime }}<small> ms</small></span>
+      <span
+        v-if="scaleMs"
+        class="range"
+        :class="endpoint.status"
+        role="img"
+        :aria-label="`P95 ${endpoint.responseTime} 毫秒`"
+      >
+        <i :style="rangeStyle" />
+        <u
+          v-if="warnMark !== null"
+          :style="{ left: warnMark }"
+        />
+      </span>
+
+      <span class="m m-p95"><span class="m-k">P95 </span>{{ latency.value }}<small>{{ latency.unit }}</small></span>
       <span
         class="m m-rate hide-m"
         :class="successClass"
@@ -79,6 +92,8 @@ import EndpointDetailPanel from './EndpointDetailPanel.vue'
 const props = defineProps<{
   endpoint: ApiEndpoint
   expanded: boolean
+  /** Shared right-hand end of the latency band, ms (the slowest P95 across all endpoints) */
+  scaleMs?: number
 }>()
 
 defineEmits<{
@@ -91,6 +106,22 @@ const pathSegments = computed(() => {
   const lead = raw.startsWith('/') ? '/' : ''
   const parts = raw.slice(lead.length).split(/(?<=\/)/)
   return parts.map((part, i) => (i === 0 ? lead + part : part))
+})
+
+const latency = computed(() => {
+  const ms = props.endpoint.responseTime
+  return ms >= 1000 ? { value: (ms / 1000).toFixed(2), unit: 's' } : { value: String(Math.round(ms)), unit: 'ms' }
+})
+
+/** The bar runs from 0 to P95 on one scale for every row, so rows compare by eye; the tick is the 500 ms alarm line */
+const rangeStyle = computed(() => {
+  const max = props.scaleMs || 1
+  const width = Math.max(1.5, Math.min(100, (props.endpoint.responseTime / max) * 100))
+  return { left: '0%', width: `${width}%` }
+})
+const warnMark = computed(() => {
+  const max = props.scaleMs || 0
+  return max > 500 ? `${(500 / max) * 100}%` : null
 })
 
 const statusText = computed(() => {
@@ -127,10 +158,86 @@ const successClass = computed(() => {
 
 .ep {
   display: grid;
-  grid-template-columns: 10px 52px minmax(0, 1fr) 84px 76px 84px 16px;
+  grid-template-columns: 52px minmax(260px, 1.25fr) repeat(3, minmax(0, 1fr)) 16px;
   gap: 12px;
   align-items: center;
   padding: 12px 22px;
+}
+
+.m-k {
+  display: none;
+}
+
+.range {
+  display: none;
+}
+
+@media (min-width: 1281px) {
+  .ep.has-range,
+  .ep:has(.range) {
+    grid-template-columns: 52px 250px minmax(0, 1fr) 190px 80px 80px 100px 16px;
+  }
+
+  .range {
+    position: relative;
+    display: block;
+    height: 10px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--ui-fill) 55%, transparent);
+  }
+
+  .range i {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--ui-accent) 38%, var(--ui-surface));
+  }
+
+  .range u {
+    position: absolute;
+    top: -3px;
+    bottom: -3px;
+    width: 2px;
+    margin-left: -1px;
+    border-radius: 1px;
+    background: var(--ui-ink-2);
+  }
+
+  .range.warning i {
+    background: color-mix(in srgb, var(--ui-orange) 50%, var(--ui-surface));
+  }
+
+  .range.error i {
+    background: color-mix(in srgb, var(--ui-red) 45%, var(--ui-surface));
+  }
+}
+
+@media (min-width: 1025px) {
+  .ep {
+    grid-template-columns: 52px 290px minmax(0, 1fr) 90px 90px 110px 16px;
+    padding-top: 14px;
+    padding-bottom: 14px;
+  }
+
+  .ep-main {
+    display: contents;
+  }
+
+  .desc {
+    grid-column: 3;
+    grid-row: 1;
+    padding-right: 12px;
+  }
+
+  .path {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .m {
+    text-align: right;
+  }
 }
 
 .ep:focus-visible {
@@ -138,23 +245,24 @@ const successClass = computed(() => {
   outline-offset: -2px;
 }
 
-.sd {
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  background: var(--ui-muted);
+/* Only a problem is flagged, in words; healthy rows stay quiet */
+.flag {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 0 8px;
+  border-radius: 999px;
+  font: 600 13px / 20px var(--ui-font-ui);
+  vertical-align: 1px;
 }
 
-.sd.healthy {
-  background: var(--ui-green);
+.flag.warning {
+  background: var(--ui-orange-soft);
+  color: var(--ui-orange-ink);
 }
 
-.sd.warning {
-  background: var(--ui-orange);
-}
-
-.sd.error {
-  background: var(--ui-red);
+.flag.error {
+  background: var(--ui-red-soft);
+  color: var(--ui-red-ink);
 }
 
 .meth {
@@ -164,28 +272,7 @@ const successClass = computed(() => {
   border-radius: 999px;
   background: var(--ui-fill);
   font: 700 13px var(--ui-font-ui);
-  color: var(--ui-muted);
-}
-
-.meth.get {
-  background: var(--ui-green-soft);
-  color: var(--ui-green-ink);
-}
-
-.meth.post {
-  background: var(--ui-accent-soft);
-  color: var(--ui-accent);
-}
-
-.meth.put,
-.meth.patch {
-  background: var(--ui-orange-soft);
-  color: var(--ui-orange-ink);
-}
-
-.meth.delete {
-  background: var(--ui-red-soft);
-  color: var(--ui-red-ink);
+  color: var(--ui-ink-2);
 }
 
 .ep-main {
@@ -229,11 +316,11 @@ const successClass = computed(() => {
 .m {
   font-size: 13px;
   font-weight: 600;
-  text-align: right;
   font-variant-numeric: tabular-nums;
 }
 
 .m small {
+  margin-left: 4px;
   font-size: 13px;
   font-weight: 400;
   color: var(--ui-muted);
@@ -262,21 +349,40 @@ const successClass = computed(() => {
   transform: rotate(90deg);
 }
 
+/* the request count joins the success line on a phone (its own column is hidden there) */
+.sr-n {
+  display: none;
+  color: var(--ui-muted);
+}
+
 @media (max-width: 768px) {
-  /* Method pill sits above the path so the path owns the full middle column (no 3-4 line wrap) */
+  .sr-n {
+    display: inline;
+  }
+
+  .sr-l {
+    display: none;
+  }
+
+  /* Phone: the first line is the measurement strip (method, P95, success, requests), then the path, then the description */
   .ep {
     grid-template-areas:
-      'sd meth m chev'
-      'sd main m chev';
-    grid-template-columns: 10px minmax(0, 1fr) 76px 16px;
-    gap: 4px 10px;
+      'meth m sr chev'
+      'main main main main';
+    grid-template-columns: auto auto minmax(0, 1fr) 16px;
+    gap: 6px 12px;
     padding: 12px 16px;
   }
 
-  .sd {
-    grid-area: sd;
-    align-self: start;
-    margin-top: 5px;
+  .m-k {
+    display: inline;
+    font-weight: 400;
+    color: var(--ui-muted);
+  }
+
+  .m {
+    text-align: left;
+    white-space: nowrap;
   }
 
   .meth {
@@ -284,7 +390,7 @@ const successClass = computed(() => {
     justify-self: start;
     padding: 0 9px;
     height: 20px;
-    font-size: 12px;
+    font-size: 13px;
   }
 
   .ep-main {
@@ -307,7 +413,7 @@ const successClass = computed(() => {
      and the success rate keeps a line of its own */
   .path {
     overflow: visible;
-    font-size: 12.5px;
+    font-size: 13px;
     text-overflow: clip;
     white-space: normal;
   }
@@ -317,14 +423,17 @@ const successClass = computed(() => {
   }
 
   .desc {
-    overflow: visible;
-    overflow-wrap: anywhere;
-    text-overflow: clip;
-    white-space: normal;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .sr {
     display: block;
+    grid-area: sr;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .ep-wrap + .ep-wrap::before {

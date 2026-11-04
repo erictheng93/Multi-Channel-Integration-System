@@ -9,14 +9,16 @@
         <template #actions>
           <button
             class="btn btn-secondary"
+            aria-label="匯出記錄"
             :disabled="loading"
             @click="exportActivities"
           >
             <DownloadIcon :size="16" />
-            <span>匯出記錄</span>
+            <span class="al-lbl">匯出記錄</span>
           </button>
           <button
             class="btn btn-secondary"
+            aria-label="刷新"
             :disabled="loading"
             @click="refreshData"
           >
@@ -24,7 +26,7 @@
               :size="16"
               :spinning="loading"
             />
-            <span>刷新</span>
+            <span class="al-lbl">刷新</span>
           </button>
         </template>
       </UiPageHead>
@@ -36,49 +38,109 @@
         :loading="overviewLoading"
       />
 
-      <!-- Filter Pills -->
-      <ActivityFilterPills
-        :filters="filters"
-        :date-range="dateRange"
-        :custom-date-range="customDateRange"
-        :users="users"
-        :summary="rangeSummary"
-        @update:filters="onFiltersUpdate"
-        @update:date-range="dateRange = $event"
-        @update:custom-date-range="Object.assign(customDateRange, $event)"
-        @clear="clearFilters"
-        @apply="applyFilters"
-      />
+      <!-- Phone: the biggest operation types as one-tap filter chips, always visible -->
+      <div
+        v-if="showInsights && topActions.length > 0"
+        class="al-chips"
+        role="group"
+        aria-label="依操作類型篩選"
+      >
+        <button
+          v-for="a in topActions"
+          :key="a.key"
+          type="button"
+          class="al-chip"
+          :aria-pressed="filters.action === a.key"
+          @click="onInsightAction(filters.action === a.key ? '' : a.key)"
+        >
+          {{ a.label }} <b>{{ a.count.toLocaleString('en-US') }}</b>
+        </button>
+      </div>
 
-      <!-- Loading State -->
-      <ActivityEmptyState
-        v-if="loading"
-        variant="loading"
-      />
+      <!-- Phone and tablet: the rail is a collapsed section above the log instead of being dropped -->
+      <details
+        v-if="showInsights"
+        class="ui-card al-more"
+      >
+        <summary>
+          <span>操作類型與最活躍成員</span>
+          <span
+            v-if="overview?.topUsers[0]"
+            class="al-more-hint"
+          >最活躍 {{ overview.topUsers[0].user_name }}</span>
+        </summary>
+        <ActivityInsights
+          :overview="overview"
+          :active-action="filters.action"
+          :legend="false"
+          @filter-action="onInsightAction"
+        />
+      </details>
 
-      <!-- Timeline -->
-      <ActivityTimeline
-        v-else-if="activities.length > 0"
-        :activities="activities"
-        @restored="onActivityRestored"
-      />
+      <div
+        class="al-grid"
+        :class="{ 'has-aside': showInsights }"
+      >
+        <div class="al-main">
+          <!-- Filter Pills -->
+          <ActivityFilterPills
+            :filters="filters"
+            :date-range="dateRange"
+            :custom-date-range="customDateRange"
+            :users="users"
+            :summary="rangeSummary"
+            @update:filters="onFiltersUpdate"
+            @update:date-range="dateRange = $event"
+            @update:custom-date-range="Object.assign(customDateRange, $event)"
+            @clear="clearFilters"
+            @apply="applyFilters"
+          />
 
-      <!-- Empty State -->
-      <ActivityEmptyState
-        v-else
-        variant="empty"
-      />
+          <!-- Loading State -->
+          <ActivityEmptyState
+            v-if="loading"
+            variant="loading"
+          />
 
-      <!-- Pagination (only when we have activities) -->
-      <ActivityPagination
-        v-if="!loading && activities.length > 0"
-        :current-page="currentPage"
-        :total-pages="totalPages"
-        :total-records="totalRecords"
-        :loading="loading"
-        class="activity-log__pagination"
-        @page-change="loadPage"
-      />
+          <!-- Timeline -->
+          <ActivityTimeline
+            v-else-if="activities.length > 0"
+            :activities="activities"
+            @restored="onActivityRestored"
+          />
+
+          <!-- Empty State -->
+          <ActivityEmptyState
+            v-else
+            variant="empty"
+          />
+
+          <!-- Pagination (only when we have activities) -->
+          <ActivityPagination
+            v-if="!loading && activities.length > 0"
+            :current-page="currentPage"
+            :total-pages="totalPages"
+            :total-records="totalRecords"
+            :loading="loading"
+            class="activity-log__pagination"
+            @page-change="loadPage"
+          />
+          <p
+            v-if="isAdmin && activities.length > 0 && !loading"
+            class="al-legend"
+          >
+            還原：仍在期限內，可一鍵復原。已過期：記錄保留但不能復原。不可還原：登入、傳送訊息等操作本質上無法復原。
+          </p>
+        </div>
+        <ActivityInsights
+          v-if="showInsights"
+          class="al-aside"
+          :overview="overview"
+          :active-action="filters.action"
+          :legend="true"
+          @filter-action="onInsightAction"
+        />
+      </div>
 
       <!-- Error Toast -->
       <div
@@ -104,11 +166,13 @@ import { useWebSocketStore } from '@/stores/websocket'
 import type { WebSocketMessage } from '@/services/websocketClient'
 
 import AppLayout from '@/components/ui/AppLayout.vue'
+import ActivityInsights from '@/components/activity/ActivityInsights.vue'
 import ActivityStatsCards from '@/components/activity/ActivityStatsCards.vue'
 import ActivityFilterPills from '@/components/activity/ActivityFilterPills.vue'
 import ActivityTimeline from '@/components/activity/ActivityTimeline.vue'
 import ActivityPagination from '@/components/activity/ActivityPagination.vue'
 import ActivityEmptyState from '@/components/activity/ActivityEmptyState.vue'
+import { getActionLabel } from '@/components/activity/utils'
 import { DownloadIcon, RefreshIcon } from '@/components/icons'
 
 interface User {
@@ -155,13 +219,21 @@ const activitySubscriptionId = ref<string | null>(null)
 
 // --- Computed ---
 const isAdmin = computed(() => authStore.currentAgent?.role === ROLES.ADMIN)
+const showInsights = computed(() => isAdmin.value && !!overview.value && (Object.keys(overview.value.actionStats).length > 0 || overview.value.topUsers.length > 0))
+const topActions = computed(() =>
+  Object.entries(overview.value?.actionStats ?? {})
+    .filter(([, count]) => count > 0)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([key, count]) => ({ key, label: getActionLabel(key), count }))
+)
 const currentPage = computed(() => pagination.value?.page || 1)
 
 /** Page header sentence from loaded data only (overview for admins, list total otherwise). */
 const headSummary = computed(() => {
   if (isAdmin.value && overview.value) {
-    const parts = [`近 ${overview.value.period.days} 天共 ${overview.value.totalActivities.toLocaleString('zh-TW')} 筆操作、${overview.value.activeUserCount} 位成員`]
-    return `${parts[0]}。`
+    // the week card under the head already states the period total
+    return '誰在什麼時間做了什麼；點開一列可看詳情。'
   }
   if (!loading.value && pagination.value.total > 0) {
     return `目前篩選條件下共 ${pagination.value.total.toLocaleString('zh-TW')} 筆記錄。`
@@ -315,6 +387,11 @@ const onFiltersUpdate = (updated: typeof filters) => {
   Object.assign(filters, updated)
 }
 
+const onInsightAction = (action: string) => {
+  filters.action = action
+  applyFilters()
+}
+
 const applyFilters = () => {
   pagination.value.page = 1
   loadActivities(1)
@@ -416,9 +493,148 @@ onUnmounted(() => {
   color: var(--ui-red-ink);
 }
 
+/* The log beside a rail of what the period was made of; the rail sits level with the filters */
+.al-grid {
+  display: grid;
+  gap: 20px;
+  align-items: start;
+  min-width: 0;
+}
+
+.al-grid.has-aside {
+  grid-template-columns: minmax(0, 1fr) 300px;
+}
+
+.al-main {
+  display: grid;
+  gap: 20px;
+  min-width: 0;
+}
+
+.al-legend {
+  margin: 0;
+  padding: 0 6px;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--ui-muted);
+}
+
+.al-grid.has-aside .al-legend {
+  display: none;
+}
+
+.al-aside {
+  position: sticky;
+  top: 20px;
+}
+
+.al-more {
+  display: none;
+  padding: 0;
+}
+.al-chips {
+  display: none;
+}
+.al-more summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 48px;
+  padding: 0 20px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  list-style: none;
+}
+.al-more-hint {
+  margin-left: auto;
+  padding-right: 10px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ui-ink-2);
+}
+.al-more summary::-webkit-details-marker {
+  display: none;
+}
+.al-more summary::after {
+  width: 8px;
+  height: 8px;
+  margin-right: 4px;
+  border-right: 2px solid var(--ui-muted);
+  border-bottom: 2px solid var(--ui-muted);
+  transform: rotate(45deg);
+  content: '';
+  transition: transform var(--ui-dur) var(--ui-ease);
+}
+.al-more[open] summary::after {
+  transform: rotate(-135deg);
+}
+@media (max-width: 1024px) {
+  .al-grid.has-aside {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .al-aside {
+    display: none;
+  }
+
+  .al-grid.has-aside .al-legend {
+    display: block;
+  }
+
+  .al-more {
+    display: block;
+  }
+
+  .al-chips {
+    display: flex;
+    gap: 8px;
+    margin: 0 -4px;
+    padding: 0 4px 2px;
+    flex-wrap: wrap;
+  }
+
+  .al-chip {
+    flex: none;
+    min-height: 44px;
+    padding: 0 16px;
+    border: 0;
+    border-radius: 999px;
+    background: var(--ui-surface);
+    box-shadow: var(--ui-shadow-pill);
+    font: 500 14px var(--ui-font-ui);
+    color: var(--ui-ink);
+    cursor: pointer;
+  }
+
+  .al-chip b {
+    margin-left: 4px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .al-chip[aria-pressed='true'] {
+    background: var(--section-hue-soft, var(--ui-accent-soft));
+    font-weight: 600;
+    box-shadow: inset 0 0 0 1.5px var(--section-ink, var(--ui-accent));
+  }
+}
+
+.al-more :deep(.insights) {
+  padding: 0 12px 12px;
+}
+.al-more :deep(.ins-list) {
+  box-shadow: none;
+  background: var(--ui-fill);
+}
+
 @media (max-width: 768px) {
+  /* the two header actions are icon buttons; the label stays for assistive tech */
+  .ui-page-actions {
+    justify-content: flex-end;
+  }
   .ui-page-actions > .btn {
-    flex: 1;
+    flex: none;
+    min-height: 44px;
   }
 }
 </style>

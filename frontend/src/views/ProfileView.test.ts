@@ -84,4 +84,29 @@ describe('ProfileView', () => {
     expect(mockShowError).not.toHaveBeenCalled()
     expect(authStore.currentAgent?.displayName).toBe('Olivia QA')
   })
+  it('draws one role ladder per team with the held role marked', async () => {
+    const authStore = useAuthStore()
+    authStore.currentAgent = {
+      id: 'agent-2',
+      name: 'Lee',
+      displayName: 'Lee',
+      email: 'lee@dacit.net',
+      role: 'agent' as const,
+      isActive: true,
+      createdAt: Date.parse('2026-01-01T00:00:00.000Z'),
+      primaryTeamId: 1,
+      teams: [{ id: 1, name: 'A' }, { id: 2, name: 'B' }],
+      teamRoles: { 1: 'lead', 2: 'member' },
+    } as never
+
+    const wrapper = mount(ProfileView)
+    await flushPromises()
+
+    const ladders = wrapper.findAll('.ladder')
+    expect(ladders).toHaveLength(2)
+    expect(ladders[0]?.find('.is-here .rung-label').text()).toBe('組長')
+    expect(ladders[0]?.findAll('.is-passed')).toHaveLength(1)
+    expect(ladders[1]?.find('.is-here .rung-label').text()).toBe('成員')
+    expect(ladders[1]?.findAll('.is-passed')).toHaveLength(0)
+  })
 })

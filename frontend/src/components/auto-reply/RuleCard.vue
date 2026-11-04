@@ -1,7 +1,7 @@
 <template>
   <div
     class="rule-card"
-    :class="{ 'rule-card--expanded': isExpanded }"
+    :class="{ 'rule-card--expanded': isExpanded, 'rule-card--off': !rule.isActive, 'is-first': first, 'is-last': last }"
   >
     <!-- Collapsed header (always visible) -->
     <div
@@ -9,6 +9,14 @@
       @click="emit('toggle-expand')"
     >
       <div class="rule-card__left">
+        <!-- Priority rung: rules are tried in this order, the first match answers -->
+        <span
+          class="rule-card__rung"
+          role="img"
+          :aria-label="`優先序 ${rule.priority}`"
+          :title="`優先序 ${rule.priority}：數字越小越先比對；${rule.conditions.length} 個條件、${rule.actions.length} 個動作`"
+        >{{ rule.priority }}</span>
+
         <!-- Active toggle -->
         <div
           class="rule-card__toggle"
@@ -62,33 +70,31 @@
           </div>
           <!-- phone only: priority joins the meta line so the row keeps one trailing control -->
           <div class="rule-card__prio-line">
-            優先序 {{ rule.priority }} · {{ rule.conditions.length }} 條件 · {{ rule.actions.length }} 動作
+            <span class="rule-card__prio-when">{{ conditionSummary || (rule.conditions.length ? `${rule.conditions.length} 條件` : '不需條件') }}</span>
+            <span
+              v-if="hits"
+              class="rule-card__prio-n"
+            >觸發 {{ hits }} 次</span>
+            <span class="rule-card__prio-n">優先 {{ rule.priority }}</span>
           </div>
         </div>
       </div>
 
       <div class="rule-card__right">
-        <!-- Priority: the word makes the number self-explanatory -->
+        <!-- How often it fired in the newest logs -->
         <span
-          class="rule-card__priority"
-          title="優先序：數字越小越先比對"
+          v-if="hits !== null && hits !== undefined"
+          class="rule-card__hits"
+          :class="{ 'is-zero': hits === 0 }"
+          :title="`最近 ${hitsWindow} 筆日誌中觸發 ${hits} 次`"
         >
-          <span
-            class="rule-card__priority-label"
-            aria-hidden="true"
-          >優先</span>
-          <span
-            class="rule-card__priority-badge"
-            :aria-label="`優先序 ${rule.priority}`"
-          >
-            {{ rule.priority }}
-          </span>
+          <b>{{ hits }}</b> 次
         </span>
-
-        <!-- Meta text -->
-        <span class="rule-card__meta">
-          {{ rule.conditions.length }} 條件 · {{ rule.actions.length }} 動作
-        </span>
+        <span
+          v-else
+          class="rule-card__none"
+          aria-hidden="true"
+        />
 
         <!-- Expand arrow -->
         <span
@@ -137,12 +143,21 @@ import { TRIGGER_TYPE_LABELS, type AutoReplyRule } from '@/api/autoReply'
 import RuleEditor from './RuleEditor.vue'
 import type { RuleFormData } from './RuleEditor.vue'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   rule: AutoReplyRule
   isExpanded: boolean
   formData: RuleFormData
   saving: boolean
-}>()
+  /** Times this rule fired within the newest logs; null = unknown (filtered log view) */
+  hits?: number | null
+  /** Largest hit count among the rules, to scale the bar */
+  hitsMax?: number
+  /** How many log rows the hit counts were taken from */
+  hitsWindow?: number
+  /** Position in the list, for the rail that joins the priority rungs */
+  first?: boolean
+  last?: boolean
+}>(), { hits: null, hitsMax: 0, hitsWindow: 50, first: false, last: false })
 
 const emit = defineEmits<{
   'toggle-expand': []
@@ -214,6 +229,7 @@ const triggerTypeLabel = computed(() => {
 
 /* Header */
 .rule-card__header {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -237,9 +253,10 @@ const triggerTypeLabel = computed(() => {
 }
 
 .rule-card__right {
-  display: flex;
+  display: grid;
+  grid-template-columns: 56px 18px;
   align-items: center;
-  gap: 12px;
+  column-gap: 12px;
   flex-shrink: 0;
 }
 
@@ -263,7 +280,7 @@ const triggerTypeLabel = computed(() => {
   overflow: hidden;
   font-size: 13px;
   line-height: 1.45;
-  color: var(--ui-muted);
+  color: var(--ui-ink-2);
 }
 
 .rule-card__when,
@@ -278,17 +295,6 @@ const triggerTypeLabel = computed(() => {
   color: var(--ui-ink-2);
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
-}
-
-.rule-card__priority {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.rule-card__priority-label {
-  font-size: 12.5px;
-  color: var(--ui-muted);
 }
 
 /* Toggle switch (same spec as .ui-switch) */
@@ -339,6 +345,16 @@ const triggerTypeLabel = computed(() => {
   color: var(--ui-muted);
 }
 
+/* a disabled rule reads as off all the way across: neutral badge, quiet reply (no opacity, so contrast holds) */
+.rule-card--off .rule-card__trigger-badge {
+  background: var(--ui-fill);
+  color: var(--ui-muted);
+}
+
+.rule-card--off .rule-card__reply {
+  color: var(--ui-muted);
+}
+
 /* Trigger badge */
 .rule-card__trigger-badge {
   flex: none;
@@ -384,32 +400,53 @@ const triggerTypeLabel = computed(() => {
   white-space: nowrap;
 }
 
-/* Priority badge */
-.rule-card__priority-badge {
-  display: inline-grid;
-  min-width: 26px;
-  height: 26px;
-  padding: 0 8px;
-  place-items: center;
-  border-radius: 999px;
-  background: var(--ui-fill);
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--ui-ink-2);
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-
 .rule-card__prio-line {
   display: none;
 }
 
-/* Meta text */
-.rule-card__meta {
+/* Priority rung: a numbered stop on the rail that runs down the list */
+.rule-card__rung {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  flex: none;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--ui-accent-soft);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ui-accent);
+  font-variant-numeric: tabular-nums;
+}
+
+.rule-card--off .rule-card__rung {
+  background: var(--ui-fill-strong);
+  color: var(--ui-muted);
+}
+
+/* the numbered rungs stand alone: a hairline through them read as an error */
+
+.rule-card__hits {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
   font-size: 13px;
   color: var(--ui-muted);
-  font-variant-numeric: tabular-nums;
   white-space: nowrap;
+}
+
+.rule-card__hits b {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ui-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.rule-card__hits.is-zero b {
+  color: var(--ui-muted);
 }
 
 /* Arrow */
@@ -438,69 +475,69 @@ const triggerTypeLabel = computed(() => {
 
 @media (max-width: 768px) {
   .rule-card__header {
+    align-items: flex-start;
     padding: 14px 16px;
   }
 
-  .rule-card__meta {
+  .rule-card__hits,
+  .rule-card__rung,
+  .rule-card::after {
     display: none;
   }
 
-  /* name, badges and the condition wrap instead of clipping; the chevron is the one trailing control */
-  .rule-card__header {
-    align-items: flex-start;
+  .rule-card__right {
+    display: block;
   }
 
   .rule-card__left {
     align-items: flex-start;
   }
 
-  .rule-card__title {
-    flex-wrap: wrap;
-  }
-
-  .rule-card__name {
-    overflow: visible;
-    white-space: normal;
-  }
-
-  .rule-card__when {
-    flex: 1 1 100%;
-  }
-
   .rule-card__right {
     margin-top: 3px;
   }
 
-  .rule-card__priority {
+  /* two quiet lines under the name: condition then reply on one line, and the size line */
+  .rule-card__summary {
+    flex-wrap: nowrap;
+    gap: 6px;
+  }
+
+  /* the reply is the line; the condition moves to the meta line below it */
+  .rule-card__when,
+  .rule-card__then {
     display: none;
   }
 
+  /* the reply wraps to two lines: it is the content the agent came to read */
+  .rule-card__reply {
+    display: -webkit-box;
+    flex: 1 1 0;
+    -webkit-line-clamp: 1;
+  }
+
   .rule-card__prio-line {
-    display: block;
-    margin-top: 4px;
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 2px 0;
+    margin-top: 2px;
     font-size: 13px;
     color: var(--ui-muted);
     font-variant-numeric: tabular-nums;
   }
 
-  /* the full reply stays readable on a phone: no clamp */
-  .rule-card__reply {
-    display: block;
-    -webkit-line-clamp: unset;
-  }
-
-  /* condition on the first line, the reply outcome under it */
-  .rule-card__summary {
-    flex-wrap: wrap;
-    gap: 0 6px;
-  }
-
-  .rule-card__then {
+  /* phone: the meta line is just the numbers; the condition is read in the opened rule */
+  .rule-card__prio-when {
     display: none;
   }
 
-  .rule-card__reply {
-    flex: 1 1 100%;
+  .rule-card__prio-n {
+    flex: none;
+  }
+
+  .rule-card__prio-n + .rule-card__prio-n::before {
+    margin: 0 7px;
+    content: '·';
   }
 
   .rule-card__body {

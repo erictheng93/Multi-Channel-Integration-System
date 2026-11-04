@@ -19,6 +19,16 @@
     </UiPageHead>
     <UiSectionNav section="reports" />
 
+    <ReportCoverage
+      :type-label="formData.type ? ReportsAPI.formatReportType(formData.type) : ''"
+      :time-range="formData.timeRange"
+      :start-date="formData.startDate"
+      :end-date="formData.endDate"
+      :range-label="rangeLabel"
+      :format-label="formatLabel"
+      @jump="jumpToStep"
+    />
+
     <div class="generator-container">
       <div class="form-section">
         <form
@@ -65,6 +75,13 @@
         >
           <template #action>
             <div class="generate-action">
+              <p
+                v-if="!isFormValid"
+                class="generate-need"
+                role="status"
+              >
+                {{ missingHint }}
+              </p>
               <button
                 class="btn btn-primary"
                 type="button"
@@ -115,6 +132,7 @@ import UiActionBar from '@/components/ui/UiActionBar.vue'
 import { ref, reactive, computed, nextTick, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import ReportsAPI from '@/api/reports';
+import ReportCoverage from './ReportCoverage.vue';
 import ReportTypeSelector from './ReportTypeSelector.vue';
 import ReportParameterForm from './ReportParameterForm.vue';
 import ReportPreviewPanel from './ReportPreviewPanel.vue';
@@ -154,7 +172,7 @@ const defaultOptions = () => ({
 
 // Reactive state
 const formData = reactive<ReportFormState>({
-  type: props.initialType || null,
+  type: null,
   title: '',
   description: '',
   format: 'json',
@@ -181,8 +199,10 @@ const errors = reactive<Record<string, string>>({});
 const recentReports = ref<ReportBase[]>([]);
 
 // 重置 only appears once there is something to reset
+// Compared with the preselected starting point (type + auto title), not with an empty form
+const baseline = reactive<{ type: ReportType | null; title: string }>({ type: null, title: '' });
 const isDirty = computed(() =>
-  !!formData.type || !!formData.title.trim() || !!formData.description.trim() ||
+  formData.type !== baseline.type || formData.title !== baseline.title || !!formData.description.trim() ||
   formData.format !== 'json' || formData.timeRange !== 'last_30_days' ||
   JSON.stringify(formData.options) !== JSON.stringify(defaultOptions())
 );
@@ -207,14 +227,39 @@ const missingHint = computed(() => {
   return missing.length > 0 ? `還需要：${missing.join('、')}` : '';
 });
 
+// The period and format as the lead sentence words them ('' while the period is still incomplete)
+const rangeLabel = computed(() => {
+  if (formData.timeRange === 'custom') {
+    return formData.startDate && formData.endDate ? `${formData.startDate} 至 ${formData.endDate}` : '';
+  }
+  return ReportsAPI.getTimeRangeOptions().find(option => option.value === formData.timeRange)?.label ?? '';
+});
+const formatLabel = computed(() =>
+  ReportsAPI.getAvailableFormats().find(option => option.value === formData.format)?.label ?? formData.format
+);
+
+// A lead-sentence word takes the person to its step and puts the keyboard there
+const jumpToStep = async (step: 'type' | 'range' | 'format') => {
+  const card = step === 'type'
+    ? document.querySelector<HTMLElement>('.report-type-selector')
+    : document.querySelectorAll<HTMLElement>('.report-generator-form .step-card')[step === 'range' ? 1 : 2];
+  if (!card) { return; }
+  card.scrollIntoView?.({ block: 'center', behavior: 'smooth' });
+  await nextTick();
+  card.querySelector<HTMLElement>('[role="radio"][tabindex="0"], input, button')?.focus({ preventScroll: true });
+};
+
 // Methods
+let autoTitle = '';
 const selectReportType = (type: ReportType) => {
   formData.type = type;
 
   // Auto-fill title based on type
+  // (a title the user typed is kept; one we filled in follows the chosen type)
   const typeLabel = ReportsAPI.formatReportType(type);
-  if (!formData.title) {
-    formData.title = `${typeLabel} - ${new Date().toLocaleDateString('zh-TW')}`;
+  if (!formData.title || formData.title === autoTitle) {
+    autoTitle = `${typeLabel} - ${new Date().toLocaleDateString('zh-TW')}`;
+    formData.title = autoTitle;
   }
 
   // Clear related error
@@ -349,8 +394,8 @@ const generateReport = async () => {
 };
 
 const resetForm = () => {
-  formData.type = null;
-  formData.title = '';
+  formData.type = baseline.type;
+  formData.title = baseline.title;
   formData.description = '';
   formData.format = 'json';
   formData.timeRange = 'last_30_days';
@@ -374,7 +419,7 @@ const loadRecentReports = async () => {
   try {
     const response = await ReportsAPI.listReports({
       page: 1,
-      pageSize: 5,
+      pageSize: 20,
       sortBy: 'createdAt',
       sortOrder: 'desc'
     });
@@ -389,9 +434,14 @@ onMounted(() => {
   loadRecentReports();
 
   // If there's an initial type, auto-select it
-  if (props.initialType) {
-    selectReportType(props.initialType);
+  // A type is always preselected (the first generatable one) so the form starts out ready to generate
+  const first = ReportsAPI.getGeneratableOptions().types[0]?.value;
+  const initial = props.initialType ?? first;
+  if (initial) {
+    selectReportType(initial);
   }
+  baseline.type = formData.type;
+  baseline.title = formData.title;
 });
 </script>
 
@@ -426,6 +476,13 @@ onMounted(() => {
   width: 100%;
 }
 
+.generate-need {
+  margin: 0 0 10px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ui-orange-ink);
+}
+
 @media (max-width: 1280px) {
   .generator-container {
     grid-template-columns: minmax(0, 1fr);
@@ -443,8 +500,9 @@ onMounted(() => {
 .generate-hint {
   flex: 1;
   margin: 0;
-  font-size: 13px;
-  color: var(--ui-muted);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--ui-ink-2);
 }
 
 @media (max-width: 768px) {
@@ -458,9 +516,20 @@ onMounted(() => {
     display: none;
   }
 
+  /* Hint on its own line, the action spans the bar */
+  .generate-bar {
+    flex-wrap: wrap;
+  }
+
+  .generate-hint {
+    flex: 1 0 100%;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--ui-ink);
+  }
+
   .generate-bar .btn {
-    flex: 0 0 auto;
-    min-width: 140px;
+    flex: 1 1 100%;
   }
 }
 </style>

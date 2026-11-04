@@ -1,83 +1,100 @@
 <!--
   LineSetupGuide.vue
-  Beside the LINE form: the webhook address LINE must call (this deployment's real URL, copyable)
-  Where each credential lives is stated in the credential rows themselves. Static help, no invented status.
+  Beside the LINE credentials: the three steps to switch the webhook on in LINE Developers.
+  The webhook address itself is drawn on the incoming wire of the signal path (LineSignalPath).
+  Static help, no invented status.
 -->
 <template>
-  <article class="ui-card guide-card">
-    <h2 class="guide-title">
-      Webhook 網址
+  <section class="guide">
+    <h2 class="ui-group-label">
+      在 LINE Developers 啟用 Webhook
     </h2>
-    <p class="guide-text">
-      在 LINE Developers 的 Messaging API 設定中，把這個網址填入 Webhook URL 並開啟「Use webhook」。
-    </p>
-    <div class="url-box">
-      <code
-        class="url"
-        :title="webhookUrl"
-      >{{ webhookUrl }}</code>
-      <button
-        type="button"
-        class="btn btn-secondary btn-sm"
-        @click="copy"
+    <ol class="ui-group steps">
+      <li
+        v-for="step in STEPS"
+        :key="step.title"
+        class="step"
       >
-        {{ copied ? '已複製' : '複製' }}
-      </button>
-    </div>
-  </article>
+        <span
+          class="step-n"
+          aria-hidden="true"
+        />
+        <div class="step-text">
+          <div class="step-title">
+            {{ step.title }}
+          </div>
+          <div class="step-hint">
+            {{ step.hint }}
+          </div>
+        </div>
+      </li>
+    </ol>
+  </section>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
-import { getBackendUrl } from '@/config/runtime'
-
-const webhookUrl = `${getBackendUrl()}/api/webhook`
-const copied = ref(false)
-
-async function copy(): Promise<void> {
-  try {
-    await navigator.clipboard.writeText(webhookUrl)
-    copied.value = true
-    setTimeout(() => { copied.value = false }, 1800)
-  } catch {
-    copied.value = false
-  }
-}
+const STEPS = [
+  { title: '複製 Webhook 網址', hint: '在上方「收訊」線路上，按右側的複製鈕' },
+  { title: '貼到 Webhook URL，按「Verify」', hint: 'Messaging API 分頁的 Webhook settings，確認可連線' },
+  { title: '開啟「Use webhook」', hint: '開啟後 LINE 才會把客戶訊息送進來' }
+] as const
 </script>
 
 <style scoped>
-.guide-card {
-  padding: 18px 20px;
-}
-
-.guide-title {
-  margin: 0;
-  font: 600 var(--ui-t-head, 15px) var(--ui-font-display);
-  letter-spacing: -0.01em;
-}
-
-.guide-text {
-  margin: 6px 0 12px;
-  font-size: var(--ui-t-meta);
-  line-height: 1.55;
-  color: var(--ui-muted);
-}
-
-.url-box {
+.guide {
   display: flex;
-  gap: 8px;
-  align-items: flex-start;
-  padding: 8px 8px 8px 12px;
-  border-radius: var(--ui-r-inner);
-  background: var(--ui-fill);
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
 }
 
-.url {
+.steps {
+  display: flex;
   flex: 1;
-  min-width: 0;
-  padding-top: 4px;
-  font: 12.5px / 1.5 var(--ui-font-mono);
-  color: var(--ui-ink-2);
-  overflow-wrap: anywhere;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: step;
+}
+
+.step {
+  display: flex;
+  flex: 1;
+  gap: 14px;
+  align-items: center;
+  padding: 14px 22px;
+  counter-increment: step;
+}
+
+.step + .step {
+  box-shadow: inset 0 0.5px 0 var(--ui-sep);
+}
+
+.step-n {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: var(--ui-accent-soft);
+  font: 700 17px var(--ui-font-display);
+  color: var(--ui-accent);
+}
+
+.step-n::before {
+  content: counter(step);
+}
+
+.step-title {
+  font: 600 15px / 1.35 var(--ui-font-ui);
+}
+
+.step-hint {
+  margin-top: 2px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--ui-muted);
 }
 </style>

@@ -1,258 +1,255 @@
+<!-- One ready-made template as a selectable card: a small paper thumbnail drawn from the template's latest real report
+     (donut of conversation states / bars of agent messages), its name, what it is, and the one figure it opens with.
+     The output preview and the actions live in the parent. -->
 <template>
-  <article class="ui-card template-card">
-    <header class="tc-head">
-      <span
-        class="tpl-ico"
-        aria-hidden="true"
-      >
-        <svg
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        ><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z" /><path d="M14 3v5h5M9 13h6M9 17h6" /></svg>
-      </span>
-      <div class="tc-title">
-        <h2 class="template-name">
-          {{ template.name }}
-        </h2>
-        <p class="template-description">
-          {{ template.description }}
-        </p>
-      </div>
-      <span class="ui-tag category-badge">{{ getCategoryLabel(template.category) }}</span>
-    </header>
-
-    <section
-      class="tc-contents"
-      :aria-label="`${template.name}的報表內容`"
+  <button
+    type="button"
+    class="tpl-row"
+    :class="{ 'is-on': selected }"
+    role="radio"
+    :aria-checked="selected"
+    @click="$emit('select', template)"
+  >
+    <span
+      class="tpl-paper"
+      aria-hidden="true"
     >
-      <h3 class="tc-h">
-        報表內容
-      </h3>
-      <ul class="tc-list">
-        <li
-          v-for="item in contents"
-          :key="item.label"
-        >
-          <span class="tc-text">
-            <b>{{ item.label }}</b>
-            <span>{{ item.hint }}</span>
-          </span>
-        </li>
-      </ul>
-    </section>
-
-    <dl class="tc-meta">
-      <div>
-        <dt>預設範圍</dt>
-        <dd>近 30 天</dd>
-      </div>
-      <div>
-        <dt>輸出格式</dt>
-        <dd>JSON</dd>
-      </div>
-      <div v-if="template.presetOptions.maxRecords">
-        <dt>筆數上限</dt>
-        <dd>{{ template.presetOptions.maxRecords.toLocaleString('en-US') }}</dd>
-      </div>
-      <div v-if="template.estimatedTime">
-        <dt>預估時間</dt>
-        <dd>約 {{ formatEstimatedTime(template.estimatedTime) }}</dd>
-      </div>
-    </dl>
-
-    <footer class="tc-foot">
-      <button
-        type="button"
-        class="btn btn-ghost"
-        :disabled="generating"
-        @click="$emit('customize', template)"
+      <svg
+        v-if="!sheet.isAgents"
+        viewBox="0 0 48 48"
       >
-        調整後產生
-      </button>
-      <button
-        type="button"
-        class="btn btn-primary"
-        :disabled="generating"
-        @click="$emit('use', template)"
+        <circle
+          class="bg"
+          cx="24"
+          cy="24"
+          r="16"
+        />
+        <circle
+          v-for="seg in segments"
+          :key="seg.tone"
+          class="seg"
+          :class="seg.tone"
+          cx="24"
+          cy="24"
+          r="16"
+          :stroke-dasharray="seg.dash"
+          :stroke-dashoffset="seg.offset"
+        />
+      </svg>
+      <svg
+        v-else
+        viewBox="0 0 48 48"
       >
-        {{ generating ? '產生中...' : '直接產生' }}
-      </button>
-    </footer>
-  </article>
+        <rect
+          v-for="(bar, i) in miniBars"
+          :key="i"
+          class="bar"
+          :class="{ ghost: !sheet.live }"
+          x="6"
+          :y="7 + i * 9"
+          rx="2"
+          height="5"
+          :width="bar"
+        />
+      </svg>
+    </span>
+    <span class="tpl-main">
+      <b class="tpl-name">{{ template.name }}</b>
+      <span class="tpl-desc">{{ template.description }}</span>
+      <span class="tpl-fig">{{ figure }}</span>
+    </span>
+    <i
+      class="radio"
+      aria-hidden="true"
+    />
+  </button>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue';
 import type { ReportTemplate } from '@/types/reports';
-import { REPORT_CONTENTS, formatEstimatedTime, getCategoryLabel } from './templateHelpers';
+import type { LatestReport } from './latestReport';
+import { readSheet } from './sheetData';
 
-const props = withDefaults(defineProps<{
+const props = defineProps<{
   template: ReportTemplate;
-  generating?: boolean;
-}>(), {
-  generating: false
-});
-
-defineEmits<{
-  use: [template: ReportTemplate];
-  customize: [template: ReportTemplate];
+  selected: boolean;
+  state: LatestReport | null;
 }>();
 
-const contents = computed(() => REPORT_CONTENTS[props.template.type] ?? []);
+defineEmits<{
+  select: [template: ReportTemplate];
+}>();
+
+const sheet = computed(() => readSheet(props.template.type, props.state));
+
+const CIRC = 2 * Math.PI * 16;
+const segments = computed(() => {
+  const { parts, total } = sheet.value;
+  const visible = parts.filter(p => p.value > 0);
+  let acc = 0;
+  return visible.map(p => {
+    const len = (p.value / total) * CIRC;
+    const seg = { tone: p.tone, dash: `${Math.max(0.5, len - 1.2)} ${CIRC}`, offset: -acc };
+    acc += len;
+    return seg;
+  });
+});
+
+// four bars on one scale, widest = full width
+const miniBars = computed(() => {
+  const list = sheet.value.live ? sheet.value.agents.slice(0, 4) : [{ name: '', value: 4 }, { name: '', value: 3 }, { name: '', value: 2 }];
+  const max = Math.max(1, ...list.map(a => a.value));
+  return list.map(a => Math.max(3, Math.round((a.value / max) * 36)));
+});
+
+const figure = computed(() => {
+  const s = sheet.value;
+  if (!s.live) { return '尚無樣本數值'; }
+  return s.isAgents
+    ? `${s.agents.length} 位客服 ・ ${s.agentSum.toLocaleString('en-US')} 則訊息`
+    : `${s.total.toLocaleString('en-US')} 個對話 ・ ${s.parts[1]?.value ?? 0} 已結案`;
+});
 </script>
 
 <style scoped>
-.template-card {
-  display: flex;
-  flex-direction: column;
-  gap: 22px;
-  padding: 24px;
-}
-
-.tc-head {
+.tpl-row {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   gap: 14px;
-  align-items: start;
+  align-items: center;
+  width: 100%;
+  padding: 14px 16px;
+  border: 0;
+  border-radius: var(--ui-r-inner);
+  background: var(--ui-surface);
+  color: var(--ui-ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--ui-dur) var(--ui-ease);
 }
 
-.tpl-ico {
+.tpl-row:hover {
+  background: var(--ui-fill);
+}
+
+.tpl-row.is-on {
+  background: var(--ui-sel-tint);
+  box-shadow: inset 0 0 0 2px var(--ui-accent);
+}
+
+.tpl-row:focus-visible {
+  outline: 2px solid var(--ui-accent);
+  outline-offset: 2px;
+}
+
+/* a sheet of paper, portrait, with the template's own mini chart */
+.tpl-paper {
   display: grid;
-  width: 44px;
-  height: 44px;
+  width: 48px;
+  height: 58px;
   place-items: center;
-  border-radius: 12px;
-  background: var(--section-hue-soft);
-  color: var(--section-ink);
+  border-radius: 8px;
+  background: var(--ui-surface);
+  box-shadow: 0 0 0 0.5px var(--ui-field-edge), 0 2px 6px rgba(0, 0, 0, 0.08);
 }
 
-.tpl-ico svg {
-  width: 22px;
-  height: 22px;
+.tpl-paper svg {
+  width: 38px;
+  height: 38px;
 }
 
-.template-name {
-  margin: 0;
-  font: 600 19px / 1.25 var(--ui-font-display);
-  letter-spacing: -0.01em;
+.tpl-paper circle {
+  fill: none;
+  stroke-width: 7;
+  transform: rotate(-90deg);
+  transform-origin: 24px 24px;
 }
 
-.template-description {
-  margin: 4px 0 0;
-  font-size: 13.5px;
-  line-height: 1.45;
-  color: var(--ui-muted);
+.tpl-paper .bg {
+  stroke: var(--ui-fill);
 }
 
-.category-badge {
-  background: var(--ui-p-sky);
-  color: var(--ui-p-sky-ink);
-  font-weight: 600;
+.tpl-paper .seg {
+  stroke: var(--ui-blue);
 }
 
-.tc-h {
-  margin: 0 0 8px;
-  font-size: 13px;
-  font-weight: 600;
+.tpl-paper .seg.green {
+  stroke: var(--ui-green);
+}
+
+.tpl-paper .seg.grey {
+  stroke: var(--ui-fill-strong);
+}
+
+.tpl-paper .bar {
+  fill: var(--ui-blue);
+}
+
+.tpl-paper .bar.ghost {
+  fill: var(--ui-fill);
+}
+
+.tpl-main {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.tpl-name {
+  font: 600 17px / 1.3 var(--ui-font-display);
+}
+
+.tpl-desc {
+  font-size: 14px;
   color: var(--ui-ink-2);
 }
 
-.tc-contents {
-  flex: 1;
-}
-
-.tc-list {
-  display: grid;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.tc-list li {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  justify-content: space-between;
-  padding: 10px 0;
-  box-shadow: 0 -0.5px 0 var(--ui-sep);
-}
-
-.tc-list li:first-child {
-  box-shadow: none;
-}
-
-.tc-text {
-  display: grid;
-  min-width: 0;
-  gap: 2px;
-}
-
-.tc-text b {
-  font-size: 14px;
-  font-weight: 600;
-}
-
-.tc-text span {
-  font-size: 12.5px;
-  line-height: 1.4;
-  color: var(--ui-muted);
-}
-
-.tc-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px 28px;
-  margin: 0;
-  padding-top: 16px;
-  border-top: 0.5px solid var(--ui-sep);
-}
-
-.tc-meta dt {
-  font-size: 12px;
-  color: var(--ui-muted);
-}
-
-.tc-meta dd {
-  margin: 2px 0 0;
-  font-size: 14px;
-  font-weight: 600;
+.tpl-fig {
+  margin-top: 2px;
+  font-size: 13px;
   font-variant-numeric: tabular-nums;
+  color: var(--ui-muted);
 }
 
-.tc-foot {
-  display: flex;
-  gap: 10px;
-  justify-content: flex-end;
+.radio {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1.5px var(--ui-field-edge);
+  transition: box-shadow var(--ui-dur) var(--ui-ease);
 }
 
+.is-on .radio {
+  box-shadow: inset 0 0 0 6px var(--ui-accent);
+}
+
+/* phone: a two-way switch, name + figure under a small paper */
 @media (max-width: 768px) {
-  .template-card {
-    gap: 16px;
-    padding: 18px;
-  }
-
-  .tc-head {
+  .tpl-row {
     grid-template-columns: auto minmax(0, 1fr);
+    gap: 10px;
+    padding: 10px 12px;
   }
 
-  .category-badge {
-    grid-column: 1 / -1;
-    grid-row: 1;
-    justify-self: start;
+  .tpl-paper {
+    width: 34px;
+    height: 42px;
   }
 
-  .tc-list li {
-    flex-wrap: wrap;
-    gap: 4px 12px;
+  .tpl-paper svg {
+    width: 26px;
+    height: 26px;
   }
 
-  .tc-foot .btn {
-    flex: 1;
-    justify-content: center;
+  .tpl-row .radio,
+  .tpl-desc {
+    display: none;
+  }
+
+  .tpl-name {
+    font-size: 15px;
   }
 }
 </style>

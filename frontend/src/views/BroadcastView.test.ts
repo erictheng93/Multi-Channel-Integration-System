@@ -5,7 +5,7 @@ import { shallowMount, flushPromises } from '@vue/test-utils'
 import BroadcastView from './BroadcastView.vue'
 
 const broadcasts = vi.hoisted(() => ({
-  broadcasts: [{ id: 'b1' }],
+  broadcasts: [{ id: 'b1', content: 'hello' }],
   fetchBroadcasts: vi.fn(),
   fetchBroadcast: vi.fn(),
   fetchRecipients: vi.fn()
@@ -50,6 +50,25 @@ describe('BroadcastView leaving during the first load', () => {
     await flushPromises()
 
     expect(broadcasts.fetchBroadcast).toHaveBeenCalledWith('b1')
+    wrapper.unmount()
+  })
+
+  it('puts the composer and the log in two cards, with a phone-only bar that opens the composer', async () => {
+    broadcasts.fetchBroadcasts.mockResolvedValueOnce(undefined)
+
+    const wrapper = shallowMount(BroadcastView, { global: { stubs: { AppLayout: { template: '<div><slot /></div>' } } } })
+    await flushPromises()
+
+    expect(wrapper.findAll('section.ui-card').map(card => card.classes())).toEqual([
+      expect.arrayContaining(['bench']),
+      expect.arrayContaining(['log'])
+    ])
+    const toggle = wrapper.find('.bench-bar button')
+    expect(toggle.text()).toBe('新增群發')
+    expect(toggle.attributes('aria-expanded')).toBe('false')
+    await toggle.trigger('click')
+    expect(wrapper.find('.bench').classes()).toContain('is-open')
+    expect(wrapper.find('.bench-bar button').text()).toBe('收合')
     wrapper.unmount()
   })
 })

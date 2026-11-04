@@ -19,10 +19,13 @@
       >
         {{ truncatedDescription }}
       </p>
-      <span
-        class="ui-tag report-type-badge"
-        :class="typeBadgeClass"
-      >{{ typeLabel }}</span>
+      <div class="tag-line">
+        <span
+          class="ui-tag report-type-badge"
+          :class="typeBadgeClass"
+        >{{ typeLabel }}</span>
+        <span class="file-line format-cell">{{ formatLabel }}<template v-if="report.fileSize"> ・ {{ formattedSize }}</template></span>
+      </div>
     </div>
 
     <div
@@ -39,30 +42,13 @@
 
     <div
       role="cell"
-      class="row-cell format-cell"
-    >
-      <span class="format-text">{{ formatLabel }}</span>
-    </div>
-
-    <div
-      role="cell"
       class="row-cell time-cell"
     >
-      <span class="time-text"><span class="format-inline">{{ formatLabel }} · </span>{{ formattedTime }}</span>
+      <span class="time-text"><span class="format-inline">{{ typeLabel }} · </span><span class="format-inline">{{ formatLabel }}<span class="size-inline">{{ report.fileSize ? ` ${formattedSize}` : '' }}</span> · </span><span class="time-when">{{ formattedTime }}</span></span>
       <span
         v-if="expiryText"
         class="expiry-text"
       >{{ expiryText }}</span>
-    </div>
-
-    <div
-      role="cell"
-      class="row-cell size-cell"
-    >
-      <span
-        class="size-text"
-        :class="{ 'is-empty': !report.fileSize }"
-      >{{ formattedSize }}</span>
     </div>
 
     <div
@@ -237,7 +223,7 @@ const canDelete = computed(() => {
 .report-row {
   position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 2.4fr) 110px 70px minmax(100px, 1fr) 80px 76px;
+  grid-template-columns: 96px minmax(0, 1fr) 150px 84px;
   align-items: center;
   gap: 12px;
   padding: 14px 22px;
@@ -312,43 +298,61 @@ const canDelete = computed(() => {
 }
 
 .time-text {
-  font-size: 13px;
+  font-size: 14px;
   font-variant-numeric: tabular-nums;
 }
 
 .expiry-text {
   font-size: 13px;
-  color: var(--ui-muted);
+  color: var(--ui-ink-2);
 }
 
-.size-cell {
-  text-align: left;
+.tag-line {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  min-width: 0;
+}
+
+.file-line {
+  font-size: 13px;
+  color: var(--ui-ink-2);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .row-actions {
   display: flex;
   justify-content: flex-end;
-  gap: 2px;
+  gap: 14px;
 }
 
 .action-btn {
   display: grid;
-  width: 32px;
-  height: 32px;
+  width: 40px;
+  height: 40px;
   place-items: center;
   border: 0;
-  border-radius: 9px;
+  border-radius: 12px;
   background: transparent;
-  color: var(--ui-muted);
+  color: var(--ui-ink-2);
   cursor: pointer;
   transition:
     background var(--ui-dur) var(--ui-ease),
     color var(--ui-dur) var(--ui-ease);
 }
 
+.time-when {
+  white-space: nowrap;
+}
+
+.action-btn--danger {
+  color: var(--ui-ink-2);
+}
+
 .action-btn svg {
-  width: 16px;
-  height: 16px;
+  width: 21px;
+  height: 21px;
 }
 
 .action-btn:hover:not(:disabled) {
@@ -362,8 +366,14 @@ const canDelete = computed(() => {
 }
 
 .action-btn:disabled {
-  opacity: 0.35;
+  opacity: 0.4;
   cursor: not-allowed;
+}
+
+@media (min-width: 769px) {
+  .status-cell {
+    order: -1;
+  }
 }
 
 @media (max-width: 768px) {
@@ -382,15 +392,23 @@ const canDelete = computed(() => {
     grid-row: 1;
   }
 
+  .size-inline {
+    display: none;
+  }
+
   .format-inline {
     display: inline;
+    white-space: nowrap;
     font-weight: 600;
     color: var(--ui-ink-2);
   }
 
-  .format-cell,
-  .size-cell {
+  .tag-line {
     display: none;
+  }
+
+  .title-cell {
+    gap: 2px;
   }
 
   .time-cell {
@@ -406,5 +424,18 @@ const canDelete = computed(() => {
     width: 44px;
     height: 44px;
   }
+}
+.tag-line .report-type-badge {
+  padding: 0;
+  border-radius: 0;
+  background: none;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ui-ink-2);
+}
+
+.tag-line .report-type-badge::after {
+  margin-left: 6px;
+  content: '・';
 }
 </style>

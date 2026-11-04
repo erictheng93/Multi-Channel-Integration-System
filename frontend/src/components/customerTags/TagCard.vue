@@ -6,12 +6,18 @@
     @click="$emit('view-conversations')"
   >
     <div class="t-top">
-      <span class="tag-chip">
+      <span class="tag-head">
+        <span class="tag-chip">
+          <span
+            class="tag-color-indicator"
+            :style="{ background: tag.color }"
+          />
+          <h3 class="tag-name">{{ tag.name }}</h3>
+        </span>
         <span
-          class="tag-color-indicator"
-          :style="{ background: tag.color }"
-        />
-        <h3 class="tag-name">{{ tag.name }}</h3>
+          v-if="!(tag.conversationCount || 0)"
+          class="ui-pill unused"
+        >尚未套用</span>
       </span>
       <div
         class="tag-checkbox"
@@ -55,23 +61,18 @@
         </button>
       </div>
       <span
-        v-if="!(tag.conversationCount || 0)"
-        class="ui-pill"
-      >尚未套用</span>
-      <span
         class="meter"
         aria-hidden="true"
       ><i :style="{ width: meterWidth }" /></span>
 
+      <!-- phone: the row opens the tag sheet, where edit and delete live -->
+      <span
+        class="phone-edit"
+        aria-hidden="true"
+      >
+        <ChevronRightIcon />
+      </span>
       <div class="tag-actions">
-        <button
-          class="action-btn action-btn-info"
-          title="查看統計"
-          aria-label="查看統計"
-          @click.stop="$emit('view-stats')"
-        >
-          <BarChartIcon />
-        </button>
         <button
           class="action-btn action-btn-primary"
           title="編輯標籤"
@@ -95,11 +96,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import {
-  BarChartIcon,
-  EditIcon,
-  TrashIcon
-} from '@/components/icons'
+import { ChevronRightIcon, EditIcon, TrashIcon } from '@/components/icons'
 import type { Tag } from '@/types/tag'
 
 const props = defineProps<{
@@ -115,7 +112,6 @@ defineEmits<{
   select: []
   edit: []
   delete: []
-  'view-stats': []
   'view-conversations': []
 }>()
 
@@ -133,14 +129,16 @@ const meterWidth = computed(() => {
 .tag-card {
   position: relative;
   display: grid;
-  grid-template-columns: 22px minmax(0, 1fr) minmax(72px, 150px) 96px 100px;
+  grid-template-columns: 22px minmax(0, 1fr) 150px 80px;
   grid-template-areas:
-    'check chip meter count actions'
-    'check desc meter count actions';
+    'check chip count actions'
+    'check desc meter actions';
   align-items: center;
   column-gap: 14px;
   row-gap: 3px;
-  padding: 12px 14px 12px 18px;
+  margin: 0 8px;
+  padding: 12px 12px 12px 14px;
+  border-radius: 16px;
   cursor: pointer;
   transition: background var(--ui-dur) var(--ui-ease);
 }
@@ -155,10 +153,18 @@ const meterWidth = computed(() => {
   content: '';
   position: absolute;
   top: 0;
-  right: 18px;
-  left: 54px;
+  right: 14px;
+  left: 50px;
   height: 0.5px;
   background: var(--ui-sep);
+}
+
+/* A selected or open row is an inset rounded tint: no hairline against it */
+.tag-card.tag-active::before,
+.tag-card.tag-selected::before,
+.tag-card.tag-active + .tag-card::before,
+.tag-card.tag-selected + .tag-card::before {
+  opacity: 0;
 }
 
 .tag-card:hover {
@@ -167,7 +173,7 @@ const meterWidth = computed(() => {
 
 /* Selection reads as a tint, never as a hard outline */
 .tag-card.tag-active {
-  background: color-mix(in srgb, var(--tag-c) 10%, var(--ui-surface));
+  background: color-mix(in srgb, var(--tag-c) 9%, var(--ui-surface));
 }
 
 .tag-card.tag-selected {
@@ -175,7 +181,6 @@ const meterWidth = computed(() => {
 }
 
 .tag-chip {
-  grid-area: chip;
   display: inline-flex;
   align-items: center;
   gap: 7px;
@@ -275,12 +280,13 @@ const meterWidth = computed(() => {
 .tag-description {
   grid-area: desc;
   margin: 0;
+  display: -webkit-box;
   overflow: hidden;
   font-size: 13px;
   line-height: 1.45;
   color: var(--ui-muted);
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .tag-description-spacer {
@@ -302,6 +308,8 @@ const meterWidth = computed(() => {
 }
 
 .t-count {
+  min-width: 2ch;
+  text-align: right;
   font: 600 22px var(--ui-font-display);
   letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
@@ -317,18 +325,27 @@ const meterWidth = computed(() => {
   color: var(--ui-muted);
 }
 
-/* the "not applied yet" note sits where the usage bar would be */
-.t-foot > .ui-pill {
-  grid-area: meter;
-  justify-self: start;
+
+.tag-head {
+  grid-area: chip;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+}
+
+.phone-edit {
+  display: none;
 }
 
 .meter {
   grid-area: meter;
-  height: 6px;
+  justify-self: end;
+  width: 112px;
+  height: 8px;
   overflow: hidden;
   border-radius: 999px;
-  background: var(--ui-fill);
+  background: var(--ui-fill-strong);
 }
 
 .tag-unused .meter {
@@ -339,7 +356,7 @@ const meterWidth = computed(() => {
   display: block;
   height: 100%;
   border-radius: inherit;
-  background: var(--section-hue);
+  background: var(--tag-c, var(--section-hue));
 }
 
 .tag-actions {
@@ -365,11 +382,11 @@ const meterWidth = computed(() => {
 
 .action-btn {
   display: grid;
-  width: 30px;
-  height: 30px;
+  width: 36px;
+  height: 36px;
   place-items: center;
   border: 0;
-  border-radius: 9px;
+  border-radius: 10px;
   background: transparent;
   color: var(--ui-muted);
   cursor: pointer;
@@ -379,8 +396,12 @@ const meterWidth = computed(() => {
 }
 
 .action-btn svg {
-  width: 15px;
-  height: 15px;
+  width: 18px;
+  height: 18px;
+}
+
+.action-btn {
+  color: var(--ui-ink-2);
 }
 
 .action-btn:hover {
@@ -393,39 +414,60 @@ const meterWidth = computed(() => {
   color: var(--ui-red-ink);
 }
 
-/* The detail panel takes the right column on wide screens: drop the usage bar to keep names readable */
-@media (max-width: 1280px) {
-  .tag-card {
-    grid-template-columns: 22px minmax(0, 1fr) minmax(72px, 130px) 96px 100px;
-  }
-}
-
-@media (max-width: 1024px) {
-  .tag-card {
-    grid-template-columns: 22px minmax(0, 1fr) minmax(60px, 120px) 96px 100px;
-  }
-}
-
 /* Phone: name, description and count; edit and delete live in the detail sheet */
 @media (max-width: 768px) {
+  /* No empty select column on a phone: the checkbox column exists only where there is no hover to reveal it */
   .tag-card {
-    grid-template-columns: 22px minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr) auto 16px;
     grid-template-areas:
-      'check chip count'
-      'check desc count';
-    column-gap: 12px;
-    padding: 12px 14px;
+      'chip count edit'
+      'desc count edit';
+    column-gap: 8px;
+    margin: 0 4px;
+    padding: 12px 12px;
+  }
+
+  .tag-checkbox {
+    display: none;
   }
 
   .tag-card + .tag-card::before {
-    right: 14px;
-    left: 48px;
+    right: 12px;
+    left: 12px;
   }
 
   .meter,
-  .tag-actions,
-  .t-foot > .ui-pill {
+  .tag-actions {
     display: none;
+  }
+
+  .phone-edit {
+    display: grid;
+    grid-area: edit;
+    width: 16px;
+    height: 36px;
+    place-items: center;
+    border: 0;
+    background: none;
+    color: var(--ui-faint);
+    pointer-events: none;
+  }
+
+  .phone-edit svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  /* numeral over unit: the count stays narrow and never competes with the name */
+  .stat-item {
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0;
+  }
+
+  .stat-item small {
+    font-size: 13px;
+    line-height: 1.2;
   }
 
   /* the whole name stays readable: the chip grows to two lines instead of cutting it */
@@ -442,12 +484,27 @@ const meterWidth = computed(() => {
     white-space: normal;
   }
 
+  @media (hover: none) {
+    .tag-card {
+      grid-template-columns: 22px minmax(0, 1fr) auto 16px;
+      grid-template-areas:
+        'check chip count edit'
+        'check desc count edit';
+    }
+
+    .tag-checkbox {
+      display: grid;
+    }
+
+    .tag-card + .tag-card::before {
+      left: 48px;
+    }
+  }
+
   /* the count doubles as the entry to the tag's conversations */
   .stat-item-clickable::after {
-    margin-left: 2px;
-    color: var(--ui-faint);
-    font-size: 18px;
-    content: '›';
+    display: none;
+    content: '';
   }
 }
 </style>

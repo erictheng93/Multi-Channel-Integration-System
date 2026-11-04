@@ -65,6 +65,14 @@ export function awaitingKind(conversation: Conversation, nowMs: number): Awaitin
   return conversation.lastMessage?.senderType === 'customer' ? 'waiting' : null
 }
 
+/** A wait this long is worth a pill on a narrow list; shorter waits stay quiet text */
+export const WAIT_HOT_MS = 30 * 60 * 1000
+
+export function isHotWait(conversation: Conversation, nowMs: number): boolean {
+  const since = conversation.awaitingSince ? Date.parse(conversation.awaitingSince) : Number.NaN
+  return !Number.isNaN(since) && nowMs - since >= WAIT_HOT_MS
+}
+
 /** 待回覆: open conversation with an unanswered customer message that started within the window */
 export function isAwaitingReply(conversation: Conversation, nowMs: number = Date.now()): boolean {
   return awaitingKind(conversation, nowMs) === 'waiting'
@@ -103,6 +111,13 @@ export function platformName(platform?: string): string {
 
 export function initialOf(name: string): string {
   return (name.trim().charAt(0) || '?').toUpperCase()
+}
+
+/** A stable avatar tone (0-6) per customer, so a name keeps its colour on every row and every page. */
+export function avatarToneOf(name: string): number {
+  let h = 0
+  for (const ch of name) { h = (h * 31 + (ch.codePointAt(0) ?? 0)) % 997 }
+  return h % 7
 }
 
 export function relativeTime(value: Date | number | string | undefined, nowMs: number): string {

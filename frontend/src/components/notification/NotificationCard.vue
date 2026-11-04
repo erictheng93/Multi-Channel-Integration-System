@@ -43,6 +43,12 @@
         class="notification-meta"
       >
         <span class="sr-only">{{ typeLabel }}</span>
+        <span class="meta-when">
+          <time
+            class="notification-time"
+            :datetime="notification.createdAt"
+          >{{ formattedTime }}</time>
+        </span>
         <span
           v-if="notification.priority === 'urgent'"
           class="ui-pill ui-pill-red"
@@ -50,28 +56,27 @@
           aria-label="優先級: 緊急"
         >緊急</span>
         <span
-          v-else-if="notification.priority === 'low'"
-          class="ui-pill"
+          v-else-if="notification.priority === 'high'"
+          class="ui-pill ui-pill-orange"
           role="status"
-          aria-label="優先級: 低"
-        >低優先</span>
+          aria-label="優先級: 高"
+        >高優先</span>
         <span
           v-if="platform"
-          class="ui-ch"
-          :class="platform === 'line' ? 'ui-ch-line' : 'ui-ch-fb'"
-          :title="platform === 'line' ? 'LINE' : 'Messenger'"
-        ><svg viewBox="0 0 24 24"><path d="M12 3C6.5 3 2 6.6 2 11c0 2.5 1.4 4.7 3.7 6.2L5 21l4.1-2.3c.9.2 1.9.3 2.9.3 5.5 0 10-3.6 10-8s-4.5-8-10-8Z" /></svg></span>
+          class="ch-tag"
+        >
+          <span
+            class="ui-ch"
+            :class="platform === 'line' ? 'ui-ch-line' : 'ui-ch-fb'"
+            aria-hidden="true"
+          ><svg viewBox="0 0 24 24"><path d="M12 3C6.5 3 2 6.6 2 11c0 2.5 1.4 4.7 3.7 6.2L5 21l4.1-2.3c.9.2 1.9.3 2.9.3 5.5 0 10-3.6 10-8s-4.5-8-10-8Z" /></svg></span>{{ platform === 'line' ? 'LINE' : 'Messenger' }}
+        </span>
       </div>
     </div>
 
     <!-- Trailing column at the card edge: unread dot + time, then the row actions -->
     <div class="notification-trail">
       <span class="notification-when">
-        <span
-          v-if="!notification.isRead"
-          class="notification-dot"
-          aria-hidden="true"
-        />
         <time
           class="notification-time"
           :datetime="notification.createdAt"
@@ -92,30 +97,104 @@
           @click="$emit('mark-read', notification.id)"
         >
           <CheckIcon aria-hidden="true" />
+          <span
+            class="action-label"
+            aria-hidden="true"
+          >已讀</span>
         </button>
         <button
           class="action-btn action-btn-danger"
+          :class="{ 'is-confirming': confirmingDelete }"
           type="button"
-          :aria-label="`刪除 ${notification.title}`"
-          title="刪除 (Delete)"
-          @click="$emit('delete', notification.id)"
+          :aria-label="confirmingDelete ? `再按一次刪除 ${notification.title}` : `刪除 ${notification.title}`"
+          :title="confirmingDelete ? '再按一次確認刪除' : '刪除 (Delete)'"
+          @click="onDeleteClick"
         >
-          <TrashIcon aria-hidden="true" />
+          <span
+            v-if="confirmingDelete"
+            class="confirm-text"
+          >刪除？</span>
+          <template v-else>
+            <TrashIcon aria-hidden="true" />
+            <span
+              class="action-label"
+              aria-hidden="true"
+            >刪除</span>
+          </template>
         </button>
+      </div>
+      <!-- Phone and touch: one quiet overflow replaces the inline actions, so every row looks the same -->
+      <div
+        ref="moreEl"
+        class="notification-more"
+        @click.stop
+      >
+        <button
+          class="more-btn"
+          type="button"
+          aria-haspopup="menu"
+          :aria-expanded="menuOpen"
+          :aria-label="`更多操作：${notification.title}`"
+          @click="menuOpen = !menuOpen"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            fill="currentColor"
+            aria-hidden="true"
+          >
+            <circle
+              cx="5"
+              cy="12"
+              r="1.8"
+            />
+            <circle
+              cx="12"
+              cy="12"
+              r="1.8"
+            />
+            <circle
+              cx="19"
+              cy="12"
+              r="1.8"
+            />
+          </svg>
+        </button>
+        <div
+          v-if="menuOpen"
+          class="more-menu"
+          role="menu"
+        >
+          <button
+            v-if="!notification.isRead"
+            type="button"
+            role="menuitem"
+            @click="onMenuMarkRead"
+          >
+            <CheckIcon aria-hidden="true" />標記已讀
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            class="is-danger"
+            @click="onDeleteClick"
+          >
+            <TrashIcon aria-hidden="true" />{{ confirmingDelete ? '再按一次刪除' : '刪除' }}
+          </button>
+        </div>
       </div>
     </div>
   </article>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import type { Notification, NotificationType } from '@/stores/notifications'
 import {
   CheckIcon,
   TrashIcon,
   MessageIcon,
   UserPlusIcon,
-  ArrowRightIcon,
+  ArrowLeftRightIcon,
   AtSignIcon,
   BellIcon,
   AlertIcon,
@@ -128,7 +207,7 @@ const props = defineProps<{
   isFocused: boolean
 }>()
 
-defineEmits<{
+const emit = defineEmits<{
   click: [notification: Notification]
   'mark-read': [id: string]
   delete: [id: string]
@@ -139,7 +218,7 @@ defineEmits<{
 const iconMap: Record<NotificationType, typeof MessageIcon> = {
   new_message: MessageIcon,
   conversation_assigned: UserPlusIcon,
-  conversation_transferred: ArrowRightIcon,
+  conversation_transferred: ArrowLeftRightIcon,
   mention: AtSignIcon,
   system: BellIcon,
   customer_responded: MessageIcon,
@@ -151,6 +230,36 @@ const iconMap: Record<NotificationType, typeof MessageIcon> = {
   // eslint-disable-next-line camelcase
   new_conversation: MessageIcon
 }
+
+// Delete is two taps: the first turns the button into a red 刪除？ for 3 s, the second deletes
+const confirmingDelete = ref(false)
+let confirmTimer: ReturnType<typeof setTimeout> | null = null
+function onDeleteClick(): void {
+  if (confirmingDelete.value) {
+    if (confirmTimer) { clearTimeout(confirmTimer) }
+    confirmingDelete.value = false
+    emit('delete', props.notification.id)
+    return
+  }
+  confirmingDelete.value = true
+  confirmTimer = setTimeout(() => { confirmingDelete.value = false }, 3000)
+}
+
+// Overflow menu (phone): closes on any outside tap
+const menuOpen = ref(false)
+const moreEl = ref<HTMLElement | null>(null)
+function onDocPointer(e: Event): void {
+  if (menuOpen.value && moreEl.value && !moreEl.value.contains(e.target as HTMLElement)) { menuOpen.value = false }
+}
+function onMenuMarkRead(): void {
+  menuOpen.value = false
+  emit('mark-read', props.notification.id)
+}
+onMounted(() => document.addEventListener('pointerdown', onDocPointer))
+onBeforeUnmount(() => {
+  document.removeEventListener('pointerdown', onDocPointer)
+  if (confirmTimer) { clearTimeout(confirmTimer) }
+})
 
 const icon = computed(() => iconMap[props.notification.type] || BellIcon)
 const iconClass = computed(() => `icon-${props.notification.type}`)
@@ -217,7 +326,9 @@ const formattedTime = computed(() => {
   display: flex;
   gap: 14px;
   align-items: flex-start;
-  padding: 14px 22px;
+  margin: 0;
+  padding: 14px 24px 14px 34px;
+  border-radius: 0;
   cursor: pointer;
   transition: background-color var(--ui-dur) var(--ui-ease);
 }
@@ -225,8 +336,8 @@ const formattedTime = computed(() => {
 .notification-card + .notification-card::before {
   position: absolute;
   top: 0;
-  right: 22px;
-  left: 78px;
+  right: 24px;
+  left: 88px;
   height: 0.5px;
   background: var(--ui-sep);
   content: '';
@@ -236,24 +347,43 @@ const formattedTime = computed(() => {
   background: color-mix(in srgb, var(--ui-fill) 45%, transparent);
 }
 
-/* Unread: tinted row, bold title, coloured icon tile and a dot by the time. Read: flat row, grey tile. */
-.notification-unread {
-  background: color-mix(in srgb, var(--section-hue) 7%, var(--ui-surface));
-}
-
-.notification-unread:hover {
-  background: color-mix(in srgb, var(--section-hue) 11%, var(--ui-surface));
+/* Unread: coloured icon tile, bold ink title and a dot by the time. Read: grey tile, receding title. No tinted slab (it read as a selected row). */
+.notification-unread .notification-title {
+  font-weight: 700;
+  color: var(--ui-ink);
 }
 
 .notification-card:not(.notification-unread) .notification-icon {
-  background: var(--ui-fill);
-  color: var(--ui-muted);
+  opacity: 0.62;
 }
 
-/* Urgent: a solid red icon tile whatever the type */
+/* One accent for "needs you" (unread); the type is the glyph, not a colour. Read rows go quiet grey. */
+.notification-unread .notification-icon {
+  background: var(--ui-accent-soft);
+  color: var(--ui-accent);
+}
+
+/* Unread is a faint wash across the row plus the dot by the time (no hard edge bar); a wash this light does not read as a selection */
+.notification-unread {
+  background: color-mix(in srgb, var(--ui-accent) 6%, var(--ui-surface));
+}
+
+/* The Mail gutter dot: a glance down the left edge counts what still needs you */
+.notification-unread::after {
+  position: absolute;
+  top: 31px;
+  left: 16px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ui-accent);
+  content: '';
+}
+
+/* Urgent: the same pastel tile language, in red, whatever the type (the pill says why) */
 .notification-urgent .notification-icon {
-  background: var(--ui-red);
-  color: #fff;
+  background: var(--ui-red-soft);
+  color: var(--ui-red-ink);
 }
 
 .notification-card:focus-visible,
@@ -289,39 +419,6 @@ const formattedTime = computed(() => {
   height: 19px;
 }
 
-.icon-new_message,
-.icon-new_conversation {
-  background: var(--ui-red-soft);
-  color: var(--ui-red-ink);
-}
-
-.icon-customer_responded {
-  background: var(--ui-green-soft);
-  color: var(--ui-green-ink);
-}
-
-.icon-conversation_assigned,
-.icon-customer_followed {
-  background: var(--ui-accent-soft);
-  color: var(--ui-accent);
-}
-
-.icon-conversation_transferred {
-  background: var(--ui-p-lavender);
-  color: var(--ui-p-lavender-ink);
-}
-
-.icon-mention,
-.icon-task_reminder {
-  background: var(--ui-orange-soft);
-  color: var(--ui-orange-ink);
-}
-
-.icon-agent_removed_from_team {
-  background: var(--ui-red-soft);
-  color: var(--ui-red-ink);
-}
-
 /* Copy takes the whole row; the trailing column sits on the card's right edge */
 .notification-content {
   min-width: 0;
@@ -339,7 +436,7 @@ const formattedTime = computed(() => {
   flex: 1;
   margin: 0;
   overflow: hidden;
-  font-size: 14.5px;
+  font-size: 15px;
   font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -361,13 +458,6 @@ const formattedTime = computed(() => {
   height: 22px;
 }
 
-.notification-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--ui-accent);
-}
-
 .notification-time {
   font-size: 13px;
   font-variant-numeric: tabular-nums;
@@ -377,7 +467,7 @@ const formattedTime = computed(() => {
 
 .notification-text {
   margin: 2px 0 0;
-  font-size: 13.5px;
+  font-size: 14px;
   line-height: 1.5;
   color: var(--ui-ink-2);
   word-break: break-word;
@@ -390,7 +480,7 @@ const formattedTime = computed(() => {
   align-items: center;
 }
 
-.notification-meta:not(:has(> :not(.sr-only))) {
+.notification-meta:not(:has(> :not(.sr-only, .meta-when))) {
   display: none;
 }
 
@@ -404,14 +494,48 @@ const formattedTime = computed(() => {
   background: color-mix(in srgb, var(--ui-red) 12%, var(--ui-surface));
 }
 
-.notification-meta > .ui-ch {
+.notification-meta > .ch-tag {
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
   margin-top: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ui-muted);
+}
+
+/* The inline time belongs to the phone layout; desktop keeps it in the trailing column */
+.meta-when {
+  display: none;
+}
+
+.action-btn-danger.is-confirming {
+  width: auto;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: var(--ui-red-soft);
+  color: var(--ui-red-ink);
+}
+
+.action-label {
+  display: none;
+}
+
+.confirm-text {
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* Overflow control: phone and touch only */
+.notification-more {
+  display: none;
 }
 
 /* Row actions live under the time in the trailing column and appear on hover or focus */
 .notification-actions {
   position: absolute;
-  right: 22px;
+  right: 14px;
   bottom: 10px;
   display: flex;
   gap: 4px;
@@ -432,9 +556,9 @@ const formattedTime = computed(() => {
     display: grid;
     grid-template-columns: 40px minmax(0, 1fr) auto;
     grid-template-areas:
-      'icon head act'
-      'icon text act'
-      'icon meta meta';
+      'icon head head'
+      'icon text text'
+      'icon meta act';
     gap: 0 14px;
     align-items: start;
   }
@@ -465,25 +589,96 @@ const formattedTime = computed(() => {
   }
 
   .notification-when {
-    grid-area: meta;
-    align-self: center;
-    justify-self: end;
+    display: none;
   }
 
+  .notification-card .notification-meta,
+  .notification-card .notification-meta:not(:has(> :not(.sr-only, .meta-when))) {
+    display: flex;
+  }
+
+  .meta-when {
+    display: inline-flex;
+    gap: 8px;
+    align-items: center;
+    margin-top: 8px;
+  }
+
+  .notification-meta > .ui-pill,
+  .notification-meta > .ch-tag {
+    margin-top: 8px;
+  }
+
+  /* the inline actions are replaced by the overflow control */
   .notification-actions {
-    position: static;
+    display: none;
+  }
+
+  .notification-more {
+    position: relative;
+    display: block;
     grid-area: act;
-    margin: -10px -12px -10px 0;
-    opacity: 1;
+    align-self: center;
+    margin: -8px -10px -8px 0;
   }
+}
 
-  .notification-unread .action-btn-danger {
-    display: none;
-  }
+.more-btn {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--ui-ink-2);
+  cursor: pointer;
+}
 
-  .notification-card:not(.notification-unread) .action-btn:not(.action-btn-danger) {
-    display: none;
-  }
+.more-btn svg {
+  width: 20px;
+  height: 20px;
+}
+
+.more-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  z-index: 20;
+  display: grid;
+  min-width: 168px;
+  padding: 6px;
+  border-radius: 14px;
+  background: var(--ui-surface);
+  box-shadow: var(--ui-shadow-raised);
+}
+
+.more-menu button {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--ui-ink);
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.more-menu button:hover {
+  background: var(--ui-fill);
+}
+
+.more-menu button.is-danger {
+  color: var(--ui-red-ink);
+}
+
+.more-menu svg {
+  width: 18px;
+  height: 18px;
 }
 
 .action-btn {
@@ -524,12 +719,16 @@ const formattedTime = computed(() => {
 
 @media (max-width: 768px) {
   .notification-card {
-    padding: 14px 16px;
+    padding: 14px 16px 14px 28px;
   }
 
   .notification-card + .notification-card::before {
     right: 16px;
-    left: 70px;
+    left: 82px;
+  }
+
+  .notification-unread::after {
+    left: 11px;
   }
 
   /* The title wraps (two lines at most) instead of cutting the customer name off */
@@ -544,18 +743,4 @@ const formattedTime = computed(() => {
   }
 }
 
-@media (max-width: 768px), (hover: none) {
-  /* 44px touch target, but drawn as quiet glyphs so the row reads as part of the item, not a toolbar */
-  .action-btn {
-    width: 44px;
-    height: 44px;
-    background: transparent;
-    color: var(--ui-ink-2);
-  }
-
-  .action-btn svg {
-    width: 20px;
-    height: 20px;
-  }
-}
 </style>

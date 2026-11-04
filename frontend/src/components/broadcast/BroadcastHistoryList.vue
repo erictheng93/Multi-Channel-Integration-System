@@ -63,11 +63,8 @@
               <th class="th-title">
                 活動
               </th>
-              <th class="th-status">
-                狀態
-              </th>
               <th class="th-result">
-                結果
+                結果<span class="th-note">（條長依人數）</span>
               </th>
               <th class="th-act">
                 <span class="sr-only">操作</span>
@@ -89,21 +86,28 @@
                     class="ui-pill ui-pill-blue mixed-pill"
                   >圖文</span>
                 </strong>
-                <small>{{ broadcast.content || '（僅圖片）' }}</small>
-              </td>
-              <td class="col-status">
-                <span
-                  class="ui-pill ui-pill-dot status-pill"
-                  :class="statusClass(broadcast.status)"
-                  :data-status="broadcast.status"
-                >{{ statusLabel(broadcast.status) }}</span>
-                <small class="when">{{ formatDate(broadcast.sentAt || broadcast.createdAt) }}</small>
+                <span class="meta-line">
+                  <span
+                    class="ui-pill ui-pill-dot status-pill"
+                    :class="statusClass(broadcast.status)"
+                    :data-status="broadcast.status"
+                  >{{ statusLabel(broadcast.status) }}</span>
+                  <time>{{ formatDate(broadcast.sentAt || broadcast.createdAt) }}</time>
+                  <span class="snippet">{{ broadcast.content || '（僅圖片）' }}</span>
+                </span>
               </td>
               <td class="col-result">
                 <template v-if="broadcast.totalRecipients > 0">
+                  <small class="result-text">
+                    <span class="r-total">{{ broadcast.totalRecipients }} 人</span>
+                    <span>成功 <b>{{ broadcast.sentCount }}</b></span>
+                    <span v-if="broadcast.failedCount > 0">失敗 <b class="is-bad">{{ broadcast.failedCount }}</b></span>
+                    <span v-if="broadcast.skippedCount > 0">略過 <b>{{ broadcast.skippedCount }}</b></span>
+                  </small>
                   <div
                     class="result-bar"
                     aria-hidden="true"
+                    :style="{ width: scale(broadcast) }"
                   >
                     <i
                       class="seg-ok"
@@ -118,12 +122,6 @@
                       :style="{ width: share(broadcast.skippedCount, broadcast) }"
                     />
                   </div>
-                  <small class="result-text">
-                    <span class="r-total">{{ broadcast.totalRecipients }} 人</span>
-                    <span>成功 <b>{{ broadcast.sentCount }}</b></span>
-                    <span>失敗 <b :class="{ 'is-bad': broadcast.failedCount > 0 }">{{ broadcast.failedCount }}</b></span>
-                    <span>略過 <b>{{ broadcast.skippedCount }}</b></span>
-                  </small>
                 </template>
                 <small
                   v-else
@@ -137,7 +135,17 @@
                   :aria-label="`${broadcast.title} 收件人明細`"
                   @click.stop="$emit('select', broadcast.id)"
                 >
-                  明細
+                  <svg
+                    viewBox="0 0 24 24"
+                    width="16"
+                    height="16"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    aria-hidden="true"
+                  ><path d="m9 6 6 6-6 6" /></svg>
                 </button>
               </td>
             </tr>
@@ -178,7 +186,7 @@
 import UiEmptyState from '@/components/ui/UiEmptyState.vue'
 import type { BroadcastRecord, BroadcastStatus } from '@/api/broadcasts'
 
-defineProps<{
+const props = defineProps<{
   broadcasts: BroadcastRecord[]
   loading: boolean
   pagination: {
@@ -226,6 +234,12 @@ function statusClass(status: BroadcastStatus): string {
   }
 }
 
+// one shared scale: the biggest broadcast on the page fills the track, the others are drawn in proportion
+function scale(broadcast: BroadcastRecord): string {
+  const max = Math.max(1, ...props.broadcasts.map(item => item.totalRecipients))
+  return `${Math.max(12, (broadcast.totalRecipients / max) * 100)}%`
+}
+
 function share(count: number, broadcast: BroadcastRecord): string {
   if (broadcast.totalRecipients <= 0 || count <= 0) {return '0%'}
   return `${(count / broadcast.totalRecipients) * 100}%`
@@ -267,10 +281,9 @@ function formatDate(value: string | null): string {
   cursor: pointer;
 }
 
-.th-title { width: 38%; }
-.th-status { width: 20%; }
-.th-result { width: 31%; }
-.th-act { width: 11%; }
+.th-title { width: auto; }
+.th-result { width: 244px; }
+.th-act { width: 52px; }
 
 .ui-table tbody tr.is-selected {
   background: var(--ui-sel-tint);
@@ -288,23 +301,35 @@ function formatDate(value: string | null): string {
 }
 
 .title-text {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 
-.col-title small {
-  display: block;
-  max-width: 100%;
-  margin-top: 2px;
+.meta-line {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-top: 4px;
+  font-size: 13px;
+  color: var(--ui-ink-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.meta-line time {
+  flex: none;
+}
+
+.status-pill {
+  flex: none;
+}
+
+/* The message gets its own line and two lines of room, so a record is read, not guessed at */
+.col-title .snippet {
+  flex: 1 1 0;
+  min-width: 0;
   overflow: hidden;
   font-size: 13px;
-  color: var(--ui-muted);
+  color: var(--ui-ink-2);
   text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.col-status {
   white-space: nowrap;
 }
 
@@ -320,10 +345,14 @@ function formatDate(value: string | null): string {
   min-width: 0;
 }
 
+.th-note {
+  font-weight: 400;
+}
+
 .result-bar {
   display: flex;
-  height: 6px;
-  margin-top: 6px;
+  height: 8px;
+  margin-top: 8px;
   overflow: hidden;
   border-radius: 999px;
   background: var(--ui-fill);
@@ -349,10 +378,10 @@ function formatDate(value: string | null): string {
 .result-text {
   display: flex;
   flex-wrap: wrap;
-  gap: 2px 12px;
-  margin-top: 6px;
-  font-size: 13px;
-  color: var(--ui-muted);
+  gap: 2px 10px;
+  margin-top: 0;
+  font-size: 14px;
+  color: var(--ui-ink-2);
   font-variant-numeric: tabular-nums;
 }
 
@@ -405,6 +434,7 @@ function formatDate(value: string | null): string {
   .ui-table tbody tr {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
     gap: 8px 12px;
     padding: 14px 16px;
     box-shadow: 0 -0.5px 0 var(--ui-sep);
@@ -416,33 +446,33 @@ function formatDate(value: string | null): string {
     box-shadow: none;
   }
 
-  .col-title {
-    grid-column: 1;
-    grid-row: 1;
-  }
-
-  .col-status {
-    grid-column: 2;
-    grid-row: 1;
-    text-align: right;
-  }
-
   .col-result {
-    grid-column: 1 / -1;
+    grid-column: 1;
     grid-row: 2;
   }
 
-  /* The whole row is the tap target; the button stays for keyboard and screen readers */
-  .ui-table tbody td.col-act {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip: rect(0 0 0 0);
+  .col-title {
+    grid-column: 1 / -1;
   }
 
-  .ui-table tbody tr {
-    position: relative;
+  .meta-line {
+    flex-wrap: wrap;
+  }
+
+  .col-title .snippet {
+    flex-basis: 100%;
+    display: -webkit-box;
+    white-space: normal;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+  }
+
+  /* the visible way into the recipient detail (the whole row is also tappable) */
+  .ui-table tbody td.col-act {
+    grid-column: 2;
+    grid-row: 2;
+    align-self: end;
   }
 }
 </style>

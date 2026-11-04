@@ -96,7 +96,10 @@
                 @click="$emit('update:visible', false)"
               >
                 <!-- Avatar -->
-                <div class="avatar">
+                <div
+                  class="avatar"
+                  :style="{ '--tag-c': tag?.color }"
+                >
                   <img
                     v-if="conversation.customer_avatar"
                     :src="conversation.customer_avatar"
@@ -116,6 +119,7 @@
                   <div class="conversation-top">
                     <span class="customer-name">{{ conversation.customer_name }}</span>
                     <span
+                      v-if="conversation.status !== 'active'"
                       class="status-badge"
                       :class="`status-${conversation.status}`"
                     >
@@ -498,6 +502,11 @@ function formatDate(dateStr: string): string {
   background: var(--ui-fill-strong);
 }
 
+.avatar {
+  background: color-mix(in srgb, var(--tag-c, var(--ui-muted)) 16%, var(--ui-surface));
+  color: color-mix(in srgb, var(--tag-c, var(--ui-muted)) 62%, #000);
+}
+
 .avatar-img {
   width: 100%;
   height: 100%;
@@ -507,7 +516,7 @@ function formatDate(dateStr: string): string {
 .avatar-fallback {
   font-size: 14px;
   font-weight: 600;
-  color: var(--ui-ink-2);
+  color: inherit;
   text-transform: uppercase;
 }
 
@@ -626,6 +635,18 @@ function formatDate(dateStr: string): string {
     max-width: none;
     border-radius: var(--ui-r-card) var(--ui-r-card) 0 0;
     padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  /* Grabber: reads as a bottom sheet that can be dismissed */
+  .modal-container::before {
+    display: block;
+    flex: none;
+    width: 36px;
+    height: 5px;
+    margin: 8px auto 0;
+    border-radius: 999px;
+    background: var(--ui-fill-strong);
+    content: '';
   }
   .pagination-btn {
     height: 44px;

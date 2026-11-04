@@ -15,7 +15,7 @@
       </div>
       <div class="section-end">
         <div
-          v-if="!loading && teams.length > 0"
+          v-if="!loading && teams.length >= SEARCH_MIN_TEAMS"
           class="search-bar"
         >
           <SearchIcon class="search-icon" />
@@ -41,7 +41,7 @@
           </span>
         </div>
         <SortDropdown
-          v-if="teams.length > 0"
+          v-if="teams.length >= SEARCH_MIN_TEAMS"
           :options="sortOptions"
           :current-field="sortState.field"
           :current-label="isCustomMode ? '自訂順序' : currentSortLabel"
@@ -101,7 +101,7 @@
 
         <VueDraggable
           v-model="localTeams"
-          class="ui-grid ui-cols-2 teams-list"
+          class="teams-list"
           :animation="200"
           ghost-class="drag-ghost"
           chosen-class="drag-chosen"
@@ -115,7 +115,6 @@
             :key="team.id"
             :team="team"
             :loading="loading"
-            :preview-members="previewMembersFor(team.id)"
             class="draggable-card"
             @toggle-status="(t) => emit('toggle-status', t)"
             @remove-team="(t) => emit('remove-team', t)"
@@ -140,7 +139,6 @@
 import { ref, watch, computed, nextTick } from 'vue'
 import { VueDraggable } from 'vue-draggable-plus'
 import type { Team } from '@/composables/team-management'
-import type { TeamMember } from '@/types'
 import type { SortOption, SortState, SortMode } from '@/composables/useListSorting'
 import { usePagination } from '@/composables/usePagination'
 import { useDebounce } from '@/composables/useDebounce'
@@ -161,8 +159,8 @@ interface Props {
   currentSortLabel: string
   // Sort mode props
   sortMode: SortMode
-  /** All members, used to draw each team's avatar stack. */
-  members?: TeamMember[]
+  /** Open conversations per team id; null until known */
+  openByTeam?: Map<number, number> | null
 }
 
 interface Emits {
@@ -177,17 +175,13 @@ interface Emits {
   (_e: 'custom-order-change', _ids: string[]): void
 }
 
-const props = withDefaults(defineProps<Props>(), { members: () => [] })
+const props = withDefaults(defineProps<Props>(), { openByTeam: null })
 
 const emit = defineEmits<Emits>()
 
-const PREVIEW_COUNT = 3
-
-function previewMembersFor(teamId: number): TeamMember[] {
-  return props.members
-    .filter(m => m.primaryTeamId === teamId || (m.teams ?? []).some(t => t.teamId === teamId))
-    .slice(0, PREVIEW_COUNT)
-}
+/** Open conversations across all teams: the load bar on each card is its share of this */
+/** Search and sort only earn their place once there are enough teams to look through */
+const SEARCH_MIN_TEAMS = 5
 
 // Template ref for scroll-into-view on page change
 const sectionRef = ref<HTMLElement | null>(null)
@@ -310,9 +304,14 @@ function handlePageChange(page: number) {
 </script>
 
 <style scoped>
+/* no outer card: the section title sits on the page and each team is its own card (no card inside a card) */
 .team-section {
   min-width: 0;
-  padding-bottom: 22px;
+  padding-bottom: 0;
+  background: transparent;
+}
+.team-section > .section-head {
+  padding: 0 6px 12px;
 }
 .section-head {
   flex-wrap: wrap;
@@ -391,17 +390,36 @@ function handlePageChange(page: number) {
 
 .content-body {
   min-width: 0;
-  padding: 0 22px;
+  padding: 0;
 }
-/* Team tiles sit inside the card as plain rows: no tile, no second surface, a hairline between them. */
 .team-section :deep(.team-card) {
-  background: transparent;
-  border-radius: var(--ui-r-inner);
-  box-shadow: none;
-  transition: background var(--ui-dur) var(--ui-ease);
+  background: var(--ui-surface);
+  border-radius: var(--ui-r-group);
+  transition: box-shadow var(--ui-dur) var(--ui-ease);
 }
-.team-section :deep(.team-card:hover) {
-  background: var(--ui-fill);
+.teams-list {
+  display: grid;
+  gap: 12px;
+  padding-bottom: 4px;
+}
+/* desktop: two slim rows side by side: only the team's identity and its menu, the roster above already carries members, presence and load */
+@media (min-width: 769px) {
+  .teams-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+  }
+  .team-section :deep(.team-card) {
+    grid-template-columns: 56px minmax(0, 1fr) auto;
+    grid-template-areas:
+      'mark main acts';
+    align-items: center;
+    column-gap: 16px;
+    padding: 16px 20px;
+  }
+  .team-section :deep(.team-mark) { grid-area: mark; width: 56px; height: 56px; }
+  .team-section :deep(.team-main) { grid-area: main; }
+  .team-section :deep(.team-acts) { grid-area: acts; margin: 0 -6px 0 0; }
+  .team-section :deep(.team-acts .go) { display: none; }
 }
 .drag-hint {
   padding: 4px 4px 8px;
@@ -419,9 +437,6 @@ function handlePageChange(page: number) {
 }
 
 @media (max-width: 768px) {
-  .content-body {
-    padding: 0 16px;
-  }
   .section-end {
     width: 100%;
   }

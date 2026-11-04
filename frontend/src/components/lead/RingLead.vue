@@ -18,6 +18,8 @@
     default   extra line(s) under the meaning (links, chips)
     actions   a button under the number (e.g. "run check")
     rings     replaces the ServiceRings (e.g. a bespoke 30-day strip)
+    visual    same slot, named for what it is now: a purpose-built lead graphic (LeadBars / LeadMeter /
+              LeadSpark). Rings stay only where they explain a ratio the numbers do not.
 -->
 <template>
   <article
@@ -63,17 +65,19 @@
       <slot name="actions" />
     </div>
     <div
-      v-if="hasRings || $slots.rings"
+      v-if="hasRings || $slots.rings || $slots.visual"
       class="rl-rings"
     >
-      <slot name="rings">
-        <ServiceRings
-          :summary="summary"
-          :rings="rings"
-          :size="size"
-          :center-value="centerValue"
-          :center-label="centerLabel"
-        />
+      <slot name="visual">
+        <slot name="rings">
+          <ServiceRings
+            :summary="summary"
+            :rings="rings"
+            :size="size"
+            :center-value="centerValue"
+            :center-label="centerLabel"
+          />
+        </slot>
       </slot>
     </div>
   </article>
@@ -111,7 +115,7 @@ const slots = useSlots()
 
 const hasRings = computed(() => props.rings.length > 0)
 // Actions sit under the number next to rings; with no rings they take the right side so the card has no dead half
-const sideRings = computed(() => hasRings.value || !!slots.rings)
+const sideRings = computed(() => hasRings.value || !!slots.rings || !!slots.visual)
 </script>
 
 <style scoped>

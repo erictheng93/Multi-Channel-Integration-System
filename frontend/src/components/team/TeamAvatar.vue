@@ -70,22 +70,26 @@ const tone = computed(() => {
 .team-avatar.is-sm {
   width: 28px;
   height: 28px;
-  font-size: 12px;
+  font-size: 13px;
   box-shadow: 0 0 0 2px var(--ui-surface);
 }
 .presence {
   position: absolute;
   right: -1px;
   bottom: -1px;
-  width: 11px;
-  height: 11px;
+  width: 14px;
+  height: 14px;
   border-radius: 50%;
-  box-shadow: 0 0 0 2px var(--ui-surface);
+  box-shadow: 0 0 0 2.5px var(--ui-surface);
 }
 .presence.is-online {
   background: var(--ui-green);
 }
 .presence.is-offline {
-  background: var(--ui-faint);
+  background: var(--ui-field-edge);
+}
+.team-avatar.is-sm .presence {
+  width: 10px;
+  height: 10px;
 }
 </style>
