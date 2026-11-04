@@ -10,7 +10,6 @@ export { NotificationChannelService } from './services/notification-channel-serv
 
 // 資料層匯出
 export { NotificationRepository } from './repositories/notification-repository';
-export { NotificationCache } from './repositories/notification-cache';
 
 // 通道適配器匯出
 export { WebSocketAdapter } from './adapters/websocket-adapter';

@@ -100,9 +100,9 @@ export class NotificationHandler {
   private channelService: NotificationChannelService;
   private validator: NotificationValidator;
 
-  constructor(database: D1Database, kvNamespace: KVNamespace) {
+  constructor(database: D1Database) {
     this.channelService = new NotificationChannelService();
-    this.notificationService = new NotificationService(database, kvNamespace, this.channelService);
+    this.notificationService = new NotificationService(database, this.channelService);
     this.validator = new NotificationValidator();
   }
 
@@ -786,13 +786,13 @@ export class NotificationHandler {
 }
 
 // 工廠函數：創建通知處理器實例
-export function createNotificationHandler(database: D1Database, kvNamespace: KVNamespace) {
-  return new NotificationHandler(database, kvNamespace);
+export function createNotificationHandler(database: D1Database) {
+  return new NotificationHandler(database);
 }
 
 // 匯出處理器方法以用於路由
-export function createNotificationHandlerMethods(database: D1Database, kvNamespace: KVNamespace) {
-  const handler = new NotificationHandler(database, kvNamespace);
+export function createNotificationHandlerMethods(database: D1Database) {
+  const handler = new NotificationHandler(database);
 
   return {
     list: handler.list,
