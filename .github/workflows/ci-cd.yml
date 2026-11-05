@@ -29,13 +29,55 @@ env:
 
 jobs:
   # ===========================================================================
-  # 1. Validate — fast static checks (lint, types, route ordering)
+  # 0. Changes — decide whether this commit can change any check's result
   # ===========================================================================
-  # Runs first as a cheap fail-fast gate. If TypeScript or lint is broken,
-  # there is no point spending CI minutes on tests.
+  # Docs-only commits skip the pipeline. This is done with job-level `if:` and
+  # NOT with workflow-level `paths-ignore`: a workflow that never triggers
+  # leaves required status checks "pending" forever and blocks the PR merge,
+  # whereas a job skipped by `if:` reports as skipped, which satisfies a
+  # required check. The rules live in scripts/ci/classify-changes.sh.
+  #
+  # Fail-safe: every dependent job runs unless this job explicitly answers
+  # `false`. If it fails or answers nothing, everything runs.
+  # ---------------------------------------------------------------------------
+  changes:
+    name: Detect changed paths
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      code: ${{ steps.classify.outputs.code }}
+      schema: ${{ steps.classify.outputs.schema }}
+    steps:
+      # Depth 2: on a pull_request the checkout is the merge commit, whose first
+      # parent is the base branch tip, so HEAD^1..HEAD is exactly the PR's diff.
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Classify changed files
+        id: classify
+        env:
+          EVENT: ${{ github.event_name }}
+          BEFORE: ${{ github.event.before }}
+        run: bash scripts/ci/classify-changes.sh
+
+  # ===========================================================================
+  # 1. Validate — static checks (lint, types, route ordering)
+  # ===========================================================================
+  # Runs in parallel with the tests rather than gating them: `needs: validate`
+  # passed no data, it only serialised ~70s in front of every test run.
+  #
+  # tsc / vue-tsc / eslint are incremental. Their caches (tsbuildinfo + the
+  # content-strategy eslint cache) are restored from the latest run, so a
+  # typical commit re-checks only what changed. Both verify file contents, not
+  # timestamps, and no eslint rule here is type-aware, so a restored cache can
+  # never hide an error; a lockfile change starts from an empty cache.
   # ---------------------------------------------------------------------------
   validate:
     name: Validate (lint + types + routes)
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -53,9 +95,26 @@ jobs:
       - name: Install frontend dependencies
         run: cd frontend && bun install --frozen-lockfile
 
-      # Runs: backend tsc --noEmit, frontend vue-tsc --noEmit, eslint --max-warnings 0
-      - name: Lint + TypeScript (full)
-        run: bun run lint:check
+      - name: Restore incremental type-check / lint caches
+        uses: actions/cache@v4
+        with:
+          path: |
+            node_modules/.cache/tsc-backend.tsbuildinfo
+            frontend/node_modules/.cache/vue-tsc.tsbuildinfo
+            frontend/node_modules/.cache/eslint/
+          key: lint-${{ runner.os }}-${{ hashFiles('bun.lock', 'frontend/bun.lock') }}-${{ github.sha }}
+          restore-keys: lint-${{ runner.os }}-${{ hashFiles('bun.lock', 'frontend/bun.lock') }}-
+
+      - name: Backend TypeScript (tsc)
+        run: bunx tsc --noEmit
+
+      - name: Frontend TypeScript (vue-tsc)
+        run: cd frontend && bunx vue-tsc --noEmit
+
+      # No --fix: in CI a fixable violation must fail, not be silently fixed in
+      # a throwaway checkout.
+      - name: ESLint
+        run: cd frontend && bunx eslint . --max-warnings 0 --cache --cache-strategy content --cache-location node_modules/.cache/eslint/
 
       # Static analysis only — safe to run anywhere, no secrets needed.
       # Catches the class of bugs documented in docs/claude/ROUTE_REGISTRATION.md.
@@ -98,6 +157,8 @@ jobs:
   #
   # `if: github.event_name == 'push'` means it never runs on a pull_request, so
   # the D1 token is never exposed to a fork PR. Branch protection covers main.
+  # It also runs on a commit that touches only SCHEMA.md (`schema` output),
+  # which is exactly the commit this check exists for.
   #
   # The script issues three read-only SELECTs against sqlite_master and the
   # pragma table-valued functions. It never writes.
@@ -110,8 +171,9 @@ jobs:
   # ---------------------------------------------------------------------------
   schema-doc:
     name: Schema doc matches production
+    needs: changes
+    if: github.event_name == 'push' && !cancelled() && needs.changes.outputs.schema != 'false'
     runs-on: ubuntu-latest
-    if: github.event_name == 'push'
     timeout-minutes: 5
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -135,21 +197,25 @@ jobs:
   # 2. Backend tests
   # ===========================================================================
   # Uses the curated `test:backend:ci` script in package.json. This excludes
-  # tests/e2e, tests/performance, tests/smoke and other suites that require
-  # external resources (Wrangler dev server, R2, live D1).
+  # tests/e2e, tests/performance and other suites that require external
+  # resources (Wrangler dev server, R2, live D1), which is why that script may
+  # run files in parallel even though vitest.config.ts defaults to serial.
   #
   # TODO: as more suites become CI-safe, expand the script in package.json
   # rather than this workflow — keep test selection in one source of truth.
   # ---------------------------------------------------------------------------
   test-backend:
     name: Backend tests
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' }}
     runs-on: ubuntu-latest
-    needs: validate
     timeout-minutes: 15
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # No `cache:` here: setup-node caches npm/yarn/pnpm stores only, and this
+      # repo installs with Bun. Node is needed only as Vitest's runtime.
       - name: Setup Node (Vitest 5 needs >=22.12)
         uses: actions/setup-node@v4
         with:
@@ -168,16 +234,25 @@ jobs:
         run: bun run test:backend:ci
 
   # ===========================================================================
-  # 3. Frontend tests
+  # 3. Frontend tests — sharded across machines
   # ===========================================================================
-  # Runs the full Vitest suite (3,624 tests) with coverage. Uploads coverage
-  # to Codecov but never blocks the build on Codecov availability.
+  # The longest suite (~170s on one runner), split by Vitest's --shard into
+  # three parallel jobs. Each shard uploads its own coverage; Codecov merges
+  # uploads for the same commit. (frontend/vitest.config.ts's thresholds are
+  # under a Jest-style `global` key that Vitest ignores, so coverage is
+  # reported, not enforced — sharding changes nothing there.)
   # ---------------------------------------------------------------------------
-  test-frontend:
-    name: Frontend tests
+  test-frontend-shard:
+    name: Frontend tests (${{ matrix.shard }}/3)
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' }}
     runs-on: ubuntu-latest
-    needs: validate
     timeout-minutes: 15
+    strategy:
+      # Let every shard finish so one red run lists all failures.
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -192,14 +267,13 @@ jobs:
         with:
           bun-version-file: package.json
 
-      - name: Install root dependencies
-        run: bun install --frozen-lockfile
-
+      # Frontend only: frontend/ has its own lockfile and shared/ imports no
+      # packages, so the root install was ~5s of unused work per job.
       - name: Install frontend dependencies
         run: cd frontend && bun install --frozen-lockfile
 
       - name: Run frontend test suite with coverage
-        run: cd frontend && bun run test:run -- --coverage
+        run: cd frontend && bun run test:run -- --coverage --shard=${{ matrix.shard }}/3
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
@@ -208,16 +282,36 @@ jobs:
           fail_ci_if_error: false
         continue-on-error: true
 
+  # One stable check name for the sharded suite, so a branch-protection rule
+  # on "Frontend tests" keeps working and the shard count can change freely.
+  # It must not be skipped when a shard fails (a skipped job satisfies a
+  # required check), hence `!cancelled()` instead of the implicit success().
+  test-frontend:
+    name: Frontend tests
+    needs: [changes, test-frontend-shard]
+    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: All frontend shards passed
+        env:
+          RESULT: ${{ needs.test-frontend-shard.result }}
+        run: |
+          echo "Frontend shards: $RESULT"
+          test "$RESULT" = success
+
   # ===========================================================================
   # 4. Build verification
   # ===========================================================================
   # Builds the frontend bundle and uploads it as an artifact so the deploy
   # job can use *exactly* the bundle that was tested — never rebuild in deploy.
+  # Runs in parallel with the tests: it consumes nothing they produce.
   # ---------------------------------------------------------------------------
   build:
     name: Build verification
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' }}
     runs-on: ubuntu-latest
-    needs: [test-backend, test-frontend]
     timeout-minutes: 10
     steps:
       - name: Checkout repository
@@ -228,9 +322,7 @@ jobs:
         with:
           bun-version-file: package.json
 
-      - name: Install root dependencies
-        run: bun install --frozen-lockfile
-
+      # Frontend only, as in the test shards.
       - name: Install frontend dependencies
         run: cd frontend && bun install --frozen-lockfile
 
@@ -238,8 +330,12 @@ jobs:
       # This confirms the frontend compiles; it does NOT need production VITE_*
       # values. Production env injection + the bundle-URL guard live in the local
       # deploy path (scripts/deploy-pages.ts), where the real shipping happens.
+      #
+      # `vite build` directly, not `bun run build` (= vue-tsc && vite build):
+      # vue-tsc already runs in `validate`, so running it here was the same
+      # ~20s of work done twice.
       - name: Build frontend
-        run: cd frontend && bun run build
+        run: cd frontend && bunx vite build
 
       - name: Upload frontend dist artifact
         uses: actions/upload-artifact@v4
@@ -276,7 +372,9 @@ jobs:
   deploy-production:
     name: Deploy to Production
     runs-on: ubuntu-latest
-    needs: build
+    # Every gate, listed explicitly: build no longer waits for the tests, so
+    # `needs: build` alone would let a re-enabled deploy ship untested code.
+    needs: [validate, test-backend, test-frontend, build]
     if: false
     environment: production
     timeout-minutes: 20
