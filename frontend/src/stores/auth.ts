@@ -445,7 +445,18 @@ export const useAuthStore = defineStore('auth', () => {
     return true;
   }
 
-  async function initializeSession(): Promise<void> {
+  // main.ts and the router guard both start the session check on page load, concurrently.
+  // They share one run, so a load costs one /auth/me (+ at most one refresh), not two.
+  let sessionInitInFlight: Promise<void> | null = null;
+
+  function initializeSession(): Promise<void> {
+    sessionInitInFlight ??= runInitializeSession().finally(() => {
+      sessionInitInFlight = null;
+    });
+    return sessionInitInFlight;
+  }
+
+  async function runInitializeSession(): Promise<void> {
     setSessionStatus('pending');
     
     try {

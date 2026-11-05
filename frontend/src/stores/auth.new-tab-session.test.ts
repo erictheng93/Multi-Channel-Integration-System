@@ -72,4 +72,23 @@ describe('auth store: session restore in a new tab', () => {
     expect(store.isAuthenticated).toBe(false)
     expect(sessionStorage.getItem('sessionExpiry')).toBeNull()
   })
+
+  it('shares one check between concurrent callers (main.ts and the router guard)', async () => {
+    me.mockResolvedValue({ success: false, status: 401 })
+    refresh.mockResolvedValue(null)
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const store = await freshTabStore()
+
+    await Promise.all([store.initializeSession(), store.initializeSession()])
+
+    expect(me).toHaveBeenCalledTimes(1)
+    expect(refresh).toHaveBeenCalledTimes(1)
+    expect(consoleError).not.toHaveBeenCalledWith('Session initialization error:', expect.anything())
+    expect(store.sessionStatus).toBe('unauthenticated')
+
+    // Settled: a later call checks again instead of reusing the old result
+    await store.initializeSession()
+    expect(me).toHaveBeenCalledTimes(2)
+    consoleError.mockRestore()
+  })
 })
