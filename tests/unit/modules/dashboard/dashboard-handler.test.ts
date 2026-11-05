@@ -108,11 +108,14 @@ describe('GET /api/dashboard/message-volume', () => {
 describe('GET /api/conversations/waiting', () => {
   it('is routed before /:id and returns the scoped waiting list with a limit', async () => {
     const db = createDb();
+    // Relative to the real clock: the list only counts waits from the last 7 days, so a fixed
+    // date here expires (this test went red on 2026-11-05 when 2026-10-29 left the window).
+    const anHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
     db.exec(`
       INSERT INTO conversations (id, customer_id, assigned_team_id) VALUES ('mine', 1, 7), ('theirs', 1, 9);
       INSERT INTO messages (id, conversation_id, sender_type, content, created_at) VALUES
-        ('a', 'mine', 'customer', 'need help', '2026-10-29T01:00:00.000Z'),
-        ('b', 'theirs', 'customer', 'secret', '2026-10-29T01:00:00.000Z');
+        ('a', 'mine', 'customer', 'need help', '${anHourAgo}'),
+        ('b', 'theirs', 'customer', 'secret', '${anHourAgo}');
     `);
     const app = appFor({ DB: d1Of(db) } as unknown as Bindings);
 
