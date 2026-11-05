@@ -3,6 +3,7 @@
 // Created by: API Service Developer
 
 import { apiClient } from './base'
+import type { RequestOptions } from './base'
 import { callApiContract } from './contract-client'
 import { authContracts } from '@shared/api-contracts'
 import type { ChangePasswordRequest } from '@shared/api-contracts'
@@ -25,8 +26,8 @@ export const authApi = {
   },
 
   // 獲取當前用戶資訊
-  me: async (): Promise<ApiResponse<Agent>> => {
-    return callApiContract(authContracts.me, {})
+  me: async (options?: RequestOptions): Promise<ApiResponse<Agent>> => {
+    return options ? callApiContract(authContracts.me, {}, options) : callApiContract(authContracts.me, {})
   },
 
   // 登出

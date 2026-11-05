@@ -84,4 +84,13 @@ describe('apiClient refresh resilience', () => {
 
     expect(hrefSetTo).toBe('/login')
   })
+
+  it('does NOT redirect when a probe asks it not to (restoring a session on /login would loop)', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(jsonResponse(401, { success: false, error: 'Invalid refresh token' }))
+
+    const token = await apiClient.refreshAuthToken({ redirectOnFailure: false })
+
+    expect(token).toBeNull()
+    expect(hrefSetTo).toBe('')
+  })
 })
