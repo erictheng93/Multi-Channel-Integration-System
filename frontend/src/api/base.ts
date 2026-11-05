@@ -128,7 +128,12 @@ class ApiClient {
     this.failedQueue = [];
   }
 
-  async refreshAuthToken(): Promise<string | null> {
+  /**
+   * @param redirectOnFailure false when the caller is only probing whether a cookie session exists
+   *   (restoring it in a new tab): a rejected refresh then returns null instead of reloading /login,
+   *   which on /login itself would loop.
+   */
+  async refreshAuthToken({ redirectOnFailure = true }: { redirectOnFailure?: boolean } = {}): Promise<string | null> {
     if (this.isRefreshing) {
       return new Promise((resolve, reject) => {
         this.failedQueue.push({ resolve, reject });
@@ -167,7 +172,7 @@ class ApiClient {
 
         // 2xx but unsuccessful payload — treat as a genuine auth failure.
         this.processQueue(new Error('Refresh response unsuccessful'), null);
-        this.redirectToLogin();
+        if (redirectOnFailure) { this.redirectToLogin(); }
         return null;
       }
 
@@ -177,7 +182,7 @@ class ApiClient {
       // is the bug; preserve the session instead.
       if (response.status === 401 || response.status === 403) {
         this.processQueue(new Error('Unauthorized'), null);
-        this.redirectToLogin();
+        if (redirectOnFailure) { this.redirectToLogin(); }
         return null;
       }
 

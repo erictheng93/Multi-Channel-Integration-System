@@ -421,11 +421,42 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   // 會話恢復 - 智能初始化邏輯（避免額外API請求）
+  /**
+   * Ask the server whether this browser already has a session, without any redirect (this runs
+   * on /login too). A 401 on /auth/me can mean only the 2-hour access cookie expired, so one quiet
+   * refresh is tried before giving up.
+   */
+  async function restoreSessionFromCookie(): Promise<boolean> {
+    let response = await authApi.me({ redirectOnUnauthorized: false });
+    if (response?.status === 401 && await apiClient.refreshAuthToken({ redirectOnFailure: false })) {
+      response = await authApi.me({ redirectOnUnauthorized: false });
+    }
+    if (!response?.success || !response.data) {
+      return false;
+    }
+
+    const nextAgent = preserveTeamState(response.data);
+    currentAgent.value = nextAgent;
+    syncTeamStateFromAgent(nextAgent);
+    const expiry = Date.now() + SESSION_DURATION;
+    sessionExpiry.value = expiry;
+    setStoredAuthItem('sessionExpiry', expiry.toString());
+    setStoredAuthItem('currentAgent', JSON.stringify(nextAgent));
+    return true;
+  }
+
   async function initializeSession(): Promise<void> {
     setSessionStatus('pending');
     
     try {
       if (!validateSession()) {
+        // No session marker in this tab: sessionStorage is per tab, so a new tab or a reopened
+        // browser starts without one even while the shared HttpOnly cookie session is valid.
+        // The cookie decides (the server's refresh cookie carries the same 7-day limit).
+        if (await restoreSessionFromCookie()) {
+          setSessionStatus('authenticated');
+          return;
+        }
         await logout(false);
         setSessionStatus('unauthenticated');
         return;
