@@ -43,6 +43,7 @@ pids
 # Coverage directory used by tools like istanbul
 coverage/
 coverage-report.json
+.vitest/
 *.lcov
 
 # nyc test coverage
