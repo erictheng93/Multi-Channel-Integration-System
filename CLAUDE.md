@@ -210,7 +210,7 @@ Desktop-first: phone is `max-width: 768px`, tablet is 769-1024px. CSS cannot rea
 
 **Rule:** Never run plain `tsc` against `frontend/` — it cannot see named type exports inside `<script setup lang="ts">` blocks (the `*.vue` shim from `vite/client` only declares the default component export). It will produce phantom `TS2614 Module '"*.vue"' has no exported member 'X'` errors that do not exist under `vue-tsc`. Always use `bun run type-check` (or `bunx vue-tsc --noEmit`).
 
-CI (`bun run lint:check`), pre-commit (`.husky/pre-commit`), and the PostToolUse health-check hook all already route to the correct tool — this rule is for ad-hoc manual invocations.
+CI (`validate` job: tsc, vue-tsc and eslint as separate steps), pre-commit (`.husky/pre-commit`), and the PostToolUse health-check hook all already route to the correct tool — this rule is for ad-hoc manual invocations.
 
 ### Database Operations
 - Use **Drizzle ORM** for all DB operations
