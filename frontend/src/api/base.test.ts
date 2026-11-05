@@ -110,4 +110,48 @@ describe('API Base Client', () => {
       })
     )
   })
+
+  describe('automatic retries', () => {
+    const serverError = () => ({
+      ok: false,
+      status: 503,
+      statusText: 'Service Unavailable',
+      json: vi.fn().mockResolvedValue({ error: 'unavailable' }),
+    } as unknown as Response)
+
+    beforeEach(() => {
+      // Skip the 1s/2s/4s backoff
+      vi.spyOn(apiClient as any, 'delay').mockResolvedValue(undefined)
+    })
+
+    it('does not resend a POST after the connection drops (it may already have been applied)', async () => {
+      const fetchMock = vi.spyOn(globalThis, 'fetch').mockRejectedValue(new TypeError('Failed to fetch'))
+      const result = await apiClient.post('/broadcasts/b1/send')
+      expect(fetchMock).toHaveBeenCalledTimes(1)
+      expect(result).toMatchObject({ success: false, status: 0 })
+    })
+
+    it('does not resend a POST after a 5xx', async () => {
+      const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(serverError())
+      const result = await apiClient.post('/broadcasts/b1/send')
+      expect(fetchMock).toHaveBeenCalledTimes(1)
+      expect(result).toMatchObject({ success: false, status: 503 })
+    })
+
+    it('still retries a GET after the connection drops, and recovers', async () => {
+      const fetchMock = vi.spyOn(globalThis, 'fetch')
+        .mockRejectedValueOnce(new TypeError('Failed to fetch'))
+        .mockResolvedValueOnce({ ok: true, status: 200, json: vi.fn().mockResolvedValue({ success: true, data: { count: 3 } }) } as unknown as Response)
+      const result = await apiClient.get('/notifications/unread-count')
+      expect(fetchMock).toHaveBeenCalledTimes(2)
+      expect(result).toMatchObject({ success: true, data: { count: 3 } })
+    })
+
+    it('gives up on a GET after 3 retries', async () => {
+      const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(serverError())
+      const result = await apiClient.get('/team/presence')
+      expect(fetchMock).toHaveBeenCalledTimes(4)
+      expect(result).toMatchObject({ success: false, status: 503 })
+    })
+  })
 })
