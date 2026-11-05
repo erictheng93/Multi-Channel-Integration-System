@@ -116,7 +116,11 @@ describe('Customer Main Handler — Integration Tests', () => {
   let env: ReturnType<typeof createMockEnv>;
 
   beforeEach(() => {
-    vi.clearAllMocks();
+    // clearAllMocks keeps queued *Once values; a test whose route returns before
+    // consuming one (e.g. 404) would leak it into the next test. Reset drops them.
+    for (const m of [mockGetAllCustomers, mockGetCustomerById, mockGetCustomerByPlatformId, mockGetCustomerConversations]) {
+      m.mockReset();
+    }
     env = createMockEnv();
     app = createTestApp(env);
   });
