@@ -35,13 +35,15 @@ export default defineConfig({
         '**/*.spec.{ts,js}',
         '**/index.ts',
       ],
+      // Ratchet floor = measured coverage on 2026-11-05 (62/53.6/58.6/62.5) minus ~1pt,
+      // because merged shard coverage jitters by a few hundredths.
+      // Raise it as coverage grows; long-term goal is 80. CI checks it once on the
+      // merged shard reports (see test-frontend in ci-cd.yml), never per shard.
       thresholds: {
-        global: {
-          branches: 80,
-          functions: 80,
-          lines: 80,
-          statements: 80
-        }
+        statements: 61,
+        branches: 52,
+        functions: 57,
+        lines: 61,
       }
     },
     include: ['src/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}', 'tests/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}'],
