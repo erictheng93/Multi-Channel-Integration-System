@@ -234,6 +234,10 @@ class ApiClient {
     options: RequestOptions = {}
   ): Promise<ApiResponse<T>> {
     const { retries = 0, isRetry = false, redirectOnUnauthorized = true } = options;
+    // Only reads are resent automatically. A write that hit a 5xx or a dropped connection may
+    // already have been applied, so resending it could do it twice; its caller reports the failure.
+    const canRetry = (method.toUpperCase() === 'GET' || method.toUpperCase() === 'HEAD')
+      && retries < this.defaultRetryConfig.maxRetries;
 
     if (import.meta.env.DEV) {
       frontendLogger.debug(`API Request: ${method} ${this.baseURL}${endpoint}`);
@@ -286,9 +290,7 @@ class ApiClient {
         }
 
         // Check if we should retry for server errors
-        const shouldRetry = retries < this.defaultRetryConfig.maxRetries && 
-                           response.status >= 500 && 
-                           response.status < 600;
+        const shouldRetry = canRetry && response.status >= 500 && response.status < 600;
 
         if (shouldRetry) {
           await this.delay(this.defaultRetryConfig.retryDelay * Math.pow(2, retries)); // Exponential backoff
@@ -310,8 +312,8 @@ class ApiClient {
       return result;
     } catch {
       // Network or other errors
-      const shouldRetry = retries < this.defaultRetryConfig.maxRetries;
-      
+      const shouldRetry = canRetry;
+
       if (shouldRetry) {
         await this.delay(this.defaultRetryConfig.retryDelay * Math.pow(2, retries));
         return this.request<T>(method, endpoint, data, { ...options, retries: retries + 1 });
