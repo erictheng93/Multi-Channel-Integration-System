@@ -196,7 +196,8 @@ jobs:
   # ===========================================================================
   # 2. Backend tests
   # ===========================================================================
-  # Uses the curated `test:backend:ci` script in package.json. This excludes
+  # Uses the curated `test:backend:ci` script in package.json, split over two
+  # runners with --shard (it was the next-longest suite once frontend was sharded). This excludes
   # tests/e2e, tests/performance and other suites that require external
   # resources (Wrangler dev server, R2, live D1), which is why that script may
   # run files in parallel even though vitest.config.ts defaults to serial.
@@ -204,12 +205,16 @@ jobs:
   # TODO: as more suites become CI-safe, expand the script in package.json
   # rather than this workflow — keep test selection in one source of truth.
   # ---------------------------------------------------------------------------
-  test-backend:
-    name: Backend tests
+  test-backend-shard:
+    name: Backend tests (${{ matrix.shard }}/2)
     needs: changes
     if: ${{ !cancelled() && needs.changes.outputs.code != 'false' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -231,19 +236,34 @@ jobs:
 
       # NOTE: no `|| echo` swallowing — failures must fail the build.
       - name: Run backend test suite
-        run: bun run test:backend:ci
+        run: bun run test:backend:ci -- --shard=${{ matrix.shard }}/2
+
+  # Stable check name for the sharded backend suite; see test-frontend below.
+  test-backend:
+    name: Backend tests
+    needs: [changes, test-backend-shard]
+    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: All backend shards passed
+        env:
+          RESULT: ${{ needs.test-backend-shard.result }}
+        run: |
+          echo "Backend shards: $RESULT"
+          test "$RESULT" = success
 
   # ===========================================================================
   # 3. Frontend tests — sharded across machines
   # ===========================================================================
   # The longest suite (~170s on one runner), split by Vitest's --shard into
-  # three parallel jobs. Each shard uploads its own coverage; Codecov merges
+  # four parallel jobs (three left the first shard at ~65s, the critical path). Each shard uploads its own coverage; Codecov merges
   # uploads for the same commit. (frontend/vitest.config.ts's thresholds are
   # under a Jest-style `global` key that Vitest ignores, so coverage is
   # reported, not enforced — sharding changes nothing there.)
   # ---------------------------------------------------------------------------
   test-frontend-shard:
-    name: Frontend tests (${{ matrix.shard }}/3)
+    name: Frontend tests (${{ matrix.shard }}/4)
     needs: changes
     if: ${{ !cancelled() && needs.changes.outputs.code != 'false' }}
     runs-on: ubuntu-latest
@@ -252,7 +272,7 @@ jobs:
       # Let every shard finish so one red run lists all failures.
       fail-fast: false
       matrix:
-        shard: [1, 2, 3]
+        shard: [1, 2, 3, 4]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -273,7 +293,7 @@ jobs:
         run: cd frontend && bun install --frozen-lockfile
 
       - name: Run frontend test suite with coverage
-        run: cd frontend && bun run test:run -- --coverage --shard=${{ matrix.shard }}/3
+        run: cd frontend && bun run test:run -- --coverage --shard=${{ matrix.shard }}/4
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
