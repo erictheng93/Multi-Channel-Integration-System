@@ -211,44 +211,34 @@ export class ChannelService implements IChannelIntegrationService {
     }
   }
 
+  // Reads throw on a database error: null / [] would tell the caller "not found" / "no channels"
+  // when the truth is "unknown", and the handlers turn a throw into a 500 the page can show.
   async getChannel(channelId: number): Promise<ChannelIntegration | null> {
-    try {
-      const [channel] = await this.db
-        .select()
-        .from(channelIntegrations)
-        .where(eq(channelIntegrations.id, channelId))
-        .limit(1);
+    const [channel] = await this.db
+      .select()
+      .from(channelIntegrations)
+      .where(eq(channelIntegrations.id, channelId))
+      .limit(1);
 
-      return channel || null;
-    } catch (error) {
-      log.error('Error getting channel', {}, error instanceof Error ? error : new Error(String(error)));
-      return null;
-    }
+    return channel || null;
   }
 
   async getChannelsByTeam(teamId?: number, platform?: ChannelPlatform): Promise<ChannelIntegration[]> {
-    try {
-      const conditions = [];
+    const conditions = [];
 
-      if (teamId !== undefined) {
-        conditions.push(eq(channelIntegrations.teamId, teamId));
-      }
-
-      if (platform) {
-        conditions.push(eq(channelIntegrations.platform, platform));
-      }
-
-      const channels = await this.db
-        .select()
-        .from(channelIntegrations)
-        .where(conditions.length > 0 ? and(...conditions) : undefined)
-        .orderBy(desc(channelIntegrations.createdAt));
-
-      return channels;
-    } catch (error) {
-      log.error('Error getting channels by team', {}, error instanceof Error ? error : new Error(String(error)));
-      return [];
+    if (teamId !== undefined) {
+      conditions.push(eq(channelIntegrations.teamId, teamId));
     }
+
+    if (platform) {
+      conditions.push(eq(channelIntegrations.platform, platform));
+    }
+
+    return await this.db
+      .select()
+      .from(channelIntegrations)
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .orderBy(desc(channelIntegrations.createdAt));
   }
 
   async updateChannel(request: ChannelUpdateRequest): Promise<ChannelConfigResponse> {
