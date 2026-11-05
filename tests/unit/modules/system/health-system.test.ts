@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { Hono } from 'hono'
 
 vi.mock('@/modules/integrations/services/webhook-media-service', () => ({ processLineMedia: vi.fn() }))
@@ -44,6 +44,9 @@ function appFor(role: string) {
 }
 
 afterEach(() => vi.unstubAllGlobals())
+// healthCheckService is a module singleton that serves results for 30s; without this
+// the first test that runs measures and every later one reads that cache.
+beforeEach(() => { (healthCheckService as unknown as { lastRunAt: number }).lastRunAt = 0 })
 
 describe('H1: /health/system', () => {
   it('reports R2, Durable Object and Queue with measured latency and no fake zero metrics', async () => {
