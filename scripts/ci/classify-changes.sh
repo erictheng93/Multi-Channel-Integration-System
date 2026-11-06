@@ -50,7 +50,8 @@ case "${EVENT:-}" in
     ;;
 esac
 
-CHANGED=$(git diff --name-only "$BASE" HEAD) || full "git diff failed"
+# --no-renames: a rename lists only its destination, so src/x.ts -> docs/x.ts would look docs-only.
+CHANGED=$(git diff --no-renames --name-only "$BASE" HEAD) || full "git diff failed"
 [ -n "$CHANGED" ] || full "empty diff"
 
 echo "Changed files ($(echo "$CHANGED" | wc -l)):"
