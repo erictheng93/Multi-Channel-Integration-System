@@ -47,6 +47,18 @@ describe('auth store: session restore in a new tab', () => {
     expect(JSON.parse(sessionStorage.getItem('currentAgent') ?? '{}').id).toBe('a1')
   })
 
+  it('restores the saved team context with the cookie session', async () => {
+    me.mockResolvedValue({ success: true, data: agent })
+    vi.mocked(localStorage.getItem).mockImplementation(key => (key === 'contextTeamId' ? '7' : null))
+    const store = await freshTabStore()
+    expect(store.contextTeamId).toBeNull()
+
+    await store.initializeSession()
+    vi.mocked(localStorage.getItem).mockImplementation(() => null)
+
+    expect(store.contextTeamId).toBe(7)
+  })
+
   it('refreshes quietly when only the 2-hour access cookie has expired', async () => {
     me.mockResolvedValueOnce({ success: false, status: 401 })
       .mockResolvedValueOnce({ success: true, data: agent })

@@ -159,6 +159,16 @@ export const useAuthStore = defineStore('auth', () => {
     return allowedTeamIds.value.includes(teamId);
   }
 
+  // ApiClient reads the same key unconditionally, so every session-restore path must call this
+  // or the store (null) and the X-Context-Team-ID header (saved team) disagree.
+  function restoreContextTeam(): void {
+    const parsed = parseInt(localStorage.getItem('contextTeamId') ?? '', 10);
+    if (!isNaN(parsed)) {
+      contextTeamId.value = parsed;
+      apiClient.setContextTeam(parsed);
+    }
+  }
+
   // Initialize non-credential session metadata. HttpOnly auth cookies are
   // verified later by initializeSession() through /auth/me.
   if (typeof window !== 'undefined') {
@@ -179,14 +189,7 @@ export const useAuthStore = defineStore('auth', () => {
         }
       }
 
-      const storedContextTeamId = localStorage.getItem('contextTeamId');
-      if (storedContextTeamId) {
-        const parsed = parseInt(storedContextTeamId, 10);
-        if (!isNaN(parsed)) {
-          contextTeamId.value = parsed;
-          apiClient.setContextTeam(parsed);
-        }
-      }
+      restoreContextTeam();
     } else {
       clearAuthStorage();
       apiClient.removeAuthHeader();
@@ -438,6 +441,7 @@ export const useAuthStore = defineStore('auth', () => {
     const nextAgent = preserveTeamState(response.data);
     currentAgent.value = nextAgent;
     syncTeamStateFromAgent(nextAgent);
+    restoreContextTeam();
     const expiry = Date.now() + SESSION_DURATION;
     sessionExpiry.value = expiry;
     setStoredAuthItem('sessionExpiry', expiry.toString());
