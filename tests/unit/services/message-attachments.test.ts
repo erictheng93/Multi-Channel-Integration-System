@@ -33,7 +33,15 @@ function setup(beforeBatch?: (db: Database.Database) => void) {
       bind(...params: unknown[]) { this.params = params; return this; },
       async raw() { return sqlite.prepare(query).raw().all(...this.params); },
       async all() { return { results: sqlite.prepare(query).all(...this.params) }; },
-      async run() { return { meta: { changes: sqlite.prepare(query).run(...this.params).changes } }; },
+      // Mirror real D1: meta.changes includes rows changed by triggers (better-sqlite3's
+      // own .changes does not), and RETURNING rows come back in results.
+      async run() {
+        const totalChanges = () => (sqlite.prepare('SELECT total_changes() AS n').get() as { n: number }).n;
+        const before = totalChanges();
+        const prepared = sqlite.prepare(query);
+        const results = prepared.reader ? prepared.all(...this.params) : (prepared.run(...this.params), []);
+        return { results, meta: { changes: totalChanges() - before } };
+      },
     };
     return statement;
   }
@@ -115,6 +123,23 @@ describe('message attachment ownership and atomic claims', () => {
     const { sqlite, d1, db } = setup();
     await insertMessageWithAttachments(d1, db, { ...message, messageType: sent } as typeof message, ids, 'agent-1');
     expect(sqlite.prepare('SELECT message_type FROM messages').get()).toEqual({ message_type: expected });
+  });
+
+  it('sends attachments when a messages INSERT trigger also writes conversations (migration 0071)', async () => {
+    const { sqlite, d1, db } = setup();
+    sqlite.exec(`
+      CREATE TABLE conversations (id TEXT PRIMARY KEY, last_agent_message_at TEXT);
+      INSERT INTO conversations VALUES ('conv-1', NULL);
+      CREATE TRIGGER trg_messages_marker_agent_insert AFTER INSERT ON messages
+      WHEN NEW.sender_type IN ('agent', 'system') AND NEW.deleted_at IS NULL
+      BEGIN
+        UPDATE conversations SET last_agent_message_at = NEW.created_at WHERE id = NEW.conversation_id;
+      END;
+    `);
+    await insertMessageWithAttachments(d1, db, { ...message, createdAt: '2026-11-10T00:25:56.534Z' } as typeof message,
+      ['pdf-1'], 'agent-1');
+    expect(sqlite.prepare("SELECT message_id FROM file_attachments WHERE id = 'pdf-1'").get())
+      .toEqual({ message_id: 'new-message' });
   });
 
   it('preserves ordinary messages without attachments', async () => {

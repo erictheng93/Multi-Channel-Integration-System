@@ -48,16 +48,18 @@ export async function insertMessageWithAttachments(
   const insert = sql`insert into ${messages} (${sql.join(entries.map(([key]) =>
     sql.identifier(columns[key as keyof typeof columns].name)), sql`, `)})
     select ${sql.join(entries.map(([, value]) => sql`${typeof value === 'boolean' ? Number(value) : value}`), sql`, `)}
-    where (select count(*) from ${fileAttachments} where ${eligible}) = ${ids.length}`;
+    where (select count(*) from ${fileAttachments} where ${eligible}) = ${ids.length} returning id`;
   const update = sql`update ${fileAttachments} set message_id = ${message.id}, conversation_id = ${message.conversationId}
-    where ${eligible} and exists (select 1 from ${messages} where ${messages.id} = ${message.id})`;
+    where ${eligible} and exists (select 1 from ${messages} where ${messages.id} = ${message.id}) returning id`;
   const dialect = new SQLiteAsyncDialect();
   const statements = [insert, update].map(statement => {
     const query = dialect.sqlToQuery(statement);
     return d1.prepare(query.sql).bind(...query.params);
   });
   const [created, claimed] = await d1.batch(statements);
-  if (created.meta.changes !== 1 || claimed.meta.changes !== ids.length) {
+  // Count RETURNING rows, not meta.changes: D1's meta.changes also counts rows written by
+  // triggers (the messages INSERT triggers from migrations 0070/0071 update conversations).
+  if (created.results.length !== 1 || claimed.results.length !== ids.length) {
     throw Object.assign(new Error('Attachments are no longer available'), { status: 400 });
   }
   return stored.messageType;
