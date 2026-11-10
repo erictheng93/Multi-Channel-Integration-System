@@ -182,7 +182,7 @@ describe('CustomerMessageDO buffered delivery fallback', () => {
     }));
   });
 
-  it('falls back to immediate message creation when the optional platform lookup fails', async () => {
+  it('sends immediately through MessageDeliveryService when the optional platform lookup fails', async () => {
     mocks.selectResults = [
       new Error('temporary D1 failure'),
       [],
@@ -209,18 +209,42 @@ describe('CustomerMessageDO buffered delivery fallback', () => {
       message: { deliveryStatus: string; isSent: boolean; recallDeadline: string | null };
     };
 
+    // Never stored as sent: deliver() looks the customer up again and records what really happened.
     expect(response.status).toBe(200);
     expect(mocks.insertValues).toHaveBeenCalledWith(expect.objectContaining({
-      deliveryStatus: 'delivered',
-      isSent: true,
+      deliveryStatus: 'pending',
+      isSent: false,
       recallDeadline: null,
     }));
     expect(mocks.scheduleOrDeliverNow).not.toHaveBeenCalled();
+    expect(mocks.deliver).toHaveBeenCalledWith('msg-1');
     expect(body.message).toEqual(expect.objectContaining({
-      deliveryStatus: 'delivered',
-      isSent: true,
+      deliveryStatus: 'pending',
+      isSent: false,
       recallDeadline: null,
     }));
+  });
+
+  it('stores a non-LINE reply as pending, unbuffered, and hands it to MessageDeliveryService (#223)', async () => {
+    mocks.selectResults = [{ customerId: 'customer-1', platform: 'facebook', platformUserId: 'fb-user-1' }];
+
+    const durableObject = new CustomerMessageDO({} as DurableObjectState, makeEnv());
+    const response = await durableObject.fetch(new Request('https://customer-message-do/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Conversation-Id': 'conv-1',
+        'X-Session-Id': 'agent-1',
+        'X-Authenticated-User-Id': 'agent-1',
+        'X-Authenticated-Display-Name': 'Agent One',
+      },
+      body: JSON.stringify({ content: 'hello', attachmentIds: [], platform: 'facebook' }),
+    }));
+
+    expect(response.status).toBe(200);
+    expect(mocks.insertValues).toHaveBeenCalledWith(expect.objectContaining({ deliveryStatus: 'pending', isSent: false }));
+    expect(mocks.scheduleOrDeliverNow).not.toHaveBeenCalled();
+    expect(mocks.deliver).toHaveBeenCalledWith('msg-1');
   });
 
   it('rejects unavailable attachments before inserting or scheduling the message', async () => {
@@ -340,6 +364,6 @@ describe('CustomerMessageDO buffered delivery fallback', () => {
 
     expect(mocks.getRecallWindowSeconds).toHaveBeenCalledTimes(1);
     expect(mocks.scheduleOrDeliverNow).not.toHaveBeenCalled();
-    expect(mocks.deliver).not.toHaveBeenCalled();
+    expect(mocks.deliver).toHaveBeenCalledTimes(2);
   });
 });

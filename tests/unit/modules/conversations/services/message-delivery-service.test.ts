@@ -182,6 +182,22 @@ describe('MessageDeliveryService.deliver', () => {
     }));
   });
 
+  it('marks a reply to a platform it cannot send to as failed, never sent (#223)', async () => {
+    dbMocks.selectResults = [
+      makeMessage({ deliveryStatus: 'pending' }),
+      [{ conversation: { id: 'conv-1', customerId: 'customer-1' }, customer: { id: 'customer-1', platform: 'facebook', platformUserId: 'fb-user-1' } }],
+    ];
+
+    await new MessageDeliveryService(makeEnv()).deliver('msg-1');
+
+    expect(dbMocks.pushLineMessage).not.toHaveBeenCalled();
+    expect(dbMocks.updateSet).toHaveBeenCalledWith(expect.objectContaining({
+      isSent: false,
+      deliveryStatus: 'failed',
+      metadata: expect.stringContaining('facebook'),
+    }));
+  });
+
   it('stamps first_response_at with the message time once the platform accepted the reply', async () => {
     dbMocks.selectResults = [
       makeMessage({ deliveryStatus: 'buffered', createdAt: '2026-01-15T11:59:50Z' }),
