@@ -172,8 +172,8 @@ function createTestApp() {
     c.env = { DB: {
       prepare: () => ({ bind: () => ({}) }),
       batch: async () => [
-        { meta: { changes: 1 } },
-        { meta: { changes: mockState.getAttachments.length } }
+        { results: [{ id: 'new-message' }], meta: { changes: 1 } },
+        { results: mockState.getAttachments.map((a: { id: string }) => ({ id: a.id })), meta: { changes: mockState.getAttachments.length } }
       ]
     } } as any;
     await next();
