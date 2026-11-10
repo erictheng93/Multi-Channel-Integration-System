@@ -36,12 +36,13 @@ export interface RealtimeHandlerDeps {
       senderType?: 'customer' | 'agent'
       senderId?: string
       platform?: string
+      awaitingSince?: string | null
     },
     _options?: { incrementUnread?: boolean; moveToTop?: boolean }
   ) => boolean
   updateConversationStatus: (
     _conversationId: string,
-    _updates: Partial<Pick<Conversation, 'status' | 'assignedTeamId' | 'unreadCount' | 'assignedTeam'>>
+    _updates: Partial<Pick<Conversation, 'status' | 'assignedTeamId' | 'unreadCount' | 'assignedTeam' | 'awaitingSince'>>
   ) => boolean
   updateConversationsIncrementally: (_newConversations: Conversation[], _logChanges?: boolean) => void
   updateStatsFromConversations: () => void
@@ -180,6 +181,8 @@ export function createRealtimeHandler(deps: RealtimeHandlerDeps) {
           const senderType = data?.senderType as 'customer' | 'agent' | undefined
           const senderId = data?.senderId as string | undefined
           const platform = data?.platform as string | undefined
+          // Present on list events: the backend wait marker after this message
+          const awaitingSince = data?.awaitingSince as string | null | undefined
 
           const updated = updateConversationFromWebSocketMessage(
             conversationId,
@@ -190,7 +193,8 @@ export function createRealtimeHandler(deps: RealtimeHandlerDeps) {
               sender,
               senderType,
               senderId,
-              platform
+              platform,
+              awaitingSince
             },
             {
               // 只有客戶發送的訊息才增加未讀計數
@@ -222,8 +226,10 @@ export function createRealtimeHandler(deps: RealtimeHandlerDeps) {
           const assignedTeamId = data?.assignedTeamId as number | undefined
           const assignedTeamName = data?.assignedTeamName as string | undefined
 
-          const updates: Partial<Pick<Conversation, 'status' | 'assignedTeamId' | 'assignedTeam' | 'unreadCount'>> = {}
+          const updates: Partial<Pick<Conversation, 'status' | 'assignedTeamId' | 'assignedTeam' | 'unreadCount' | 'awaitingSince'>> = {}
           if (status) { updates.status = status as Conversation['status'] }
+          // A delivery after the recall window cleared the wait marker (backend broadcastWaitMarker)
+          if (data && 'awaitingSince' in data) { updates.awaitingSince = data.awaitingSince as string | null }
           // 已結案的對話對所有客服都算 0 未讀（後端同規則）
           if (status === 'closed') { updates.unreadCount = 0 }
           if (assignedTeamId !== undefined) {

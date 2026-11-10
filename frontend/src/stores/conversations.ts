@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed, watch, type WatchStopHandle } from 'vue'
 import type { Conversation, ConversationFilters, Message, Platform, PaginatedResponse, CustomerUpdatedPayload } from '@/types'
 import { conversationApi } from '@/api/conversations'
-import { AUTO_REPLY_SENDER_ID, isSignOffMessage } from '@shared/api-contracts'
+import { AUTO_REPLY_SENDER_ID } from '@shared/api-contracts'
 import { messageApi } from '@/api/message'
 import { useAuthStore } from './auth'
 import { translateError } from '@/utils/error-handler'
@@ -198,23 +198,6 @@ export const useConversationsStore = defineStore('conversations', () => {
     stats.value = computeStatsFromConversations(conversations.value)
   }
 
-  // Mirror of the backend wait marker (migration 0070/0072) so the 待回覆 pill follows realtime messages:
-  // an agent reply clears it, a customer message starts it unless it is a sign-off after a reply.
-  // Auto-replies are stored as 'system' but broadcast as 'agent': they answer nobody, so they leave it alone.
-  // ponytail: a reply inside the recall window clears it early; the next list sync restores the backend value.
-  const nextAwaitingSince = (
-    current: string | null | undefined,
-    message: { content?: string; messageType?: string; senderType?: 'customer' | 'agent'; senderId?: string },
-    timestamp: number,
-    hasHumanReply: boolean
-  ): string | null | undefined => {
-    if (current === undefined) { return undefined }
-    if (message.senderType === 'agent') { return message.senderId === AUTO_REPLY_SENDER_ID ? current : null }
-    if (message.senderType !== 'customer' || current) { return current }
-    // First contact (no human reply yet) always waits, sticker or thanks included — same as the backend trigger.
-    return hasHumanReply && isSignOffMessage(message.messageType, message.content) ? null : new Date(timestamp).toISOString()
-  }
-
   const updateConversationFromWebSocketMessage = (
     conversationId: string,
     messageData: {
@@ -225,6 +208,7 @@ export const useConversationsStore = defineStore('conversations', () => {
       senderType?: 'customer' | 'agent'
       senderId?: string
       platform?: string
+      awaitingSince?: string | null
     },
     options: { incrementUnread?: boolean; moveToTop?: boolean } = {}
   ) => {
@@ -271,12 +255,9 @@ export const useConversationsStore = defineStore('conversations', () => {
         updatedAt: nowTimestamp,
         deliveryStatus: 'delivered'
       } : conversation.lastMessage,
-      // message_sent carries sender.role instead of senderType
-      awaitingSince: nextAwaitingSince(conversation.awaitingSince, {
-        ...messageData,
-        senderType: messageData.senderType ??
-          (messageData.sender ? (messageData.sender.role === 'customer' ? 'customer' : 'agent') : undefined)
-      }, nowTimestamp, Boolean(conversation.firstResponseAt)),
+      // The backend reads the trigger-maintained marker into the event; without it keep ours
+      // until the next sync rather than guessing (recall window, first-contact sign-off).
+      awaitingSince: messageData.awaitingSince !== undefined ? messageData.awaitingSince : conversation.awaitingSince,
       unreadCount: incrementUnread && messageData.senderType === 'customer'
         ? (conversation.unreadCount || 0) + 1
         : conversation.unreadCount || 0
@@ -304,7 +285,7 @@ export const useConversationsStore = defineStore('conversations', () => {
 
   const updateConversationStatus = (
     conversationId: string,
-    updates: Partial<Pick<Conversation, 'status' | 'assignedTeamId' | 'unreadCount' | 'assignedTeam'>>
+    updates: Partial<Pick<Conversation, 'status' | 'assignedTeamId' | 'unreadCount' | 'assignedTeam' | 'awaitingSince'>>
   ) => {
     let listUpdated = false
     let currentUpdated = false
