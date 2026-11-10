@@ -35,8 +35,9 @@ export interface UpdateTaskReminderRequest {
 type TaskReminderUpdate = Partial<typeof taskReminders.$inferInsert>;
 type RepeatType = NonNullable<CreateTaskReminderRequest['repeatType']>;
 
+// D1 reports affected rows in meta.changes; drizzle passes the D1Result through unchanged.
 interface MutationResult {
-  changes?: number;
+  meta?: { changes?: number };
 }
 
 /**
@@ -146,7 +147,7 @@ export class TaskReminderService {
         eq(taskReminders.userId, userId)
       ));
 
-    return ((result as MutationResult).changes || 0) > 0;
+    return ((result as MutationResult).meta?.changes ?? 0) > 0;
   }
 
   /**
@@ -164,7 +165,7 @@ export class TaskReminderService {
         eq(taskReminders.userId, userId)
       ));
 
-    return ((result as MutationResult).changes || 0) > 0;
+    return ((result as MutationResult).meta?.changes ?? 0) > 0;
   }
 
   /**
@@ -178,7 +179,7 @@ export class TaskReminderService {
         eq(taskReminders.userId, userId)
       ));
 
-    return ((result as MutationResult).changes || 0) > 0;
+    return ((result as MutationResult).meta?.changes ?? 0) > 0;
   }
 
   /**
