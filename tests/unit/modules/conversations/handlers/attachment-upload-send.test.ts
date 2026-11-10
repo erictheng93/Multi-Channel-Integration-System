@@ -52,7 +52,12 @@ it('lets the authenticated uploader send their upload, while rejecting foreign a
       bind(...params: unknown[]) { this.params = params; return this; },
       async raw() { return sqlite.prepare(query).raw().all(...this.params); },
       async all() { return { results: sqlite.prepare(query).all(...this.params) }; },
-      async run() { return { meta: { changes: sqlite.prepare(query).run(...this.params).changes } }; },
+      async run() {
+        const prepared = sqlite.prepare(query);
+        if (!prepared.reader) return { results: [], meta: { changes: prepared.run(...this.params).changes } };
+        const results = prepared.all(...this.params);
+        return { results, meta: { changes: results.length } };
+      },
     };
   }
   const d1 = {
