@@ -12,6 +12,7 @@ import { isSignOffMessage } from '@shared/api-contracts';
 import {
   MIGRATION_EDIT,
   MIGRATION_HYGIENE,
+  MIGRATION_LATE_REPLY,
   addConv,
   addCustomer,
   addMsg,
@@ -322,5 +323,38 @@ describe('isSignOffMessage matches signOffSql (realtime list vs backend marker)'
     const db = freshDb();
     const row = db.prepare(`SELECT ${signOffSql('m')} AS s FROM (SELECT ? AS message_type, ? AS content) m`).get(type, content) as { s: number };
     expect(isSignOffMessage(type, content)).toBe(row.s === 1);
+  });
+});
+
+describe('migration 0075: a reply older than the marker still re-derives it (#223)', () => {
+  it('embeds the shared awaiting expression', () => {
+    expect(readMigration(MIGRATION_LATE_REPLY).replace(/\r\n/g, '\n')).toContain(awaitingExpression('NEW.conversation_id'));
+  });
+
+  it('a held reply delivered after a first-contact thanks turns the thanks into a sign-off', () => {
+    const db = freshDb();
+    addConv(db, 'c');
+    const held = addMsg(db, 'c', 'agent', T(1), { sent: 0 });
+    addMsg(db, 'c', 'customer', T(2), { content: '謝謝' });
+    expect(awaitingOf(db, 'c')).toBe(T(2));
+    db.prepare('UPDATE messages SET is_sent = 1 WHERE id = ?').run(held);
+    expect(awaitingOf(db, 'c')).toBeNull();
+  });
+
+  it('a reply committed after a later first-contact sticker clears it on insert', () => {
+    const db = freshDb();
+    addConv(db, 'c');
+    addMsg(db, 'c', 'customer', T(2), { type: 'sticker', content: '' });
+    expect(awaitingOf(db, 'c')).toBe(T(2));
+    addMsg(db, 'c', 'agent', T(1));
+    expect(awaitingOf(db, 'c')).toBeNull();
+  });
+
+  it('an older reply leaves a real question waiting', () => {
+    const db = freshDb();
+    addConv(db, 'c');
+    addMsg(db, 'c', 'customer', T(2), { content: '請問保固多久' });
+    addMsg(db, 'c', 'agent', T(1));
+    expect(awaitingOf(db, 'c')).toBe(T(2));
   });
 });
