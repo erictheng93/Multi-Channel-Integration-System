@@ -316,11 +316,11 @@ export class CustomerMessageDO extends DurableObject<Bindings> {
 
         // Recall window (ADR-0003): when enabled, hold the outbound LINE push in
         // the DelayedMessageScheduler DO so the agent can recall within the
-        // window. Only LINE messages are buffered — LINE is the only platform
-        // this DO pushes to; other platforms keep store-and-broadcast behavior.
+        // window. Only LINE messages are buffered. Every reply is stored unsent and
+        // handed to MessageDeliveryService, which records what really happened: a
+        // platform it cannot send to ends as failed, so 待回覆 is not cleared (#223).
         const db = createDbClient(this.env.DB);
         const recallWindowSeconds = await this.getCachedRecallWindowSeconds();
-        let shouldUseSharedDelivery = false;
         let buffered = false;
         let targetPlatform: string | null = null;
         try {
@@ -335,13 +335,11 @@ export class CustomerMessageDO extends DurableObject<Bindings> {
             .where(eq(conversations.id, conversationId))
             .get();
           targetPlatform = target?.platform ?? null;
-          shouldUseSharedDelivery = targetPlatform === 'line';
-          buffered = shouldUseSharedDelivery && recallWindowSeconds > 0;
+          buffered = targetPlatform === 'line' && recallWindowSeconds > 0;
         } catch (error) {
           // Recall-window platform detection is optional. If it fails, keep the
           // message creation path available and fall back to immediate send.
           console.warn('[CustomerMessageDO] Recall-window platform lookup failed; sending immediately', error);
-          shouldUseSharedDelivery = false;
           buffered = false;
         }
 
@@ -371,13 +369,9 @@ export class CustomerMessageDO extends DurableObject<Bindings> {
           isRecalled: false,
           recallDeadline: null,
           recalledAt: null as string | null,
-          isSent: !shouldUseSharedDelivery,
+          isSent: false,
           sentAt: null as string | null,
-          deliveryStatus: buffered
-            ? ('buffered' as const)
-            : shouldUseSharedDelivery
-              ? ('pending' as const)
-              : ('delivered' as const),
+          deliveryStatus: buffered ? ('buffered' as const) : ('pending' as const),
           replyToMessageId: null as string | null,
           threadId: null as string | null,
           sessionId: null as string | null,
@@ -427,7 +421,7 @@ export class CustomerMessageDO extends DurableObject<Bindings> {
             messageData.isSent = false;
             deliverAfterInitialBroadcast = true;
           }
-        } else if (shouldUseSharedDelivery) {
+        } else {
           deliverAfterInitialBroadcast = true;
         }
 

@@ -371,6 +371,10 @@ export class MessageDeliveryService {
           errorMessage = lineError instanceof Error ? lineError.message : 'LINE API error';
           log.error('LINE API error', {}, lineError instanceof Error ? lineError : String(lineError));
         }
+      } else {
+        // ponytail: LINE is the only outbound sender; add a branch here when Facebook sending lands.
+        errorMessage = `尚未支援發送到此平台（${customer.platform}）`;
+        log.warn('No outbound sender for platform', { messageId, platform: customer.platform });
       }
 
       // Update Message Status
