@@ -78,7 +78,7 @@ export interface ConversationStoreDeps {
   updateStatsFromConversations: () => void
   updateConversationStatus: (
     _conversationId: string,
-    _updates: Partial<Pick<Conversation, 'status' | 'assignedTeamId' | 'unreadCount' | 'assignedTeam'>>
+    _updates: Partial<Pick<Conversation, 'status' | 'assignedTeamId' | 'unreadCount' | 'assignedTeam' | 'awaitingSince'>>
   ) => boolean
   updateConversationFromWebSocketMessage: (
     _conversationId: string,
@@ -89,6 +89,7 @@ export interface ConversationStoreDeps {
       sender?: { id?: string; name?: string; role?: string }
       senderType?: 'customer' | 'agent'
       platform?: string
+      awaitingSince?: string | null
     },
     _options?: { incrementUnread?: boolean; moveToTop?: boolean }
   ) => boolean

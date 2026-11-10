@@ -16,6 +16,7 @@ import { resolveDisplaySenderName } from '@/utils/sender-name-repair';
 import { getRecallWindowSeconds } from '@/services/recall-window-config';
 import { scheduleOrDeliverNow } from '@modules/conversations/services/buffered-send-scheduler';
 import { insertMessageWithAttachments } from '@/services/message-attachments';
+import { readAwaitingSince } from '@/services/wait-marker';
 
 type MessageInsert = typeof messages.$inferInsert;
 type FileAttachment = typeof fileAttachments.$inferSelect;
@@ -545,7 +546,9 @@ export class CustomerMessageDO extends DurableObject<Bindings> {
                 senderType: createdMessage.senderType,
                 senderId: createdMessage.senderId,
                 platform: 'line',
-                timestamp: createdMessage.createdAt
+                timestamp: createdMessage.createdAt,
+                // Read after deliver(): a reply still in the recall window has not cleared it yet.
+                awaitingSince: await readAwaitingSince(this.env.DB, conversationId)
               },
               priority: 'normal'
             };
