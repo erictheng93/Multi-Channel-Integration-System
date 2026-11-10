@@ -94,7 +94,7 @@
         >
           <template v-if="conversation.lastMessage?.senderType === 'agent'">
             客服：
-          </template>{{ getLastMessageText(conversation) }}
+          </template>{{ lastMessagePreview(conversation) }}
         </div>
         <div class="status-cell">
           <!-- One treatment for every state: a dot-and-text pill of the same height (waiting adds how long) -->
@@ -160,8 +160,8 @@
 import { computed, ref, toRef, watchEffect } from 'vue'
 import type { Conversation } from '@/types'
 import { formatWaitText } from '@/composables/dashboard/useDashboardOverview'
-import { convertEmojiForConversationList } from '@/utils/layered-emoji-processor'
 import {
+  lastMessagePreview,
   LEGEND_TEXT,
   UNREAD_HINT,
   WAITING_HINT,
@@ -269,11 +269,6 @@ const formatFull = (date?: Date | number | string) => {
   if (!date) { return '' }
   const dateObj = new Date(date)
   return Number.isNaN(dateObj.getTime()) ? '' : dateObj.toLocaleString('zh-TW')
-}
-
-const getLastMessageText = (conversation: Conversation) => {
-  const content = conversation.lastMessage?.content || '暫無訊息'
-  return convertEmojiForConversationList(content)
 }
 </script>
 

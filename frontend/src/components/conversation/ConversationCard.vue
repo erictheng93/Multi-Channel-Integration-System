@@ -122,7 +122,7 @@
 import { computed, ref, h } from 'vue'
 import type { Conversation } from '@/types'
 import { usePrefetch } from '@/composables/usePrefetch'
-import { convertEmojiForConversationList } from '@/utils/layered-emoji-processor'
+import { lastMessagePreview } from '@/composables/conversation/useConversationRowMeta'
 import { getConversationStatusLabel, type ConversationStatus } from '@/constants/conversation-status'
 import {
   UserCheckIcon,
@@ -216,9 +216,7 @@ const platformInfo = computed(() => {
 })
 
 const lastMessageText = computed(() => {
-  if (!props.conversation.lastMessage) {return '暫無訊息'}
-  const content = props.conversation.lastMessage.content
-  const convertedContent = convertEmojiForConversationList(content)
+  const convertedContent = lastMessagePreview(props.conversation)
   return convertedContent.length > 50 ? `${convertedContent.substring(0, 50)}...` : convertedContent
 })
 

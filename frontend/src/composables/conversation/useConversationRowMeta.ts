@@ -11,6 +11,17 @@
 import { computed, onUnmounted, ref, watch, type Ref } from 'vue'
 import type { Conversation } from '@/types'
 import { WAITING_WINDOW_DAYS } from '@shared/api-contracts'
+import { convertEmojiForConversationList } from '@/utils/layered-emoji-processor'
+
+// The backend overwrites a recalled message's content with this placeholder (internal display only).
+const RECALLED_CONTENT = '[This message has been recalled]'
+
+/** List preview of the last message; a recalled message reads the same as in the conversation view. */
+export function lastMessagePreview(conversation: Conversation): string {
+  const content = conversation.lastMessage?.content
+  if (!content) { return '暫無訊息' }
+  return content === RECALLED_CONTENT ? '此訊息已撤回' : convertEmojiForConversationList(content)
+}
 
 export type StatusTone = 'closed' | 'active' | 'pending'
 

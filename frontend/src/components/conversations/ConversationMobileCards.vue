@@ -63,7 +63,7 @@
           >
             <template v-if="conversation.lastMessage?.senderType === 'agent'">
               客服：
-            </template>{{ getLastMessageText(conversation) }}
+            </template>{{ lastMessagePreview(conversation) }}
           </div>
           <div class="card-pills">
             <!-- One treatment for every state: the same dot-and-text pill -->
@@ -109,8 +109,8 @@
 <script setup lang="ts">
 import { toRef } from 'vue'
 import type { Conversation } from '@/types'
-import { convertEmojiForConversationList } from '@/utils/layered-emoji-processor'
 import {
+  lastMessagePreview,
   UNREAD_HINT,
   WAITING_HINT,
   freeReplySeconds,
@@ -178,11 +178,6 @@ const platformOf = (conversation: Conversation): string =>
 const getUpdatedAt = (conversation: Conversation) => {
   const legacyConversation = withLegacyFields(conversation)
   return conversation.updatedAt || legacyConversation.updated_at
-}
-
-const getLastMessageText = (conversation: Conversation) => {
-  const content = conversation.lastMessage?.content || '暫無訊息'
-  return convertEmojiForConversationList(content)
 }
 </script>
 
