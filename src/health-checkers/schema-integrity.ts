@@ -7,7 +7,7 @@ import type { D1Database } from '@cloudflare/workers-types';
 import type { Bindings } from '../types/bindings';
 import { nowISO, nowMs } from '@/utils/timestamp';
 
-/** Triggers created by migrations 0070 (awaiting_since; re-created by 0072 with the sign-off rule; 0073 adds the edit trigger) and 0071 (message markers). Keep in sync. */
+/** Triggers created by migrations 0070 (awaiting_since; re-created by 0072 with the sign-off rule; 0073 adds the edit trigger; 0075 re-creates the two reply triggers) and 0071 (message markers). Keep in sync. */
 export const REQUIRED_TRIGGERS = [
   'trg_messages_awaiting_customer',
   'trg_messages_awaiting_reply_insert',

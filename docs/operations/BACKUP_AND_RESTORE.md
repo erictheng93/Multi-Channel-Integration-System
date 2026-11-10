@@ -147,10 +147,15 @@ bunx wrangler r2 object put "mcis-backups/daily/mcis-db-$(date +%F).sql.gz" \
    node node_modules/wrangler/bin/wrangler.js d1 execute mcis-db --remote --command \
      "SELECT name FROM sqlite_master WHERE type='trigger' ORDER BY name"
    ```
-   The 9 triggers listed in `src/health-checkers/schema-integrity.ts` (`REQUIRED_TRIGGERS`) must
-   all be present. If any are missing, re-run only the `CREATE TRIGGER IF NOT EXISTS ...` statements
-   from migrations 0070 and 0071 (do NOT re-run the whole files: their `ALTER TABLE ... ADD COLUMN`
-   fails when the column already exists), then let the nightly heal (daily cron) re-converge `awaiting_since` and the unread markers.
+   The 10 triggers listed in `src/health-checkers/schema-integrity.ts` (`REQUIRED_TRIGGERS`) must
+   all be present. If any are missing, recreate each from the LATEST migration that defines it
+   (older definitions lack the sign-off rule):
+   - re-run migrations 0072, 0073 and 0075 whole, in that order (they only drop/create triggers,
+     backfill markers and `CREATE INDEX IF NOT EXISTS`, so they are safe to repeat);
+   - from 0071 re-run only its `CREATE TRIGGER IF NOT EXISTS ...` statements (do NOT re-run 0070 or
+     0071 whole: their `ALTER TABLE ... ADD COLUMN` fails when the column already exists);
+
+   then let the nightly heal (daily cron) re-converge `awaiting_since` and the unread markers.
    The admin page 系統設定 › 健康檢查 shows a `schema_integrity` row, and the daily cron logs an
    error and sets the KV key `alert:schema_trigger_missing` while any trigger is missing.
 
