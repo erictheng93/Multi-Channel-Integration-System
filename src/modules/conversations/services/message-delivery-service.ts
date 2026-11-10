@@ -14,6 +14,7 @@ import type { LineReplyMessage } from '@/types';
 import { WebSocketBroadcastService } from '@/services/websocket-broadcast-service';
 import { nowISO, nowMs } from '@/utils/timestamp';
 import { stampFirstResponse } from './first-response';
+import { broadcastWaitMarker } from '@/services/wait-marker';
 import { createContextLogger } from '@/utils/logger';
 import { getSignedFileUrl, PERSISTENT_ATTACHMENT_URL_TTL_SECONDS } from '@/utils/file-url';
 import { LINE_PREVIEW_IMAGE_MAX_BYTES, LINE_REPLY_TOKEN_SAFE_WINDOW_MS } from '@/constants/limits';
@@ -391,6 +392,8 @@ export class MessageDeliveryService {
       // answered, not the recall-window hold.
       if (isSent) {
         await stampFirstResponse(this.db, msg.conversationId, msg.createdAt ?? nowISO());
+        // The reply triggers cleared 待回覆 only now; the list has no message event for this.
+        await broadcastWaitMarker(this.bindings, msg.conversationId);
       }
 
       // Broadcast Update

@@ -135,3 +135,21 @@ describe('customer_profile_updated', () => {
     expect(conv.customer).toMatchObject({ name: 'New LINE', platformName: 'New LINE' })
   })
 })
+
+describe('wait marker events (#223)', () => {
+  it('applies awaitingSince from conversation_updated without polling', () => {
+    const { deps } = makeDeps()
+    const handler = createRealtimeHandler(deps)
+    handler.handleRealtimeUpdate({ type: 'conversation_updated', conversationId: 'conv-1', data: { conversationId: 'conv-1', awaitingSince: null } } as WebSocketMessage)
+    expect(deps.updateConversationStatus).toHaveBeenCalledWith('conv-1', { awaitingSince: null })
+    expect(listMock).not.toHaveBeenCalled()
+  })
+
+  it('passes the backend marker on new_message to the store', () => {
+    const { deps } = makeDeps()
+    const handler = createRealtimeHandler(deps)
+    handler.handleRealtimeUpdate({ type: 'new_message', conversationId: 'conv-1', data: { senderType: 'customer', awaitingSince: '2026-11-10T00:00:00.000Z' } } as WebSocketMessage)
+    expect(deps.updateConversationFromWebSocketMessage).toHaveBeenCalledWith('conv-1',
+      expect.objectContaining({ awaitingSince: '2026-11-10T00:00:00.000Z' }), expect.anything())
+  })
+})

@@ -5,6 +5,7 @@
 import type { DurableObjectEvent } from '@/types/websocket-types';
 import { nowMs } from '@/utils/timestamp';
 import { EventBroadcasterBase } from './event-broadcaster-deps';
+import { readAwaitingSince } from '@/services/wait-marker';
 
 function eventData(data: unknown): Record<string, unknown> {
   return typeof data === 'object' && data !== null && !Array.isArray(data) ? data as Record<string, unknown> : {};
@@ -285,7 +286,8 @@ export class MessageEventBroadcaster extends EventBroadcasterBase {
             senderName: message.senderName,
             platform: message.platform,
             timestamp,
-            teamId: teamId || null
+            teamId: teamId || null,
+            awaitingSince: await readAwaitingSince(this.env.DB, conversationId)
           },
           priority: 'normal'
         };
