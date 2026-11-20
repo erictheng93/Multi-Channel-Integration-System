@@ -13,7 +13,7 @@ interface DistributedLockEnv {
 }
 
 interface LockErrorResponse {
-  message?: string;
+  error?: string;
 }
 
 interface LockAcquisitionResponse {
@@ -138,7 +138,7 @@ export class DistributedLockService {
 
       if (!response.ok) {
         const error = await response.json() as LockErrorResponse;
-        throw new Error(`Lock acquisition failed: ${error.message || 'Unknown error'}`);
+        throw new Error(`Lock acquisition failed: ${error.error || 'Unknown error'}`);
       }
 
       const result = await response.json() as LockAcquisitionResponse;
@@ -185,7 +185,7 @@ export class DistributedLockService {
 
       if (!response.ok) {
         const error = await response.json() as LockErrorResponse;
-        console.warn(`[DistributedLockService] Lock release warning: ${error.message}`);
+        console.warn(`[DistributedLockService] Lock release warning: ${error.error}`);
       } else {
         console.log(`[DistributedLockService] Lock released: ${lockId}`);
       }
@@ -229,7 +229,7 @@ export class DistributedLockService {
         return null;
       } else {
         const error = await response.json() as LockErrorResponse;
-        throw new Error(`Try lock failed: ${error.message}`);
+        throw new Error(`Try lock failed: ${error.error}`);
       }
 
     } catch (error) {
@@ -281,7 +281,7 @@ export class DistributedLockService {
         return null;
       } else {
         const error = await response.json() as LockErrorResponse;
-        throw new Error(`Get lock info failed: ${error.message}`);
+        throw new Error(`Get lock info failed: ${error.error}`);
       }
 
     } catch (error) {
@@ -317,7 +317,7 @@ export class DistributedLockService {
         return result.expiresAt;
       } else {
         const error = await response.json() as LockErrorResponse;
-        throw new Error(`Lock extension failed: ${error.message}`);
+        throw new Error(`Lock extension failed: ${error.error}`);
       }
 
     } catch (error) {
@@ -405,7 +405,7 @@ export class DistributedLockService {
         return result.locks ?? [];
       } else {
         const error = await response.json() as LockErrorResponse;
-        throw new Error(`Get active locks failed: ${error.message}`);
+        throw new Error(`Get active locks failed: ${error.error}`);
       }
 
     } catch (error) {
@@ -435,7 +435,7 @@ export class DistributedLockService {
         return result.cleanedCount ?? 0;
       } else {
         const error = await response.json() as LockErrorResponse;
-        throw new Error(`Cleanup failed: ${error.message}`);
+        throw new Error(`Cleanup failed: ${error.error}`);
       }
 
     } catch (error) {
@@ -497,10 +497,11 @@ export class DistributedLockService {
     return `lock_${nowMs()}_${Math.random().toString(36).substring(2, 8)}`;
   }
 
+  // Owner identity is per instance: the coordinator only lets the id that acquired a lock release or extend it.
+  private readonly requesterId = `requester_${crypto.randomUUID()}`;
+
   private getRequesterId(): string {
-    // In a real implementation, this would identify the requesting Durable Object or Worker
-    // For now, use a combination of timestamp and random string
-    return `requester_${nowMs()}_${Math.random().toString(36).substring(2, 6)}`;
+    return this.requesterId;
   }
 }
 
@@ -549,30 +550,30 @@ export class LockCoordinator implements DurableObject {
 
       switch (pathname) {
         case '/acquire':
-          return this.handleAcquireLock(request);
+          return await this.handleAcquireLock(request);
         case '/try-acquire':
-          return this.handleTryAcquireLock(request);
+          return await this.handleTryAcquireLock(request);
         case '/release':
-          return this.handleReleaseLock(request);
+          return await this.handleReleaseLock(request);
         case '/extend':
-          return this.handleExtendLock(request);
+          return await this.handleExtendLock(request);
         case '/cleanup':
-          return this.handleCleanup(request);
+          return await this.handleCleanup(request);
         case '/active-locks':
-          return this.handleGetActiveLocks(request);
+          return await this.handleGetActiveLocks(request);
         case '/metrics':
-          return this.handleGetMetrics(request);
+          return await this.handleGetMetrics(request);
         default:
           if (pathname.startsWith('/status/')) {
-            return this.handleGetLockStatus(request);
+            return await this.handleGetLockStatus(request);
           } else if (pathname.startsWith('/info/')) {
-            return this.handleGetLockInfo(request);
+            return await this.handleGetLockInfo(request);
           }
-          return new Response('Not Found', { status: 404 });
+          return new Response(JSON.stringify({ error: 'Not found' }), { status: 404 });
       }
     } catch (error) {
       console.error('[LockCoordinator] Request handling error:', error);
-      return new Response('Internal Server Error', { status: 500 });
+      return new Response(JSON.stringify({ error: 'Internal server error' }), { status: 500 });
     }
   }
 
@@ -621,7 +622,8 @@ export class LockCoordinator implements DurableObject {
         return new Response(JSON.stringify({ error: 'Resource is locked' }), { status: 423 });
       }
     } catch (error) {
-      return new Response(JSON.stringify({ error: error instanceof Error ? error.message : String(error) }), { status: 500 });
+      console.error('[DistributedLockService] acquire lock error:', error);
+      return new Response(JSON.stringify({ error: 'Internal server error' }), { status: 500 });
     }
   }
 
@@ -640,7 +642,8 @@ export class LockCoordinator implements DurableObject {
         return new Response(JSON.stringify({ error: 'Lock not found or not owned by requester' }), { status: 404 });
       }
     } catch (error) {
-      return new Response(JSON.stringify({ error: error instanceof Error ? error.message : String(error) }), { status: 500 });
+      console.error('[DistributedLockService] release lock error:', error);
+      return new Response(JSON.stringify({ error: 'Internal server error' }), { status: 500 });
     }
   }
 

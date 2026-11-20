@@ -230,9 +230,9 @@ export class LineMessageQueueConsumer {
 
     // Check if content is just a file description (should not send as text)
     const isFileOnlyContent = payload.content && (
-      /^Sent a file:\s*.+$/i.test(payload.content) ||
+      /^Sent a file:\s*\S.*$/i.test(payload.content) ||
       /^Sent \d+ files$/i.test(payload.content) ||
-      /^\[(?:檔案|圖片)\]\s*.+$/.test(payload.content)
+      /^\[(?:檔案|圖片)\]\s*\S.*$/.test(payload.content)
     );
 
     // Add text message if content is not just a file description

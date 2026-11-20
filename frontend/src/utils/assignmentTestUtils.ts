@@ -12,8 +12,8 @@ const frontendLogger = createLogger('assignmentTestUtils')
 
 // 模擬數據生成器 - Simplified from 3-tier to 2-tier role system
 export const createMockAgent = (role: 'admin' | 'agent', options: Partial<TeamMember> = {}): TeamMember => ({
-  id: `agent-${Math.random().toString(36).substr(2, 9)}`,
-  loginId: `user${Math.random().toString(36).substr(2, 6)}`,
+  id: `agent-${crypto.randomUUID().substring(0, 9)}`,
+  loginId: `user${crypto.randomUUID().substring(0, 6)}`,
   name: `Test ${role} User`,
   email: `${role}@example.com`,
   role,
@@ -25,7 +25,7 @@ export const createMockAgent = (role: 'admin' | 'agent', options: Partial<TeamMe
 })
 
 export const createMockConversation = (status: ConversationStatus = CONVERSATION_STATUS.PENDING, options: Partial<Conversation> = {}): Conversation => ({
-  id: `conv-${Math.random().toString(36).substr(2, 9)}`,
+  id: `conv-${crypto.randomUUID().substring(0, 9)}`,
   userId: 'customer-123',
   customer: {
     id: 'customer-123',

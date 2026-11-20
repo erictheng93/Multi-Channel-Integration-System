@@ -280,56 +280,6 @@ export class InputValidator {
   }
 
   /**
-   * Sanitize HTML content to prevent XSS
-   */
-  static sanitizeHtml(content: string): string {
-    // Basic HTML sanitization - removes script tags and dangerous attributes
-    return content
-      .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-      .replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, '')
-      .replace(/javascript:/gi, '')
-      .replace(/on\w+\s*=/gi, '')
-      .replace(/style\s*=/gi, '')
-      .trim();
-  }
-
-  /**
-   * Validate and sanitize message content
-   */
-  static sanitizeMessageContent(content: string): {
-    isValid: boolean;
-    sanitized?: string;
-    error?: string;
-  } {
-    try {
-      // Validate length
-      if (!content || content.length === 0) {
-        return { isValid: false, error: 'Message content cannot be empty' };
-      }
-
-      if (content.length > LIMITS.MESSAGE_CONTENT) {
-        return {
-          isValid: false,
-          error: `Message content exceeds maximum length of ${LIMITS.MESSAGE_CONTENT} characters`
-        };
-      }
-
-      // Sanitize HTML
-      const sanitized = this.sanitizeHtml(content);
-
-      return {
-        isValid: true,
-        sanitized
-      };
-    } catch (error) {
-      return {
-        isValid: false,
-        error: `Sanitization error: ${error instanceof Error ? error.message : 'Unknown error'}`
-      };
-    }
-  }
-
-  /**
    * Check for rate limiting violations
    */
   static checkRateLimit(

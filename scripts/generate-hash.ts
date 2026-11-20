@@ -26,6 +26,7 @@ async function main() {
     const agent1Password = process.env.AGENT1_PASSWORD || 'CHANGE-THIS-AGENT1-PASSWORD';
     const agent2Password = process.env.AGENT2_PASSWORD || 'CHANGE-THIS-AGENT2-PASSWORD';
     const agent3Password = process.env.AGENT3_PASSWORD || 'CHANGE-THIS-AGENT3-PASSWORD';
+    const envVars = ['ADMIN_PASSWORD', 'TEST_AGENT_PASSWORD', 'AGENT1_PASSWORD', 'AGENT2_PASSWORD', 'AGENT3_PASSWORD'];
     
     const passwords = [
       { name: 'admin-001 (System Administrator)', password: adminPassword },
@@ -42,9 +43,11 @@ async function main() {
     
     const results = await generateMultipleHashesCLI(passwords);
 
-    results.forEach(({ name, password, hash }) => {
+    results.forEach(({ name, hash }, i) => {
       console.log(`${name}:`);
-      console.log(`  Password: ${password}`);
+      console.log(process.env[envVars[i]]
+        ? `  Password: [REDACTED] (from ${envVars[i]})`
+        : `  Password: [PLACEHOLDER — ${envVars[i]} not set, do NOT use this hash]`);
       console.log(`  Hash: ${hash}`);
       console.log('');
     });

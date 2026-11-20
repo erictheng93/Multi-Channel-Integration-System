@@ -7,9 +7,9 @@
  * @param prefix - Optional prefix for the ID
  */
 export function generateId(prefix?: string): string {
-  // 使用時間戳和隨機數組合生成 ID
+  // 使用時間戳和密碼學隨機數組合生成 ID
   const timestamp = Date.now().toString(36);
-  const randomPart = Math.random().toString(36).substring(2, 15);
+  const randomPart = crypto.randomUUID().replace(/-/g, '').substring(0, 13);
   const id = `${timestamp}_${randomPart}`;
   return prefix ? `${prefix}_${id}` : id;
 }
@@ -19,11 +19,7 @@ export function generateId(prefix?: string): string {
  * Generate UUID v4 format identifier
  */
 export function generateUUID(): string {
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-    const r = Math.random() * 16 | 0;
-    const v = c === 'x' ? r : (r & 0x3 | 0x8);
-    return v.toString(16);
-  });
+  return crypto.randomUUID();
 }
 
 /**
@@ -32,9 +28,11 @@ export function generateUUID(): string {
  */
 export function generateShortId(length: number = 8): string {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  const randomBytes = new Uint32Array(length);
+  crypto.getRandomValues(randomBytes);
   let result = '';
   for (let i = 0; i < length; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length));
+    result += chars.charAt(randomBytes[i] % chars.length);
   }
   return result;
 }
@@ -45,7 +43,14 @@ export function generateShortId(length: number = 8): string {
  */
 export function generateNumericId(length: number = 10): string {
   const timestamp = Date.now().toString();
-  const random = Math.floor(Math.random() * Math.pow(10, length - timestamp.length)).toString();
+  const remaining = Math.max(0, length - timestamp.length);
+  if (remaining === 0) return timestamp.substring(0, length);
+  const randomBytes = new Uint32Array(remaining);
+  crypto.getRandomValues(randomBytes);
+  let random = '';
+  for (let i = 0; i < remaining; i++) {
+    random += (randomBytes[i] % 10).toString();
+  }
   return (timestamp + random).substring(0, length);
 }
 

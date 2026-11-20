@@ -328,7 +328,7 @@ export class CustomerConversationDO extends DurableObject<Bindings> {
         });
       } catch (error) {
         console.error('[CustomerConversationDO] Error handling notify-message:', error);
-        return new Response(JSON.stringify({ success: false, error: String(error) }), {
+        return new Response(JSON.stringify({ success: false, error: 'Internal server error' }), {
           status: 500,
           headers: { 'Content-Type': 'application/json' }
         });
@@ -360,7 +360,7 @@ export class CustomerConversationDO extends DurableObject<Bindings> {
         });
       } catch (error) {
         console.error('[CustomerConversationDO] Error handling notify-message-updated:', error);
-        return new Response(JSON.stringify({ success: false, error: String(error) }), {
+        return new Response(JSON.stringify({ success: false, error: 'Internal server error' }), {
           status: 500,
           headers: { 'Content-Type': 'application/json' }
         });

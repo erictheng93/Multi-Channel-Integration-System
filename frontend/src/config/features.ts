@@ -206,7 +206,7 @@ function getUserId(): string {
 
   if (!userId) {
     // 生成新的匿名 ID
-    userId = `anon_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`
+    userId = `anon_${Date.now()}_${crypto.randomUUID().substring(0, 9)}`
     localStorage.setItem('anonymous_user_id', userId)
   }
 

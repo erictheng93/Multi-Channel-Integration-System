@@ -533,7 +533,7 @@ export class WebSocketPerformanceTracker {
     if (existing) {return existing}
 
     // Generate new session ID
-    const sessionId = `ws_perf_${Date.now()}_${Math.random().toString(36).substring(2)}`
+    const sessionId = `ws_perf_${Date.now()}_${crypto.randomUUID().substring(0, 12)}`
     localStorage.setItem(CONFIG.sessionIdKey, sessionId)
 
     return sessionId

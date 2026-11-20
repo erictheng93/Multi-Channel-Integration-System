@@ -18,24 +18,14 @@ import type {
  * 生成測試用的會話ID (UUID v4 格式)
  */
 export function generateTestSessionId(): string {
-  // 生成符合 UUID v4 格式的測試 ID
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-    const r = Math.random() * 16 | 0;
-    const v = c === 'x' ? r : (r & 0x3 | 0x8);
-    return v.toString(16);
-  });
+  return crypto.randomUUID();
 }
 
 /**
  * 生成測試用的對話ID (UUID v4 格式)
  */
 export function generateTestConversationId(): string {
-  // 生成符合 UUID v4 格式的測試 ID
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-    const r = Math.random() * 16 | 0;
-    const v = c === 'x' ? r : (r & 0x3 | 0x8);
-    return v.toString(16);
-  });
+  return crypto.randomUUID();
 }
 
 /**
@@ -102,7 +92,7 @@ export function createMockUpdateSessionData(overrides: Partial<UpdateSessionData
  */
 export function createMockSessionMessage(overrides: Partial<SessionMessage> = {}): SessionMessage {
   return {
-    id: `msg_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+    id: `msg_${Date.now()}_${crypto.randomUUID().substring(0, 6)}`,
     sessionId: generateTestSessionId(),
     conversationId: generateTestConversationId(),
     senderId: 'test_customer_123',
@@ -355,7 +345,7 @@ export function delay(ms: number): Promise<void> {
  * 生成隨機字串
  */
 export function generateRandomString(length = 8): string {
-  return Math.random().toString(36).substring(2, 2 + length);
+  return crypto.randomUUID().replace(/-/g, '').substring(0, length);
 }
 
 /**
