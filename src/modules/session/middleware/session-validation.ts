@@ -35,7 +35,7 @@ export function sanitizeString(input: string): string {
 
   do {
     prev = sanitized;
-    sanitized = sanitized.replace(/on\w+\s*=/gi, '');
+    sanitized = sanitized.replace(/on\w+\s*=\s*[^\s>]*/gi, '');
   } while (sanitized !== prev);
 
   return sanitized.substring(0, 1000);
