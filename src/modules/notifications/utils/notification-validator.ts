@@ -356,9 +356,12 @@ export class NotificationValidator {
         let prev: string;
         do {
           prev = cleaned;
-          cleaned = cleaned
-            .replace(/<script\b[^>]*>[\s\S]*?<\/script\s*>/gi, '')
-            .replace(/<[^>]+>/g, '');
+          cleaned = cleaned.replace(/<script\b[^>]*>[\s\S]*?<\/script[^>]*>/gi, '');
+        } while (cleaned !== prev);
+
+        do {
+          prev = cleaned;
+          cleaned = cleaned.replace(/<[^>]+>/g, '');
         } while (cleaned !== prev);
         sanitized[key] = cleaned.trim();
       } else if (isRecord(value)) {

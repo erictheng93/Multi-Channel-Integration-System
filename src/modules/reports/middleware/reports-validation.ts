@@ -28,15 +28,16 @@ const log = createContextLogger('ReportsValidation');
 export function sanitizeString(input: string): string {
   if (!input || typeof input !== 'string') return '';
 
-  let sanitized = input.trim();
+  let sanitized = input.trim().replace(/[<>]/g, '');
   let prev: string;
   do {
     prev = sanitized;
-    sanitized = sanitized
-      .replace(/[<>]/g, '')
-      .replace(/(?:javascript|vbscript|data):/gi, '')
-      .replace(/on\w+\s*=\s*[^\s>]*/gi, '')
-      .replace(/on\w+=/gi, '');
+    sanitized = sanitized.replace(/(?:javascript|vbscript|data):/gi, '');
+  } while (sanitized !== prev);
+
+  do {
+    prev = sanitized;
+    sanitized = sanitized.replace(/on\w+\s*=/gi, '');
   } while (sanitized !== prev);
 
   return sanitized.substring(0, 2000);
