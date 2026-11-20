@@ -4,6 +4,8 @@
     class="dropdown"
   >
     <div
+      :id="`dropdown-${uid}`"
+      ref="triggerRef"
       role="button"
       :tabindex="disabled ? -1 : 0"
       :aria-haspopup="true"
@@ -71,7 +73,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, nextTick, onMounted, onUnmounted } from 'vue'
+import { ref, computed, nextTick, onMounted, onUnmounted, useId } from 'vue'
 import { ChevronDownIcon } from '@/components/icons'
 
 interface Props {
@@ -114,10 +116,11 @@ const props = withDefaults(defineProps<Props>(), {
 const emit = defineEmits<Emits>()
 
 const dropdownRef = ref<HTMLElement>()
+const triggerRef = ref<HTMLElement>()
 const menuRef = ref<HTMLElement>()
 const isOpen = ref(false)
 const menuStyles = ref({})
-const uid = crypto.randomUUID().substring(0, 9)
+const uid = useId()
 
 const positionClass = computed(() => `dropdown-${props.placement}`)
 
@@ -149,6 +152,12 @@ const open = async () => {
 }
 
 const close = () => {
+  // Decide before closing (the menu unmounts after isOpen flips). Restore focus to the
+  // trigger unless it deliberately moved elsewhere; WebKit leaves body focused after clicking a button.
+  const active = document.activeElement
+  const focusMovedAway = !!active && active !== document.body &&
+    !menuRef.value?.contains(active) && !dropdownRef.value?.contains(active)
+  const restoreFocus = isOpen.value && !focusMovedAway
   isOpen.value = false
   focusIndex = -1
   emit('close')
@@ -159,8 +168,8 @@ const close = () => {
   window.removeEventListener('resize', handleResize)
   
   // 返回焦點到觸發器
-  if (dropdownRef.value) {
-    dropdownRef.value.focus()
+  if (restoreFocus) {
+    triggerRef.value?.focus()
   }
 }
 

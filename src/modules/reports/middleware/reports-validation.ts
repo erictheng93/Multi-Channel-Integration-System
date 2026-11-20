@@ -32,12 +32,12 @@ export function sanitizeString(input: string): string {
   let prev: string;
   do {
     prev = sanitized;
-    sanitized = sanitized.replace(/(?:javascript|vbscript|data):/gi, '');
+    sanitized = sanitized.replace(/(?:javascript|vbscript):/gi, '');
   } while (sanitized !== prev);
 
   do {
     prev = sanitized;
-    sanitized = sanitized.replace(/on\w+\s*=\s*[^\s>]*/gi, '');
+    sanitized = sanitized.replace(/\bon\w+\s*=\s*[^\s>]*/gi, '');
   } while (sanitized !== prev);
 
   return sanitized.substring(0, 2000);

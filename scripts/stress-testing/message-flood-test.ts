@@ -398,7 +398,7 @@ export class MessageFloodTester {
     }
 
     // Select random connection
-    const connection = activeConnections[randomInt(0, activeConnections.length)]!;
+    const connection = activeConnections[randomInt(0, activeConnections.length)];
 
     try {
       let messageResult: MessageResult;
@@ -430,7 +430,10 @@ export class MessageFloodTester {
 
   private selectMessageType(): string {
     const types = this.config.messageTypes;
-    return types[randomInt(0, types.length)] || 'text';
+    if (types.length === 0) {
+      return 'text';
+    }
+    return types[randomInt(0, types.length)];
   }
 
   private async sendTextMessage(connection: ConnectionContext): Promise<MessageResult> {
@@ -571,8 +574,8 @@ export class MessageFloodTester {
         delivered: false
       };
 
-    } catch (error: any) {
-      throw new Error(`Delayed message failed: ${error.message}`);
+    } catch (error) {
+      throw new Error(`Delayed message failed: ${error instanceof Error ? error.message : String(error)}`, { cause: error });
     }
   }
 
@@ -888,4 +891,4 @@ async function runMessageFlood() {
 
 runMessageFlood();
 
-export { MessageFloodTester, MessageFloodConfig, MessageFloodResults };
+export type { MessageFloodConfig, MessageFloodResults };

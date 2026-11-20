@@ -72,8 +72,13 @@ async function runMigration(): Promise<void> {
     rl.question('是否要執行生產環境遷移？(y/N): ', (answer: string) => {
       if (answer.toLowerCase() === 'y' || answer.toLowerCase() === 'yes') {
         try {
+          // Same production guard as scripts/guard-production-command.ts and scripts/sync-database.ts
+          const confirmations = (process.env.MCIS_CONFIRM_PRODUCTION ?? '').split(',').map((value: string) => value.trim());
+          if (!confirmations.includes('allow:d1:migrate:attachments')) {
+            throw new Error('Refusing production operation: d1:migrate:attachments. Set MCIS_CONFIRM_PRODUCTION=allow:d1:migrate:attachments to run this command intentionally.');
+          }
           console.log(' 執行生產環境資料庫遷移...');
-          execFileSync('wrangler', ['d1', 'execute', dbConfig.name, `--file=${sqlFile}`], {
+          execFileSync('wrangler', ['d1', 'execute', dbConfig.name, '--remote', `--file=${sqlFile}`], {
             stdio: 'inherit'
           });
           console.log(' 生產環境資料庫遷移完成');

@@ -280,7 +280,7 @@ class WebSocketLoadTester extends EventEmitter {
   private async createConnection(): Promise<void> {
     const connectionId = `conn_${++this.connectionCounter}`;
     const userId = `user_${randomInt(0, 1000)}`;
-    const conversationId = `conv_${randomInt(0, Math.max(1, this.config.concurrentRooms))}`;
+    const conversationId = `conv_${randomInt(0, Math.max(1, Math.floor(this.config.concurrentRooms) || 1))}`;
 
     const metrics: ConnectionMetrics = {
       connectionId,
@@ -464,7 +464,7 @@ class WebSocketLoadTester extends EventEmitter {
     };
 
     // Start sending messages with random initial delay
-    setTimeout(sendMessage, randomInt(0, Math.max(1, this.config.messageIntervalMs)));
+    setTimeout(sendMessage, randomInt(0, Math.max(1, Math.floor(this.config.messageIntervalMs) || 1)));
   }
 
   private generateMessageContent(): string {
@@ -486,7 +486,7 @@ class WebSocketLoadTester extends EventEmitter {
     // Pad message to reach target size
     const targetSize = this.config.messageSize;
     while (content.length < targetSize) {
-      content += ' ' + randomUUID().substring(0, 8);
+      content += ` ${randomUUID().substring(0, 8)}`;
     }
 
     return content.substring(0, targetSize);
