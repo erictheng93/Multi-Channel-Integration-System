@@ -64,7 +64,7 @@ export class SessionService implements SessionServiceInterface {
   // ======================== Core CRUD (kept in orchestrator) ========================
 
   async create(data: CreateSessionData): Promise<ConversationSession> {
-    const sessionId = `session_${data.conversationId}_${nowMs()}_${Math.random().toString(36).substring(2, 8)}`;
+    const sessionId = `session_${data.conversationId}_${nowMs()}_${crypto.randomUUID().substring(0, 8)}`;
     const now = nowISO();
 
     const topic = data.topic || (data.messageContent ? await this.extractTopic(data.messageContent) : null);

@@ -6,7 +6,7 @@
  * 檔案路徑：/database/migrate-file-attachments.ts
  */
 
-import { execSync } from 'child_process';
+import { execFileSync } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -57,7 +57,7 @@ async function runMigration(): Promise<void> {
     
     // 執行本地遷移
     console.log(' 執行本地資料庫遷移...');
-    execSync(`wrangler d1 execute ${dbConfig.name} --local --file=${sqlFile}`, {
+    execFileSync('wrangler', ['d1', 'execute', dbConfig.name, '--local', `--file=${sqlFile}`], {
       stdio: 'inherit'
     });
     
@@ -73,7 +73,7 @@ async function runMigration(): Promise<void> {
       if (answer.toLowerCase() === 'y' || answer.toLowerCase() === 'yes') {
         try {
           console.log(' 執行生產環境資料庫遷移...');
-          execSync(`wrangler d1 execute ${dbConfig.name} --file=${sqlFile}`, {
+          execFileSync('wrangler', ['d1', 'execute', dbConfig.name, `--file=${sqlFile}`], {
             stdio: 'inherit'
           });
           console.log(' 生產環境資料庫遷移完成');
@@ -110,7 +110,7 @@ async function verifyMigration(): Promise<void> {
     fs.writeFileSync(tempSQLFile, checkTablesSQL);
     
     try {
-      execSync(`wrangler d1 execute ${dbConfig.name} --local --file=${tempSQLFile}`, {
+      execFileSync('wrangler', ['d1', 'execute', dbConfig.name, '--local', `--file=${tempSQLFile}`], {
         stdio: 'inherit'
       });
       console.log(' 資料表驗證通過');

@@ -22,13 +22,6 @@ class DocumentChecker:
             "["
             "\U0001F000-\U0001FFFF"
             "\U00002000-\U00002BFF"
-            "\U0001F300-\U0001F9FF"
-            "\U00002600-\U000027BF"
-            "\u2300-\u23FF"
-            "\u25A0-\u25FF"
-            "\u2B00-\u2BFF"
-            "\u200d"
-            "\uFE0F"
             "\uFE00-\uFE0F"
             "]+",
             flags=re.UNICODE

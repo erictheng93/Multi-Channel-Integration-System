@@ -10,6 +10,7 @@
 import WebSocket from 'ws';
 import fetch from 'node-fetch';
 import { performance } from 'perf_hooks';
+import { randomInt, randomUUID } from 'crypto';
 
 type WebSocketHeaders = Record<string, string>;
 
@@ -397,7 +398,7 @@ export class MessageFloodTester {
     }
 
     // Select random connection
-    const connection = activeConnections[Math.floor(Math.random() * activeConnections.length)];
+    const connection = activeConnections[randomInt(0, activeConnections.length)]!;
 
     try {
       let messageResult: MessageResult;
@@ -429,7 +430,7 @@ export class MessageFloodTester {
 
   private selectMessageType(): string {
     const types = this.config.messageTypes;
-    return types[Math.floor(Math.random() * types.length)];
+    return types[randomInt(0, types.length)] || 'text';
   }
 
   private async sendTextMessage(connection: ConnectionContext): Promise<MessageResult> {
@@ -469,7 +470,7 @@ export class MessageFloodTester {
 
   private async sendTypingMessage(connection: ConnectionContext): Promise<MessageResult> {
     const messageId = `typing_${++this.messageCounter}`;
-    const isStart = Math.random() > 0.5;
+    const isStart = randomInt(0, 2) === 1;
 
     const message = {
       type: 'event',
@@ -534,7 +535,7 @@ export class MessageFloodTester {
     }
 
     const messageId = `delayed_${++this.messageCounter}`;
-    const delaySeconds = Math.floor(Math.random() * 30) + 1; // 1-30 seconds
+    const delaySeconds = randomInt(1, 31); // 1-30 seconds
 
     try {
       const response = await fetch(`${this.config.targetUrl}/api/delayed-messages/schedule`, {
@@ -570,7 +571,7 @@ export class MessageFloodTester {
         delivered: false
       };
 
-    } catch (error) {
+    } catch (error: any) {
       throw new Error(`Delayed message failed: ${error.message}`);
     }
   }
@@ -581,7 +582,7 @@ export class MessageFloodTester {
     let content = baseMessage;
 
     while (content.length < targetSize) {
-      content += `${Math.random().toString(36).substring(2)} `;
+      content += `${randomUUID().substring(0, 8)} `;
     }
 
     return content.substring(0, targetSize);

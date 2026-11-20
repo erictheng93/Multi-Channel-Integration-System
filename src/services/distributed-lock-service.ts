@@ -621,7 +621,8 @@ export class LockCoordinator implements DurableObject {
         return new Response(JSON.stringify({ error: 'Resource is locked' }), { status: 423 });
       }
     } catch (error) {
-      return new Response(JSON.stringify({ error: error instanceof Error ? error.message : String(error) }), { status: 500 });
+      console.error('[DistributedLockService] acquire lock error:', error);
+      return new Response(JSON.stringify({ error: 'Internal server error' }), { status: 500 });
     }
   }
 
@@ -640,7 +641,8 @@ export class LockCoordinator implements DurableObject {
         return new Response(JSON.stringify({ error: 'Lock not found or not owned by requester' }), { status: 404 });
       }
     } catch (error) {
-      return new Response(JSON.stringify({ error: error instanceof Error ? error.message : String(error) }), { status: 500 });
+      console.error('[DistributedLockService] release lock error:', error);
+      return new Response(JSON.stringify({ error: 'Internal server error' }), { status: 500 });
     }
   }
 

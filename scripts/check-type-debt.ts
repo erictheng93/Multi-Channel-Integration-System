@@ -161,7 +161,7 @@ function countTypeDebt(file: string): TypeDebtCounts {
   }
 
   if (file.endsWith('.vue')) {
-    const scriptBlockPattern = /<script\b[^>]*>([\s\S]*?)<\/script>/gi;
+    const scriptBlockPattern = /<script\b[^>]*>([\s\S]*?)<\/script\s*>/gi;
     const scriptBlocks = Array.from(sourceText.matchAll(scriptBlockPattern));
 
     for (const [index, match] of scriptBlocks.entries()) {

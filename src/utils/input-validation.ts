@@ -284,13 +284,18 @@ export class InputValidator {
    */
   static sanitizeHtml(content: string): string {
     // Basic HTML sanitization - removes script tags and dangerous attributes
-    return content
-      .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-      .replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, '')
-      .replace(/javascript:/gi, '')
-      .replace(/on\w+\s*=/gi, '')
-      .replace(/style\s*=/gi, '')
-      .trim();
+    let sanitized = content;
+    let prev: string;
+    do {
+      prev = sanitized;
+      sanitized = sanitized
+        .replace(/<script\b[^<]*(?:(?!<\/script\s*>)<[^<]*)*<\/script\s*>/gi, '')
+        .replace(/<iframe\b[^<]*(?:(?!<\/iframe\s*>)<[^<]*)*<\/iframe\s*>/gi, '')
+        .replace(/(?:javascript|vbscript|data):/gi, '')
+        .replace(/on\w+\s*=/gi, '')
+        .replace(/style\s*=/gi, '');
+    } while (sanitized !== prev);
+    return sanitized.trim();
   }
 
   /**

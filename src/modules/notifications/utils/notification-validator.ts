@@ -352,9 +352,15 @@ export class NotificationValidator {
     for (const [key, value] of Object.entries(data)) {
       if (typeof value === 'string') {
         // 基本的 XSS 防護
-        sanitized[key] = value.replace(/<script[^>]*>.*?<\/script>/gi, '')
-                              .replace(/<[^>]+>/g, '')
-                              .trim();
+        let cleaned = value;
+        let prev: string;
+        do {
+          prev = cleaned;
+          cleaned = cleaned
+            .replace(/<script\b[^>]*>[\s\S]*?<\/script\s*>/gi, '')
+            .replace(/<[^>]+>/g, '');
+        } while (cleaned !== prev);
+        sanitized[key] = cleaned.trim();
       } else if (isRecord(value)) {
         sanitized[key] = this.sanitizeData(value);
       } else {

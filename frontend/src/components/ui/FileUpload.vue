@@ -299,7 +299,7 @@ const validateFile = (file: globalThis.File): string | null => {
       const normalizedType = type.toLowerCase().trim()
       return normalizedType === fileType || 
              normalizedType === mimeType || 
-             (normalizedType.includes('*') && file.type.startsWith(normalizedType.replace('*', '')))
+             (normalizedType.includes('*') && file.type.startsWith(normalizedType.replaceAll('*', '')))
     })
 
     if (!isAllowed) {

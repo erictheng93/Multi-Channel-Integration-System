@@ -117,7 +117,7 @@ const dropdownRef = ref<HTMLElement>()
 const menuRef = ref<HTMLElement>()
 const isOpen = ref(false)
 const menuStyles = ref({})
-const uid = Math.random().toString(36).substr(2, 9)
+const uid = crypto.randomUUID().substring(0, 9)
 
 const positionClass = computed(() => `dropdown-${props.placement}`)
 

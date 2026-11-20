@@ -25,7 +25,7 @@ async function generateTestToken() {
     console.log(' 測試 Token 生成成功\n');
     console.log('Token 資訊:');
     console.log(`  User ID: ${payload.userId}`);
-    console.log(`  Username: ${payload.username}`);
+    console.log('  Username: [CONFIGURED]');
     console.log(`  Role: ${payload.role}`);
     console.log(`  Team ID: ${payload.teamId}`);
     console.log(`  有效期: 24小時`);

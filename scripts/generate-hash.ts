@@ -42,9 +42,9 @@ async function main() {
     
     const results = await generateMultipleHashesCLI(passwords);
 
-    results.forEach(({ name, password, hash }) => {
+    results.forEach(({ name, hash }) => {
       console.log(`${name}:`);
-      console.log(`  Password: ${password}`);
+      console.log('  Password: [REDACTED]');
       console.log(`  Hash: ${hash}`);
       console.log('');
     });
