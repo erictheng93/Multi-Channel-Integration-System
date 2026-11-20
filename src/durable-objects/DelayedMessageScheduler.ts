@@ -243,7 +243,7 @@ export class DelayedMessageScheduler implements DurableObject {
         url: request.url,
         method: request.method,
       });
-      return this.errorResponse(error);
+      return this.errorResponse();
     }
   }
 
@@ -450,7 +450,7 @@ export class DelayedMessageScheduler implements DurableObject {
       });
     } catch (error) {
       this.logger.error('DLQ query error', error);
-      return this.errorResponse(error);
+      return this.errorResponse();
     }
   }
 
@@ -545,7 +545,7 @@ export class DelayedMessageScheduler implements DurableObject {
       });
     } catch (error) {
       this.logger.error('Metrics query error', error);
-      return this.errorResponse(error);
+      return this.errorResponse();
     }
   }
 
@@ -672,20 +672,25 @@ export class DelayedMessageScheduler implements DurableObject {
     });
   }
 
-  private errorResponse(error: unknown, status: number = 500): Response {
-    const errorMessage = status >= 500
-      ? 'Internal server error'
-      : (error instanceof Error ? error.message : String(error));
+  // Takes no error value on purpose: a caught error can never reach the body.
+  // Callers log the error before calling this.
+  private errorResponse(): Response {
     return new Response(
       JSON.stringify({
         success: false,
-        error: errorMessage,
+        error: 'Internal server error',
       }),
-      { status, headers: { 'Content-Type': 'application/json' } }
+      { status: 500, headers: { 'Content-Type': 'application/json' } }
     );
   }
 
   private badRequestResponse(message: string): Response {
-    return this.errorResponse(message, 400);
+    return new Response(
+      JSON.stringify({
+        success: false,
+        error: message,
+      }),
+      { status: 400, headers: { 'Content-Type': 'application/json' } }
+    );
   }
 }
