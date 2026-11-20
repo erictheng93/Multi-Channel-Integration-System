@@ -497,10 +497,11 @@ export class DistributedLockService {
     return `lock_${nowMs()}_${Math.random().toString(36).substring(2, 8)}`;
   }
 
+  // Owner identity is per instance: the coordinator only lets the id that acquired a lock release or extend it.
+  private readonly requesterId = `requester_${crypto.randomUUID()}`;
+
   private getRequesterId(): string {
-    // In a real implementation, this would identify the requesting Durable Object or Worker
-    // For now, use a combination of timestamp and random string
-    return `requester_${nowMs()}_${Math.random().toString(36).substring(2, 6)}`;
+    return this.requesterId;
   }
 }
 

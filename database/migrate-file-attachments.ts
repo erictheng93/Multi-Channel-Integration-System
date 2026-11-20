@@ -84,6 +84,7 @@ async function runMigration(): Promise<void> {
           console.log(' 生產環境資料庫遷移完成');
         } catch (error: any) {
           console.error(' 生產環境遷移失敗:', error.message);
+          process.exitCode = 1; // rl.close() below lets the process end with this status
         }
       } else {
         console.log('  跳過生產環境遷移');

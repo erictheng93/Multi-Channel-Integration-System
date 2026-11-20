@@ -279,7 +279,7 @@ export class MessageFloodTester {
     // Track message delivery if we sent this message
     if (message.id && this.messageResults.has(message.id)) {
       const messageResult = this.messageResults.get(message.id)!;
-      messageResult.receivedAt = Date.now();
+      messageResult.receivedAt = performance.now(); // same clock as sentAt
       messageResult.delivered = true;
       messageResult.latency = messageResult.receivedAt - messageResult.sentAt;
       messageResult.connectionId = context.connectionId;
@@ -379,7 +379,7 @@ export class MessageFloodTester {
       await this.sleep(actualInterval);
 
       // Safety check for test duration
-      if (currentTime - this.testStartTime > this.config.testDurationMs) {
+      if (performance.now() - this.testStartTime > this.config.testDurationMs) {
         console.log(' Test duration reached, stopping message flood');
         break;
       }

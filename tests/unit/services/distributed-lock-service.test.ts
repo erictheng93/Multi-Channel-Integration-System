@@ -53,3 +53,56 @@ describe('LockCoordinator fallthrough error bodies', () => {
     expect(await response.json()).toEqual({ error: 'Internal server error' });
   });
 });
+
+describe('DistributedLockService ownership through a real LockCoordinator', () => {
+  function realCoordinator(): LockCoordinator {
+    const state = {
+      blockConcurrencyWhile: (fn: () => Promise<void>) => fn(),
+      storage: { get: vi.fn().mockResolvedValue(undefined), put: vi.fn().mockResolvedValue(undefined) }
+    };
+    return new LockCoordinator(state as unknown as DurableObjectState, {});
+  }
+
+  function serviceFor(coord: LockCoordinator): DistributedLockService {
+    const stub = { fetch: (request: Request) => coord.fetch(request) };
+    const namespace = { idFromName: vi.fn().mockReturnValue('id'), get: vi.fn().mockReturnValue(stub) };
+    return new DistributedLockService({ DISTRIBUTED_LOCK: namespace as unknown as DurableObjectNamespace });
+  }
+
+  const fast = { ttl: 30000, timeout: 200, retryInterval: 10 };
+
+  it('releases an acquired lock so the resource can be taken again immediately', async () => {
+    const service = serviceFor(realCoordinator());
+    const lockId = await service.acquireLock('res', fast);
+    await service.releaseLock(lockId);
+    expect(await service.isLocked('res')).toBe(false);
+    await expect(service.acquireLock('res', fast)).resolves.toEqual(expect.any(String));
+  });
+
+  it('withLock frees the resource after the callback resolves and after it throws', async () => {
+    const service = serviceFor(realCoordinator());
+    await expect(service.withLock('res', async () => 'ok', fast)).resolves.toBe('ok');
+    expect(await service.isLocked('res')).toBe(false);
+    await expect(service.withLock('res', async () => { throw new Error('boom'); }, fast)).rejects.toThrow('boom');
+    expect(await service.isLocked('res')).toBe(false);
+  });
+
+  it('lets the holder extend its lock', async () => {
+    const service = serviceFor(realCoordinator());
+    const lockId = await service.acquireLock('res', fast);
+    const before = (await service.getLockInfo(lockId))!.expiresAt;
+    await expect(service.extendLock(lockId, 1000)).resolves.toBe(before + 1000);
+  });
+
+  it('refuses release, extend and tryLock from a different service instance', async () => {
+    const coord = realCoordinator();
+    const holder = serviceFor(coord);
+    const other = serviceFor(coord);
+    const lockId = await holder.acquireLock('res', fast);
+
+    await other.releaseLock(lockId);
+    expect(await holder.isLocked('res')).toBe(true);
+    await expect(other.extendLock(lockId, 1000)).rejects.toThrow('Lock extension failed: Lock not found or not owned');
+    expect(await other.tryLock('res')).toBeNull();
+  });
+});

@@ -73,8 +73,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, nextTick, onMounted, onUnmounted, useId } from 'vue'
+import { ref, computed, nextTick, onMounted, onUnmounted, useId, provide } from 'vue'
 import { ChevronDownIcon } from '@/components/icons'
+import { DROPDOWN_CLOSE_KEY } from './dropdown-context'
 
 interface Props {
   /** Text for default trigger button */
@@ -306,6 +307,10 @@ const handleTab = (event: KeyboardEvent) => {
   event.preventDefault()
   close()
 }
+
+provide(DROPDOWN_CLOSE_KEY, () => {
+  if (props.closeOnClick) {close()}
+})
 
 onMounted(() => {
   // 如果需要的話，可以在這裡添加初始化邏輯

@@ -2,6 +2,7 @@ import { describe, it, expect, afterEach, vi } from 'vitest'
 import { mount, type VueWrapper } from '@vue/test-utils'
 import { defineComponent, h } from 'vue'
 import Dropdown from './Dropdown.vue'
+import DropdownItem from './DropdownItem.vue'
 
 const stubs = { ChevronDownIcon: true }
 let wrapper: VueWrapper | undefined
@@ -148,6 +149,66 @@ describe('Dropdown', () => {
       document.body.focus()
       ;(w.vm as unknown as { close: () => void }).close()
       expect(document.activeElement).not.toBe(trigger())
+    })
+  })
+
+  describe('with DropdownItem children', () => {
+    const open = async (props = {}, itemProps = {}) => {
+      const onClick = vi.fn()
+      wrapper = mount(Dropdown, {
+        props,
+        slots: { default: () => h(DropdownItem, { label: 'Go', onClick, ...itemProps }) },
+        global: { stubs },
+        attachTo: document.body
+      })
+      trigger().click()
+      await wrapper.vm.$nextTick()
+      await wrapper.vm.$nextTick()
+      return onClick
+    }
+    const item = () => document.querySelector<HTMLElement>('[role="menuitem"]')!
+
+    it('closes after a click, firing the event once and focusing the trigger', async () => {
+      const onClick = await open()
+      item().focus()
+      item().click()
+      await wrapper!.vm.$nextTick()
+      expect(onClick).toHaveBeenCalledTimes(1)
+      expect(menu()).toBeNull()
+      expect(document.activeElement).toBe(trigger())
+    })
+
+    it('closes after Enter on a focused item', async () => {
+      const onClick = await open()
+      item().focus()
+      item().dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
+      await wrapper!.vm.$nextTick()
+      expect(onClick).toHaveBeenCalledTimes(1)
+      expect(menu()).toBeNull()
+      expect(document.activeElement).toBe(trigger())
+    })
+
+    it('stays open when the Dropdown has closeOnClick=false', async () => {
+      const onClick = await open({ closeOnClick: false })
+      item().click()
+      await wrapper!.vm.$nextTick()
+      expect(onClick).toHaveBeenCalledTimes(1)
+      expect(menu()).not.toBeNull()
+    })
+
+    it('ignores a disabled item and stays open', async () => {
+      const onClick = await open({}, { disabled: true })
+      item().click()
+      await wrapper!.vm.$nextTick()
+      expect(onClick).not.toHaveBeenCalled()
+      expect(menu()).not.toBeNull()
+    })
+
+    it('works outside a Dropdown', async () => {
+      const onClick = vi.fn()
+      wrapper = mount(DropdownItem, { props: { label: 'Solo', onClick } }) as VueWrapper
+      await wrapper.trigger('click')
+      expect(onClick).toHaveBeenCalledTimes(1)
     })
   })
 })

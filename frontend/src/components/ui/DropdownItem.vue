@@ -69,7 +69,8 @@
 </template>
 
 <script setup lang="ts">
-// Remove unused import
+import { inject } from 'vue'
+import { DROPDOWN_CLOSE_KEY } from './dropdown-context'
 
 interface Props {
   label?: string
@@ -109,12 +110,14 @@ const props = withDefaults(defineProps<Props>(), {
 })
 
 const emit = defineEmits<Emits>()
+const closeDropdown = inject(DROPDOWN_CLOSE_KEY, undefined)
 
 const handleClick = (event: MouseEvent) => {
   if (props.disabled || props.isDivider) {return}
   
   emit('click', event, props.value)
   emit('select', props.value)
+  closeDropdown?.()
   
   // 如果有href，處理導航
   if (props.href) {
@@ -131,6 +134,7 @@ const handleKeydown = (event: KeyboardEvent) => {
   
   emit('click', event, props.value)
   emit('select', props.value)
+  closeDropdown?.()
   
   // 如果有href，處理導航
   if (props.href) {
