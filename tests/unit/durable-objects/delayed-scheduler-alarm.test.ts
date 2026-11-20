@@ -166,3 +166,26 @@ describe('DelayedMessageScheduler alarm chain', () => {
     })
   })
 })
+
+describe('DelayedMessageScheduler error responses', () => {
+  it('never serialises a caught error into the 500 body', async () => {
+    const h = harness()
+    await h.ready()
+    h.storage.list = async () => { throw new Error('secret detail') }
+    const res = await h.scheduler.fetch(new Request('https://do/dlq'))
+    const text = await res.text()
+    expect(res.status).toBe(500)
+    expect(JSON.parse(text)).toEqual({ success: false, error: 'Internal server error' })
+    expect(text).not.toContain('secret detail')
+  })
+
+  it('returns 400 with the validation message', async () => {
+    const h = harness()
+    await h.ready()
+    const res = await h.scheduler.fetch(
+      new Request('https://do/schedule', { method: 'POST', body: JSON.stringify({}) })
+    )
+    expect(res.status).toBe(400)
+    expect(await res.json()).toEqual({ success: false, error: 'Missing required fields' })
+  })
+})
