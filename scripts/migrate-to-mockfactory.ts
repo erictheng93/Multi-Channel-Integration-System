@@ -110,8 +110,9 @@ function generateMigrationReport(files: string[], allStats: MigrationStats[]): v
 
     files.forEach(file => {
       const fileName = path.basename(file);
+      const escapedFileName = fileName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       plan = plan.replace(
-        new RegExp(`\\s+(\\d+\\s+)?\\|\\s+\`${fileName}\``),
+        new RegExp(`\\s+(\\d+\\s+)?\\|\\s+\`${escapedFileName}\``),
         ` $1| \`${fileName}\``
       );
     });

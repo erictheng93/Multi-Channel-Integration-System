@@ -10,6 +10,7 @@
 import WebSocket from 'ws';
 import { performance } from 'perf_hooks';
 import { EventEmitter } from 'events';
+import { randomInt, randomUUID } from 'crypto';
 
 // =================== Configuration ===================
 
@@ -278,8 +279,8 @@ class WebSocketLoadTester extends EventEmitter {
 
   private async createConnection(): Promise<void> {
     const connectionId = `conn_${++this.connectionCounter}`;
-    const userId = `user_${Math.floor(Math.random() * 1000)}`;
-    const conversationId = `conv_${Math.floor(Math.random() * this.config.concurrentRooms)}`;
+    const userId = `user_${randomInt(0, 1000)}`;
+    const conversationId = `conv_${randomInt(0, Math.max(1, Math.floor(this.config.concurrentRooms) || 1))}`;
 
     const metrics: ConnectionMetrics = {
       connectionId,
@@ -414,7 +415,7 @@ class WebSocketLoadTester extends EventEmitter {
         messageTypes.push('delayed_message');
       }
 
-      const messageType = messageTypes[Math.floor(Math.random() * messageTypes.length)];
+      const messageType = messageTypes[randomInt(0, messageTypes.length)];
 
       let messageData: LoadTestOutgoingMessage = {
         type: 'message',
@@ -433,7 +434,7 @@ class WebSocketLoadTester extends EventEmitter {
 
       // Add specific data for message types
       if (messageType === 'delayed_message') {
-        messageData.data.delaySeconds = Math.floor(Math.random() * 10) + 1;
+        messageData.data.delaySeconds = randomInt(1, 11);
       } else if (messageType.startsWith('typing_')) {
         messageData = {
           type: 'event',
@@ -458,12 +459,12 @@ class WebSocketLoadTester extends EventEmitter {
       // Schedule next message
       if (this.isRunning && ws.readyState === WebSocket.OPEN &&
           metrics.messagesSent < this.config.messagesPerConnection) {
-        setTimeout(sendMessage, this.config.messageIntervalMs + Math.random() * 1000);
+        setTimeout(sendMessage, this.config.messageIntervalMs + randomInt(0, 1000));
       }
     };
 
     // Start sending messages with random initial delay
-    setTimeout(sendMessage, Math.random() * this.config.messageIntervalMs);
+    setTimeout(sendMessage, randomInt(0, Math.max(1, Math.floor(this.config.messageIntervalMs) || 1)));
   }
 
   private generateMessageContent(): string {
@@ -480,12 +481,12 @@ class WebSocketLoadTester extends EventEmitter {
       'Concurrent user simulation'
     ];
 
-    let content = messages[Math.floor(Math.random() * messages.length)];
+    let content = messages[randomInt(0, messages.length)] || 'Test message';
 
     // Pad message to reach target size
     const targetSize = this.config.messageSize;
     while (content.length < targetSize) {
-      content += ' ' + Math.random().toString(36).substring(2);
+      content += ` ${randomUUID().substring(0, 8)}`;
     }
 
     return content.substring(0, targetSize);

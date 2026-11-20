@@ -26,12 +26,19 @@ import { nowISO } from '@/utils/timestamp'
 export function sanitizeString(input: string): string {
   if (!input || typeof input !== 'string') return '';
 
-  return input
-    .trim()
-    .replace(/[<>]/g, '') // 移除尖括號
-    .replace(/javascript:/gi, '') // 移除 javascript: 協議
-    .replace(/on\w+\s*=\s*[^\s>]*/gi, '') // 移除事件處理器（包含值）
-    .substring(0, 1000); // 限制長度
+  let sanitized = input.trim().replace(/[<>]/g, '');
+  let prev: string;
+  do {
+    prev = sanitized;
+    sanitized = sanitized.replace(/(?:javascript|vbscript):/gi, '');
+  } while (sanitized !== prev);
+
+  do {
+    prev = sanitized;
+    sanitized = sanitized.replace(/\bon\w+\s*=\s*[^\s>]*/gi, '');
+  } while (sanitized !== prev);
+
+  return sanitized.substring(0, 1000);
 }
 
 /**

@@ -39,7 +39,12 @@ async function routedComponents(): Promise<string[]> {
 function rootClasses(source: string): string[] {
   const tpl = source.match(/<template>([\s\S]*?)<\/template>\s*(?:<script|<style|$)/)
   if (!tpl) { return [] }
-  const html = tpl[1].replace(/<!--[\s\S]*?-->/g, '')
+  let html = tpl[1]
+  let prevHtml: string
+  do {
+    prevHtml = html
+    html = html.replace(/<!--[\s\S]*?-->/g, '')
+  } while (html !== prevHtml)
   const tags = [...html.matchAll(/<([A-Za-z][\w-]*)\b([^>]*)>/g)]
   for (const t of tags) {
     if (/^(AppLayout|app-layout|ErrorBoundary|error-boundary)$/.test(t[1])) { continue }

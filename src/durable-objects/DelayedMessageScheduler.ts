@@ -673,10 +673,13 @@ export class DelayedMessageScheduler implements DurableObject {
   }
 
   private errorResponse(error: unknown, status: number = 500): Response {
+    const errorMessage = status >= 500
+      ? 'Internal server error'
+      : (error instanceof Error ? error.message : String(error));
     return new Response(
       JSON.stringify({
         success: false,
-        error: error instanceof Error ? error.message : String(error),
+        error: errorMessage,
       }),
       { status, headers: { 'Content-Type': 'application/json' } }
     );

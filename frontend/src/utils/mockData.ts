@@ -27,12 +27,18 @@ export const mockAgents: Agent[] = [
   { id: '3', name: '主管小陳', displayName: '主管小陳', email: 'chen@example.com', isOnline: false, platforms, role: 'admin', isActive: true, createdAt: Date.now() }
 ]
 
+function getRandomFloat(): number {
+  const arr = new Uint32Array(1)
+  crypto.getRandomValues(arr)
+  return (arr[0] ?? 0) / (0xffffffff + 1)
+}
+
 export function generateMockConversations(count: number = 20): Conversation[] {
   const conversations: Conversation[] = []
   
   for (let i = 1; i <= count; i++) {
-    const customer = mockCustomers[Math.floor(Math.random() * mockCustomers.length)]
-    const status = statuses[Math.floor(Math.random() * statuses.length)] || CONVERSATION_STATUS.PENDING
+    const customer = mockCustomers[Math.floor(getRandomFloat() * mockCustomers.length)]
+    const status = statuses[Math.floor(getRandomFloat() * statuses.length)] || CONVERSATION_STATUS.PENDING
     // Note: Individual assignment (assignedAgent) removed - only team-based assignment is supported now
     const assignedTeamId = status === CONVERSATION_STATUS.IN_PROGRESS ? 1 : undefined
 
@@ -45,19 +51,19 @@ export function generateMockConversations(count: number = 20): Conversation[] {
       assignedTeamId,
       platform: customer.platform,
       status,
-      unreadCount: Math.random() > 0.5 ? Math.floor(Math.random() * 5) + 1 : 0,
-      lastMessageAt: Date.now() - Math.random() * 24 * 60 * 60 * 1000,
-      createdAt: Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000,
-      updatedAt: Date.now() - Math.random() * 24 * 60 * 60 * 1000,
+      unreadCount: getRandomFloat() > 0.5 ? Math.floor(getRandomFloat() * 5) + 1 : 0,
+      lastMessageAt: Date.now() - getRandomFloat() * 24 * 60 * 60 * 1000,
+      createdAt: Date.now() - getRandomFloat() * 7 * 24 * 60 * 60 * 1000,
+      updatedAt: Date.now() - getRandomFloat() * 24 * 60 * 60 * 1000,
       // Note: Individual assignment removed - use team-based assignment now
       lastMessage: {
         id: `msg_${i}`,
         conversationId: `conv_${i}`,
-        senderId: Math.random() > 0.5 ? customer.id : 'system',
-        senderType: Math.random() > 0.5 ? 'customer' : 'agent',
+        senderId: getRandomFloat() > 0.5 ? customer.id : 'system',
+        senderType: getRandomFloat() > 0.5 ? 'customer' : 'agent',
         content: `這是第 ${i} 個對話的最後一則訊息`,
-        timestamp: Date.now() - Math.random() * 24 * 60 * 60 * 1000,
-        createdAt: Date.now() - Math.random() * 24 * 60 * 60 * 1000,
+        timestamp: Date.now() - getRandomFloat() * 24 * 60 * 60 * 1000,
+        createdAt: Date.now() - getRandomFloat() * 24 * 60 * 60 * 1000,
         platform: customer.platform,
         messageType: 'text'
       }
@@ -77,7 +83,7 @@ export function generateMockMessages(conversationId: string, count: number = 10)
   const messages: Message[] = []
   
   for (let i = 1; i <= count; i++) {
-    const isCustomer = Math.random() > 0.5
+    const isCustomer = getRandomFloat() > 0.5
     
     const message: Message = {
       id: `msg_${conversationId}_${i}`,

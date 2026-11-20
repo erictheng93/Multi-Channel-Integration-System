@@ -11,6 +11,7 @@ import { performance } from 'perf_hooks';
 import WebSocket from 'ws';
 import fetch from 'node-fetch';
 import { EventEmitter } from 'events';
+import { randomUUID } from 'crypto';
 
 // =================== Configuration ===================
 
@@ -704,7 +705,7 @@ class PerformanceBenchmarkSuite extends EventEmitter {
   }
 
   private async benchmarkUserConnection(): Promise<any> {
-    const userId = `benchmark_user_${Math.random().toString(36).substring(7)}`;
+    const userId = `benchmark_user_${randomUUID().substring(0, 8)}`;
     return this.benchmarkHttpRequest(`/api/user-connections/${userId}/connect`, 'POST');
   }
 
@@ -752,7 +753,7 @@ class PerformanceBenchmarkSuite extends EventEmitter {
   }
 
   private async benchmarkConversationRoom(): Promise<any> {
-    const roomId = `benchmark_room_${Math.random().toString(36).substring(7)}`;
+    const roomId = `benchmark_room_${randomUUID().substring(0, 8)}`;
     return this.benchmarkHttpRequest(`/api/conversation-rooms/${roomId}/participants`, 'GET');
   }
 
@@ -762,7 +763,7 @@ class PerformanceBenchmarkSuite extends EventEmitter {
 
   private async benchmarkDistributedLock(): Promise<any> {
     const roomId = 'benchmark_room';
-    const resource = `resource_${Math.random().toString(36).substring(7)}`;
+    const resource = `resource_${randomUUID().substring(0, 8)}`;
 
     // Acquire lock
     const lockResponse = await this.benchmarkHttpRequest(

@@ -96,6 +96,27 @@ describe('Session Validation Middleware', () => {
         expect(sanitizeString(undefined as any)).toBe('');
         expect(sanitizeString(123 as any)).toBe('');
       });
+
+      test('should preserve ordinary text', () => {
+        expect(sanitizeString('Customer data: Q3')).toBe('Customer data: Q3');
+        expect(sanitizeString('Metadata: weekly export')).toBe('Metadata: weekly export');
+        expect(sanitizeString('conversion = 12% this month')).toBe('conversion = 12% this month');
+        expect(sanitizeString('Monthly report (region=TW)')).toBe('Monthly report (region=TW)');
+      });
+
+      test('should strip script schemes case-insensitively, including nested bypass', () => {
+        expect(sanitizeString('javascript:alert(1)')).toBe('alert(1)');
+        expect(sanitizeString('VBScript:msgbox(1)')).toBe('msgbox(1)');
+        expect(sanitizeString('jajavascript:vascript:alert(1)')).not.toContain('javascript:');
+      });
+
+      test('should strip event handlers and angle brackets, and cap at 1000', () => {
+        const handler = sanitizeString('onclick=alert(1) Hello World');
+        expect(handler).not.toContain('onclick');
+        expect(handler).toContain('Hello World');
+        expect(sanitizeString('<b>hi</b>')).toBe('bhi/b');
+        expect(sanitizeString('A'.repeat(1500))).toBe('A'.repeat(1000));
+      });
     });
 
     describe('validateNumberRange', () => {

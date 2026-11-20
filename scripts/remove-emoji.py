@@ -14,13 +14,6 @@ EMOJI_PATTERN = re.compile(
     "["
     "\U0001F000-\U0001FFFF"  # All emoji and symbols (comprehensive)
     "\U00002000-\U00002BFF"  # Arrows, mathematical, technical symbols, geometric shapes
-    "\U0001F300-\U0001F9FF"  # Symbols & pictographs (overlapping but comprehensive)
-    "\U00002600-\U000027BF"  # Miscellaneous symbols and dingbats
-    "\u2300-\u23FF"          # Miscellaneous technical symbols (includes ⏰)
-    "\u25A0-\u25FF"          # Geometric shapes
-    "\u2B00-\u2BFF"          # Miscellaneous symbols and arrows
-    "\u200d"                 # Zero width joiner
-    "\uFE0F"                 # Variation selector
     "\uFE00-\uFE0F"          # Variation selectors
     "]+",
     flags=re.UNICODE

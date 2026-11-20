@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, test } from 'vitest';
 import { Hono } from 'hono';
 import type { Bindings } from '@/types';
-import { validateRateLimit, validateRequestSize } from '@/modules/reports/middleware/reports-validation';
+import { sanitizeString, validateRateLimit, validateRequestSize } from '@/modules/reports/middleware/reports-validation';
 import { resetSimpleRateLimitStore } from '@/utils/simple-rate-limiter';
 
 describe('Reports Validation Middleware', () => {
@@ -10,6 +10,29 @@ describe('Reports Validation Middleware', () => {
   beforeEach(() => {
     app = new Hono<{ Bindings: Bindings }>();
     resetSimpleRateLimitStore();
+  });
+
+  describe('sanitizeString', () => {
+    test('should preserve ordinary text', () => {
+      expect(sanitizeString('Customer data: Q3')).toBe('Customer data: Q3');
+      expect(sanitizeString('Metadata: weekly export')).toBe('Metadata: weekly export');
+      expect(sanitizeString('conversion = 12% this month')).toBe('conversion = 12% this month');
+      expect(sanitizeString('Monthly report (region=TW)')).toBe('Monthly report (region=TW)');
+    });
+
+    test('should strip script schemes case-insensitively, including nested bypass', () => {
+      expect(sanitizeString('javascript:alert(1)')).toBe('alert(1)');
+      expect(sanitizeString('VBScript:msgbox(1)')).toBe('msgbox(1)');
+      expect(sanitizeString('jajavascript:vascript:alert(1)')).not.toContain('javascript:');
+    });
+
+    test('should strip event handlers and angle brackets, and cap at 2000', () => {
+      const handler = sanitizeString('onclick=alert(1) Hello World');
+      expect(handler).not.toContain('onclick');
+      expect(handler).toContain('Hello World');
+      expect(sanitizeString('<b>hi</b>')).toBe('bhi/b');
+      expect(sanitizeString('A'.repeat(2500))).toBe('A'.repeat(2000));
+    });
   });
 
   describe('validateRequestSize', () => {
