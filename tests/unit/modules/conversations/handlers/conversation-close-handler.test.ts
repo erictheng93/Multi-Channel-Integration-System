@@ -49,12 +49,18 @@ function request(action: 'close' | 'reopen') {
   app.route('/api/conversations', conversationAssignmentHandler);
   const env = {
     DB: {
-      prepare: vi.fn(() => ({ bind: mocks.bind.mockReturnValue({}) })),
+      // bind() also serves the wait-marker read-back after a reopen
+      prepare: vi.fn(() => ({ bind: mocks.bind.mockReturnValue({ all: async () => ({ results: [{ id: 'conv-1', awaiting_since: WAIT }] }) }) })),
       batch: mocks.batch,
     },
   } as unknown as Bindings;
   return app.request(`/api/conversations/conv-1/${action}`, { method: 'POST' }, env);
 }
+
+const WAIT = '2026-10-13T08:00:00.000Z';
+
+// The handler reads the row, changes it, then re-reads it for the response
+const rows = (before: object, after: object) => mocks.selectLimit.mockResolvedValueOnce([before]).mockResolvedValueOnce([after]);
 
 // The UPDATE is bound first (the guarded activity row follows it); its params are [status, closedAt, unreadFloor, updatedAt, id]
 const updateParams = () => mocks.bind.mock.calls[0];
@@ -68,13 +74,15 @@ describe('POST /:id/close and /:id/reopen', () => {
   });
 
   it('closes an open conversation and broadcasts the new status', async () => {
-    mocks.selectLimit.mockResolvedValue([{ id: 'conv-1', status: 'assigned', assignedTeamId: 3 }]);
+    rows({ id: 'conv-1', status: 'assigned', assignedTeamId: 3, awaitingSince: WAIT }, { id: 'conv-1', status: 'closed', assignedTeamId: 3, awaitingSince: null });
 
     const res = await request('close');
-    const body = await res.json() as { data: { status: string; closedAt: string } };
+    const body = await res.json() as { data: { status: string; awaitingSince: string | null } };
 
     expect(res.status).toBe(200);
     expect(body.data.status).toBe('closed');
+    // the response carries the row as it is after the close, not the pre-close snapshot with its wait
+    expect(body.data.awaitingSince).toBeNull();
     expect(updateParams()).toEqual(['closed', '2026-10-14T00:00:00.000Z', '2026-10-14T00:00:00.000Z', '2026-10-14T00:00:00.000Z', 'conv-1']);
     expect(mocks.broadcast).toHaveBeenCalledWith(expect.objectContaining({
       type: 'conversation_status_changed',
@@ -83,16 +91,19 @@ describe('POST /:id/close and /:id/reopen', () => {
   });
 
   it('reopens to assigned when the conversation has a team', async () => {
-    mocks.selectLimit.mockResolvedValue([{ id: 'conv-1', status: 'closed', assignedTeamId: 3 }]);
+    rows({ id: 'conv-1', status: 'closed', assignedTeamId: 3, awaitingSince: null }, { id: 'conv-1', status: 'assigned', assignedTeamId: 3, awaitingSince: WAIT });
 
-    const body = await (await request('reopen')).json() as { data: { status: string } };
+    const body = await (await request('reopen')).json() as { data: { status: string; awaitingSince: string | null } };
 
     expect(body.data.status).toBe('assigned');
+    // the wait the close settled is back, in the response and in the broadcast
+    expect(body.data.awaitingSince).toBe(WAIT);
+    expect(mocks.broadcast).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ status: 'assigned', awaitingSince: WAIT }) }));
     expect(updateParams()?.[0]).toBe('assigned');
   });
 
   it('reopens to active when the conversation has no team', async () => {
-    mocks.selectLimit.mockResolvedValue([{ id: 'conv-1', status: 'closed', assignedTeamId: null }]);
+    rows({ id: 'conv-1', status: 'closed', assignedTeamId: null }, { id: 'conv-1', status: 'active', assignedTeamId: null });
 
     const body = await (await request('reopen')).json() as { data: { status: string } };
 

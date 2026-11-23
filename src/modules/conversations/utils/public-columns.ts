@@ -28,6 +28,7 @@ const PRIVATE_KEYS = [
   'lineReplyToken',
   'lineReplyTokenReceivedAt',
   'awaitingSince',
+  'unreadFloorBeforeClose',
   'lastCustomerMessageAt',
   'lastAgentMessageAt'
 ] as const;

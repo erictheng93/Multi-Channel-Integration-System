@@ -82,7 +82,7 @@ export function createBaseSchema(db: Database.Database): void {
     );
     CREATE TABLE conversations (
       id TEXT PRIMARY KEY, customer_id INTEGER NOT NULL, status TEXT NOT NULL DEFAULT 'active',
-      assigned_team_id INTEGER, first_response_at TEXT, closed_at TEXT, created_at TEXT, deleted_at TEXT, unread_floor_at TEXT
+      assigned_team_id INTEGER, first_response_at TEXT, closed_at TEXT, created_at TEXT, deleted_at TEXT, unread_floor_at TEXT, unread_floor_before_close TEXT
     );
     CREATE TABLE conversation_read_states (
       agent_id TEXT NOT NULL, conversation_id TEXT NOT NULL, last_read_at TEXT, marked_unread_at TEXT,

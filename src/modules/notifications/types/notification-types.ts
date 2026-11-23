@@ -75,7 +75,10 @@ export interface NotificationSettings {
 
 export interface NotificationStats {
   total: number;
+  /** Every unread notification (matches the isRead filter) */
   unread: number;
+  /** Unread minus informational types: the number the badge shows */
+  badgeUnread: number;
   byType: Record<NotificationType, {
     total: number;
     unread: number;
