@@ -196,6 +196,19 @@ describe('Conversations API', () => {
       }
     })
 
+    it('keeps the backend lastMessage messageType so a sticker sign-off is recognizable', async () => {
+      mockGet.mockResolvedValue({ success: true, data: {
+        id: 'conv-123', customerId: 1, status: 'active',
+        createdAt: '2024-01-01T00:00:00Z', updatedAt: '2024-01-01T00:00:00Z', lastMessageAt: '2024-01-01T00:00:00Z',
+        lastMessage: { id: 'msg-1', content: '[貼圖]', createdAt: '2024-01-01T00:00:00Z', senderType: 'customer', messageType: 'sticker' },
+        lastMessageContent: '[貼圖]', unreadCount: 0
+      } })
+
+      const result = await conversationApi.getConversation('conv-123')
+
+      expect(result.data?.lastMessage?.messageType).toBe('sticker')
+    })
+
     it('should default lastMessage senderType to customer when the nested object is absent', async () => {
       const mockConversation = {
         id: 'conv-123',
