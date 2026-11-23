@@ -86,6 +86,8 @@ export interface Conversation {
   oldestUnreadAt?: string | null
   /** Start of the team-wide unanswered wait (ISO); null = not waiting; undefined = not provided by the API */
   awaitingSince?: string | null
+  /** Last close that still stands (ISO): customer messages at or before it are settled and never count as a wait */
+  unreadFloorAt?: string | null
   /** 逾期待回覆 list only: no human agent ever replied */
   neverReplied?: boolean
   /** Epoch ms until which the next LINE reply is free (Reply API); null = none */

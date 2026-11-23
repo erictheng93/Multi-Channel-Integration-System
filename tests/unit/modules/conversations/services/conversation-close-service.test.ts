@@ -65,13 +65,14 @@ describe('setConversationsClosed', () => {
 
     await setConversationsClosed(env, actor, [{ id: 'a', status: 'active', assignedTeamId: null }], true)
     expect(row()).toMatchObject({ status: 'closed', awaiting_since: null, unread_floor_before_close: '2026-11-11T05:30:04.137Z' })
-    expect(broadcastConversationEvent).toHaveBeenLastCalledWith(expect.objectContaining({ data: expect.objectContaining({ awaitingSince: null }) }))
+    expect(broadcastConversationEvent).toHaveBeenLastCalledWith(expect.objectContaining({ data: expect.objectContaining({ awaitingSince: null, unreadFloorAt: expect.stringMatching(/^20/) }) }))
 
     const statuses = await setConversationsClosed(env, actor, [{ id: 'a', status: 'closed', assignedTeamId: null }], false)
     expect(statuses).toEqual({ a: 'active' })
     // back to exactly what it was before the close: waiting since the question, not since the older settled message
     expect(row()).toEqual({ status: 'active', awaiting_since: asked, unread_floor_at: '2026-11-11T05:30:04.137Z', unread_floor_before_close: null })
-    expect(broadcastConversationEvent).toHaveBeenLastCalledWith(expect.objectContaining({ data: expect.objectContaining({ status: 'active', awaitingSince: asked }) }))
+    // clients get the wait and the floor now in place, so the detail view measures the open wait like the list
+    expect(broadcastConversationEvent).toHaveBeenLastCalledWith(expect.objectContaining({ data: expect.objectContaining({ status: 'active', awaitingSince: asked, unreadFloorAt: '2026-11-11T05:30:04.137Z' }) }))
   })
 
   it('a manual reopen after the undo window keeps the close: no months-old wait comes back', async () => {

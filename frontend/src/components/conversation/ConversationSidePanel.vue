@@ -298,20 +298,23 @@ const sides = computed(() =>
 const waitList = computed(() => {
   const all = sides.value
   const waits: { key: string; ms: number; at: number; end: number; pending: boolean; count: number }[] = []
-  let runStart: number | null = null
-  let runCount = 0
+  let run: number[] = []
   for (const m of all) {
     if (m.side === 'customer') {
-      if (runStart === null) { runStart = m.t }
-      runCount += 1
-    } else if (runStart !== null) {
-      waits.push({ key: `w${runStart}`, ms: m.t - runStart, at: runStart, end: m.t, pending: false, count: runCount })
-      runStart = null
-      runCount = 0
+      run.push(m.t)
+    } else if (run.length > 0) {
+      waits.push({ key: `w${run[0]}`, ms: m.t - (run[0] ?? m.t), at: run[0] ?? m.t, end: m.t, pending: false, count: run.length })
+      run = []
     }
   }
-  if (runStart !== null && props.conversation?.status !== 'closed') {
-    waits.push({ key: 'open', ms: Math.max(0, now.value - runStart), at: runStart, end: now.value, pending: true, count: runCount })
+  // The open wait: the trailing customer messages no close has settled. Messages at or before the last close
+  // (unreadFloorAt, the same floor the list's 待回覆 uses) are not waiting, so the two views agree.
+  const floorAt = props.conversation?.unreadFloorAt
+  const floor = floorAt ? Date.parse(floorAt) : Number.NEGATIVE_INFINITY
+  const open = run.filter(t => t > floor)
+  const openStart = open[0]
+  if (openStart !== undefined && props.conversation?.status !== 'closed') {
+    waits.push({ key: 'open', ms: Math.max(0, now.value - openStart), at: openStart, end: now.value, pending: true, count: open.length })
   }
   return waits
 })

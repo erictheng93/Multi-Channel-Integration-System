@@ -42,7 +42,7 @@ export interface RealtimeHandlerDeps {
   ) => boolean
   updateConversationStatus: (
     _conversationId: string,
-    _updates: Partial<Pick<Conversation, 'status' | 'assignedTeamId' | 'unreadCount' | 'assignedTeam' | 'awaitingSince'>>
+    _updates: Partial<Pick<Conversation, 'status' | 'assignedTeamId' | 'unreadCount' | 'assignedTeam' | 'awaitingSince' | 'unreadFloorAt'>>
   ) => boolean
   updateConversationsIncrementally: (_newConversations: Conversation[], _logChanges?: boolean) => void
   updateStatsFromConversations: () => void
@@ -226,10 +226,12 @@ export function createRealtimeHandler(deps: RealtimeHandlerDeps) {
           const assignedTeamId = data?.assignedTeamId as number | undefined
           const assignedTeamName = data?.assignedTeamName as string | undefined
 
-          const updates: Partial<Pick<Conversation, 'status' | 'assignedTeamId' | 'assignedTeam' | 'unreadCount' | 'awaitingSince'>> = {}
+          const updates: Partial<Pick<Conversation, 'status' | 'assignedTeamId' | 'assignedTeam' | 'unreadCount' | 'awaitingSince' | 'unreadFloorAt'>> = {}
           if (status) { updates.status = status as Conversation['status'] }
           // A delivery after the recall window cleared the wait marker (backend broadcastWaitMarker)
           if (data && 'awaitingSince' in data) { updates.awaitingSince = data.awaitingSince as string | null }
+          // A close or reopen moved the floor the detail view measures the open wait against
+          if (data && 'unreadFloorAt' in data) { updates.unreadFloorAt = data.unreadFloorAt as string | null }
           // 已結案的對話對所有客服都算 0 未讀（後端同規則）
           if (status === 'closed') { updates.unreadCount = 0 }
           if (assignedTeamId !== undefined) {
