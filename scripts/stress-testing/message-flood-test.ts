@@ -888,6 +888,8 @@ async function runMessageFlood() {
   }
 }
 
-runMessageFlood();
+if (import.meta.main) {
+  runMessageFlood();
+}
 
 export type { MessageFloodConfig, MessageFloodResults };
