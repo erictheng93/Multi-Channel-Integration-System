@@ -1,7 +1,7 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { useNotificationsStore } from './notifications'
-import type { Notification, NotificationType } from '@/api/notifications'
+import { notificationApi, type Notification, type NotificationType } from '@/api/notifications'
 
 const make = (id: string, type: NotificationType): Notification => ({
   id,
@@ -28,5 +28,19 @@ describe('notifications store informational types', () => {
 
     store.addNotification(make('3', 'new_message'))
     expect(store.unreadCount).toBe(1)
+  })
+
+  it('badge follows badgeUnread while hasUnread follows the real unread total', async () => {
+    const store = useNotificationsStore()
+    vi.spyOn(notificationApi, 'getStats').mockResolvedValue({
+      success: true,
+      data: { total: 24, unread: 24, badgeUnread: 0 }
+    } as never)
+
+    await store.fetchStats()
+
+    expect(store.unreadCount).toBe(0)
+    expect(store.stats?.unread).toBe(24)
+    expect(store.hasUnread).toBe(true)
   })
 })
