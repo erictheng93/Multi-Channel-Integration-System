@@ -21,6 +21,7 @@ import type {
   FileDownloadOptions
 } from '@modules/file-management/types/file-types';
 import { nowISO } from '@/utils/timestamp'
+import { inertFileHeaders } from '@/utils/file-url';
 import { createContextLogger } from '@/utils/logger';
 import { fileContracts } from '@shared/api-contracts';
 import { contractJson } from '@/utils/api-contract-response';
@@ -537,10 +538,10 @@ fileMainHandler.get('/:fileId', jwtAuth, async (c) => {
       return new Response(result.data as ArrayBuffer, {
         status: 200,
         headers: {
-          'Content-Type': result.contentType || 'application/octet-stream',
+          ...inertFileHeaders(result.contentType, result.metadata?.filename || 'download'),
           'Content-Length': result.contentLength?.toString() || '0',
-          'Content-Disposition': `attachment; filename="${result.metadata?.filename || 'download'}"`,
-          'Cache-Control': 'public, max-age=3600'
+          // private: this response is per-user (jwtAuth), shared caches must not keep it
+          'Cache-Control': 'private, max-age=3600'
         }
       });
     }
