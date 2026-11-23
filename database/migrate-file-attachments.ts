@@ -15,6 +15,13 @@ import readline from 'readline';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// wrangler is a .cmd shim on Windows, which execFileSync cannot spawn without a shell.
+// Run its JS entry through node instead: no shell, so arguments are never shell-parsed.
+const WRANGLER_BIN = path.join(__dirname, '..', 'node_modules', 'wrangler', 'bin', 'wrangler.js');
+function runWrangler(args: string[]): void {
+  execFileSync('node', [WRANGLER_BIN, ...args], { stdio: 'inherit' });
+}
+
 interface DatabaseConfig {
   name: string;
   id: string;
@@ -57,9 +64,7 @@ async function runMigration(): Promise<void> {
     
     // 執行本地遷移
     console.log(' 執行本地資料庫遷移...');
-    execFileSync('wrangler', ['d1', 'execute', dbConfig.name, '--local', `--file=${sqlFile}`], {
-      stdio: 'inherit'
-    });
+    runWrangler(['d1', 'execute', dbConfig.name, '--local', `--file=${sqlFile}`]);
     
     console.log(' 本地資料庫遷移完成');
     
@@ -78,9 +83,7 @@ async function runMigration(): Promise<void> {
             throw new Error('Refusing production operation: d1:migrate:attachments. Set MCIS_CONFIRM_PRODUCTION=allow:d1:migrate:attachments to run this command intentionally.');
           }
           console.log(' 執行生產環境資料庫遷移...');
-          execFileSync('wrangler', ['d1', 'execute', dbConfig.name, '--remote', `--file=${sqlFile}`], {
-            stdio: 'inherit'
-          });
+          runWrangler(['d1', 'execute', dbConfig.name, '--remote', `--file=${sqlFile}`]);
           console.log(' 生產環境資料庫遷移完成');
         } catch (error: any) {
           console.error(' 生產環境遷移失敗:', error.message);
@@ -116,9 +119,7 @@ async function verifyMigration(): Promise<void> {
     fs.writeFileSync(tempSQLFile, checkTablesSQL);
     
     try {
-      execFileSync('wrangler', ['d1', 'execute', dbConfig.name, '--local', `--file=${tempSQLFile}`], {
-        stdio: 'inherit'
-      });
+      runWrangler(['d1', 'execute', dbConfig.name, '--local', `--file=${tempSQLFile}`]);
       console.log(' 資料表驗證通過');
     } finally {
       // 清理臨時檔案
@@ -143,7 +144,8 @@ async function main(): Promise<void> {
 }
 
 // 執行腳本
-if (import.meta.url === `file://${process.argv[1]}`) {
+// Compare file paths, not URL strings: on Windows argv[1] is D:\... while import.meta.url is file:///D:/...
+if (process.argv[1] && __filename === path.resolve(process.argv[1])) {
   main().catch(console.error);
 }
 
