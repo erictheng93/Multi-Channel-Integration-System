@@ -6,10 +6,10 @@ import type { Conversation } from '@/types'
 const BASE = Date.parse('2026-11-02T09:00:00Z')
 const msg = (senderType: 'customer' | 'agent', minutes: number) => ({ senderType, createdAt: BASE + minutes * 60_000 })
 
-const mountPanel = (messages: ReturnType<typeof msg>[], status = 'open') =>
+const mountPanel = (messages: ReturnType<typeof msg>[], status = 'open', unreadFloorAt?: string) =>
   mount(ConversationSidePanel, {
     props: {
-      conversation: { id: 'c1', status, customer: { id: 1, name: '林志明' }, platform: 'line' } as unknown as Conversation,
+      conversation: { id: 'c1', status, unreadFloorAt, customer: { id: 1, name: '林志明' }, platform: 'line' } as unknown as Conversation,
       tags: [],
       messageCount: messages.length,
       hasMore: false,
@@ -28,6 +28,21 @@ describe('ConversationSidePanel reply speed', () => {
   it('shows an open wait when the customer spoke last on an open conversation', () => {
     const wrapper = mountPanel([msg('customer', -90), msg('agent', -80), msg('customer', -30)])
     expect(wrapper.find('.wait.is-pending').exists()).toBe(true)
+  })
+
+  // Same floor as the list's 待回覆: a close settles the customer messages before it
+  it('shows no open wait for messages a close settled, but keeps the answered rounds', () => {
+    const floor = new Date(BASE - 20 * 60_000).toISOString()
+    const wrapper = mountPanel([msg('customer', -90), msg('agent', -80), msg('customer', -30)], 'open', floor)
+    expect(wrapper.find('.wait.is-pending').exists()).toBe(false)
+    expect(wrapper.findAll('.wait')).toHaveLength(1)
+  })
+
+  it('starts the open wait at the first message after the close', () => {
+    const floor = new Date(BASE - 20 * 60_000).toISOString()
+    const wrapper = mountPanel([msg('customer', -90), msg('agent', -80), msg('customer', -30), msg('customer', -10)], 'open', floor)
+    expect(wrapper.find('.wait.is-pending').exists()).toBe(true)
+    expect(wrapper.find('.hold-sub').text()).toContain('1 則來訊未回')
   })
 
   it('shows nothing for a single message', () => {

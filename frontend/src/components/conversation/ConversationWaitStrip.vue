@@ -24,7 +24,7 @@
 <script setup lang="ts">
 /**
  * The wait, in the thread, where the rail is not shown (tablet and phone): the trailing run of customer messages
- * nobody has answered yet, on an open conversation. Tapping it opens the customer sheet with the round history.
+ * nobody has answered yet (and that no close has settled), on an open conversation. Tapping it opens the customer sheet with the round history.
  */
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { withoutSignOffs } from '@/utils/waiting-messages'
@@ -32,6 +32,8 @@ import { withoutSignOffs } from '@/utils/waiting-messages'
 const props = defineProps<{
   messages: ReadonlyArray<{ senderType?: string; content?: string; messageType?: string; createdAt?: string | number | Date; timestamp?: number | Date }>
   closed?: boolean
+  /** conversation.unreadFloorAt: customer messages at or before the last close are settled, not waiting */
+  floor?: string | null
 }>()
 
 defineEmits<{ open: [] }>()
@@ -52,8 +54,9 @@ const wait = computed(() => {
   const spoken = withoutSignOffs(props.messages
     .filter(m => (m.senderType === 'customer' || m.senderType === 'agent') && Number.isFinite(timeOf(m)))
     .sort((a, b) => timeOf(a) - timeOf(b)))
+  const floor = props.floor ? Date.parse(props.floor) : Number.NEGATIVE_INFINITY
   let count = 0
-  for (let i = spoken.length - 1; i >= 0 && spoken[i]?.senderType === 'customer'; i--) { count += 1 }
+  for (let i = spoken.length - 1; i >= 0 && spoken[i]?.senderType === 'customer' && timeOf(spoken[i] as (typeof spoken)[number]) > floor; i--) { count += 1 }
   if (count === 0) { return null }
   const started = timeOf(spoken[spoken.length - count] as (typeof spoken)[number])
   const minutes = Math.max(0, Math.round((now.value - started) / 60000))

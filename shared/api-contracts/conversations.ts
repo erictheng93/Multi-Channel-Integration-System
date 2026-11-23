@@ -57,6 +57,8 @@ export interface RawConversationData {
   oldestUnreadAt?: string | null
   /** Start of the unanswered wait (ISO); null = not waiting (sign-offs after a reply do not count) */
   awaitingSince?: string | null
+  /** Last close that still stands (ISO): customer messages at or before it are settled and never count as a wait */
+  unreadFloorAt?: string | null
   /** awaiting=stale list only: no human agent ever replied in this conversation */
   neverReplied?: boolean
   /** Epoch ms until which the next LINE reply is free (Reply API); null/absent = no free reply available */
