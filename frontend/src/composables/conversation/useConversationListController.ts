@@ -28,6 +28,7 @@ import { useConversationFilters } from './useConversationFilters'
 import { useConversationSort } from './useConversationSort'
 import { useConversationCache } from './useConversationCache'
 import type { Conversation } from '@/types'
+import { lastMessageText } from './useConversationRowMeta'
 import { translateError } from '@/utils/error-handler'
 import { conversationCache as storeLevelCache } from '@/services/cacheManager'
 import toast from '@/composables/useToast'
@@ -112,8 +113,7 @@ export function useConversationListController(): ConversationListControllerCompo
     const lastMsgSearch = filters.filters.value.lastMessageSearch?.trim().toLowerCase()
     if (lastMsgSearch && storeData && storeData.length > 0) {
       storeData = storeData.filter((c: Conversation) => {
-        const content = c.lastMessage?.content?.toLowerCase() || ''
-        return content.includes(lastMsgSearch)
+        return lastMessageText(c).toLowerCase().includes(lastMsgSearch)
       })
     }
 
