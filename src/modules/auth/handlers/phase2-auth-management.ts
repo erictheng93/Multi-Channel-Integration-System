@@ -12,9 +12,7 @@ import {
   getUserById
 } from '@/utils/auth';
 import { successResponse, forbiddenResponse, badRequestResponse } from '@/utils/api-response';
-import { createContextLogger } from '@/utils/logger';
 
-const log = createContextLogger('Phase2AuthManagement');
 
 const phase2AuthHandler = new Hono<{ Bindings: Bindings }>();
 
@@ -146,45 +144,6 @@ phase2AuthHandler.post('/batch-tokens', jwtAuth, async (c) => {
 });
 
 // =================== 令牌驗證和管理 API ===================
-
-// 驗證令牌狀態
-phase2AuthHandler.post('/verify-token', async (c) => {
-  try {
-    const { token } = await c.req.json();
-
-    if (!token) {
-      return badRequestResponse(c, 'Token is required');
-    }
-
-    const payload = await validateAccessTokenPayload(c.env, token);
-
-    // 檢查令牌是否即將過期 (剩餘時間少於1小時)
-    const now = Math.floor(Date.now() / 1000);
-    const timeRemaining = payload.exp - now;
-    const isExpiringSoon = timeRemaining < 3600;
-
-    return successResponse(c, {
-      valid: true,
-      payload: {
-        userId: payload.userId,
-        displayName: payload.displayName,
-        role: payload.role,
-        primaryTeamId: payload.primaryTeamId,
-        isSystemToken: payload.isSystemToken || false
-      },
-      expiresAt: new Date(payload.exp * 1000).toISOString(),
-      timeRemaining,
-      isExpiringSoon
-    });
-
-  } catch (error) {
-    log.warn('Token verification failed', { error: error instanceof Error ? error.message : 'Unknown error' });
-    return successResponse(c, {
-      valid: false,
-      error: error instanceof Error ? error.message : 'Token validation failed'
-    });
-  }
-});
 
 // 刷新即將過期的令牌
 phase2AuthHandler.post('/refresh-token', jwtAuth, requireAdmin(), async (c) => {
