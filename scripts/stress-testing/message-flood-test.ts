@@ -347,7 +347,6 @@ export class MessageFloodTester {
   private async executeMessageFlood(): Promise<void> {
     console.log(` Starting message flood: ${this.config.totalMessages} messages at ${this.config.messagesPerSecond} msg/s`);
 
-    const messageInterval = 1000 / this.config.messagesPerSecond; // ms between messages
     let messagesSent = 0;
     const startTime = Date.now();
 

@@ -534,7 +534,6 @@ class ConnectionStormTester extends EventEmitter {
   private analyzeSystemStress(): void {
     const avgErrorRate = this.results.waveResults.reduce((sum, w) => sum + w.errorRate, 0) / this.results.waveResults.length;
     const maxLatency = Math.max(...this.results.waveResults.map(w => w.peakLatency));
-    const peakConnections = Math.max(...this.results.waveResults.map(w => w.concurrentConnections));
 
     this.results.systemStress = {
       connectionRateLimit: this.results.summary.failedConnections > this.results.summary.successfulConnections * 0.1,

@@ -39,7 +39,7 @@ if (allSet) {
 
 console.log('\nDrizzle 設定檔案內容:');
 try {
-  const drizzleConfig = await import('../drizzle.config.ts');
+  await import('../drizzle.config.ts');
   console.log(' drizzle.config.ts 載入成功');
 } catch (error) {
   console.log(' drizzle.config.ts 載入失敗:', error);

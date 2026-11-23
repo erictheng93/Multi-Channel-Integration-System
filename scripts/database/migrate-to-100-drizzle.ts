@@ -99,7 +99,6 @@ async function migrateSingleFile(filePath: string): Promise<void> {
 
   // Check if file already has drizzle imports
   const hasDrizzleImport = content.includes('from \'drizzle-orm/d1\'');
-  const hasSqlImport = content.includes('sql') && content.includes('drizzle-orm');
 
   // Add necessary imports if missing
   if (!hasDrizzleImport) {
