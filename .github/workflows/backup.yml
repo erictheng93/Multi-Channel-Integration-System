@@ -42,7 +42,12 @@ name: D1 Backup
 
 on:
   schedule:
-    - cron: '0 19 * * *' # 19:00 UTC = 03:00 Asia/Taipei daily (low-traffic window)
+    # 15:17 UTC = 23:17 Asia/Taipei. GitHub starts scheduled runs late: the old
+    # 19:00 UTC slot actually started 2.5-7.5 h later, i.e. 05:00-10:30 Taipei,
+    # inside working hours (d1 export blocks other queries while it runs). From
+    # 15:17 the same delay lands at about 01:45-06:45 Taipei. The odd minute
+    # avoids the top-of-hour queue, where the delay is worst.
+    - cron: '17 15 * * *'
   workflow_dispatch: {} # allow manual run for testing
 
 permissions:
