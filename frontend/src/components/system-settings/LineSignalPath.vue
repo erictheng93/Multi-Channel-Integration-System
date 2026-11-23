@@ -396,7 +396,7 @@ async function refresh(): Promise<void> {
 const updatedText = computed(() => {
   const at = snapshot.value?.updatedAt
   if (!at) { return '尚無查詢紀錄' }
-  return `${formatAt(at)} ${snapshot.value?.source === 'manual' ? '手動查詢' : '每日自動查詢'}`
+  return `${formatAt(at)} ${snapshot.value?.source === 'manual' ? '手動查詢' : '自動查詢'}`
 })
 
 function percent(c: LineQuotaChannel): number {
