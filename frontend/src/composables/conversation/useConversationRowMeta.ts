@@ -16,11 +16,16 @@ import { convertEmojiForConversationList } from '@/utils/layered-emoji-processor
 // The backend overwrites a recalled message's content with this placeholder (internal display only).
 const RECALLED_CONTENT = '[This message has been recalled]'
 
+/** Last-message text as the agent reads it (recalled -> 此訊息已撤回); '' when there is none. */
+export function lastMessageText(conversation: Conversation): string {
+  const content = conversation.lastMessage?.content ?? ''
+  return content === RECALLED_CONTENT ? '此訊息已撤回' : content
+}
+
 /** List preview of the last message; a recalled message reads the same as in the conversation view. */
 export function lastMessagePreview(conversation: Conversation): string {
-  const content = conversation.lastMessage?.content
-  if (!content) { return '暫無訊息' }
-  return content === RECALLED_CONTENT ? '此訊息已撤回' : convertEmojiForConversationList(content)
+  const text = lastMessageText(conversation)
+  return text ? convertEmojiForConversationList(text) : '暫無訊息'
 }
 
 export type StatusTone = 'closed' | 'active' | 'pending'

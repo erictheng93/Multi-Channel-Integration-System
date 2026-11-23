@@ -257,7 +257,7 @@ import { useToast } from '@/composables/useToast'
 import { useConfirmDialog } from '@/composables/useConfirmDialog'
 import { conversationApi } from '@/api/conversations'
 import { useUnreadStore } from '@/stores/unread'
-import { LEGEND_TEXT } from '@/composables/conversation/useConversationRowMeta'
+import { LEGEND_TEXT, lastMessageText } from '@/composables/conversation/useConversationRowMeta'
 import { WAITING_WINDOW_DAYS, type ConversationStats, type WaitingConversation } from '@shared/api-contracts'
 import { tagCacheService } from '@/services/tagCacheService'
 import type { ConversationFilters as ConversationFiltersType } from '@/types'
@@ -446,10 +446,7 @@ const displayedConversations = computed(() => {
   let result = scopedConversations.value
   const lastMsgSearch = filterComposable.filters.value.lastMessageSearch?.trim().toLowerCase()
   if (lastMsgSearch) {
-    result = result.filter(c => {
-      const content = (c.lastMessage?.content || '').toLowerCase()
-      return content.includes(lastMsgSearch)
-    })
+    result = result.filter(c => lastMessageText(c).toLowerCase().includes(lastMsgSearch))
   }
   return result
 })
