@@ -122,7 +122,7 @@
               v-else
               class="ui-pill ui-pill-dot state-text"
               :class="[pillTone(replyStateOf(conversation, now).state, conversation), `state-${replyStateOf(conversation, now).state}`]"
-              :title="replyStateOf(conversation, now).state === 'waiting' ? WAITING_HINT : undefined"
+              :title="replyStateHint(replyStateOf(conversation, now).state)"
             >{{ replyStateOf(conversation, now).text }}<span
               v-if="replyStateOf(conversation, now).state === 'waiting' && waitedText(conversation)"
               class="waited"
@@ -164,7 +164,7 @@ import {
   lastMessagePreview,
   LEGEND_TEXT,
   UNREAD_HINT,
-  WAITING_HINT,
+  replyStateHint,
   freeReplySeconds,
   initialOf,
   avatarToneOf,

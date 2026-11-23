@@ -368,6 +368,19 @@ const hold = computed(() => {
       sub: sides.value[sides.value.length - 1]?.side === 'customer' ? '最後一則來訊未回覆就結案了' : '客服回覆後結案'
     }
   }
+  // Open, no wait, yet the customer spoke last: those messages were settled by a close without a reply.
+  // Say so instead of 客服已回覆 (the list reads 結案前未回 for the same conversation).
+  let settled = 0
+  for (let i = all.length - 1; i >= 0 && all[i]?.side === 'customer'; i--) { settled += 1 }
+  if (settled > 0) {
+    return {
+      tone: 'closed' as const,
+      label: '結案前未回',
+      parts: [{ n: String(settled), u: '則來訊' }],
+      aria: `結案前有 ${settled} 則來訊沒有回覆`,
+      sub: '結案前的來訊沒有回覆；結案後不再計入待回覆'
+    }
+  }
   const lastDone = waits[waits.length - 1]
   if (lastDone) {
     return {

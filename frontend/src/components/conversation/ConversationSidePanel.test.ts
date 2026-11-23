@@ -36,6 +36,9 @@ describe('ConversationSidePanel reply speed', () => {
     const wrapper = mountPanel([msg('customer', -90), msg('agent', -80), msg('customer', -30)], 'open', floor)
     expect(wrapper.find('.wait.is-pending').exists()).toBe(false)
     expect(wrapper.findAll('.wait')).toHaveLength(1)
+    // nobody answered the settled message, so the anchor does not claim 客服已回覆
+    expect(wrapper.text()).toContain('結案前未回')
+    expect(wrapper.text()).not.toContain('客服已回覆')
   })
 
   it('starts the open wait at the first message after the close', () => {
