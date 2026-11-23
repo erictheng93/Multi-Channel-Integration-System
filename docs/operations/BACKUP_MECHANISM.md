@@ -108,8 +108,8 @@ Durable Object 說明：訊息廣播等 DO 的儲存是執行期狀態，不是�
 
 | R2 前綴 | 內容 | 用途 |
 |---|---|---|
-| `daily/` | 整個資料庫（schema + 全部資料） | 一般還原；每月 1 日另存一份到 `monthly/` |
-| `monthly/` | 每月 1 日的全庫快照 | 長期還原點 |
+| `daily/` | 整個資料庫（schema + 全部資料） | 一般還原；每月第一次成功執行另存一份到 `monthly/` |
+| `monthly/` | 每月（UTC）第一次成功執行的全庫快照 | 長期還原點 |
 | `members/` | `agents`、`teams`、`agent_teams` | 只還原人員與團隊 |
 | `tags/` | `tags`、`customer_tags`、`conversation_tags` | 只還原標籤 |
 | `assignments/` | `conversations`、`customer_team_assignments`、`conversation_transfers` | 只還原對話與客戶的團隊指派 |
@@ -141,7 +141,7 @@ Durable Object 說明：訊息廣播等 DO 的儲存是執行期狀態，不是�
   │  4. gzip -9 壓縮四個檔，再逐一 gzip -t 驗證                 │
   │                                                           │
   │  5. wrangler r2 object put 上傳至 mcis-backups             │
-  │       daily/  (每月 1 日加 monthly/)                       │
+  │       daily/  (當月尚無快照時加 monthly/)                  │
   │       members/  tags/  assignments/                        │
   └───────────────────────────────────────────────────────────┘
 ```
@@ -163,7 +163,13 @@ Durable Object 說明：訊息廣播等 DO 的儲存是執行期狀態，不是�
 壓縮效果好。
 
 **上傳**：`wrangler r2 object put ... --content-type=application/gzip --remote`。
-每個物件的 key 含日期戳（UTC），所以同一天重跑會覆蓋同名物件，不會累積重複。
+每個物件的 key 是 `<名稱>-<UTC 日期>-<run id>-<attempt>.sql.gz`，每次執行都不同，所以任何一次執行
+都不會覆寫另一次的物件。只用日期當 key 是不夠的：GitHub 會把這個排程延後 2 到 7 小時，兩次執行
+經常落在同一個 UTC 日期，而 R2 會直接取代同名物件（2026-11 因此少了 5 個還原點）。
+
+`monthly/` 不看「今天是不是 1 號」，而是先向 R2 查詢當月是否已有快照，沒有才上傳。排程延遲
+可能讓某個 UTC 日期整天沒有執行，用日期判斷會讓那個月沒有快照。查詢失敗時照樣上傳，最多多一份，
+不會少。
 
 ### 認證與權限
 
@@ -371,8 +377,11 @@ node node_modules/wrangler/bin/wrangler.js r2 bucket info mcis-backups
 node node_modules/wrangler/bin/wrangler.js r2 bucket info mcis-files
 
 # 確認今天的備份存在且可解壓
+# key 含 run id，先從最近一次執行的 log 取得（或看「資料管理 > 備份」頁面）
+RUN="$(gh run list --workflow=backup.yml --limit 1 --json databaseId --jq '.[0].databaseId')"
+KEY="$(gh run view "$RUN" --log | grep -o 'daily/mcis-db-[0-9-]*\.sql\.gz' | head -1)"
 node node_modules/wrangler/bin/wrangler.js r2 object get \
-  "mcis-backups/daily/mcis-db-$(date -u +%F).sql.gz" --file=./chk.gz --remote
+  "mcis-backups/${KEY}" --file=./chk.gz --remote
 gzip -t ./chk.gz && echo ok
 
 # 確認沒有備份 artifact（應為 0）
