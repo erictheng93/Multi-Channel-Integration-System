@@ -200,7 +200,7 @@ const updatedText = computed(() => {
   if (!at) {
     return '尚無查詢紀錄'
   }
-  const source = snapshot.value?.source === 'manual' ? '手動查詢' : '每日自動查詢'
+  const source = snapshot.value?.source === 'manual' ? '手動查詢' : '自動查詢'
   return `更新於 ${formatTime(at)}（${source}）`
 })
 
