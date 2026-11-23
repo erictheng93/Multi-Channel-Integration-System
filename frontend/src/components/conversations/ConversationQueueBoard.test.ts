@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { nextTick } from 'vue'
 import { mount } from '@vue/test-utils'
 import type { WaitingConversation } from '@shared/api-contracts'
@@ -19,6 +19,22 @@ const item = (id: string, name: string, minutes: number, team: number | null): W
   lastCustomerMessage: null
 })
 
+const KEY = 'conversation-queue-board-expanded'
+
+// The global test setup stubs localStorage as a no-op, so give these tests a working one
+const stubStorage = (initial: Record<string, string> = {}) => {
+  const data = new Map(Object.entries(initial))
+  vi.stubGlobal('localStorage', {
+    getItem: (k: string) => data.get(k) ?? null,
+    setItem: (k: string, v: string) => { data.set(k, v) },
+    removeItem: (k: string) => { data.delete(k) },
+    clear: () => { data.clear() }
+  })
+  return data
+}
+
+afterEach(() => { vi.unstubAllGlobals() })
+
 const mountBoard = (items: WaitingConversation[], total = items.length) =>
   mount(ConversationQueueBoard, {
     props: {
@@ -34,7 +50,51 @@ const mountBoard = (items: WaitingConversation[], total = items.length) =>
   })
 
 describe('ConversationQueueBoard', () => {
+  it('starts folded: no chart, a closed toggle', () => {
+    stubStorage()
+    const wrapper = mountBoard([item('a', '林', 5, 1)])
+    expect(wrapper.find('.board').exists()).toBe(false)
+    expect(wrapper.find('button[aria-controls="queue-board"]').attributes('aria-expanded')).toBe('false')
+  })
+
+  it('opens the chart from the toggle, remembers the choice, and folds it again', async () => {
+    const data = stubStorage()
+    const wrapper = mountBoard([item('a', '林', 5, 1)])
+    const toggle = wrapper.find('button[aria-controls="queue-board"]')
+    await toggle.trigger('click')
+    expect(wrapper.find('#queue-board').exists()).toBe(true)
+    expect(toggle.attributes('aria-expanded')).toBe('true')
+    expect(data.get(KEY)).toBe('true')
+    await toggle.trigger('click')
+    expect(wrapper.find('.board').exists()).toBe(false)
+    expect(data.get(KEY)).toBe('false')
+  })
+
+  it('has no toggle when nobody waits', () => {
+    stubStorage()
+    expect(mountBoard([]).find('button[aria-controls="queue-board"]').exists()).toBe(false)
+  })
+
+  it('honours a stored expanded preference on mount', () => {
+    stubStorage({ [KEY]: 'true' })
+    const wrapper = mountBoard([item('a', '林', 5, 1)])
+    expect(wrapper.find('.board').exists()).toBe(true)
+    expect(wrapper.find('button[aria-controls="queue-board"]').attributes('aria-expanded')).toBe('true')
+  })
+
+  it('stays folded and still works when storage throws', async () => {
+    vi.stubGlobal('localStorage', {
+      getItem: () => { throw new Error('denied') },
+      setItem: () => { throw new Error('denied') }
+    })
+    const wrapper = mountBoard([item('a', '林', 5, 1)])
+    expect(wrapper.find('.board').exists()).toBe(false)
+    await wrapper.find('button[aria-controls="queue-board"]').trigger('click')
+    expect(wrapper.find('.board').exists()).toBe(true)
+  })
+
   it('draws one lane per team, the longest wait first, and marks waits past 30 minutes', () => {
+    stubStorage({ [KEY]: 'true' })
     const wrapper = mountBoard([item('a', '林', 5, 1), item('b', '王', 90, null), item('c', '張', 45, 1)])
     const names = wrapper.findAll('.lane-title').map(n => n.text())
     expect(names).toEqual(['未指派', '客服一組'])
@@ -43,6 +103,7 @@ describe('ConversationQueueBoard', () => {
   })
 
   it('opens a conversation from its dot and filters by team from the lane name', async () => {
+    stubStorage({ [KEY]: 'true' })
     const wrapper = mountBoard([item('a', '林', 5, 1)])
     await wrapper.find('.dot').trigger('click')
     await wrapper.find('.lane-name').trigger('click')
@@ -51,6 +112,7 @@ describe('ConversationQueueBoard', () => {
   })
 
   it('says so when more are waiting than are drawn, and shows a calm state at zero', () => {
+    stubStorage({ [KEY]: 'true' })
     expect(mountBoard([item('a', '林', 5, 1)], 9).text()).toContain('其餘 8 件')
     const calm = mountBoard([])
     expect(calm.find('.board').exists()).toBe(false)
@@ -58,6 +120,7 @@ describe('ConversationQueueBoard', () => {
   })
 
   it('observes the time axis even when the lanes only appear after mount', async () => {
+    stubStorage({ [KEY]: 'true' })
     const observe = vi.fn()
     const unobserve = vi.fn()
     const disconnect = vi.fn()
@@ -82,6 +145,26 @@ describe('ConversationQueueBoard', () => {
     } finally {
       vi.unstubAllGlobals()
     }
+  })
+
+  it('observes the axis as the chart is opened and folded', async () => {
+    stubStorage()
+    const observe = vi.fn()
+    const unobserve = vi.fn()
+    class FakeObserver {
+      observe = observe
+      unobserve = unobserve
+      disconnect = vi.fn()
+    }
+    vi.stubGlobal('ResizeObserver', FakeObserver)
+    const wrapper = mountBoard([item('a', '林', 5, 1)])
+    expect(observe).not.toHaveBeenCalled()
+    await wrapper.find('button[aria-controls="queue-board"]').trigger('click')
+    await nextTick()
+    expect(observe).toHaveBeenCalledTimes(1)
+    await wrapper.find('button[aria-controls="queue-board"]').trigger('click')
+    await nextTick()
+    expect(unobserve).toHaveBeenCalledTimes(1)
   })
 
   it('never disables the primary action and hides it when nobody waits', () => {
