@@ -149,8 +149,8 @@ bunx wrangler r2 object put "mcis-backups/daily/mcis-db-$(date +%F).sql.gz" \
    ```
    The 10 triggers listed in `src/health-checkers/schema-integrity.ts` (`REQUIRED_TRIGGERS`) must
    all be present. If any are missing, recreate each from the LATEST migration that defines it
-   (older definitions lack the sign-off rule):
-   - re-run migrations 0072, 0073 and 0075 whole, in that order (they only drop/create triggers,
+   (older definitions carry an older sign-off rule; 0076 holds the current one for all six awaiting triggers):
+   - re-run migrations 0072, 0073, 0075 and 0076 whole, in that order (they only drop/create triggers,
      backfill markers and `CREATE INDEX IF NOT EXISTS`, so they are safe to repeat);
    - from 0071 re-run only its `CREATE TRIGGER IF NOT EXISTS ...` statements (do NOT re-run 0070 or
      0071 whole: their `ALTER TABLE ... ADD COLUMN` fails when the column already exists);
