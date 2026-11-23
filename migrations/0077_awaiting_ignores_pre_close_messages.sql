@@ -287,6 +287,14 @@ BEGIN
     AND awaiting_since IS NOT NULL;
 END;
 
+-- Conversations closed before the close path wrote unread_floor_at (7 on 2026-11-23, closed 2026-08..10) get
+-- their close time as the floor, so they too reopen with a fresh wait. Closed rows show 0 unread either way.
+UPDATE conversations
+SET unread_floor_at = closed_at
+WHERE status = 'closed'
+  AND unread_floor_at IS NULL
+  AND closed_at IS NOT NULL;
+
 -- Backfill: the floor can only clear or move a marker later, so only marked rows change. Open conversations
 -- with a pre-close marker were 0 on 2026-11-23; closed ones are cleared (readers ignore closed rows anyway).
 UPDATE conversations
