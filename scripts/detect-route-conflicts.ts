@@ -3,7 +3,6 @@
 // 在開發時自動檢測並報告路由衝突
 
 import { readFileSync } from 'fs';
-import { join } from 'path';
 
 interface RouteInfo {
   method: string;

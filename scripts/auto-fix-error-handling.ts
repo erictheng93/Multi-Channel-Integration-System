@@ -48,7 +48,7 @@ class AutoFixTool {
       // Pattern 1: 修復 catch 區塊中直接使用 c.json({ success: false, error: ... })
       const catchPattern1 = /} catch \((error|err|e)\) \{\s*\n\s*console\.(error|warn|log)\([^)]+\);\s*\n\s*return c\.json\(\s*\{[\s\S]*?success:\s*false[\s\S]*?\}\s*,\s*\d+\s*\);\s*\n\s*\}/g;
 
-      modifiedContent = modifiedContent.replace(catchPattern1, (match, errorVar) => {
+      modifiedContent = modifiedContent.replace(catchPattern1, (_match, errorVar) => {
         fixCount++;
         return `} catch (${errorVar}) {
     console.error('Operation failed:', ${errorVar});
@@ -59,7 +59,7 @@ class AutoFixTool {
       // Pattern 2: 修復 catch 區塊中直接使用 c.json({ error: ... })
       const catchPattern2 = /} catch \((error|err|e)\) \{\s*\n\s*console\.(error|warn|log)\([^)]+\);\s*\n\s*return c\.json\(\s*\{[^}]*error:[^}]*\}\s*,\s*\d+\s*\);\s*\n\s*\}/g;
 
-      modifiedContent = modifiedContent.replace(catchPattern2, (match, errorVar) => {
+      modifiedContent = modifiedContent.replace(catchPattern2, (_match, errorVar) => {
         fixCount++;
         return `} catch (${errorVar}) {
     console.error('Operation failed:', ${errorVar});
