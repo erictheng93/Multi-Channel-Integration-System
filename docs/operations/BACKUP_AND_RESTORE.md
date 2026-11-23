@@ -20,12 +20,15 @@ Each run produces:
 
 | Artifact | R2 prefix | Contents | UI page |
 |----------|-----------|----------|---------|
-| Full DB dump | `daily/` (+ `monthly/` on the 1st) | Entire database, schema + all tables | everything |
+| Full DB dump | `daily/` (+ `monthly/` on the first run of each UTC month) | Entire database, schema + all tables | everything |
 | Platform members | `members/` | `agents`, `teams`, `agent_teams` | Staff Management (人員管理) + Team Settings (團隊設置) |
 | Customer tags | `tags/` | `tags`, `customer_tags`, `conversation_tags` | Customer Tags (客戶標籤管理, `/tags`) |
 | Team assignments | `assignments/` | `conversations` (`assigned_team_id`), `customer_team_assignments`, `conversation_transfers` | conversation→team routing |
 
-Objects written by the workflow are `*.sql.gz`. Objects under `manual/` (in-app
+Objects written by the workflow are `<name>-<UTC date>-<run id>-<attempt>.sql.gz`.
+The run id and attempt make every key unique, so one run can never replace
+another run's backup. A date-only key did exactly that whenever GitHub's delayed
+cron put two runs on one UTC date. Objects under `manual/` (in-app
 button) and any dump taken before 2026-10-12 are plain `.sql`.
 
 The focused `members/` and `tags/` dumps are also inside the full dump; they are
@@ -109,7 +112,8 @@ bunx wrangler d1 export mcis-db --remote --table conversations --table customer_
 
 # Push a copy to R2 (compress first, matching the workflow)
 gzip -9 ./backups/mcis-db-$(date +%F).sql
-bunx wrangler r2 object put "mcis-backups/daily/mcis-db-$(date +%F).sql.gz" \
+# "-manual-<time>" keeps a second copy on the same day from replacing the first
+bunx wrangler r2 object put "mcis-backups/daily/mcis-db-$(date +%F)-manual-$(date +%H%M%S).sql.gz" \
   --file=./backups/mcis-db-$(date +%F).sql.gz --content-type=application/gzip --remote
 ```
 
@@ -120,9 +124,11 @@ bunx wrangler r2 object put "mcis-backups/daily/mcis-db-$(date +%F).sql.gz" \
 
 > ⚠️ **D1 deletion is permanent.** If `mcis-db` is gone, recreate it, then import.
 
-1. Download the chosen backup from R2:
+1. Download the chosen backup from R2. Copy the exact key from the in-app
+   Data Management backup page, the R2 dashboard, or the run log
+   (`gh run view <run id> --log | grep "Creating object"`):
    ```bash
-   bunx wrangler r2 object get "mcis-backups/daily/mcis-db-YYYY-MM-DD.sql.gz" \
+   bunx wrangler r2 object get "mcis-backups/daily/mcis-db-YYYY-MM-DD-<run id>-<attempt>.sql.gz" \
      --file=./restore.sql.gz --remote
    gunzip ./restore.sql.gz        # skip for plain .sql objects (manual/, pre-2026-10-12)
    ```

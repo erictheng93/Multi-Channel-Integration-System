@@ -5,7 +5,10 @@ name: D1 Backup
 # proven `d1 export`, then stores gzip-compressed copies in R2.
 #
 # WHAT IS BACKED UP each run (all gzip -9, key suffix .sql.gz):
-#   • Full DB dump            -> R2 mcis-backups/daily/  (and monthly/ on the 1st)
+#   • Full DB dump            -> R2 mcis-backups/daily/  (and monthly/ on the
+#                                first run of each UTC month)
+#   Keys are <name>-<UTC date>-<run id>-<attempt>.sql.gz: unique per run, so a
+#   run never replaces another run's objects.
 #   • Platform members only   -> R2 mcis-backups/members/  (agents + teams +
 #                                agent_teams = Staff Management + Team Settings)
 #   • Customer tags only      -> R2 mcis-backups/tags/  (tags + customer_tags +
@@ -69,9 +72,14 @@ jobs:
 
       - name: Export D1 — full dump + focused snapshots
         run: |
-          STAMP="$(date -u +%Y-%m-%d)"
+          # Every object key carries date + run id + attempt, so no two runs can
+          # ever write the same key. A date-only stamp is NOT enough: GitHub
+          # delays this cron by 2-7 hours, two runs regularly land on one UTC
+          # date, and R2 silently replaces an existing key (5 restore points
+          # were lost that way in 2026-11). Do not shorten this back to a date.
+          STAMP="$(date -u +%Y-%m-%d)-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
           echo "STAMP=${STAMP}" >> "$GITHUB_ENV"
-          echo "DOM=$(date -u +%d)" >> "$GITHUB_ENV"
+          echo "MONTH=$(date -u +%Y-%m)" >> "$GITHUB_ENV"
           # full database (schema + all data)
           bunx wrangler d1 export mcis-db --remote --output "mcis-db-${STAMP}.sql"
           # platform members (Staff Management + Team Settings)
@@ -103,8 +111,24 @@ jobs:
       - name: Upload full dump to R2 (daily)
         run: bunx wrangler r2 object put "mcis-backups/daily/mcis-db-${STAMP}.sql.gz" --file="mcis-db-${STAMP}.sql.gz" --content-type=application/gzip --remote
 
+      # Monthly = the first successful run of each UTC month, decided by asking R2
+      # whether this month already has a snapshot. Not "day of month == 01": a
+      # delayed cron can skip a UTC date entirely, which would skip the month.
+      # If the listing fails we upload anyway: keys are unique, so the worst
+      # case is one spare monthly copy, never a missing one.
+      - name: Check for this month's snapshot
+        run: |
+          COUNT="$(curl -fsS -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
+            "https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/r2/buckets/mcis-backups/objects?prefix=monthly/mcis-db-${MONTH}-&per_page=1" \
+            | jq '.result | length' || true)"
+          if [ "${COUNT}" != "0" ] && [ "${COUNT}" != "1" ]; then
+            echo "::warning::Could not list monthly/ (got '${COUNT}'); uploading a monthly snapshot to be safe."
+            COUNT=0
+          fi
+          echo "MONTHLY_COUNT=${COUNT}" >> "$GITHUB_ENV"
+
       - name: Upload full dump to R2 (monthly snapshot)
-        if: env.DOM == '01'
+        if: env.MONTHLY_COUNT == '0'
         run: bunx wrangler r2 object put "mcis-backups/monthly/mcis-db-${STAMP}.sql.gz" --file="mcis-db-${STAMP}.sql.gz" --content-type=application/gzip --remote
 
       - name: Upload members to R2
