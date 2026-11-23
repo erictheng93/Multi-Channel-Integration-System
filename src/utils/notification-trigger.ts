@@ -36,7 +36,7 @@ function parseUserId(userId: string | number): number {
  * 透過 Durable Objects 廣播通知到用戶的 WebSocket 連線
  * 這是實現即時通知的核心方法
  */
-async function broadcastNotificationViaWebSocket(
+export async function broadcastNotificationViaWebSocket(
   env: NotificationTriggerEnv,
   userId: string | number,
   notification: {

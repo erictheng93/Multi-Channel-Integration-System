@@ -3,7 +3,7 @@ import type { Bindings } from '@/types';
 import type { Database } from '@/db/drizzle-factory';
 import { agents } from '@/db/schema';
 import { createContextLogger } from '@/utils/logger';
-import { createNotificationService } from '@/utils/notification-trigger';
+import { broadcastNotificationViaWebSocket, createNotificationService } from '@/utils/notification-trigger';
 import type { CreateNotificationRequest } from '@modules/notifications';
 import type { LineQuotaChannelSnapshot, LineQuotaSource } from './line-quota-monitor-service';
 
@@ -75,7 +75,7 @@ export async function evaluateLineQuotaAlerts(
     } else {
       const service = createNotificationService(env);
       for (const alert of pending) {
-        if (await sendAlert(service, adminIds, alert)) {
+        if (await sendAlert(env, service, adminIds, alert)) {
           next[alert.channelKey] = alert.onSent;
         }
       }
@@ -159,6 +159,7 @@ function failureAlert(item: LineQuotaChannelSnapshot, state: ChannelAlertState):
 }
 
 async function sendAlert(
+  env: Bindings,
   service: ReturnType<typeof createNotificationService>,
   adminIds: string[],
   alert: PendingAlert
@@ -183,13 +184,16 @@ async function sendAlert(
       });
       return false;
     }
-    if (result.failed.length > 0) {
+    if (result.failed.length > 0 || result.successful.length !== adminIds.length) {
       // Marked as sent anyway: retrying would duplicate the notice for the admins who already have it.
-      log.warn('LINE quota alert reached only some admins', {
+      // No realtime push: `successful` holds only the created ids, so they can no longer be matched to admins.
+      log.warn('LINE quota alert reached only some admins; skipping the realtime push', {
         channelKey: alert.channelKey,
         successful: result.successful.length,
         failed: result.failed.length,
       });
+    } else {
+      await pushAlert(env, adminIds, result.successful, alert);
     }
     log.info('LINE quota alert sent', { channelKey: alert.channelKey, kind: alert.data.kind, admins: result.successful.length });
     return true;
@@ -200,6 +204,40 @@ async function sendAlert(
       error instanceof Error ? error : new Error(String(error))
     );
     return false;
+  }
+}
+
+/**
+ * Push the saved notices to open tabs: the frontend stops polling notifications while its WebSocket is up,
+ * so a D1-only notice would stay invisible until reload. Awaited because scheduled() has no waitUntil here.
+ * Never throws; the notices are already saved, so a failed push changes nothing.
+ */
+async function pushAlert(env: Bindings, adminIds: string[], notificationIds: string[], alert: PendingAlert): Promise<void> {
+  try {
+    const results = await Promise.allSettled(
+      adminIds.map((userId, index) =>
+        broadcastNotificationViaWebSocket(env, userId, {
+          id: notificationIds[index],
+          type: 'system',
+          title: alert.title,
+          content: alert.content,
+          priority: 'high',
+          data: alert.data,
+        })
+      )
+    );
+    const failed = results.filter((r) => r.status === 'rejected' || r.value === false).length;
+    if (failed > 0) {
+      log.warn('LINE quota alert realtime push failed for some admins (notice is saved)', {
+        channelKey: alert.channelKey,
+        failed,
+      });
+    }
+  } catch (error) {
+    log.warn('LINE quota alert realtime push failed (notice is saved)', {
+      channelKey: alert.channelKey,
+      error: error instanceof Error ? error.message : String(error),
+    });
   }
 }
 
