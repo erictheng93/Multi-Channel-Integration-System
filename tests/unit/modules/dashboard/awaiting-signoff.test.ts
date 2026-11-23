@@ -408,6 +408,21 @@ describe('migration 0077: messages before the last close never count toward a wa
     expect(awaitingOf(db, 'post')).toBe(T(4));
     expect((await healAwaitingSince(d1Of(db), NOW)).corrected).toBe(0);
   });
+
+  it('a conversation closed before the floor existed gets its close time as the floor and its marker cleared', () => {
+    const db = freshDb();
+    addConv(db, 'old');
+    addMsg(db, 'old', 'customer', T(1), { content: '問題' });
+    db.prepare("UPDATE conversations SET status = 'closed', closed_at = ?, unread_floor_at = NULL WHERE id = 'old'").run(T(2));
+    expect(awaitingOf(db, 'old')).toBe(T(1));
+
+    db.exec(readMigration(MIGRATION_PRE_CLOSE));
+
+    expect((db.prepare("SELECT unread_floor_at FROM conversations WHERE id = 'old'").get() as { unread_floor_at: string }).unread_floor_at).toBe(T(2));
+    expect(awaitingOf(db, 'old')).toBeNull();
+    addMsg(db, 'old', 'customer', T(3), { content: '又來問' }); // reopening message
+    expect(awaitingOf(db, 'old')).toBe(T(3));
+  });
 });
 
 describe('isSignOffMessage matches signOffSql (realtime list vs backend marker)', () => {
