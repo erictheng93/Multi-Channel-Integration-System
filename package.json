@@ -20,7 +20,7 @@
     "check:backend": "bun scripts/check.ts backend",
     "check:frontend": "bun scripts/check.ts frontend",
     "predeploy": "bun scripts/guard-production-command.ts predeploy -- bun scripts/check-schema-drift.ts",
-    "deploy": "bun scripts/guard-production-command.ts deploy -- wrangler deploy --minify",
+    "deploy": "bun scripts/guard-production-command.ts deploy -- bun scripts/deploy-worker.ts",
     "deploy:pages": "bun scripts/deploy-pages.ts",
     "health:check": "curl -s https://mcis-backend.daiwandist.com/api/system/health",
     "health:check:ws": "curl -s https://mcis-backend.daiwandist.com/api/websocket/health",
