@@ -30,7 +30,7 @@ vi.mock('@modules/reports/services/report-scheduler-service', () => ({
   }),
 }));
 vi.mock('@modules/broadcast/services/line-quota-monitor-service', () => ({
-  LINE_QUOTA_CRON: '0 18 * * *',
+  LINE_QUOTA_CRON: '0 0,4,8,10 * * *',
   LineQuotaMonitorService: vi.fn(function () {
     return { refresh: mocks.refresh };
   }),
@@ -40,6 +40,8 @@ import { scheduled } from '@/runtime/worker-handlers';
 
 const env = { DB: {} } as Bindings;
 const ctx = {} as ExecutionContext;
+const QUOTA = '0 0,4,8,10 * * *';
+const HEAL = '0 18 * * *';
 const event = (cron: string) => ({ cron, scheduledTime: Date.now() }) as ScheduledEvent;
 
 describe('scheduled() cron dispatch', () => {
@@ -55,16 +57,33 @@ describe('scheduled() cron dispatch', () => {
     mocks.autoClose.mockResolvedValue({ enabled: true, idleDays: 14, candidates: 0, closed: 0 });
   });
 
-  it('runs only the quota poll on the daily cron', async () => {
-    await scheduled(event('0 18 * * *'), env, ctx);
+  it('runs only the quota poll on the quota cron, without the nightly heal', async () => {
+    await scheduled(event(QUOTA), env, ctx);
 
     expect(mocks.refresh).toHaveBeenCalledWith('cron');
     expect(mocks.handleScheduledEvent).not.toHaveBeenCalled();
     expect(mocks.processScheduledReports).not.toHaveBeenCalled();
+    expect(mocks.aggregate).not.toHaveBeenCalled();
+    expect(mocks.healRollup).not.toHaveBeenCalled();
+    expect(mocks.healAwaiting).not.toHaveBeenCalled();
+    expect(mocks.healMarkers).not.toHaveBeenCalled();
+    expect(mocks.autoClose).not.toHaveBeenCalled();
   });
 
-  it('auto-closes idle conversations on the daily cron only, after the heals, and survives a failure', async () => {
-    await scheduled(event('0 18 * * *'), env, ctx);
+  it('runs only the nightly heal on the heal cron, without polling quota', async () => {
+    await scheduled(event(HEAL), env, ctx);
+
+    expect(mocks.healRollup).toHaveBeenCalledTimes(1);
+    expect(mocks.healAwaiting).toHaveBeenCalledTimes(1);
+    expect(mocks.healMarkers).toHaveBeenCalledTimes(1);
+    expect(mocks.autoClose).toHaveBeenCalledTimes(1);
+    expect(mocks.refresh).not.toHaveBeenCalled();
+    expect(mocks.handleScheduledEvent).not.toHaveBeenCalled();
+    expect(mocks.processScheduledReports).not.toHaveBeenCalled();
+  });
+
+  it('auto-closes idle conversations on the heal cron only, after the heals, and survives a failure', async () => {
+    await scheduled(event(HEAL), env, ctx);
     expect(mocks.autoClose).toHaveBeenCalledTimes(1);
     expect(mocks.healAwaiting.mock.invocationCallOrder[0]).toBeLessThan(mocks.autoClose.mock.invocationCallOrder[0]!);
 
@@ -73,7 +92,7 @@ describe('scheduled() cron dispatch', () => {
     expect(mocks.autoClose).not.toHaveBeenCalled();
 
     mocks.autoClose.mockRejectedValue(new Error('d1 down'));
-    await expect(scheduled(event('0 18 * * *'), env, ctx)).resolves.toBeUndefined();
+    await expect(scheduled(event(HEAL), env, ctx)).resolves.toBeUndefined();
   });
 
   it('keeps the 5-minute cron on reminders and reports without polling quota', async () => {
@@ -87,7 +106,7 @@ describe('scheduled() cron dispatch', () => {
   it('does not throw when the quota poll fails', async () => {
     mocks.refresh.mockRejectedValue(new Error('kv down'));
 
-    await expect(scheduled(event('0 18 * * *'), env, ctx)).resolves.toBeUndefined();
+    await expect(scheduled(event(QUOTA), env, ctx)).resolves.toBeUndefined();
   });
 
   it('5-minute cron with the broadcaster unavailable records nothing and does not throw', async () => {
@@ -112,13 +131,14 @@ describe('scheduled() cron dispatch', () => {
     expect(mocks.processScheduledReports).toHaveBeenCalledTimes(1);
   });
 
-  it('does not snapshot realtime metrics on the daily cron', async () => {
+  it('does not snapshot realtime metrics on the quota or heal cron', async () => {
     const fetch = vi.fn();
     const withBroadcaster = {
       DB: {},
       MESSAGE_BROADCASTER: { idFromName: (n: string) => n, get: () => ({ fetch }) },
     } as unknown as Bindings;
-    await scheduled(event('0 18 * * *'), withBroadcaster, ctx);
+    await scheduled(event(QUOTA), withBroadcaster, ctx);
+    await scheduled(event(HEAL), withBroadcaster, ctx);
     expect(fetch).not.toHaveBeenCalled();
   });
 
@@ -136,9 +156,9 @@ describe('scheduled() cron dispatch', () => {
     expect(mocks.processScheduledReports).toHaveBeenCalledTimes(1);
   });
 
-  it('self-heals rollup days and awaiting_since once on the daily cron, and each step fails independently', async () => {
+  it('self-heals rollup days and awaiting_since once on the heal cron, and each step fails independently', async () => {
     mocks.healRollup.mockRejectedValue(new Error('boom'));
-    await expect(scheduled(event('0 18 * * *'), env, ctx)).resolves.toBeUndefined();
+    await expect(scheduled(event(HEAL), env, ctx)).resolves.toBeUndefined();
     expect(mocks.healRollup).toHaveBeenCalledTimes(1);
     expect(mocks.healAwaiting).toHaveBeenCalledTimes(1);
     expect(mocks.healMarkers).toHaveBeenCalledTimes(1);

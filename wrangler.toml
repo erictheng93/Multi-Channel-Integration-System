@@ -50,9 +50,12 @@ enabled = true
 # Task Reminder Processing - Runs every 5 minutes to check for due reminders
 # Calls the scheduled() handler in src/index.ts
 [triggers]
-# Second entry: daily LINE quota poll (UTC 18:00 = Taipei 02:00). scheduled() dispatches on event.cron;
-# keep in sync with LINE_QUOTA_CRON in src/modules/broadcast/services/line-quota-monitor-service.ts.
-crons = ["*/5 * * * *", "0 18 * * *"]
+# scheduled() dispatches on event.cron; each entry runs exactly one kind of work:
+#   "*/5 * * * *"      reminders, reports, realtime metrics, message rollup
+#   "0 18 * * *"       nightly self-heal only (UTC 18:00 = Taipei 02:00); NIGHTLY_HEAL_CRON in src/runtime/worker-handlers.ts
+#   "0 0,4,8,10 * * *" LINE quota poll + low-quota alerts only (Taipei 08:00/12:00/16:00/18:00);
+#                      LINE_QUOTA_CRON in src/modules/broadcast/services/line-quota-monitor-service.ts
+crons = ["*/5 * * * *", "0 18 * * *", "0 0,4,8,10 * * *"]
 
 # 生產環境 D1 資料庫
 [[d1_databases]]
