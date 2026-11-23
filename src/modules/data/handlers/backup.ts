@@ -18,6 +18,17 @@ import {
 
 const backupHandler = new Hono<{ Bindings: Bindings }>();
 
+/** `<tier>/<file>` where tier is a known backup prefix and file has no path or header metacharacters. */
+export function isBackupKey(key: string): boolean {
+  const slash = key.indexOf('/');
+  const tier = key.slice(0, slash);
+  return (
+    slash > 0 &&
+    (BACKUP_PREFIXES as readonly string[]).includes(tier) &&
+    /^[A-Za-z0-9_-][A-Za-z0-9._-]*$/.test(key.slice(slash + 1))
+  );
+}
+
 // All backup operations are admin-only (a backup = the whole DB, incl. PII).
 backupHandler.use('*', jwtAuth, requireRole('admin'));
 
@@ -210,15 +221,16 @@ backupHandler.get('/download', async (c) => {
     return c.json({ success: false, error: 'Backup storage not configured' }, 500);
   }
   const key = c.req.query('key');
-  if (!key) {
-    return c.json({ success: false, error: 'key query parameter is required' }, 400);
+  if (!key || !isBackupKey(key)) {
+    return c.json({ success: false, error: 'Invalid or missing backup key' }, 400);
   }
   const object = await bucket.get(key);
   if (!object) {
     return c.json({ success: false, error: 'Backup not found' }, 404);
   }
-  const filename = key.split('/').pop() || 'backup.sql';
-  c.header('Content-Type', 'application/sql');
+  // isBackupKey guarantees a plain [A-Za-z0-9._-] filename, so it is safe in the header.
+  const filename = key.slice(key.indexOf('/') + 1);
+  c.header('Content-Type', filename.endsWith('.gz') ? 'application/gzip' : 'application/sql');
   c.header('Content-Disposition', `attachment; filename="${filename}"`);
   return c.body(object.body);
 });
