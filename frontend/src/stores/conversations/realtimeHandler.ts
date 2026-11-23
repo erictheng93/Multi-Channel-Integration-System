@@ -251,6 +251,10 @@ export function createRealtimeHandler(deps: RealtimeHandlerDeps) {
           // 讓它出現在「處理中」分頁（對話頁的 currentConversation 仍照常直接更新）
           const reopenedOutsideList = Boolean(status && status !== 'closed') &&
             !conversations.value.some(c => c.id === conversationId)
+          // Reopened while shown as closed (badge zeroed by the close) → its per-agent unread must be re-read
+          const wasClosed = (conversations.value.find(c => c.id === conversationId)
+            ?? (currentConversation.value?.id === conversationId ? currentConversation.value : undefined))?.status === 'closed'
+          const reopenedInView = Boolean(status && status !== 'closed') && wasClosed
           if (Object.keys(updates).length > 0) {
             updateConversationStatus(conversationId, updates)
             lastUpdateTime.value = new Date()
@@ -258,6 +262,8 @@ export function createRealtimeHandler(deps: RealtimeHandlerDeps) {
           }
           if (reopenedOutsideList || Object.keys(updates).length === 0) {
             pollConversations()
+          } else if (reopenedInView) {
+            void refreshUnreadCount(conversationId)
           }
         } else {
           pollConversations()
@@ -715,5 +721,21 @@ export function createRealtimeHandler(deps: RealtimeHandlerDeps) {
     }
   }
 
-  return { handleRealtimeUpdate, pollConversations }
+  /**
+   * A reopen restores unread_floor_at, so messages this agent never read count again, but close set the
+   * badge to 0 and no status payload carries a per-agent count. Re-read it from the detail endpoint.
+   */
+  const refreshUnreadCount = async (conversationId: string): Promise<void> => {
+    try {
+      const response = await conversationApi.getConversation(conversationId)
+      if (response.success && response.data && response.data.status !== 'closed') {
+        updateConversationStatus(conversationId, { unreadCount: response.data.unreadCount ?? 0 })
+        updateStatsFromConversations()
+      }
+    } catch (err) {
+      frontendLogger.warn(`[ConversationsStore] Unread refresh after reopen failed for ${conversationId}`, err)
+    }
+  }
+
+  return { handleRealtimeUpdate, pollConversations, refreshUnreadCount }
 }

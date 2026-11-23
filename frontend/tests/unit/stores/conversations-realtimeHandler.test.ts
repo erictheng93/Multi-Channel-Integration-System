@@ -15,9 +15,11 @@ import type { ConversationStats, TransferredConversationState, ReceivedConversat
 
 const mockConversationList = vi.fn()
 
+const mockGetConversation = vi.fn()
 vi.mock('@/api/conversations', () => ({
   conversationApi: {
-    list: (...args: unknown[]) => mockConversationList(...args)
+    list: (...args: unknown[]) => mockConversationList(...args),
+    getConversation: (...args: unknown[]) => mockGetConversation(...args)
   }
 }))
 
@@ -315,6 +317,22 @@ describe('createRealtimeHandler', () => {
         assignedTeamId: 0,
         assignedTeam: undefined
       })
+    })
+
+    it('re-reads the per-agent unread count when a listed closed conversation is reopened', async () => {
+      const deps = makeDeps({ conversations: ref([makeConversation({ status: 'closed', unreadCount: 0 })]) })
+      mockGetConversation.mockResolvedValue({ success: true, data: makeConversation({ status: 'active', unreadCount: 3 }) })
+      const { handleRealtimeUpdate } = createRealtimeHandler(deps)
+
+      handleRealtimeUpdate(makeWsMessage('conversation_status_changed', { status: 'active' }, 'conv-1'))
+      await vi.waitFor(() => expect(deps.updateConversationStatus).toHaveBeenCalledWith('conv-1', { unreadCount: 3 }))
+      expect(mockGetConversation).toHaveBeenCalledWith('conv-1')
+    })
+
+    it('does not re-read unread for a status change that is not a reopen', () => {
+      const deps = makeDeps({ conversations: ref([makeConversation({ status: 'active' })]) })
+      createRealtimeHandler(deps).handleRealtimeUpdate(makeWsMessage('conversation_status_changed', { status: 'assigned' }, 'conv-1'))
+      expect(mockGetConversation).not.toHaveBeenCalled()
     })
 
     it('falls back to polling when conversationId is missing', () => {
