@@ -10,7 +10,7 @@
 
 import { computed, onUnmounted, ref, watch, type Ref } from 'vue'
 import type { Conversation } from '@/types'
-import { WAITING_WINDOW_DAYS } from '@shared/api-contracts'
+import { WAITING_WINDOW_DAYS, isSignOffMessage } from '@shared/api-contracts'
 import { convertEmojiForConversationList } from '@/utils/layered-emoji-processor'
 
 // The backend overwrites a recalled message's content with this placeholder (internal display only).
@@ -33,6 +33,8 @@ export type StatusTone = 'closed' | 'active' | 'pending'
 export const UNREAD_HINT = '未讀＝你尚未開啟'
 export const WAITING_HINT = `待回覆＝近 ${WAITING_WINDOW_DAYS} 天內，客戶來訊後尚無客服回覆`
 export const STALE_HINT = `逾期＝客戶來訊後超過 ${WAITING_WINDOW_DAYS} 天仍未回覆（不計入待回覆）`
+export const SETTLED_TEXT = '結案前未回'
+export const SETTLED_HINT = '結案前的來訊沒有客服回覆；結案後不再計入待回覆'
 export const LEGEND_TEXT = `${UNREAD_HINT}；${WAITING_HINT}`
 
 /** closed -> 已結案, assigned to a team -> 進行中, otherwise 待處理 */
@@ -42,10 +44,16 @@ export function statusOf(conversation: Conversation): { text: string; tone: Stat
   return { text: '待處理', tone: 'pending' }
 }
 
-export type ReplyState = 'closed' | 'waiting' | 'stale' | 'replied' | 'open'
+export type ReplyState = 'closed' | 'waiting' | 'stale' | 'settled' | 'replied' | 'open'
+
+/** Tooltip for a state that needs explaining */
+export function replyStateHint(state: ReplyState): string | undefined {
+  if (state === 'waiting') { return WAITING_HINT }
+  return state === 'settled' ? SETTLED_HINT : undefined
+}
 
 /**
- * The single status shown in the list: one value per row (已結案 / 待回覆 / 逾期 / 已回覆), so the row never
+ * The single status shown in the list: one value per row (已結案 / 待回覆 / 逾期 / 結案前未回 / 已回覆), so the row never
  * carries a reply column and a separate status column that can disagree. `open` = nothing to say yet.
  */
 export function replyStateOf(conversation: Conversation, nowMs: number): { state: ReplyState; text: string } {
@@ -53,6 +61,7 @@ export function replyStateOf(conversation: Conversation, nowMs: number): { state
   const kind = awaitingKind(conversation, nowMs)
   if (kind === 'waiting') { return { state: 'waiting', text: '待回覆' } }
   if (kind === 'stale') { return { state: 'stale', text: staleWaitText(conversation.awaitingSince, nowMs) || '逾期' } }
+  if (isSettledUnanswered(conversation, nowMs)) { return { state: 'settled', text: SETTLED_TEXT } }
   if (isReplied(conversation, nowMs)) { return { state: 'replied', text: '已回覆' } }
   return { state: 'open', text: statusOf(conversation).text }
 }
@@ -94,9 +103,24 @@ export function isAwaitingReply(conversation: Conversation, nowMs: number = Date
   return awaitingKind(conversation, nowMs) === 'waiting'
 }
 
+/**
+ * 結案前未回: reopened, and the customer's last message is one a close settled without a reply (it is at or
+ * before unreadFloorAt, so it no longer counts as a wait). Nobody answered it, so it must not read 已回覆.
+ * A thanks or sticker before the close is a sign-off, not an unanswered message.
+ */
+export function isSettledUnanswered(conversation: Conversation, nowMs: number = Date.now()): boolean {
+  if (isClosed(conversation) || awaitingKind(conversation, nowMs) !== null) { return false }
+  const last = conversation.lastMessage
+  const floor = conversation.unreadFloorAt ? Date.parse(conversation.unreadFloorAt) : Number.NaN
+  if (last?.senderType !== 'customer' || Number.isNaN(floor)) { return false }
+  const at = new Date(last.timestamp ?? last.createdAt ?? Number.NaN).getTime()
+  return at <= floor && !isSignOffMessage(last.messageType, last.content)
+}
+
 /** 已回覆: open, not waiting, and the customer has been answered (a sign-off after the reply still counts) */
 export function isReplied(conversation: Conversation, nowMs: number = Date.now()): boolean {
   if (isClosed(conversation) || awaitingKind(conversation, nowMs) !== null) { return false }
+  if (isSettledUnanswered(conversation, nowMs)) { return false }
   const sender = conversation.lastMessage?.senderType
   return sender === 'agent' || (conversation.awaitingSince === null && sender === 'customer')
 }
