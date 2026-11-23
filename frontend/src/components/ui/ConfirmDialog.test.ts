@@ -89,6 +89,39 @@ describe('ConfirmDialog focus management', () => {
     expect(document.activeElement).toBe(opener)
   })
 
+  it('lets only the topmost of two stacked dialogs handle Escape', async () => {
+    const first = await mountDialog()
+    const second = mount(ConfirmDialog, { props: { title: 'Second?' }, attachTo: document.body })
+    await nextTick()
+    await nextTick()
+
+    press('Escape')
+    expect(second.emitted('cancel')).toHaveLength(1)
+    expect(first.emitted('cancel')).toBeUndefined()
+
+    second.unmount()
+    press('Escape')
+    expect(first.emitted('cancel')).toHaveLength(1)
+  })
+
+  it('returns focus to where the launcher left it, not the element focused at mount', async () => {
+    // A menu item has focus at mount; the menu then closes and focuses its trigger before the dialog takes focus
+    const trigger = document.createElement('button')
+    document.body.appendChild(trigger)
+    const item = document.createElement('button')
+    document.body.appendChild(item)
+    item.focus()
+    wrapper = mount(ConfirmDialog, { props: { title: 'Delete team?', type: 'danger' }, attachTo: document.body })
+    item.remove()
+    trigger.focus()
+    await nextTick()
+    await nextTick()
+
+    buttons()[0]!.click()
+    await nextTick()
+    expect(document.activeElement).toBe(trigger)
+  })
+
   it('exposes dialog semantics wired to the title and message', async () => {
     await mountDialog()
     const el = dialog()

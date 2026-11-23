@@ -76,8 +76,27 @@
   </Teleport>
 </template>
 
+<script lang="ts">
+// Open dialogs across all instances (useConfirmDialog mounts each in its own app): only the last one
+// opened handles Escape and the Tab trap, so a stacked confirmation does not cancel or steal from the other
+const openDialogs: symbol[] = []
+
+export interface ConfirmDialogProps {
+  title: string
+  message?: string
+  type?: 'default' | 'warning' | 'danger' | 'info'
+  confirmText?: string
+  cancelText?: string
+  loading?: boolean
+  closeOnOverlay?: boolean
+  onConfirm?: () => void | Promise<void>
+  onCancel?: () => void
+}
+</script>
+
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted, nextTick, useId } from 'vue'
+import HamsterLoader from './HamsterLoader.vue'
 
 const props = withDefaults(defineProps<ConfirmDialogProps>(), {
   message: undefined,
@@ -96,7 +115,6 @@ const emit = defineEmits<{
   close: []
 }>()
 
-import HamsterLoader from './HamsterLoader.vue'
 
 // Refs
 const overlayRef = ref<HTMLElement>()
@@ -153,17 +171,6 @@ const InfoIcon = {
   `
 }
 
-export interface ConfirmDialogProps {
-  title: string
-  message?: string
-  type?: 'default' | 'warning' | 'danger' | 'info'
-  confirmText?: string
-  cancelText?: string
-  loading?: boolean
-  closeOnOverlay?: boolean
-  onConfirm?: () => void | Promise<void>
-  onCancel?: () => void
-}
 
 // 狀態
 const visible = ref(true)
@@ -191,20 +198,33 @@ const restoreFocus = () => {
   }
 }
 
+const instanceKey = Symbol('confirm-dialog')
+const leaveStack = () => {
+  const index = openDialogs.indexOf(instanceKey)
+  if (index !== -1) { openDialogs.splice(index, 1) }
+}
+
 const close = () => {
   visible.value = false
+  leaveStack()
   restoreFocus()
   emit('close')
 }
 
 // Destructive dialogs default to the safe action (cancel); others to confirm
 const focusInitial = () => {
+  // Take the return target now, not at mount: a launching menu closes after mount and hands focus to
+  // its trigger, so the element focused at mount (a menu item) is gone by the time the dialog closes
+  const active = document.activeElement
+  if (active instanceof HTMLElement && active !== document.body && !containerRef.value?.contains(active)) {
+    previouslyFocused = active
+  }
   const preferred = props.type === 'danger' || props.type === 'warning' ? cancelRef.value : confirmRef.value
   ;(preferred ?? containerRef.value)?.focus()
 }
 
 const handleKeydown = (event: KeyboardEvent) => {
-  if (!visible.value) {return}
+  if (!visible.value || openDialogs[openDialogs.length - 1] !== instanceKey) {return}
 
   if (event.key === 'Escape') {
     event.preventDefault()
@@ -289,6 +309,7 @@ watch(() => visible.value, (isVisible) => {
 
 onMounted(() => {
   previouslyFocused = document.activeElement instanceof HTMLElement ? document.activeElement : null
+  openDialogs.push(instanceKey)
   document.addEventListener('keydown', handleKeydown)
   void nextTick(focusInitial)
   // 如果初始就是可见的，添加监听
@@ -302,6 +323,7 @@ onMounted(() => {
 onUnmounted(() => {
   document.removeEventListener('click', handleClickOutside)
   document.removeEventListener('keydown', handleKeydown)
+  leaveStack()
   restoreFocus()
 })
 
