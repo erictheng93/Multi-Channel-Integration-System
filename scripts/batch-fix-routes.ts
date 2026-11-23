@@ -3,7 +3,6 @@
 // 自動將模組轉換為使用智能路由註冊器
 
 import { readFileSync, writeFileSync, existsSync } from 'fs';
-import { join } from 'path';
 
 /**
  * 要修復的模組列表（從分析結果得出）
@@ -79,7 +78,7 @@ function extractRoutesFromFile(filePath: string): RouteExtraction[] {
   lines.forEach((line, index) => {
     const match = line.match(routeRegex);
     if (match) {
-      const [, indent, varName, method, path, handler] = match;
+      const [, , varName, method, path, handler] = match;
 
       // 跳過註釋行
       if (line.trim().startsWith('//')) return;

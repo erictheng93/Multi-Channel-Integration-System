@@ -115,7 +115,6 @@ interface BenchmarkReport {
 class PerformanceBenchmarkSuite extends EventEmitter {
   private config: BenchmarkConfig;
   private results: BenchmarkResult[] = [];
-  private systemBaseline: { memory: NodeJS.MemoryUsage; cpu: NodeJS.CpuUsage } | null = null;
 
   constructor(config: Partial<BenchmarkConfig> = {}) {
     super();
@@ -161,11 +160,6 @@ class PerformanceBenchmarkSuite extends EventEmitter {
 
     // Wait for system to stabilize
     await this.sleep(2000);
-
-    this.systemBaseline = {
-      memory: process.memoryUsage(),
-      cpu: process.cpuUsage()
-    };
 
     console.log(' Baseline established');
   }
@@ -496,6 +490,7 @@ class PerformanceBenchmarkSuite extends EventEmitter {
       heapUsed: Math.max(peak.heapUsed, snapshot.heapUsed),
       heapTotal: Math.max(peak.heapTotal, snapshot.heapTotal),
       external: Math.max(peak.external, snapshot.external),
+      arrayBuffers: Math.max(peak.arrayBuffers, snapshot.arrayBuffers),
       rss: Math.max(peak.rss, snapshot.rss)
     }), baselineMemory);
 
@@ -763,7 +758,6 @@ class PerformanceBenchmarkSuite extends EventEmitter {
 
   private async benchmarkDistributedLock(): Promise<any> {
     const roomId = 'benchmark_room';
-    const resource = `resource_${randomUUID().substring(0, 8)}`;
 
     // Acquire lock
     const lockResponse = await this.benchmarkHttpRequest(

@@ -343,7 +343,7 @@ class DatabaseSyncTool {
   /**
    * 複製缺失記錄
    */
-  private async copyMissingRecords(tableName: string, skipCount: number): Promise<void> {
+  private async copyMissingRecords(tableName: string, _skipCount: number): Promise<void> {
     // 這是一個簡化的實現，實際需要根據表結構定制
     console.log(` 複製 ${tableName} 缺失記錄...`);
 

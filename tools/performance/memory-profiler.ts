@@ -7,7 +7,6 @@
  * Monitors memory usage patterns, identifies leaks, and provides optimization recommendations
  */
 
-import { performance } from 'perf_hooks';
 import fetch from 'node-fetch';
 import WebSocket from 'ws';
 
@@ -115,7 +114,6 @@ class MemoryProfiler {
   private snapshots: MemorySnapshot[] = [];
   private activeConnections: Map<string, WebSocket> = new Map();
   private isRunning: boolean = false;
-  private startTime: number = 0;
   private baselineSnapshot: MemorySnapshot | null = null;
   private intervalId: NodeJS.Timeout | null = null;
 
@@ -127,7 +125,6 @@ class MemoryProfiler {
     console.log(' Starting Memory Profiling Session');
     console.log('Configuration:', JSON.stringify(this.config, null, 2));
 
-    this.startTime = performance.now();
     this.isRunning = true;
 
     // Create output directory
@@ -557,7 +554,7 @@ class MemoryProfiler {
     console.log(' Cleaning up profiling session');
 
     // Close any remaining connections
-    for (const [id, ws] of this.activeConnections) {
+    for (const ws of this.activeConnections.values()) {
       try {
         ws.close();
       } catch (error) {

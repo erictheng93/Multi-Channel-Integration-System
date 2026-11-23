@@ -7,11 +7,6 @@
  * npx tsx scripts/generate-liff-qr-for-all-teams.ts
  */
 
-import { createDbClient } from '../src/db/drizzle-factory';
-import { teams, teamLiffQrCodes } from '../src/db/schema';
-import { eq, isNull } from 'drizzle-orm';
-import { generateTeamQRCode } from '../src/services/liff-qrcode-service';
-
 // 模拟环境配置（从环境变量读取）
 const envConfig = {
   LINE_LIFF_ID: process.env.LINE_LIFF_ID || '',

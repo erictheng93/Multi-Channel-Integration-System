@@ -471,7 +471,7 @@ async function testRoute(baseUrl: string, route: RouteTest, authToken?: string):
 }> {
   try {
     const url = `${baseUrl}${route.path}`;
-    const headers: HeadersInit = {
+    const headers: Record<string, string> = {
       'Content-Type': 'application/json'
     };
 
