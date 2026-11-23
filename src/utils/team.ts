@@ -4,7 +4,7 @@ import { createDbClient } from '../db/drizzle-factory';
 import { teams, agents, agentTeams, conversations, messages, conversationTransfers, customers, customerNameSql } from '../db/schema';
 import { eq, and, count, inArray, sql, desc } from 'drizzle-orm';
 import type { NewTeam, NewConversationTransfer } from '../db/schema';
-import { nowISO, nowMs } from '@/utils/timestamp'
+import { nowISO } from '@/utils/timestamp'
 
 interface ResponseTimeRow {
   avg_response_time: number | null;
@@ -217,7 +217,7 @@ export async function generateTeamQRCode(
   baseUrl: string
 ): Promise<string> {
   // 生成唯一的 QR Code 標識符
-  const qrCodeId = `team_${teamId}_${nowMs()}_${Math.random().toString(36).substring(2, 11)}`;
+  const qrCodeId = `team_${teamId}_${crypto.randomUUID()}`;
   
   // 構建 QR Code URL（用戶掃描後會被導向這個 URL）
   const qrCodeUrl = `${baseUrl}/join?team=${qrCodeId}`;

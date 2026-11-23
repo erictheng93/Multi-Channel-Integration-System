@@ -147,7 +147,7 @@ export class KVService {
 
   // Distributed locks
   async acquireLock(lockKey: string, ttl: number = 30): Promise<string | null> {
-    const lockId = `${nowMs()}-${Math.random()}`;
+    const lockId = crypto.randomUUID();
     const lockData = { lockId, acquiredAt: nowISO() };
     
     // Try to acquire lock
