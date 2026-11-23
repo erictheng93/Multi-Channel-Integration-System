@@ -100,6 +100,7 @@ jobs:
         with:
           path: |
             node_modules/.cache/tsc-backend.tsbuildinfo
+            node_modules/.cache/tsc-scripts.tsbuildinfo
             frontend/node_modules/.cache/vue-tsc.tsbuildinfo
             frontend/node_modules/.cache/eslint/
           key: lint-${{ runner.os }}-${{ hashFiles('bun.lock', 'frontend/bun.lock') }}-${{ github.sha }}
@@ -107,6 +108,9 @@ jobs:
 
       - name: Backend TypeScript (tsc)
         run: bunx tsc --noEmit
+
+      - name: Scripts TypeScript (scripts/, tools/, database/)
+        run: bun run type-check:scripts
 
       - name: Frontend TypeScript (vue-tsc)
         run: cd frontend && bunx vue-tsc --noEmit
