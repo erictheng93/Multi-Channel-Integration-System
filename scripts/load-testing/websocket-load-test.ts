@@ -674,4 +674,4 @@ const config: Partial<LoadTestConfig> = {};
 
   runTest();
 
-export { WebSocketLoadTester, LoadTestConfig, TestResults };
+export { WebSocketLoadTester, type LoadTestConfig, type TestResults };

@@ -253,7 +253,7 @@ class MemoryProfiler {
           connections.push(ws);
           await this.waitForConnection(ws);
         } catch (error) {
-          console.warn(` Connection ${i} failed:`, error.message);
+          console.warn(` Connection ${i} failed:`, error instanceof Error ? error.message : String(error));
         }
       }
 
@@ -424,7 +424,7 @@ class MemoryProfiler {
           content: 'Memory profiling HTTP message',
           messageType: 'text'
         }),
-        timeout: 5000
+        signal: AbortSignal.timeout(5000)
       });
     } catch (error) {
       // Ignore individual message errors
@@ -438,7 +438,7 @@ class MemoryProfiler {
         headers: {
           'Authorization': this.config.authToken ? `Bearer ${this.config.authToken}` : ''
         },
-        timeout: 5000
+        signal: AbortSignal.timeout(5000)
       });
     } catch (error) {
       // Ignore individual access errors
@@ -459,11 +459,11 @@ class MemoryProfiler {
           resource,
           options: { ttl: 5000 }
         }),
-        timeout: 5000
+        signal: AbortSignal.timeout(5000)
       });
 
       if (lockResponse.ok) {
-        const data = await lockResponse.json();
+        const data = (await lockResponse.json()) as { lockId?: string };
         if (data.lockId) {
           // Hold lock briefly
           await this.sleep(100);
@@ -479,7 +479,7 @@ class MemoryProfiler {
               action: 'release',
               options: { lockId: data.lockId }
             }),
-            timeout: 5000
+            signal: AbortSignal.timeout(5000)
           });
         }
       }
@@ -832,4 +832,4 @@ async function runMemoryProfiler() {
 
 runMemoryProfiler();
 
-export { MemoryProfiler, MemoryProfilerConfig, MemoryProfileReport };
+export { MemoryProfiler, type MemoryProfilerConfig, type MemoryProfileReport };

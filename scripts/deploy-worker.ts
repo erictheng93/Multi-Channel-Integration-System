@@ -32,3 +32,5 @@ const result = Bun.spawnSync(['wrangler', 'deploy', '--minify', '--message', mes
 })
 
 process.exit(result.exitCode ?? 1)
+
+export {};

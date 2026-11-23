@@ -44,3 +44,4 @@ try {
 } catch (error) {
   console.log(' drizzle.config.ts 載入失敗:', error);
 }
+export {};

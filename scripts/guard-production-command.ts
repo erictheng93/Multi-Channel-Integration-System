@@ -33,3 +33,5 @@ const result = Bun.spawnSync(command, {
 })
 
 process.exit(result.exitCode ?? 1)
+
+export {};

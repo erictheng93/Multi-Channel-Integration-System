@@ -171,7 +171,7 @@ class DatabaseSyncTool {
         return;
       }
 
-      throw new Error(`${env} 數據庫連接失敗: ${error.message}`);
+      throw new Error(`${env} 數據庫連接失敗: ${getErrorMessage(error)}`);
     }
   }
 

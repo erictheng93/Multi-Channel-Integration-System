@@ -600,7 +600,7 @@ class PerformanceBenchmarkSuite extends EventEmitter {
       method,
       headers,
       body,
-      timeout: this.config.timeoutMs
+      signal: AbortSignal.timeout(this.config.timeoutMs)
     });
 
     if (!response.ok) {
@@ -929,4 +929,4 @@ async function runBenchmarks() {
 
 runBenchmarks();
 
-export { PerformanceBenchmarkSuite, BenchmarkConfig, BenchmarkReport };
+export { PerformanceBenchmarkSuite, type BenchmarkConfig, type BenchmarkReport };

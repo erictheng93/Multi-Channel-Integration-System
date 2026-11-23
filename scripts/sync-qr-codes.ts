@@ -17,20 +17,8 @@
  * - 詳細的錯誤處理和日誌記錄
  */
 
-import { drizzle } from 'drizzle-orm/d1';
-import { eq, and, desc, isNull } from 'drizzle-orm';
-import { teams, qrCodes } from '../src/db/schema';
-
-// 統計資訊介面
-interface SyncStats {
-  totalTeams: number;
-  teamsWithQR: number;
-  teamsWithoutQR: number;
-  successfulSyncs: number;
-  failedSyncs: number;
-  alreadySynced: number;
-  errors: Array<{ teamId: number; teamName: string; error: string }>;
-}
+// Note: the real implementation (drizzle + schema imports, SyncStats) is kept in the
+// commented block inside syncQRCodes below until it is ported to a Worker endpoint.
 
 /**
  * 主要同步函數
@@ -207,13 +195,13 @@ async function validateSync() {
 }
 
 // 執行腳本
-if (require.main === module) {
+if (import.meta.main) {
   const dryRun = process.argv.includes('--dry-run');
 
   syncQRCodes(dryRun)
-    .then(() => {
+    .then(async () => {
       if (!dryRun) {
-        return validateSync();
+        await validateSync();
       }
     })
     .catch((error) => {
