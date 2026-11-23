@@ -1,0 +1,15 @@
+{
+  // Type-check for the Bun/Node tooling outside the Worker bundle:
+  // scripts/, tools/, database/. Run with `bun run type-check:scripts`.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "tsBuildInfoFile": "./node_modules/.cache/tsc-scripts.tsbuildinfo",
+    "lib": ["ES2022"],
+    "types": ["bun"]
+  },
+  "include": [
+    "scripts/**/*",
+    "tools/**/*",
+    "database/**/*"
+  ]
+}
