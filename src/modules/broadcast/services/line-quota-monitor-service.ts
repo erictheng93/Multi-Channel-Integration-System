@@ -10,13 +10,16 @@ import { ChannelCredentialService } from '@modules/integrations/services/channel
 
 const log = createContextLogger('LineQuotaMonitor');
 
-/** Daily poll, UTC 18:00 (Taipei 02:00). Must match the extra entry in wrangler.toml [triggers].crons. */
-export const LINE_QUOTA_CRON = '0 18 * * *';
+/**
+ * Quota poll at Taipei 08:00 / 12:00 / 16:00 / 18:00 (UTC 00/04/08/10). Quota work only: no nightly heal,
+ * no 5-minute work. Must match an entry in wrangler.toml [triggers].crons.
+ */
+export const LINE_QUOTA_CRON = '0 0,4,8,10 * * *';
 
 const SNAPSHOT_KV_KEY = 'line-quota:snapshot';
 /** Manual refreshes inside this window return the stored snapshot instead of hitting LINE again. */
 const MANUAL_REFRESH_THROTTLE_MS = 30_000;
-/** Safety net only: the daily cron overwrites the key long before this. */
+/** Safety net only: the quota cron (4 runs a day) overwrites the key long before this. */
 const SNAPSHOT_TTL_SECONDS = 7 * 24 * 60 * 60;
 const SYSTEM_DEFAULT_LABEL = '系統預設';
 

@@ -20,6 +20,9 @@ import { createContextLogger } from '../utils/logger';
 
 const log = createContextLogger('WorkerRuntime');
 
+/** Nightly self-heal only, UTC 18:00 (Taipei 02:00). Must match an entry in wrangler.toml [triggers].crons. */
+export const NIGHTLY_HEAL_CRON = '0 18 * * *';
+
 export async function queue(
   batch: MessageBatch<LineQueuePayload>,
   env: Bindings
@@ -35,7 +38,7 @@ export async function scheduled(
 ): Promise<void> {
   log.info('Scheduled event triggered', { cron: event.cron, scheduledTime: event.scheduledTime });
 
-  // The daily quota cron must not also run the 5-minute reminder/report work (it would run twice).
+  // The quota and heal crons must not also run the 5-minute reminder/report work (it would run twice).
   if (event.cron === LINE_QUOTA_CRON) {
     try {
       const snapshot = await new LineQuotaMonitorService(createDbClient(env.DB), env).refresh('cron');
@@ -43,8 +46,12 @@ export async function scheduled(
     } catch (error) {
       log.error('LINE quota poll failed', {}, error instanceof Error ? error : new Error(String(error)));
     }
+    return;
+  }
+
+  if (event.cron === NIGHTLY_HEAL_CRON) {
     // Nightly (02:00 Taipei) self-heal of the derived dashboard data. No Durable Object
-    // alarm: this is the existing daily cron, runs once, and each step is bounded.
+    // alarm: a cron trigger that runs once a night, and each step is bounded.
     await runNightlyHeal(env);
     return;
   }
