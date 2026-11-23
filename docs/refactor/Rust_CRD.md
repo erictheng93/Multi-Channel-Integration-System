@@ -238,14 +238,6 @@ This area lets staff users sign in with an email and password, receive short-liv
 - Success Output (HTTP 200): the array of issued credentials, the count, `expiresIn`, the issuing administrator's identifier, and a warning that these are development-only.
 - Error Conditions: non-admin → HTTP 403. Production environment → HTTP 403. Empty or non-array `users` → HTTP 400. More than 10 entries → HTTP 400.
 
-#### Inspect Credential — POST /phase2-auth/verify-token
-- Invocation: unauthenticated client request.
-- Inputs (JSON body): `token` (string, required).
-- Preconditions & Authorization: none.
-- Behavior: verifies the supplied credential and reports its status. Does not consult revocation state.
-- Success Output (HTTP 200): when valid, `valid: true` plus a sanitized payload view (`userId`, `displayName`, `role`, primary team, system-credential flag), an absolute expiry, remaining seconds, and an "expiring soon" flag (remaining under one hour). When invalid, HTTP 200 with `valid: false` and an error description.
-- Error Conditions: missing `token` → HTTP 400. An invalid credential does not raise an HTTP error — it returns `valid: false`.
-
 #### Renew Service Credential — POST /phase2-auth/refresh-token
 - Invocation: unauthenticated client request.
 - Inputs (JSON body): `token` (string, required).
