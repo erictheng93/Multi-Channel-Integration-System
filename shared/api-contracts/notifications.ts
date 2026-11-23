@@ -17,6 +17,19 @@ export type NotificationType =
   | 'customer_followed'
   | 'new_conversation'
 
+/**
+ * Types that are shown in the notification list and pushed in realtime but never
+ * counted toward the unread badge: nobody acts on them, so they only inflated it.
+ * Single source for backend counts and the frontend store.
+ */
+export const INFORMATIONAL_NOTIFICATION_TYPES: readonly NotificationType[] = [
+  'customer_followed',
+  'new_conversation'
+]
+
+export const isInformationalNotificationType = (type: NotificationType): boolean =>
+  INFORMATIONAL_NOTIFICATION_TYPES.includes(type)
+
 export type NotificationPriority = 'low' | 'normal' | 'high' | 'urgent'
 
 export interface Notification {
