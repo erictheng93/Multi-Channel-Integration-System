@@ -17,6 +17,11 @@
             ref="containerRef"
             class="dialog-container"
             :class="dialogClasses"
+            role="alertdialog"
+            aria-modal="true"
+            :aria-labelledby="titleId"
+            :aria-describedby="message ? messageId : undefined"
+            tabindex="-1"
           >
             <!-- Icon -->
             <div class="dialog-icon">
@@ -25,11 +30,15 @@
             
             <!-- Content -->
             <div class="dialog-content">
-              <h3 class="dialog-title">
+              <h3
+                :id="titleId"
+                class="dialog-title"
+              >
                 {{ title }}
               </h3>
               <p
                 v-if="message"
+                :id="messageId"
                 class="dialog-message"
               >
                 {{ message }}
@@ -38,14 +47,16 @@
             
             <!-- Actions -->
             <div class="dialog-actions">
-              <button 
+              <button
+                ref="cancelRef"
                 class="dialog-btn dialog-btn-secondary"
                 :disabled="loading"
                 @click="handleCancel"
               >
                 {{ cancelText }}
               </button>
-              <button 
+              <button
+                ref="confirmRef"
                 class="dialog-btn dialog-btn-primary"
                 :class="{ [`dialog-btn-${type}`]: type !== 'default' }"
                 :disabled="loading"
@@ -66,7 +77,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted, nextTick, useId } from 'vue'
 
 const props = withDefaults(defineProps<ConfirmDialogProps>(), {
   message: undefined,
@@ -90,6 +101,16 @@ import HamsterLoader from './HamsterLoader.vue'
 // Refs
 const overlayRef = ref<HTMLElement>()
 const containerRef = ref<HTMLElement>()
+const cancelRef = ref<HTMLButtonElement>()
+const confirmRef = ref<HTMLButtonElement>()
+
+// useId (not crypto.randomUUID, which is undefined on non-secure origins)
+const titleId = useId()
+const messageId = useId()
+
+// Focus management: remember who had focus, move it in, trap Tab, restore on close
+let previouslyFocused: HTMLElement | null = null
+const FOCUSABLE = 'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled])'
 
 // Icons
 const QuestionIcon = {
@@ -162,9 +183,56 @@ const iconComponent = computed(() => {
 })
 
 // 方法
+const restoreFocus = () => {
+  const target = previouslyFocused
+  previouslyFocused = null
+  if (target && target.isConnected) {
+    target.focus()
+  }
+}
+
 const close = () => {
   visible.value = false
+  restoreFocus()
   emit('close')
+}
+
+// Destructive dialogs default to the safe action (cancel); others to confirm
+const focusInitial = () => {
+  const preferred = props.type === 'danger' || props.type === 'warning' ? cancelRef.value : confirmRef.value
+  ;(preferred ?? containerRef.value)?.focus()
+}
+
+const handleKeydown = (event: KeyboardEvent) => {
+  if (!visible.value) {return}
+
+  if (event.key === 'Escape') {
+    event.preventDefault()
+    handleCancel()
+    return
+  }
+
+  if (event.key !== 'Tab' || !containerRef.value) {return}
+
+  const focusables = Array.from(containerRef.value.querySelectorAll<HTMLElement>(FOCUSABLE))
+  const first = focusables[0]
+  const last = focusables[focusables.length - 1]
+  if (!first || !last) {
+    // Nothing focusable (both buttons disabled while loading): keep focus on the container
+    event.preventDefault()
+    containerRef.value.focus()
+    return
+  }
+
+  const active = document.activeElement
+  const inside = active instanceof HTMLElement && containerRef.value.contains(active)
+  if (event.shiftKey && (!inside || active === first || active === containerRef.value)) {
+    event.preventDefault()
+    last.focus()
+  } else if (!event.shiftKey && (!inside || active === last)) {
+    event.preventDefault()
+    first.focus()
+  }
 }
 
 // 新方案: 精确的外部点击检测
@@ -220,6 +288,9 @@ watch(() => visible.value, (isVisible) => {
 })
 
 onMounted(() => {
+  previouslyFocused = document.activeElement instanceof HTMLElement ? document.activeElement : null
+  document.addEventListener('keydown', handleKeydown)
+  void nextTick(focusInitial)
   // 如果初始就是可见的，添加监听
   if (visible.value) {
     setTimeout(() => {
@@ -230,6 +301,8 @@ onMounted(() => {
 
 onUnmounted(() => {
   document.removeEventListener('click', handleClickOutside)
+  document.removeEventListener('keydown', handleKeydown)
+  restoreFocus()
 })
 
 // Template refs (exposed to satisfy TypeScript noUnusedLocals)
