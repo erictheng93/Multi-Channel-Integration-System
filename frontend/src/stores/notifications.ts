@@ -12,6 +12,7 @@ import {
   type NotificationListParams,
   type CreateNotificationRequest
 } from '@/api/notifications'
+import { isInformationalNotificationType } from '@shared/api-contracts'
 import { translateError } from '@/utils/error-handler'
 import { nowISO } from '@/utils/timestamp'
 import { createLogger } from '@/utils/logger'
@@ -215,7 +216,9 @@ export const useNotificationsStore = defineStore('notifications', () => {
     if (notification && !notification.isRead) {
       notification.isRead = true
       notification.readAt = nowISO()
-      unreadCount.value = Math.max(0, unreadCount.value - 1)
+      if (!isInformationalNotificationType(notification.type)) {
+        unreadCount.value = Math.max(0, unreadCount.value - 1)
+      }
     }
 
     try {
@@ -225,7 +228,9 @@ export const useNotificationsStore = defineStore('notifications', () => {
         if (notification) {
           notification.isRead = false
           notification.readAt = undefined
-          unreadCount.value++
+          if (!isInformationalNotificationType(notification.type)) {
+            unreadCount.value++
+          }
         }
         handleError(response.error, '標記已讀失敗')
         return false
@@ -237,7 +242,9 @@ export const useNotificationsStore = defineStore('notifications', () => {
       if (notification) {
         notification.isRead = false
         notification.readAt = undefined
-        unreadCount.value++
+        if (!isInformationalNotificationType(notification.type)) {
+          unreadCount.value++
+        }
       }
       handleError(err, '標記已讀失敗')
       return false
@@ -259,7 +266,7 @@ export const useNotificationsStore = defineStore('notifications', () => {
       }
     })
     unreadCount.value = type
-      ? notifications.value.filter(n => !n.isRead).length
+      ? notifications.value.filter(n => !n.isRead && !isInformationalNotificationType(n.type)).length
       : 0
 
     try {
@@ -291,7 +298,7 @@ export const useNotificationsStore = defineStore('notifications', () => {
 
     // 樂觀更新
     notifications.value.splice(index, 1)
-    if (notification && !notification.isRead) {
+    if (notification && !notification.isRead && !isInformationalNotificationType(notification.type)) {
       unreadCount.value = Math.max(0, unreadCount.value - 1)
     }
 
@@ -301,7 +308,7 @@ export const useNotificationsStore = defineStore('notifications', () => {
         // 回滾
         if (notification) {
           notifications.value.splice(index, 0, notification)
-          if (!notification.isRead) {
+          if (!notification.isRead && !isInformationalNotificationType(notification.type)) {
             unreadCount.value++
           }
         }
@@ -314,7 +321,7 @@ export const useNotificationsStore = defineStore('notifications', () => {
       // 回滾
       if (notification) {
         notifications.value.splice(index, 0, notification)
-        if (!notification.isRead) {
+        if (!notification.isRead && !isInformationalNotificationType(notification.type)) {
           unreadCount.value++
         }
       }
@@ -355,7 +362,7 @@ export const useNotificationsStore = defineStore('notifications', () => {
         recentNotifications.value.pop()
       }
 
-      if (!notification.isRead) {
+      if (!notification.isRead && !isInformationalNotificationType(notification.type)) {
         unreadCount.value++
       }
 

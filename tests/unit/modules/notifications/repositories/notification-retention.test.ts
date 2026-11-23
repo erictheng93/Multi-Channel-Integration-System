@@ -11,7 +11,7 @@ function setup() {
     priority TEXT, is_read INTEGER DEFAULT 0, read_at TEXT, expires_at TEXT, created_at TEXT, updated_at TEXT)`);
   const add = (id: string, createdDaysAgo: number, expiresInDays: number) =>
     db.prepare(`INSERT INTO notifications (id, user_id, type, title, content, created_at, expires_at)
-      VALUES (?, 'u1', 'new_conversation', 't', 'c', datetime('now', ?),
+      VALUES (?, 'u1', 'new_message', 't', 'c', datetime('now', ?),
               strftime('%Y-%m-%dT%H:%M:%fZ', 'now', ?))`)
       .run(id, `-${createdDaysAgo} days`, `${expiresInDays} days`);
   const ids = () => (db.prepare('SELECT id FROM notifications ORDER BY id').all() as { id: string }[]).map(r => r.id);

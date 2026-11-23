@@ -140,7 +140,13 @@ export class NotificationService {
 
     const stats: NotificationStats = {
       total: Number(rawStats?.total) || 0,
-      unread: Number(rawStats?.unread) || 0,
+      // Badge number: informational types are listed but not counted.
+      unread: Math.max(
+        0,
+        (Number(rawStats?.unread) || 0)
+          - (Number(rawStats?.customer_followed_unread) || 0)
+          - (Number(rawStats?.new_conversation_unread) || 0)
+      ),
       // Every bucket below is now backed by a real SUM. Seven of the eleven
       // types and both of the low/normal priorities used to be hardcoded to
       // zero - including customer_followed and new_conversation, which are the

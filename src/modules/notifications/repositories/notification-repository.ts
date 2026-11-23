@@ -7,7 +7,8 @@ import { taipeiDayStartMs, taipeiWeekStartMs, DAY_MS } from '@/utils/taipei-time
 
 const log = createContextLogger('NotificationRepository')
 
-import { sql, eq, and, or, desc, count, gte, lte } from 'drizzle-orm';
+import { sql, eq, and, or, desc, count, gte, lte, notInArray } from 'drizzle-orm';
+import { INFORMATIONAL_NOTIFICATION_TYPES } from '@shared/api-contracts';
 import { notifications } from '@/db/schema';
 import type { DbCompat } from '@/types/db-compat';
 import {
@@ -296,6 +297,9 @@ export class NotificationRepository {
 
     if (type) {
       whereConditions.push(eq(notifications.type, type));
+    } else {
+      // Informational types (new follower / new conversation) never count toward the badge.
+      whereConditions.push(notInArray(notifications.type, [...INFORMATIONAL_NOTIFICATION_TYPES]));
     }
 
     const result = await this.db
