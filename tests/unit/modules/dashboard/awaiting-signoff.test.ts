@@ -10,9 +10,8 @@ import {
 } from '@/modules/dashboard/services/awaiting-rules';
 import { isSignOffMessage } from '@shared/api-contracts';
 import {
-  MIGRATION_EDIT,
+  MIGRATION_ACKS,
   MIGRATION_HYGIENE,
-  MIGRATION_LATE_REPLY,
   addConv,
   addCustomer,
   addMsg,
@@ -59,7 +58,14 @@ describe('sign-offs after a human reply do not start a wait', () => {
     expect(markerAfterReplyThen('', 'sticker')).toBeNull();
   });
 
-  it.each(['好', '好的', 'OK', 'ok', '收到', '謝謝，請問還有庫存嗎', '謝謝 那運費呢', 'thanks but it is broken', '！！'])(
+  it.each(['收到', '收到！', '了解', '知道了～', '明白。', '收到，謝謝', '收到謝謝您', '好的，謝謝', '好謝謝', 'OK thanks', 'ok, 謝謝!', '了解感謝'])(
+    '"%s" is a sign-off (got it, or got it / ok + thanks; migration 0076)',
+    text => {
+      expect(markerAfterReplyThen(text)).toBeNull();
+    }
+  );
+
+  it.each(['好', '好的', 'OK', 'ok', '收到，請問何時出貨', '收到\n那運費呢', '謝謝，請問還有庫存嗎', '謝謝 那運費呢', 'thanks but it is broken', '！！'])(
     '"%s" still starts a wait',
     text => {
       expect(markerAfterReplyThen(text)).toBe(T(3));
@@ -202,14 +208,6 @@ describe('migration 0072', () => {
     expect(readdirSync('migrations').filter(f => f.startsWith('0072_'))).toEqual([MIGRATION_HYGIENE]);
   });
 
-  it('embeds exactly the shared SQL fragments (no drift from awaiting-rules.ts)', () => {
-    const sql = readMigration(MIGRATION_HYGIENE).replace(/\r\n/g, '\n');
-    expect(sql).toContain(startsWaitSql('cm'));
-    expect(sql).toContain(awaitingExpression('NEW.conversation_id'));
-    expect(sql).toContain(awaitingExpression('conversations.id'));
-    expect(sql).toContain(signOffSql('cm'));
-  });
-
   it('backfill clears markers whose only unanswered messages are sign-offs and keeps real waits', () => {
     // Database as it was after 0070: sign-offs carry markers.
     const db = createDashboardDb({ awaiting: true, markers: true });
@@ -259,10 +257,6 @@ describe('migration 0072', () => {
 });
 
 describe('migration 0073: editing a customer message re-derives the marker', () => {
-  it('embeds the shared awaiting expression', () => {
-    expect(readMigration(MIGRATION_EDIT).replace(/\r\n/g, '\n')).toContain(awaitingExpression('NEW.conversation_id'));
-  });
-
   it('thanks edited into a question starts the wait; edited back clears it', () => {
     const db = freshDb();
     addConv(db, 'c');
@@ -314,11 +308,60 @@ describe('healAwaitingSince uses the same rule', () => {
   });
 });
 
+describe('migration 0076: acknowledgements are sign-offs; it carries the current rule', () => {
+  const AWAITING_TRIGGERS = [
+    'trg_messages_awaiting_customer',
+    'trg_messages_awaiting_customer_edited',
+    'trg_messages_awaiting_deleted',
+    'trg_messages_awaiting_recalled',
+    'trg_messages_awaiting_reply_insert',
+    'trg_messages_awaiting_reply_sent'
+  ];
+  const sql = (): string => readMigration(MIGRATION_ACKS).replace(/\r\n/g, '\n');
+
+  it('is the only 0076 migration and re-creates all six awaiting triggers', () => {
+    expect(readdirSync('migrations').filter(f => f.startsWith('0076_'))).toEqual([MIGRATION_ACKS]);
+    for (const name of AWAITING_TRIGGERS) {
+      expect(sql()).toContain(`DROP TRIGGER IF EXISTS ${name};`);
+      expect(sql()).toContain(`CREATE TRIGGER IF NOT EXISTS ${name}\n`);
+    }
+  });
+
+  // The latest migration that defines the triggers must embed the current rule. Older migrations keep
+  // the rule of their day, so changing the rule needs a new migration (this test fails until it exists).
+  it('embeds exactly the shared SQL fragments (no drift from awaiting-rules.ts)', () => {
+    expect(sql()).toContain(startsWaitSql('cm'));
+    expect(sql()).toContain(awaitingExpression('NEW.conversation_id'));
+    expect(sql()).toContain(awaitingExpression('conversations.id'));
+    expect(sql().split(signOffSql('cm')).length - 1).toBe(AWAITING_TRIGGERS.length + 1); // six triggers + backfill
+  });
+
+  it('backfill clears acknowledgement-only markers and keeps real waits', () => {
+    const db = freshDb();
+    for (const [id, content] of [['ack', '收到'], ['ack-thanks', '好的，謝謝'], ['yes', '好的']] as const) {
+      addConv(db, id);
+      addMsg(db, id, 'customer', T(1), { content: '問題' });
+      addMsg(db, id, 'agent', T(2));
+      addMsg(db, id, 'customer', T(3), { content });
+    }
+    addMsg(db, 'ack', 'customer', T(4), { content: '想採購 15 罐' });
+    // Markers as the 0075 rule left them: every acknowledgement started a wait
+    db.prepare("UPDATE conversations SET awaiting_since = ? WHERE id IN ('ack', 'ack-thanks', 'yes')").run(T(3));
+
+    db.exec(readMigration(MIGRATION_ACKS));
+
+    expect(awaitingOf(db, 'ack')).toBe(T(4)); // the 收到 no longer anchors the later request
+    expect(awaitingOf(db, 'ack-thanks')).toBeNull();
+    expect(awaitingOf(db, 'yes')).toBe(T(3));
+  });
+});
+
 describe('isSignOffMessage matches signOffSql (realtime list vs backend marker)', () => {
   it.each([
     ['sticker', ''], ['text', '謝謝'], ['text', '  謝謝！！ '], ['text', 'Thank You.'], ['text', 'THX~'], ['text', '3Q'],
     ['text', '謝謝\n'], ['text', '\n謝謝'], ['text', '謝謝\u3000'], ['text', '謝謝 !'], ['text', '謝謝! !'], ['text', '謝謝你喔'],
-    ['text', '好的'], ['text', 'OK'], ['text', ''], ['image', '謝謝']
+    ['text', '好的'], ['text', 'OK'], ['text', ''], ['image', '謝謝'],
+    ['text', '收到'], ['text', '收到，謝謝'], ['text', 'Ok Thanks!'], ['text', '收到\n謝謝'], ['text', '收到、了解'], ['text', '好']
   ])('%s %j', (type, content) => {
     const db = freshDb();
     const row = db.prepare(`SELECT ${signOffSql('m')} AS s FROM (SELECT ? AS message_type, ? AS content) m`).get(type, content) as { s: number };
@@ -327,10 +370,6 @@ describe('isSignOffMessage matches signOffSql (realtime list vs backend marker)'
 });
 
 describe('migration 0075: a reply older than the marker still re-derives it (#223)', () => {
-  it('embeds the shared awaiting expression', () => {
-    expect(readMigration(MIGRATION_LATE_REPLY).replace(/\r\n/g, '\n')).toContain(awaitingExpression('NEW.conversation_id'));
-  });
-
   it('a held reply delivered after a first-contact thanks turns the thanks into a sign-off', () => {
     const db = freshDb();
     addConv(db, 'c');

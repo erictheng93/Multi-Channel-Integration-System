@@ -4,17 +4,24 @@
 // message are sign-offs and do NOT start one when the conversation already has a human
 // agent reply before them:
 //   - a sticker
-//   - a text that, trimmed and lower-cased with trailing punctuation removed, is exactly
-//     one of SIGN_OFF_PHRASES (thanks and nothing else)
-// 好 / 好的 / OK / 收到 are deliberately NOT sign-offs: they can mean "yes, go ahead".
+//   - a text that, lower-cased with SIGN_OFF_IGNORED_CHARS removed, is exactly one of
+//     SIGN_OFF_PHRASES: thanks, "got it" (收到 / 了解 / 知道了 / 明白), or either of those or
+//     好 / 好的 / ok followed by thanks (收到謝謝, 好的，謝謝)
+// 好 / 好的 / OK alone are deliberately NOT sign-offs: they can mean "yes, go ahead".
 // A first contact (no earlier human reply) always counts, sticker or not.
 //
-// These SQL fragments are used by migration 0072 (triggers and backfill, generated from
-// them and verified by tests), the nightly heal (awaiting-service.ts) and the tests.
+// These SQL fragments are used by the migrations that (re)create the awaiting triggers
+// (0072, then 0076 with the current rule; generated from them and verified by tests), the
+// nightly heal (awaiting-service.ts) and the tests. Changing the rule needs a new migration.
 
-import { SIGN_OFF_PHRASES, SIGN_OFF_TRAILING_PUNCTUATION } from '@shared/api-contracts';
+import { SIGN_OFF_IGNORED_CHARS, SIGN_OFF_PHRASES } from '@shared/api-contracts';
 
-export { SIGN_OFF_PHRASES, SIGN_OFF_TRAILING_PUNCTUATION };
+export { SIGN_OFF_IGNORED_CHARS, SIGN_OFF_PHRASES };
+
+/** SQL for the content of `alias`, normalized like isSignOffMessage (LOWER + every ignored char removed). */
+function normalizedContentSql(alias: string): string {
+  return SIGN_OFF_IGNORED_CHARS.reduce((expr, ch) => `REPLACE(${expr}, '${ch}', '')`, `LOWER(${alias}.content)`);
+}
 
 /** The accepted-human-reply predicate for a message alias (same definition as migration 0070). */
 export function humanReplySql(alias: string): string {
@@ -30,7 +37,7 @@ export function signOffSql(alias: string): string {
   const list = SIGN_OFF_PHRASES.map(p => `'${p}'`).join(', ');
   return `(${alias}.message_type = 'sticker'
     OR (${alias}.message_type = 'text'
-        AND TRIM(RTRIM(LOWER(TRIM(${alias}.content)), '${SIGN_OFF_TRAILING_PUNCTUATION}')) IN (${list})))`;
+        AND ${normalizedContentSql(alias)} IN (${list})))`;
 }
 
 /**
