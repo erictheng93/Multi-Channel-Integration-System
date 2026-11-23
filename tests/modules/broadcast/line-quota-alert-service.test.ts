@@ -373,6 +373,18 @@ describe('LINE quota alerts', () => {
     expect(mocks.createBulk).toHaveBeenCalledTimes(1);
   });
 
+  it('caps a long joined channel label so the notice stays valid', async () => {
+    const names = Array.from({ length: 80 }, (_, i) => `Team-${i}`);
+    fixture.channels = names.map((teamName) => ({ credentials: 'tok-a', teamName }));
+    setUsage(8500);
+    await poll();
+
+    const { content } = calls()[0].notifications[0];
+    const label = names.join('、');
+    expect(content).toContain(`「${label.slice(0, 60)}...」本月已用`);
+    expect(content.length).toBeLessThanOrEqual(1000);
+  });
+
   it('drops state for channels that left the snapshot', async () => {
     fixture.channels = [
       { credentials: 'tok-a', teamName: 'Sales' },
