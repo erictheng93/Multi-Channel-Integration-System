@@ -106,7 +106,8 @@ function adaptConversationData(rawData: RawConversationData): Conversation {
       // 後端回傳真實 senderType；缺漏時保守視為 customer（維持舊行為）
       senderType: rawData.lastMessage?.senderType === 'agent' ? ('agent' as const) : ('customer' as const),
       content: rawData.lastMessageContent,
-      messageType: 'text' as const,
+      // Real type, so a sticker sign-off is recognized (isSignOffMessage); its content is only a [貼圖] placeholder
+      messageType: (rawData.lastMessage?.messageType ?? 'text') as Message['messageType'],
       platform: customerPlatform,
       timestamp: rawData.lastMessageAtActual ? new Date(rawData.lastMessageAtActual).getTime() : new Date(rawData.lastMessageAt).getTime(),
       createdAt: rawData.lastMessageAtActual ? new Date(rawData.lastMessageAtActual).getTime() : new Date(rawData.lastMessageAt).getTime()
