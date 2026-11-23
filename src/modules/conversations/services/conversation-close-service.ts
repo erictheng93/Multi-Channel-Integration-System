@@ -28,7 +28,8 @@ export function reopenedStatus(assignedTeamId: number | null): 'assigned' | 'act
  * Returns the new status of every conversation this call actually changed
  * (targets that lost a race with a concurrent update are omitted).
  */
-const IDLE_GUARD_SQL = ' AND awaiting_since IS NULL AND last_customer_message_at <= ? AND (last_agent_message_at IS NULL OR last_agent_message_at <= ?)';
+const IDLE_GUARD_SQL = ' AND last_customer_message_at <= ? AND (last_agent_message_at IS NULL OR last_agent_message_at <= ?)';
+const NOT_WAITING_GUARD_SQL = ' AND awaiting_since IS NULL';
 
 export interface SetClosedOptions {
   /** Activity action to record instead of conversation_close / conversation_reopen (e.g. the nightly auto-close) */
@@ -41,6 +42,8 @@ export interface SetClosedOptions {
    * since selection (question, sign-off or reply) wins.
    */
   onlyIfIdleSince?: string;
+  /** With onlyIfIdleSince: also close a conversation that is waiting for a reply (the stale-wait pass of the auto-close). */
+  includeWaiting?: boolean;
 }
 
 export async function setConversationsClosed(
@@ -57,6 +60,7 @@ export async function setConversationsClosed(
 
   const timestamp = nowISO();
   const capture = new ActivityCapture(env.DB);
+  const guard = options.onlyIfIdleSince ? `${options.includeWaiting ? '' : NOT_WAITING_GUARD_SQL}${IDLE_GUARD_SQL}` : '';
 
   // Per target: the guarded UPDATE, then an activity row that exists only if that UPDATE
   // changed a row. The status guard exists because a customer message can reopen the
@@ -64,10 +68,12 @@ export async function setConversationsClosed(
   const statements = changing.flatMap(target => {
     const status = closed ? 'closed' : reopenedStatus(target.assignedTeamId);
     return [
-      // 結案時記下未讀下限（unread_floor_at），重新開啟時保留，結案前累積的訊息不會再算未讀
+      // 結案時記下未讀下限（unread_floor_at），重新開啟時保留，結案前累積的訊息不會再算未讀。
+      // 同時清除待回覆標記：結案前的客戶訊息不再算等待（awaitingExpression 依 unread_floor_at 排除），
+      // 重新開啟後由下一則客戶訊息重新起算；不清除的話，舊標記會讓 trigger 跳過重算。
       closed
         ? env.DB
-          .prepare(`UPDATE conversations SET status = ?, closed_at = ?, unread_floor_at = ?, updated_at = ? WHERE id = ? AND status <> 'closed'${options.onlyIfIdleSince ? IDLE_GUARD_SQL : ''}`)
+          .prepare(`UPDATE conversations SET status = ?, closed_at = ?, unread_floor_at = ?, awaiting_since = NULL, updated_at = ? WHERE id = ? AND status <> 'closed'${guard}`)
           .bind(status, timestamp, timestamp, timestamp, target.id, ...(options.onlyIfIdleSince ? [options.onlyIfIdleSince, options.onlyIfIdleSince] : []))
         : env.DB
           .prepare("UPDATE conversations SET status = ?, closed_at = NULL, updated_at = ? WHERE id = ? AND status = 'closed'")
