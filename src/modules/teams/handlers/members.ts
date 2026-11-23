@@ -37,7 +37,7 @@ import type {
   BatchEditUndoTokenData
 } from '../types/member-types';
 import type { TeamRoleInTeam } from '@/types';
-import { nowISO, nowMs } from '@/utils/timestamp'
+import { nowISO } from '@/utils/timestamp'
 
 const membersHandler = new Hono<{ Bindings: Bindings }>();
 
@@ -755,7 +755,7 @@ membersHandler.post('/batch-edit', jwtAuth, requireManagerOrAdmin(), async (c) =
     let undoExpiresAt: string | undefined;
 
     if (successCount > 0 && result.originalData.length > 0) {
-      undoToken = `batch-edit-${nowMs()}-${Math.random().toString(36).substr(2, 9)}`;
+      undoToken = `batch-edit-${crypto.randomUUID()}`;
       const expiresAt = new Date(Date.now() + 10 * 1000); // 10 seconds
       undoExpiresAt = expiresAt.toISOString();
 

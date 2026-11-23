@@ -257,7 +257,7 @@ conversationMessagesHandler.post('/:id/attachments', jwtAuth, async (c) => {
 
     // 生成 R2 key
     const timestamp = nowMs();
-    const randomStr = Math.random().toString(36).substr(2, 9);
+    const randomStr = crypto.randomUUID();
     const fileExtension = file.name.split('.').pop() || 'bin';
     const r2Key = `attachments/${conversationId}/pending/${timestamp}_${randomStr}.${fileExtension}`;
 
