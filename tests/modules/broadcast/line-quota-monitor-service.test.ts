@@ -21,6 +21,11 @@ vi.mock('@modules/integrations/services/channel-credential-service', () => ({
   }),
 }));
 
+// Alert evaluation runs inside refresh(); its behaviour is covered in line-quota-alert-service.test.ts.
+vi.mock('@/utils/notification-trigger', () => ({
+  createNotificationService: vi.fn(() => ({ createBulk: vi.fn(async () => ({ successful: [], failed: [] })) })),
+}));
+
 import {
   LineQuotaMonitorService,
   type LineQuotaSnapshotSet,
