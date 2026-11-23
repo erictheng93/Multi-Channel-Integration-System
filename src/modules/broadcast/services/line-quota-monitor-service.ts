@@ -7,6 +7,7 @@ import { createContextLogger } from '@/utils/logger';
 import { nowISO } from '@/utils/timestamp';
 import { BROADCAST_QUOTA_RESERVE_RATIO } from '@/constants/limits';
 import { ChannelCredentialService } from '@modules/integrations/services/channel-credential-service';
+import { evaluateLineQuotaAlerts } from './line-quota-alert-service';
 
 const log = createContextLogger('LineQuotaMonitor');
 
@@ -115,9 +116,14 @@ export class LineQuotaMonitorService {
       expirationTtl: SNAPSHOT_TTL_SECONDS,
     });
 
-    // TODO(quota-alert): low-quota notification seam. Evaluate `snapshot` here (threshold, who to
-    // notify, de-dupe state) once that feature is scheduled. Intentionally not implemented yet.
-    return this.decorate(snapshot);
+    const decorated = this.decorate(snapshot);
+    // Low-quota / failure-streak notices for admins. Never allowed to fail or change the refresh result.
+    try {
+      await evaluateLineQuotaAlerts(this.db, this.env, decorated.items, source);
+    } catch (error) {
+      log.error('LINE quota alert evaluation failed', {}, error instanceof Error ? error : new Error(String(error)));
+    }
+    return decorated;
   }
 
   private decorate(set: LineQuotaSnapshotSet): LineQuotaSnapshotSet {
