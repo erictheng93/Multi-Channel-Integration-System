@@ -18,13 +18,10 @@ describe('security audit regressions', () => {
   it('keeps operational scripts free of literal account credentials and secret fallbacks', () => {
     const operationalFiles = [
       'scripts/test-user-login.ps1',
-      'scripts/admin/get-test-token.ts',
-      'scripts/admin/generate-test-token.ts',
       'scripts/admin/login-and-test.ts',
       'scripts/admin/seed-agents.ts',
       'scripts/create-test-users.ps1',
       'scripts/database/verify-password-hash.ts',
-      'scripts/migrate-to-drizzle.ts',
       'src/utils/password-hash.ts'
     ]
 

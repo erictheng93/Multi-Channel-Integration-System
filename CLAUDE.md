@@ -175,6 +175,7 @@ All seven run concurrently via background jobs (`&` + `wait`). Type-check and ES
 - `bunx tsc --noEmit` (backend, incremental via `tsBuildInfoFile`)
 - `cd frontend && bunx vue-tsc --noEmit` (frontend SFCs, incremental)
 - `cd frontend && bunx eslint . --cache` (ESLint with content-strategy cache)
+- `bun run type-check:scripts` (`tsc -p tsconfig.scripts.json`: `scripts/`, `tools/`, `database/` with Bun types; also a CI step)
 
 Caches live in `node_modules/.cache/` (already gitignored). First push after `bun install` is cold; subsequent pushes hit the incremental cache and run ~3× faster.
 
