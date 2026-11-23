@@ -624,6 +624,8 @@ class WebSocketLoadTester extends EventEmitter {
 
 // =================== CLI Interface ===================
 
+// Run the CLI only when executed directly, so the classes can be imported without starting a run.
+if (import.meta.main) {
 const args = process.argv.slice(2);
 const config: Partial<LoadTestConfig> = {};
 
@@ -673,5 +675,6 @@ const config: Partial<LoadTestConfig> = {};
   }
 
   runTest();
+}
 
 export { WebSocketLoadTester, type LoadTestConfig, type TestResults };
