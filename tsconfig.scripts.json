@@ -12,5 +12,16 @@
     "scripts/**/*",
     "tools/**/*",
     "database/**/*"
+  ],
+  // .gitignore ignores test-*.ts, so local-only copies exist only on some machines and CI never sees them;
+  // checking them made pre-push fail on files that are not in the repo. Tracked exceptions go in "files",
+  // which exclude does not override.
+  "exclude": [
+    "scripts/**/test-*.ts",
+    "tools/**/test-*.ts",
+    "database/**/test-*.ts"
+  ],
+  "files": [
+    "scripts/test-drizzle-config.ts"
   ]
 }
