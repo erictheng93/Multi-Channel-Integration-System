@@ -6,7 +6,7 @@
 ## TL;DR
 
 - **Automated daily backups** run via GitHub Actions (`.github/workflows/backup.yml`),
-  03:00 Asia/Taipei, **off the production worker** (zero risk to the live app).
+  23:17 Asia/Taipei (GitHub starts it some hours later), **off the production worker** (zero risk to the live app).
 - Backups are gzip-compressed (`.sql.gz`) and land in **R2 bucket `mcis-backups`**.
 - **There is no off-Cloudflare copy yet.** GitHub artifacts were removed on
   2026-10-12 because this repo is public and the dumps contain customer data and
@@ -36,7 +36,10 @@ kept separately for **fast, targeted restore** of the small, critical config dat
 
 ## Schedule & mechanism
 
-- **When:** daily `cron: '0 19 * * *'` (19:00 UTC = 03:00 Asia/Taipei). Manual run
+- **When:** daily `cron: '17 15 * * *'` (15:17 UTC = 23:17 Asia/Taipei). GitHub starts
+  scheduled runs 2-7 hours late, so the backup actually runs around 01:45-06:45
+  Taipei; the slot was moved from 19:00 UTC on 2026-11-23 because that one was
+  landing at 05:00-10:30, inside working hours. Manual run
   via GitHub → Actions → "D1 Backup" → "Run workflow".
 - **How:** `wrangler d1 export` (the same proven tool used for the recovery), then
   `gzip -9` + `gzip -t`, then `wrangler r2 object put` to `mcis-backups`. Every run

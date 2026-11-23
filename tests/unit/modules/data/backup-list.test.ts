@@ -83,7 +83,7 @@ describe('GET /api/data/backup', () => {
 
   it('policy documents the configured schedule and retention as constants', () => {
     expect(BACKUP_POLICY.source).toBe('configuration-constants');
-    expect(BACKUP_POLICY.schedule).toMatchObject({ cron: '0 19 * * *', timezone: 'Asia/Taipei', localTime: '03:00' });
+    expect(BACKUP_POLICY.schedule).toMatchObject({ cron: '17 15 * * *', timezone: 'Asia/Taipei', localTime: '23:17' });
     expect(BACKUP_POLICY.retentionDays).toEqual({
       daily: 30, monthly: 365, members: 365, tags: 365, assignments: 365, manual: 90,
     });

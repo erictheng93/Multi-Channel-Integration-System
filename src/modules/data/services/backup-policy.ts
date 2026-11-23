@@ -1,7 +1,8 @@
 // Backup schedule and retention, as CONFIGURATION CONSTANTS.
 //
 // These mirror what is configured outside the Worker and are NOT read from it at runtime:
-//   - schedule: .github/workflows/backup.yml  (cron '0 19 * * *' = 03:00 Asia/Taipei)
+//   - schedule: .github/workflows/backup.yml  (cron '17 15 * * *' = 23:17 Asia/Taipei;
+//               GitHub starts it hours late, so runs land before dawn in Taipei)
 //   - retention: R2 lifecycle rules on the mcis-backups bucket
 //                (`wrangler r2 bucket lifecycle list mcis-backups`)
 // If either is changed there, change it here too; the API reports them under `policy.source`
@@ -27,10 +28,10 @@ export const BACKUP_POLICY: BackupPolicy = {
   source: 'configuration-constants',
   note: 'Mirrors .github/workflows/backup.yml and the R2 lifecycle rules; not read from them at runtime.',
   schedule: {
-    cron: '0 19 * * *',
+    cron: '17 15 * * *',
     timezone: 'Asia/Taipei',
-    localTime: '03:00',
-    description: 'Daily at 03:00 Asia/Taipei (19:00 UTC); monthly copy on the first run of each month (UTC)',
+    localTime: '23:17',
+    description: 'Daily, scheduled 23:17 Asia/Taipei (15:17 UTC) and started by GitHub some hours later; monthly copy on the first run of each month (UTC)',
   },
   retentionDays: {
     daily: 30,

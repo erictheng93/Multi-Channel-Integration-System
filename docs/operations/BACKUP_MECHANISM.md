@@ -28,7 +28,7 @@
  ┌──────────────────────────────────────────────────────────┐
  │  D1 mcis-db  ◄── 即時讀寫 ── Worker (Hono)                 │
  │     │                                                     │
- │     │ (A) 每日 03:00 台北，GitHub Actions 呼叫 wrangler     │
+ │     │ (A) 每日 23:17 台北，GitHub Actions 呼叫 wrangler     │
  │     │     d1 export → gzip → r2 object put                │
  │     │ (B) 管理員在後台按「立即備份」，Worker 自己串流寫 R2    │
  │     ▼                                                     │
@@ -126,7 +126,7 @@ Durable Object 說明：訊息廣播等 DO 的儲存是執行期狀態，不是�
 ### 流程
 
 ```
-  cron 0 19 * * *  (UTC 19:00 = 台北 03:00)
+  cron 17 15 * * *  (UTC 15:17 = 台北 23:17；GitHub 實際延後 2 到 7 小時，約台北 01:45 到 06:45 起跑)
           │   也可由 workflow_dispatch 手動觸發
           ▼
   ┌─ 1. checkout + setup bun + bun install ──────────────────┐
