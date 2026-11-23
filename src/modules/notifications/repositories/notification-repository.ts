@@ -412,10 +412,22 @@ export class NotificationRepository {
       data: row.data ? JSON.parse(row.data) as Record<string, unknown> : undefined,
       priority: row.priority || 'normal',
       isRead: Boolean(row.isRead || row.is_read),
-      readAt: row.readAt || row.read_at || undefined,
+      readAt: utcIso(row.readAt || row.read_at || undefined),
       expiresAt: row.expiresAt || row.expires_at || undefined,
-      createdAt: row.createdAt || row.created_at || '',
-      updatedAt: row.updatedAt || row.updated_at || undefined
+      createdAt: utcIso(row.createdAt || row.created_at || ''),
+      updatedAt: utcIso(row.updatedAt || row.updated_at || undefined)
     };
   }
+}
+
+const SQLITE_UTC_TEXT = /^(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2}:\d{2}(?:\.\d+)?)$/;
+
+/**
+ * created_at / read_at / updated_at are written by SQLite datetime('now'): UTC as 'YYYY-MM-DD HH:MM:SS' with no
+ * zone. A browser parses that as LOCAL time, so in Taipei every notification read as 8 hours old. Send ISO-8601
+ * UTC instead; values already in another format pass through.
+ */
+export function utcIso<T extends string | undefined>(value: T): T {
+  const match = value ? SQLITE_UTC_TEXT.exec(value) : null;
+  return (match ? `${match[1]}T${match[2]}Z` : value) as T;
 }
