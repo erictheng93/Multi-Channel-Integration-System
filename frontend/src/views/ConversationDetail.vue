@@ -69,6 +69,7 @@
         <ConversationWaitStrip
           :messages="messages"
           :closed="conversation?.status === 'closed'"
+          :floor="conversation?.unreadFloorAt"
           @open="showInfoSheet = true"
         />
 

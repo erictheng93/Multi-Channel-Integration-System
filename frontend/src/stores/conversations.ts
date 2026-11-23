@@ -285,7 +285,7 @@ export const useConversationsStore = defineStore('conversations', () => {
 
   const updateConversationStatus = (
     conversationId: string,
-    updates: Partial<Pick<Conversation, 'status' | 'assignedTeamId' | 'unreadCount' | 'assignedTeam' | 'awaitingSince'>>
+    updates: Partial<Pick<Conversation, 'status' | 'assignedTeamId' | 'unreadCount' | 'assignedTeam' | 'awaitingSince' | 'unreadFloorAt'>>
   ) => {
     let listUpdated = false
     let currentUpdated = false
@@ -752,11 +752,13 @@ export const useConversationsStore = defineStore('conversations', () => {
 
       if (response.success) {
         if (response.data?.status) {
-          // The wait marker comes back with the status: cleared by a close, restored by a reopen
-          const awaitingSince = response.data.awaitingSince
+          // The wait marker and the floor come back with the status: a close clears the marker and moves the
+          // floor, a prompt reopen restores both
+          const { awaitingSince, unreadFloorAt } = response.data
           updateConversationStatus(conversationId, {
             status: response.data.status,
-            ...(awaitingSince !== undefined ? { awaitingSince } : {})
+            ...(awaitingSince !== undefined ? { awaitingSince } : {}),
+            ...(unreadFloorAt !== undefined ? { unreadFloorAt } : {})
           })
         }
         return true

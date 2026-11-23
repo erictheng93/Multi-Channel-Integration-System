@@ -126,18 +126,20 @@ export async function setConversationsClosed(
     return statuses;
   }
 
-  // The wait marker every client should now show: none after a close, the re-derived one after a reopen
+  // What every client should now show. Close: no wait, floor = now. Reopen: the re-derived wait and the floor in place.
   const awaiting = new Map<string, string | null>();
+  const floors = new Map<string, string | null>();
   if (!closed) {
     const ids = Object.keys(statuses);
     for (let i = 0; i < ids.length; i += READ_CHUNK) {
       const chunk = ids.slice(i, i + READ_CHUNK);
       const { results } = await env.DB
-        .prepare(`SELECT id, awaiting_since FROM conversations WHERE id IN (${chunk.map(() => '?').join(', ')})`)
+        .prepare(`SELECT id, awaiting_since, unread_floor_at FROM conversations WHERE id IN (${chunk.map(() => '?').join(', ')})`)
         .bind(...chunk)
-        .all<{ id: string; awaiting_since: string | null }>();
+        .all<{ id: string; awaiting_since: string | null; unread_floor_at: string | null }>();
       for (const row of results) {
         awaiting.set(row.id, row.awaiting_since);
+        floors.set(row.id, row.unread_floor_at);
       }
     }
   }
@@ -148,7 +150,12 @@ export async function setConversationsClosed(
       type: 'conversation_status_changed',
       conversationId,
       userId: actor.userId,
-      data: { status, timestamp, awaitingSince: awaiting.get(conversationId) ?? null },
+      data: {
+        status,
+        timestamp,
+        awaitingSince: awaiting.get(conversationId) ?? null,
+        unreadFloorAt: closed ? timestamp : floors.get(conversationId) ?? null
+      },
       priority: 'normal'
     })
   ));

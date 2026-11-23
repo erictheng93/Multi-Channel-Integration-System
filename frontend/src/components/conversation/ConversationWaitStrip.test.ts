@@ -24,6 +24,17 @@ describe('ConversationWaitStrip', () => {
     expect(mount(ConversationWaitStrip, { props: { messages: [ago(30, 'customer'), ago(20, 'agent'), thanks, sticker] } }).find('button').exists()).toBe(false)
   })
 
+  // The list's 待回覆 ignores customer messages at or before the last close; the strip must agree with it
+  it('ignores messages a close has settled, and counts only the ones after it', () => {
+    const floor = new Date(Date.now() - 20 * 60_000).toISOString()
+    const settled = mount(ConversationWaitStrip, { props: { messages: [ago(60, 'agent'), ago(30, 'customer')], floor } })
+    expect(settled.find('button').exists()).toBe(false)
+
+    const reopened = mount(ConversationWaitStrip, { props: { messages: [ago(60, 'agent'), ago(30, 'customer'), ago(7, 'customer')], floor } })
+    expect(reopened.text()).toContain('已等 7 分')
+    expect(reopened.text()).toContain('1 則未回')
+  })
+
   it('counts from the real question that follows a thanks', () => {
     const thanks = { ...ago(15, 'customer'), messageType: 'text', content: '謝謝' }
     const ask = { ...ago(9, 'customer'), messageType: 'text', content: '那可以退貨嗎' }
