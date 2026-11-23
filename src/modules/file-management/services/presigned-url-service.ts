@@ -331,7 +331,7 @@ export class PresignedUrlService {
 
   private generateFileId(): string {
     const timestamp = Date.now().toString(36);
-    const random = Math.random().toString(36).substring(2, 10);
+    const random = crypto.randomUUID().replace(/-/g, '');
     return `file_${timestamp}_${random}`;
   }
 

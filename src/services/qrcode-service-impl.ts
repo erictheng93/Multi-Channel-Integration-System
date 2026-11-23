@@ -436,7 +436,7 @@ export class QRCodeServiceImpl {
   // 生成追蹤 token
   private static generateTrackingToken(teamId: number): string {
     const timestamp = Date.now().toString(36);
-    const random = Math.random().toString(36).substring(2, 8);
+    const random = crypto.randomUUID().replace(/-/g, '');
     return `team${teamId}_${timestamp}_${random}`;
   }
 

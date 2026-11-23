@@ -169,7 +169,7 @@ attachmentRoutes.post('/:id/attachments', jwtAuth, async (c) => {
 
     // 生成 R2 key
     const timestamp = nowMs();
-    const randomStr = Math.random().toString(36).substr(2, 9);
+    const randomStr = crypto.randomUUID();
     const fileExtension = file.name.split('.').pop() || 'bin';
     const r2Key = `attachments/${message.conversationId}/${messageId}/${timestamp}_${randomStr}.${fileExtension}`;
 
