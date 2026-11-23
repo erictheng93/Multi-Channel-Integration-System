@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   getQuota: vi.fn(),
   getUsage: vi.fn(),
   createBulk: vi.fn(),
+  push: vi.fn(),
 }));
 
 vi.mock('@/utils/line', () => ({
@@ -24,6 +25,7 @@ vi.mock('@modules/integrations/services/channel-credential-service', () => ({
 
 vi.mock('@/utils/notification-trigger', () => ({
   createNotificationService: vi.fn(() => ({ createBulk: mocks.createBulk })),
+  broadcastNotificationViaWebSocket: mocks.push,
 }));
 
 import { LineQuotaMonitorService } from '@/modules/broadcast/services/line-quota-monitor-service';
@@ -132,6 +134,7 @@ describe('LINE quota alerts', () => {
       successful: request.notifications.map((_, index) => `n-${index}`),
       failed: [],
     }));
+    mocks.push.mockResolvedValue(true);
   });
 
   afterEach(() => {
@@ -329,6 +332,43 @@ describe('LINE quota alerts', () => {
     expect(mocks.createBulk).not.toHaveBeenCalled();
 
     fixture.admins = [{ id: 'admin-1' }];
+    await poll();
+    expect(mocks.createBulk).toHaveBeenCalledTimes(1);
+  });
+
+  it('pushes each saved notice to its admin over WebSocket', async () => {
+    setUsage(8500);
+    await poll();
+
+    expect(mocks.push).toHaveBeenCalledTimes(2);
+    expect(mocks.push.mock.calls.map((call) => [call[1], call[2].id])).toEqual([
+      ['admin-1', 'n-0'],
+      ['admin-2', 'n-1'],
+    ]);
+    expect(mocks.push.mock.calls[0][2]).toMatchObject({
+      type: 'system',
+      priority: 'high',
+      title: 'LINE 額度剩餘不到 20%',
+      data: { kind: 'line_quota_alert', level: 20 },
+    });
+  });
+
+  it('skips the push when only some admins got the notice, but still marks it sent', async () => {
+    mocks.createBulk.mockResolvedValueOnce({ successful: ['n-1'], failed: [{ index: 0, error: 'd1 down' }] });
+    setUsage(8500);
+    await poll();
+
+    expect(mocks.push).not.toHaveBeenCalled();
+    expect(Object.values(kv.alertState())[0].notifiedLevels).toEqual([20]);
+  });
+
+  it('a failing push changes neither the state nor the refresh result', async () => {
+    mocks.push.mockRejectedValue(new Error('broadcaster down'));
+    setUsage(8500);
+    const result = await poll();
+
+    expect(result.items[0]).toMatchObject({ remaining: 1500, error: null });
+    expect(Object.values(kv.alertState())[0].notifiedLevels).toEqual([20]);
     await poll();
     expect(mocks.createBulk).toHaveBeenCalledTimes(1);
   });
