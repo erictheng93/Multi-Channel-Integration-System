@@ -88,7 +88,7 @@ async function testToken(token: string): Promise<void> {
         }
       });
 
-      const data = await response.json().catch(() => ({}));
+      const data = (await response.json().catch(() => ({}))) as { error?: string; message?: string };
       const status = response.ok ? 'PASS' : 'FAIL';
 
       console.log(`${status} ${endpoint.name}: ${response.status} ${response.statusText}`);
@@ -119,3 +119,5 @@ main().catch((error) => {
   console.error(error);
   process.exit(1);
 });
+
+export {};

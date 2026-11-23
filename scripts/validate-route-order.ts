@@ -543,4 +543,4 @@ if (isMainModule) {
   main();
 }
 
-export { validateRouteOrder, ValidationIssue };
+export { validateRouteOrder, type ValidationIssue };

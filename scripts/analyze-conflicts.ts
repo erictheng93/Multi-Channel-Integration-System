@@ -200,7 +200,7 @@ function generateReport(stats: ModuleStats[]): void {
     console.log(' HYBRID APPROACH MODULES (Review + Auto)');
     console.log('─'.repeat(100));
     hybrid.forEach(stat => {
-      console.log(` ${stat.module.padEnd(50)} ${stat.conflictCount} conflicts (${stat.criticality} criticality)`);
+      console.log(` ${stat.module.padEnd(50)} ${stat.conflictCount} conflicts (${stat.businessCriticality} criticality)`);
     });
     console.log('');
   }
@@ -209,7 +209,7 @@ function generateReport(stats: ModuleStats[]): void {
     console.log('  MANUAL ANALYSIS MODULES (Critical)');
     console.log('─'.repeat(100));
     manualAnalysis.forEach(stat => {
-      console.log(` ${stat.module.padEnd(50)} ${stat.conflictCount} conflicts (${stat.criticality} criticality)`);
+      console.log(` ${stat.module.padEnd(50)} ${stat.conflictCount} conflicts (${stat.businessCriticality} criticality)`);
     });
     console.log('');
   }

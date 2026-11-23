@@ -782,7 +782,7 @@ class DurableObjectsStressTester {
       method,
       headers,
       body: body ? JSON.stringify(body) : undefined,
-      timeout: this.config.requestTimeoutMs
+      signal: AbortSignal.timeout(this.config.requestTimeoutMs)
     });
 
     if (!response.ok) {
@@ -946,4 +946,4 @@ async function runStressTest() {
 
 runStressTest();
 
-export { DurableObjectsStressTester, StressTestConfig, StressTestResults };
+export { DurableObjectsStressTester, type StressTestConfig, type StressTestResults };
