@@ -30,7 +30,7 @@ export const BACKUP_POLICY: BackupPolicy = {
     cron: '0 19 * * *',
     timezone: 'Asia/Taipei',
     localTime: '03:00',
-    description: 'Daily at 03:00 Asia/Taipei (19:00 UTC); monthly copy on the 1st (UTC)',
+    description: 'Daily at 03:00 Asia/Taipei (19:00 UTC); monthly copy on the first run of each month (UTC)',
   },
   retentionDays: {
     daily: 30,
