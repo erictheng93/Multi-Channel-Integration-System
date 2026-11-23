@@ -72,6 +72,7 @@ export const MIGRATION_HYGIENE = '0072_signoff_not_awaiting_and_auto_close_index
 export const MIGRATION_EDIT = '0073_awaiting_recompute_on_customer_edit.sql';
 export const MIGRATION_LATE_REPLY = '0075_awaiting_rederive_on_late_reply.sql';
 export const MIGRATION_ACKS = '0076_signoff_acknowledgements.sql';
+export const MIGRATION_PRE_CLOSE = '0077_awaiting_ignores_pre_close_messages.sql';
 
 /** Base tables as they exist before migrations 0069/0070 (only the columns the dashboard reads). */
 export function createBaseSchema(db: Database.Database): void {
@@ -120,6 +121,7 @@ export function createDashboardDb(options: SchemaOptions = {}): Database.Databas
     db.exec(readMigration(MIGRATION_EDIT));
     db.exec(readMigration(MIGRATION_LATE_REPLY));
     db.exec(readMigration(MIGRATION_ACKS));
+    db.exec(readMigration(MIGRATION_PRE_CLOSE));
   }
   return db;
 }

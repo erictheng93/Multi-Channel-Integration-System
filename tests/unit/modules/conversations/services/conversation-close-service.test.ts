@@ -13,7 +13,7 @@ import type { Bindings } from '@/types'
 function makeEnv() {
   const sqlite = new Database(':memory:')
   sqlite.exec(`
-    CREATE TABLE conversations (id TEXT PRIMARY KEY, status TEXT, assigned_team_id INTEGER, closed_at TEXT, unread_floor_at TEXT, updated_at TEXT);
+    CREATE TABLE conversations (id TEXT PRIMARY KEY, status TEXT, assigned_team_id INTEGER, closed_at TEXT, unread_floor_at TEXT, awaiting_since TEXT, updated_at TEXT);
     CREATE TABLE activities (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id TEXT, user_name TEXT, user_role TEXT, action TEXT, resource_type TEXT, resource_id TEXT, details TEXT, ip_address TEXT, user_agent TEXT, created_at TEXT);
   `)
   const prepare = (sql: string) => {
@@ -39,7 +39,7 @@ describe('setConversationsClosed', () => {
 
   it('closes changed rows, logs them and broadcasts them', async () => {
     const { sqlite, env } = makeEnv()
-    sqlite.prepare("INSERT INTO conversations (id, status, assigned_team_id) VALUES ('a','active',NULL),('b','assigned',3)").run()
+    sqlite.prepare("INSERT INTO conversations (id, status, assigned_team_id, awaiting_since) VALUES ('a','active',NULL,'2026-01-01T00:00:00.000Z'),('b','assigned',3,NULL)").run()
 
     const statuses = await setConversationsClosed(env, actor, [
       { id: 'a', status: 'active', assignedTeamId: null },
@@ -47,6 +47,8 @@ describe('setConversationsClosed', () => {
     ], true)
 
     expect(statuses).toEqual({ a: 'closed', b: 'closed' })
+    // closing settles the wait: the marker is cleared (migration 0077 ignores pre-close messages)
+    expect(sqlite.prepare("SELECT awaiting_since FROM conversations WHERE id = 'a'").get()).toEqual({ awaiting_since: null })
     expect(sqlite.prepare('SELECT COUNT(*) AS n FROM activities').get()).toEqual({ n: 2 })
     expect(broadcastConversationEvent).toHaveBeenCalledTimes(2)
   })

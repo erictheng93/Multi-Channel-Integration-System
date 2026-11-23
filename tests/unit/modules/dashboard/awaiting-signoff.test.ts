@@ -11,6 +11,7 @@ import {
 import { isSignOffMessage } from '@shared/api-contracts';
 import {
   MIGRATION_ACKS,
+  MIGRATION_PRE_CLOSE,
   MIGRATION_HYGIENE,
   addConv,
   addCustomer,
@@ -327,12 +328,8 @@ describe('migration 0076: acknowledgements are sign-offs; it carries the current
     }
   });
 
-  // The latest migration that defines the triggers must embed the current rule. Older migrations keep
-  // the rule of their day, so changing the rule needs a new migration (this test fails until it exists).
-  it('embeds exactly the shared SQL fragments (no drift from awaiting-rules.ts)', () => {
+  it('embeds the 0076 sign-off rule in all six triggers and the backfill', () => {
     expect(sql()).toContain(startsWaitSql('cm'));
-    expect(sql()).toContain(awaitingExpression('NEW.conversation_id'));
-    expect(sql()).toContain(awaitingExpression('conversations.id'));
     expect(sql().split(signOffSql('cm')).length - 1).toBe(AWAITING_TRIGGERS.length + 1); // six triggers + backfill
   });
 
@@ -353,6 +350,63 @@ describe('migration 0076: acknowledgements are sign-offs; it carries the current
     expect(awaitingOf(db, 'ack')).toBe(T(4)); // the 收到 no longer anchors the later request
     expect(awaitingOf(db, 'ack-thanks')).toBeNull();
     expect(awaitingOf(db, 'yes')).toBe(T(3));
+  });
+});
+
+describe('migration 0077: messages before the last close never count toward a wait', () => {
+  const sql = (): string => readMigration(MIGRATION_PRE_CLOSE).replace(/\r\n/g, '\n');
+  const AWAITING_TRIGGERS = [
+    'trg_messages_awaiting_customer',
+    'trg_messages_awaiting_customer_edited',
+    'trg_messages_awaiting_deleted',
+    'trg_messages_awaiting_recalled',
+    'trg_messages_awaiting_reply_insert',
+    'trg_messages_awaiting_reply_sent'
+  ];
+
+  it('is the only 0077 migration and re-creates all six awaiting triggers', () => {
+    expect(readdirSync('migrations').filter(f => f.startsWith('0077_'))).toEqual([MIGRATION_PRE_CLOSE]);
+    for (const name of AWAITING_TRIGGERS) {
+      expect(sql()).toContain(`DROP TRIGGER IF EXISTS ${name};`);
+      expect(sql()).toContain(`CREATE TRIGGER IF NOT EXISTS ${name}\n`);
+    }
+  });
+
+  // The NEWEST migration that defines the triggers must embed the current rule. Older migrations keep the
+  // rule of their day, so changing awaiting-rules.ts needs a new migration (this test fails until it exists).
+  it('embeds exactly the shared SQL fragments (no drift from awaiting-rules.ts)', () => {
+    expect(sql()).toContain(startsWaitSql('cm'));
+    expect(sql()).toContain(signOffSql('cm'));
+    expect(sql().split(awaitingExpression('NEW.conversation_id')).length - 1).toBe(AWAITING_TRIGGERS.length);
+    expect(sql()).toContain(awaitingExpression('conversations.id'));
+  });
+
+  it('a conversation closed while waiting reopens with a wait from the reopening message', () => {
+    const db = freshDb();
+    addConv(db, 'c');
+    addMsg(db, 'c', 'customer', T(1), { content: '還沒人回的問題' });
+    expect(awaitingOf(db, 'c')).toBe(T(1));
+    // setConversationsClosed: floor at the close, marker cleared
+    db.prepare("UPDATE conversations SET status = 'closed', unread_floor_at = ?, awaiting_since = NULL WHERE id = 'c'").run(T(2));
+    addMsg(db, 'c', 'customer', T(3), { content: '請問還有貨嗎' });
+    expect(awaitingOf(db, 'c')).toBe(T(3));
+  });
+
+  it('backfill clears a marker that only pre-close messages hold, and the heal agrees', async () => {
+    const db = freshDb();
+    addConv(db, 'pre');
+    addMsg(db, 'pre', 'customer', T(1), { content: '問題' });
+    addConv(db, 'post');
+    addMsg(db, 'post', 'customer', T(1), { content: '問題' });
+    addMsg(db, 'post', 'customer', T(4), { content: '新問題' });
+    // Rows as left before 0077: closed (floor T2) and reopened, marker still at T1
+    db.prepare("UPDATE conversations SET unread_floor_at = ?, awaiting_since = ? WHERE id IN ('pre', 'post')").run(T(2), T(1));
+
+    db.exec(readMigration(MIGRATION_PRE_CLOSE));
+
+    expect(awaitingOf(db, 'pre')).toBeNull();
+    expect(awaitingOf(db, 'post')).toBe(T(4));
+    expect((await healAwaitingSince(d1Of(db), NOW)).corrected).toBe(0);
   });
 });
 

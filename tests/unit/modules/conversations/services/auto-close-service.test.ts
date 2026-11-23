@@ -1,5 +1,5 @@
 import type Database from 'better-sqlite3';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const broadcastConversationEvent = vi.fn().mockResolvedValue(true);
 vi.mock('@/services/websocket-broadcast-service', () => ({
@@ -9,6 +9,7 @@ vi.mock('@/services/websocket-broadcast-service', () => ({
 import {
   AUTO_CLOSE_IDLE_DAYS,
   AUTO_CLOSE_MAX_PER_RUN,
+  AUTO_CLOSE_STALE_WAITING_DAYS,
   autoCloseIdleConversations,
   resolveAutoCloseIdleDays
 } from '@modules/conversations/services/auto-close-service';
@@ -57,7 +58,13 @@ describe('resolveAutoCloseIdleDays', () => {
 });
 
 describe('autoCloseIdleConversations', () => {
-  beforeEach(() => broadcastConversationEvent.mockClear());
+  // The close stamps closed_at / unread_floor_at with the clock; pin it to NOW so "after the close" is after NOW.
+  beforeEach(() => {
+    broadcastConversationEvent.mockClear();
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(NOW);
+  });
+  afterEach(() => vi.useRealTimers());
 
   it('closes an idle conversation whose last message is a human reply, with a system activity row and a broadcast', async () => {
     const { db, env } = setup();
@@ -84,14 +91,43 @@ describe('autoCloseIdleConversations', () => {
     expect(statusOf(db, 'fourteen')).toBe('closed');
   });
 
-  it('never closes a conversation that is awaiting a reply, however old', async () => {
+  it('keeps a waiting conversation inside the stale window, closes one silent for 30 days (stale-wait pass)', async () => {
+    expect(AUTO_CLOSE_STALE_WAITING_DAYS).toBe(30);
     const { db, env } = setup();
-    addConv(db, 'waiting');
-    addMsg(db, 'waiting', 'customer', ago(90 * DAY));
-    expect(awaitingOf(db, 'waiting')).not.toBeNull();
+    addConv(db, 'recent');
+    addMsg(db, 'recent', 'customer', ago(29 * DAY));
+    addConv(db, 'stale');
+    addMsg(db, 'stale', 'customer', ago(30 * DAY + 1000));
+    expect(awaitingOf(db, 'stale')).not.toBeNull();
+
     const result = await autoCloseIdleConversations(env, NOW);
-    expect(result.candidates).toBe(0);
-    expect(statusOf(db, 'waiting')).toBe('active');
+    expect(result).toMatchObject({ candidates: 1, closed: 1, staleWaitingClosed: 1 });
+    expect(statusOf(db, 'recent')).toBe('active');
+    expect(statusOf(db, 'stale')).toBe('closed');
+    expect(awaitingOf(db, 'stale')).toBeNull(); // closing clears the marker
+    const log = db.prepare('SELECT details FROM activities').get() as { details: string };
+    expect(JSON.parse(log.details)).toMatchObject({ auto: true, idleDays: 30, staleWait: true });
+  });
+
+  it('a stale wait closed by the auto-close reopens with a fresh wait, not a months-old one', async () => {
+    const { db, env } = setup();
+    addConv(db, 'stale');
+    addMsg(db, 'stale', 'customer', ago(90 * DAY));
+    await autoCloseIdleConversations(env, NOW);
+    expect(statusOf(db, 'stale')).toBe('closed');
+
+    addMsg(db, 'stale', 'customer', ago(-60_000), { content: '還在嗎' }); // a minute after the close
+    expect(awaitingOf(db, 'stale')).toBe(ago(-60_000));
+  });
+
+  it('does not close a stale wait whose customer wrote after it was selected (guarded UPDATE)', async () => {
+    const { db, env } = setup();
+    addConv(db, 'stale');
+    addMsg(db, 'stale', 'customer', ago(40 * DAY));
+    db.prepare("UPDATE conversations SET last_customer_message_at = ? WHERE id = 'stale'").run(ago(1000));
+    const result = await autoCloseIdleConversations(env, NOW);
+    expect(result.closed).toBe(0);
+    expect(statusOf(db, 'stale')).toBe('active');
   });
 
   it('closes a conversation whose last customer message was a sign-off', async () => {
@@ -160,7 +196,7 @@ describe('autoCloseIdleConversations', () => {
   it('is disabled when AUTO_CLOSE_IDLE_DAYS = 0 and honours a longer override', async () => {
     const { db, env } = setup({ AUTO_CLOSE_IDLE_DAYS: '0' });
     answered(db, 'idle', 60 * DAY);
-    expect(await autoCloseIdleConversations(env, NOW)).toEqual({ enabled: false, idleDays: 0, candidates: 0, closed: 0 });
+    expect(await autoCloseIdleConversations(env, NOW)).toEqual({ enabled: false, idleDays: 0, candidates: 0, closed: 0, staleWaitingClosed: 0 });
     expect(statusOf(db, 'idle')).toBe('active');
 
     const longer = setup({ AUTO_CLOSE_IDLE_DAYS: '30' });
@@ -237,8 +273,8 @@ describe('autoCloseIdleConversations', () => {
     await autoCloseIdleConversations(env, NOW);
     expect(statusOf(db, 'back')).toBe('closed');
 
-    addMsg(db, 'back', 'customer', ago(60_000), { content: '請問還有貨嗎' });
-    expect(awaitingOf(db, 'back')).toBe(ago(60_000));
+    addMsg(db, 'back', 'customer', ago(-60_000), { content: '請問還有貨嗎' }); // a minute after the close
+    expect(awaitingOf(db, 'back')).toBe(ago(-60_000));
     // the inbound path reopens a closed conversation (customer-conversation-lookup)
     const reopened = getReopenStatus('closed', true);
     expect(reopened).toBe('assigned');
@@ -261,5 +297,18 @@ describe('autoCloseIdleConversations', () => {
     expect(plan).toContain('idx_conversations_auto_close');
     expect(plan).not.toContain('USE TEMP B-TREE');
     expect(plan).not.toMatch(/SCAN messages/);
+  });
+
+  it('selects stale waits through the awaiting_since partial index', () => {
+    const { db } = setup();
+    const plan = (db.prepare(`EXPLAIN QUERY PLAN
+      SELECT id, status, assigned_team_id FROM conversations
+      WHERE awaiting_since IS NOT NULL AND awaiting_since <= ?
+        AND status <> 'closed' AND deleted_at IS NULL
+        AND last_customer_message_at <= ?
+        AND (last_agent_message_at IS NULL OR last_agent_message_at <= ?)
+      ORDER BY awaiting_since ASC LIMIT ?`).all('a', 'a', 'a', 200) as Array<{ detail: string }>).map(p => p.detail).join(' | ');
+    expect(plan).toContain('idx_conversations_awaiting_since');
+    expect(plan).not.toContain('USE TEMP B-TREE');
   });
 });

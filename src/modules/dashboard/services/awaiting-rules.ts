@@ -65,7 +65,9 @@ export function neverRepliedSql(convIdRef: string): string {
 
 /**
  * The wait marker for a conversation: the EARLIEST non-deleted customer message after the last accepted
- * human reply that is not a sign-off (see startsWaitSql). NULL when nothing is unanswered.
+ * human reply that is not a sign-off (see startsWaitSql), and after the conversation was last closed
+ * (unread_floor_at, migration 0077: closing settles everything before it, so a reopened conversation
+ * waits from the reopening message, not from months-old ones). NULL when nothing is unanswered.
  * `convIdRef` is the SQL reference to the conversation id (a column or NEW.conversation_id).
  */
 export function awaitingExpression(convIdRef: string): string {
@@ -80,6 +82,9 @@ export function awaitingExpression(convIdRef: string): string {
       FROM messages am
       WHERE am.conversation_id = ${convIdRef}
         AND ${humanReplySql('am')}
+    ), '')
+    AND cm.created_at > COALESCE((
+      SELECT fc.unread_floor_at FROM conversations fc WHERE fc.id = ${convIdRef}
     ), '')
     AND ${startsWaitSql('cm')}
 )`;
