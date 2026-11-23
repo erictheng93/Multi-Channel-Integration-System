@@ -17,6 +17,8 @@ export const LINE_QUOTA_FAILURE_ALERT_AFTER = 3;
 export const LINE_QUOTA_ALERT_STATE_KV_KEY = 'line-quota:alert-state';
 const NOTIFICATION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 const MAX_ERROR_LENGTH = 120;
+/** A label joins every team sharing the token; cap it so content stays under the 1000-char validator limit. */
+const MAX_LABEL_LENGTH = 60;
 
 export interface ChannelAlertState {
   /** Levels (percent) already announced and still crossed. */
@@ -130,7 +132,7 @@ function thresholdAlert(item: LineQuotaChannelSnapshot, level: number, onSent: C
   const remaining = item.remaining ?? 0;
   const used = item.used ?? limit - remaining;
   const pct = limit > 0 ? Math.round((remaining / limit) * 1000) / 10 : 0;
-  let content = `「${item.label}」本月已用 ${fmt(used)} / ${fmt(limit)} 則，剩餘 ${fmt(remaining)} 則（${pct}%）。`;
+  let content = `「${shortLabel(item.label)}」本月已用 ${fmt(used)} / ${fmt(limit)} 則，剩餘 ${fmt(remaining)} 則（${pct}%）。`;
   if (item.usableRemaining === 0 && item.reserve !== null) {
     content += `群發已無可用額度（保留 ${fmt(item.reserve)} 則給客服回覆），客服回覆不受影響。`;
   }
@@ -145,7 +147,7 @@ function thresholdAlert(item: LineQuotaChannelSnapshot, level: number, onSent: C
 
 function failureAlert(item: LineQuotaChannelSnapshot, state: ChannelAlertState): PendingAlert {
   const error = sanitizeError(item.error);
-  let content = `「${item.label}」已連續 ${state.consecutiveFailures} 次無法查詢額度，用量數字可能已過期。請檢查此頻道的 Access Token。`;
+  let content = `「${shortLabel(item.label)}」已連續 ${state.consecutiveFailures} 次無法查詢額度，用量數字可能已過期。請檢查此頻道的 Access Token。`;
   if (error) {
     content += `（錯誤：${error}）`;
   }
@@ -307,6 +309,10 @@ function sanitizeError(error: string | null): string {
     .replace(/\s+/g, ' ')
     .trim();
   return cleaned.length > MAX_ERROR_LENGTH ? `${cleaned.slice(0, MAX_ERROR_LENGTH)}...` : cleaned;
+}
+
+function shortLabel(label: string): string {
+  return label.length > MAX_LABEL_LENGTH ? `${label.slice(0, MAX_LABEL_LENGTH)}...` : label;
 }
 
 function fmt(value: number): string {
