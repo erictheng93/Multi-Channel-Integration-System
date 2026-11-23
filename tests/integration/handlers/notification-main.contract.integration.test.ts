@@ -161,6 +161,7 @@ const notification = {
 const stats = {
   total: 1,
   unread: 1,
+  badgeUnread: 1,
   byType: {
     new_message: { total: 0, unread: 0 },
     conversation_assigned: { total: 0, unread: 0 },

@@ -21,7 +21,7 @@ import type { DbUser } from '@/types';
 
 const log = createContextLogger('ConversationAssignmentHandler');
 
-type AssignedConversationResponse = Omit<typeof conversations.$inferSelect, 'lineReplyToken' | 'lineReplyTokenReceivedAt' | 'awaitingSince' | 'lastCustomerMessageAt' | 'lastAgentMessageAt'> & {
+type AssignedConversationResponse = Omit<typeof conversations.$inferSelect, 'lineReplyToken' | 'lineReplyTokenReceivedAt' | 'awaitingSince' | 'unreadFloorBeforeClose' | 'lastCustomerMessageAt' | 'lastAgentMessageAt'> & {
   assignedTeam?: typeof teams.$inferSelect;
   customer?: (typeof customers.$inferSelect & { name: string }) | undefined;
 };
@@ -681,22 +681,11 @@ async function setConversationClosed(c: Context<{ Bindings: Bindings }>, closed:
       return c.json({ error: 'Conversation not found' }, HTTP_STATUS.NOT_FOUND);
     }
 
-    const statuses = await setConversationsClosed(c.env, activityMeta(c, user), [conv], closed);
-    const status = statuses[conv.id];
-    // 已是目標狀態，或讀取後被並行請求搶先改動：重讀取得實際狀態，避免回傳過期的 conv
-    if (!status) {
-      const [fresh] = await drizzleDb.select().from(conversations).where(eq(conversations.id, conv.id)).limit(1);
-      return c.json({ success: true, data: toPublicConversation(fresh ?? conv), timestamp: nowISO() });
-    }
-
-    const timestamp = nowISO();
-    const closedAt = closed ? timestamp : null;
-
-    return c.json({
-      success: true,
-      data: { ...toPublicConversation(conv), status, closedAt, updatedAt: timestamp },
-      timestamp: nowISO()
-    });
+    await setConversationsClosed(c.env, activityMeta(c, user), [conv], closed);
+    // 一律重讀：結案會清除待回覆標記、重新開啟會還原它，conv 是變更前的快照；
+    // 已是目標狀態或被並行請求搶先改動時，也回傳實際狀態。
+    const [fresh] = await drizzleDb.select().from(conversations).where(eq(conversations.id, conv.id)).limit(1);
+    return c.json({ success: true, data: { ...toPublicConversation(fresh ?? conv), awaitingSince: (fresh ?? conv).awaitingSince ?? null }, timestamp: nowISO() });
   } catch (error) {
     return globalErrorHandler.handleError(c, error);
   }

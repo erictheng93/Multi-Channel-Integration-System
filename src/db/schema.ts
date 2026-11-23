@@ -110,6 +110,8 @@ export const conversations = sqliteTable('conversations', {
   closedAt: text('closed_at'),
   // Set on close, kept on reopen: unread floor so pre-close backlog stays read (Migration 0064)
   unreadFloorAt: text('unread_floor_at'),
+  // The floor as it was before the last close; a manual reopen soon after the close restores it, undoing the close (Migration 0078)
+  unreadFloorBeforeClose: text('unread_floor_before_close'),
   // Latest unused LINE replyToken + webhook receive time (epoch ms); claimed by agent replies to use the free Reply API (Migration 0065)
   lineReplyToken: text('line_reply_token'),
   lineReplyTokenReceivedAt: integer('line_reply_token_received_at'),

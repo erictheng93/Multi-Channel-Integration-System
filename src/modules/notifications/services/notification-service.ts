@@ -140,8 +140,10 @@ export class NotificationService {
 
     const stats: NotificationStats = {
       total: Number(rawStats?.total) || 0,
+      // Real unread total: what the isRead filter and mark-all-read act on.
+      unread: Number(rawStats?.unread) || 0,
       // Badge number: informational types are listed but not counted.
-      unread: Math.max(
+      badgeUnread: Math.max(
         0,
         (Number(rawStats?.unread) || 0)
           - (Number(rawStats?.customer_followed_unread) || 0)

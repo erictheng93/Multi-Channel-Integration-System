@@ -752,7 +752,12 @@ export const useConversationsStore = defineStore('conversations', () => {
 
       if (response.success) {
         if (response.data?.status) {
-          updateConversationStatus(conversationId, { status: response.data.status })
+          // The wait marker comes back with the status: cleared by a close, restored by a reopen
+          const awaitingSince = response.data.awaitingSince
+          updateConversationStatus(conversationId, {
+            status: response.data.status,
+            ...(awaitingSince !== undefined ? { awaitingSince } : {})
+          })
         }
         return true
       }

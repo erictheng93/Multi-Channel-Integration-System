@@ -59,7 +59,8 @@ export const useNotificationsStore = defineStore('notifications', () => {
     notifications.value.filter(n => !n.isRead)
   )
 
-  const hasUnread = computed(() => unreadCount.value > 0)
+  // Anything unread at all, informational included (the badge count alone would hide mark-all-read for those)
+  const hasUnread = computed(() => unreadCount.value > 0 || (stats.value?.unread ?? 0) > 0)
 
   const groupedByType = computed(() => {
     const groups: Record<NotificationType, Notification[]> = {
@@ -202,7 +203,8 @@ export const useNotificationsStore = defineStore('notifications', () => {
       const response = await notificationApi.getStats()
       if (response.success && response.data) {
         stats.value = response.data
-        unreadCount.value = response.data.unread
+        // Badge counts skip informational types; stats.unread stays the real total
+        unreadCount.value = response.data.badgeUnread ?? response.data.unread
       }
     } catch (err) {
       console.error('[NotificationsStore] Failed to fetch stats:', err)
@@ -255,8 +257,12 @@ export const useNotificationsStore = defineStore('notifications', () => {
   const markAllAsRead = async (type?: NotificationType) => {
     const previousUnreadCount = unreadCount.value
     const previousNotifications = notifications.value.map(n => ({ ...n }))
+    const previousStats = stats.value
 
     // 樂觀更新
+    if (!type && stats.value) {
+      stats.value = { ...stats.value, unread: 0, badgeUnread: 0 }
+    }
     notifications.value.forEach(n => {
       if (!type || n.type === type) {
         if (!n.isRead) {
@@ -275,15 +281,19 @@ export const useNotificationsStore = defineStore('notifications', () => {
         // 回滾
         notifications.value = previousNotifications
         unreadCount.value = previousUnreadCount
+        stats.value = previousStats
         handleError(response.error, '批量標記已讀失敗')
         return false
       }
+      // Reconcile the per-type / per-priority unread counts with the server
+      void fetchStats()
       frontendLogger.debug(`[NotificationsStore] Marked ${response.data?.updated || 'all'} notifications as read`)
       return true
     } catch (err) {
       // 回滾
       notifications.value = previousNotifications
       unreadCount.value = previousUnreadCount
+      stats.value = previousStats
       handleError(err, '批量標記已讀失敗')
       return false
     }
