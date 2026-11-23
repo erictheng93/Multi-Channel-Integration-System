@@ -346,7 +346,7 @@ export const useConversationsStore = defineStore('conversations', () => {
   // ═══════════════════════════════════════════════════════════════════
   // Sub-module: Realtime handler
   // ═══════════════════════════════════════════════════════════════════
-  const { handleRealtimeUpdate, pollConversations } = createRealtimeHandler({
+  const { handleRealtimeUpdate, pollConversations, refreshUnreadCount } = createRealtimeHandler({
     conversations,
     currentConversation,
     transferredConversation,
@@ -760,6 +760,8 @@ export const useConversationsStore = defineStore('conversations', () => {
             ...(awaitingSince !== undefined ? { awaitingSince } : {}),
             ...(unreadFloorAt !== undefined ? { unreadFloorAt } : {})
           })
+          // The restored floor makes this agent's unread messages count again; the close had zeroed the badge
+          if (!closed && response.data.status !== 'closed') { void refreshUnreadCount(conversationId) }
         }
         return true
       }
