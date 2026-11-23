@@ -171,9 +171,12 @@ async function main() {
   console.log('');
 
   // 查找所有 TypeScript 文件
-  const files = await glob(`${targetDir}/**/*.ts`, {
-    ignore: ['**/node_modules/**', '**/dist/**', '**/*.d.ts'],
-  });
+  const files: string[] = [];
+  for await (const rel of new Bun.Glob('**/*.ts').scan({ cwd: targetDir })) {
+    const normalized = rel.replaceAll('\\', '/');
+    if (/(^|\/)(node_modules|dist)\//.test(normalized) || normalized.endsWith('.d.ts')) continue;
+    files.push(`${targetDir}/${normalized}`);
+  }
 
   stats.totalFiles = files.length;
   console.log(` 找到 ${files.length} 個 TypeScript 文件\n`);
