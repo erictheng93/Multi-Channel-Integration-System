@@ -10,7 +10,6 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
-import { glob } from 'glob';
 
 // 路徑別名映射（對應 tsconfig.json）
 const ALIAS_MAPPINGS = {

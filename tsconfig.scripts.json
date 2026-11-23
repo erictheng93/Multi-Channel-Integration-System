@@ -5,7 +5,8 @@
   "compilerOptions": {
     "tsBuildInfoFile": "./node_modules/.cache/tsc-scripts.tsbuildinfo",
     "lib": ["ES2022"],
-    "types": ["bun"]
+    "types": ["bun"],
+    "allowImportingTsExtensions": true
   },
   "include": [
     "scripts/**/*",

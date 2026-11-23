@@ -84,3 +84,5 @@ if (deploy.exitCode !== 0) {
   fail('wrangler pages deploy failed.')
 }
 log('done. ✅')
+
+export {};

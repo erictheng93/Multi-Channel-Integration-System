@@ -113,7 +113,7 @@ interface ConnectionResult {
 
 // =================== Connection Storm Tester ===================
 
-export class ConnectionStormTester extends EventEmitter {
+class ConnectionStormTester extends EventEmitter {
   private config: ConnectionStormConfig;
   private results: ConnectionStormResults;
   private activeConnections: Map<string, WebSocket> = new Map();
@@ -715,6 +715,8 @@ async function runConnectionStorm() {
   }
 }
 
-runConnectionStorm();
+if (import.meta.main) {
+  runConnectionStorm();
+}
 
-export { ConnectionStormTester, ConnectionStormConfig, ConnectionStormResults };
+export { ConnectionStormTester, type ConnectionStormConfig, type ConnectionStormResults };

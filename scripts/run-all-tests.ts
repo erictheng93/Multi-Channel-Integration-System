@@ -391,12 +391,13 @@ class ComprehensiveTestRunner {
       result.endTime = performance.now();
       result.duration = result.endTime - result.startTime;
 
-      if (error.message?.includes('timeout')) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      if (errorMessage.includes('timeout')) {
         result.status = 'timeout';
         result.error = `Test timeout after ${suite.timeout}ms`;
       } else {
         result.status = 'failed';
-        result.error = error.message;
+        result.error = errorMessage;
       }
     }
 
@@ -613,4 +614,4 @@ let suiteFilter: string[] = [];
 
   runTests();
 
-export { ComprehensiveTestRunner, TestConfig, TestReport };
+export { ComprehensiveTestRunner, type TestConfig, type TestReport };
