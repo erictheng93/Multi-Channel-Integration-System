@@ -1,7 +1,7 @@
 <template>
   <section
     class="queue ui-lead"
-    :class="{ 'is-calm': total === 0 }"
+    :class="{ 'is-compact': !showBoard }"
     aria-labelledby="queue-title"
   >
     <header class="queue-head">
@@ -53,11 +53,35 @@
           class="queue-unread"
           :title="UNREAD_HINT"
         >我的未讀 <b>{{ unread }}</b></span>
+        <button
+          v-if="lanes.length > 0"
+          type="button"
+          class="btn btn-secondary btn-sm"
+          :aria-expanded="expanded"
+          aria-controls="queue-board"
+          @click="toggleExpanded"
+        >
+          看板
+          <svg
+            class="queue-chevron"
+            :class="{ 'is-open': expanded }"
+            viewBox="0 0 16 16"
+            width="12"
+            height="12"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          ><path d="m4 6 4 4 4-4" /></svg>
+        </button>
       </div>
     </header>
 
     <div
-      v-if="lanes.length > 0"
+      v-if="showBoard"
+      id="queue-board"
       class="board"
       role="group"
       aria-label="待回覆的客戶，依等待時間排列"
@@ -186,6 +210,17 @@ const DOT = 34
 const PAD = 22 // keeps the first and last dot inside the track
 const ROW = 38
 
+// The lane chart is tall, so it starts folded; the viewer's choice is remembered in this browser
+const EXPANDED_KEY = 'conversation-queue-board-expanded'
+const readExpanded = (): boolean => {
+  try { return localStorage.getItem(EXPANDED_KEY) === 'true' } catch { return false }
+}
+const expanded = ref(readExpanded())
+const toggleExpanded = () => {
+  expanded.value = !expanded.value
+  try { localStorage.setItem(EXPANDED_KEY, String(expanded.value)) } catch { /* storage unavailable: just not remembered */ }
+}
+
 const trackW = ref(640)
 const axisEl = ref<HTMLElement | null>(null)
 let observer: globalThis.ResizeObserver | null = null
@@ -275,6 +310,8 @@ const lanes = computed(() => {
   })
   return built.sort((a, b) => b.longest - a.longest)
 })
+
+const showBoard = computed(() => lanes.value.length > 0 && expanded.value)
 </script>
 
 <style scoped>
@@ -284,13 +321,29 @@ const lanes = computed(() => {
   padding: 24px 28px 22px;
 }
 
-.queue.is-calm {
+/* Folded: one summary row (label, count and longest wait share a baseline) */
+.queue.is-compact {
   gap: 0;
-  padding-block: 18px;
+  padding-block: 12px;
 }
 
-.queue.is-calm .queue-num {
-  font-size: 30px;
+.queue.is-compact .queue-head {
+  align-items: center;
+}
+
+.queue.is-compact .queue-lead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 12px;
+}
+
+.queue.is-compact .queue-num {
+  font-size: 24px;
+}
+
+.queue.is-compact .queue-num small {
+  font-size: 14px;
 }
 
 .queue-head {
@@ -348,6 +401,15 @@ const lanes = computed(() => {
   flex-wrap: wrap;
   gap: 8px;
   align-items: center;
+}
+
+.queue-chevron {
+  margin-left: 4px;
+  transition: transform var(--ui-dur) var(--ui-ease);
+}
+
+.queue-chevron.is-open {
+  transform: rotate(180deg);
 }
 
 .queue-unread {
@@ -575,6 +637,10 @@ const lanes = computed(() => {
   .queue {
     gap: 14px;
     padding: 18px 16px 14px;
+  }
+
+  .queue.is-compact {
+    padding: 12px 16px;
   }
 
   .queue-head {
