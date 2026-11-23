@@ -53,7 +53,7 @@ function checkPackageJson(): void {
       'dev:remote': 'wrangler dev --remote',
       'predeploy':
         'bun scripts/guard-production-command.ts predeploy -- bun scripts/check-schema-drift.ts',
-      'deploy': 'bun scripts/guard-production-command.ts deploy -- wrangler deploy --minify',
+      'deploy': 'bun scripts/guard-production-command.ts deploy -- bun scripts/deploy-worker.ts',
       'db:migrate':
         'bun scripts/guard-production-command.ts d1:migrate -- wrangler d1 migrations apply DB --remote',
       'db:seed':
