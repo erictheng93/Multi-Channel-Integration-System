@@ -49,7 +49,10 @@ export interface Notification {
 
 export interface NotificationStats {
   total: number
+  /** Every unread notification (matches the isRead filter) */
   unread: number
+  /** Unread minus informational types: the number the badge shows */
+  badgeUnread: number
   byType: Record<NotificationType, { total: number; unread: number }>
   byPriority: Record<NotificationPriority, { total: number; unread: number }>
   timeRange: {
