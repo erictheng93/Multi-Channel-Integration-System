@@ -409,6 +409,18 @@ function render(
 
 // ---------------------------------------------------------------------------
 
+/**
+ * --check comparison: does the committed doc match what the database renders today?
+ *
+ * The generation timestamp and source line change on every run, so they are ignored. Line endings
+ * are normalised on the committed copy: with core.autocrlf=true (Windows) its working-tree copy is
+ * CRLF while render() emits LF, which made an up-to-date doc read as STALE.
+ */
+export function isSchemaDocCurrent(existing: string, generated: string): boolean {
+  const strip = (s: string) => s.replace(/^> \*\*產生時間\*\*.*$/m, '').replace(/^> \*\*資料來源\*\*.*$/m, '');
+  return strip(existing.replace(/\r\n/g, '\n')) === strip(generated);
+}
+
 function main(): void {
   const args = process.argv.slice(2);
   const remote = args.includes('--remote');
@@ -444,9 +456,7 @@ function main(): void {
 
   if (check) {
     const existing = existsSync(OUTPUT) ? readFileSync(OUTPUT, 'utf8') : '';
-    // Ignore the generation timestamp, which changes on every run.
-    const strip = (s: string) => s.replace(/^> \*\*產生時間\*\*.*$/m, '').replace(/^> \*\*資料來源\*\*.*$/m, '');
-    if (strip(existing) === strip(markdown)) {
+    if (isSchemaDocCurrent(existing, markdown)) {
       console.log(`OK: ${OUTPUT} is up to date.`);
       process.exit(0);
     }
@@ -459,4 +469,7 @@ function main(): void {
   console.log(`Wrote ${OUTPUT} — ${tableCount} tables, ${master.filter((m) => m.type === 'index').length} indexes, ${master.filter((m) => m.type === 'view').length} views.`);
 }
 
-main();
+// Guarded so tests can import isSchemaDocCurrent without running the generator.
+if (import.meta.main) {
+  main();
+}
