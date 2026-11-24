@@ -64,7 +64,7 @@ class EmojiDataCollector {
         // 处理单个或多个码点
         const codePoints = codePoint.match(/.{4}/g) || [codePoint];
         return codePoints.map(cp => String.fromCodePoint(parseInt(cp, 16))).join('');
-      } catch (e) {
+      } catch {
         return null;
       }
     }

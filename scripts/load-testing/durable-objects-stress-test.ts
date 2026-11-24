@@ -322,7 +322,7 @@ class DurableObjectsStressTester {
           metrics
         );
       }
-    } catch (error) {
+    } catch {
       metrics.lockContentions++;
     }
   }
@@ -694,7 +694,7 @@ class DurableObjectsStressTester {
           }
         );
       }
-    } catch (error) {
+    } catch {
       // Lock contention expected
     }
   }

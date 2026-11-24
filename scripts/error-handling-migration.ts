@@ -84,7 +84,7 @@ class ErrorHandlingMigrationTool {
       this.detectInconsistentResponse(filePath, lines);
       this.detectMissingErrorHandling(filePath, lines);
 
-    } catch (error) {
+    } catch {
       console.warn(` 無法讀取檔案: ${filePath}`);
     }
   }

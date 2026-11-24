@@ -102,7 +102,7 @@ function checkPrerequisites(): void {
   try {
     runSync(['wrangler', '--version']);
     log(' Wrangler CLI 已安裝', 'green');
-  } catch (error) {
+  } catch {
     log(' Wrangler CLI 未安裝，請先安裝: npm install -g wrangler', 'red');
     process.exit(1);
   }
@@ -111,7 +111,7 @@ function checkPrerequisites(): void {
   try {
     runSync(['wrangler', 'whoami']);
     log(' 已登入 Cloudflare 帳戶', 'green');
-  } catch (error) {
+  } catch {
     log(' 未登入 Cloudflare，請先執行: wrangler login', 'red');
     process.exit(1);
   }
@@ -148,7 +148,7 @@ function setupR2Storage(): void {
         '創建 R2 Bucket'
       );
     }
-  } catch (error) {
+  } catch {
     executeCommand(
       'wrangler r2 bucket create omni-channel-attachments',
       '創建 R2 Bucket'
@@ -188,7 +188,7 @@ function setupEnvironmentVariables(): void {
         log(` ${secret.description} 未設定，請手動執行:`, 'yellow');
         log(`wrangler secret put ${secret.name}`, 'yellow');
       }
-    } catch (error) {
+    } catch {
       log(` 無法檢查 ${secret.description}，請確保已設定`, 'yellow');
     }
   }
@@ -204,7 +204,7 @@ function migrateDatabase(): void {
       log(' 資料庫不存在，請先創建資料庫', 'red');
       process.exit(1);
     }
-  } catch (error) {
+  } catch {
     log(' 無法檢查資料庫狀態', 'yellow');
   }
   
@@ -235,7 +235,7 @@ function migrateDatabase(): void {
     } else {
       log(' 無法確認檔案附件表狀態', 'yellow');
     }
-  } catch (error) {
+  } catch {
     log(' 無法驗證資料庫表狀態', 'yellow');
   }
 }

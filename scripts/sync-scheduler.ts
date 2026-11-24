@@ -291,7 +291,7 @@ class DatabaseSyncScheduler {
       const latestReport = JSON.parse(fs.readFileSync(path.join(reportsDir, files[0]), 'utf8'));
       return latestReport.timestamp;
 
-    } catch (error) {
+    } catch {
       return null;
     }
   }

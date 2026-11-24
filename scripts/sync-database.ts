@@ -139,7 +139,7 @@ class DatabaseSyncTool {
     // 檢查 Wrangler 是否可用
     try {
       runSync(['wrangler', '--version']);
-    } catch (error) {
+    } catch {
       throw new Error('Wrangler CLI 不可用，請先安裝 Wrangler');
     }
 
@@ -297,7 +297,7 @@ class DatabaseSyncTool {
       }
 
       return 0;
-    } catch (error) {
+    } catch {
       console.warn(` 無法獲取 ${env} ${tableName} 的數據量`);
       return 0;
     }
