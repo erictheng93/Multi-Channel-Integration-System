@@ -25,6 +25,42 @@ export interface CustomerProfileUpdates {
   metadata?: Record<string, unknown>;
 }
 
+/** TTL of the `webhook:customer:*` lock held while a new customer is created. */
+const CUSTOMER_LOCK_TTL_MS = 15000;
+
+/**
+ * Upper bound for the LINE/FB profile fetch made while holding the customer lock.
+ * It must stay well inside CUSTOMER_LOCK_TTL_MS: if the profile API hangs past the
+ * TTL, the lock expires, a second webhook for the same user takes it over and both
+ * try to insert the customer. 5s leaves 10s of the TTL for the DB reads and insert.
+ * A timeout is handled like any other profile failure: the customer is created with
+ * the platform default name (or the LIFF fallback) and no avatar.
+ */
+export const PROFILE_FETCH_TIMEOUT_MS = 5000;
+
+/**
+ * Run `run` with an AbortSignal that fires after `ms`, and reject at that moment even
+ * if `run` ignores the signal, so the caller's deadline holds regardless. A one-shot
+ * timer (not AbortSignal.timeout) so the rejection is deterministic and the timer is
+ * cleared as soon as `run` settles.
+ */
+async function withProfileTimeout<T>(run: (signal: AbortSignal) => Promise<T>, ms: number): Promise<T> {
+  const controller = new AbortController();
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timedOut = new Promise<never>((_resolve, reject) => {
+    timer = setTimeout(() => {
+      const reason = new DOMException(`Profile fetch timed out after ${ms}ms`, 'TimeoutError');
+      controller.abort(reason);
+      reject(reason);
+    }, ms);
+  });
+  try {
+    return await Promise.race([run(controller.signal), timedOut]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 interface FindOrCreateOpts {
   groupId?: string;
   sourceTeamId?: number;
@@ -89,18 +125,15 @@ export async function findOrCreateCustomer(
         const { createUserSyncService } = await import('@/services/user-sync');
         const userSyncService = createUserSyncService(env);
 
-        if (platform === 'line') {
-          const profile = await userSyncService.syncLineUser(platformUserId);
-          if (profile) {
-            displayName = profile.displayName;
-            avatarUrl = profile.pictureUrl ?? null;
-          }
-        } else {
-          const profile = await userSyncService.syncFacebookUser(platformUserId);
-          if (profile) {
-            displayName = profile.displayName;
-            avatarUrl = profile.pictureUrl ?? null;
-          }
+        const profile = await withProfileTimeout(
+          signal => platform === 'line'
+            ? userSyncService.syncLineUser(platformUserId, undefined, { signal })
+            : userSyncService.syncFacebookUser(platformUserId, { signal }),
+          PROFILE_FETCH_TIMEOUT_MS
+        );
+        if (profile) {
+          displayName = profile.displayName;
+          avatarUrl = profile.pictureUrl ?? null;
         }
       } catch (profileError) {
         log.warn(`Failed to sync ${platform} user profile`, {
@@ -156,7 +189,7 @@ export async function findOrCreateCustomer(
 
       return created || null;
     },
-    { ttl: 15000, timeout: 8000 }
+    { ttl: CUSTOMER_LOCK_TTL_MS, timeout: 8000 }
   );
 }
 

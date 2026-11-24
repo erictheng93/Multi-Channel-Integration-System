@@ -338,6 +338,22 @@ describe('LINE API Integration Tests', () => {
 
       expect(result).toBeNull();
     });
+
+    test('passes the caller signal to fetch and returns null when it aborts (timeout)', async () => {
+      const controller = new AbortController();
+      mockFetch.mockImplementationOnce((_url: string, init: RequestInit) => new Promise((_resolve, reject) => {
+        init.signal?.addEventListener('abort', () => reject(init.signal?.reason));
+      }));
+
+      const pending = getLineUserProfile(mockAccessToken, mockUserId, controller.signal);
+      controller.abort(new DOMException('Profile fetch timed out', 'TimeoutError'));
+
+      await expect(pending).resolves.toBeNull();
+      expect(mockFetch).toHaveBeenCalledWith(
+        `https://api.line.me/v2/bot/profile/${mockUserId}`,
+        expect.objectContaining({ signal: controller.signal })
+      );
+    });
   });
 
   describe('getLineGroupMemberProfile', () => {
