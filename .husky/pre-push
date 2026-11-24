@@ -46,7 +46,8 @@ fi
 # Docs-only fast path
 #
 # The checks below cover exactly: src/** + shared/** (tsc), frontend/**
-# (vue-tsc + eslint), scripts/** + tools/** + database/** (tsc -p tsconfig.scripts.json). A push that touches none of those cannot change their
+# (vue-tsc + eslint), scripts/** + tools/** + database/** (tsc -p tsconfig.scripts.json + eslint via
+# frontend/eslint.scripts.config.js). A push that touches none of those cannot change their
 # result, so paying ~2-10 minutes for it is pure waste — and the structural
 # guards in pre-commit have already run on every commit either way.
 #
@@ -82,7 +83,7 @@ if [ "$DOCS_ONLY" = "1" ]; then
 fi
 
 echo "🔬 Running pre-push checks (full, parallel)..."
-echo "   (tsc + vue-tsc + eslint + scripts tsc running concurrently)"
+echo "   (tsc + vue-tsc + eslint + scripts tsc + scripts eslint running concurrently)"
 
 # Ensure cache dirs exist for incremental tsc/vue-tsc/eslint
 mkdir -p node_modules/.cache frontend/node_modules/.cache
@@ -92,10 +93,12 @@ LOG_TSC="$TMPDIR/mcis-prepush-tsc.log"
 LOG_VUETSC="$TMPDIR/mcis-prepush-vuetsc.log"
 LOG_ESLINT="$TMPDIR/mcis-prepush-eslint.log"
 LOG_SCRIPTS="$TMPDIR/mcis-prepush-scripts.log"
+LOG_SCRIPTS_LINT="$TMPDIR/mcis-prepush-scripts-lint.log"
 EXIT_TSC="$TMPDIR/mcis-prepush-tsc.exit"
 EXIT_VUETSC="$TMPDIR/mcis-prepush-vuetsc.exit"
 EXIT_ESLINT="$TMPDIR/mcis-prepush-eslint.exit"
 EXIT_SCRIPTS="$TMPDIR/mcis-prepush-scripts.exit"
+EXIT_SCRIPTS_LINT="$TMPDIR/mcis-prepush-scripts-lint.exit"
 
 START=$(date +%s)
 
@@ -134,8 +137,15 @@ PID_ESLINT=$!
 ) &
 PID_SCRIPTS=$!
 
-# Wait for all four
-wait $PID_TSC $PID_VUETSC $PID_ESLINT $PID_SCRIPTS
+# Job 5: scripts/, tools/, database/ ESLint (frontend/eslint.scripts.config.js; --max-warnings 0 like CI)
+(
+  bun run lint:scripts > "$LOG_SCRIPTS_LINT" 2>&1
+  echo $? > "$EXIT_SCRIPTS_LINT"
+) &
+PID_SCRIPTS_LINT=$!
+
+# Wait for all five
+wait $PID_TSC $PID_VUETSC $PID_ESLINT $PID_SCRIPTS $PID_SCRIPTS_LINT
 
 END=$(date +%s)
 ELAPSED=$((END - START))
@@ -163,6 +173,14 @@ if [ "$(cat "$EXIT_SCRIPTS")" != "0" ]; then
   echo "── Scripts TypeScript (tsconfig.scripts.json) ─────"
   cat "$LOG_SCRIPTS"
   echo "❌ Scripts/tools/database TypeScript compilation failed!"
+  FAIL=1
+fi
+
+if [ "$(cat "$EXIT_SCRIPTS_LINT")" != "0" ]; then
+  echo ""
+  echo "── Scripts ESLint (lint:scripts) ──────────────────"
+  cat "$LOG_SCRIPTS_LINT"
+  echo "❌ Scripts/tools/database ESLint check failed!"
   FAIL=1
 fi
 
