@@ -421,14 +421,10 @@ class ComprehensiveTestRunner {
       }, timeout);
     });
 
-    try {
-      const exitCode = await Promise.race([proc.exited, timeoutPromise]);
-      const stdout = await new Response(proc.stdout).text();
-      const stderr = await new Response(proc.stderr).text();
-      return { stdout, stderr, exitCode };
-    } catch (error) {
-      throw error;
-    }
+    const exitCode = await Promise.race([proc.exited, timeoutPromise]);
+    const stdout = await new Response(proc.stdout).text();
+    const stderr = await new Response(proc.stderr).text();
+    return { stdout, stderr, exitCode };
   }
 
   private logTestResult(result: TestResult): void {

@@ -44,7 +44,7 @@ try {
 
     console.log('\n 資料庫 schema 驗證完成！');
 
-} catch (error: any) {
-    console.error(' 驗證過程中發生錯誤：', error.message);
+} catch (error) {
+    console.error(' 驗證過程中發生錯誤：', error instanceof Error ? error.message : String(error));
     process.exit(1);
 }

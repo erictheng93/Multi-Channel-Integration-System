@@ -384,7 +384,6 @@ class EmojiDataCollector {
       'zzz': '💤',
       'waving_hand': '👋',
       'wave': '👋',
-      'raised_hand_with_fingers_splayed': '🖐️',
       'spock-hand': '🖖',
       'rock': '🤘',
       'call_me': '🤙',
@@ -489,7 +488,7 @@ class EmojiDataCollector {
   /**
    * 简单的shortname到emoji转换
    */
-  shortNameToEmoji(shortname) {
+  shortNameToEmoji(_shortname) {
     // 这里可以添加一些基于shortname的emoji推断逻辑
     // 暂时返回null，依赖其他数据源
     return null;
