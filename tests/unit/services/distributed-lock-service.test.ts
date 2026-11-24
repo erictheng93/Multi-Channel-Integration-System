@@ -185,27 +185,45 @@ describe('LockCoordinator TTL expiry and restart (issue #277)', () => {
       expect(await holderA.tryLock('res', 1000)).toBeNull();
     });
 
-    it('documents actual behaviour: before a takeover, the holder can still extend (revive) or release its expired lock', async () => {
-      const current = { coord: coordinatorOn(new Map()) };
+    it('refuses to extend (revive) an expired lock, the same way as an unknown lock, and drops it from state', async () => {
+      const storage: Storage = new Map();
+      const current = { coord: coordinatorOn(storage) };
       const holderA = serviceVia(current);
       const holderB = serviceVia(current);
       const lockA = await holderA.acquireLock('res', opts);
 
       vi.setSystemTime(T0 + 1500);
       expect(await holderA.isLocked('res')).toBe(false);
-      // extend adds to the old expiresAt without checking that it already passed.
-      await expect(holderA.extendLock(lockA, 5000)).resolves.toBe(T0 + 6000);
-      expect(await holderA.isLocked('res')).toBe(true);
-      expect(await holderB.tryLock('res', 1000)).toBeNull();
+      await expect(holderA.extendLock(lockA, 5000)).rejects.toThrow('Lock extension failed: Lock not found or not owned');
 
-      // An extension too small to reach "now" leaves the lock expired and free.
-      vi.setSystemTime(T0 + 10_000);
-      await expect(holderA.extendLock(lockA, 1000)).resolves.toBe(T0 + 7000);
+      // The stale record is gone, in memory and in storage, and the resource stays free.
+      expect(await holderA.getLockInfo(lockA)).toBeNull();
+      expect(storage.get('activeLocks')).toEqual([]);
+      expect(storage.get('resourceLocks')).toEqual([]);
       expect(await holderA.isLocked('res')).toBe(false);
+      await expect(holderA.extendLock(lockA, 5000)).rejects.toThrow('Lock extension failed: Lock not found or not owned');
+      await expect(holderB.tryLock('res', 1000)).resolves.toEqual(expect.any(String));
+    });
 
-      // Releasing an expired, untaken lock succeeds and simply frees the resource.
+    it('refuses to extend a lock exactly at its deadline (now === expiresAt counts as expired)', async () => {
+      const current = { coord: coordinatorOn(new Map()) };
+      const holderA = serviceVia(current);
+      const lockA = await holderA.acquireLock('res', opts);
+
+      vi.setSystemTime(T0 + 1000);
+      await expect(holderA.extendLock(lockA, 5000)).rejects.toThrow('Lock extension failed: Lock not found or not owned');
+      expect(await holderA.getLockInfo(lockA)).toBeNull();
+    });
+
+    it('still lets the holder release its expired, untaken lock', async () => {
+      const current = { coord: coordinatorOn(new Map()) };
+      const holderA = serviceVia(current);
+      const lockA = await holderA.acquireLock('res', opts);
+
+      vi.setSystemTime(T0 + 1500);
       await holderA.releaseLock(lockA);
       expect(await holderA.getLockInfo(lockA)).toBeNull();
+      expect(await holderA.isLocked('res')).toBe(false);
     });
 
     it('extendLock pushes expiry: the lock stays held past the original TTL and frees after the new one', async () => {
@@ -274,6 +292,55 @@ describe('LockCoordinator TTL expiry and restart (issue #277)', () => {
       await runA;
       expect(await holderB.isLocked('res')).toBe(true);
       await holderB.releaseLock(lockB);
+    });
+  });
+
+  // One rule everywhere: a lock is expired when now >= expiresAt. The lock below is acquired at
+  // T0 with ttl 1000, so expiresAt === T0 + 1000.
+  describe('deadline boundary (now === expiresAt is expired)', () => {
+    async function heldUntilT0Plus1000(): Promise<{ holderB: DistributedLockService; lockA: string; holderA: DistributedLockService }> {
+      const current = { coord: coordinatorOn(new Map()) };
+      const holderA = serviceVia(current);
+      const holderB = serviceVia(current);
+      const lockA = await holderA.acquireLock('res', opts);
+      expect((await holderA.getLockInfo(lockA))?.expiresAt).toBe(T0 + 1000);
+      return { holderA, holderB, lockA };
+    }
+
+    it('isLocked: held 1ms before the deadline, free at it', async () => {
+      const { holderB } = await heldUntilT0Plus1000();
+      vi.setSystemTime(T0 + 999);
+      expect(await holderB.isLocked('res')).toBe(true);
+      vi.setSystemTime(T0 + 1000);
+      expect(await holderB.isLocked('res')).toBe(false);
+    });
+
+    it('tryLock: refused 1ms before the deadline, granted at it', async () => {
+      const { holderA, holderB, lockA } = await heldUntilT0Plus1000();
+      vi.setSystemTime(T0 + 999);
+      expect(await holderB.tryLock('res', 1000)).toBeNull();
+      vi.setSystemTime(T0 + 1000);
+      const lockB = await holderB.tryLock('res', 1000);
+      expect(lockB).toEqual(expect.any(String));
+      expect(await holderA.getLockInfo(lockA)).toBeNull();
+    });
+
+    it('acquireLock: times out 1ms before the deadline, granted on the first attempt at it', async () => {
+      const { holderA, holderB, lockA } = await heldUntilT0Plus1000();
+      vi.setSystemTime(T0 + 999);
+      await expect(holderB.acquireLock('res', opts)).rejects.toThrow('Lock acquisition failed');
+      vi.setSystemTime(T0 + 1000);
+      const lockB = await holderB.acquireLock('res', opts);
+      expect((await holderB.getLockInfo(lockB))?.metadata).toMatchObject({ attempts: 1 });
+      expect(await holderA.getLockInfo(lockA)).toBeNull();
+    });
+
+    it('cleanupExpiredLocks: removes a lock exactly at its deadline', async () => {
+      const { holderB } = await heldUntilT0Plus1000();
+      vi.setSystemTime(T0 + 999);
+      expect(await holderB.cleanupExpiredLocks()).toBe(0);
+      vi.setSystemTime(T0 + 1000);
+      expect(await holderB.cleanupExpiredLocks()).toBe(1);
     });
   });
 
