@@ -2,7 +2,7 @@
 import { describe, it, expect } from 'vitest';
 import Sqlite from 'better-sqlite3';
 import { getTableConfig } from 'drizzle-orm/sqlite-core';
-import { conversations } from '@/db/schema';
+import { conversations, customers } from '@/db/schema';
 import { createDbClient } from '@/db/drizzle-factory';
 import { isUniqueConstraintError } from '@/utils/unique-constraint';
 import { d1Of, readMigration } from '../../helpers/sqlite-d1';
@@ -56,5 +56,23 @@ describe('isUniqueConstraintError', () => {
     expect((error as Error).message).not.toContain('UNIQUE constraint failed');
     expect(isUniqueConstraintError(error, 'conversations.customer_id')).toBe(true);
     expect(sqlite.prepare('SELECT COUNT(*) AS n FROM conversations').get()).toEqual({ n: 1 });
+  });
+
+  it('recognises a real violation of the two-column customers index raised through Drizzle over SQLite', async () => {
+    const sqlite = new Sqlite(':memory:');
+    const customerConfig = getTableConfig(customers);
+    sqlite.exec(`CREATE TABLE customers (${customerConfig.columns.map(column =>
+      `"${column.name}" ${column.getSQLType()}${column.primary ? ' PRIMARY KEY' : ''}`).join(', ')})`);
+    // As production has it (docs/architecture/SCHEMA.md).
+    sqlite.exec('CREATE UNIQUE INDEX customers_platform_platform_user_id_unique ON customers(platform, platform_user_id)');
+    const db = createDbClient(d1Of(sqlite));
+
+    await db.insert(customers).values({ platform: 'line', platformUserId: 'U1' });
+    const error = await db.insert(customers).values({ platform: 'line', platformUserId: 'U1' }).then(() => null, (e: unknown) => e);
+
+    expect(((error as Error).cause as Error).message).toBe('UNIQUE constraint failed: customers.platform, customers.platform_user_id');
+    expect(isUniqueConstraintError(error, 'customers.platform_user_id')).toBe(true);
+    expect(isUniqueConstraintError(error, 'customers.platform')).toBe(true);
+    expect(isUniqueConstraintError(error, 'customers.id')).toBe(false);
   });
 });

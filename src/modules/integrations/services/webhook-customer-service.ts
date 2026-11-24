@@ -7,6 +7,7 @@ import { createDbClient } from '@/db/drizzle-factory';
 import { customers, customerTeamAssignments, conversations } from '@/db/schema';
 import type { Bindings } from '@/types';
 import { DistributedLockService } from '@/services/distributed-lock-service';
+import { insertOrGetCustomer } from '@/services/customer-insert';
 import { WebSocketBroadcastService } from '@/services/websocket-broadcast-service';
 import { createContextLogger } from '@/utils/logger';
 import { nowISO } from '@/utils/timestamp';
@@ -162,32 +163,19 @@ export async function findOrCreateCustomer(
         }
       }
 
-      // INSERT new customer
+      // INSERT new customer. The lock only serialises requests that reach it; a creator outside it
+      // (QR follow, or a request whose lock expired) can still win the unique key, and then its row
+      // comes back here instead of a UNIQUE error.
       const timestamp = nowISO();
-      await drizzleDb
-        .insert(customers)
-        .values({
-          platform,
-          platformUserId,
-          displayName,
-          avatarUrl,
-          sourceTeamId: opts?.sourceTeamId ?? null,
-          createdAt: timestamp,
-          updatedAt: timestamp,
-        });
-
-      // Re-query the newly created customer
-      const created = await drizzleDb
-        .select()
-        .from(customers)
-        .where(and(
-          eq(customers.platformUserId, platformUserId),
-          eq(customers.platform, platform),
-          isNull(customers.deletedAt)
-        ))
-        .get();
-
-      return created || null;
+      return insertOrGetCustomer(drizzleDb, {
+        platform,
+        platformUserId,
+        displayName,
+        avatarUrl,
+        sourceTeamId: opts?.sourceTeamId ?? null,
+        createdAt: timestamp,
+        updatedAt: timestamp,
+      });
     },
     { ttl: CUSTOMER_LOCK_TTL_MS, timeout: 8000 }
   );
