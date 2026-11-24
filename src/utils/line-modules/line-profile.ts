@@ -8,7 +8,8 @@ const log = createContextLogger('LineUtils');
  */
 export async function getLineUserProfile(
   accessToken: string,
-  userId: string
+  userId: string,
+  signal?: AbortSignal
 ): Promise<{
   userId: string;
   displayName: string;
@@ -21,6 +22,7 @@ export async function getLineUserProfile(
       headers: {
         'Authorization': `Bearer ${accessToken}`,
       },
+      signal,
     });
 
     if (!response.ok) {
@@ -44,7 +46,8 @@ export async function getLineUserProfile(
 export async function getLineGroupMemberProfile(
   accessToken: string,
   groupId: string,
-  userId: string
+  userId: string,
+  signal?: AbortSignal
 ): Promise<{
   userId: string;
   displayName: string;
@@ -56,6 +59,7 @@ export async function getLineGroupMemberProfile(
       headers: {
         'Authorization': `Bearer ${accessToken}`,
       },
+      signal,
     });
 
     if (!response.ok) {

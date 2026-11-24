@@ -2,7 +2,7 @@
 // Tests for findOrCreateCustomer, updateCustomerProfile, triggerBackgroundSyncIfNeeded
 // Consolidated service: distributed lock + deletedAt filter + LIFF fallback + WS broadcast
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 // Mock drizzle-orm operators
 vi.mock('drizzle-orm', () => ({
@@ -130,6 +130,7 @@ vi.mock('@/services/websocket-broadcast-service', () => ({
 
 import {
   findOrCreateCustomer,
+  PROFILE_FETCH_TIMEOUT_MS,
   updateCustomerProfile,
   triggerBackgroundSyncIfNeeded,
 } from '@modules/integrations/services/webhook-customer-service';
@@ -185,7 +186,7 @@ describe('webhook-customer-service', () => {
         expect.any(Function),
         expect.objectContaining({ ttl: 15000, timeout: 8000 })
       );
-      expect(mockSyncLineUser).toHaveBeenCalledWith('U123');
+      expect(mockSyncLineUser).toHaveBeenCalledWith('U123', undefined, { signal: expect.any(AbortSignal) });
     });
 
     it('should return existing customer found during double-check inside lock (race resolved)', async () => {
@@ -296,7 +297,95 @@ describe('webhook-customer-service', () => {
       const result = await findOrCreateCustomer(mockEnv, 'FB123', 'facebook');
 
       expect(result).toEqual(newCustomer);
-      expect(mockSyncFacebookUser).toHaveBeenCalledWith('FB123');
+      expect(mockSyncFacebookUser).toHaveBeenCalledWith('FB123', { signal: expect.any(AbortSignal) });
+    });
+
+    describe('profile fetch timeout (inside the 15s customer lock)', () => {
+      beforeEach(() => {
+        vi.useFakeTimers();
+      });
+
+      afterEach(() => {
+        vi.useRealTimers();
+      });
+
+      // Like a real fetch: never settles on its own, rejects once its signal aborts.
+      function hangingFetchUntilAborted(): (userId: string, ...rest: unknown[]) => Promise<never> {
+        return (_userId: string, ...rest: unknown[]) => {
+          const options = rest.find((arg): arg is { signal: AbortSignal } =>
+            typeof arg === 'object' && arg !== null && 'signal' in arg);
+          return new Promise<never>((_resolve, reject) => {
+            options?.signal.addEventListener('abort', () => reject(options.signal.reason));
+          });
+        };
+      }
+
+      it('is 5s, well inside the 15s lock TTL', async () => {
+        mockGet.mockResolvedValueOnce(undefined);
+        mockGet.mockResolvedValueOnce(undefined);
+        mockSyncFacebookUser.mockResolvedValueOnce(null);
+        mockGet.mockResolvedValueOnce({ id: 1 });
+        await findOrCreateCustomer(mockEnv, 'FB1', 'facebook');
+
+        const ttl = (mockWithLock.mock.calls[0][2] as { ttl: number }).ttl;
+        expect(ttl).toBe(15000);
+        expect(PROFILE_FETCH_TIMEOUT_MS).toBe(5000);
+        expect(PROFILE_FETCH_TIMEOUT_MS).toBeLessThan(ttl / 2);
+      });
+
+      it('aborts a LINE profile fetch that never resolves at 5s and still creates the customer with the default name', async () => {
+        mockGet.mockResolvedValueOnce(undefined); // initial lookup
+        mockGet.mockResolvedValueOnce(undefined); // double-check in lock
+        mockSyncLineUser.mockImplementationOnce(hangingFetchUntilAborted());
+        mockGet.mockResolvedValueOnce(undefined); // LIFF fallback: nothing captured
+        const created = { id: 7, platformUserId: 'U777', platform: 'line', displayName: 'LINE User' };
+        mockGet.mockResolvedValueOnce(created); // re-query after insert
+
+        let settled = false;
+        const pending = findOrCreateCustomer(mockEnv, 'U777', 'line').finally(() => { settled = true; });
+
+        await vi.advanceTimersByTimeAsync(PROFILE_FETCH_TIMEOUT_MS - 1);
+        expect(settled).toBe(false);
+        expect(mockInsertValues).not.toHaveBeenCalled();
+        const signal = (mockSyncLineUser.mock.calls[0][2] as { signal: AbortSignal }).signal;
+        expect(signal.aborted).toBe(false);
+
+        await vi.advanceTimersByTimeAsync(1);
+        await expect(pending).resolves.toEqual(created);
+        expect(signal.aborted).toBe(true);
+        expect((signal.reason as DOMException).name).toBe('TimeoutError');
+        expect(mockInsertValues).toHaveBeenCalledWith(
+          expect.objectContaining({ platformUserId: 'U777', displayName: 'LINE User', avatarUrl: null })
+        );
+      });
+
+      it('still gives up at 5s when the profile call ignores the signal (Facebook)', async () => {
+        mockGet.mockResolvedValueOnce(undefined);
+        mockGet.mockResolvedValueOnce(undefined);
+        mockSyncFacebookUser.mockImplementationOnce(() => new Promise<never>(() => {}));
+        const created = { id: 8, platformUserId: 'FB8', platform: 'facebook', displayName: 'Facebook User' };
+        mockGet.mockResolvedValueOnce(created);
+
+        const pending = findOrCreateCustomer(mockEnv, 'FB8', 'facebook');
+        await vi.advanceTimersByTimeAsync(PROFILE_FETCH_TIMEOUT_MS);
+
+        await expect(pending).resolves.toEqual(created);
+        expect(mockInsertValues).toHaveBeenCalledWith(
+          expect.objectContaining({ displayName: 'Facebook User', avatarUrl: null })
+        );
+      });
+
+      it('clears the timer when the profile arrives in time', async () => {
+        mockGet.mockResolvedValueOnce(undefined);
+        mockGet.mockResolvedValueOnce(undefined);
+        mockSyncLineUser.mockResolvedValueOnce({ displayName: 'Fast', pictureUrl: 'https://p/x.jpg' });
+        mockGet.mockResolvedValueOnce({ id: 9, displayName: 'Fast' });
+
+        await findOrCreateCustomer(mockEnv, 'U9', 'line');
+
+        expect(vi.getTimerCount()).toBe(0);
+        expect(mockInsertValues).toHaveBeenCalledWith(expect.objectContaining({ displayName: 'Fast' }));
+      });
     });
 
     it('should return null when re-query after insert fails', async () => {
