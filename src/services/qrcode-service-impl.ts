@@ -5,6 +5,7 @@ import { eq, and, sql, desc } from 'drizzle-orm';
 import { qrCodes, qrCodeScans, teams, customers, conversations } from '../db/schema';
 import type { Database } from '@/db/drizzle-factory';
 import { findCustomerConversation, insertCustomerConversation } from '@/services/customer-conversation-lookup';
+import { insertOrGetCustomer } from '@/services/customer-insert';
 import type { QRCodeConfig, QRCodeInfo } from './qrcode-service';
 import type {
   QRFollowEvent
@@ -505,7 +506,7 @@ export class QRCodeServiceImpl {
     source: string
   ): Promise<void> {
     // 查找或創建客戶記錄
-    const customer = await db.select()
+    let customer = await db.select()
       .from(customers)
       .where(and(
         eq(customers.platform, 'line'),
@@ -513,11 +514,13 @@ export class QRCodeServiceImpl {
       ))
       .get();
 
-    let customerId: number;
-    
     if (!customer) {
-      // 創建新客戶
-      const createdCustomer = await db.insert(customers).values({
+      // 創建新客戶. A concurrent creator (the follow webhook's findOrCreateCustomer, or a repeated
+      // follow event) can insert this user between the lookup above and this insert; its row comes
+      // back instead of a UNIQUE error and is handled below exactly as if the lookup had found it.
+      // ponytail: no distributed lock here on purpose. The re-read on conflict already makes the
+      // race safe, and a lock would cost a Durable Object request on every QR follow.
+      customer = await insertOrGetCustomer(db, {
         platform: 'line',
         platformUserId,
         displayName: 'LINE User',
@@ -525,11 +528,12 @@ export class QRCodeServiceImpl {
         metadata: JSON.stringify({ qrCodeSource: source }),
         createdAt: nowISO(),
         updatedAt: nowISO()
-      }).returning({ id: customers.id }).get();
-      
-      customerId = createdCustomer.id;
-    } else if (!customer.sourceTeamId) {
-      customerId = customer.id;
+      });
+    }
+
+    const customerId = customer.id;
+
+    if (!customer.sourceTeamId) {
       // 更新來源團隊
       await db.update(customers)
         .set({ 
@@ -538,8 +542,6 @@ export class QRCodeServiceImpl {
         })
         .where(eq(customers.id, customer.id))
         .run();
-    } else {
-      customerId = customer.id;
     }
 
     // 查找或創建對話: one conversation per customer, whatever its status (conversations.customer_id

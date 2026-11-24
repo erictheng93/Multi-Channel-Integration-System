@@ -21,6 +21,8 @@ import {
 } from '../types/customer-types';
 import { nowISO } from '@/utils/timestamp'
 import { createContextLogger } from '@/utils/logger';
+import { isUniqueConstraintError } from '@/utils/unique-constraint';
+import { CUSTOMER_PLATFORM_USER_UNIQUE_TARGET } from '@/services/customer-insert';
 
 const log = createContextLogger('CustomerCrud');
 
@@ -219,11 +221,22 @@ export class CustomerCrudService {
         updatedAt: timestamp
       };
 
-      const result = await this.drizzleDb
-        .insert(customers)
-        .values(insertData)
-        .returning({ id: customers.id })
-        .get();
+      // The check above and this insert are not atomic: a concurrent creator can take the
+      // (platform, platform_user_id) unique key in between. That is the same conflict the check
+      // reports, so it surfaces as the same error rather than a raw database failure.
+      let result: { id: number };
+      try {
+        result = await this.drizzleDb
+          .insert(customers)
+          .values(insertData)
+          .returning({ id: customers.id })
+          .get();
+      } catch (insertError) {
+        if (isUniqueConstraintError(insertError, CUSTOMER_PLATFORM_USER_UNIQUE_TARGET)) {
+          throw new CustomerAlreadyExistsError(customerData.platform, customerData.platformUserId);
+        }
+        throw insertError;
+      }
 
       // 返回創建的客戶
       const newCustomer = await this.findById(result.id);
@@ -257,8 +270,17 @@ export class CustomerCrudService {
           platformUserId,
           ...additionalInfo
         };
-        customer = await this.create(createData);
-      } else if (additionalInfo) {
+        try {
+          return await this.create(createData);
+        } catch (createError) {
+          // Lost the create race: continue with the winner's row, as if the lookup had found it.
+          if (!(createError instanceof CustomerAlreadyExistsError)) throw createError;
+          customer = await this.findByPlatformId(platform, platformUserId);
+          if (!customer) throw createError;
+        }
+      }
+
+      if (additionalInfo) {
         // 客戶存在但需要更新信息
         const updateData: UpdateCustomerData = {};
         let needsUpdate = false;
