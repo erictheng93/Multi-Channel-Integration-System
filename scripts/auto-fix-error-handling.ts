@@ -94,10 +94,10 @@ class AutoFixTool {
           } else {
             // 添加新的 import
             const depth = (filePath.match(/\\/g) || []).length - (this.rootDir.match(/\\/g) || []).length - 2;
-            const importPath = '../'.repeat(Math.max(1, depth)) + 'utils/api-response';
-            modifiedContent = modifiedContent.slice(0, importPos) +
-                            `\nimport { handleApiError } from '${importPath}';` +
-                            modifiedContent.slice(importPos);
+            const importPath = `${'../'.repeat(Math.max(1, depth))}utils/api-response`;
+            modifiedContent = `${modifiedContent.slice(0, importPos) 
+                            }\nimport { handleApiError } from '${importPath}';${ 
+                            modifiedContent.slice(importPos)}`;
           }
         }
       }
@@ -164,9 +164,9 @@ class AutoFixTool {
     const totalFixesApplied = this.results.reduce((sum, r) => sum + r.fixesApplied, 0);
     const failedFixes = this.results.filter(r => !r.success);
 
-    let summary = '\n' + '='.repeat(60) + '\n';
+    let summary = `\n${'='.repeat(60)}\n`;
     summary += ' 修復摘要報告\n';
-    summary += '='.repeat(60) + '\n\n';
+    summary += `${'='.repeat(60)}\n\n`;
     summary += `總處理檔案數: ${totalFiles}\n`;
     summary += `成功修復: ${successfulFixes}\n`;
     summary += `失敗: ${failedFixes.length}\n`;
@@ -190,7 +190,7 @@ class AutoFixTool {
       summary += '\n';
     }
 
-    summary += '='.repeat(60) + '\n';
+    summary += `${'='.repeat(60)}\n`;
 
     return summary;
   }

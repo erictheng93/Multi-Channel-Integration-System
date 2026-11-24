@@ -562,9 +562,9 @@ function generateReport(
   conflicts: RouteConflict[],
   warnings: string[]
 ) {
-  console.log('\n' + '='.repeat(80));
+  console.log(`\n${'='.repeat(80)}`);
   console.log(' QR CODE 路由健康檢查報告');
-  console.log('='.repeat(80) + '\n');
+  console.log(`${'='.repeat(80)}\n`);
 
   // 本地測試結果
   console.log(' 本地環境測試結果:');

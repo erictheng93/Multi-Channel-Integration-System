@@ -516,7 +516,7 @@ class EmojiDataCollector {
             const json = JSON.parse(data);
             resolve(json);
           } catch (error) {
-            reject(new Error('JSON解析失败: ' + error.message));
+            reject(new Error(`JSON解析失败: ${error.message}`));
           }
         });
       });

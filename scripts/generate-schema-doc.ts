@@ -83,7 +83,7 @@ function parseWranglerJson(stdout: string): Array<{ results?: Array<Record<strin
     throw new Error(`unexpected wrangler output (no JSON array found):\n${stdout.slice(0, 500)}`);
   }
   const parsed: unknown = JSON.parse(stdout.slice(start, end + 1));
-  if (!Array.isArray(parsed)) throw new Error('wrangler JSON payload was not an array');
+  if (!Array.isArray(parsed)) {throw new Error('wrangler JSON payload was not an array');}
   return parsed as Array<{ results?: Array<Record<string, unknown>> }>;
 }
 
@@ -133,7 +133,7 @@ function readSchemaTsDescriptions(source: string): Map<string, string> {
 
   for (let i = 0; i < lines.length; i++) {
     const match = /sqliteTable\(\s*'([^']+)'/.exec(lines[i] ?? '');
-    if (!match?.[1]) continue;
+    if (!match?.[1]) {continue;}
 
     // Walk back over the contiguous `//` comment block directly above.
     const comment: string[] = [];
@@ -145,7 +145,7 @@ function readSchemaTsDescriptions(source: string): Map<string, string> {
       }
       break;
     }
-    if (comment.length > 0) descriptions.set(match[1], comment.join(' '));
+    if (comment.length > 0) {descriptions.set(match[1], comment.join(' '));}
   }
   return descriptions;
 }
@@ -167,8 +167,8 @@ function extractChecks(createSql: string): string[] {
     let depth = 1;
     let i = match.index + match[0].length;
     for (; i < createSql.length && depth > 0; i++) {
-      if (createSql[i] === '(') depth++;
-      else if (createSql[i] === ')') depth--;
+      if (createSql[i] === '(') {depth++;}
+      else if (createSql[i] === ')') {depth--;}
     }
     checks.push(createSql.slice(match.index + match[0].length, i - 1).replace(/\s+/g, ' ').trim());
   }
@@ -186,8 +186,8 @@ function escapeCell(value: string): string {
 function renderColumns(columns: ColumnRow[]): string {
   const rows = columns.map((c) => {
     const constraints: string[] = [];
-    if (c.pk > 0) constraints.push(columns.filter((x) => x.pk > 0).length > 1 ? `PK(${c.pk})` : 'PK');
-    if (c.nn === 1) constraints.push('NOT NULL');
+    if (c.pk > 0) {constraints.push(columns.filter((x) => x.pk > 0).length > 1 ? `PK(${c.pk})` : 'PK');}
+    if (c.nn === 1) {constraints.push('NOT NULL');}
     return `| \`${c.col}\` | ${c.type || '-'} | ${constraints.join(', ') || '-'} | ${
       c.dflt === null ? '-' : `\`${escapeCell(c.dflt)}\``
     } |`;
@@ -204,7 +204,7 @@ function renderTable(
   description: string | undefined
 ): string {
   const parts: string[] = [`### \`${name}\``, ''];
-  if (description) parts.push(`> ${description}`, '');
+  if (description) {parts.push(`> ${description}`, '');}
 
   parts.push(renderColumns(columns), '');
 
@@ -242,7 +242,7 @@ function renderTable(
   const checks = extractChecks(createSql);
   if (checks.length > 0) {
     parts.push('**CHECK 約束**:', '');
-    for (const check of checks) parts.push(`- \`${check}\``);
+    for (const check of checks) {parts.push(`- \`${check}\``);}
     parts.push('');
   }
 
@@ -266,23 +266,23 @@ function render(
 
   const columnsByTable = new Map<string, ColumnRow[]>();
   for (const c of columns) {
-    if (!columnsByTable.has(c.tbl)) columnsByTable.set(c.tbl, []);
+    if (!columnsByTable.has(c.tbl)) {columnsByTable.set(c.tbl, []);}
     columnsByTable.get(c.tbl)!.push(c);
   }
-  for (const list of columnsByTable.values()) list.sort((a, b) => a.cid - b.cid);
+  for (const list of columnsByTable.values()) {list.sort((a, b) => a.cid - b.cid);}
 
   const fksByTable = new Map<string, ForeignKeyRow[]>();
   for (const f of foreignKeys) {
-    if (!fksByTable.has(f.tbl)) fksByTable.set(f.tbl, []);
+    if (!fksByTable.has(f.tbl)) {fksByTable.set(f.tbl, []);}
     fksByTable.get(f.tbl)!.push(f);
   }
 
   const indexesByTable = new Map<string, MasterRow[]>();
   for (const i of indexes) {
-    if (!indexesByTable.has(i.tbl_name)) indexesByTable.set(i.tbl_name, []);
+    if (!indexesByTable.has(i.tbl_name)) {indexesByTable.set(i.tbl_name, []);}
     indexesByTable.get(i.tbl_name)!.push(i);
   }
-  for (const list of indexesByTable.values()) list.sort((a, b) => a.name.localeCompare(b.name));
+  for (const list of indexesByTable.values()) {list.sort((a, b) => a.name.localeCompare(b.name));}
 
   const totalChecks = tables.reduce((sum, t) => sum + extractChecks(t.sql ?? '').length, 0);
 
@@ -338,7 +338,7 @@ function render(
     if (onlyInDb.length > 0) {
       out.push('**只存在於資料庫、未在 `schema.ts` 宣告**：');
       out.push('');
-      for (const t of onlyInDb) out.push(`- \`${t}\``);
+      for (const t of onlyInDb) {out.push(`- \`${t}\``);}
       out.push('');
       out.push('Drizzle 查詢碰不到這些表。可能是遺留表，或 `schema.ts` 漏了宣告。');
       out.push('');
@@ -346,7 +346,7 @@ function render(
     if (onlyInSchemaTs.length > 0) {
       out.push('**只在 `schema.ts` 宣告、資料庫中不存在**：');
       out.push('');
-      for (const t of onlyInSchemaTs) out.push(`- \`${t}\``);
+      for (const t of onlyInSchemaTs) {out.push(`- \`${t}\``);}
       out.push('');
       out.push('查詢這些表會在執行期失敗。多半代表某個 migration 沒有套用。');
       out.push('');

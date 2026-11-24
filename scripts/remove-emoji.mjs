@@ -83,7 +83,7 @@ function collectFiles(dir, extensions) {
     return results;
   }
   for (const entry of entries) {
-    if (entry === 'node_modules' || entry === '.git' || entry === 'dist' || entry === '.wrangler') continue;
+    if (entry === 'node_modules' || entry === '.git' || entry === 'dist' || entry === '.wrangler') {continue;}
     const fullPath = join(dir, entry);
     let stat;
     try {

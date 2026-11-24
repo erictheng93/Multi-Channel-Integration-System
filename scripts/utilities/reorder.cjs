@@ -96,7 +96,7 @@ const p4 = [
 ].join('\n');
 
 // Footer (exports)
-const footer = '\n\n' + getLines(458, 466);
+const footer = `\n\n${getLines(458, 466)}`;
 
 const result = header + p1 + p2 + p3 + p4 + footer;
 fs.writeFileSync('src/modules/customer/handlers/index.ts', result, 'utf8');

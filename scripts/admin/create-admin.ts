@@ -10,7 +10,7 @@ interface AdminDetails {
 // 創建管理員用戶的腳本
 async function createAdmin(): Promise<void> {
   const password = process.env.ADMIN_PASSWORD
-  if (!password) throw new Error('ADMIN_PASSWORD env var is required')
+  if (!password) {throw new Error('ADMIN_PASSWORD env var is required')}
 
   const adminDetails: AdminDetails = {
     email: 'admin@dacit.net',

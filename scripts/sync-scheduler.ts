@@ -213,7 +213,7 @@ class DatabaseSyncScheduler {
       { stdout: 'pipe', stderr: 'pipe' }
     );
     results.localDbOk = localResult.exitCode === 0;
-    if (!results.localDbOk) this.log(' Local DB health check failed');
+    if (!results.localDbOk) {this.log(' Local DB health check failed');}
 
     // 檢查生產數據庫
     const prodResult = Bun.spawnSync(
@@ -221,7 +221,7 @@ class DatabaseSyncScheduler {
       { stdout: 'pipe', stderr: 'pipe' }
     );
     results.prodDbOk = prodResult.exitCode === 0;
-    if (!results.prodDbOk) this.log(' 生產數據庫健康檢查失敗');
+    if (!results.prodDbOk) {this.log(' 生產數據庫健康檢查失敗');}
 
     // 檢查遷移狀態
     const migrationResult = Bun.spawnSync(

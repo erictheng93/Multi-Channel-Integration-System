@@ -92,7 +92,7 @@ function generateMigrationReport(files: string[], allStats: MigrationStats[]): v
     testsUpdated: acc.testsUpdated + stats.testsUpdated
   }), { linesRemoved: 0, linesAdded: 0, mocksReplaced: 0, testsUpdated: 0 });
 
-  console.log('\n' + '='.repeat(60));
+  console.log(`\n${'='.repeat(60)}`);
   console.log(' MIGRATION SUMMARY');
   console.log('='.repeat(60));
   console.log(`Files Migrated: ${files.length}`);

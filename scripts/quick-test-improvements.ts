@@ -28,9 +28,9 @@ async function applyQuickFixes(filePath: string): Promise<string[]> {
     const lastBeforeEach = content.lastIndexOf('});', content.lastIndexOf('beforeEach'));
     if (lastBeforeEach > 0) {
       const indent = content.slice(0, lastBeforeEach).match(/(\s*)beforeEach/)?.[1] || '  ';
-      content = content.slice(0, lastBeforeEach + 4) +
-        `\n\n${indent}afterEach(() => {\n${indent}  vi.restoreAllMocks();\n${indent}});` +
-        content.slice(lastBeforeEach + 4);
+      content = `${content.slice(0, lastBeforeEach + 4) 
+        }\n\n${indent}afterEach(() => {\n${indent}  vi.restoreAllMocks();\n${indent}});${ 
+        content.slice(lastBeforeEach + 4)}`;
       changes.push('Added afterEach cleanup');
     }
   }
@@ -53,9 +53,9 @@ async function applyQuickFixes(filePath: string): Promise<string[]> {
     const imports = content.match(/(import\s+[\s\S]*?from\s+['"][^'"]+['"];?\s*)+/)?.[0];
     if (imports) {
       const importEnd = content.indexOf(imports) + imports.length;
-      content = content.slice(0, importEnd) +
-        `import { MockFactory } from '@helpers/mockFactory';\n` +
-        content.slice(importEnd);
+      content = `${content.slice(0, importEnd) 
+        }import { MockFactory } from '@helpers/mockFactory';\n${ 
+        content.slice(importEnd)}`;
       changes.push('Added MockFactory import');
     }
   }
@@ -94,7 +94,7 @@ async function findTestFiles(dir: string = 'tests'): Promise<string[]> {
 }
 
 async function main() {
-  console.log('\n Quick Test Improvements\n' + '='.repeat(60) + '\n');
+  console.log(`\n Quick Test Improvements\n${'='.repeat(60)}\n`);
 
   const files = await findTestFiles();
   console.log(`Found ${files.length} test files\n`);
@@ -134,7 +134,7 @@ async function main() {
   let mockFactoryCount = 0;
   for (const file of files) {
     const content = await readFile(file, 'utf-8');
-    if (content.includes('MockFactory')) mockFactoryCount++;
+    if (content.includes('MockFactory')) {mockFactoryCount++;}
   }
 
   const mockFactoryPercentage = ((mockFactoryCount / files.length) * 100).toFixed(1);

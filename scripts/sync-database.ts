@@ -158,7 +158,7 @@ class DatabaseSyncTool {
   private async checkDatabaseConnection(env: 'local' | 'production'): Promise<void> {
     try {
       const args = ['wrangler', 'd1', 'execute', this.dbName];
-      if (env === 'production') args.push('--remote');
+      if (env === 'production') {args.push('--remote');}
       args.push('--command', 'SELECT 1;');
       runSync(args);
       console.log(` ${env} 數據庫連接正常`);
@@ -222,7 +222,7 @@ class DatabaseSyncTool {
             ['wrangler', 'd1', 'migrations', 'apply', this.dbName],
             { stdout: 'inherit', stderr: 'inherit' }
           );
-          if (applyResult.exitCode !== 0) throw new Error('Migration apply failed');
+          if (applyResult.exitCode !== 0) {throw new Error('Migration apply failed');}
         } else {
           console.log(' DRY RUN: 跳過實際遷移應用');
         }
@@ -283,7 +283,7 @@ class DatabaseSyncTool {
   private async getTableCount(tableName: string, env: 'local' | 'production'): Promise<number> {
     try {
       const args = ['wrangler', 'd1', 'execute', this.dbName];
-      if (env === 'production') args.push('--remote');
+      if (env === 'production') {args.push('--remote');}
       args.push('--command', `SELECT COUNT(*) as count FROM ${tableName};`);
       const result = runSync(args);
 
@@ -420,7 +420,7 @@ class DatabaseSyncTool {
   private async getTableList(env: 'local' | 'production'): Promise<string[]> {
     try {
       const args = ['wrangler', 'd1', 'execute', this.dbName];
-      if (env === 'production') args.push('--remote');
+      if (env === 'production') {args.push('--remote');}
       args.push('--command', "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '_cf_%' ORDER BY name;");
       const result = runSync(args);
 

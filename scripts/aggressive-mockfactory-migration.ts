@@ -19,9 +19,9 @@ async function convertToMockFactory(filePath: string): Promise<boolean> {
   if (!content.includes('MockFactory')) {
     const importMatch = content.match(/(import[\s\S]*?from\s+['"][^'"]+['"];\s*)+/);
     if (importMatch) {
-      content = content.slice(0, importMatch[0].length) +
-        `import { MockFactory } from '@helpers/mockFactory';\n` +
-        content.slice(importMatch[0].length);
+      content = `${content.slice(0, importMatch[0].length) 
+        }import { MockFactory } from '@helpers/mockFactory';\n${ 
+        content.slice(importMatch[0].length)}`;
     }
   }
 
@@ -118,7 +118,7 @@ async function findAllTestFiles(): Promise<string[]> {
 }
 
 async function main() {
-  console.log('\n Aggressive MockFactory Migration\n' + '='.repeat(60) + '\n');
+  console.log(`\n Aggressive MockFactory Migration\n${'='.repeat(60)}\n`);
 
   const files = await findAllTestFiles();
   console.log(`Found ${files.length} test files\n`);

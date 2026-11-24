@@ -56,14 +56,14 @@ interface Violation {
 const SUPPRESSION_RE = /eslint-disable(?:-next-line)?\s+no-unsafe-sql-raw/;
 
 function describeArgKind(arg: ts.Node | undefined): string {
-  if (!arg) return 'missing';
-  if (ts.isStringLiteral(arg)) return 'StringLiteral';
-  if (ts.isNoSubstitutionTemplateLiteral(arg)) return 'NoSubstitutionTemplateLiteral';
-  if (ts.isTemplateExpression(arg)) return 'TemplateExpression (interpolated)';
-  if (ts.isBinaryExpression(arg)) return 'BinaryExpression (concatenation?)';
-  if (ts.isIdentifier(arg)) return 'Identifier';
-  if (ts.isCallExpression(arg)) return 'CallExpression';
-  if (ts.isPropertyAccessExpression(arg)) return 'PropertyAccessExpression';
+  if (!arg) {return 'missing';}
+  if (ts.isStringLiteral(arg)) {return 'StringLiteral';}
+  if (ts.isNoSubstitutionTemplateLiteral(arg)) {return 'NoSubstitutionTemplateLiteral';}
+  if (ts.isTemplateExpression(arg)) {return 'TemplateExpression (interpolated)';}
+  if (ts.isBinaryExpression(arg)) {return 'BinaryExpression (concatenation?)';}
+  if (ts.isIdentifier(arg)) {return 'Identifier';}
+  if (ts.isCallExpression(arg)) {return 'CallExpression';}
+  if (ts.isPropertyAccessExpression(arg)) {return 'PropertyAccessExpression';}
   return ts.SyntaxKind[arg.kind];
 }
 

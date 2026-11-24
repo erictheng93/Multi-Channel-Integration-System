@@ -655,7 +655,7 @@ class ConnectionStormTester extends EventEmitter {
   // =================== Results Export ===================
 
   async saveResults(): Promise<string | null> {
-    if (!this.config.outputFile) return null;
+    if (!this.config.outputFile) {return null;}
 
     try {
       const fs = require('fs').promises;
@@ -678,15 +678,15 @@ for (let i = 0; i < args.length; i += 2) {
   const key = args[i].replace('--', '');
   const value = args[i + 1];
 
-  if (key === 'websocket-url') config.targetUrl = value;
-  else if (key === 'url' && !config.targetUrl) config.targetUrl = value;
-  else if (key === 'waves') config.stormWaves = parseInt(value);
-  else if (key === 'connections') config.connectionsPerWave = parseInt(value);
-  else if (key === 'interval') config.waveIntervalMs = parseInt(value);
-  else if (key === 'hold-time') config.connectionHoldTimeMs = parseInt(value);
-  else if (key === 'rapid-ratio') config.rapidDisconnectRatio = parseFloat(value);
-  else if (key === 'token') config.authToken = value;
-  else if (key === 'output') config.outputFile = value;
+  if (key === 'websocket-url') {config.targetUrl = value;}
+  else if (key === 'url' && !config.targetUrl) {config.targetUrl = value;}
+  else if (key === 'waves') {config.stormWaves = parseInt(value);}
+  else if (key === 'connections') {config.connectionsPerWave = parseInt(value);}
+  else if (key === 'interval') {config.waveIntervalMs = parseInt(value);}
+  else if (key === 'hold-time') {config.connectionHoldTimeMs = parseInt(value);}
+  else if (key === 'rapid-ratio') {config.rapidDisconnectRatio = parseFloat(value);}
+  else if (key === 'token') {config.authToken = value;}
+  else if (key === 'output') {config.outputFile = value;}
 }
 
 async function runConnectionStorm() {
