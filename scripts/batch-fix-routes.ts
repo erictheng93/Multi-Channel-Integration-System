@@ -81,7 +81,7 @@ function extractRoutesFromFile(filePath: string): RouteExtraction[] {
       const [, , varName, method, path, handler] = match;
 
       // 跳過註釋行
-      if (line.trim().startsWith('//')) return;
+      if (line.trim().startsWith('//')) {return;}
 
       routes.push({
         varName,
@@ -162,10 +162,10 @@ function determinePriority(path: string): string {
 function generateDescription(route: RouteExtraction): string {
   const { method, path } = route;
 
-  if (path === '/') return `${method} root handler`;
-  if (path === '/health') return 'Health check';
-  if (path === '/info') return 'Module information';
-  if (path.includes(':id')) return `${method} ${path} - ID-based operation`;
+  if (path === '/') {return `${method} root handler`;}
+  if (path === '/health') {return 'Health check';}
+  if (path === '/info') {return 'Module information';}
+  if (path.includes(':id')) {return `${method} ${path} - ID-based operation`;}
 
   const segments = path.split('/').filter(Boolean);
   return `${method} ${segments[segments.length - 1] || 'root'}`;
@@ -211,9 +211,9 @@ function applySmartRegistry(filePath: string, dryRun: boolean = false): void {
 
   if (dryRun) {
     console.log(` DRY RUN - Preview of generated code:`);
-    console.log('  ' + '─'.repeat(80));
-    console.log(newCode.split('\n').map(line => '  ' + line).join('\n'));
-    console.log('  ' + '─'.repeat(80));
+    console.log(`  ${'─'.repeat(80)}`);
+    console.log(newCode.split('\n').map(line => `  ${line}`).join('\n'));
+    console.log(`  ${'─'.repeat(80)}`);
   } else {
     // 創建備份
     const backupPath = createBackup(filePath);
@@ -240,7 +240,7 @@ function applySmartRegistry(filePath: string, dryRun: boolean = false): void {
         '// ═'.repeat(40),
         '//  SMART ROUTE REGISTRY',
         '// 自動排序路由以避免衝突',
-        '// ' + '═'.repeat(39),
+        `// ${'═'.repeat(39)}`,
         ''
       ];
 

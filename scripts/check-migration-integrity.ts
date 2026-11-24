@@ -152,13 +152,13 @@ function stripComments(sql: string): string {
 
     if (ch === '-' && next === '-') {
       // Line comment: drop through end of line, keep the newline.
-      while (i < sql.length && sql[i] !== '\n') i++;
+      while (i < sql.length && sql[i] !== '\n') {i++;}
       continue;
     }
     if (ch === '/' && next === '*') {
       i += 2;
       while (i < sql.length && !(sql[i] === '*' && sql[i + 1] === '/')) {
-        if (sql[i] === '\n') out += '\n';
+        if (sql[i] === '\n') {out += '\n';}
         i++;
       }
       i += 2;
@@ -215,7 +215,7 @@ function splitStatements(sql: string): string[] {
 
   const flush = (): void => {
     const trimmed = buf.trim();
-    if (trimmed.length > 0) statements.push(trimmed);
+    if (trimmed.length > 0) {statements.push(trimmed);}
     buf = '';
   };
 
@@ -250,8 +250,8 @@ function splitStatements(sql: string): string[] {
       i++;
       continue;
     }
-    if (ch === '(') depth++;
-    if (ch === ')') depth = Math.max(0, depth - 1);
+    if (ch === '(') {depth++;}
+    if (ch === ')') {depth = Math.max(0, depth - 1);}
 
     if (ch === ';' && depth === 0) {
       const insideTriggerBody =
@@ -275,7 +275,7 @@ function splitStatements(sql: string): string[] {
 
 /** Extract the balanced-parenthesis group starting at `openIdx` (which must be a `(`). */
 function extractParenGroup(sql: string, openIdx: number): { body: string; endIdx: number } | null {
-  if (sql[openIdx] !== '(') return null;
+  if (sql[openIdx] !== '(') {return null;}
   let depth = 0;
   let i = openIdx;
   while (i < sql.length) {
@@ -283,11 +283,11 @@ function extractParenGroup(sql: string, openIdx: number): { body: string; endIdx
     if (ch === "'" || ch === '"' || ch === '`') {
       const quote = ch;
       i++;
-      while (i < sql.length && sql[i] !== quote) i++;
+      while (i < sql.length && sql[i] !== quote) {i++;}
       i++;
       continue;
     }
-    if (ch === '(') depth++;
+    if (ch === '(') {depth++;}
     else if (ch === ')') {
       depth--;
       if (depth === 0) {
@@ -321,8 +321,8 @@ function splitTopLevel(body: string): string[] {
       }
       continue;
     }
-    if (ch === '(') depth++;
-    if (ch === ')') depth--;
+    if (ch === '(') {depth++;}
+    if (ch === ')') {depth--;}
     if (ch === ',' && depth === 0) {
       parts.push(buf.trim());
       buf = '';
@@ -332,7 +332,7 @@ function splitTopLevel(body: string): string[] {
     buf += ch;
     i++;
   }
-  if (buf.trim().length > 0) parts.push(buf.trim());
+  if (buf.trim().length > 0) {parts.push(buf.trim());}
   return parts;
 }
 
@@ -344,7 +344,7 @@ function unquoteIdent(raw: string): string {
     if ((first === '`' && last === '`') || (first === '"' && last === '"')) {
       return s.slice(1, -1);
     }
-    if (first === '[' && last === ']') return s.slice(1, -1);
+    if (first === '[' && last === ']') {return s.slice(1, -1);}
   }
   return s;
 }
@@ -407,10 +407,10 @@ interface ParsedIndex {
 /** Parse a CREATE INDEX statement. Also used on sqlite_master.sql for actual indexes. */
 function parseCreateIndex(statement: string): ParsedIndex | null {
   const m = CREATE_INDEX_RE.exec(statement);
-  if (!m) return null;
+  if (!m) {return null;}
   const openIdx = statement.indexOf('(', m.index + m[0].length - 1);
   const group = extractParenGroup(statement, openIdx);
-  if (!group) return null;
+  if (!group) {return null;}
   const tail = statement.slice(group.endIdx + 1);
   return {
     name: unquoteIdent(m[2]),
@@ -433,10 +433,10 @@ interface ParsedTable {
  */
 function parseCreateTable(statement: string): ParsedTable | null {
   const m = CREATE_TABLE_RE.exec(statement);
-  if (!m) return null;
+  if (!m) {return null;}
   const openIdx = statement.indexOf('(', m.index + m[0].length - 1);
   const group = extractParenGroup(statement, openIdx);
-  if (!group) return null;
+  if (!group) {return null;}
 
   const uniqueConstraints: Array<{ columns: string[]; label: string }> = [];
 
@@ -455,7 +455,7 @@ function parseCreateTable(statement: string): ParsedTable | null {
 
     // Skip other table-level constraints so their bodies are not mistaken for
     // column definitions (a CHECK body can legitimately contain the word UNIQUE).
-    if (/^(?:CONSTRAINT\b|PRIMARY\s+KEY\b|CHECK\b|FOREIGN\s+KEY\b)/i.test(part)) continue;
+    if (/^(?:CONSTRAINT\b|PRIMARY\s+KEY\b|CHECK\b|FOREIGN\s+KEY\b)/i.test(part)) {continue;}
 
     // Inline column-level UNIQUE. Guard against matching inside a DEFAULT string.
     const inline = new RegExp(`^(${IDENT})\\b`, 'i').exec(part);
@@ -512,7 +512,7 @@ function buildExpectedSchema(
   const appendChain = (name: string, file: string): string[] => {
     const k = key(name);
     const chain = chains.get(k) ?? [];
-    if (chain[chain.length - 1] !== file) chain.push(file);
+    if (chain[chain.length - 1] !== file) {chain.push(file);}
     chains.set(k, chain);
     return [...chain];
   };
@@ -521,7 +521,7 @@ function buildExpectedSchema(
     const target = key(tableName);
     for (const [k, obj] of [...objects.entries()]) {
       // SQLite drops a table's indexes and triggers along with the table.
-      if (k === target || key(obj.table) === target) objects.delete(k);
+      if (k === target || key(obj.table) === target) {objects.delete(k);}
     }
   };
 
@@ -614,8 +614,8 @@ function buildExpectedSchema(
       if (dropMatch) {
         const what = dropMatch[1].toLowerCase();
         const name = unquoteIdent(dropMatch[2]);
-        if (what === 'table') dropTableCascade(name);
-        else objects.delete(key(name));
+        if (what === 'table') {dropTableCascade(name);}
+        else {objects.delete(key(name));}
         continue;
       }
 
@@ -636,7 +636,7 @@ function buildExpectedSchema(
         }
         // SQLite carries indexes and triggers over to the new table name.
         for (const obj of objects.values()) {
-          if (obj.type !== 'table' && key(obj.table) === key(from)) obj.table = to;
+          if (obj.type !== 'table' && key(obj.table) === key(from)) {obj.table = to;}
         }
         continue;
       }
@@ -648,7 +648,7 @@ function buildExpectedSchema(
         const from = unquoteIdent(renameColumn[2]).toLowerCase();
         const to = unquoteIdent(renameColumn[3]).toLowerCase();
         for (const obj of objects.values()) {
-          if (key(obj.table) !== table) continue;
+          if (key(obj.table) !== table) {continue;}
           obj.columns = obj.columns.map((c) => (c === from ? to : c));
           for (const uc of obj.uniqueConstraints) {
             uc.columns = uc.columns.map((c) => (c === from ? to : c));
@@ -661,7 +661,7 @@ function buildExpectedSchema(
       // SELECT / ANALYZE) does not change the object inventory.
     }
 
-    if (declaredSomething) declaringMigrations.push(file);
+    if (declaredSomething) {declaringMigrations.push(file);}
   }
 
   return { objects, declaringMigrations };
@@ -754,7 +754,7 @@ function parseWranglerJson(stdout: string): Array<{ results?: Array<Record<strin
     throw new Error(`unexpected wrangler output (no JSON array found):\n${stdout.slice(0, 500)}`);
   }
   const parsed: unknown = JSON.parse(stdout.slice(start, end + 1));
-  if (!Array.isArray(parsed)) throw new Error('wrangler JSON payload was not an array');
+  if (!Array.isArray(parsed)) {throw new Error('wrangler JSON payload was not an array');}
   return parsed as Array<{ results?: Array<Record<string, unknown>> }>;
 }
 
@@ -804,7 +804,7 @@ function readRemoteDatabase(): ActualDatabase {
 // ---------------------------------------------------------------------------
 
 function sameColumnSet(a: string[], b: string[]): boolean {
-  if (a.length !== b.length) return false;
+  if (a.length !== b.length) {return false;}
   const sortedA = [...a].sort();
   const sortedB = [...b].sort();
   return sortedA.every((v, i) => v === sortedB[i]);
@@ -824,19 +824,19 @@ function uniqueConstraintSatisfied(
   const liveTable = actual.objects.get(tableName.toLowerCase());
   if (liveTable?.sql) {
     const parsed = parseCreateTable(liveTable.sql.trim());
-    if (parsed?.uniqueConstraints.some((uc) => sameColumnSet(uc.columns, columns))) return true;
+    if (parsed?.uniqueConstraints.some((uc) => sameColumnSet(uc.columns, columns))) {return true;}
   }
 
   for (const obj of actual.objects.values()) {
-    if (obj.type !== 'index') continue;
-    if (obj.tblName.toLowerCase() !== tableName.toLowerCase()) continue;
+    if (obj.type !== 'index') {continue;}
+    if (obj.tblName.toLowerCase() !== tableName.toLowerCase()) {continue;}
     if (!obj.sql) {
       // Auto-index from a UNIQUE/PK constraint; its columns are not in
       // sqlite_master. The CREATE TABLE text check above already covers it.
       continue;
     }
     const parsed = parseCreateIndex(obj.sql.trim());
-    if (parsed?.unique && sameColumnSet(parsed.columns, columns)) return true;
+    if (parsed?.unique && sameColumnSet(parsed.columns, columns)) {return true;}
   }
   return false;
 }
@@ -925,8 +925,8 @@ function groupByMigration(findings: Finding[]): Map<string, Finding[]> {
   const grouped = new Map<string, Finding[]>();
   for (const f of findings) {
     const list = grouped.get(f.migration);
-    if (list) list.push(f);
-    else grouped.set(f.migration, [f]);
+    if (list) {list.push(f);}
+    else {grouped.set(f.migration, [f]);}
   }
   return new Map([...grouped.entries()].sort((a, b) => a[0].localeCompare(b[0], 'en')));
 }
@@ -960,10 +960,10 @@ function parseArgs(argv: string[]): Options {
   let verbose = false;
 
   for (const arg of argv) {
-    if (arg === '--remote') remote = true;
-    else if (arg === '--verbose' || arg === '-v') verbose = true;
-    else if (arg.startsWith('--db=')) dbPath = arg.slice('--db='.length);
-    else if (arg.startsWith('--migrations=')) migrationsDir = arg.slice('--migrations='.length);
+    if (arg === '--remote') {remote = true;}
+    else if (arg === '--verbose' || arg === '-v') {verbose = true;}
+    else if (arg.startsWith('--db=')) {dbPath = arg.slice('--db='.length);}
+    else if (arg.startsWith('--migrations=')) {migrationsDir = arg.slice('--migrations='.length);}
     else if (arg === '--help' || arg === '-h') {
       console.log(
         'Usage: bun scripts/check-migration-integrity.ts ' +

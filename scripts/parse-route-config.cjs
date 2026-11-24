@@ -45,17 +45,17 @@ function parseRouteConfig() {
 
     // Extract handler name
     const handlerMatch = moduleConfig.match(/handler:\s*(\w+)/);
-    if (!handlerMatch) continue;
+    if (!handlerMatch) {continue;}
     const handlerName = handlerMatch[1];
 
     // Extract path
     const pathMatch = moduleConfig.match(/path:\s*['"]([^'"]+)['"]/);
-    if (!pathMatch) continue;
+    if (!pathMatch) {continue;}
     const mountPath = pathMatch[1];
 
     // Get the file path for this handler
     const filePath = handlerToFilePath[handlerName];
-    if (!filePath) continue;
+    if (!filePath) {continue;}
 
     // Build full API path
     const fullPath = `/api${mountPath}`;

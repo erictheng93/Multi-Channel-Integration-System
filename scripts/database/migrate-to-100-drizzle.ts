@@ -108,10 +108,10 @@ async function migrateSingleFile(filePath: string): Promise<void> {
       const lastImportIndex = content.lastIndexOf(importLines[importLines.length - 1]);
       const insertPoint = content.indexOf('\n', lastImportIndex) + 1;
       
-      content = content.slice(0, insertPoint) + 
-                'import { drizzle } from \'drizzle-orm/d1\';\n' +
-                'import { sql } from \'drizzle-orm\';\n' +
-                content.slice(insertPoint);
+      content = `${content.slice(0, insertPoint)  
+                }import { drizzle } from 'drizzle-orm/d1';\n` +
+                `import { sql } from 'drizzle-orm';\n${ 
+                content.slice(insertPoint)}`;
     }
   }
 

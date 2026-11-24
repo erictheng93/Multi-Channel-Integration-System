@@ -174,7 +174,7 @@ class MemoryProfiler {
     console.log(' Starting continuous memory monitoring');
 
     this.intervalId = setInterval(async () => {
-      if (!this.isRunning) return;
+      if (!this.isRunning) {return;}
 
       const snapshot = await this.takeMemorySnapshot();
       this.snapshots.push(snapshot);
@@ -395,7 +395,7 @@ class MemoryProfiler {
   }
 
   private async sendTestMessage(ws: WebSocket): Promise<void> {
-    if (ws.readyState !== WebSocket.OPEN) return;
+    if (ws.readyState !== WebSocket.OPEN) {return;}
 
     const message = {
       type: 'message',
@@ -509,7 +509,7 @@ class MemoryProfiler {
   }
 
   private async checkForLeaks(snapshot: MemorySnapshot): Promise<void> {
-    if (!this.baselineSnapshot || this.snapshots.length < 10) return;
+    if (!this.baselineSnapshot || this.snapshots.length < 10) {return;}
 
     const memoryGrowth = snapshot.heapUsed - this.baselineSnapshot.heapUsed;
     const growthMB = memoryGrowth / (1024 * 1024);
@@ -668,7 +668,7 @@ class MemoryProfiler {
     const leaks: MemoryLeak[] = [];
     const thresholdMB = this.config.leakDetectionThreshold;
 
-    if (!this.baselineSnapshot) return leaks;
+    if (!this.baselineSnapshot) {return leaks;}
 
     const finalSnapshot = this.snapshots[this.snapshots.length - 1];
     const memoryGrowth = finalSnapshot.heapUsed - this.baselineSnapshot.heapUsed;
@@ -679,9 +679,9 @@ class MemoryProfiler {
       const leakRate = (growthMB / duration) * 60000; // MB per minute
 
       let severity: MemoryLeak['severity'] = 'low';
-      if (leakRate > 10) severity = 'critical';
-      else if (leakRate > 5) severity = 'high';
-      else if (leakRate > 2) severity = 'medium';
+      if (leakRate > 10) {severity = 'critical';}
+      else if (leakRate > 5) {severity = 'high';}
+      else if (leakRate > 2) {severity = 'medium';}
 
       leaks.push({
         component: 'Overall System',
@@ -786,15 +786,15 @@ for (let i = 0; i < args.length; i += 2) {
   const key = args[i].replace('--', '');
   const value = args[i + 1];
 
-  if (key === 'url') config.workerUrl = value;
-  else if (key === 'websocket-url') config.websocketUrl = value;
-  else if (key === 'duration') config.profileDurationMs = parseInt(value) * 1000;
-  else if (key === 'connections') config.connectionCycles = parseInt(value);
-  else if (key === 'messages') config.messageVolume = parseInt(value);
-  else if (key === 'threshold') config.leakDetectionThreshold = parseInt(value);
-  else if (key === 'output') config.outputDirectory = value;
-  else if (key === 'token') config.authToken = value;
-  else if (key === 'gc') config.enableGarbageCollection = value === 'true';
+  if (key === 'url') {config.workerUrl = value;}
+  else if (key === 'websocket-url') {config.websocketUrl = value;}
+  else if (key === 'duration') {config.profileDurationMs = parseInt(value) * 1000;}
+  else if (key === 'connections') {config.connectionCycles = parseInt(value);}
+  else if (key === 'messages') {config.messageVolume = parseInt(value);}
+  else if (key === 'threshold') {config.leakDetectionThreshold = parseInt(value);}
+  else if (key === 'output') {config.outputDirectory = value;}
+  else if (key === 'token') {config.authToken = value;}
+  else if (key === 'gc') {config.enableGarbageCollection = value === 'true';}
 }
 
 async function runMemoryProfiler() {

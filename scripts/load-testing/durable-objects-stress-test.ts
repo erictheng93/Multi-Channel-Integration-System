@@ -282,7 +282,7 @@ class DurableObjectsStressTester {
   }
 
   private async testRoomLocking(roomId: string, metrics: DurableObjectMetrics): Promise<void> {
-    if (!this.config.enableDistributedLocks) return;
+    if (!this.config.enableDistributedLocks) {return;}
 
     const lockPromises = [];
     for (let i = 0; i < 50; i++) {
@@ -653,7 +653,7 @@ class DurableObjectsStressTester {
   }
 
   private async stressTestDistributedLocks(): Promise<void> {
-    if (!this.config.enableDistributedLocks) return;
+    if (!this.config.enableDistributedLocks) {return;}
 
     console.log(' Stress testing Distributed Locks');
 
@@ -700,7 +700,7 @@ class DurableObjectsStressTester {
   }
 
   private async stressTestCrossRoomEvents(): Promise<void> {
-    if (!this.config.enableCrossRoomEvents) return;
+    if (!this.config.enableCrossRoomEvents) {return;}
 
     console.log(' Stress testing Cross-Room Events');
 
@@ -816,7 +816,7 @@ class DurableObjectsStressTester {
     let message = baseMessage;
 
     while (message.length < targetSize) {
-      message += ' ' + Math.random().toString(36).substring(2, 10);
+      message += ` ${Math.random().toString(36).substring(2, 10)}`;
     }
 
     return message.substring(0, targetSize);
@@ -909,13 +909,13 @@ for (let i = 0; i < args.length; i += 2) {
   const key = args[i].replace('--', '');
   const value = args[i + 1];
 
-  if (key === 'url') config.workerUrl = value;
-  else if (key === 'rooms') config.conversationRooms = parseInt(value);
-  else if (key === 'users') config.userConnections = parseInt(value);
-  else if (key === 'messages') config.messagesPerRoom = parseInt(value);
-  else if (key === 'duration') config.testDurationMs = parseInt(value) * 1000;
-  else if (key === 'concurrency') config.concurrentRequests = parseInt(value);
-  else if (key === 'token') config.authToken = value;
+  if (key === 'url') {config.workerUrl = value;}
+  else if (key === 'rooms') {config.conversationRooms = parseInt(value);}
+  else if (key === 'users') {config.userConnections = parseInt(value);}
+  else if (key === 'messages') {config.messagesPerRoom = parseInt(value);}
+  else if (key === 'duration') {config.testDurationMs = parseInt(value) * 1000;}
+  else if (key === 'concurrency') {config.concurrentRequests = parseInt(value);}
+  else if (key === 'token') {config.authToken = value;}
 }
 
 async function runStressTest() {

@@ -173,7 +173,7 @@ async function main() {
   const files: string[] = [];
   for await (const rel of new Bun.Glob('**/*.ts').scan({ cwd: targetDir })) {
     const normalized = rel.replaceAll('\\', '/');
-    if (/(^|\/)(node_modules|dist)\//.test(normalized) || normalized.endsWith('.d.ts')) continue;
+    if (/(^|\/)(node_modules|dist)\//.test(normalized) || normalized.endsWith('.d.ts')) {continue;}
     files.push(`${targetDir}/${normalized}`);
   }
 
@@ -186,7 +186,7 @@ async function main() {
   }
 
   // 輸出統計
-  console.log('\n' + '='.repeat(50));
+  console.log(`\n${'='.repeat(50)}`);
   console.log(' 遷移統計');
   console.log('='.repeat(50));
   console.log(`總文件數: ${stats.totalFiles}`);

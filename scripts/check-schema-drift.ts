@@ -82,7 +82,7 @@ function main() {
   for (const [, tableObj] of tables) {
     const tableName = getTableName(tableObj);
     const schemaColumns = getSchemaColumns(tableObj);
-    if (schemaColumns.length === 0) continue;
+    if (schemaColumns.length === 0) {continue;}
 
     process.stdout.write(`  Checking ${tableName}...`);
     const d1Columns = getD1Columns(tableName);

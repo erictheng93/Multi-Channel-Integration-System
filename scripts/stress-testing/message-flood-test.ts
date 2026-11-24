@@ -625,7 +625,7 @@ export class MessageFloodTester {
       .filter(m => m.delivered && m.latency)
       .slice(-100); // Last 100 delivered messages
 
-    if (recentDelivered.length === 0) return 0;
+    if (recentDelivered.length === 0) {return 0;}
 
     const totalLatency = recentDelivered.reduce((sum, m) => sum + (m.latency || 0), 0);
     return totalLatency / recentDelivered.length;
@@ -829,7 +829,7 @@ export class MessageFloodTester {
   // =================== Results Export ===================
 
   async saveResults(): Promise<string | null> {
-    if (!this.config.outputFile) return null;
+    if (!this.config.outputFile) {return null;}
 
     try {
       const fs = require('fs').promises;
@@ -852,15 +852,15 @@ for (let i = 0; i < args.length; i += 2) {
   const key = args[i].replace('--', '');
   const value = args[i + 1];
 
-  if (key === 'url') config.targetUrl = value;
-  else if (key === 'websocket-url') config.websocketUrl = value;
-  else if (key === 'messages') config.totalMessages = parseInt(value);
-  else if (key === 'rate') config.messagesPerSecond = parseInt(value);
-  else if (key === 'connections') config.concurrentConnections = parseInt(value);
-  else if (key === 'size') config.messageSize = parseInt(value);
-  else if (key === 'duration') config.testDurationMs = parseInt(value) * 1000;
-  else if (key === 'token') config.authToken = value;
-  else if (key === 'output') config.outputFile = value;
+  if (key === 'url') {config.targetUrl = value;}
+  else if (key === 'websocket-url') {config.websocketUrl = value;}
+  else if (key === 'messages') {config.totalMessages = parseInt(value);}
+  else if (key === 'rate') {config.messagesPerSecond = parseInt(value);}
+  else if (key === 'connections') {config.concurrentConnections = parseInt(value);}
+  else if (key === 'size') {config.messageSize = parseInt(value);}
+  else if (key === 'duration') {config.testDurationMs = parseInt(value) * 1000;}
+  else if (key === 'token') {config.authToken = value;}
+  else if (key === 'output') {config.outputFile = value;}
 }
 
 async function runMessageFlood() {

@@ -26,7 +26,7 @@ async function verifyPasswordHash() {
   console.log(' New Hash Verification:', newHashValid ? 'VALID' : 'INVALID');
   
   // Test 4: Test API Login
-  console.log('\n' + '=' .repeat(50));
+  console.log(`\n${'=' .repeat(50)}`);
   console.log(' Testing API Login');
   console.log('=' .repeat(50));
   
@@ -38,7 +38,7 @@ async function verifyPasswordHash() {
       },
       body: JSON.stringify({
         email,
-        password: password
+        password
       })
     });
     
@@ -74,7 +74,7 @@ async function verifyPasswordHash() {
 }
 
 verifyPasswordHash().then(valid => {
-  console.log('\n' + '=' .repeat(50));
+  console.log(`\n${'=' .repeat(50)}`);
   if (valid) {
     console.log(' Password hash is correct!');
     console.log('The issue might be with the backend authentication logic.');

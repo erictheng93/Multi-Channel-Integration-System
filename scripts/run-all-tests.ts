@@ -565,15 +565,15 @@ let suiteFilter: string[] = [];
     const key = args[i].replace('--', '');
     const value = args[i + 1];
 
-    if (key === 'url') config.targetUrl = value;
-    else if (key === 'websocket-url') config.websocketUrl = value;
-    else if (key === 'token') config.authToken = value;
-    else if (key === 'output') config.outputDirectory = value;
-    else if (key === 'parallel') config.parallel = value === 'true';
-    else if (key === 'concurrency') config.maxConcurrency = parseInt(value);
-    else if (key === 'skip-on-failure') config.skipOnFailure = value === 'true';
-    else if (key === 'suites') suiteFilter = value.split(',');
-    else if (key === 'category') suiteFilter = [value];
+    if (key === 'url') {config.targetUrl = value;}
+    else if (key === 'websocket-url') {config.websocketUrl = value;}
+    else if (key === 'token') {config.authToken = value;}
+    else if (key === 'output') {config.outputDirectory = value;}
+    else if (key === 'parallel') {config.parallel = value === 'true';}
+    else if (key === 'concurrency') {config.maxConcurrency = parseInt(value);}
+    else if (key === 'skip-on-failure') {config.skipOnFailure = value === 'true';}
+    else if (key === 'suites') {suiteFilter = value.split(',');}
+    else if (key === 'category') {suiteFilter = [value];}
   }
 
   async function runTests() {

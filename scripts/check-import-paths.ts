@@ -128,7 +128,7 @@ function main(): void {
     console.log(`建議: ${issue.suggestion}`);
   });
 
-  console.log('\n' + '='.repeat(80));
+  console.log(`\n${'='.repeat(80)}`);
   console.log(`\n 發現 ${issues.length} 個問題`);
   console.log('\n建議：');
   console.log('  1. 使用路徑別名代替深層相對路徑');
