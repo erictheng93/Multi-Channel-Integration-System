@@ -35,14 +35,14 @@ function extractConflicts(reportPath: string): ConflictInfo[] {
     if (line.includes('') && line.includes('may intercept')) {
       // 提取路徑
       const pathMatch = line.match(/"([^"]+)" may intercept "([^"]+)"/);
-      if (!pathMatch) continue;
+      if (!pathMatch) {continue;}
 
       const path1 = pathMatch[1];
       const path2 = pathMatch[2];
 
       // 提取模組
       const moduleMatch = lines[i + 1]?.match(/ Module: (.+)/);
-      if (!moduleMatch) continue;
+      if (!moduleMatch) {continue;}
 
       const module = moduleMatch[1].trim();
 
@@ -80,8 +80,8 @@ function groupByModule(conflicts: ConflictInfo[]): Map<string, ConflictInfo[]> {
 function evaluateComplexity(moduleConflicts: ConflictInfo[]): 'low' | 'medium' | 'high' {
   const conflictCount = moduleConflicts.length;
 
-  if (conflictCount < 5) return 'low';
-  if (conflictCount < 15) return 'medium';
+  if (conflictCount < 5) {return 'low';}
+  if (conflictCount < 15) {return 'medium';}
   return 'high';
 }
 
@@ -104,8 +104,8 @@ function evaluateBusinessCriticality(moduleName: string): 'low' | 'medium' | 'hi
     'modules/qrcode'
   ];
 
-  if (criticalModules.some(m => moduleName.includes(m))) return 'high';
-  if (importantModules.some(m => moduleName.includes(m))) return 'medium';
+  if (criticalModules.some(m => moduleName.includes(m))) {return 'high';}
+  if (importantModules.some(m => moduleName.includes(m))) {return 'medium';}
   return 'low';
 }
 

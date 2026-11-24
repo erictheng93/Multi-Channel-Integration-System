@@ -196,7 +196,7 @@ class ErrorHandlingMigrationTool {
    */
   private extractCodeBlock(lines: string[], startIndex: number, keyword: string): string {
     let braceCount = 0;
-    let block: string[] = [];
+    const block: string[] = [];
     let started = false;
 
     for (let i = startIndex; i < Math.min(startIndex + 20, lines.length); i++) {
@@ -225,7 +225,7 @@ class ErrorHandlingMigrationTool {
    */
   private extractFunctionBody(lines: string[], startIndex: number): string {
     let braceCount = 0;
-    let body: string[] = [];
+    const body: string[] = [];
     let started = false;
 
     for (let i = startIndex; i < Math.min(startIndex + 50, lines.length); i++) {
@@ -357,7 +357,7 @@ ${indent}}`;
       totalFiles: this.report.totalFiles,
       filesAnalyzed: this.report.filesAnalyzed,
       issuesFound: this.report.issuesFound,
-      standardizationRate: ((this.report.filesAnalyzed - this.report.issuesFound) / this.report.filesAnalyzed * 100).toFixed(2) + '%'
+      standardizationRate: `${((this.report.filesAnalyzed - this.report.issuesFound) / this.report.filesAnalyzed * 100).toFixed(2)}%`
     };
   }
 }

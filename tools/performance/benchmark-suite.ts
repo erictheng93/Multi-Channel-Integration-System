@@ -608,7 +608,7 @@ class PerformanceBenchmarkSuite extends EventEmitter {
   private async benchmarkWebSocketConnect(): Promise<any> {
     return new Promise((resolve, reject) => {
       const startTime = performance.now();
-      const ws = new WebSocket(this.config.websocketUrl + '?userId=benchmark&conversationId=test');
+      const ws = new WebSocket(`${this.config.websocketUrl}?userId=benchmark&conversationId=test`);
 
       const timeout = setTimeout(() => {
         ws.close();
@@ -631,7 +631,7 @@ class PerformanceBenchmarkSuite extends EventEmitter {
 
   private async benchmarkWebSocketEcho(): Promise<any> {
     return new Promise((resolve, reject) => {
-      const ws = new WebSocket(this.config.websocketUrl + '?userId=benchmark&conversationId=test');
+      const ws = new WebSocket(`${this.config.websocketUrl}?userId=benchmark&conversationId=test`);
       const testMessage = { type: 'ping', timestamp: Date.now() };
 
       const timeout = setTimeout(() => {
@@ -658,7 +658,7 @@ class PerformanceBenchmarkSuite extends EventEmitter {
   }
 
   private async benchmarkWebSocketBroadcast(): Promise<any> {
-    const ws = new WebSocket(this.config.websocketUrl + '?userId=benchmark&conversationId=test');
+    const ws = new WebSocket(`${this.config.websocketUrl}?userId=benchmark&conversationId=test`);
 
     return new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
@@ -712,7 +712,7 @@ class PerformanceBenchmarkSuite extends EventEmitter {
     // Create multiple connections to test memory usage
     const connections = [];
     for (let i = 0; i < 100; i++) {
-      const ws = new WebSocket(this.config.websocketUrl + `?userId=mem_test_${i}&conversationId=test`);
+      const ws = new WebSocket(`${this.config.websocketUrl}?userId=mem_test_${i}&conversationId=test`);
       connections.push(ws);
     }
 
@@ -779,13 +779,13 @@ class PerformanceBenchmarkSuite extends EventEmitter {
   // =================== Utility Methods ===================
 
   private percentile(values: number[], p: number): number {
-    if (values.length === 0) return 0;
+    if (values.length === 0) {return 0;}
     const index = Math.ceil((p / 100) * values.length) - 1;
     return values[Math.max(0, index)];
   }
 
   private standardDeviation(values: number[]): number {
-    if (values.length === 0) return 0;
+    if (values.length === 0) {return 0;}
     const mean = values.reduce((sum, val) => sum + val, 0) / values.length;
     const squaredDiffs = values.map(val => Math.pow(val - mean, 2));
     const variance = squaredDiffs.reduce((sum, val) => sum + val, 0) / values.length;
@@ -818,7 +818,7 @@ class PerformanceBenchmarkSuite extends EventEmitter {
   }
 
   async saveReport(report: BenchmarkReport): Promise<string> {
-    if (!this.config.saveResults) return '';
+    if (!this.config.saveResults) {return '';}
 
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
 
@@ -863,7 +863,7 @@ class PerformanceBenchmarkSuite extends EventEmitter {
       result.metrics.latency.p95.toFixed(2),
       result.metrics.latency.p99.toFixed(2),
       result.metrics.throughput.operationsPerSecond.toFixed(2),
-      (result.metrics.error.rate * 100).toFixed(2) + '%',
+      `${(result.metrics.error.rate * 100).toFixed(2)}%`,
       (result.metrics.resource.memoryUsage.heapUsed / 1024 / 1024).toFixed(2)
     ]);
 
@@ -881,12 +881,12 @@ for (let i = 0; i < args.length; i += 2) {
   const key = args[i].replace('--', '');
   const value = args[i + 1];
 
-  if (key === 'url') config.workerUrl = value;
-  else if (key === 'websocket-url') config.websocketUrl = value;
-  else if (key === 'iterations') config.iterations = parseInt(value);
-  else if (key === 'suites') config.benchmarkSuites = value.split(',');
-  else if (key === 'format') config.outputFormat = value as 'json' | 'csv' | 'console';
-  else if (key === 'token') config.authToken = value;
+  if (key === 'url') {config.workerUrl = value;}
+  else if (key === 'websocket-url') {config.websocketUrl = value;}
+  else if (key === 'iterations') {config.iterations = parseInt(value);}
+  else if (key === 'suites') {config.benchmarkSuites = value.split(',');}
+  else if (key === 'format') {config.outputFormat = value as 'json' | 'csv' | 'console';}
+  else if (key === 'token') {config.authToken = value;}
 }
 
 async function runBenchmarks() {

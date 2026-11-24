@@ -51,7 +51,7 @@ function activeLocalDbFile(): string {
 function wipe(file: string): void {
   for (const suffix of ['', '-wal', '-shm']) {
     const p = file + suffix;
-    if (existsSync(p)) rmSync(p);
+    if (existsSync(p)) {rmSync(p);}
   }
 }
 

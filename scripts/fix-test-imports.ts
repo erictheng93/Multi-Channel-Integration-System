@@ -14,7 +14,7 @@ const testDir = join(__dirname, '../tests');
 function fixImportsInFile(filePath: string) {
   const content = readFileSync(filePath, 'utf-8');
   
-  let updatedContent = content
+  const updatedContent = content
     // 修復前端組件導入
     .replace(/from ['"]\.\.\/\.\.\/\.\.\/frontend\/src\/(.*?)['"]/g, "from '@/$1'")
     // 修復後端導入

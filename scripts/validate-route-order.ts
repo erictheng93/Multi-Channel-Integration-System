@@ -182,8 +182,8 @@ function extractRouteRegistrations(content: string): Array<{line: number, route:
       const route = match[2];
       registrations.push({
         line: i + 1, // 1-based line number
-        route: route,
-        method: method,
+        route,
+        method,
         fullLine: line
       });
     }

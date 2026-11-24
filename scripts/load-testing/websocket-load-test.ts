@@ -405,10 +405,10 @@ class WebSocketLoadTester extends EventEmitter {
 
   private startMessagingForConnection(connectionId: string, ws: WebSocket): void {
     const metrics = this.metrics.get(connectionId);
-    if (!metrics) return;
+    if (!metrics) {return;}
 
     const sendMessage = () => {
-      if (!this.isRunning || ws.readyState !== WebSocket.OPEN) return;
+      if (!this.isRunning || ws.readyState !== WebSocket.OPEN) {return;}
 
       const messageTypes = ['chat', 'typing_start', 'typing_stop'];
       if (this.config.includeDelayedMessages) {
@@ -596,14 +596,14 @@ class WebSocketLoadTester extends EventEmitter {
   }
 
   private percentile(values: number[], p: number): number {
-    if (values.length === 0) return 0;
+    if (values.length === 0) {return 0;}
     const index = Math.ceil((p / 100) * values.length) - 1;
     return values[Math.max(0, index)];
   }
 
   private calculateAverageLifetime(metrics: ConnectionMetrics[]): number {
     const completedConnections = metrics.filter(m => m.disconnectedAt && m.connectedAt);
-    if (completedConnections.length === 0) return 0;
+    if (completedConnections.length === 0) {return 0;}
 
     const totalLifetime = completedConnections.reduce((sum, m) =>
       sum + (m.disconnectedAt! - m.connectedAt), 0);
@@ -634,14 +634,14 @@ const config: Partial<LoadTestConfig> = {};
     const key = args[i].replace('--', '');
     const value = args[i + 1];
 
-    if (key === 'websocket-url') config.targetUrl = value;
-    else if (key === 'url' && !config.targetUrl) config.targetUrl = value;
-    else if (key === 'connections') config.maxConnections = parseInt(value);
-    else if (key === 'rate') config.connectionsPerSecond = parseInt(value);
-    else if (key === 'messages') config.messagesPerConnection = parseInt(value);
-    else if (key === 'duration') config.testDurationMs = parseInt(value) * 1000;
-    else if (key === 'rooms') config.concurrentRooms = parseInt(value);
-    else if (key === 'token') config.authToken = value;
+    if (key === 'websocket-url') {config.targetUrl = value;}
+    else if (key === 'url' && !config.targetUrl) {config.targetUrl = value;}
+    else if (key === 'connections') {config.maxConnections = parseInt(value);}
+    else if (key === 'rate') {config.connectionsPerSecond = parseInt(value);}
+    else if (key === 'messages') {config.messagesPerConnection = parseInt(value);}
+    else if (key === 'duration') {config.testDurationMs = parseInt(value) * 1000;}
+    else if (key === 'rooms') {config.concurrentRooms = parseInt(value);}
+    else if (key === 'token') {config.authToken = value;}
   }
 
   async function runTest() {

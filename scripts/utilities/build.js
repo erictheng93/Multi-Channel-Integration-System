@@ -35,7 +35,7 @@ const pathAliasPlugin = {
     // 處理所有以 @ 開頭的導入
     build.onResolve({ filter: /^@/ }, (args) => {
       for (const [alias, aliasPath] of Object.entries(pathAliases)) {
-        if (args.path === alias || args.path.startsWith(alias + '/')) {
+        if (args.path === alias || args.path.startsWith(`${alias}/`)) {
           const relativePath = args.path.substring(alias.length);
           const resolvedPath = path.join(aliasPath, relativePath);
           return { path: resolvedPath };

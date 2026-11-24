@@ -24,18 +24,18 @@ async function fixMockDBReferences(filePath: string): Promise<boolean> {
 
       if (insertPosition > 0) {
         content =
-          content.slice(0, insertPosition + 1) +
-          `  let mockDB: any; // Reference to mockEnv.DB\n` +
-          content.slice(insertPosition + 1);
+          `${content.slice(0, insertPosition + 1) 
+          }  let mockDB: any; // Reference to mockEnv.DB\n${ 
+          content.slice(insertPosition + 1)}`;
 
         // Add mockDB assignment in beforeEach
         const mockEnvAssignment = content.match(/(mockEnv\s*=\s*MockFactory\.createEnv\([^;]+\);)/);
         if (mockEnvAssignment) {
           const assignmentEnd = content.indexOf(mockEnvAssignment[0]) + mockEnvAssignment[0].length;
           content =
-            content.slice(0, assignmentEnd) +
-            `\n\n // Reference mockDB for compatibility\n mockDB = mockEnv.DB;` +
-            content.slice(assignmentEnd);
+            `${content.slice(0, assignmentEnd) 
+            }\n\n // Reference mockDB for compatibility\n mockDB = mockEnv.DB;${ 
+            content.slice(assignmentEnd)}`;
         }
 
         return content !== original;
@@ -77,7 +77,7 @@ async function findTestFiles(): Promise<string[]> {
 }
 
 async function main() {
-  console.log('\n Fixing mockDB undefined references\n' + '='.repeat(60) + '\n');
+  console.log(`\n Fixing mockDB undefined references\n${'='.repeat(60)}\n`);
 
   const files = await findTestFiles();
   let fixed = 0;

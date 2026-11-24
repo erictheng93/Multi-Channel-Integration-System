@@ -215,7 +215,7 @@ if (needsFixing.length > 0) {
   console.log(' 所有配置都正確！');
 }
 
-console.log('\n' + '='.repeat(60));
+console.log(`\n${'='.repeat(60)}`);
 console.log(`整體狀態: ${failCount === 0 ? (warnCount === 0 ? ' 優秀' : ' 良好') : ' 需要修復'}`);
 
 export { results };

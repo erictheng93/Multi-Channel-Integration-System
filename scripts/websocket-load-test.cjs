@@ -18,7 +18,7 @@ const WebSocket = require('ws');
 // - TEST_PASSWORD: Admin password for authentication
 const CONFIG = {
   // WebSocket URL (derived from BACKEND_URL)
-  WS_URL: (process.env.BACKEND_URL || 'http://localhost:8787').replace(/^http/, 'ws') + '/api/websocket/connect',
+  WS_URL: `${(process.env.BACKEND_URL || 'http://localhost:8787').replace(/^http/, 'ws')}/api/websocket/connect`,
 
   // 測試參數
   CONCURRENT_CONNECTIONS: parseInt(process.argv[2]) || 100,
@@ -81,7 +81,7 @@ async function getAuthToken() {
           if (response.success && response.data && response.data.token) {
             resolve(response.data.token);
           } else {
-            reject(new Error('Failed to get token: ' + data));
+            reject(new Error(`Failed to get token: ${data}`));
           }
         } catch (error) {
           reject(error);
@@ -178,7 +178,7 @@ class WebSocketClient {
       const message = {
         type: 'test',
         clientId: this.id,
-        messageId: messageId,
+        messageId,
         timestamp: new Date().toISOString(),
         data: 'Load test message'
       };
@@ -244,7 +244,7 @@ function calculateStats() {
     messages: {
       sent: stats.messagesSent,
       received: stats.messagesReceived,
-      throughput: (stats.messagesSent / duration).toFixed(2) + ' msg/s',
+      throughput: `${(stats.messagesSent / duration).toFixed(2)} msg/s`,
     },
     latency: {
       avg: avgLatency.toFixed(2),
@@ -263,7 +263,7 @@ function calculateStats() {
 }
 
 function percentile(arr, p) {
-  if (arr.length === 0) return 0;
+  if (arr.length === 0) {return 0;}
   const sorted = [...arr].sort((a, b) => a - b);
   const index = Math.ceil((p / 100) * sorted.length) - 1;
   return sorted[Math.max(0, index)];

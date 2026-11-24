@@ -167,7 +167,7 @@ function checkConflict(route1: RouteInfo, route2: RouteInfo): boolean {
   const path2 = route2.path;
 
   // 完全相同
-  if (path1 === path2) return true;
+  if (path1 === path2) {return true;}
 
   const segments1 = path1.split('/').filter(s => s.length > 0);
   const segments2 = path2.split('/').filter(s => s.length > 0);

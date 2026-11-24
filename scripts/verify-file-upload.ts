@@ -55,7 +55,7 @@ const verificationChecks: VerificationCheck[] = [
           ['wrangler', 'd1', 'execute', 'omni-channel-platform', '--local', `--file=${tempFile}`],
           { stdout: 'pipe', stderr: 'pipe' }
         );
-        if (proc.exitCode !== 0) throw new Error(proc.stderr.toString());
+        if (proc.exitCode !== 0) {throw new Error(proc.stderr.toString());}
         const result = proc.stdout.toString();
         
         fs.unlinkSync(tempFile);
@@ -73,7 +73,7 @@ const verificationChecks: VerificationCheck[] = [
     check: async (): Promise<boolean> => {
       try {
         const proc = Bun.spawnSync(['wrangler', 'r2', 'bucket', 'list'], { stdout: 'pipe', stderr: 'pipe' });
-        if (proc.exitCode !== 0) throw new Error(proc.stderr.toString());
+        if (proc.exitCode !== 0) {throw new Error(proc.stderr.toString());}
         const result = proc.stdout.toString();
         return result.includes('omni-channel-attachments');
       } catch (error) {
