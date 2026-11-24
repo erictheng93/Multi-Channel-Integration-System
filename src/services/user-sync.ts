@@ -25,13 +25,18 @@ export interface UserProfile {
   lastUpdated: Date;
 }
 
+/** Options for a single profile fetch; `signal` aborts the platform API request. */
+export interface ProfileFetchOptions {
+  signal?: AbortSignal;
+}
+
 export class UserSyncService {
   constructor(private env: Bindings) {}
 
   /**
    * 同步 LINE 用戶資料
    */
-  async syncLineUser(userId: string, groupId?: string): Promise<UserProfile | null> {
+  async syncLineUser(userId: string, groupId?: string, options: ProfileFetchOptions = {}): Promise<UserProfile | null> {
     try {
       console.log(`Syncing LINE user profile: ${userId}`);
       
@@ -41,13 +46,15 @@ export class UserSyncService {
         profile = await getLineGroupMemberProfile(
           this.env.LINE_CHANNEL_ACCESS_TOKEN, 
           groupId, 
-          userId
+          userId,
+          options.signal
         );
       } else {
         // 獲取一般用戶資料
         profile = await getLineUserProfile(
           this.env.LINE_CHANNEL_ACCESS_TOKEN, 
-          userId
+          userId,
+          options.signal
         );
       }
 
@@ -79,7 +86,7 @@ export class UserSyncService {
   /**
    * 同步 Facebook 用戶資料
    */
-  async syncFacebookUser(userId: string): Promise<UserProfile | null> {
+  async syncFacebookUser(userId: string, options: ProfileFetchOptions = {}): Promise<UserProfile | null> {
     try {
       console.log(`Syncing Facebook user profile: ${userId}`);
       
@@ -90,7 +97,8 @@ export class UserSyncService {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json'
-          }
+          },
+          signal: options.signal
         }
       );
 
