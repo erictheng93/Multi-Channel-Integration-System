@@ -176,10 +176,11 @@ All seven run concurrently via background jobs (`&` + `wait`). Type-check and ES
 - `cd frontend && bunx vue-tsc --noEmit` (frontend SFCs, incremental)
 - `cd frontend && bunx eslint . --cache` (ESLint with content-strategy cache)
 - `bun run type-check:scripts` (`tsc -p tsconfig.scripts.json`: `scripts/`, `tools/`, `database/` with Bun types; also a CI step)
+- `bun run lint:scripts` (ESLint over `scripts/`, `tools/`, `database/` via `frontend/eslint.scripts.config.js`, `--max-warnings 0`; also a CI step)
 
 Caches live in `node_modules/.cache/` (already gitignored). First push after `bun install` is cold; subsequent pushes hit the incremental cache and run ~3× faster.
 
-**Docs-only fast path**: pre-push diffs the pushed range and skips all three checks when every changed file is documentation. The allowlist is `docs/**`, `*.md`, `*.txt`, `LICENSE` — and anything under `src/`, `shared/`, or `frontend/` forces the full run **even if it is a `.md`**, so a doc sitting next to code is never the reason a check is skipped. This is safe because the three checks cover exactly `src/** + shared/**` (tsc, per the root `tsconfig.json` include) and `frontend/**` (vue-tsc + eslint); nothing on the allowlist can change their result. Anything ambiguous — an unresolvable push range, an empty diff, a new remote branch whose base can't be determined — runs the full suite. Force it yourself with `FULL_CHECK=1 git push`.
+**Docs-only fast path**: pre-push diffs the pushed range and skips all checks when every changed file is documentation. The allowlist is `docs/**`, `*.md`, `*.txt`, `LICENSE` — and anything under `src/`, `shared/`, or `frontend/` forces the full run **even if it is a `.md`**, so a doc sitting next to code is never the reason a check is skipped (any non-documentation file, e.g. a `.ts` under `scripts/`, also forces it). This is safe because the checks cover exactly `src/** + shared/**` (tsc, per the root `tsconfig.json` include) and `frontend/**` (vue-tsc + eslint), and `scripts/** + tools/** + database/**` (tsc + eslint); nothing on the allowlist can change their result. Anything ambiguous — an unresolvable push range, an empty diff, a new remote branch whose base can't be determined — runs the full suite. Force it yourself with `FULL_CHECK=1 git push`.
 
 **Why this design**:
 - Atomic commits stay cheap (20s × N) instead of paying full check on each commit (80-200s × N).
