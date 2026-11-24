@@ -3,7 +3,7 @@
 > **此文件由程式產生，請勿手動編輯。**
 > 重新產生：`bun run db:doc:schema`（正式庫）或 `bun scripts/generate-schema-doc.ts`（本地鏡像）
 >
-> **產生時間**: 2026-11-23T08:01:20.105Z
+> **產生時間**: 2026-11-24T03:38:22.321Z
 > **資料來源**: REMOTE production D1 (mcis-db)
 >
 > 內容直接讀自資料庫的 `sqlite_master` 與 pragma 函式，**不是**讀 `src/db/schema.ts`
@@ -18,7 +18,7 @@
 | 項目 | 數量 |
 |---|---|
 | 資料表 | 45 |
-| 索引 | 132 |
+| 索引 | 133 |
 | 視圖 | 3 |
 | 外鍵關係 | 72 |
 | CHECK 約束 | 0 |
@@ -916,6 +916,7 @@ CREATE TABLE `conversation_transfers` (
 - `idx_conversations_awaiting_since` *(partial)* — (awaiting_since, id, status, assigned_team_id, deleted_at) WHERE awaiting_since IS NOT NULL
 - `idx_conversations_customer_after_agent` *(partial)* — (last_customer_message_at, id, status, assigned_team_id, unread_floor_at, last_agent_message_at) WHERE last_customer_message_at > COALESCE(last_agent_message_at, '')
 - `idx_conversations_customer_status` — (customer_id, status)
+- `idx_conversations_customer_unique` *(UNIQUE)* — (customer_id)
 - `idx_conversations_deleted_at` *(partial)* — (deleted_at) WHERE deleted_at IS NOT NULL
 - `idx_conversations_last_message` — (last_message_at)
 - `idx_conversations_team_status` — (assigned_team_id, status)

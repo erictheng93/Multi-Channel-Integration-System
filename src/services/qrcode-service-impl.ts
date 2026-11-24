@@ -4,6 +4,7 @@
 import { eq, and, sql, desc } from 'drizzle-orm';
 import { qrCodes, qrCodeScans, teams, customers, conversations } from '../db/schema';
 import type { Database } from '@/db/drizzle-factory';
+import { findCustomerConversation, insertCustomerConversation } from '@/services/customer-conversation-lookup';
 import type { QRCodeConfig, QRCodeInfo } from './qrcode-service';
 import type {
   QRFollowEvent
@@ -541,33 +542,32 @@ export class QRCodeServiceImpl {
       customerId = customer.id;
     }
 
-    // 查找或創建對話
-    const activeConversation = await db.select()
-      .from(conversations)
-      .where(and(
-        eq(conversations.customerId, customerId),
-        eq(conversations.status, 'active')
-      ))
-      .get();
+    // 查找或創建對話: one conversation per customer, whatever its status (conversations.customer_id
+    // is UNIQUE since 0079). Looking up only status = 'active' here used to add a second
+    // conversation for a customer whose conversation was assigned or closed. Reopening a closed
+    // one is left to the follow handler, which runs after this with the returned team.
+    let customerConversation = await findCustomerConversation(db, customerId);
 
-    if (!activeConversation) {
-      // 創建新對話
-      await db.insert(conversations).values({
+    if (!customerConversation) {
+      // 創建新對話 (a concurrent creator's conversation comes back instead of a UNIQUE error)
+      customerConversation = (await insertCustomerConversation(db, {
         id: crypto.randomUUID(),
         customerId,
         assignedTeamId: teamId,
         status: 'active',
         createdAt: nowISO(),
         updatedAt: nowISO()
-      }).run();
-    } else if (!activeConversation.assignedTeamId) {
+      })) ?? undefined;
+    }
+
+    if (customerConversation && !customerConversation.assignedTeamId) {
       // 指派現有對話給團隊
       await db.update(conversations)
         .set({ 
           assignedTeamId: teamId,
           updatedAt: nowISO()
         })
-        .where(eq(conversations.id, activeConversation.id))
+        .where(eq(conversations.id, customerConversation.id))
         .run();
     }
   }
