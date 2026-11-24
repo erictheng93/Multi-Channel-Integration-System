@@ -16,6 +16,7 @@
     "dev:local": "wrangler dev --local",
     "build": "tsc --noEmit",
     "type-check:scripts": "tsc -p tsconfig.scripts.json --noEmit",
+    "lint:scripts": "frontend/node_modules/.bin/eslint -c frontend/eslint.scripts.config.js scripts tools database --max-warnings 0",
     "lint:check": "bunx tsc --noEmit && cd frontend && bunx vue-tsc --noEmit && bun run lint -- --max-warnings 0",
     "check": "bun scripts/check.ts",
     "check:backend": "bun scripts/check.ts backend",
