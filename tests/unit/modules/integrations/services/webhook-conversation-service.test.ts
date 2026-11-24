@@ -593,15 +593,19 @@ describe('webhook-conversation-service', () => {
       ).rejects.toThrow('Failed to create message');
     });
 
-    it('should handle UNIQUE constraint violation gracefully', async () => {
-      // Simulate UNIQUE constraint failure on insert
+    // Shaped like production: Drizzle wraps the D1 error, whose text is only on `cause`.
+    const drizzleWrapped = (driverMessage: string): Error =>
+      new Error('Failed query: insert into "messages" (...) values (...) params: ...', { cause: new Error(driverMessage) });
+
+    it('treats a platform_message_id UNIQUE violation (wrapped by Drizzle) as a duplicate', async () => {
       mockInsertValues.mockReturnValueOnce({
         then: (_resolve: any, reject: any) =>
-          Promise.reject(new Error('UNIQUE constraint failed: messages.platformMessageId')).catch(reject),
+          Promise.reject(drizzleWrapped('D1_ERROR: UNIQUE constraint failed: messages.platform_message_id: SQLITE_CONSTRAINT')).catch(reject),
       });
 
       // Mock the fallback query for existing message
       mockGet.mockResolvedValueOnce({ id: 'existing-msg-id' });
+      const outcome: { duplicate?: boolean } = {};
 
       const result = await saveMessage(
         mockEnv,
@@ -612,32 +616,24 @@ describe('webhook-conversation-service', () => {
         'duplicate-platform-msg',
         null,
         null,
-        'line'
+        'line',
+        outcome
       );
 
       // Should return the existing message ID, not throw
       expect(result).toBe('existing-msg-id');
+      expect(outcome.duplicate).toBe(true);
     });
 
-    it('should return generated messageId when UNIQUE violation has no platformMessageId', async () => {
+    it('rethrows a UNIQUE violation on another column (e.g. a messages.id collision)', async () => {
       mockInsertValues.mockReturnValueOnce({
         then: (_resolve: any, reject: any) =>
-          Promise.reject(new Error('UNIQUE constraint failed')).catch(reject),
+          Promise.reject(drizzleWrapped('D1_ERROR: UNIQUE constraint failed: messages.id: SQLITE_CONSTRAINT')).catch(reject),
       });
 
-      const result = await saveMessage(
-        mockEnv,
-        'conv-1',
-        1,
-        'Hello',
-        'text',
-        null,  // no platformMessageId
-        null,
-        null,
-        'line'
-      );
-
-      expect(result).toBe('mock-uuid-1234');
+      await expect(
+        saveMessage(mockEnv, 'conv-1', 1, 'Hello', 'text', null, null, null, 'line')
+      ).rejects.toThrow('Failed to create message');
     });
 
     it('should still throw on non-UNIQUE DB errors', async () => {
