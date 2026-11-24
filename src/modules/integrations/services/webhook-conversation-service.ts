@@ -10,7 +10,12 @@ import { v4 as uuidv4 } from 'uuid';
 import { createContextLogger } from '@/utils/logger';
 import { nowISO } from '@/utils/timestamp';
 import { DistributedLockService } from '@/services/distributed-lock-service';
-import { findCustomerConversation, getReopenStatus } from '@/services/customer-conversation-lookup';
+import {
+  findCustomerConversation,
+  getReopenStatus,
+  insertCustomerConversation,
+  type CustomerConversationRow
+} from '@/services/customer-conversation-lookup';
 
 const log = createContextLogger('WebhookConversation');
 
@@ -99,12 +104,9 @@ export async function findOrCreateConversation(
     conversation = await lockService.withLock(
       `webhook:conversation:${customerId}`,
       async () => {
-        // Double-check inside lock — another request may have created the conversation
-        const existing = await findCustomerConversation(drizzleDb, customerId);
-
-        if (existing) {
-          // Another request created it while we waited for the lock. Only
-          // backfill assignment here; saveMessage owns lastMessageAt updates.
+        // Another request created the conversation first. Only backfill assignment
+        // here; saveMessage owns lastMessageAt updates.
+        const adoptExisting = async (existing: CustomerConversationRow): Promise<WebhookConversation> => {
           const updateTimestamp = nowISO();
           const updateFields: Record<string, unknown> = {};
           if (!existing.assignedTeamId && opts?.assignedTeamId) {
@@ -121,6 +123,12 @@ export async function findOrCreateConversation(
             existing.assignedTeamId = opts.assignedTeamId;
           }
           return convertConversation(existing);
+        };
+
+        // Double-check inside lock — another request may have created the conversation
+        const existing = await findCustomerConversation(drizzleDb, customerId);
+        if (existing) {
+          return adoptExisting(existing);
         }
 
         // 建立新對話（使用 UUID）
@@ -133,23 +141,31 @@ export async function findOrCreateConversation(
 
         try {
           // 插入新對話 (只支援團隊指派，個人指派已移除)
-          const insertResult = await drizzleDb
-            .insert(conversations)
-            .values({
-              id: conversationId,
-              customerId,
-              assignedTeamId: opts?.assignedTeamId ?? null,
-              status: 'active',
-              priority: 'normal',
-              firstResponseAt: null,
-              closedAt: null,
-              lastMessageAt: null,
-              createdAt: timestamp,
-              updatedAt: timestamp
+          // conversations.customer_id is UNIQUE (0079): if a request outside this lock (LINE
+          // follow, LIFF welcome) or one whose lock expired created it first, use that one.
+          const raced = await insertCustomerConversation(drizzleDb, {
+            id: conversationId,
+            customerId,
+            assignedTeamId: opts?.assignedTeamId ?? null,
+            status: 'active',
+            priority: 'normal',
+            firstResponseAt: null,
+            closedAt: null,
+            lastMessageAt: null,
+            createdAt: timestamp,
+            updatedAt: timestamp
+          });
+
+          if (raced) {
+            log.info(`${platformLabel} Webhook: conversation created concurrently, using the existing one`, {
+              conversationId: raced.id,
+              customerId
             });
+            return adoptExisting(raced);
+          }
 
           if (platform === 'line') {
-            log.debug(`Conversation insert completed`, { platform: platformLabel, conversationId, insertResult });
+            log.debug(`Conversation insert completed`, { platform: platformLabel, conversationId });
           }
 
           if (platform === 'line') {
