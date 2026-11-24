@@ -24,20 +24,20 @@ function getModuleIdentifier(filePath: string): string {
   const normalizedPath = filePath.replace(/\\/g, '/');
 
   // 情況 1: src/modules/xxx/handlers/yyy.ts - 子應用處理器（NOT index.ts）
-  const subHandlerMatch = normalizedPath.match(/src\/modules\/([^\/]+)\/handlers\/([^\/]+)\.ts/);
+  const subHandlerMatch = normalizedPath.match(/src\/modules\/([^/]+)\/handlers\/([^/]+)\.ts/);
   if (subHandlerMatch && subHandlerMatch[2] !== 'index') {
     // 標記為獨立子模組，避免與同模組的其他子應用衝突
     return `modules/${subHandlerMatch[1]}/sub:${subHandlerMatch[2]}`;
   }
 
   // 情況 2: src/modules/xxx - 提取模組名稱（包括 index.ts）
-  const moduleMatch = normalizedPath.match(/src\/modules\/([^\/]+)/);
+  const moduleMatch = normalizedPath.match(/src\/modules\/([^/]+)/);
   if (moduleMatch) {
     return `modules/${moduleMatch[1]}`;
   }
 
   // 情況 3: src/handlers/xxx - 提取處理器名稱
-  const handlerMatch = normalizedPath.match(/src\/handlers\/([^\/]+)\.ts/);
+  const handlerMatch = normalizedPath.match(/src\/handlers\/([^/]+)\.ts/);
   if (handlerMatch) {
     return `handlers/${handlerMatch[1]}`;
   }

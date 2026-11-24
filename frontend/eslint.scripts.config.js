@@ -76,7 +76,9 @@ export default [
         caughtErrorsIgnorePattern: '^_',
       }],
       '@typescript-eslint/no-explicit-any': 'error',
-      '@typescript-eslint/no-non-null-assertion': 'warn',
+      // Off (the frontend config only warns): dev scripts assert on Map lookups and
+      // regex matches they just populated, and tsc strict still checks everything else.
+      '@typescript-eslint/no-non-null-assertion': 'off',
       '@typescript-eslint/consistent-type-imports': ['error', { prefer: 'type-imports' }],
 
       'prefer-const': 'error',
