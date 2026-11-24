@@ -11,7 +11,7 @@ import { ActivityService } from '@modules/activities';
 import { createContextLogger } from '@/utils/logger';
 
 import { nowISO, nowMs } from '@/utils/timestamp';
-import { findCustomerConversation, getReopenStatus } from '@/services/customer-conversation-lookup';
+import { findCustomerConversation, getReopenStatus, insertCustomerConversation } from '@/services/customer-conversation-lookup';
 import { evaluateWelcome as autoReplyEvaluateWelcome } from '@modules/auto-reply/services/auto-reply-engine';
 
 const log = createContextLogger('Webhook');
@@ -230,26 +230,36 @@ export async function processLineFollowEvent(env: Bindings, event: LineEvent) {
       if (!existingConversation) {
         // Create new conversation with team assignment (only team assignment supported, individual removed)
         const conversationId = uuidv4();
-        await drizzleDb
-          .insert(conversations)
-          .values({
-            id: conversationId,
-            customerId: existingCustomer.id,
-            assignedTeamId: assignedTeamId,
-            // Note: assignedUserId removed - only team assignment is supported now
-            status: 'active',
-            priority: 'normal',
-            lastMessageAt: null,
-            createdAt: timestamp,
-            updatedAt: timestamp
-          });
-
-        log.info('Conversation created with team assignment', {
-          conversationId,
+        // conversations.customer_id is UNIQUE (0079). This path holds no lock, so a webhook
+        // message for the same customer can create the conversation first; then it is
+        // returned here and handled like any existing conversation below.
+        existingConversation = await insertCustomerConversation(drizzleDb, {
+          id: conversationId,
           customerId: existingCustomer.id,
-          teamId: assignedTeamId
+          assignedTeamId: assignedTeamId,
+          // Note: assignedUserId removed - only team assignment is supported now
+          status: 'active',
+          priority: 'normal',
+          lastMessageAt: null,
+          createdAt: timestamp,
+          updatedAt: timestamp
         });
-      } else {
+
+        if (existingConversation) {
+          log.info('Conversation created concurrently, using the existing one', {
+            conversationId: existingConversation.id,
+            customerId: existingCustomer.id
+          });
+        } else {
+          log.info('Conversation created with team assignment', {
+            conversationId,
+            customerId: existingCustomer.id,
+            teamId: assignedTeamId
+          });
+        }
+      }
+
+      if (existingConversation) {
         // Backfill a missing team and reopen a closed conversation (the customer followed again)
         const reopenedStatus = getReopenStatus(existingConversation.status, true);
         const needsTeam = !existingConversation.assignedTeamId;

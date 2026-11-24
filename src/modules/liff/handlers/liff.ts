@@ -12,7 +12,7 @@ import { customers, conversations, teams } from '@/db/schema';
 import { v4 as uuidv4 } from 'uuid';
 import { createContextLogger } from '@/utils/logger';
 import { nowISO, nowMs } from '@/utils/timestamp'
-import { findCustomerConversation, getReopenStatus } from '@/services/customer-conversation-lookup';
+import { findCustomerConversation, getReopenStatus, insertCustomerConversation } from '@/services/customer-conversation-lookup';
 import { verifyLiffIdTokenDetailed } from './line-id-token';
 
 const log = createContextLogger('LIFF');
@@ -431,9 +431,28 @@ liffHandler.post('/welcome', async (c) => {
 
       if (customer) {
         // 查詢現有對話（含已結案，避免重複建立）
-        const existingConversation = await findCustomerConversation(db, customer.id); // 一位客戶一個對話（含已結案）
+        let existingConversation = await findCustomerConversation(db, customer.id); // 一位客戶一個對話（含已結案）
 
         const timestamp = nowISO();
+
+        // 建立新對話 (舊用戶但無現有對話的情況)
+        // conversations.customer_id is UNIQUE (0079) and this path holds no lock: if a webhook
+        // created the conversation first, the insert returns it and it is handled as existing.
+        let newConversationId: string | null = null;
+        if (!existingConversation) {
+          const conversationId = uuidv4();
+          existingConversation = (await insertCustomerConversation(db, {
+            id: conversationId,
+            customerId: customer.id,
+            assignedTeamId: teamId,
+            status: 'active',
+            priority: 'normal',
+            lastMessageAt: timestamp,
+            createdAt: timestamp,
+            updatedAt: timestamp
+          })) ?? undefined;
+          if (!existingConversation) newConversationId = conversationId;
+        }
 
         if (existingConversation) {
           // 更新現有對話的團隊指派 (如果團隊不同)
@@ -511,21 +530,8 @@ liffHandler.post('/welcome', async (c) => {
               teamId
             });
           }
-        } else {
-          // 建立新對話 (舊用戶但無現有對話的情況)
-          const conversationId = uuidv4();
-          await db
-            .insert(conversations)
-            .values({
-              id: conversationId,
-              customerId: customer.id,
-              assignedTeamId: teamId,
-              status: 'active',
-              priority: 'normal',
-              lastMessageAt: timestamp,
-              createdAt: timestamp,
-              updatedAt: timestamp
-            });
+        } else if (newConversationId) {
+          const conversationId = newConversationId;
 
           // WebSocket 廣播新對話
           const { WebSocketBroadcastService } = await import('@/services/websocket-broadcast-service');

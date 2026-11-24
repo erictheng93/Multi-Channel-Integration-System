@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer, real, primaryKey, unique, index } from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text, integer, real, primaryKey, unique, index, uniqueIndex } from 'drizzle-orm/sqlite-core';
 import { sql } from 'drizzle-orm';
 
 // Teams table - 團隊
@@ -139,6 +139,9 @@ export const conversations = sqliteTable('conversations', {
   // alongside last_read_at / marked_unread_at rather than rebuilt on its own.
   deletedAt: text('deleted_at'), // Migration 0027
 }, (table) => ({
+  // One conversation per customer (Migration 0079): an inbound message reopens the SAME
+  // conversation. Create paths handle the violation via isUniqueConstraintError and re-read.
+  customerUniqueIdx: uniqueIndex('idx_conversations_customer_unique').on(table.customerId),
   // Sort order of the conversation list (Migration 0061, issue #23). SQLite
   // reverse-scans this for ORDER BY updated_at DESC, id DESC and stops at the
   // LIMIT; without it the planner sorts every visible row in a temp b-tree and
