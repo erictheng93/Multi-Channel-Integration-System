@@ -112,6 +112,9 @@ jobs:
       - name: Scripts TypeScript (scripts/, tools/, database/)
         run: bun run type-check:scripts
 
+      - name: Scripts ESLint (scripts/, tools/, database/)
+        run: bun run lint:scripts
+
       - name: Frontend TypeScript (vue-tsc)
         run: cd frontend && bunx vue-tsc --noEmit
 
