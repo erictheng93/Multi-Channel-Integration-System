@@ -51,7 +51,7 @@ try {
       details: missingPaths
     });
   }
-} catch (error) {
+} catch {
   results.push({
     name: 'TypeScript 配置',
     status: 'fail',
@@ -173,7 +173,7 @@ try {
       message: 'index-modular.ts 檔案不存在'
     });
   }
-} catch (error) {
+} catch {
   results.push({
     name: '主應用程式檢查',
     status: 'fail',

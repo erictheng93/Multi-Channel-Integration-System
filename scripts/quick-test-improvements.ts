@@ -84,7 +84,7 @@ async function findTestFiles(dir: string = 'tests'): Promise<string[]> {
           files.push(entryPath);
         }
       }
-    } catch (e) {
+    } catch {
       // Skip inaccessible directories
     }
   }

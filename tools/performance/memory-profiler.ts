@@ -268,7 +268,7 @@ class MemoryProfiler {
       connections.forEach(ws => {
         try {
           ws.close();
-        } catch (error) {
+        } catch {
           // Ignore close errors
         }
       });
@@ -350,7 +350,7 @@ class MemoryProfiler {
             `${this.config.websocketUrl}?userId=temp_${cycle}_${i}&conversationId=temp_room`
           );
           tempConnections.push(ws);
-        } catch (error) {
+        } catch {
           // Ignore connection errors
         }
       }
@@ -362,7 +362,7 @@ class MemoryProfiler {
       tempConnections.forEach(ws => {
         try {
           ws.close();
-        } catch (error) {
+        } catch {
           // Ignore close errors
         }
       });
@@ -423,7 +423,7 @@ class MemoryProfiler {
         }),
         signal: AbortSignal.timeout(5000)
       });
-    } catch (error) {
+    } catch {
       // Ignore individual message errors
     }
   }
@@ -437,7 +437,7 @@ class MemoryProfiler {
         },
         signal: AbortSignal.timeout(5000)
       });
-    } catch (error) {
+    } catch {
       // Ignore individual access errors
     }
   }
@@ -480,7 +480,7 @@ class MemoryProfiler {
           });
         }
       }
-    } catch (error) {
+    } catch {
       // Ignore lock errors
     }
   }
@@ -557,7 +557,7 @@ class MemoryProfiler {
     for (const ws of this.activeConnections.values()) {
       try {
         ws.close();
-      } catch (error) {
+      } catch {
         // Ignore cleanup errors
       }
     }
@@ -757,7 +757,7 @@ class MemoryProfiler {
     const fs = require('fs').promises;
     try {
       await fs.mkdir(this.config.outputDirectory, { recursive: true });
-    } catch (error) {
+    } catch {
       // Directory might already exist
     }
   }
