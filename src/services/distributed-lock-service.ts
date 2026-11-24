@@ -40,6 +40,14 @@ interface LockCleanupResponse {
   cleanedCount?: number;
 }
 
+/**
+ * The single expiry rule for every LockCoordinator operation: a lock is
+ * expired (free) from its deadline on, i.e. when now >= expiresAt.
+ */
+export function isLockExpired(lock: Pick<DistributedLock, 'expiresAt'>, now: number = nowMs()): boolean {
+  return now >= lock.expiresAt;
+}
+
 interface LockMetrics {
   totalLocks: number;
   activeLocks: number;
@@ -663,7 +671,7 @@ export class LockCoordinator implements DurableObject {
       const existingLockId = this.resourceLocks.get(resource);
       const existingLock = existingLockId ? this.activeLocks.get(existingLockId) : null;
 
-      if (!existingLock || existingLock.expiresAt < nowMs()) {
+      if (!existingLock || isLockExpired(existingLock)) {
         // Lock is available or expired
         if (existingLock) {
           await this.releaseLockInternal(existingLock.lockId, existingLock.ownerId);
@@ -715,7 +723,7 @@ export class LockCoordinator implements DurableObject {
     const existingLockId = this.resourceLocks.get(resource);
     const existingLock = existingLockId ? this.activeLocks.get(existingLockId) : null;
 
-    if (existingLock && existingLock.expiresAt > nowMs()) {
+    if (existingLock && !isLockExpired(existingLock)) {
       return null; // Lock is held
     }
 
@@ -781,9 +789,27 @@ export class LockCoordinator implements DurableObject {
     };
     const { lockId, additionalTtl, requesterId } = requestData;
 
+    const notFound = (): Response =>
+      new Response(JSON.stringify({ error: 'Lock not found or not owned' }), { status: 404 });
+
     const lock = this.activeLocks.get(lockId);
-    if (!lock || lock.ownerId !== requesterId) {
-      return new Response(JSON.stringify({ error: 'Lock not found or not owned' }), { status: 404 });
+    if (!lock) {
+      return notFound();
+    }
+
+    // An expired lock is already free: extending it must not revive it. Treat it
+    // exactly like an unknown lock and drop the stale record.
+    if (isLockExpired(lock)) {
+      this.activeLocks.delete(lockId);
+      if (this.resourceLocks.get(lock.resource) === lockId) {
+        this.resourceLocks.delete(lock.resource);
+      }
+      await this.persistLockState();
+      return notFound();
+    }
+
+    if (lock.ownerId !== requesterId) {
+      return notFound();
     }
 
     lock.expiresAt += additionalTtl;
@@ -798,7 +824,7 @@ export class LockCoordinator implements DurableObject {
 
     const lockId = this.resourceLocks.get(resource);
     const lock = lockId ? this.activeLocks.get(lockId) : null;
-    const isLocked = !!(lock && lock.expiresAt > nowMs());
+    const isLocked = !!(lock && !isLockExpired(lock));
 
     return new Response(JSON.stringify({ isLocked, resource }));
   }
@@ -828,7 +854,7 @@ export class LockCoordinator implements DurableObject {
     return new Response(JSON.stringify({
       ...this.metrics,
       activeLocks: this.activeLocks.size,
-      expiredLocks: Array.from(this.activeLocks.values()).filter(lock => lock.expiresAt < currentTime).length
+      expiredLocks: Array.from(this.activeLocks.values()).filter(lock => isLockExpired(lock, currentTime)).length
     }));
   }
 
@@ -842,7 +868,7 @@ export class LockCoordinator implements DurableObject {
     let cleanedCount = 0;
 
     for (const [lockId, lock] of this.activeLocks) {
-      if (lock.expiresAt < now) {
+      if (isLockExpired(lock, now)) {
         this.activeLocks.delete(lockId);
         this.resourceLocks.delete(lock.resource);
         cleanedCount++;
