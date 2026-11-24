@@ -108,7 +108,7 @@ async function findAllTestFiles(): Promise<string[]> {
           files.push(path);
         }
       }
-    } catch (e) {
+    } catch {
       // Skip
     }
   }

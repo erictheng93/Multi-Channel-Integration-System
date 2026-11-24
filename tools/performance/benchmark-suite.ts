@@ -236,7 +236,7 @@ class PerformanceBenchmarkSuite extends EventEmitter {
     for (let i = 0; i < this.config.warmupIterations; i++) {
       try {
         await operation();
-      } catch (error) {
+      } catch {
         // Ignore warmup errors
       }
     }

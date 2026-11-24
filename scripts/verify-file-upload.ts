@@ -63,7 +63,7 @@ const verificationChecks: VerificationCheck[] = [
         return result.includes('file_attachments') && 
                result.includes('file_metadata') && 
                result.includes('file_access_logs');
-      } catch (error) {
+      } catch {
         return false;
       }
     }
@@ -76,7 +76,7 @@ const verificationChecks: VerificationCheck[] = [
         if (proc.exitCode !== 0) {throw new Error(proc.stderr.toString());}
         const result = proc.stdout.toString();
         return result.includes('omni-channel-attachments');
-      } catch (error) {
+      } catch {
         return false;
       }
     }
@@ -88,7 +88,7 @@ const verificationChecks: VerificationCheck[] = [
         const wranglerPath = path.join(rootDir, 'wrangler.toml');
         const content = fs.readFileSync(wranglerPath, 'utf8');
         return content.includes('R2_BUCKET') && content.includes('omni-channel-attachments');
-      } catch (error) {
+      } catch {
         return false;
       }
     }
@@ -102,7 +102,7 @@ const verificationChecks: VerificationCheck[] = [
         return content.includes('uploadAttachment') && 
                content.includes('attachments') && 
                content.includes('file-input');
-      } catch (error) {
+      } catch {
         return false;
       }
     }
@@ -116,7 +116,7 @@ const verificationChecks: VerificationCheck[] = [
         return content.includes('attachmentHandler') && 
                content.includes('upload') && 
                content.includes('R2_BUCKET');
-      } catch (error) {
+      } catch {
         return false;
       }
     }
@@ -129,7 +129,7 @@ const verificationChecks: VerificationCheck[] = [
         const content = fs.readFileSync(indexPath, 'utf8');
         return content.includes('attachmentHandler') && 
                content.includes('/api/conversations/:id/attachments');
-      } catch (error) {
+      } catch {
         return false;
       }
     }
@@ -142,7 +142,7 @@ const verificationChecks: VerificationCheck[] = [
         const content = fs.readFileSync(apiPath, 'utf8');
         return content.includes('uploadAttachment') && 
                content.includes('attachmentIds');
-      } catch (error) {
+      } catch {
         return false;
       }
     }
@@ -155,7 +155,7 @@ const verificationChecks: VerificationCheck[] = [
         const content = fs.readFileSync(envPath, 'utf8');
         return content.includes('R2_PUBLIC_URL') && 
                content.includes('MAX_FILE_SIZE');
-      } catch (error) {
+      } catch {
         return false;
       }
     }

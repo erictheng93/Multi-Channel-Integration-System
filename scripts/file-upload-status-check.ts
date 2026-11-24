@@ -75,7 +75,7 @@ function checkFileContent(filePath: string, searchTerms: string[], description: 
     const hasAllTerms = searchTerms.every(term => content.includes(term));
     log(`  ${hasAllTerms ? '' : ''} ${description}`, hasAllTerms ? 'green' : 'red');
     return hasAllTerms;
-  } catch (error) {
+  } catch {
     log(` ${description} (檔案不存在)`, 'red');
     return false;
   }

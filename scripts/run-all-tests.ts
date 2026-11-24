@@ -379,7 +379,7 @@ class ComprehensiveTestRunner {
         try {
           const metricsData = await fs.readFile(outputFile, 'utf8');
           result.metrics = JSON.parse(metricsData);
-        } catch (error) {
+        } catch {
           // Metrics loading failed, but test still passed
         }
       } else {
