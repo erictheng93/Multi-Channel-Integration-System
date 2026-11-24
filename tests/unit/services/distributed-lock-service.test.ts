@@ -3,7 +3,7 @@
  * The coordinator sends failure bodies as `{ error: '...' }`; the client must surface that text.
  */
 
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { DistributedLockService, LockCoordinator } from '@/services/distributed-lock-service';
 
 function serviceReturning(status: number, body: unknown): DistributedLockService {
@@ -104,5 +104,227 @@ describe('DistributedLockService ownership through a real LockCoordinator', () =
     expect(await holder.isLocked('res')).toBe(true);
     await expect(other.extendLock(lockId, 1000)).rejects.toThrow('Lock extension failed: Lock not found or not owned');
     expect(await other.tryLock('res')).toBeNull();
+  });
+});
+
+// Issue #277 section 3: lock TTL expiry and behaviour across a LockCoordinator restart.
+// Only Date is faked, so the coordinator's retry sleep still uses real timers.
+describe('LockCoordinator TTL expiry and restart (issue #277)', () => {
+  type Storage = Map<string, unknown>;
+
+  interface Instance { fetch(request: Request): Promise<Response> }
+
+  // Mirrors DO storage: values are structured-cloned on put and get, and the map outlives
+  // any single LockCoordinator instance, the way ctx.storage outlives eviction or a deploy.
+  // Like the runtime, no request reaches the instance until blockConcurrencyWhile settles.
+  function coordinatorOn(storage: Storage): Instance {
+    let ready: Promise<unknown> = Promise.resolve();
+    const state = {
+      blockConcurrencyWhile: (fn: () => Promise<unknown>) => { ready = fn(); return ready; },
+      storage: {
+        get: vi.fn(async (key: string) => structuredClone(storage.get(key))),
+        put: vi.fn(async (key: string, value: unknown) => { storage.set(key, structuredClone(value)); })
+      }
+    };
+    const coord = new LockCoordinator(state as unknown as DurableObjectState, {});
+    return { fetch: async (request: Request) => { await ready; return coord.fetch(request); } };
+  }
+
+  // The stub is resolved per request, so swapping `current.coord` simulates the platform
+  // routing the same client to a freshly constructed instance after a restart.
+  function serviceVia(current: { coord: Instance }): DistributedLockService {
+    const stub = { fetch: (request: Request) => current.coord.fetch(request) };
+    const namespace = { idFromName: vi.fn().mockReturnValue('id'), get: vi.fn().mockReturnValue(stub) };
+    return new DistributedLockService({ DISTRIBUTED_LOCK: namespace as unknown as DurableObjectNamespace });
+  }
+
+  const T0 = 1_700_000_000_000;
+  const opts = { ttl: 1000, timeout: 100, retryInterval: 5, maxRetries: 3 };
+
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(T0);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  describe('TTL expiry', () => {
+    it('treats an expired lock as free: another holder acquires it on the first attempt', async () => {
+      const current = { coord: coordinatorOn(new Map()) };
+      const holderA = serviceVia(current);
+      const holderB = serviceVia(current);
+      const lockA = await holderA.acquireLock('res', opts);
+
+      vi.setSystemTime(T0 + 999);
+      expect(await holderB.tryLock('res', 1000)).toBeNull();
+
+      vi.setSystemTime(T0 + 1001);
+      expect(await holderB.isLocked('res')).toBe(false);
+      const lockB = await holderB.acquireLock('res', opts);
+
+      expect((await holderB.getLockInfo(lockB))?.metadata).toMatchObject({ attempts: 1 });
+      // The expired lock record is removed when it is taken over.
+      expect(await holderA.getLockInfo(lockA)).toBeNull();
+    });
+
+    it('refuses the original holder release and extend once its expired lock was taken over', async () => {
+      const current = { coord: coordinatorOn(new Map()) };
+      const holderA = serviceVia(current);
+      const holderB = serviceVia(current);
+      const lockA = await holderA.acquireLock('res', opts);
+
+      vi.setSystemTime(T0 + 1001);
+      const lockB = await holderB.acquireLock('res', opts);
+
+      await holderA.releaseLock(lockA);
+      expect(await holderB.isLocked('res')).toBe(true);
+      expect(await holderB.getLockInfo(lockB)).not.toBeNull();
+      await expect(holderA.extendLock(lockA, 5000)).rejects.toThrow('Lock extension failed: Lock not found or not owned');
+      expect(await holderA.tryLock('res', 1000)).toBeNull();
+    });
+
+    it('documents actual behaviour: before a takeover, the holder can still extend (revive) or release its expired lock', async () => {
+      const current = { coord: coordinatorOn(new Map()) };
+      const holderA = serviceVia(current);
+      const holderB = serviceVia(current);
+      const lockA = await holderA.acquireLock('res', opts);
+
+      vi.setSystemTime(T0 + 1500);
+      expect(await holderA.isLocked('res')).toBe(false);
+      // extend adds to the old expiresAt without checking that it already passed.
+      await expect(holderA.extendLock(lockA, 5000)).resolves.toBe(T0 + 6000);
+      expect(await holderA.isLocked('res')).toBe(true);
+      expect(await holderB.tryLock('res', 1000)).toBeNull();
+
+      // An extension too small to reach "now" leaves the lock expired and free.
+      vi.setSystemTime(T0 + 10_000);
+      await expect(holderA.extendLock(lockA, 1000)).resolves.toBe(T0 + 7000);
+      expect(await holderA.isLocked('res')).toBe(false);
+
+      // Releasing an expired, untaken lock succeeds and simply frees the resource.
+      await holderA.releaseLock(lockA);
+      expect(await holderA.getLockInfo(lockA)).toBeNull();
+    });
+
+    it('extendLock pushes expiry: the lock stays held past the original TTL and frees after the new one', async () => {
+      const current = { coord: coordinatorOn(new Map()) };
+      const holderA = serviceVia(current);
+      const holderB = serviceVia(current);
+      const lockA = await holderA.acquireLock('res', opts);
+
+      await expect(holderA.extendLock(lockA, 5000)).resolves.toBe(T0 + 6000);
+
+      vi.setSystemTime(T0 + 3000);
+      expect(await holderB.isLocked('res')).toBe(true);
+      await expect(holderB.acquireLock('res', opts)).rejects.toThrow('Lock acquisition failed');
+
+      vi.setSystemTime(T0 + 6001);
+      await expect(holderB.acquireLock('res', opts)).resolves.toEqual(expect.any(String));
+    });
+
+    it('cleanupExpiredLocks removes only expired locks, persists the result, and also runs lazily after 60s', async () => {
+      const storage: Storage = new Map();
+      const current = { coord: coordinatorOn(storage) };
+      const service = serviceVia(current);
+      await service.acquireLock('short', opts);
+      const longLock = await service.acquireLock('long', { ...opts, ttl: 120_000 });
+
+      vi.setSystemTime(T0 + 2000);
+      expect(await service.cleanupExpiredLocks()).toBe(1);
+      expect((await service.getActiveLocks()).map(lock => lock.lockId)).toEqual([longLock]);
+      expect((storage.get('resourceLocks') as [string, string][]).map(([resource]) => resource)).toEqual(['long']);
+
+      // Lazy GC: the first request more than 60s after the last cleanup sweeps expired locks.
+      await service.acquireLock('short2', opts);
+      vi.setSystemTime(T0 + 2000 + 60_001);
+      expect((await service.getActiveLocks()).map(lock => lock.resource)).toEqual(['long']);
+    });
+
+    it('does not fence a critical section that outlives its TTL: a second holder enters while the first still runs', async () => {
+      const current = { coord: coordinatorOn(new Map()) };
+      const holderA = serviceVia(current);
+      const holderB = serviceVia(current);
+      let finishA!: () => void;
+      const aBlocked = new Promise<void>(resolve => { finishA = resolve; });
+      let inside = 0;
+      let maxInside = 0;
+      const critical = async (wait: Promise<void>): Promise<void> => {
+        inside++;
+        maxInside = Math.max(maxInside, inside);
+        await wait;
+        inside--;
+      };
+
+      let aEntered!: () => void;
+      const aInside = new Promise<void>(resolve => { aEntered = resolve; });
+      const runA = holderA.withLock('res', () => { aEntered(); return critical(aBlocked); }, opts);
+      // Not vi.waitFor: under fake timers it advances the faked clock while it polls.
+      await aInside;
+      expect(inside).toBe(1);
+
+      vi.setSystemTime(T0 + 1001);
+      await holderB.withLock('res', () => critical(Promise.resolve()), opts);
+      expect(maxInside).toBe(2);
+
+      // A finishes late; its release is refused, so it cannot free a lock it no longer owns.
+      const lockB = await holderB.acquireLock('res', { ...opts, ttl: 30_000 });
+      finishA();
+      await runA;
+      expect(await holderB.isLocked('res')).toBe(true);
+      await holderB.releaseLock(lockB);
+    });
+  });
+
+  describe('restart (new instance, same storage)', () => {
+    it('restores a held lock: a new instance keeps it held and only the original owner can release it', async () => {
+      const storage: Storage = new Map();
+      const current = { coord: coordinatorOn(storage) };
+      const holderA = serviceVia(current);
+      const holderB = serviceVia(current);
+      const lockA = await holderA.acquireLock('res', { ...opts, ttl: 30_000 });
+
+      current.coord = coordinatorOn(storage); // eviction, deploy or crash: the constructor reloads storage
+
+      expect(await holderB.isLocked('res')).toBe(true);
+      expect((await holderB.getLockInfo(lockA))?.resource).toBe('res');
+      expect(await holderB.tryLock('res', 1000)).toBeNull();
+      await expect(holderB.acquireLock('res', opts)).rejects.toThrow('Lock acquisition failed');
+      await holderB.releaseLock(lockA);
+      expect(await holderB.isLocked('res')).toBe(true);
+
+      await holderA.releaseLock(lockA);
+      expect(await holderB.isLocked('res')).toBe(false);
+      await expect(holderB.acquireLock('res', opts)).resolves.toEqual(expect.any(String));
+    });
+
+    it('keeps the TTL across a restart: a restored lock still expires at its original deadline', async () => {
+      const storage: Storage = new Map();
+      const current = { coord: coordinatorOn(storage) };
+      const holderA = serviceVia(current);
+      const holderB = serviceVia(current);
+      await holderA.acquireLock('res', opts);
+
+      vi.setSystemTime(T0 + 500);
+      current.coord = coordinatorOn(storage);
+      expect(await holderB.tryLock('res', 1000)).toBeNull();
+
+      vi.setSystemTime(T0 + 1001);
+      current.coord = coordinatorOn(storage);
+      await expect(holderB.acquireLock('res', opts)).resolves.toEqual(expect.any(String));
+    });
+
+    it('persists every release too, so a restart never resurrects a released lock', async () => {
+      const storage: Storage = new Map();
+      const current = { coord: coordinatorOn(storage) };
+      const service = serviceVia(current);
+      const lockId = await service.acquireLock('res', opts);
+      await service.releaseLock(lockId);
+
+      current.coord = coordinatorOn(storage);
+      expect(await service.isLocked('res')).toBe(false);
+      expect(await service.getActiveLocks()).toEqual([]);
+    });
   });
 });
