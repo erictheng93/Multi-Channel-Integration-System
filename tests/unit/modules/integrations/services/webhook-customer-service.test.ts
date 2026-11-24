@@ -34,6 +34,8 @@ function createSelectChain() {
 function createInsertChain() {
   const chain: Record<string, any> = {};
   chain.values = mockInsertValues.mockReturnValue(chain);
+  // insert(...).values(...).returning().get() yields the created row; it shares mockGet's queue.
+  chain.returning = vi.fn().mockReturnValue({ get: mockGet });
   chain.then = (resolve: (v: any) => void) => Promise.resolve(undefined).then(resolve);
   return chain;
 }
@@ -174,7 +176,7 @@ describe('webhook-customer-service', () => {
         pictureUrl: 'https://profile.line.me/pic.jpg',
       });
 
-      // Re-query after insert
+      // Row returned by INSERT ... RETURNING
       const newCustomer = { id: 2, platformUserId: 'U123', platform: 'line', displayName: 'LINE User Profile' };
       mockGet.mockResolvedValueOnce(newCustomer);
 
@@ -233,7 +235,7 @@ describe('webhook-customer-service', () => {
       mockSyncLineUser.mockRejectedValueOnce(new Error('API error'));
       // LIFF assignment found
       mockGet.mockResolvedValueOnce({ displayName: 'LIFF Captured Name' });
-      // Re-query after insert
+      // Row returned by INSERT ... RETURNING
       mockGet.mockResolvedValueOnce({ id: 5, displayName: 'LIFF Captured Name' });
 
       await findOrCreateCustomer(mockEnv, 'U123', 'line');
@@ -250,7 +252,7 @@ describe('webhook-customer-service', () => {
       mockGet.mockResolvedValueOnce(undefined);
       // Facebook sync returns null
       mockSyncFacebookUser.mockResolvedValueOnce(null);
-      // Re-query after insert — should use default 'Facebook User'
+      // Row returned by INSERT ... RETURNING — should use default 'Facebook User'
       mockGet.mockResolvedValueOnce({ id: 6, displayName: 'Facebook User' });
 
       await findOrCreateCustomer(mockEnv, 'FB123', 'facebook');
@@ -259,8 +261,8 @@ describe('webhook-customer-service', () => {
         expect.objectContaining({ displayName: 'Facebook User' })
       );
       // LIFF query should NOT have been made
-      // Selects: 1. initial lookup, 2. double-check in lock, 3. re-query after insert = 3
-      expect(mockDb.select).toHaveBeenCalledTimes(3);
+      // Selects: 1. initial lookup, 2. double-check in lock (the insert returns its row) = 2
+      expect(mockDb.select).toHaveBeenCalledTimes(2);
     });
 
     it('should set sourceTeamId when provided', async () => {
@@ -273,7 +275,7 @@ describe('webhook-customer-service', () => {
         displayName: 'User With Team',
         pictureUrl: 'https://example.com/pic.jpg',
       });
-      // Re-query after insert
+      // Row returned by INSERT ... RETURNING
       mockGet.mockResolvedValueOnce({ id: 10, displayName: 'User With Team', sourceTeamId: 42 });
 
       await findOrCreateCustomer(mockEnv, 'U456', 'line', { sourceTeamId: 42 });
@@ -339,7 +341,7 @@ describe('webhook-customer-service', () => {
         mockSyncLineUser.mockImplementationOnce(hangingFetchUntilAborted());
         mockGet.mockResolvedValueOnce(undefined); // LIFF fallback: nothing captured
         const created = { id: 7, platformUserId: 'U777', platform: 'line', displayName: 'LINE User' };
-        mockGet.mockResolvedValueOnce(created); // re-query after insert
+        mockGet.mockResolvedValueOnce(created); // row returned by INSERT ... RETURNING
 
         let settled = false;
         const pending = findOrCreateCustomer(mockEnv, 'U777', 'line').finally(() => { settled = true; });
@@ -388,16 +390,14 @@ describe('webhook-customer-service', () => {
       });
     });
 
-    it('should return null when re-query after insert fails', async () => {
+    it('should propagate an insert failure that is not a lost create race', async () => {
       mockGet.mockResolvedValueOnce(undefined); // no existing
       mockGet.mockResolvedValueOnce(undefined); // double-check
       mockSyncLineUser.mockResolvedValueOnce(null);
       mockGet.mockResolvedValueOnce(undefined); // LIFF fallback
-      mockGet.mockResolvedValueOnce(undefined); // re-query returns null
+      mockGet.mockRejectedValueOnce(new Error('NOT NULL constraint failed: customers.platform')); // INSERT ... RETURNING
 
-      const result = await findOrCreateCustomer(mockEnv, 'U123', 'line');
-
-      expect(result).toBeNull();
+      await expect(findOrCreateCustomer(mockEnv, 'U123', 'line')).rejects.toThrow('NOT NULL constraint failed');
     });
 
     it('should handle LIFF fallback query failure gracefully', async () => {
@@ -406,7 +406,7 @@ describe('webhook-customer-service', () => {
       mockSyncLineUser.mockResolvedValueOnce(null);
       // LIFF query throws
       mockGet.mockRejectedValueOnce(new Error('LIFF DB error'));
-      // Re-query after insert
+      // Row returned by INSERT ... RETURNING
       mockGet.mockResolvedValueOnce({ id: 7, displayName: 'LINE User' });
 
       const result = await findOrCreateCustomer(mockEnv, 'U123', 'line');
