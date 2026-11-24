@@ -85,8 +85,8 @@ async function runMigration(): Promise<void> {
           console.log(' 執行生產環境資料庫遷移...');
           runWrangler(['d1', 'execute', dbConfig.name, '--remote', `--file=${sqlFile}`]);
           console.log(' 生產環境資料庫遷移完成');
-        } catch (error: any) {
-          console.error(' 生產環境遷移失敗:', error.message);
+        } catch (error) {
+          console.error(' 生產環境遷移失敗:', error instanceof Error ? error.message : String(error));
           process.exitCode = 1; // rl.close() below lets the process end with this status
         }
       } else {
@@ -94,8 +94,8 @@ async function runMigration(): Promise<void> {
       }
       rl.close();
     });
-  } catch (error: any) {
-    console.error(' 遷移失敗:', error.message);
+  } catch (error) {
+    console.error(' 遷移失敗:', error instanceof Error ? error.message : String(error));
     process.exit(1);
   }
 }
@@ -127,8 +127,8 @@ async function verifyMigration(): Promise<void> {
         fs.unlinkSync(tempSQLFile);
       }
     }
-  } catch (error: any) {
-    console.error(' 驗證失敗:', error.message);
+  } catch (error) {
+    console.error(' 驗證失敗:', error instanceof Error ? error.message : String(error));
   }
 }
 

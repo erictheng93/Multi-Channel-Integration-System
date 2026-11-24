@@ -452,7 +452,7 @@ if (isMainModule) {
       console.log(' 調度器狀態:', JSON.stringify(scheduler.getStatus(), null, 2));
       break;
 
-    case 'test-sync':
+    case 'test-sync': {
       console.log(' 測試同步...');
       // 創建測試同步工具並執行
       const testSync = new DatabaseSyncTool({
@@ -468,6 +468,7 @@ if (isMainModule) {
         console.error(' 測試同步失敗:', error);
       });
       break;
+    }
 
     default:
       console.log(`

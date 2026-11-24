@@ -91,7 +91,7 @@ interface BenchmarkResult {
   duration: number;
   metrics: PerformanceMetrics;
   timestamp: number;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 interface BenchmarkReport {
@@ -221,7 +221,7 @@ class PerformanceBenchmarkSuite extends EventEmitter {
   private async measureLatency(
     testName: string,
     concurrency: number,
-    operation: () => Promise<any>
+    operation: () => Promise<unknown>
   ): Promise<BenchmarkResult> {
     const latencies: number[] = [];
     const errors: Record<string, number> = {};
@@ -318,7 +318,7 @@ class PerformanceBenchmarkSuite extends EventEmitter {
     };
   }
 
-  private async measureSingleOperation(operation: () => Promise<any>): Promise<{ latency: number; result: any }> {
+  private async measureSingleOperation(operation: () => Promise<unknown>): Promise<{ latency: number; result: unknown }> {
     const startTime = performance.now();
     const result = await operation();
     const endTime = performance.now();
@@ -357,7 +357,7 @@ class PerformanceBenchmarkSuite extends EventEmitter {
   private async measureThroughput(
     testName: string,
     concurrency: number,
-    operation: () => Promise<any>
+    operation: () => Promise<unknown>
   ): Promise<BenchmarkResult> {
     const startTime = performance.now();
     const startMemory = process.memoryUsage();
@@ -457,7 +457,7 @@ class PerformanceBenchmarkSuite extends EventEmitter {
 
   private async measureMemoryUsage(
     testName: string,
-    operation: () => Promise<any>
+    operation: () => Promise<unknown>
   ): Promise<BenchmarkResult> {
     // Force garbage collection
     if (global.gc) {
@@ -577,7 +577,7 @@ class PerformanceBenchmarkSuite extends EventEmitter {
 
   // =================== Individual Benchmark Operations ===================
 
-  private async benchmarkHttpRequest(endpoint: string, method: string): Promise<any> {
+  private async benchmarkHttpRequest(endpoint: string, method: string): Promise<Record<string, unknown>> {
     const url = `${this.config.workerUrl}${endpoint}`;
     const headers: Record<string, string> = {};
 
@@ -602,10 +602,10 @@ class PerformanceBenchmarkSuite extends EventEmitter {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
 
-    return response.json();
+    return (await response.json()) as Record<string, unknown>;
   }
 
-  private async benchmarkWebSocketConnect(): Promise<any> {
+  private async benchmarkWebSocketConnect(): Promise<unknown> {
     return new Promise((resolve, reject) => {
       const startTime = performance.now();
       const ws = new WebSocket(`${this.config.websocketUrl}?userId=benchmark&conversationId=test`);
@@ -629,7 +629,7 @@ class PerformanceBenchmarkSuite extends EventEmitter {
     });
   }
 
-  private async benchmarkWebSocketEcho(): Promise<any> {
+  private async benchmarkWebSocketEcho(): Promise<unknown> {
     return new Promise((resolve, reject) => {
       const ws = new WebSocket(`${this.config.websocketUrl}?userId=benchmark&conversationId=test`);
       const testMessage = { type: 'ping', timestamp: Date.now() };
@@ -657,7 +657,7 @@ class PerformanceBenchmarkSuite extends EventEmitter {
     });
   }
 
-  private async benchmarkWebSocketBroadcast(): Promise<any> {
+  private async benchmarkWebSocketBroadcast(): Promise<unknown> {
     const ws = new WebSocket(`${this.config.websocketUrl}?userId=benchmark&conversationId=test`);
 
     return new Promise((resolve, reject) => {
@@ -691,24 +691,24 @@ class PerformanceBenchmarkSuite extends EventEmitter {
     });
   }
 
-  private async benchmarkMessageBroadcast(): Promise<any> {
+  private async benchmarkMessageBroadcast(): Promise<unknown> {
     return this.benchmarkHttpRequest('/api/message-broadcaster/broadcast', 'POST');
   }
 
-  private async benchmarkConversationCreate(): Promise<any> {
+  private async benchmarkConversationCreate(): Promise<unknown> {
     return this.benchmarkHttpRequest('/api/conversations', 'POST');
   }
 
-  private async benchmarkUserConnection(): Promise<any> {
+  private async benchmarkUserConnection(): Promise<unknown> {
     const userId = `benchmark_user_${randomUUID().substring(0, 8)}`;
     return this.benchmarkHttpRequest(`/api/user-connections/${userId}/connect`, 'POST');
   }
 
-  private async benchmarkDelayedMessage(): Promise<any> {
+  private async benchmarkDelayedMessage(): Promise<unknown> {
     return this.benchmarkHttpRequest('/api/delayed-messages/schedule', 'POST');
   }
 
-  private async benchmarkConnectionMemory(): Promise<any> {
+  private async benchmarkConnectionMemory(): Promise<unknown> {
     // Create multiple connections to test memory usage
     const connections = [];
     for (let i = 0; i < 100; i++) {
@@ -725,7 +725,7 @@ class PerformanceBenchmarkSuite extends EventEmitter {
     return { connectionsCreated: connections.length };
   }
 
-  private async benchmarkMessageMemory(): Promise<any> {
+  private async benchmarkMessageMemory(): Promise<unknown> {
     // Send many messages to test message history memory
     const promises = [];
     for (let i = 0; i < 1000; i++) {
@@ -736,7 +736,7 @@ class PerformanceBenchmarkSuite extends EventEmitter {
     return { messagesSent: promises.length };
   }
 
-  private async benchmarkDurableObjectMemory(): Promise<any> {
+  private async benchmarkDurableObjectMemory(): Promise<unknown> {
     // Create multiple Durable Object instances
     const promises = [];
     for (let i = 0; i < 50; i++) {
@@ -747,16 +747,16 @@ class PerformanceBenchmarkSuite extends EventEmitter {
     return { durableObjectsAccessed: promises.length };
   }
 
-  private async benchmarkConversationRoom(): Promise<any> {
+  private async benchmarkConversationRoom(): Promise<unknown> {
     const roomId = `benchmark_room_${randomUUID().substring(0, 8)}`;
     return this.benchmarkHttpRequest(`/api/conversation-rooms/${roomId}/participants`, 'GET');
   }
 
-  private async benchmarkMessageBroadcaster(): Promise<any> {
+  private async benchmarkMessageBroadcaster(): Promise<unknown> {
     return this.benchmarkHttpRequest('/api/message-broadcaster/metrics', 'GET');
   }
 
-  private async benchmarkDistributedLock(): Promise<any> {
+  private async benchmarkDistributedLock(): Promise<unknown> {
     const roomId = 'benchmark_room';
 
     // Acquire lock

@@ -26,6 +26,7 @@
 
 import { join } from 'node:path';
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
+import type * as BunSqlite from 'bun:sqlite';
 
 const D1_DATABASE_NAME = 'mcis-db';
 const SCHEMA_TS = join('src', 'db', 'schema.ts');
@@ -110,7 +111,7 @@ function queryRemote(command: string): Array<Record<string, unknown>> {
 
 function queryLocal(dbPath: string, command: string): Array<Record<string, unknown>> {
   // Imported lazily so the --remote path never needs the mirror to exist.
-  const { Database } = require('bun:sqlite') as typeof import('bun:sqlite');
+  const { Database } = require('bun:sqlite') as typeof BunSqlite;
   const db = new Database(dbPath, { readonly: true });
   try {
     return db.query(command).all() as Array<Record<string, unknown>>;
