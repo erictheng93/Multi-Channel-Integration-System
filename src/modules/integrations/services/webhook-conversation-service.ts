@@ -10,6 +10,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { createContextLogger } from '@/utils/logger';
 import { nowISO } from '@/utils/timestamp';
 import { DistributedLockService } from '@/services/distributed-lock-service';
+import { isUniqueConstraintError } from '@/utils/unique-constraint';
 import {
   findCustomerConversation,
   getReopenStatus,
@@ -21,6 +22,9 @@ const log = createContextLogger('WebhookConversation');
 
 type Platform = 'line' | 'facebook';
 type WebhookConversation = ReturnType<typeof convertConversation>;
+
+/** Column of messages_platform_message_id_unique (migration 0050), as SQLite names it. */
+const MESSAGE_PLATFORM_ID_UNIQUE_TARGET = 'messages.platform_message_id';
 
 /**
  * Raise the "new conversation" notification. Call it right after saveMessage succeeded.
@@ -411,8 +415,11 @@ export async function saveMessage(
       });
     }
   } catch (messageError) {
-    // Handle UNIQUE constraint violation gracefully (race condition with dedup check)
-    if (messageError instanceof Error && messageError.message?.includes('UNIQUE constraint failed')) {
+    // Handle UNIQUE constraint violation gracefully (race condition with dedup check).
+    // Drizzle wraps the D1 error ("Failed query: ..."), so the SQLite text is only on its cause;
+    // isUniqueConstraintError walks the chain. Targeted at the partial unique index from 0050
+    // (messages_platform_message_id_unique), so another collision (e.g. messages.id) still throws.
+    if (isUniqueConstraintError(messageError, MESSAGE_PLATFORM_ID_UNIQUE_TARGET)) {
       log.info(`${platformLabel} Webhook: Duplicate message caught by DB constraint`, { platformMessageId });
       if (outcome) outcome.duplicate = true;
       if (platformMessageId) {
