@@ -46,7 +46,7 @@ fi
 # Docs-only fast path
 #
 # The checks below cover exactly: src/** + shared/** (tsc), frontend/**
-# (vue-tsc + eslint), scripts/** + tools/** + database/** (tsc -p tsconfig.scripts.json + eslint via
+# (vue-tsc + eslint), scripts/** + database/** (tsc -p tsconfig.scripts.json + eslint via
 # frontend/eslint.scripts.config.js). A push that touches none of those cannot change their
 # result, so paying ~2-10 minutes for it is pure waste — and the structural
 # guards in pre-commit have already run on every commit either way.
@@ -130,14 +130,14 @@ PID_VUETSC=$!
 ) &
 PID_ESLINT=$!
 
-# Job 4: scripts/, tools/, database/ TypeScript (tsconfig.scripts.json, incremental, ~1s warm)
+# Job 4: scripts/, database/ TypeScript (tsconfig.scripts.json, incremental, ~1s warm)
 (
   bunx tsc -p tsconfig.scripts.json --noEmit > "$LOG_SCRIPTS" 2>&1
   echo $? > "$EXIT_SCRIPTS"
 ) &
 PID_SCRIPTS=$!
 
-# Job 5: scripts/, tools/, database/ ESLint (frontend/eslint.scripts.config.js; --max-warnings 0 like CI)
+# Job 5: scripts/, database/ ESLint (frontend/eslint.scripts.config.js; --max-warnings 0 like CI)
 (
   bun run lint:scripts > "$LOG_SCRIPTS_LINT" 2>&1
   echo $? > "$EXIT_SCRIPTS_LINT"
@@ -172,7 +172,7 @@ if [ "$(cat "$EXIT_SCRIPTS")" != "0" ]; then
   echo ""
   echo "── Scripts TypeScript (tsconfig.scripts.json) ─────"
   cat "$LOG_SCRIPTS"
-  echo "❌ Scripts/tools/database TypeScript compilation failed!"
+  echo "❌ Scripts/database TypeScript compilation failed!"
   FAIL=1
 fi
 
@@ -180,7 +180,7 @@ if [ "$(cat "$EXIT_SCRIPTS_LINT")" != "0" ]; then
   echo ""
   echo "── Scripts ESLint (lint:scripts) ──────────────────"
   cat "$LOG_SCRIPTS_LINT"
-  echo "❌ Scripts/tools/database ESLint check failed!"
+  echo "❌ Scripts/database ESLint check failed!"
   FAIL=1
 fi
 

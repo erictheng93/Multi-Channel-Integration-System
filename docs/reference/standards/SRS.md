@@ -1444,7 +1444,7 @@ npm update
 cd frontend && npm update
 
 # Verify functionality after updates
-bun run test:all
+bun run test:backend:ci && (cd frontend && bun run test)
 ```
 
 **Security Updates**:

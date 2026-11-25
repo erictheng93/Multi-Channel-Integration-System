@@ -505,6 +505,5 @@ A:
 ### 測試與優化
 - [測試指南](docs/development/testing/testing-guide.md) - 完整測試策略
 - [效能優化指南](docs/guides/PERFORMANCE_OPTIMIZATION_GUIDE.md) - 系統效能優化指南
-- [負載測試](docs/architecture/performance/LOAD_TESTING_GUIDE.md) - 負載測試指南
 
 **感謝使用本系統！如果覺得有幫助，請給個  Star**

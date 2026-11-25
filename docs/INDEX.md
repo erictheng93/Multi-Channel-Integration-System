@@ -88,7 +88,6 @@ docs/
 
 ### Testing (`development/testing/`)
 - [Testing Guide](development/testing/testing-guide.md) - Testing methodology
-- [WebSocket Testing](development/testing/WEBSOCKET_TESTING_GUIDE.md) - WebSocket test infrastructure
 - [Frontend Test Report](development/testing/FRONTEND_TEST_COMPLETION_REPORT.md) - Frontend test coverage
 
 ### Components (`development/components/`)

@@ -1,5 +1,5 @@
 // ESLint config for the Bun/Node tooling outside the Worker bundle and the SPA:
-// scripts/, tools/, database/ (repo root). Run from the repo root with
+// scripts/, database/ (repo root). Run from the repo root with
 // `bun run lint:scripts`. It lives in frontend/ only because that is where
 // eslint and its plugins are installed (the repo root has no ESLint dependency).
 // Mirrors the TS rules of eslint.config.js, without Vue or browser globals.

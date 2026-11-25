@@ -205,7 +205,7 @@ curl -X POST https://your-api.com/api/admin/feature-flags \
 ```bash
 # Run comprehensive test suite
 cd frontend && npm run test:coverage
-cd .. && npm run test:handlers
+cd .. && bun run test:backend:ci
 npm run test:performance
 ```
 

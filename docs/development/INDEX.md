@@ -14,7 +14,6 @@ Testing methodology and infrastructure (48 files).
 - [FRONTEND_TEST_COMPLETION_REPORT.md](testing/FRONTEND_TEST_COMPLETION_REPORT.md) - Frontend test coverage
 
 ### WebSocket Testing
-- [WEBSOCKET_TESTING_GUIDE.md](testing/WEBSOCKET_TESTING_GUIDE.md) - WebSocket test infrastructure
 - [WEBSOCKET_TESTING_PATTERNS.md](testing/WEBSOCKET_TESTING_PATTERNS.md) - Testing patterns
 
 ### Test Reports

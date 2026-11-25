@@ -7,7 +7,7 @@ import { loadEnv } from 'vite'
  * For running backend tests from root directory
  *
  * Frontend tests use frontend/vitest.config.ts
- * Full test suite uses tests/vitest.config.ts
+ * The CI backend suite is `bun run test:backend:ci` (include: tests/**)
  */
 export default defineConfig(({ mode }) => {
   // Load test environment variables from tests/.env.test
