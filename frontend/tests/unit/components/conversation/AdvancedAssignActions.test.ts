@@ -706,7 +706,7 @@ describe('AdvancedAssignActions.vue', () => {
       const conversation = createMockConversation({ assignedTeamId: undefined })
       const wrapper = createWrapper(conversation)
       const dangerBtn = wrapper.find('.assign-btn.danger')
-      if (!dangerBtn.exists()) { return } // canUnassign might be false
+      expect(dangerBtn.exists()).toBe(true)
 
       await dangerBtn.trigger('click')
       await flushPromises()
@@ -844,9 +844,8 @@ describe('AdvancedAssignActions.vue', () => {
       // Re-open to check
       // Actually the button shows "指派中..." when isAssigning is true
       const assignBtn = wrapper.find('.assign-btn.primary')
-      if (assignBtn.exists()) {
-        expect(assignBtn.attributes('disabled')).toBeDefined()
-      }
+      expect(assignBtn.exists()).toBe(true)
+      expect(assignBtn.attributes('disabled')).toBeDefined()
     })
 
     it('disables confirm button when no team is selected', async () => {

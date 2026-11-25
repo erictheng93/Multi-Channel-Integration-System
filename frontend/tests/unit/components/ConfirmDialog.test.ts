@@ -26,6 +26,7 @@ describe('ConfirmDialog.vue', () => {
 
     // Clear timers
     vi.clearAllTimers()
+    vi.useRealTimers()
 
     // Clean up DOM
     document.body.innerHTML = ''
@@ -264,6 +265,8 @@ describe('ConfirmDialog.vue', () => {
     })
 
     it('closeOnOverlay 为 false 时点击遮罩层不应该关闭', async () => {
+      vi.useFakeTimers()
+
       wrapper = mount(ConfirmDialog, {
         props: {
           title: '确认',
@@ -272,6 +275,9 @@ describe('ConfirmDialog.vue', () => {
         attachTo: document.body
       })
 
+      await nextTick()
+      // the component arms its document click listener in setTimeout(0)
+      vi.runAllTimers()
       await nextTick()
       const overlay = document.querySelector('.dialog-overlay') as HTMLElement
       overlay.click()
@@ -282,6 +288,8 @@ describe('ConfirmDialog.vue', () => {
     })
 
     it('点击对话框内容不应该关闭对话框', async () => {
+      vi.useFakeTimers()
+
       wrapper = mount(ConfirmDialog, {
         props: {
           title: '确认',
@@ -290,6 +298,9 @@ describe('ConfirmDialog.vue', () => {
         attachTo: document.body
       })
 
+      await nextTick()
+      // the component arms its document click listener in setTimeout(0)
+      vi.runAllTimers()
       await nextTick()
       const container = document.querySelector('.dialog-container') as HTMLElement
       container.click()
@@ -405,6 +416,8 @@ describe('ConfirmDialog.vue', () => {
     })
 
     it('loading 时点击遮罩层不应该关闭对话框', async () => {
+      vi.useFakeTimers()
+
       wrapper = mount(ConfirmDialog, {
         props: {
           title: '确认',
@@ -414,6 +427,9 @@ describe('ConfirmDialog.vue', () => {
         attachTo: document.body
       })
 
+      await nextTick()
+      // the component arms its document click listener in setTimeout(0)
+      vi.runAllTimers()
       await nextTick()
       const overlay = document.querySelector('.dialog-overlay') as HTMLElement
       overlay.click()

@@ -396,10 +396,9 @@ describe('NotificationList.vue', () => {
 
       // 点击清除筛选按钮
       const clearBtn = wrapper.find('.btn-ghost')
-      if (clearBtn.exists()) {
-        await clearBtn.trigger('click')
-        expect(clearFiltersSpy).toHaveBeenCalled()
-      }
+      expect(clearBtn.exists()).toBe(true)
+      await clearBtn.trigger('click')
+      expect(clearFiltersSpy).toHaveBeenCalled()
     })
   })
 
@@ -589,7 +588,7 @@ describe('NotificationList.vue', () => {
       expect(loadMoreSpy).toHaveBeenCalled()
     })
 
-    it('加载中时应该禁用载入更多按钮', async () => {
+    it('加载更多进行中时不应显示载入更多按钮', async () => {
       // Mock fetch to prevent automatic load
       vi.spyOn(store, 'fetchNotifications').mockResolvedValue()
       vi.spyOn(store, 'fetchStats').mockResolvedValue()
@@ -617,15 +616,10 @@ describe('NotificationList.vue', () => {
       await nextTick()
       await flushPromises()
 
-      const loadMoreBtn = wrapper.find('.load-more-section .btn')
-      // Button should exist and be disabled
-      if (loadMoreBtn.exists()) {
-        expect(loadMoreBtn.attributes('disabled')).toBeDefined()
-      } else {
-        // If button doesn't exist, it means canLoadMore is false
-        // which is also correct behavior when loading
-        expect(store.canLoadMore).toBe(false)
-      }
+      // The store's canLoadMore is false while a page is in flight (page < totalPages is true
+      // here), so the button is removed rather than shown disabled: no double submit.
+      expect(store.canLoadMore).toBe(false)
+      expect(wrapper.find('.load-more-section').exists()).toBe(false)
     })
   })
 
@@ -663,14 +657,13 @@ describe('NotificationList.vue', () => {
 
       // 点击关闭按钮 (使用实际的 Modal 组件类名)
       const closeBtn = document.querySelector('.modal-close-btn')
-      if (closeBtn) {
-        (closeBtn as HTMLElement).click()
-        await nextTick()
+      expect(closeBtn).not.toBeNull()
+      ;(closeBtn as HTMLElement).click()
+      await nextTick()
 
-        // 模态框应该消失
-        const modal = document.querySelector('.modal-overlay')
-        expect(modal).toBeNull()
-      }
+      // 模态框应该消失
+      const modal = document.querySelector('.modal-overlay')
+      expect(modal).toBeNull()
     })
   })
 
