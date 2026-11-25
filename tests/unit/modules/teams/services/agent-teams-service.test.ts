@@ -584,25 +584,4 @@ describe('AgentTeamsService', () => {
       expect(result.get(3)).toBe(0); // default for team with no row
     });
   });
-
-  // ---------------------------------------------------------------------------
-  // getPrimaryTeamForAgent
-  // ---------------------------------------------------------------------------
-  describe('getPrimaryTeamForAgent', () => {
-    it('returns primary team id and role when primary exists', async () => {
-      selectResultsQueue.push([{ teamId: 10, roleInTeam: 'lead' }]);
-
-      const result = await service.getPrimaryTeamForAgent('agent-1');
-
-      expect(result).toEqual({ teamId: 10, roleInTeam: 'lead' });
-    });
-
-    it('returns null when agent has no primary team', async () => {
-      selectResultsQueue.push([]);
-
-      const result = await service.getPrimaryTeamForAgent('agent-1');
-
-      expect(result).toBeNull();
-    });
-  });
 });

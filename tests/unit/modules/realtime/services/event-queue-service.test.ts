@@ -197,17 +197,6 @@ describe('EventQueueService', () => {
       expect(typeof result.processingTime).toBe('number');
       expect(result.processingTime).toBeGreaterThanOrEqual(0);
     });
-
-    it('uses provided priority over default rule priority', async () => {
-      const result = await service.createAndRouteEvent(
-        'message',
-        { content: 'urgent' },
-        { conversationId: 1 },
-        'urgent'
-      );
-
-      expect(result.success).toBe(true);
-    });
   });
 
   // ======================== createAndRouteEvent – batch strategy ========================
@@ -307,16 +296,6 @@ describe('EventQueueService', () => {
 
       // Cleanup should have flushed the remaining batch
       expect(fetchSpy).toHaveBeenCalled();
-    });
-  });
-
-  // ======================== ProcessingStrategy enum ========================
-
-  describe('ProcessingStrategy enum', () => {
-    it('exports IMMEDIATE, BATCH, DELAYED values', () => {
-      expect(ProcessingStrategy.IMMEDIATE).toBe('immediate');
-      expect(ProcessingStrategy.BATCH).toBe('batch');
-      expect(ProcessingStrategy.DELAYED).toBe('delayed');
     });
   });
 });

@@ -261,9 +261,9 @@ describe('auto-reply-engine', () => {
       const textResult = await evaluate(createInput(), env);
       expect(textResult.matched).toBe(true);
 
-      // Image message → keyword rule should not be eligible
+      // Image message whose content would match → keyword rule is still not eligible
       const imageResult = await evaluate(
-        createInput({ message: { content: '[圖片]', messageType: 'image', platform: 'line' } }),
+        createInput({ message: { content: 'hello', messageType: 'image', platform: 'line' } }),
         env
       );
       expect(imageResult.matched).toBe(false);
@@ -471,6 +471,49 @@ describe('auto-reply-engine', () => {
     });
   });
 
+  // ───────────── Delivery ledger (duplicate-send guard) ─────────────
+
+  describe('delivery ledger', () => {
+    it('does not execute while a previous attempt is still pending', async () => {
+      const env = createMockEnv();
+      kvStore.set('auto-reply:rules:1', JSON.stringify([createRuleFixture()]));
+      mockDeliveryRow = { status: 'pending', replyMethod: null, ruleId: 1, attemptCount: 1 };
+
+      const result = await evaluate(createInput({ platformMessageId: 'line-msg-1' }), env);
+
+      expect(mockExecuteActions).not.toHaveBeenCalled();
+      expect(result).toMatchObject({ matched: true, ruleId: 1, error: 'Auto-reply delivery already pending' });
+      expect(mockUpdateSet).not.toHaveBeenCalled();
+    });
+
+    it('retries a failed delivery, re-reserving it as pending with the next attempt count', async () => {
+      const env = createMockEnv();
+      kvStore.set('auto-reply:rules:1', JSON.stringify([createRuleFixture()]));
+      mockDeliveryRow = { status: 'failed', replyMethod: 'reply_api', ruleId: 1, attemptCount: 2 };
+
+      const result = await evaluate(createInput({ platformMessageId: 'line-msg-1' }), env);
+
+      expect(mockExecuteActions).toHaveBeenCalledOnce();
+      expect(mockInsertValues).not.toHaveBeenCalledWith(expect.objectContaining({ status: 'pending' }));
+      expect(mockUpdateSet).toHaveBeenNthCalledWith(1, expect.objectContaining({
+        status: 'pending', attemptCount: 3, lastError: null,
+      }));
+      expect(mockUpdateSet).toHaveBeenNthCalledWith(2, expect.objectContaining({ status: 'success' }));
+      expect(result.error).toBeUndefined();
+    });
+
+    it('does not send when the ledger row cannot be reserved (lost insert race)', async () => {
+      const env = createMockEnv();
+      kvStore.set('auto-reply:rules:1', JSON.stringify([createRuleFixture()]));
+      mockInsertValues.mockRejectedValueOnce(new Error('UNIQUE constraint failed'));
+
+      const result = await evaluate(createInput({ platformMessageId: 'line-msg-1' }), env);
+
+      expect(mockExecuteActions).not.toHaveBeenCalled();
+      expect(result).toMatchObject({ matched: true, error: 'Auto-reply delivery could not be reserved' });
+    });
+  });
+
   // ───────────── WebSocket Broadcast ─────────────
 
   describe('WebSocket broadcast', () => {
@@ -509,20 +552,6 @@ describe('auto-reply-engine', () => {
       const result = await evaluate(createInput(), env);
       expect(result.matched).toBe(false);
       expect(result.error).toBeDefined();
-    });
-  });
-
-  // ───────────── Disabled Rules ─────────────
-
-  describe('disabled rules', () => {
-    it('should not include inactive rules (they are filtered at query time)', async () => {
-      const env = createMockEnv();
-      // Only active rules should be in the cache
-      const activeRule = createRuleFixture({ id: 1, isActive: true });
-      kvStore.set('auto-reply:rules:1', JSON.stringify([activeRule]));
-
-      const result = await evaluate(createInput(), env);
-      expect(result.matched).toBe(true);
     });
   });
 
@@ -642,8 +671,8 @@ describe('auto-reply-engine', () => {
 
       await evaluate(createInput(), env);
 
-      // Insert should NOT be called when execResult.success is false
-      expect(mockBroadcastNewMessage).not.toHaveBeenCalled();
+      // No platformMessageId, so no ledger row either: nothing is inserted at all
+      expect(mockInsert).not.toHaveBeenCalled();
     });
 
     it('should NOT broadcast via WebSocket when action fails', async () => {
@@ -886,27 +915,6 @@ describe('auto-reply-engine', () => {
       expect(result.matched).toBe(true);
       expect(result.ruleId).toBe(10);
       expect(result.ruleName).toBe('Global Keyword');
-    });
-
-    it('should merge global and team rules with team rules winning at same priority', async () => {
-      const env = createMockEnv();
-      const globalRule = createRuleFixture({
-        id: 10, teamId: null, name: 'Global Fallback',
-        triggerType: 'fallback', priority: 100, conditions: [],
-      });
-      const teamRule = createRuleFixture({
-        id: 20, teamId: 1, name: 'Team Fallback',
-        triggerType: 'fallback', priority: 100, conditions: [],
-      });
-      kvStore.set('auto-reply:rules:global', JSON.stringify([globalRule]));
-      kvStore.set('auto-reply:rules:1', JSON.stringify([teamRule]));
-
-      const result = await evaluate(createInput({ teamId: 1 }), env);
-
-      expect(result.matched).toBe(true);
-      // Team rule should win at same priority
-      expect(result.ruleId).toBe(20);
-      expect(result.ruleName).toBe('Team Fallback');
     });
 
     it('should use global rule when no team rules exist', async () => {

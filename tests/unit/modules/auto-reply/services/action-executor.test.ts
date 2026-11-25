@@ -140,6 +140,10 @@ describe('action-executor', () => {
       );
       const sentMessages = mockSendLineReply.mock.calls[0][2];
       expect(sentMessages).toHaveLength(5);
+      // The first five by sortOrder are kept, the rest dropped
+      expect(sentMessages.map((m: { text: string }) => m.text)).toEqual(
+        ['Message 1', 'Message 2', 'Message 3', 'Message 4', 'Message 5']
+      );
     });
   });
 
@@ -321,7 +325,7 @@ describe('action-executor', () => {
       expect(result.error).toBe('No valid messages built');
     });
 
-    it('should return null for empty text in content', async () => {
+    it('should still build a text message for empty text (LINE util decides)', async () => {
       const env = createMockEnv();
       // createTextMessage is still called; it's the LINE API util's job to handle empty text
       // But the content parses successfully

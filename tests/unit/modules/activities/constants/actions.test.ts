@@ -3,15 +3,6 @@ import { ACTIVITY_ACTIONS } from '@/modules/activities/constants/actions'
 import { ActivityValidator } from '@/modules/activities/utils/validators'
 
 describe('Restore action constants', () => {
-  it('exposes all 6 new restore actions', () => {
-    expect(ACTIVITY_ACTIONS.TAG_RESTORE).toBe('tag_restore')
-    expect(ACTIVITY_ACTIONS.CUSTOMER_RESTORE).toBe('customer_restore')
-    expect(ACTIVITY_ACTIONS.CONVERSATION_RESTORE).toBe('conversation_restore')
-    expect(ACTIVITY_ACTIONS.TEAM_RESTORE).toBe('team_restore')
-    expect(ACTIVITY_ACTIONS.TEAM_MEMBER_RESTORE).toBe('team_member_restore')
-    expect(ACTIVITY_ACTIONS.DELAYED_MESSAGE_RESTORE).toBe('delayed_message_restore')
-  })
-
   it('ActivityValidator accepts each new restore action', () => {
     const baseRequest = {
       userId: 'agent-123',

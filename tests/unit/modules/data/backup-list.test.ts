@@ -1,5 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { Hono } from 'hono';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 
 vi.mock('@/middleware/auth', () => ({
   jwtAuth: async (_c: unknown, next: () => Promise<void>) => next(),
@@ -81,12 +83,16 @@ describe('GET /api/data/backup', () => {
     expect(body.data.policy).toEqual(BACKUP_POLICY);
   });
 
-  it('policy documents the configured schedule and retention as constants', () => {
-    expect(BACKUP_POLICY.source).toBe('configuration-constants');
-    expect(BACKUP_POLICY.schedule).toMatchObject({ cron: '17 15 * * *', timezone: 'Asia/Taipei', localTime: '23:17' });
-    expect(BACKUP_POLICY.retentionDays).toEqual({
-      daily: 30, monthly: 365, members: 365, tags: 365, assignments: 365, manual: 90,
-    });
+  it('policy constants match the schedule and retention configured in backup.yml', () => {
+    // BACKUP_POLICY mirrors .github/workflows/backup.yml by hand; this catches drift.
+    const yml = readFileSync(resolve(process.cwd(), '.github/workflows/backup.yml'), 'utf8');
+    const cron = /^\s*-\s*cron:\s*'([^']+)'/m.exec(yml)?.[1];
+    expect(BACKUP_POLICY.schedule.cron).toBe(cron);
+    const documented: Record<string, number> = {};
+    for (const m of yml.matchAll(/prefix "(\w+)\/"\s*->\s*delete after\s+(\d+) days/g)) {
+      documented[m[1] as string] = Number(m[2]);
+    }
+    expect(BACKUP_POLICY.retentionDays).toEqual(documented);
   });
 
   it('no backups yet: empty list, null lastAuto', async () => {

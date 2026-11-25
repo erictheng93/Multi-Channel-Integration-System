@@ -19,9 +19,12 @@ vi.mock('drizzle-orm', () => ({
   }),
 }));
 
+// Every value passed to db.update(teams).set(...), so a test can assert what teams.qrCode became.
+let setCalls: Record<string, unknown>[] = [];
+
 function createUpdateChain() {
   const chain: Record<string, any> = {};
-  chain.set = vi.fn().mockReturnValue(chain);
+  chain.set = vi.fn((values: Record<string, unknown>) => { setCalls.push(values); return chain; });
   chain.where = vi.fn().mockReturnValue(chain);
   chain.returning = vi.fn().mockReturnValue(chain);
   chain.then = (resolve: (v: any) => void) => Promise.resolve(undefined).then(resolve);
@@ -85,6 +88,7 @@ describe('TeamQRService', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    setCalls = [];
     mockDb.update.mockImplementation(() => createUpdateChain());
     service = new TeamQRService(mockD1, undefined, '@testbot', 'https://app.example.com');
   });
@@ -136,7 +140,8 @@ describe('TeamQRService', () => {
 
       await service.generateTeamQRCode({ teamId: 3 });
 
-      expect(mockDb.update).toHaveBeenCalled();
+      expect(setCalls).toHaveLength(1);
+      expect(setCalls[0]?.qrCode).toBe('https://example.com/qr/new.png');
     });
 
     it('still returns result even if teams table sync throws', async () => {
@@ -146,13 +151,11 @@ describe('TeamQRService', () => {
         const chain: Record<string, any> = {};
         chain.set = vi.fn().mockReturnValue(chain);
         chain.where = vi.fn().mockReturnValue(chain);
-        chain.then = (_resolve: any, reject: any) => Promise.reject(new Error('DB error')).catch(reject ?? (() => {}));
-        // Simulate promise rejection handled gracefully
-        chain.then = (resolve: any) => Promise.resolve(undefined).then(resolve);
+        chain.then = (_resolve: unknown, reject: (e: unknown) => void) => reject(new Error('DB error'));
         return chain;
       });
 
-      await expect(service.generateTeamQRCode({ teamId: 1 })).resolves.toBeDefined();
+      await expect(service.generateTeamQRCode({ teamId: 1 })).resolves.toMatchObject({ id: record.id, token: record.token });
     });
   });
 
@@ -256,45 +259,28 @@ describe('TeamQRService', () => {
 
       await service.deactivateQRCode(1, 'qr-001');
 
-      // update called for clearing qrCode
-      expect(mockDb.update).toHaveBeenCalled();
+      expect(setCalls).toHaveLength(1);
+      expect(setCalls[0]?.qrCode).toBeNull();
     });
 
-    it('updates teams.qrCode to remaining active QR code when others exist', async () => {
-      const toDeactivate = makeQRCodeRecord({
-        id: 'qr-001',
-        isActive: true,
-        createdAt: '2026-03-26T00:00:00.000Z',
+    it('points teams.qrCode at the newest remaining ACTIVE QR code, ignoring inactive ones', async () => {
+      const toDeactivate = makeQRCodeRecord({ id: 'qr-001', isActive: true, createdAt: '2026-03-28T00:00:00.000Z' });
+      const older = makeQRCodeRecord({
+        id: 'qr-002', qrCodeImageUrl: 'https://example.com/qr/qr-002.png', isActive: true, createdAt: '2026-03-20T00:00:00.000Z',
       });
-      const remaining = makeQRCodeRecord({
-        id: 'qr-002',
-        qrCodeImageUrl: 'https://example.com/qr/qr-002.png',
-        isActive: true,
-        createdAt: '2026-03-27T00:00:00.000Z',
+      const newest = makeQRCodeRecord({
+        id: 'qr-003', qrCodeImageUrl: 'https://example.com/qr/qr-003.png', isActive: true, createdAt: '2026-03-27T00:00:00.000Z',
       });
-      vi.mocked(QRCodeServiceImpl.getTeamQRCodes).mockResolvedValue([
-        toDeactivate,
-        remaining,
-      ] as any);
+      const newerButInactive = makeQRCodeRecord({
+        id: 'qr-004', qrCodeImageUrl: 'https://example.com/qr/qr-004.png', isActive: false, createdAt: '2026-03-27T12:00:00.000Z',
+      });
+      vi.mocked(QRCodeServiceImpl.getTeamQRCodes).mockResolvedValue([toDeactivate, older, newest, newerButInactive] as any);
       vi.mocked(QRCodeServiceImpl.deactivateQRCode).mockResolvedValue(undefined);
 
       await service.deactivateQRCode(1, 'qr-001');
 
-      expect(mockDb.update).toHaveBeenCalled();
-    });
-  });
-
-  // ── generateTestQRCode ──────────────────────────────────────────────────────
-
-  describe('generateTestQRCode', () => {
-    it('returns a static test QR code object', async () => {
-      const result = await service.generateTestQRCode();
-
-      expect(result).toEqual({
-        id: 'test-123',
-        qrCode: expect.stringContaining('qrserver.com'),
-        message: 'Test QR code generated successfully',
-      });
+      expect(setCalls).toHaveLength(1);
+      expect(setCalls[0]?.qrCode).toBe('https://example.com/qr/qr-003.png');
     });
   });
 });

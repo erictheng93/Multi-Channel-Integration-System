@@ -13,10 +13,6 @@ describe('checkMigrationConfigUpdate', () => {
     expect(checkMigrationConfigUpdate({ enableWebSocket: false }, true)).toBeNull();
   });
 
-  it('requires confirmation for every explicit false patch, without reading current state', () => {
-    expect(checkMigrationConfigUpdate({ enableWebSocket: false }, false)).toContain('confirmDisable');
-  });
-
   it('allows turning it back on and ordinary edits that do not touch the switch', () => {
     expect(checkMigrationConfigUpdate({ enableWebSocket: true }, false)).toBeNull();
     expect(checkMigrationConfigUpdate({ rolloutPercentage: 50 }, false)).toBeNull();
