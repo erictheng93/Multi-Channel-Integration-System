@@ -169,8 +169,6 @@ describe('WebSocketManager', () => {
 
       manager.disconnect()
 
-      // 等待一段時間後運行時間不應該增加
-      await new Promise(resolve => setTimeout(resolve, 100))
       expect((manager as any).uptimeTimer).toBeNull()
     })
   })
