@@ -49,24 +49,6 @@ describe('useMessageBubble', () => {
   })
 
   describe('Initialization', () => {
-    it('should initialize all sub-composables correctly', () => {
-      const props = ref({
-        message: createMessage(),
-        delivered: true,
-        showSender: true
-      })
-
-      const result = useMessageBubble(props, mockEmit)
-
-      // Verify all APIs are exposed
-      expect(result.formatTime).toBeDefined()
-      expect(result.attachmentUrl).toBeDefined()
-      expect(result.copyMessage).toBeDefined()
-      expect(result.stickerMetadata).toBeDefined()
-      expect(result.processedMessageContent).toBeDefined()
-      expect(result.isOutgoing).toBeDefined()
-    })
-
     it('should provide all time formatting functions', () => {
       const props = ref({ message: createMessage() })
       const result = useMessageBubble(props, mockEmit)

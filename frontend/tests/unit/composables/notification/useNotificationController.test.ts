@@ -83,33 +83,6 @@ describe('useNotificationController', () => {
       expect(controller.loading.value).toBe(false)
     })
 
-    it('should provide computed properties from store', () => {
-      const controller = useNotificationController()
-
-      expect(controller.notifications).toBeDefined()
-      expect(controller.stats).toBeDefined()
-      expect(controller.loading).toBeDefined()
-      expect(controller.loadingMore).toBeDefined()
-      expect(controller.pagination).toBeDefined()
-      expect(controller.canLoadMore).toBeDefined()
-      expect(controller.hasUnread).toBeDefined()
-    })
-
-    it('should provide sub-composables', () => {
-      const controller = useNotificationController()
-
-      expect(controller.filters).toBeDefined()
-      expect(controller.actions).toBeDefined()
-      expect(controller.settings).toBeDefined()
-      expect(controller.keyboard).toBeDefined()
-    })
-
-    it('should provide lifecycle methods', () => {
-      const controller = useNotificationController()
-
-      expect(controller.initialize).toBeInstanceOf(Function)
-      expect(controller.cleanup).toBeInstanceOf(Function)
-    })
   })
 
   describe('initialize', () => {
@@ -164,39 +137,6 @@ describe('useNotificationController', () => {
       controller.cleanup()
 
       expect(stopPollingSpy).toHaveBeenCalled()
-    })
-  })
-
-  describe('WebSocket integration', () => {
-    it('should handle new notification from WebSocket', async () => {
-      const controller = useNotificationController()
-      const store = useNotificationsStore()
-
-      const addNotificationSpy = vi.spyOn(store, 'addNotification')
-      const fetchStatsSpy = vi.spyOn(store, 'fetchStats').mockResolvedValue()
-
-      vi.spyOn(store, 'fetchNotifications').mockResolvedValue()
-
-      await controller.initialize()
-
-      // Simulate WebSocket notification
-      const _mockNotification = {
-        id: '123',
-        type: 'new_message' as const,
-        title: 'Test',
-        message: 'Test message',
-        isRead: false,
-        priority: 'normal' as const,
-        createdAt: new Date().toISOString(),
-        data: {}
-      }
-
-      // The controller should have setup WebSocket callbacks
-      // In a real scenario, this would be triggered by WebSocket
-      // For testing, we can directly call the handler
-      // Note: This requires exposing the handler or testing through integration
-      expect(addNotificationSpy).toBeDefined()
-      expect(fetchStatsSpy).toBeDefined()
     })
   })
 

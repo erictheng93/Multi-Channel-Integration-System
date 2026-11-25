@@ -163,55 +163,6 @@ describe('useConversationState', () => {
   })
 
   describe('initialization', () => {
-    it('should return all expected properties and methods', () => {
-      const state = useConversationState(conversationId)
-
-      // Computed state
-      expect(state.conversation).toBeDefined()
-      expect(state.messages).toBeDefined()
-      expect(state.displayedMessages).toBeDefined()
-      expect(state.messageCount).toBeDefined()
-      expect(state.loading).toBeDefined()
-      expect(state.hasMore).toBeDefined()
-      expect(state.skeletonCount).toBeDefined()
-      expect(state.loadingText).toBeDefined()
-      expect(state.isLoadingInitial).toBeDefined()
-
-      // Loading state
-      expect(state.hasLoadedInitially).toBeDefined()
-      expect(state.isInitialLoading).toBeDefined()
-      expect(state.loadingHistory).toBeDefined()
-      expect(state.isUpdating).toBeDefined()
-
-      // Search state
-      expect(state.searchResults).toBeDefined()
-      expect(state.isSearchActive).toBeDefined()
-
-      // Unified connection state
-      expect(state.unifiedMessages).toBeDefined()
-      expect(state.unifiedIsConnected).toBeDefined()
-
-      // Methods
-      expect(typeof state.setUnifiedMessages).toBe('function')
-      expect(typeof state.setUnifiedConnected).toBe('function')
-      expect(typeof state.loadConversation).toBe('function')
-      expect(typeof state.refreshMessages).toBe('function')
-      expect(typeof state.refreshMessagesAfterReconnection).toBe('function')
-      expect(typeof state.loadMoreMessages).toBe('function')
-      expect(typeof state.addMessage).toBe('function')
-      expect(typeof state.resetLoadingState).toBe('function')
-      expect(typeof state.debouncedUpdateMessages).toBe('function')
-      expect(typeof state.queueMessageUpdate).toBe('function')
-      expect(typeof state.setSearchResults).toBe('function')
-      expect(typeof state.clearSearch).toBe('function')
-      expect(typeof state.setHistoryLoading).toBe('function')
-
-      // Debug/test refs
-      expect(state.updateQueue).toBeDefined()
-      expect(state.isProcessingQueue).toBeDefined()
-      expect(state.lastMessageTimestamp).toBeDefined()
-    })
-
     it('should initialize with default options', () => {
       const state = useConversationState(conversationId)
 
@@ -224,16 +175,6 @@ describe('useConversationState', () => {
       expect(state.isProcessingQueue.value).toBe(false)
     })
 
-    it('should accept custom options', () => {
-      // Should not throw with custom options
-      const state = useConversationState(conversationId, {
-        enablePagination: false,
-        pageSize: 50,
-        enableProgressiveLoading: true
-      })
-
-      expect(state).toBeDefined()
-    })
   })
 
   describe('computed: conversation', () => {

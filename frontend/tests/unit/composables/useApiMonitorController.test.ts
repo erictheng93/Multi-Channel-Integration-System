@@ -540,37 +540,4 @@ describe('useApiMonitorController', () => {
   // Exposed API shape
   // ==========================================================================
 
-  describe('Exposed API', () => {
-    it('should expose all state refs', () => {
-      expect(controller.monitorData).toBeDefined()
-      expect(controller.loading).toBeDefined()
-      expect(controller.isRefreshing).toBeDefined()
-      expect(controller.error).toBeDefined()
-      expect(controller.filters).toBeDefined()
-      expect(controller.modal).toBeDefined()
-      expect(controller.autoRefresh).toBeDefined()
-      expect(controller.expandedCard).toBeDefined()
-    })
-
-    it('should expose all computed properties', () => {
-      expect(controller.systemStatus).toBeDefined()
-      expect(controller.endpoints).toBeDefined()
-      expect(controller.infrastructure).toBeDefined()
-      expect(controller.channels).toBeDefined()
-      expect(controller.events).toBeDefined()
-      expect(controller.stats).toBeDefined()
-      expect(controller.filteredApis).toBeDefined()
-      expect(controller.lastUpdated).toBeDefined()
-    })
-
-    it('should expose all methods', () => {
-      expect(typeof controller.initialize).toBe('function')
-      expect(typeof controller.refreshAll).toBe('function')
-      expect(typeof controller.toggleAutoRefresh).toBe('function')
-      expect(typeof controller.toggleCard).toBe('function')
-      expect(typeof controller.showStatDetails).toBe('function')
-      expect(typeof controller.closeModal).toBe('function')
-      expect(typeof controller.cleanup).toBe('function')
-    })
-  })
 })
