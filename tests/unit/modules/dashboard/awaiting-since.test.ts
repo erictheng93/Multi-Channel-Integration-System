@@ -11,6 +11,7 @@ import {
   createDashboardDb,
   d1Of,
   readMigration,
+  type QueryLog,
 } from '../../../helpers/sqlite-d1';
 
 const NOW = Date.parse('2026-10-29T10:00:00.000Z');
@@ -234,26 +235,20 @@ describe('waiting query reads the stored marker', () => {
     expect(agent.items.map(i => i.conversationId)).toEqual(['mine', 'pool']);
   });
 
-  it('touches only waiting rows: the plan uses the partial index and never scans messages for the list', () => {
+  it('touches only waiting rows: the plan uses the partial index and never scans messages for the list', async () => {
     const db = freshDb();
-    const plan = (db.prepare(`EXPLAIN QUERY PLAN
-      SELECT c.id FROM conversations c
-      WHERE c.awaiting_since IS NOT NULL AND c.status <> 'closed' AND c.deleted_at IS NULL
-      ORDER BY c.awaiting_since ASC, c.id ASC LIMIT 5`).all() as Array<{ detail: string }>).map(p => p.detail).join(' | ');
-    expect(plan).toContain('idx_conversations_awaiting_since');
-    expect(plan).not.toMatch(/SCAN c(?!\s+USING)/);
-    expect(plan).not.toContain('USE TEMP B-TREE');
-
-    const count = (db.prepare(`EXPLAIN QUERY PLAN
-      SELECT COUNT(*) FROM conversations c2
-      WHERE c2.awaiting_since IS NOT NULL AND c2.status <> 'closed' AND c2.deleted_at IS NULL`).all() as Array<{ detail: string }>)
+    const log: QueryLog[] = [];
+    await getWaitingConversations(d1Of(db, log), admin, 5, NOW);
+    // The exact statement the service sent; admin visibility binds no params (window, limit, window).
+    const sent = log.find(entry => entry.sql.includes('WITH page AS'))?.sql;
+    expect(sent).toBeDefined();
+    const plan = (db.prepare(`EXPLAIN QUERY PLAN ${sent}`).all('x', 5, 'x') as Array<{ detail: string }>)
       .map(p => p.detail).join(' | ');
-    expect(count).toContain('COVERING INDEX idx_conversations_awaiting_since');
-
-    const sub = (db.prepare(`EXPLAIN QUERY PLAN
-      SELECT COUNT(*) FROM messages cm WHERE cm.conversation_id = ? AND cm.sender_type = 'customer'
-        AND cm.deleted_at IS NULL AND cm.created_at >= ?`).all('x', 'y') as Array<{ detail: string }>).map(p => p.detail).join(' | ');
-    expect(sub).toContain('idx_messages_conv_sender_deleted_created');
+    expect(plan).toContain('SEARCH c USING INDEX idx_conversations_awaiting_since');
+    expect(plan).toContain('SEARCH c2 USING COVERING INDEX idx_conversations_awaiting_since');
+    expect(plan).toContain('SEARCH cm USING COVERING INDEX idx_messages_conv_sender_deleted_created');
+    expect(plan).not.toMatch(/SCAN (c|c2|cm|lm)\b(?!\s+USING)/);
+    expect(plan).not.toContain('USE TEMP B-TREE');
   });
 });
 

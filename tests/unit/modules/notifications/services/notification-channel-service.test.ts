@@ -214,8 +214,21 @@ describe('NotificationChannelService', () => {
       const result = await service.sendBulk(notifications);
 
       expect(result.summary.totalNotifications).toBe(2);
-      // Channel attempts tracked
-      expect(result.summary.totalChannelAttempts).toBeGreaterThanOrEqual(2);
+      // Default channel is websocket only: one attempt per notification, one failed.
+      expect(result.summary.totalChannelAttempts).toBe(2);
+      expect(result.summary.successfulChannelAttempts).toBe(1);
+      expect(result.summary.successfulNotifications).toBe(1);
+      expect(result.summary.failedNotifications).toBe(1);
+      expect(result.results.find(r => r.notification.id === 'n2')?.channelResults.websocket.success).toBe(false);
+    });
+
+    it('marks every notification failed when the bulk call throws', async () => {
+      mockWsSendBulk.mockRejectedValue(new Error('socket closed'));
+
+      const result = await service.sendBulk([makeNotification({ id: 'n1' }), makeNotification({ id: 'n2' })]);
+
+      expect(result.summary.failedNotifications).toBe(2);
+      expect(result.results[0].channelResults.websocket.errorMessage).toBe('socket closed');
     });
 
     it('falls back to individual send() when sendBulk is not available on adapter', async () => {
@@ -233,9 +246,18 @@ describe('NotificationChannelService', () => {
         makeNotification({ id: 'n2', userId: 2 }),
       ];
 
-      const result = await serviceNoBulk.sendBulk(notifications);
+      try {
+        const result = await serviceNoBulk.sendBulk(notifications);
 
-      expect(result.summary.totalNotifications).toBe(2);
+        expect(mockWsSend).toHaveBeenCalledTimes(2);
+        expect(mockWsSendBulk).not.toHaveBeenCalled();
+        expect(result.summary.successfulNotifications).toBe(2);
+      } finally {
+        // mockImplementation survives vi.clearAllMocks(); restore it so later tests get the bulk adapter.
+        (WebSocketAdapter as any).mockImplementation(function () {
+          return mockWsAdapter;
+        });
+      }
     });
   });
 

@@ -137,6 +137,12 @@ import {
   InvalidAgentDataError,
 } from '@modules/agents/types/agent-types';
 
+/** Values passed to the Nth db.insert(...).values(...) call. */
+function insertedValues(n: number): Record<string, unknown> {
+  const chain = mockDb.insert.mock.results[n]?.value;
+  return chain?.values.mock.calls[0]?.[0];
+}
+
 describe('AgentService', () => {
   let service: AgentService;
 
@@ -163,7 +169,14 @@ describe('AgentService', () => {
         id: 'agent-123',
         email: 'test@example.com',
       }));
-      expect(mockDb.insert).toHaveBeenCalled();
+      expect(mockDb.insert).toHaveBeenCalledTimes(1);
+      expect(insertedValues(0)).toMatchObject({
+        id: 'agent-123',
+        email: 'new@example.com',
+        displayName: 'New Agent',
+        isActive: true,
+        passwordPolicy: 'changeable',
+      });
     });
 
     it('should throw AgentAlreadyExistsError when email exists', async () => {
@@ -201,8 +214,15 @@ describe('AgentService', () => {
         teamId: 5,
       });
 
-      // Should have 2 inserts: agents + agentTeams
-      expect(mockDb.insert).toHaveBeenCalledTimes(2);
+      // Should have 2 inserts: agents + agentTeams (primary membership)
+      expect(dbOperations.filter(op => op.startsWith('insert:'))).toEqual(['insert:agents', 'insert:agentTeams']);
+      expect(insertedValues(1)).toEqual({
+        agentId: 'agent-123',
+        teamId: 5,
+        roleInTeam: 'member',
+        isPrimary: true,
+        joinedAt: '2026-03-09T12:00:00.000Z',
+      });
     });
 
     it('should hash password when not provided', async () => {
@@ -214,7 +234,8 @@ describe('AgentService', () => {
       });
 
       const { hashPassword } = await import('@/utils/auth');
-      expect(hashPassword).toHaveBeenCalled();
+      expect(hashPassword).toHaveBeenCalledTimes(1);
+      expect(insertedValues(0).passwordHash).toBe('hashed-password');
     });
 
     it('should use provided passwordHash when given', async () => {
@@ -226,9 +247,10 @@ describe('AgentService', () => {
         passwordHash: 'pre-hashed',
       });
 
-      // hashPassword should still be called for the generateId() temp password
-      // but the provided hash should take precedence
-      expect(mockDb.insert).toHaveBeenCalledTimes(1);
+      // The provided hash wins and no temporary password is hashed
+      const { hashPassword } = await import('@/utils/auth');
+      expect(hashPassword).not.toHaveBeenCalled();
+      expect(insertedValues(0).passwordHash).toBe('pre-hashed');
     });
 
     it('should default role to agent when not specified', async () => {
@@ -239,8 +261,20 @@ describe('AgentService', () => {
         displayName: 'Agent',
       });
 
-      // The insert chain's values call is on the insert chain, check it was called
-      expect(mockDb.insert).toHaveBeenCalled();
+      expect(insertedValues(0).role).toBe('agent');
+    });
+
+    it('should keep an explicit role and isActive=false', async () => {
+      mockGet.mockResolvedValueOnce(undefined);
+
+      await service.createAgent({
+        email: 'new@example.com',
+        displayName: 'Agent',
+        role: 'admin',
+        isActive: false,
+      });
+
+      expect(insertedValues(0)).toMatchObject({ role: 'admin', isActive: false });
     });
   });
 
@@ -264,22 +298,38 @@ describe('AgentService', () => {
 
       expect(deleteCount).toBe(3); // notifications, delayedMessages, agents
       expect(updateCount).toBe(14); // all the FK nullifications
-      expect(deleteCount + updateCount).toBe(17);
+      // Every RESTRICT FK table is cleaned before the agent row goes
+      expect(dbOperations).toEqual([
+        'delete:notifications',
+        'update:messages',
+        'delete:delayedMessages',
+        'update:messageRecallLogs',
+        'update:fileAttachments',
+        'update:tags',
+        'update:customerTags',
+        'update:conversationTags',
+        'update:conversationTransfers',
+        'update:activities',
+        'update:reports',
+        'update:scheduledReports',
+        'update:reportDownloadHistory',
+        'update:reportTemplates',
+        'update:channelIntegrations',
+        'update:customerFeedback',
+        'delete:agents',
+      ]);
     });
 
     it('should delete notifications first (step 1)', async () => {
       await service.deleteAgent('agent-1');
 
-      // First operation should be a delete (notifications)
-      expect(dbOperations[0]).toMatch(/delete:/);
+      expect(dbOperations[0]).toBe('delete:notifications');
     });
 
     it('should delete agent record last (step 17)', async () => {
       await service.deleteAgent('agent-1');
 
-      // Last operation should be delete:agents
-      const lastOp = dbOperations[dbOperations.length - 1];
-      expect(lastOp).toMatch(/delete:/);
+      expect(dbOperations[dbOperations.length - 1]).toBe('delete:agents');
     });
 
     it('should return true on successful deletion', async () => {
@@ -360,8 +410,22 @@ describe('AgentService', () => {
       await service.updateAgent('agent-1', { teamId: 5 });
 
       // Should delete old team + insert new team
-      expect(mockDb.delete).toHaveBeenCalled();
-      expect(mockDb.insert).toHaveBeenCalled();
+      expect(dbOperations).toContain('delete:agentTeams');
+      expect(dbOperations).toContain('insert:agentTeams');
+      expect(dbOperations.indexOf('delete:agentTeams')).toBeLessThan(dbOperations.indexOf('insert:agentTeams'));
+    });
+
+    it('never writes passwordHash through the generic update', async () => {
+      mockGet.mockResolvedValueOnce({ id: 'agent-1', email: 'test@example.com' });
+
+      await service.updateAgent('agent-1', {
+        displayName: 'New Name',
+        passwordHash: 'attacker-hash',
+      } as Parameters<AgentService['updateAgent']>[1]);
+
+      const setArg = mockDb.update.mock.results[0]?.value.set.mock.calls[0]?.[0];
+      expect(setArg).toMatchObject({ displayName: 'New Name' });
+      expect(setArg).not.toHaveProperty('passwordHash');
     });
 
     it('should validate new team exists', async () => {

@@ -3,7 +3,6 @@ import {
   addTeamMembership,
   addTagToCustomer,
   removeTagFromCustomer,
-  restoreAssignedAgent,
   restoreField,
   restoreFields,
   restoreSoftDeleted,
@@ -165,14 +164,34 @@ describe('relationship helpers', () => {
     expect(sql).toMatch(/INSERT\s+OR\s+IGNORE\s+INTO\s+customer_tags/i)
     expect(bound).toEqual([7, 42, 'agent-1'])
   })
+})
 
-  it('restoreAssignedAgent restores assigned_team_id', () => {
-    const { db, prepare, bound } = makeDb()
+describe('column and table allowlist (previousState keys are interpolated into SQL)', () => {
+  it('restoreFields refuses a column outside the allowlist before preparing anything', () => {
+    const { db, prepare } = makeDb()
 
-    restoreAssignedAgent.buildMutation(db, { id: 'conv-1', assignedTeamId: 3 })
+    expect(() => restoreFields('tags').buildMutation(db, { id: 1, 'name = name; DROP TABLE tags; --': 'x' }))
+      .toThrow(/Unsupported restore column/)
+    expect(() => restoreFields('agents').buildMutation(db, { id: 'a-1', password_hash: 'h' }))
+      .toThrow(/Unsupported restore column: agents.password_hash/)
+    expect(prepare).not.toHaveBeenCalled()
+  })
 
-    const sql = prepare.mock.calls[0]?.[0] as string
-    expect(sql).toMatch(/UPDATE\s+conversations\s+SET\s+assigned_team_id\s*=\s*\?/i)
-    expect(bound).toEqual([3, 'conv-1'])
+  it('restoreFields(conversations) cannot write deleted_at (conversations are not soft-deletable)', () => {
+    const { db } = makeDb()
+
+    expect(() => restoreFields('conversations').buildMutation(db, { id: 'c-1', deleted_at: null }))
+      .toThrow(/Unsupported restore column: conversations.deleted_at/)
+  })
+
+  it('rejects an unknown table and an unknown single field at registration time', () => {
+    expect(() => restoreFields('agent_teams')).toThrow(/Unsupported restore table/)
+    expect(() => restoreField('agents', 'password_hash')).toThrow(/Unsupported restore column/)
+  })
+
+  it('restoreFields refuses an empty previousState instead of emitting a broken UPDATE', () => {
+    const { db } = makeDb()
+
+    expect(() => restoreFields('tags').buildMutation(db, { id: 1 })).toThrow(/no fields to restore/)
   })
 })

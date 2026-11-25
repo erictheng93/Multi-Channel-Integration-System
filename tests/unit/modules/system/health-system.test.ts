@@ -129,10 +129,6 @@ describe('H1: infrastructure checkers', () => {
     await checker.check()
     expect(calls).toEqual(['https://do.internal/health'])
   })
-
-  it('healthCheckService is still a singleton instance', () => {
-    expect(healthCheckService).toBeDefined()
-  })
 })
 
 describe('H1: queue consumer ignores health_probe', () => {

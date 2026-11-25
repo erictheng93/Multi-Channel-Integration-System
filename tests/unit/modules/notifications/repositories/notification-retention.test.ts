@@ -47,9 +47,8 @@ describe('expired notifications are hidden on time (ISO expires_at vs SQLite dat
     const { repo, add } = setup();
     // ISO 'YYYY-MM-DDTHH:MM:SS.SSSZ' vs 'YYYY-MM-DD HH:MM:SS': on the same date 'T' > ' ',
     // so a plain string compare kept this row visible until the next day.
-    add('expired-minutes-ago', 1, 0);   // expires_at = now (ISO) ...
+    add('expired-minutes-ago', 1, -0.001); // expires_at about 86 seconds ago (ISO), same UTC date
     add('still-valid', 1, 6);
-    await new Promise(r => setTimeout(r, 1100)); // ... and now it is in the past
 
     expect(await repo.getUnreadCount('u1')).toBe(1);
     expect((await repo.getRecentNotifications('u1')).map(n => n.id)).toEqual(['still-valid']);

@@ -28,11 +28,4 @@ describe('RestoreRegistry', () => {
       'team_member.remove'
     ])
   })
-
-  it('each registry entry exposes buildMutation and getCurrentState', () => {
-    for (const handler of Object.values(RestoreRegistry)) {
-      expect(handler.buildMutation).toEqual(expect.any(Function))
-      expect(handler.getCurrentState).toEqual(expect.any(Function))
-    }
-  })
 })

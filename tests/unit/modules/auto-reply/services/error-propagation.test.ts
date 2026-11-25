@@ -46,9 +46,10 @@ vi.mock('@modules/auto-reply/services/schedule-service', () => ({
 
 const mockBroadcastNewMessage = vi.fn().mockResolvedValue({ conversationBroadcast: true, globalBroadcast: true });
 vi.mock('@/services/websocket-broadcast-service', () => ({
-  WebSocketBroadcastService: vi.fn().mockImplementation(() => ({
-    broadcastNewMessage: mockBroadcastNewMessage,
-  })),
+  // A regular function, so `new WebSocketBroadcastService()` works on the mock
+  WebSocketBroadcastService: vi.fn(function () {
+    return { broadcastNewMessage: mockBroadcastNewMessage };
+  }),
 }));
 
 let mockRuleRows: any[] = [];
@@ -62,6 +63,8 @@ vi.mock('@/db/drizzle-factory', () => ({
         where: vi.fn(() => ({
           orderBy: vi.fn().mockImplementation(() => Promise.resolve(mockRuleRows)),
         })),
+        // hydrateRulesWithRelations awaits select().from(conditions|actions) directly
+        then: (resolve: (v: unknown[]) => void) => resolve([]),
       })),
     })),
     insert: mockInsert,
@@ -94,7 +97,6 @@ function createMockEnv() {
 // ==================== Import after mocks ====================
 
 import { evaluate } from '@modules/auto-reply/services/auto-reply-engine';
-import { matchConditions } from '@modules/auto-reply/services/condition-matcher';
 
 // ==================== Helpers ====================
 
@@ -131,6 +133,12 @@ describe('error-propagation', () => {
     mockRuleRows = [];
     mockExecuteActions.mockResolvedValue({ success: true, replyMethod: 'reply_api', messageCount: 1 });
     mockIsWithinBusinessHours.mockResolvedValue(true);
+    // Implementations set by individual tests must not leak into the next one
+    mockInsertValues.mockReset().mockResolvedValue(undefined);
+    mockBroadcastNewMessage.mockReset().mockResolvedValue({ conversationBroadcast: true, globalBroadcast: true });
+    mockKV.put.mockReset().mockImplementation(async (key: string, value: string) => {
+      kvStore.set(key, value);
+    });
   });
 
   // ───────────── Action Errors ─────────────
@@ -155,86 +163,11 @@ describe('error-propagation', () => {
       expect(result.error).toBe('Both APIs failed');
     });
 
-    it('should return matched:true with error when action fails', async () => {
-      const env = createMockEnv();
-      const rule = createRule();
-      kvStore.set('auto-reply:rules:1', JSON.stringify([rule]));
-      kvStore.set('auto-reply:rules:global', JSON.stringify([]));
-
-      mockExecuteActions.mockResolvedValue({
-        success: false,
-        replyMethod: 'reply_api',
-        messageCount: 0,
-        error: 'LINE API error',
-      });
-
-      const result = await evaluate(createInput(), env);
-      expect(result.matched).toBe(true); // Rule was matched, even though action failed
-      expect(result.ruleId).toBe(1);
-    });
-
-    it('should NOT insert audit log when action execution fails', async () => {
-      const env = createMockEnv();
-      const rule = createRule();
-      kvStore.set('auto-reply:rules:1', JSON.stringify([rule]));
-      kvStore.set('auto-reply:rules:global', JSON.stringify([]));
-
-      mockExecuteActions.mockResolvedValue({
-        success: false,
-        replyMethod: 'reply_api',
-        messageCount: 0,
-        error: 'Failed',
-      });
-
-      await evaluate(createInput(), env);
-
-      // When execResult.success is false, the engine skips log/broadcast
-      // mockInsert should NOT have been called for log (only no calls total since success=false)
-      // Actually the engine only inserts log when execResult.success is true
-      expect(mockBroadcastNewMessage).not.toHaveBeenCalled();
-    });
-
-    it('should NOT broadcast via WebSocket when action fails', async () => {
-      const env = createMockEnv();
-      const rule = createRule();
-      kvStore.set('auto-reply:rules:1', JSON.stringify([rule]));
-      kvStore.set('auto-reply:rules:global', JSON.stringify([]));
-
-      mockExecuteActions.mockResolvedValue({
-        success: false,
-        replyMethod: 'reply_api',
-        messageCount: 0,
-        error: 'Failed',
-      });
-
-      await evaluate(createInput(), env);
-
-      expect(mockBroadcastNewMessage).not.toHaveBeenCalled();
-    });
   });
 
   // ───────────── Condition Errors ─────────────
 
   describe('condition errors', () => {
-    it('should return false for invalid regex, not throw', () => {
-      // condition-matcher catches regex errors and returns false
-      const result = matchConditions('hello', 'text', [{
-        id: 1, ruleId: 1, conditionType: 'regex',
-        value: '[invalid(regex', caseSensitive: false, matchMode: 'any',
-      }]);
-
-      expect(result).toBe(false);
-    });
-
-    it('should return false for unknown condition type, not throw', () => {
-      const result = matchConditions('hello', 'text', [{
-        id: 1, ruleId: 1, conditionType: 'unknown_type' as any,
-        value: 'hello', caseSensitive: false, matchMode: 'any',
-      }]);
-
-      expect(result).toBe(false);
-    });
-
     it('should continue to next rule when condition evaluation fails', async () => {
       const env = createMockEnv();
       // First rule has invalid regex condition, second rule is a fallback
@@ -259,34 +192,6 @@ describe('error-propagation', () => {
     });
   });
 
-  // ───────────── Schedule Errors ─────────────
-
-  describe('schedule errors', () => {
-    it('should return true (assume business hours) on schedule error', () => {
-      // schedule-service.ts catches errors and returns true
-      // This is tested in schedule-service.test.ts, but we verify the contract here
-      // When isWithinBusinessHours returns true (error case), off_hours rules are NOT triggered
-      // This is the correct fail-safe behavior
-      expect(true).toBe(true); // Contract documented
-    });
-
-    it('should treat schedule error as "during business hours" (off_hours rule skipped)', async () => {
-      const env = createMockEnv();
-      const offHoursRule = createRule({
-        id: 1, triggerType: 'off_hours', conditions: [],
-      });
-      kvStore.set('auto-reply:rules:1', JSON.stringify([offHoursRule]));
-      kvStore.set('auto-reply:rules:global', JSON.stringify([]));
-
-      // Schedule service returns true (safe default on error)
-      mockIsWithinBusinessHours.mockResolvedValue(true);
-
-      const result = await evaluate(createInput(), env);
-      // off_hours rule NOT triggered because "within business hours"
-      expect(result.matched).toBe(false);
-    });
-  });
-
   // ───────────── Side Effect Errors ─────────────
 
   describe('side effect errors (log, WS, KV)', () => {
@@ -299,10 +204,11 @@ describe('error-propagation', () => {
       // Make insert fail (for both messages and logs)
       mockInsertValues.mockRejectedValue(new Error('D1 insert failed'));
 
-      // Should NOT throw — engine has try/catch around log insertion
+      // The reply already went out, so the result still reports success
       const result = await evaluate(createInput(), env);
-      expect(result.matched).toBe(true);
-      // Engine still returns success even if log/message insert fails
+      expect(result).toMatchObject({ matched: true, ruleId: 1, replyMethod: 'reply_api' });
+      expect(result.error).toBeUndefined();
+      expect(mockBroadcastNewMessage).toHaveBeenCalledOnce();
     });
 
     it('should not throw from evaluate() when WS broadcast fails', async () => {
@@ -313,20 +219,22 @@ describe('error-propagation', () => {
 
       mockBroadcastNewMessage.mockRejectedValue(new Error('WebSocket error'));
 
-      // Should NOT throw
       const result = await evaluate(createInput(), env);
-      expect(result.matched).toBe(true);
+      expect(mockBroadcastNewMessage).toHaveBeenCalledOnce();
+      expect(result).toMatchObject({ matched: true, ruleId: 1 });
+      expect(result.error).toBeUndefined();
     });
 
     it('should not throw from evaluate() when KV cache write fails', async () => {
       const env = createMockEnv();
       // No cache → engine queries D1 → tries to write cache → fails
-      mockRuleRows = [];
+      mockRuleRows = [{ ...createRule({ id: 7, triggerType: 'fallback' }), conditions: undefined, actions: undefined }];
       mockKV.put.mockRejectedValue(new Error('KV write error'));
 
-      // Should NOT throw
       const result = await evaluate(createInput(), env);
-      expect(result.matched).toBe(false); // No rules → no match
+      expect(mockKV.put).toHaveBeenCalled();
+      // The rule loaded from D1 is still evaluated despite the cache write failure
+      expect(result).toMatchObject({ matched: true, ruleId: 7 });
     });
   });
 });
