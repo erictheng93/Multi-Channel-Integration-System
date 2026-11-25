@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 import { authenticateUser as authenticateUtil } from '@/utils/auth';
 import { authenticateUser as authenticateService, hashPassword } from '@/modules/auth/services/auth';
 import { SYSTEM_AGENT_ID, isSystemAgentId, notSystemAgentSql } from '@/constants/system-agent';
@@ -19,12 +19,18 @@ describe('system agent helpers', () => {
   });
 });
 
+// One real password hash for both suites: the hash is the expensive part, and the point of the test
+// is that a matching password is still refused.
+let hash: string;
+beforeAll(async () => {
+  hash = await hashPassword('Secret#123');
+});
+
 describe.each([
   ['utils/auth', authenticateUtil],
   ['services/auth', authenticateService]
 ])('%s authenticateUser never signs the system actor in', (_name, authenticate) => {
   it('rejects it even when it is active and the password matches its hash', async () => {
-    const hash = await hashPassword('Secret#123');
     const db = dbReturning({
       id: 'system', email: 'system@internal', password_hash: hash, display_name: 'System', role: 'agent',
       is_active: 1, password_policy: 'changeable', created_at: 'x', updated_at: 'x'

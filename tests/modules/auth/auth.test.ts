@@ -13,6 +13,19 @@ import {
 
 import type { JWTPayload } from '@/types';
 
+// bcrypt at the production cost (12) takes ~300ms per hash/verify, which made this
+// file run ~6s. The mock keeps real bcrypt semantics (salt, format, verify) but runs at
+// cost 4 and records the cost the production code asked for, which is asserted below.
+const requestedBcryptRounds = vi.hoisted(() => [] as unknown[]);
+vi.mock('bcryptjs', async importOriginal => {
+  const real = await importOriginal<typeof import('bcryptjs')>();
+  const hash = (password: string, rounds: number | string) => {
+    requestedBcryptRounds.push(rounds);
+    return real.hash(password, 4);
+  };
+  return { ...real, hash, default: { ...real.default, hash } };
+});
+
 describe('Auth Module - JWT Functions', () => {
   const testSecret = 'test-secret-key';
   const testPayload: Omit<JWTPayload, 'iat' | 'exp'> = {
@@ -118,6 +131,13 @@ describe('Auth Module - Password Functions', () => {
       expect(typeof hash).toBe('string');
       expect(hash).not.toBe(testPassword);
       expect(hash.startsWith('$2')).toBe(true); // bcrypt format
+    });
+
+    test('should hash with bcrypt cost factor 12', async () => {
+      requestedBcryptRounds.length = 0;
+      await hashPassword(testPassword);
+
+      expect(requestedBcryptRounds).toEqual([12]);
     });
 
     test('should generate different hashes for same password', async () => {
@@ -330,16 +350,6 @@ describe('Auth Module - Error Handling', () => {
   test('should handle JWT verification errors gracefully', async () => {
     await expect(verifyJWT('malformed-token', 'secret'))
       .rejects.toThrow();
-  });
-
-  test('should handle password hashing errors gracefully', async () => {
-    // This test might vary based on bcrypt implementation
-    // Just ensure it doesn't crash
-    try {
-      await hashPassword('');
-    } catch (error) {
-      expect(error).toBeInstanceOf(Error);
-    }
   });
 
   test('should handle database errors in authentication', async () => {
