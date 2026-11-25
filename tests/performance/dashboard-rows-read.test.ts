@@ -168,7 +168,8 @@ describe.skipIf(!enabled)('dashboard rows_read, before vs after (local D1 engine
     await insertBatch(raw, 'INSERT INTO conversation_read_states (agent_id, conversation_id, last_read_at, marked_unread_at) VALUES (?,?,?,?)', readStates);
 
     // Apply the migrations exactly like production would: backfill from existing data
-    for (const file of [MIGRATION_ROLLUP, MIGRATION_AWAITING, MIGRATION_MARKERS, MIGRATION_HYGIENE]) {
+    // 0078 only adds conversations.unread_floor_before_close, which auto-close now writes.
+    for (const file of [MIGRATION_ROLLUP, MIGRATION_AWAITING, MIGRATION_MARKERS, MIGRATION_HYGIENE, '0078_reopen_restores_pre_close_floor.sql']) {
       for (const statement of statementsOf(readMigration(file))) { await run(raw, statement); }
     }
     await aggregateMessageRollup(raw, NOW); // the cron catches up the last minute
