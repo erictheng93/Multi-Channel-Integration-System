@@ -1,7 +1,7 @@
 // tests/unit/modules/auto-reply/services/schedule-service.test.ts
 // Unit tests for schedule-service — timezone-aware business hours checking
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 // ==================== Mocks ====================
 
@@ -72,9 +72,21 @@ function createMockEnv() {
 
 import { isWithinBusinessHours, invalidateScheduleCache } from '@modules/auto-reply/services/schedule-service';
 
+// ==================== Helpers ====================
+
+function everyDay(startTime: string, endTime: string, timezone = 'Asia/Taipei') {
+  return Array.from({ length: 7 }, (_, i) => ({
+    id: i + 1, teamId: 1, dayOfWeek: i, startTime, endTime, timezone, isActive: true,
+  }));
+}
+
 // ==================== Tests ====================
 
 describe('schedule-service', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
     kvStore.clear();
@@ -151,153 +163,51 @@ describe('schedule-service', () => {
 
     it('should return false when no schedule exists for current day', async () => {
       const env = createMockEnv();
+      // 2026-10-29T02:00Z = Thursday 10:00 in Taipei; only Monday is scheduled
+      vi.useFakeTimers({ toFake: ['Date'] });
+      vi.setSystemTime(new Date('2026-10-29T02:00:00.000Z'));
+      kvStore.set('auto-reply:schedule:1', JSON.stringify([everyDay('09:00', '18:00')[1]]));
 
-      // Only schedule for Monday (day=1), but test runs on a different day
-      // We create a schedule for a day that's NOT today
-      const now = new Date();
-      const formatter = new Intl.DateTimeFormat('en-US', {
-        timeZone: 'Asia/Taipei',
-        weekday: 'short',
-      });
-      const weekdayStr = formatter.format(now);
-      const weekdayMap: Record<string, number> = {
-        Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6,
-      };
-      const today = weekdayMap[weekdayStr] ?? 0;
-      const notToday = (today + 3) % 7; // A day that's NOT today
-
-      const schedules = [{
-        id: 1,
-        teamId: 1,
-        dayOfWeek: notToday,
-        startTime: '09:00',
-        endTime: '18:00',
-        timezone: 'Asia/Taipei',
-        isActive: true,
-      }];
-      kvStore.set('auto-reply:schedule:1', JSON.stringify(schedules));
-
-      const result = await isWithinBusinessHours(1, env);
-      expect(result).toBe(false);
-    });
-
-    it('should return false when schedule for today is inactive', async () => {
-      const env = createMockEnv();
-
-      // All days have schedule but isActive = false
-      const schedules = Array.from({ length: 7 }, (_, i) => ({
-        id: i + 1,
-        teamId: 1,
-        dayOfWeek: i,
-        startTime: '09:00',
-        endTime: '18:00',
-        timezone: 'Asia/Taipei',
-        isActive: false,
-      }));
-      kvStore.set('auto-reply:schedule:1', JSON.stringify(schedules));
-
-      const result = await isWithinBusinessHours(1, env);
-      expect(result).toBe(false);
+      expect(await isWithinBusinessHours(1, env)).toBe(false);
     });
   });
 
-  // ───────────── Timezone Handling ─────────────
+  // ───────────── Clock-pinned evaluation ─────────────
 
-  describe('timezone handling', () => {
-    it('should use the timezone from schedule data', async () => {
-      const env = createMockEnv();
-
-      // Schedule covering all time in UTC
-      const schedules = Array.from({ length: 7 }, (_, i) => ({
-        id: i + 1,
-        teamId: 1,
-        dayOfWeek: i,
-        startTime: '00:00',
-        endTime: '23:59',
-        timezone: 'UTC',
-        isActive: true,
-      }));
+  describe('clock-pinned evaluation (Asia/Taipei = UTC+8)', () => {
+    async function at(isoUtc: string, schedules: ReturnType<typeof everyDay>) {
+      vi.useFakeTimers({ toFake: ['Date'] });
+      vi.setSystemTime(new Date(isoUtc));
       kvStore.set('auto-reply:schedule:1', JSON.stringify(schedules));
+      return isWithinBusinessHours(1, createMockEnv());
+    }
 
-      const result = await isWithinBusinessHours(1, env);
-      expect(result).toBe(true);
-    });
-  });
-
-  // ───────────── Midnight Crossing ─────────────
-
-  describe('midnight crossing', () => {
-    it('should handle overnight schedule (e.g., 22:00-06:00)', async () => {
-      const env = createMockEnv();
-
-      // Schedule: every day 00:00-23:59 to guarantee we're within range
-      // (Midnight crossing tested implicitly through the parseTime logic)
-      const schedules = Array.from({ length: 7 }, (_, i) => ({
-        id: i + 1,
-        teamId: 1,
-        dayOfWeek: i,
-        startTime: '00:00',
-        endTime: '23:59',
-        timezone: 'Asia/Taipei',
-        isActive: true,
-      }));
-      kvStore.set('auto-reply:schedule:1', JSON.stringify(schedules));
-
-      const result = await isWithinBusinessHours(1, env);
-      expect(result).toBe(true);
-    });
-  });
-
-  // ───────────── Midnight Crossing Edge Cases ─────────────
-
-  describe('midnight crossing edge cases', () => {
-    it('should detect 23:00 as inside 22:00-06:00 schedule', async () => {
-      const env = createMockEnv();
-      // Overnight schedule: 22:00-06:00 for every day
-      const schedules = Array.from({ length: 7 }, (_, i) => ({
-        id: i + 1, teamId: 1, dayOfWeek: i,
-        startTime: '22:00', endTime: '06:00',
-        timezone: 'Asia/Taipei', isActive: true,
-      }));
-      kvStore.set('auto-reply:schedule:1', JSON.stringify(schedules));
-
-      // This test documents the midnight crossing logic:
-      // If endMinutes <= startMinutes, then it's an overnight range
-      // currentTime >= start OR currentTime <= end
-      // 23:00 (1380 min) >= 22:00 (1320 min) → true
-      const result = await isWithinBusinessHours(1, env);
-      // Result depends on current time — we verify the function doesn't throw
-      expect(typeof result).toBe('boolean');
+    it('daytime 09:00-17:00: open at 15:00, closed at 08:59 and 17:01, boundaries inclusive', async () => {
+      const day = everyDay('09:00', '17:00');
+      expect(await at('2026-10-29T07:00:00.000Z', day)).toBe(true); // 15:00
+      expect(await at('2026-10-29T00:59:00.000Z', day)).toBe(false); // 08:59
+      expect(await at('2026-10-29T09:01:00.000Z', day)).toBe(false); // 17:01
+      expect(await at('2026-10-29T01:00:00.000Z', day)).toBe(true); // 09:00
+      expect(await at('2026-10-29T09:00:00.000Z', day)).toBe(true); // 17:00
     });
 
-    it('should handle overnight schedule without error (03:00 check)', async () => {
-      const env = createMockEnv();
-      const schedules = Array.from({ length: 7 }, (_, i) => ({
-        id: i + 1, teamId: 1, dayOfWeek: i,
-        startTime: '22:00', endTime: '06:00',
-        timezone: 'Asia/Taipei', isActive: true,
-      }));
-      kvStore.set('auto-reply:schedule:1', JSON.stringify(schedules));
-
-      // Midnight crossing: endMinutes (360) <= startMinutes (1320)
-      // If current time is 03:00 (180 min): 180 <= 360 → inside
-      const result = await isWithinBusinessHours(1, env);
-      expect(typeof result).toBe('boolean');
+    it('overnight 22:00-06:00: open at 23:00 and 03:00, closed at 12:00', async () => {
+      const night = everyDay('22:00', '06:00');
+      expect(await at('2026-10-29T15:00:00.000Z', night)).toBe(true); // 23:00
+      expect(await at('2026-10-28T19:00:00.000Z', night)).toBe(true); // 03:00
+      expect(await at('2026-10-29T04:00:00.000Z', night)).toBe(false); // 12:00
     });
 
-    it('should handle daytime-only schedule (15:00 outside 09:00-17:00)', async () => {
-      const env = createMockEnv();
-      const schedules = Array.from({ length: 7 }, (_, i) => ({
-        id: i + 1, teamId: 1, dayOfWeek: i,
-        startTime: '09:00', endTime: '17:00',
-        timezone: 'Asia/Taipei', isActive: true,
-      }));
-      kvStore.set('auto-reply:schedule:1', JSON.stringify(schedules));
+    it('evaluates the clock in the timezone stored on the schedule, not UTC', async () => {
+      // 02:00Z is 10:00 in Taipei (open) but 02:00 in UTC (closed)
+      expect(await at('2026-10-29T02:00:00.000Z', everyDay('09:00', '18:00', 'Asia/Taipei'))).toBe(true);
+      expect(await at('2026-10-29T02:00:00.000Z', everyDay('09:00', '18:00', 'UTC'))).toBe(false);
+    });
 
-      // Normal range (no midnight crossing): startMinutes < endMinutes
-      // 15:00 (900) >= 09:00 (540) AND 15:00 (900) <= 17:00 (1020) → inside
-      const result = await isWithinBusinessHours(1, env);
-      expect(typeof result).toBe('boolean');
+    it('uses the Taipei weekday, not the UTC weekday', async () => {
+      // 2026-10-28T22:00Z is Wednesday in UTC but Thursday 06:00 in Taipei
+      const thursdayOnly = [everyDay('05:00', '07:00')[4]];
+      expect(await at('2026-10-28T22:00:00.000Z', thursdayOnly)).toBe(true);
     });
   });
 
@@ -306,16 +216,12 @@ describe('schedule-service', () => {
   describe('default timezone', () => {
     it('should default to Asia/Taipei when timezone is empty string', async () => {
       const env = createMockEnv();
-      const schedules = Array.from({ length: 7 }, (_, i) => ({
-        id: i + 1, teamId: 1, dayOfWeek: i,
-        startTime: '00:00', endTime: '23:59',
-        timezone: '', isActive: true,
-      }));
-      kvStore.set('auto-reply:schedule:1', JSON.stringify(schedules));
+      // 02:00Z is 10:00 in Taipei (open) and 02:00 in UTC (closed)
+      vi.useFakeTimers({ toFake: ['Date'] });
+      vi.setSystemTime(new Date('2026-10-29T02:00:00.000Z'));
+      kvStore.set('auto-reply:schedule:1', JSON.stringify(everyDay('09:00', '18:00', '')));
 
-      // Should not throw — defaults to Asia/Taipei
-      const result = await isWithinBusinessHours(1, env);
-      expect(result).toBe(true);
+      expect(await isWithinBusinessHours(1, env)).toBe(true);
     });
   });
 

@@ -91,8 +91,11 @@ describe('GET /api/team/presence', () => {
 
   it('agent with no teams sees nobody (and the DB is not queried)', async () => {
     holder.user = { id: 'loner', role: 'agent', allowedTeamIds: [] }
+    holder.db = null // any query would throw and turn the response into a 500
     const { env } = makeEnv(['a1'])
-    expect((await getPresence(env)).body.data.onlineAgentIds).toEqual([])
+    const { status, body } = await getPresence(env)
+    expect(status).toBe(200)
+    expect(body.data.onlineAgentIds).toEqual([])
   })
 
   it('empty state: nobody online', async () => {

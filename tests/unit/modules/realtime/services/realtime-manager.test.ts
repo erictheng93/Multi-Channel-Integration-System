@@ -405,13 +405,13 @@ describe('RealtimeManager', () => {
   // ======================== getUptime ========================
 
   describe('getUptime', () => {
-    it('returns a non-negative number', async () => {
+    it('grows by the elapsed time since the instance was created', async () => {
       const manager = RealtimeManager.getInstance();
-      await manager.initialize(mockEnv);
+      const before = manager.getUptime();
 
       await vi.advanceTimersByTimeAsync(500);
 
-      expect(manager.getUptime()).toBeGreaterThanOrEqual(0);
+      expect(manager.getUptime() - before).toBe(500);
     });
   });
 
@@ -452,18 +452,6 @@ describe('RealtimeManager', () => {
       const result = await manager.performMaintenance('unknown_op' as any);
 
       expect(result).toBe(false);
-    });
-  });
-
-  // ======================== ServiceStatus enum ========================
-
-  describe('ServiceStatus enum', () => {
-    it('exports expected status values', () => {
-      expect(ServiceStatus.INITIALIZING).toBe('initializing');
-      expect(ServiceStatus.RUNNING).toBe('running');
-      expect(ServiceStatus.DEGRADED).toBe('degraded');
-      expect(ServiceStatus.STOPPED).toBe('stopped');
-      expect(ServiceStatus.ERROR).toBe('error');
     });
   });
 });

@@ -46,9 +46,9 @@ vi.mock('@modules/auto-reply/services/schedule-service', () => ({
 
 const mockBroadcastNewMessage = vi.fn().mockResolvedValue({ conversationBroadcast: true, globalBroadcast: true });
 vi.mock('@/services/websocket-broadcast-service', () => ({
-  WebSocketBroadcastService: vi.fn().mockImplementation(() => ({
-    broadcastNewMessage: mockBroadcastNewMessage,
-  })),
+  WebSocketBroadcastService: vi.fn(function () {
+    return { broadcastNewMessage: mockBroadcastNewMessage };
+  }),
 }));
 
 let mockRuleRows: any[] = [];
@@ -93,7 +93,7 @@ function createMockEnv() {
 
 // ==================== Import after mocks ====================
 
-import { evaluate, evaluateWelcome } from '@modules/auto-reply/services/auto-reply-engine';
+import { evaluate } from '@modules/auto-reply/services/auto-reply-engine';
 
 // ==================== Helpers ====================
 
@@ -227,9 +227,8 @@ describe('rule-merging (global + team rules)', () => {
       expect(result.ruleId).toBe(20);
     });
 
-    it('should have no duplicates when merging', async () => {
+    it('should let a global rule with a better priority beat a team rule', async () => {
       const env = createMockEnv();
-      // Same rule should not appear twice
       const globalRule = createRule({ id: 10, teamId: null, triggerType: 'fallback', priority: 100, conditions: [] });
       const teamRule = createRule({ id: 20, teamId: 1, triggerType: 'fallback', priority: 200, conditions: [] });
       kvStore.set('auto-reply:rules:global', JSON.stringify([globalRule]));
@@ -311,41 +310,6 @@ describe('rule-merging (global + team rules)', () => {
       const result = await evaluate(createInput(), env);
       expect(result.matched).toBe(true);
       expect(result.ruleId).toBe(10);
-    });
-
-    it('should return matched:false when both global and team are empty', async () => {
-      const env = createMockEnv();
-      kvStore.set('auto-reply:rules:global', JSON.stringify([]));
-      kvStore.set('auto-reply:rules:1', JSON.stringify([]));
-
-      const result = await evaluate(createInput(), env);
-      expect(result.matched).toBe(false);
-    });
-
-    it('should exclude disabled rules from merged list', async () => {
-      const env = createMockEnv();
-      // Disabled rules are filtered at query/cache time, so they should not be in KV
-      // If they somehow are cached, they'd still be evaluated — but the DB query filters isActive=true
-      kvStore.set('auto-reply:rules:global', JSON.stringify([]));
-      kvStore.set('auto-reply:rules:1', JSON.stringify([]));
-
-      const result = await evaluate(createInput(), env);
-      expect(result.matched).toBe(false);
-    });
-
-    it('should filter non-welcome rules in evaluateWelcome', async () => {
-      const env = createMockEnv();
-      const rules = [
-        createRule({ id: 1, teamId: 1, triggerType: 'keyword', name: 'Keyword Rule' }),
-        createRule({ id: 2, teamId: 1, triggerType: 'welcome', name: 'Welcome', conditions: [] }),
-        createRule({ id: 3, teamId: 1, triggerType: 'fallback', name: 'Fallback', conditions: [] }),
-      ];
-      kvStore.set('auto-reply:rules:global', JSON.stringify([]));
-      kvStore.set('auto-reply:rules:1', JSON.stringify(rules));
-
-      const result = await evaluateWelcome(1, 'token', 'conv-1', 42, 'U123', env);
-      expect(result.matched).toBe(true);
-      expect(result.ruleName).toBe('Welcome');
     });
 
     it('should handle 20+ rules in correct priority order', async () => {

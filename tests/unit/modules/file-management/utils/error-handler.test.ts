@@ -313,26 +313,40 @@ describe('ErrorHandler', () => {
     });
 
     test('should use exponential backoff', async () => {
-      const operation = vi.fn()
-        .mockRejectedValue(new FileManagementError(
-          ERROR_CODES.NETWORK_ERROR,
-          { operation: 'test' }
-        ));
+      vi.useFakeTimers();
+      try {
+        const operation = vi.fn()
+          .mockRejectedValue(new FileManagementError(
+            ERROR_CODES.NETWORK_ERROR,
+            { operation: 'test' }
+          ));
 
-      const startTime = Date.now();
-
-      await expect(
-        ErrorHandler.executeWithRetry(
+        const run = ErrorHandler.executeWithRetry(
           operation,
           { operation: 'test' },
           { maxRetries: 2, retryDelay: 100, backoffMultiplier: 2 }
-        )
-      ).rejects.toThrow();
+        );
+        const settled = expect(run).rejects.toThrow(FileManagementError);
 
-      const duration = Date.now() - startTime;
+        await vi.advanceTimersByTimeAsync(0);
+        expect(operation).toHaveBeenCalledTimes(1);
 
-      // Should wait 100ms + 200ms = 300ms
-      expect(duration).toBeGreaterThanOrEqual(290);
+        // first retry waits retryDelay (100ms)
+        await vi.advanceTimersByTimeAsync(99);
+        expect(operation).toHaveBeenCalledTimes(1);
+        await vi.advanceTimersByTimeAsync(1);
+        expect(operation).toHaveBeenCalledTimes(2);
+
+        // second retry waits retryDelay * backoffMultiplier (200ms)
+        await vi.advanceTimersByTimeAsync(199);
+        expect(operation).toHaveBeenCalledTimes(2);
+        await vi.advanceTimersByTimeAsync(1);
+        expect(operation).toHaveBeenCalledTimes(3);
+
+        await settled;
+      } finally {
+        vi.useRealTimers();
+      }
     });
   });
 

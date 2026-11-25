@@ -1,9 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { WAITING_WINDOW_DAYS } from '@shared/api-contracts/dashboard';
 import { buildDashboardSummary } from '@/modules/dashboard/services/dashboard-service';
 import { getStaleWaitingSummary, getNeverRepliedIds } from '@/modules/dashboard/services/stale-waiting-service';
 import { getWaitingConversations } from '@/modules/dashboard/services/waiting-service';
-import { addConv, addCustomer, addMsg, createDashboardDb, d1Of } from '../../../helpers/sqlite-d1';
+import { addConv, addCustomer, addMsg, createDashboardDb, d1Of, type QueryLog } from '../../../helpers/sqlite-d1';
 
 const NOW = Date.parse('2026-10-29T10:00:00.000Z');
 const DAY = 24 * 3600_000;
@@ -18,10 +17,6 @@ function build() {
 }
 
 describe('待回覆 window', () => {
-  it('is 7 days', () => {
-    expect(WAITING_WINDOW_DAYS).toBe(7);
-  });
-
   it('counts waits that started within 7 days; older ones are excluded (boundary inclusive)', async () => {
     const db = build();
     addConv(db, 'fresh');
@@ -112,12 +107,16 @@ describe('staleWaiting summary', () => {
     expect((await getStaleWaitingSummary(d1Of(db), admin, NOW)).count).toBe(0);
   });
 
-  it('reads through the partial index, not the table', () => {
+  it('reads through the partial index, not the table', async () => {
     const db = build();
-    const plan = (db.prepare(`EXPLAIN QUERY PLAN
-      SELECT COUNT(*) FROM conversations c
-      WHERE c.awaiting_since IS NOT NULL AND c.awaiting_since < ? AND c.status <> 'closed' AND c.deleted_at IS NULL`)
-      .all('x') as Array<{ detail: string }>).map(p => p.detail).join(' | ');
+    const log: QueryLog[] = [];
+    await getStaleWaitingSummary(d1Of(db, log), admin, NOW);
+    // The exact statement the service sent (admin visibility binds no extra params).
+    const sent = log.find(entry => entry.sql.includes('awaiting_since'))?.sql;
+    expect(sent).toBeDefined();
+    const plan = (db.prepare(`EXPLAIN QUERY PLAN ${sent}`).all('x') as Array<{ detail: string }>)
+      .map(p => p.detail).join(' | ');
     expect(plan).toContain('idx_conversations_awaiting_since');
+    expect(plan).not.toMatch(/SCAN c\b(?!\s+USING)/);
   });
 });

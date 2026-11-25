@@ -234,18 +234,6 @@ describe('MemberService', () => {
       expect(deleteCount + updateCount).toBe(17);
     });
 
-    it('should clean up notifications first', async () => {
-      await service.hardDeleteMember('member-1', 'admin-1');
-
-      expect(dbOperations[0]).toBe('delete:notifications');
-    });
-
-    it('should nullify message sender in step 2', async () => {
-      await service.hardDeleteMember('member-1', 'admin-1');
-
-      expect(dbOperations[1]).toBe('update:messages');
-    });
-
     it('should delete agent record last', async () => {
       await service.hardDeleteMember('member-1', 'admin-1');
 

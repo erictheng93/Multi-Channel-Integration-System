@@ -445,6 +445,55 @@ describe('FileValidationService', () => {
     });
   });
 
+  describe('validateQuick edge cases', () => {
+    const base: FileValidationMetadata = {
+      filename: 'test.jpg',
+      size: 1024,
+      mimeType: 'image/jpeg',
+      extension: '.jpg'
+    };
+
+    test('accepts a file exactly at the maximum size', () => {
+      expect(validationService.validateQuick({ ...base, size: FILE_SIZE_LIMITS.MAX_FILE_SIZE }).valid).toBe(true);
+    });
+
+    test('reports the offending size as the error value', () => {
+      const size = FILE_SIZE_LIMITS.MAX_FILE_SIZE + 1;
+      const sizeError = validationService.validateQuick({ ...base, size }).errors.find(e => e.field === 'size');
+      expect(sizeError).toMatchObject({ code: ERROR_CODES.FILE_TOO_LARGE, value: size });
+    });
+
+    test('rejects a blocked extension even with an allowed MIME type', () => {
+      const result = validationService.validateQuick({ ...base, filename: 'payload.exe', extension: '.exe' });
+      expect(result.valid).toBe(false);
+      expect(result.errors).toContainEqual(
+        expect.objectContaining({ code: ERROR_CODES.PROHIBITED_FILE_TYPE, field: 'extension' })
+      );
+    });
+
+    test('rejects an empty MIME type', () => {
+      expect(validationService.validateQuick({ ...base, mimeType: '' }).errors).toContainEqual(
+        expect.objectContaining({ code: ERROR_CODES.INVALID_MIME_TYPE, field: 'mimeType' })
+      );
+    });
+  });
+
+  describe('file signature check', () => {
+    test('warns (without failing) when the bytes are a PNG but the file claims JPEG', async () => {
+      const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]).buffer;
+      const result = await validationService.validateFile(png, {
+        filename: 'fake.jpg',
+        size: png.byteLength,
+        mimeType: 'image/jpeg',
+        extension: '.jpg'
+      });
+      expect(result.valid).toBe(true);
+      expect(result.warnings).toContainEqual(
+        expect.objectContaining({ code: ERROR_CODES.INVALID_FILE_SIGNATURE, field: 'content' })
+      );
+    });
+  });
+
   describe('validateFiles', () => {
     test('should validate multiple files', async () => {
       const files = [

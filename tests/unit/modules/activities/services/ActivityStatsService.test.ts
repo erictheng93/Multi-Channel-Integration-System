@@ -1,364 +1,176 @@
-// ActivityStatsService Unit Tests
+// ActivityStatsService against a real SQLite-backed D1 double: the period filters, the system
+// actor exclusion and the json_extract "restorable" predicate are the SQL that runs in production.
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-
-vi.mock('drizzle-orm/d1', () => ({
-  drizzle: vi.fn(),
-}));
-
-vi.mock('drizzle-orm', () => ({
-  eq: (...args: any[]) => ({ type: 'eq', args }),
-  ne: (...args: any[]) => ({ type: 'ne', args }),
-  and: (...args: any[]) => ({ type: 'and', args }),
-  or: (...args: any[]) => ({ type: 'or', args }),
-  desc: (...args: any[]) => ({ type: 'desc', args }),
-  asc: (...args: any[]) => ({ type: 'asc', args }),
-  isNull: (...args: any[]) => ({ type: 'isNull', args }),
-  sql: Object.assign((..._args: any[]) => ({ type: 'sql', as: () => ({ type: 'sql_alias' }) }), {
-    raw: (..._args: any[]) => ({ type: 'sql_raw' }),
-  }),
-  count: (...args: any[]) => ({ type: 'count', args, as: (_alias: string) => ({ type: 'count_alias' }) }),
-  countDistinct: (...args: any[]) => ({ type: 'countDistinct', args }),
-  gte: (...args: any[]) => ({ type: 'gte', args }),
-  lte: (...args: any[]) => ({ type: 'lte', args }),
-  lt: (...args: any[]) => ({ type: 'lt', args }),
-  between: (...args: any[]) => ({ type: 'between', args }),
-  like: (...args: any[]) => ({ type: 'like', args }),
-}));
-
-vi.mock('@/db/drizzle-factory', () => ({ createDbClient: vi.fn() }));
-vi.mock('@/utils/timestamp', () => ({ nowISO: vi.fn(() => '2026-03-27T00:00:00.000Z') }));
-
-vi.mock('@/db/schema', () => ({
-  activities: {
-    id: { name: 'id' },
-    userId: { name: 'userId' },
-    userName: { name: 'userName' },
-    userRole: { name: 'userRole' },
-    action: { name: 'action' },
-    resourceType: { name: 'resourceType' },
-    resourceId: { name: 'resourceId' },
-    details: { name: 'details' },
-    ipAddress: { name: 'ipAddress' },
-    userAgent: { name: 'userAgent' },
-    createdAt: { name: 'createdAt' },
-    name: 'activities',
-  },
-}));
-
-vi.mock('@modules/activities/utils/formatters', () => ({
-  ActivityFormatter: {
-    formatResourceType: vi.fn((rt: string) => rt),
-    formatUserRole: vi.fn((role: string) => role),
-  },
-}));
-
-// ---- Chain builders ----
-
-function createSelectChain(returnValue?: any) {
-  const chain: Record<string, any> = {};
-  const methods = ['from', 'where', 'orderBy', 'limit', 'offset', 'groupBy'];
-  for (const m of methods) {
-    chain[m] = vi.fn().mockReturnValue(chain);
-  }
-  chain.then = (resolve: (v: any) => void, reject?: (e: any) => void) =>
-    Promise.resolve(returnValue ?? []).then(resolve, reject);
-  return chain;
-}
-
-// Queued select results
-let selectResultsQueue: any[] = [];
-
-const mockDb: any = {
-  select: vi.fn().mockImplementation(() => {
-    const result = selectResultsQueue.shift();
-    return createSelectChain(result);
-  }),
-  insert: vi.fn(),
-  update: vi.fn(),
-  delete: vi.fn(),
-  run: vi.fn().mockResolvedValue({ results: [] }),
-};
-
-import { createDbClient } from '@/db/drizzle-factory';
-vi.mocked(createDbClient).mockReturnValue(mockDb);
-
+import Database from 'better-sqlite3';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { d1Of } from '../../../../helpers/sqlite-d1';
 import { ActivityStatsService } from '@modules/activities/services/ActivityStatsService';
 
-describe('ActivityStatsService', () => {
+const NOW = new Date('2026-03-27T12:00:00.000Z');
+const HOUR = 60 * 60 * 1000;
+
+function hoursAgo(hours: number): string {
+  return new Date(NOW.getTime() - hours * HOUR).toISOString();
+}
+
+interface Row {
+  userId: string;
+  userRole?: string;
+  action?: string;
+  resourceType?: string;
+  createdAt: string;
+  details?: string | null;
+}
+
+describe('ActivityStatsService (real SQL)', () => {
+  let sqlite: Database.Database;
   let service: ActivityStatsService;
-  const mockDatabase = {} as any;
+
+  function seed(rows: Row[]) {
+    const insert = sqlite.prepare(
+      `INSERT INTO activities (user_id, user_name, user_role, action, resource_type, details, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`
+    );
+    for (const r of rows) {
+      insert.run(r.userId, `name-${r.userId}`, r.userRole ?? 'agent', r.action ?? 'team_create',
+        r.resourceType ?? 'team', r.details ?? null, r.createdAt);
+    }
+  }
+
+  function reversible(overrides: { restoredByActivityId?: number | null; expiresAt?: string } = {}): string {
+    return JSON.stringify({
+      reversible: true,
+      restoredByActivityId: overrides.restoredByActivityId ?? null,
+      restorePolicy: { expiresAt: overrides.expiresAt ?? new Date(NOW.getTime() + HOUR).toISOString(), requiresAdmin: false }
+    });
+  }
 
   beforeEach(() => {
-    vi.clearAllMocks();
-    selectResultsQueue = [];
-    vi.mocked(createDbClient).mockReturnValue(mockDb);
-    mockDb.run.mockResolvedValue({ results: [] });
-    service = new ActivityStatsService(mockDatabase);
+    vi.useFakeTimers();
+    vi.setSystemTime(NOW);
+    sqlite = new Database(':memory:');
+    sqlite.exec(`CREATE TABLE activities (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id TEXT NOT NULL, user_name TEXT NOT NULL, user_role TEXT NOT NULL,
+      action TEXT NOT NULL, resource_type TEXT NOT NULL, resource_id TEXT,
+      details TEXT, ip_address TEXT, user_agent TEXT, created_at TEXT
+    )`);
+    service = new ActivityStatsService(d1Of(sqlite));
   });
 
-  // =========================================================================
-  // getOverview
-  // =========================================================================
+  afterEach(() => {
+    vi.useRealTimers();
+    sqlite.close();
+  });
+
   describe('getOverview', () => {
-    it('should return correct structure with populated stats', async () => {
-      // getOverview makes 6 select queries: total, actionStats, userStats, dailyStats, activeUsers, restorable
-      selectResultsQueue = [
-        [{ count: 50 }],
-        [{ action: 'team_create', count: 30 }, { action: 'user_login', count: 20 }],
-        [{ userName: 'Alice', userRole: 'admin', count: 35 }, { userName: 'Bob', userRole: 'agent', count: 15 }],
-        [{ date: '2026-03-27', count: 25 }, { date: '2026-03-26', count: 25 }],
-        [{ count: 4 }], // activeUserCount
-        [{ count: 2 }], // restorableCount
-      ];
+    it('counts only the window, and keeps the system actor out of users but not out of totals', async () => {
+      seed([
+        { userId: 'a', action: 'team_create', createdAt: hoursAgo(1) },
+        { userId: 'a', action: 'team_update', createdAt: hoursAgo(2) },
+        { userId: 'b', action: 'team_create', createdAt: hoursAgo(3) },
+        { userId: 'system', action: 'conversation_close', createdAt: hoursAgo(4) },
+        { userId: 'system', action: 'conversation_close', createdAt: hoursAgo(5) },
+        { userId: 'system', action: 'conversation_close', createdAt: hoursAgo(6) },
+        { userId: 'a', action: 'team_create', createdAt: hoursAgo(24 * 8) }
+      ]);
 
-      const result = await service.getOverview(7);
+      const overview = await service.getOverview(7);
 
-      expect(result.totalActivities).toBe(50);
-      expect(result.activeUserCount).toBe(4);
-      expect(result.restorableCount).toBe(2);
-      expect(result.actionStats).toEqual({ team_create: 30, user_login: 20 });
-      expect(result.topUsers).toHaveLength(2);
-      expect(result.topUsers[0].userName).toBe('Alice');
-      expect(result.dailyStats).toHaveLength(2);
-      expect(result.period.days).toBe(7);
-      expect(result.period.endDate).toBe('2026-03-27T00:00:00.000Z');
+      expect(overview.totalActivities).toBe(6);
+      expect(overview.activeUserCount).toBe(2);
+      expect(overview.topUsers.map(u => u.userName)).toEqual(['name-a', 'name-b']);
+      expect(overview.actionStats).toEqual({ team_create: 2, team_update: 1, conversation_close: 3 });
+      expect(overview.dailyStats).toEqual([{ date: '2026-03-27', count: 6 }]);
     });
 
-    it('should return zero totals and empty arrays when no data', async () => {
-      selectResultsQueue = [
-        [{ count: 0 }],
-        [],
-        [],
-        [],
-      ];
+    it('restorableCount = reversible, not yet restored, window still open; malformed details are skipped', async () => {
+      seed([
+        { userId: 'a', createdAt: hoursAgo(1), details: reversible() },
+        { userId: 'a', createdAt: hoursAgo(1), details: reversible({ restoredByActivityId: 9 }) },
+        { userId: 'a', createdAt: hoursAgo(1), details: reversible({ expiresAt: hoursAgo(0.5) }) },
+        { userId: 'a', createdAt: hoursAgo(1), details: JSON.stringify({ reversible: false, irreversibleReason: 'x' }) },
+        { userId: 'a', createdAt: hoursAgo(1), details: 'not json {' },
+        { userId: 'a', createdAt: hoursAgo(1), details: null }
+      ]);
 
-      const result = await service.getOverview(7);
+      const overview = await service.getOverview(7);
 
-      expect(result.totalActivities).toBe(0);
-      expect(result.actionStats).toEqual({});
-      expect(result.topUsers).toHaveLength(0);
-      expect(result.dailyStats).toHaveLength(0);
-    });
-
-    it('should default to 7 days when no argument provided', async () => {
-      selectResultsQueue = [[{ count: 0 }], [], [], []];
-
-      const result = await service.getOverview();
-
-      expect(result.period.days).toBe(7);
+      expect(overview.totalActivities).toBe(6);
+      expect(overview.restorableCount).toBe(1);
     });
   });
 
-  // =========================================================================
-  // getResourceTypeStats
-  // =========================================================================
-  describe('getResourceTypeStats', () => {
-    it('should compute percentage for each resource type', async () => {
-      selectResultsQueue = [
-        [
-          { resourceType: 'team', count: 60 },
-          { resourceType: 'user', count: 40 },
-        ],
-      ];
+  it('getResourceTypeStats returns rounded percentages, largest first', async () => {
+    seed([
+      { userId: 'a', resourceType: 'team', createdAt: hoursAgo(1) },
+      { userId: 'a', resourceType: 'team', createdAt: hoursAgo(1) },
+      { userId: 'a', resourceType: 'tag', createdAt: hoursAgo(1) }
+    ]);
 
-      const result = await service.getResourceTypeStats(30);
+    const stats = await service.getResourceTypeStats(30);
 
-      expect(result).toHaveLength(2);
-      expect(result[0].resourceType).toBe('team');
-      expect(result[0].count).toBe(60);
-      expect(result[0].percentage).toBe(60);
-      expect(result[1].percentage).toBe(40);
-    });
-
-    it('should return empty array when no activities', async () => {
-      selectResultsQueue = [[]];
-
-      const result = await service.getResourceTypeStats(30);
-
-      expect(result).toHaveLength(0);
-    });
+    expect(stats.map(s => [s.resourceType, s.count, s.percentage])).toEqual([['team', 2, 67], ['tag', 1, 33]]);
   });
 
-  // =========================================================================
-  // getUserRoleStats
-  // =========================================================================
-  describe('getUserRoleStats', () => {
-    it('should compute percentage for each user role', async () => {
-      selectResultsQueue = [
-        [
-          { userRole: 'admin', count: 80 },
-          { userRole: 'agent', count: 20 },
-        ],
-      ];
+  it('getActivityTrends merges the per-action breakdown into each day, oldest first', async () => {
+    seed([
+      { userId: 'a', action: 'team_create', createdAt: '2026-03-25T10:00:00.000Z' },
+      { userId: 'a', action: 'team_create', createdAt: '2026-03-26T10:00:00.000Z' },
+      { userId: 'a', action: 'team_update', createdAt: '2026-03-26T11:00:00.000Z' }
+    ]);
 
-      const result = await service.getUserRoleStats(30);
-
-      expect(result).toHaveLength(2);
-      expect(result[0].userRole).toBe('admin');
-      expect(result[0].percentage).toBe(80);
-      expect(result[1].percentage).toBe(20);
-    });
+    await expect(service.getActivityTrends(30)).resolves.toEqual([
+      { date: '2026-03-25', count: 1, actions: { team_create: 1 } },
+      { date: '2026-03-26', count: 2, actions: { team_create: 1, team_update: 1 } }
+    ]);
   });
 
-  // =========================================================================
-  // getActivityTrends
-  // =========================================================================
-  describe('getActivityTrends', () => {
-    it('should return daily array with action breakdown', async () => {
-      selectResultsQueue = [
-        [
-          { date: '2026-03-26', count: 10 },
-          { date: '2026-03-27', count: 20 },
-        ],
-      ];
-      mockDb.run.mockResolvedValueOnce({
-        results: [
-          { date: '2026-03-26', action: 'team_create', count: 5 },
-          { date: '2026-03-26', action: 'user_login', count: 5 },
-          { date: '2026-03-27', action: 'team_create', count: 20 },
-        ],
-      });
+  it('getActivityHeatmap buckets by UTC hour and grades intensity at 20 and 50', async () => {
+    seed([
+      ...Array.from({ length: 20 }, () => ({ userId: 'a', createdAt: '2026-03-26T09:10:00.000Z' })),
+      ...Array.from({ length: 19 }, () => ({ userId: 'a', createdAt: '2026-03-26T10:10:00.000Z' })),
+      ...Array.from({ length: 50 }, () => ({ userId: 'a', createdAt: '2026-03-26T11:10:00.000Z' }))
+    ]);
 
-      const result = await service.getActivityTrends(30);
+    const heatmap = await service.getActivityHeatmap(30);
 
-      expect(result).toHaveLength(2);
-      const day1 = result.find(r => r.date === '2026-03-26');
-      expect(day1?.count).toBe(10);
-      expect(day1?.actions?.team_create).toBe(5);
-      expect(day1?.actions?.user_login).toBe(5);
-
-      const day2 = result.find(r => r.date === '2026-03-27');
-      expect(day2?.count).toBe(20);
-      expect(day2?.actions?.team_create).toBe(20);
-    });
-
-    it('should return empty array when no activities', async () => {
-      selectResultsQueue = [[]];
-      mockDb.run.mockResolvedValueOnce({ results: [] });
-
-      const result = await service.getActivityTrends(30);
-
-      expect(result).toHaveLength(0);
-    });
+    expect(heatmap.map(h => [h.hour, h.count, h.intensity])).toEqual([
+      [9, 20, 'medium'],
+      [10, 19, 'low'],
+      [11, 50, 'high']
+    ]);
   });
 
-  // =========================================================================
-  // getActivityHeatmap
-  // =========================================================================
-  describe('getActivityHeatmap', () => {
-    it('should return date x hour matrix with intensity levels', async () => {
-      mockDb.run.mockResolvedValueOnce({
-        results: [
-          { date: '2026-03-27', hour: 9, count: 5 },
-          { date: '2026-03-27', hour: 14, count: 25 },
-          { date: '2026-03-27', hour: 18, count: 60 },
-        ],
-      });
+  it('getPerformanceMetrics picks the peak hour, top non-system user and most common action', async () => {
+    seed([
+      { userId: 'system', action: 'conversation_close', createdAt: '2026-03-26T03:00:00.000Z' },
+      { userId: 'system', action: 'conversation_close', createdAt: '2026-03-26T03:05:00.000Z' },
+      { userId: 'system', action: 'conversation_close', createdAt: '2026-03-26T03:10:00.000Z' },
+      { userId: 'a', action: 'team_create', createdAt: '2026-03-26T08:00:00.000Z' },
+      { userId: 'a', action: 'team_create', createdAt: '2026-03-25T08:00:00.000Z' }
+    ]);
 
-      const result = await service.getActivityHeatmap(7);
+    const metrics = await service.getPerformanceMetrics(7);
 
-      expect(result).toHaveLength(3);
-      expect(result[0]).toEqual({ date: '2026-03-27', hour: 9, count: 5, intensity: 'low' });
-      expect(result[1]).toEqual({ date: '2026-03-27', hour: 14, count: 25, intensity: 'medium' });
-      expect(result[2]).toEqual({ date: '2026-03-27', hour: 18, count: 60, intensity: 'high' });
-    });
-
-    it('should return empty array when no data', async () => {
-      mockDb.run.mockResolvedValueOnce({ results: [] });
-
-      const result = await service.getActivityHeatmap(7);
-
-      expect(result).toHaveLength(0);
-    });
+    expect(metrics.peakHour).toBe(3);
+    expect(metrics.mostActiveUser).toBe('name-a');
+    expect(metrics.mostCommonAction).toBe('conversation_close');
+    expect(metrics.avgActivitiesPerDay).toBe(1);
+    expect(metrics.systemLoad).toBe('low');
   });
 
-  // =========================================================================
-  // getPerformanceMetrics
-  // =========================================================================
-  describe('getPerformanceMetrics', () => {
-    it('should calculate avgActivitiesPerDay and mostActiveUser', async () => {
-      // getPerformanceMetrics calls getOverview (4 selects) then getActivityHeatmap (1 run)
-      selectResultsQueue = [
-        [{ count: 70 }],
-        [{ action: 'team_create', count: 70 }],
-        [{ userName: 'Alice', userRole: 'admin', count: 70 }],
-        [],
-      ];
-      mockDb.run.mockResolvedValueOnce({
-        results: [{ date: '2026-03-27', hour: 10, count: 70 }],
-      });
+  it('getCustomPeriodStats includes both bounds and nothing outside them', async () => {
+    seed([
+      { userId: 'a', createdAt: '2026-03-01T00:00:00.000Z' },
+      { userId: 'a', createdAt: '2026-03-05T00:00:00.000Z' },
+      { userId: 'a', createdAt: '2026-03-05T00:00:00.001Z' },
+      { userId: 'a', createdAt: '2026-02-28T23:59:59.999Z' }
+    ]);
 
-      const result = await service.getPerformanceMetrics(7);
+    const stats = await service.getCustomPeriodStats('2026-03-01T00:00:00.000Z', '2026-03-05T00:00:00.000Z');
 
-      expect(result.avgActivitiesPerDay).toBe(10); // 70 / 7
-      expect(result.mostActiveUser).toBe('Alice');
-      expect(result.mostCommonAction).toBe('team_create');
-      expect(result.peakHour).toBe(10);
-      expect(result.systemLoad).toBe('low');
-    });
-
-    it('should return null for mostActiveUser when no users', async () => {
-      selectResultsQueue = [
-        [{ count: 0 }],
-        [],
-        [],
-        [],
-      ];
-      mockDb.run.mockResolvedValueOnce({ results: [] });
-
-      const result = await service.getPerformanceMetrics(7);
-
-      expect(result.mostActiveUser).toBeNull();
-      expect(result.mostCommonAction).toBeNull();
-      expect(result.avgActivitiesPerDay).toBe(0);
-      expect(result.systemLoad).toBe('low');
-    });
-
-    it('should set systemLoad to high when avgActivitiesPerDay > 1000', async () => {
-      selectResultsQueue = [
-        [{ count: 7001 }], // 7001/7 = 1000.14... -> 1000 rounds down = low, so use 14000
-        [],
-        [],
-        [],
-      ];
-      // Reset: use 14000/7 = 2000 avg
-      selectResultsQueue = [
-        [{ count: 14000 }],
-        [],
-        [],
-        [],
-      ];
-      mockDb.run.mockResolvedValueOnce({ results: [] });
-
-      const result = await service.getPerformanceMetrics(7);
-
-      expect(result.systemLoad).toBe('high');
-    });
-  });
-
-  // =========================================================================
-  // getCustomPeriodStats
-  // =========================================================================
-  describe('getCustomPeriodStats', () => {
-    it('should return overview for custom period', async () => {
-      selectResultsQueue = [
-        [{ count: 100 }],
-        [{ action: 'team_create', count: 100 }],
-        [{ userName: 'Alice', userRole: 'admin', count: 100 }],
-        [{ date: '2026-03-20', count: 50 }, { date: '2026-03-21', count: 50 }],
-      ];
-
-      const result = await service.getCustomPeriodStats(
-        '2026-03-20T00:00:00.000Z',
-        '2026-03-27T00:00:00.000Z'
-      );
-
-      expect(result.totalActivities).toBe(100);
-      expect(result.actionStats).toEqual({ team_create: 100 });
-      expect(result.topUsers).toHaveLength(1);
-      expect(result.dailyStats).toHaveLength(2);
-      expect(result.period.days).toBeGreaterThan(0);
-    });
+    expect(stats.totalActivities).toBe(2);
+    expect(stats.period.days).toBe(4);
   });
 });
