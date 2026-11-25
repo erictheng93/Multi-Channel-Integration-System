@@ -109,10 +109,10 @@ jobs:
       - name: Backend TypeScript (tsc)
         run: bunx tsc --noEmit
 
-      - name: Scripts TypeScript (scripts/, tools/, database/)
+      - name: Scripts TypeScript (scripts/, database/)
         run: bun run type-check:scripts
 
-      - name: Scripts ESLint (scripts/, tools/, database/)
+      - name: Scripts ESLint (scripts/, database/)
         run: bun run lint:scripts
 
       - name: Frontend TypeScript (vue-tsc)

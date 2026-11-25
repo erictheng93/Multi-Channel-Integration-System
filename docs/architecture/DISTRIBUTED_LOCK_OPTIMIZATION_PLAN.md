@@ -371,7 +371,7 @@ bun run test -- tests/unit/services/websocket-broadcast-service.test.ts
 bun run test -- tests/integration/websocket/
 
 # 负载测试
-bun run test:load -- --scenario=broadcast --connections=1000
+# (the repo has no load-test runner any more; use wrangler tail / Workers analytics)
 ```
 
 #### 步骤3: 部署

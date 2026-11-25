@@ -1,21 +1,10 @@
 # Testing Strategy
 
-## Comprehensive WebSocket Testing Infrastructure
+## WebSocket / Durable Object Tests
 
-The project features enterprise-grade testing for real-time WebSocket functionality:
-
-### **WebSocket Testing Categories**
-- **Unit Tests** (`tests/unit/durable-objects/`) - Individual Durable Objects testing
-- **Integration Tests** (`tests/integration/websocket/`) - End-to-end WebSocket flows
-- **Performance Tests** (`tests/performance/websocket/`) - 1000+ connection scalability testing
-- **Stress Tests** (`tests/stress/websocket/`) - High-load and recovery scenarios
-- **End-to-End Tests** (`tests/e2e/websocket/`) - Complete real-time conversation workflows
-
-### **WebSocket Test Infrastructure**
-- `tests/helpers/websocket/WebSocketTestClient.ts` - Simulates real WebSocket connections
-- `tests/helpers/websocket/DurableObjectsTestEnv.ts` - Mock Durable Objects environment
-- `tests/helpers/websocket/TestUtilities.ts` - Load testing and performance helpers
-- `tests/helpers/websocket/WebSocketTestSetup.ts` - Global WebSocket test configuration
+Durable Object and WebSocket behaviour is covered by unit tests in `tests/unit/durable-objects/`
+and `tests/unit/services/` (run by `test:backend:ci`). There is no separate WebSocket config,
+load-test or stress-test runner.
 
 ## Frontend Testing (132+ tests, 100% pass rate)
 
@@ -64,18 +53,23 @@ bun run test:ui
 ### Backend Tests
 
 ```bash
-# Run all handler tests
-bun run test:handlers
+# Full backend suite, exactly as CI runs it (root vitest.config.ts, include tests/**)
+bun run test:backend:ci
 
-# Run API integration tests
-bun run test:api
-
-# Run file upload end-to-end tests
-bun run test:upload
+# Subsets
+bun run test:unit
+bun run test:modules
+bun run test:handlers:unit
 
 # Run specific test file
-npm test tests/unit/handlers/messaging-handler.test.ts
+bunx vitest run tests/unit/handlers/messaging-crud.test.ts
+
+# Opt-in: measure D1 rows_read of the dashboard queries on a local workerd D1
+bun run test:perf:rows-read
 ```
+
+Backend tests must live under `tests/`; a `*.test.ts` under `src/` is outside the
+root config's include and never runs.
 
 ## Running Tests with Bun (Optional - Faster)
 
@@ -116,12 +110,8 @@ bun vitest --ui
 ### Backend Tests with Bun
 
 ```bash
-# Run handler tests (root directory)
-cd tests
-bun test
-
-# Note: Database tests use bun:sqlite adapter
-# See tests/helpers/bun-sqlite-adapter.ts for implementation
+# From the repo root (uses the root vitest.config.ts)
+bun run test:backend:ci
 ```
 
 ### Known Limitations with Bun
@@ -134,28 +124,6 @@ bun test
 ** Known Issues:**
 - `better-sqlite3` requires `bun:sqlite` adapter (see `tests/archive/deprecated-helpers/bun-sqlite-adapter.ts`)
 - Some tests may show `ReferenceError: document is not defined` (environment config issue, not critical)
-
-### Bun Test Environment
-
-**Automatic SQLite Adapter:**
-The project automatically uses `bun:sqlite` adapter when running tests with Bun:
-
-```typescript
-// tests/vitest.config.ts
-resolve: {
-  alias: {
-    'better-sqlite3': typeof Bun !== 'undefined'
-      ? path.resolve(__dirname, './helpers/bun-sqlite-adapter.ts')
-      : 'better-sqlite3'
-  }
-}
-```
-
-**Custom Adapter Features:**
-- 95% API compatibility with better-sqlite3
-- Supports `prepare()`, `run()`, `get()`, `all()`, `transaction()`
-- Automatic transaction handling
-- See `tests/helpers/bun-sqlite-adapter.ts` for implementation details
 
 ### Switching Between npm and Bun
 
@@ -218,8 +186,7 @@ beforeEach(() => {
 |--------|---------|
 | `tests/helpers/mockDrizzle.ts` | Drizzle ORM mock utilities |
 | `tests/helpers/mockKV.ts` | Cloudflare KV mock |
-| `tests/helpers/testUtils.ts` | General test utilities |
-| `tests/helpers/websocket/` | WebSocket test client and helpers |
+| `tests/helpers/sqlite-d1.ts` | In-memory SQLite D1 with real migrations |
 
 ## Test Best Practices
 
@@ -227,7 +194,7 @@ beforeEach(() => {
 2. **Use Active Helpers Only**: See `tests/helpers/README.md` for current helpers
 3. **Test Real-time Features**: Ensure WebSocket events are properly tested
 4. **Coverage Goals**: Maintain >80% coverage for critical paths
-5. **Performance Testing**: Include load testing for scalability validation
+5. **Performance Testing**: Query-cost measurements are opt-in (`bun run test:perf:rows-read`)
 6. **Bun Testing** (Optional): Use Bun for faster test execution during local development
 
 ## Related Documentation

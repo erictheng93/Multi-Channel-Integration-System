@@ -13,30 +13,26 @@ tests/
   unit/ # Unit tests
   modules/ # Module-specific tests
   integration/ # Integration tests
-  e2e/ # End-to-end tests
   edge-cases/ # Boundary condition tests
+  contract/ validation/ database/ smoke/ # Run by test:backend:ci as well
+  performance/ # Opt-in measurements, NOT in CI (bun run test:perf:rows-read)
   helpers/ # Active test helpers (see helpers/README.md)
     mockDrizzle.ts # Drizzle ORM mocking
     mockKV.ts # Cloudflare KV mocking
-    testUtils.ts # General utilities
-    websocket/ # WebSocket test infrastructure
-  archive/ # Historical reference only (do not use)
+    sqlite-d1.ts # Real SQLite-backed D1 for query-level tests
 ```
 
 ## Running Tests
 
 ```bash
-# Run all handler tests
-npm run test:handlers
+# Full backend suite, as CI runs it (from the repo root)
+bun run test:backend:ci
 
-# Run API integration tests
-npm run test:api
+# Handler unit tests only
+bun run test:handlers:unit
 
 # Run specific test file
-npm test tests/unit/handlers/messaging-handler.test.ts
-
-# Run with coverage
-npm run test:coverage
+bunx vitest run tests/unit/handlers/messaging-crud.test.ts
 ```
 
 ## Active Helpers
