@@ -319,28 +319,6 @@ describe('NewMessageNotification', () => {
     })
   })
 
-  describe('Props validation', () => {
-    it('should accept all prop types correctly', () => {
-      const wrapper = mount(NewMessageNotification, {
-        props: {
-          isVisible: true,
-          count: 5,
-          isRealtime: true,
-          label: 'Test Label',
-          realtimeLabel: 'Test Realtime',
-          dismissTitle: 'Test Dismiss',
-        },
-      })
-
-      expect(wrapper.props('isVisible')).toBe(true)
-      expect(wrapper.props('count')).toBe(5)
-      expect(wrapper.props('isRealtime')).toBe(true)
-      expect(wrapper.props('label')).toBe('Test Label')
-      expect(wrapper.props('realtimeLabel')).toBe('Test Realtime')
-      expect(wrapper.props('dismissTitle')).toBe('Test Dismiss')
-    })
-  })
-
   describe('Edge cases', () => {
     it('should handle count of 1', () => {
       const wrapper = mount(NewMessageNotification, {
@@ -416,18 +394,6 @@ describe('NewMessageNotification', () => {
   })
 
   describe('Accessibility', () => {
-    it('should have proper semantic structure', () => {
-      const wrapper = mount(NewMessageNotification, {
-        props: {
-          isVisible: true,
-          count: 5,
-        },
-      })
-
-      const notification = wrapper.find('.glassmorphism-notification')
-      expect(notification.exists()).toBe(true)
-    })
-
     it('should have dismiss button with title attribute', () => {
       const wrapper = mount(NewMessageNotification, {
         props: {

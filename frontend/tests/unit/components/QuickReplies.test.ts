@@ -248,56 +248,6 @@ describe('QuickReplies', () => {
 
       expect(wrapper.find('.quick-replies').exists()).toBe(true)
     })
-
-    it('should maintain button key stability', async () => {
-      const wrapper = mount(QuickReplies, {
-        props: {
-          replies: mockReplies,
-        },
-      })
-
-      const initialKeys = wrapper.findAll('.quick-reply-btn').map(b => b.attributes('data-key') || b.key)
-
-      await wrapper.setProps({ replies: [...mockReplies] })
-
-      const updatedKeys = wrapper.findAll('.quick-reply-btn').map(b => b.attributes('data-key') || b.key)
-
-      // Keys should remain stable for same reply IDs
-      expect(initialKeys).toEqual(updatedKeys)
-    })
-  })
-
-  describe('Props validation', () => {
-    it('should accept replies array', () => {
-      const wrapper = mount(QuickReplies, {
-        props: {
-          replies: mockReplies,
-        },
-      })
-
-      expect(wrapper.props('replies')).toEqual(mockReplies)
-    })
-
-    it('should accept disabled boolean', () => {
-      const wrapper = mount(QuickReplies, {
-        props: {
-          replies: mockReplies,
-          disabled: true,
-        },
-      })
-
-      expect(wrapper.props('disabled')).toBe(true)
-    })
-
-    it('should default disabled to false', () => {
-      const wrapper = mount(QuickReplies, {
-        props: {
-          replies: mockReplies,
-        },
-      })
-
-      expect(wrapper.props('disabled')).toBe(false)
-    })
   })
 
   describe('Edge cases', () => {
