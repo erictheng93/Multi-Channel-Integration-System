@@ -94,7 +94,9 @@ describe('silent-drop detector', () => {
     expect(
       guarded.length,
       `Baseline ${VOCABULARY_LIST} is missing or empty. ${REFRESH_HINT}`
-    ).toBeGreaterThan(400)
+    // Floor guards a truncated/empty baseline, not vocabulary size: the 2026-10 token migration
+    // moved many utilities into scoped CSS (481 -> 328 entries at the Tailwind 4 re-baseline).
+    ).toBeGreaterThan(200)
   })
 
   it('every guarded utility can actually be handed to the compiler', () => {
