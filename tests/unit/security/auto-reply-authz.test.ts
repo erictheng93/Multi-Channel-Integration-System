@@ -65,7 +65,10 @@ describe('auto-reply authorization (F02/F11/F12)', () => {
 
   it('member passes the teamId check for own team', async () => {
     currentUser = { id: 'a', role: 'agent', allowedTeamIds: [1] }
-    await call('GET', '/logs?teamId=1')
-    expect(dbTouched).toHaveBeenCalled()
+    // The GET handlers open the db client before the team check, so dbTouched proves nothing here;
+    // getting past the guard means anything but 403 (the stub db then fails the query).
+    for (const p of ['/logs?teamId=1', '/rules?teamId=1', '/schedules?teamId=1']) {
+      expect((await call('GET', p)).status).not.toBe(403)
+    }
   })
 })

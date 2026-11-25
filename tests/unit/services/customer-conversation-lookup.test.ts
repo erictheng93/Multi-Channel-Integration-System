@@ -1,44 +1,45 @@
 // customer-conversation-lookup: deterministic "one conversation per customer" selection
-import { describe, it, expect, vi } from 'vitest';
-
-vi.mock('drizzle-orm', () => ({
-  eq: (...args: unknown[]) => ({ type: 'eq', args }),
-  desc: (col: unknown) => ({ type: 'desc', col }),
-  sql: (strings: TemplateStringsArray) => ({ type: 'sql', text: strings.join('?') }),
-}));
-
-vi.mock('@/db/schema', () => ({
-  conversations: {
-    id: { name: 'id' },
-    customerId: { name: 'customerId' },
-    status: { name: 'status' },
-    lastMessageAt: { name: 'lastMessageAt' },
-    createdAt: { name: 'createdAt' },
-  },
-}));
-
+import { describe, it, expect } from 'vitest';
+import Sqlite from 'better-sqlite3';
+import { getTableConfig } from 'drizzle-orm/sqlite-core';
+import { conversations } from '@/db/schema';
+import { createDbClient } from '@/db/drizzle-factory';
 import { findCustomerConversation, getReopenStatus } from '@/services/customer-conversation-lookup';
+import { d1Of } from '../../helpers/sqlite-d1';
+
+function dbWith(rows: Array<{ id: string; customerId: number; status: string; lastMessageAt: string | null; createdAt: string }>) {
+  const sqlite = new Sqlite(':memory:');
+  const { columns } = getTableConfig(conversations);
+  sqlite.exec(`CREATE TABLE conversations (${columns.map(c => `"${c.name}" ${c.getSQLType()}`).join(', ')})`);
+  const insert = sqlite.prepare(
+    'INSERT INTO conversations (id, customer_id, status, last_message_at, created_at) VALUES (?, ?, ?, ?, ?)');
+  for (const r of rows) insert.run(r.id, r.customerId, r.status, r.lastMessageAt, r.createdAt);
+  return createDbClient(d1Of(sqlite));
+}
 
 describe('findCustomerConversation', () => {
-  it('orders non-closed rows before closed ones, then newest activity, and takes one row', async () => {
-    const chain: Record<string, any> = {};
-    chain.from = vi.fn(() => chain);
-    chain.where = vi.fn(() => chain);
-    chain.orderBy = vi.fn(() => chain);
-    chain.limit = vi.fn(() => chain);
-    chain.get = vi.fn().mockResolvedValue({ id: 'live' });
-    const db = { select: vi.fn(() => chain) };
+  it('prefers a non-closed conversation over a newer closed one', async () => {
+    const db = dbWith([
+      { id: 'closed-new', customerId: 7, status: 'closed', lastMessageAt: '2026-11-20T00:00:00Z', createdAt: '2026-11-01T00:00:00Z' },
+      { id: 'live-old', customerId: 7, status: 'active', lastMessageAt: '2026-10-01T00:00:00Z', createdAt: '2026-09-01T00:00:00Z' },
+      { id: 'other-customer', customerId: 8, status: 'active', lastMessageAt: '2026-11-24T00:00:00Z', createdAt: '2026-11-24T00:00:00Z' },
+    ]);
+    expect((await findCustomerConversation(db, 7))?.id).toBe('live-old');
+  });
 
-    const row = await findCustomerConversation(db as any, 7);
-
-    expect(row).toEqual({ id: 'live' });
-    const orderArgs = chain.orderBy.mock.calls[0];
-    expect(orderArgs).toHaveLength(4);
-    expect(orderArgs[0].type).toBe('sql');
-    expect(orderArgs[0].text).toContain("CASE WHEN");
-    expect(orderArgs[0].text).toContain("'closed' THEN 1 ELSE 0");
-    expect(orderArgs.slice(1).map((o: any) => o.col.name)).toEqual(['lastMessageAt', 'createdAt', 'id']);
-    expect(chain.limit).toHaveBeenCalledWith(1);
+  it('breaks ties by latest activity, then creation time, then id', async () => {
+    const db = dbWith([
+      { id: 'a', customerId: 7, status: 'closed', lastMessageAt: '2026-11-01T00:00:00Z', createdAt: '2026-01-01T00:00:00Z' },
+      { id: 'b', customerId: 7, status: 'closed', lastMessageAt: '2026-11-02T00:00:00Z', createdAt: '2026-01-01T00:00:00Z' },
+      { id: 'c', customerId: 9, status: 'assigned', lastMessageAt: '2026-11-02T00:00:00Z', createdAt: '2026-01-01T00:00:00Z' },
+      { id: 'd', customerId: 9, status: 'assigned', lastMessageAt: '2026-11-02T00:00:00Z', createdAt: '2026-02-01T00:00:00Z' },
+      { id: 'e', customerId: 10, status: 'active', lastMessageAt: null, createdAt: '2026-01-01T00:00:00Z' },
+      { id: 'f', customerId: 10, status: 'active', lastMessageAt: null, createdAt: '2026-01-01T00:00:00Z' },
+    ]);
+    expect((await findCustomerConversation(db, 7))?.id).toBe('b');
+    expect((await findCustomerConversation(db, 9))?.id).toBe('d');
+    expect((await findCustomerConversation(db, 10))?.id).toBe('f');
+    expect(await findCustomerConversation(db, 11)).toBeUndefined();
   });
 });
 

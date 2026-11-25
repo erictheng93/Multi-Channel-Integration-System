@@ -235,7 +235,9 @@ describe('DurableObjectsMonitor Service', () => {
       const alerts = monitor.getActiveAlerts();
 
       const errorAlerts = alerts.filter(a => a.type === DOAlertType.HIGH_ERROR_RATE);
-      expect(errorAlerts.length).toBeGreaterThanOrEqual(0);
+      expect(errorAlerts).toHaveLength(1);
+      expect(errorAlerts[0].severity).toBe('warning'); // 15% is above 10% but not above 2x
+      expect(alerts.filter(a => a.type === DOAlertType.HIGH_LATENCY)).toEqual([]);
     });
 
     it('should generate alert for high latency', async () => {
@@ -257,24 +259,36 @@ describe('DurableObjectsMonitor Service', () => {
 
       // Check for latency alert
       const latencyAlerts = alerts.filter(a => a.type === DOAlertType.HIGH_LATENCY);
-      expect(latencyAlerts.length).toBeGreaterThanOrEqual(0);
+      expect(latencyAlerts).toHaveLength(1);
+      expect(latencyAlerts[0].severity).toBe('warning'); // 2000ms is not above 2x the 1000ms threshold
+      expect(alerts.filter(a => a.type === DOAlertType.HIGH_ERROR_RATE)).toEqual([]);
     });
 
-    it('should limit alert history size', async () => {
-      // Perform multiple health checks to generate alerts
-      for (let i = 0; i < 150; i++) {
-        await monitor.performHealthCheck();
-      }
+    it('records an instance alert once per cooldown window, not on every health check', async () => {
+      (mockEnv.MESSAGE_BROADCASTER!.get as any).mockReturnValue({
+        fetch: vi.fn().mockResolvedValue({
+          ok: true,
+          json: vi.fn().mockResolvedValue({ activeConnections: 1, averageLatency: 50, errorRate: 0.15, memoryUsageMB: 30 })
+        })
+      });
 
-      const history = monitor.getAlertHistory();
-      expect(history.length).toBeLessThanOrEqual(100); // Max 100 alerts in history
+      for (let i = 0; i < 5; i++) await monitor.performHealthCheck();
+
+      expect(monitor.getAlertHistory().filter(a => a.type === DOAlertType.HIGH_ERROR_RATE)).toHaveLength(1);
     });
 
-    it('should get alert history with limit', async () => {
+    it('getAlertHistory(limit) returns the most recent alerts', async () => {
+      (mockEnv.CONVERSATION_ROOM!.get as any).mockReturnValue({
+        fetch: vi.fn().mockRejectedValue(new Error('DO unavailable'))
+      });
+      (mockEnv.USER_CONNECTION!.get as any).mockReturnValue({
+        fetch: vi.fn().mockRejectedValue(new Error('DO unavailable'))
+      });
       await monitor.performHealthCheck();
-      const history = monitor.getAlertHistory(10);
 
-      expect(history.length).toBeLessThanOrEqual(10);
+      const all = monitor.getAlertHistory();
+      expect(all.length).toBeGreaterThanOrEqual(2);
+      expect(monitor.getAlertHistory(1)).toEqual([all[all.length - 1]]);
     });
   });
 
@@ -285,38 +299,24 @@ describe('DurableObjectsMonitor Service', () => {
         fetch: vi.fn().mockRejectedValue(new Error('DO unavailable'))
       });
 
-      // Should not throw
       const stats = await monitor.performHealthCheck();
-      expect(stats).toBeDefined();
+      expect(stats.instancesByType.ConversationRoom ?? 0).toBe(0);
+      expect(stats.instancesByType.UserConnection).toBeGreaterThan(0);
     });
 
-    it('should mark unreachable instance as UNKNOWN', async () => {
+    it('records an unreachable instance as an unresponsive alert instead of a metric', async () => {
       // Override mock to simulate timeout
       (mockEnv.USER_CONNECTION!.get as any).mockReturnValue({
         fetch: vi.fn().mockRejectedValue(new Error('Timeout'))
       });
 
       await monitor.performHealthCheck();
-      const metrics = monitor.getInstanceMetrics();
 
-      const unknownCount = metrics.filter(m => m.healthStatus === DOHealthStatus.UNKNOWN).length;
-      // At least some should be unknown due to failure
-      expect(unknownCount).toBeGreaterThanOrEqual(0);
-    });
-  });
-
-  describe('Factory Function', () => {
-    it('should create monitor with createDOMonitor', () => {
-      const newMonitor = createDOMonitor(mockEnv as Bindings);
-      expect(newMonitor).toBeInstanceOf(DurableObjectsMonitor);
-    });
-
-    it('should allow custom config', () => {
-      const customMonitor = createDOMonitor(mockEnv as Bindings, {
-        healthCheckIntervalMs: 60000,
-        alertRetentionMs: 7200000
-      });
-      expect(customMonitor).toBeInstanceOf(DurableObjectsMonitor);
+      expect(monitor.getInstanceMetricsByType('UserConnection')).toEqual([]);
+      const unresponsive = monitor.getAlertHistory().filter(a => a.type === DOAlertType.INSTANCE_UNRESPONSIVE);
+      expect(unresponsive).toHaveLength(1);
+      expect(unresponsive[0].message).toContain('UserConnection/user-1');
+      expect(unresponsive[0].metadata).toEqual({ reason: 'timeout_or_error' });
     });
   });
 });

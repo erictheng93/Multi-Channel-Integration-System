@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { RateLimiterDO } from '../../../src/durable-objects/RateLimiterDO'
 
 /**
- * Durable-state contract of the two alarm-backed objects:
+ * Durable-state contract of RateLimiterDO:
  * a counted request is durable BEFORE it is acknowledged (so eviction cannot roll it back),
  * every write touches one small key, and the alarm chain stops by itself.
  */

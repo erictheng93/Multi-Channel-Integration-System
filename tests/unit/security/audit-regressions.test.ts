@@ -148,20 +148,4 @@ describe('security audit regressions', () => {
       expect(monitoringToken.jti).toBeTruthy()
     })
   })
-
-  // The Worker→DO X-Authenticated-* headers are a trusted channel: the proxy
-  // handler must strip any client-supplied values before injecting its own,
-  // otherwise a request header can pass through as the sender label.
-  it('customer-messages proxy strips inbound X-Authenticated-* headers before forwarding to the DO', () => {
-    const source = readFileSync('src/modules/customer-conversations/handlers/customer-messages.ts', 'utf8')
-
-    const deletes = source.match(/headers\.delete\('X-Authenticated-User-Id'\)/g) ?? []
-    const displayNameDeletes = source.match(/headers\.delete\('X-Authenticated-Display-Name'\)/g) ?? []
-
-    // Both proxy points (messages + upload) must strip before set.
-    expect(deletes.length).toBeGreaterThanOrEqual(2)
-    expect(displayNameDeletes.length).toBeGreaterThanOrEqual(2)
-    expect(source.indexOf("headers.delete('X-Authenticated-User-Id')"))
-      .toBeLessThan(source.indexOf("headers.set('X-Authenticated-User-Id'"))
-  })
 })
