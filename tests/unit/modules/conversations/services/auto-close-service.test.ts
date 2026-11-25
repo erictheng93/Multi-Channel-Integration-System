@@ -286,28 +286,29 @@ describe('autoCloseIdleConversations', () => {
     expect((await autoCloseIdleConversations(env, NOW)).candidates).toBe(0);
   });
 
-  it('selects through the partial index without scanning messages', () => {
-    const { db } = setup();
-    const plan = (db.prepare(`EXPLAIN QUERY PLAN
-      SELECT id, status, assigned_team_id FROM conversations
-      WHERE awaiting_since IS NULL AND status <> 'closed' AND deleted_at IS NULL
-        AND last_customer_message_at <= ?
-        AND (last_agent_message_at IS NULL OR last_agent_message_at <= ?)
-      ORDER BY last_customer_message_at ASC LIMIT ?`).all('a', 'a', 200) as Array<{ detail: string }>).map(p => p.detail).join(' | ');
+  // Plans are taken from the SELECTs the service really prepares, so a rewrite of its SQL is what gets checked.
+  async function capturedPlan(orderBy: string): Promise<string> {
+    const { db, env } = setup();
+    const d1 = env.DB as unknown as { prepare: (q: string) => unknown };
+    const realPrepare = d1.prepare.bind(d1);
+    const seen: string[] = [];
+    d1.prepare = (q: string) => { seen.push(q); return realPrepare(q); };
+    await autoCloseIdleConversations(env, NOW);
+    const query = seen.find(q => q.includes(orderBy));
+    expect(query, `no SELECT ordered by ${orderBy}`).toBeDefined();
+    const params = (query!.match(/\?/g) ?? []).map((_, i, all) => (i === all.length - 1 ? 200 : 'a'));
+    return (db.prepare(`EXPLAIN QUERY PLAN ${query}`).all(...params) as Array<{ detail: string }>).map(p => p.detail).join(' | ');
+  }
+
+  it('selects through the partial index without scanning messages', async () => {
+    const plan = await capturedPlan('ORDER BY last_customer_message_at');
     expect(plan).toContain('idx_conversations_auto_close');
     expect(plan).not.toContain('USE TEMP B-TREE');
     expect(plan).not.toMatch(/SCAN messages/);
   });
 
-  it('selects stale waits through the awaiting_since partial index', () => {
-    const { db } = setup();
-    const plan = (db.prepare(`EXPLAIN QUERY PLAN
-      SELECT id, status, assigned_team_id FROM conversations
-      WHERE awaiting_since IS NOT NULL AND awaiting_since <= ?
-        AND status <> 'closed' AND deleted_at IS NULL
-        AND last_customer_message_at <= ?
-        AND (last_agent_message_at IS NULL OR last_agent_message_at <= ?)
-      ORDER BY awaiting_since ASC LIMIT ?`).all('a', 'a', 'a', 200) as Array<{ detail: string }>).map(p => p.detail).join(' | ');
+  it('selects stale waits through the awaiting_since partial index', async () => {
+    const plan = await capturedPlan('ORDER BY awaiting_since');
     expect(plan).toContain('idx_conversations_awaiting_since');
     expect(plan).not.toContain('USE TEMP B-TREE');
   });

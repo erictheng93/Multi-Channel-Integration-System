@@ -208,22 +208,24 @@ describe('webhook-customer-service', () => {
       expect(mockSyncLineUser).not.toHaveBeenCalled();
     });
 
-    it('should filter soft-deleted customers (deletedAt IS NULL)', async () => {
-      // The initial query should include isNull(deletedAt) filter
-      // We verify this by checking that the where clause is called with the right structure
-      const existing = { id: 1, platformUserId: 'U123', platform: 'line', displayName: 'User' };
-      mockGet.mockResolvedValueOnce(existing);
+    it('should filter soft-deleted customers (deletedAt IS NULL) on the lookup and the in-lock double-check', async () => {
+      mockGet.mockResolvedValueOnce(undefined); // initial lookup
+      mockGet.mockResolvedValueOnce({ id: 1 }); // double-check inside the lock
 
       await findOrCreateCustomer(mockEnv, 'U123', 'line');
 
-      // The select chain's where should have been called
-      const selectChain = mockDb.select.mock.results[0]?.value;
-      expect(selectChain.where).toHaveBeenCalled();
-      // Verify the where call includes our isNull filter (3 conditions via and())
-      const whereArgs = selectChain.where.mock.calls[0][0];
-      expect(whereArgs).toEqual(
-        expect.objectContaining({ type: 'and' })
-      );
+      const expectedWhere = {
+        type: 'and',
+        args: [
+          { type: 'eq', args: [{ name: 'platformUserId' }, 'U123'] },
+          { type: 'eq', args: [{ name: 'platform' }, 'line'] },
+          { type: 'isNull', args: [{ name: 'deletedAt' }] },
+        ],
+      };
+      expect(mockDb.select).toHaveBeenCalledTimes(2);
+      for (const result of mockDb.select.mock.results) {
+        expect(result.value.where).toHaveBeenCalledWith(expectedWhere);
+      }
     });
 
     it('should fallback to LIFF-captured name for LINE when API fails', async () => {
@@ -578,13 +580,11 @@ describe('webhook-customer-service', () => {
 
       await triggerBackgroundSyncIfNeeded(mockEnv, 'U123', 'line');
 
-      // Wait for fire-and-forget to settle
-      await new Promise(resolve => setTimeout(resolve, 50));
+      // The sync is fire-and-forget: wait for its catch handler instead of sleeping
+      await vi.waitFor(() => expect(mockUpdateSet).toHaveBeenCalled());
 
       // Should set updatedAt to null to enable retry
-      expect(mockUpdateSet).toHaveBeenCalledWith(
-        expect.objectContaining({ updatedAt: null })
-      );
+      expect(mockUpdateSet).toHaveBeenCalledWith({ updatedAt: null });
     });
 
     it('should pass groupId to LINE sync', async () => {

@@ -247,6 +247,18 @@ describe('conversation message recall handler', () => {
     );
   });
 
+  it.each([
+    ['another agent', { agentSenderId: 'agent-2' }],
+    ['a customer', { senderType: 'customer' }],
+  ])('refuses an agent recalling a message sent by %s, before any cancel or write', async (_label, overrides) => {
+    const response = await recall(overrides);
+
+    expect(response.status).toBe(403);
+    expect(handlerMocks.cancelBufferedDelivery).not.toHaveBeenCalled();
+    expect(handlerMocks.recallMessage).not.toHaveBeenCalled();
+    expect(handlerMocks.updateSet).not.toHaveBeenCalled();
+  });
+
   it('rejects already-recalled messages without mutating the row', async () => {
     const response = await recall({ isRecalled: true });
     const body = await response.json() as { success: boolean; error: string };
