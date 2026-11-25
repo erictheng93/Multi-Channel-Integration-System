@@ -9,13 +9,14 @@ import { DelayedMessageScheduler } from '../../../src/durable-objects/DelayedMes
 import { handleCatastrophicError } from '../../../src/durable-objects/delayed-message/retry-handler'
 import { restoreState } from '../../../src/durable-objects/delayed-message/schedule-manager'
 
-function harness(extra: Array<[string, unknown]> = [], failDlq = false) {
+function harness(extra: Array<[string, unknown]> = [], failDlq = false, withMessage = true) {
   let alarm: number | null = null
   let ready = Promise.resolve()
-  const values = new Map<string, unknown>([['msg:m1', {
+  const pending: Array<[string, unknown]> = withMessage ? [['msg:m1', {
     id: 'm1', conversationId: 'c1', mode: 'deliver-by-ref', status: 'pending',
     scheduledAt: Date.now() - 1, createdAt: Date.now(),
-  }], ...extra])
+  }]] : []
+  const values = new Map<string, unknown>([...pending, ...extra])
   const state = {
     id: { toString: () => 'do-1' },
     blockConcurrencyWhile(fn: () => Promise<void>) { ready = fn() },
@@ -52,6 +53,16 @@ function harness(extra: Array<[string, unknown]> = [], failDlq = false) {
 describe('DelayedMessageScheduler alarm chain', () => {
   beforeEach(() => { vi.useFakeTimers({ toFake: ['Date'] }) })
   afterEach(() => { vi.useRealTimers() })
+
+  it('idle: an empty scheduler arms nothing on cold start or on a stray alarm', async () => {
+    deliver.mockClear()
+    const h = harness([], false, false)
+    await h.ready()
+    expect(h.alarm()).toBeNull()
+    await h.fire()
+    expect(h.alarm()).toBeNull()
+    expect(deliver).not.toHaveBeenCalled()
+  })
 
   it('re-arms a failed deliver-by-ref with backoff and stops after bounded retries', async () => {
     deliver.mockRejectedValue(new Error('infra down'))

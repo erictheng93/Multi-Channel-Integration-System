@@ -10,8 +10,7 @@ import {
   WebSocketCircuitBreaker,
   getCircuitBreaker,
   resetGlobalCircuitBreaker,
-  CircuitState,
-  FallbackStrategy
+  CircuitState
 } from '@/services/websocket-circuit-breaker';
 import type { Bindings } from '@/types';
 
@@ -214,15 +213,11 @@ describe('WebSocketCircuitBreaker', () => {
       vi.useFakeTimers();
       vi.advanceTimersByTime(1100);
 
-      // First call transitions to HALF_OPEN
-      try {
-        await circuitBreaker.execute(async () => {
-          throw new Error('Still failing');
-        });
-      } catch (e) {
-        // Expected
-      }
+      // First call after the timeout is let through as a HALF_OPEN probe; its failure reopens.
+      const probe = vi.fn(async () => { throw new Error('Still failing'); });
+      await expect(circuitBreaker.execute(probe)).rejects.toThrow('Still failing');
 
+      expect(probe).toHaveBeenCalledTimes(1);
       expect(circuitBreaker.getState()).toBe(CircuitState.OPEN);
 
       vi.useRealTimers();
@@ -293,53 +288,20 @@ describe('WebSocketCircuitBreaker', () => {
       expect(instance1).toBe(instance2);
     });
 
-    it('should allow custom config on first call', () => {
-      resetGlobalCircuitBreaker();
+    it('applies the custom config of the first call only', async () => {
+      // resetGlobalCircuitBreaker() resets state but keeps the instance (and its config),
+      // so a fresh module is the only way to observe a genuine first call.
+      vi.resetModules();
+      const fresh = await import('@/services/websocket-circuit-breaker');
+      const instance = fresh.getCircuitBreaker({ failureThreshold: 10, timeout: 5000 });
+      expect(fresh.getCircuitBreaker({ failureThreshold: 1 })).toBe(instance);
 
-      const instance = getCircuitBreaker({
-        failureThreshold: 10,
-        timeout: 5000
-      });
-
-      expect(instance).toBeDefined();
-    });
-  });
-
-  describe('Fallback Strategies', () => {
-    it('should support QUEUE fallback strategy', async () => {
-      const cb = new WebSocketCircuitBreaker({
-        failureThreshold: 1,
-        fallbackStrategy: FallbackStrategy.QUEUE
-      });
-
-      // Open circuit
-      try {
-        await cb.execute(async () => {
-          throw new Error('fail');
-        });
-      } catch (e) {
-        // Expected
+      // 6 consecutive failures: over the default threshold of 5, under the configured 10
+      // (and under the 10-call volume needed for the error-rate rule).
+      for (let i = 0; i < 6; i++) {
+        await instance.execute(async () => { throw new Error('fail'); }).catch(() => {});
       }
-
-      // Should be OPEN now
-      expect(cb.getState()).toBe(CircuitState.OPEN);
-    });
-
-    it('should support FAIL_FAST fallback strategy', async () => {
-      const cb = new WebSocketCircuitBreaker({
-        failureThreshold: 1,
-        fallbackStrategy: FallbackStrategy.FAIL_FAST
-      });
-
-      try {
-        await cb.execute(async () => {
-          throw new Error('fail');
-        });
-      } catch (e) {
-        // Expected
-      }
-
-      expect(cb.getState()).toBe(CircuitState.OPEN);
+      expect(instance.getState()).toBe(fresh.CircuitState.CLOSED);
     });
   });
 

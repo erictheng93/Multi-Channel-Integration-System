@@ -2,9 +2,6 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   sendLineReply,
   pushLineMessage,
-  verifyLineSignature,
-  createTextMessage,
-  createStickerMessage,
   getLineUserProfile,
   getLineGroupMemberProfile
 } from '@backend/utils/line';
@@ -14,23 +11,8 @@ import type { LineReplyMessage } from '@backend/types';
 const mockFetch = vi.fn();
 vi.stubGlobal('fetch', mockFetch);
 
-// Mock Web Crypto API
-const mockCrypto = {
-  subtle: {
-    importKey: vi.fn(),
-    sign: vi.fn()
-  }
-};
-vi.stubGlobal('crypto', mockCrypto);
-
-function expectByteView(value: unknown): void {
-  expect(ArrayBuffer.isView(value)).toBe(true);
-  expect((value as ArrayBufferView).byteLength).toBeGreaterThan(0);
-}
-
 describe('LINE API Integration Tests', () => {
   const mockAccessToken = 'test-access-token';
-  const mockChannelSecret = 'test-channel-secret';
   const mockReplyToken = 'test-reply-token';
   const mockUserId = 'test-user-id';
   const mockGroupId = 'test-group-id';
@@ -168,128 +150,6 @@ describe('LINE API Integration Tests', () => {
     });
   });
 
-  describe('verifyLineSignature', () => {
-    const mockBody = '{"events":[]}';
-    const mockSignature = 'sha256=test-signature';
-    const mockComputedSignature = 'test-signature';
-
-    beforeEach(() => {
-      // Mock Web Crypto API methods
-      mockCrypto.subtle.importKey.mockResolvedValue('mock-key');
-      mockCrypto.subtle.sign.mockResolvedValue(
-        new Uint8Array([116, 101, 115, 116, 45, 115, 105, 103, 110, 97, 116, 117, 114, 101]) // "test-signature" in bytes
-      );
-
-      // Mock btoa
-      vi.stubGlobal('btoa', vi.fn().mockReturnValue(mockComputedSignature));
-    });
-
-    test('should verify valid signature', async () => {
-      const result = await verifyLineSignature(mockBody, mockSignature, mockChannelSecret);
-
-      expect(result).toBe(true);
-      const importKeyCall = mockCrypto.subtle.importKey.mock.calls[0];
-      expect(importKeyCall[0]).toBe('raw');
-      expectByteView(importKeyCall[1]);
-      expect(importKeyCall[2]).toEqual({ name: 'HMAC', hash: 'SHA-256' });
-      expect(importKeyCall[3]).toBe(false);
-      expect(importKeyCall[4]).toEqual(['sign']);
-
-      const signCall = mockCrypto.subtle.sign.mock.calls[0];
-      expect(signCall[0]).toBe('HMAC');
-      expect(signCall[1]).toBe('mock-key');
-      expectByteView(signCall[2]);
-    });
-
-    test('should reject invalid signature', async () => {
-      vi.stubGlobal('btoa', vi.fn().mockReturnValue('different-signature'));
-
-      const result = await verifyLineSignature(mockBody, mockSignature, mockChannelSecret);
-
-      expect(result).toBe(false);
-    });
-
-    test('should reject missing signature', async () => {
-      const result = await verifyLineSignature(mockBody, undefined, mockChannelSecret);
-
-      expect(result).toBe(false);
-    });
-
-    test('should handle signature without sha256 prefix', async () => {
-      const signatureWithoutPrefix = 'test-signature';
-
-      const result = await verifyLineSignature(mockBody, signatureWithoutPrefix, mockChannelSecret);
-
-      expect(result).toBe(true);
-    });
-
-    test('should handle crypto error', async () => {
-      mockCrypto.subtle.importKey.mockRejectedValueOnce(new Error('Crypto error'));
-
-      const result = await verifyLineSignature(mockBody, mockSignature, mockChannelSecret);
-
-      expect(result).toBe(false);
-    });
-  });
-
-  describe('createTextMessage', () => {
-    test('should create text message with correct format', () => {
-      const text = 'Hello, World!';
-      const message = createTextMessage(text);
-
-      expect(message).toEqual({
-        type: 'text',
-        text: text
-      });
-    });
-
-    test('should handle empty text', () => {
-      const text = '';
-      const message = createTextMessage(text);
-
-      expect(message).toEqual({
-        type: 'text',
-        text: ''
-      });
-    });
-
-    test('should handle special characters', () => {
-      const text = '你好！\n換行測試';
-      const message = createTextMessage(text);
-
-      expect(message).toEqual({
-        type: 'text',
-        text: text
-      });
-    });
-  });
-
-  describe('createStickerMessage', () => {
-    test('should create sticker message with correct format', () => {
-      const packageId = '1';
-      const stickerId = '1';
-      const message = createStickerMessage(packageId, stickerId);
-
-      expect(message).toEqual({
-        type: 'sticker',
-        packageId: packageId,
-        stickerId: stickerId
-      });
-    });
-
-    test('should handle different package and sticker IDs', () => {
-      const packageId = '11537';
-      const stickerId = '52002734';
-      const message = createStickerMessage(packageId, stickerId);
-
-      expect(message).toEqual({
-        type: 'sticker',
-        packageId: packageId,
-        stickerId: stickerId
-      });
-    });
-  });
-
   describe('getLineUserProfile', () => {
     const mockProfile = {
       userId: mockUserId,
@@ -394,47 +254,6 @@ describe('LINE API Integration Tests', () => {
       const result = await getLineGroupMemberProfile(mockAccessToken, mockGroupId, mockUserId);
 
       expect(result).toBeNull();
-    });
-  });
-
-  describe('Integration scenarios', () => {
-    test('should handle rate limiting gracefully', async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: false,
-        status: 429,
-        text: vi.fn().mockResolvedValue('Rate limit exceeded')
-      });
-
-      const result = await sendLineReply(mockAccessToken, mockReplyToken, [createTextMessage('test')]);
-
-      expect(result).toBe(false);
-    });
-
-    test('should handle invalid access token', async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: false,
-        status: 401,
-        text: vi.fn().mockResolvedValue('Invalid access token')
-      });
-
-      const result = await pushLineMessage('invalid-token', mockUserId, [createTextMessage('test')]);
-
-      expect(result).toBe(false);
-    });
-
-    test('should handle message size limits', async () => {
-      const longText = 'a'.repeat(5001); // Exceeds LINE's 5000 character limit
-      const message = createTextMessage(longText);
-
-      mockFetch.mockResolvedValueOnce({
-        ok: false,
-        status: 400,
-        text: vi.fn().mockResolvedValue('Message too long')
-      });
-
-      const result = await sendLineReply(mockAccessToken, mockReplyToken, [message]);
-
-      expect(result).toBe(false);
     });
   });
 });

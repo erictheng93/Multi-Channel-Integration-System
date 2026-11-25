@@ -55,21 +55,13 @@ describe('EncryptionService', () => {
       await expect(newService.initialize('')).rejects.toThrow();
     });
 
-    it('should throw error with key of wrong length', async () => {
+    it('should throw error with a key that is not valid AES key material', async () => {
       const newService = new EncryptionService();
-      // Create a key that's too short (only 16 bytes instead of 32)
-      const shortKey = btoa(String.fromCharCode(...new Uint8Array(16)));
+      // 20 bytes is no AES key size (16/24/32), so the import itself fails.
+      const badKey = btoa(String.fromCharCode(...new Uint8Array(20)));
 
-      // Web Crypto API may accept shorter keys but operations will fail
-      // or it may throw on import - either way we expect an error
-      try {
-        await newService.initialize(shortKey);
-        // If initialization succeeds, encryption should fail
-        await expect(newService.encrypt('test')).rejects.toThrow();
-      } catch {
-        // Initialization threw - this is also acceptable
-        expect(true).toBe(true);
-      }
+      await expect(newService.initialize(badKey)).rejects.toThrow('Failed to initialize encryption service');
+      expect(newService.isInitialized()).toBe(false);
     });
   });
 
