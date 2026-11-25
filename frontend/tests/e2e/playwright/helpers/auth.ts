@@ -9,15 +9,6 @@ export const ADMIN_CREDENTIALS = {
   id: 'admin-001',
 }
 
-/** Test agent credentials */
-export const AGENT_CREDENTIALS = {
-  email: 'test@dacit.net',
-  password: 'Test1234!',
-  displayName: 'Test User',
-  role: 'agent',
-  id: 'test-agent-001',
-}
-
 /**
  * Login as a specific user via the login form
  */
@@ -64,6 +55,20 @@ export async function getLocalStorageKeys(page: Page): Promise<string[]> {
 }
 
 /**
+ * Get all sessionStorage keys (auth items live here, see src/utils/authStorage.ts)
+ */
+export async function getSessionStorageKeys(page: Page): Promise<string[]> {
+  return page.evaluate(() => {
+    const keys: string[] = []
+    for (let i = 0; i < sessionStorage.length; i++) {
+      const key = sessionStorage.key(i)
+      if (key) { keys.push(key) }
+    }
+    return keys.sort()
+  })
+}
+
+/**
  * Get localStorage value by key
  */
 export async function getLocalStorageValue(page: Page, key: string): Promise<string | null> {
@@ -71,7 +76,7 @@ export async function getLocalStorageValue(page: Page, key: string): Promise<str
 }
 
 /**
- * Clear localStorage completely.
+ * Clear localStorage and sessionStorage completely.
  * Must navigate to the app origin first to access localStorage.
  */
 export async function clearLocalStorage(page: Page): Promise<void> {
@@ -81,7 +86,10 @@ export async function clearLocalStorage(page: Page): Promise<void> {
   if (!currentUrl.startsWith('http://localhost')) {
     await page.goto('/login', { waitUntil: 'domcontentloaded' })
   }
-  await page.evaluate(() => localStorage.clear())
+  await page.evaluate(() => {
+    localStorage.clear()
+    sessionStorage.clear()
+  })
 }
 
 /**

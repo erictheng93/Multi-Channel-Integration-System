@@ -1,487 +1,190 @@
 /**
- * Integration Tests for Team Modal Workflows
- *
- * Tests complete user flows through team-related modals:
- * - EditTeamModal: View → Edit → Save → Close workflow
- * - AddTeamModal: Open → Fill form → Submit → Success
- * - QRCodeModal: Open → View QR → Download → Close
- *
- * These tests verify component communication, API integration,
- * and state management across the modal lifecycle.
+ * Team modal workflows: EditTeamModal and AddTeamModal are presentational.
+ * They bind the parent-owned form object and emit events; the parent does
+ * the API calls. These tests drive the real components through those
+ * contracts (Modal is stubbed to render its slots inline).
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
-import { createPinia, setActivePinia } from 'pinia'
-import { nextTick } from 'vue'
 import EditTeamModal from '@/components/team/EditTeamModal.vue'
 import AddTeamModal from '@/components/team/AddTeamModal.vue'
 
-// QRCodeModal doesn't exist - create a mock component for testing
-const QRCodeModal = {
-  name: 'QRCodeModal',
-  template: `
-    <div class="qr-code-modal" v-if="visible">
-      <div class="modal-header">
-        <h2>{{ team?.name }} QR Code</h2>
-        <button class="close-button" @click="$emit('close')">×</button>
-      </div>
-      <div class="qr-code-container">
-        <div class="qr-code-image">Mock QR Code</div>
-      </div>
-      <div class="modal-actions">
-        <button class="download-button" @click="handleDownload">下載 QR Code</button>
-      </div>
-    </div>
-  `,
-  props: {
-    visible: { type: Boolean, default: false },
-    team: { type: Object, default: null },
-    qrCode: { type: Object, default: null },
-    imageLoading: { type: Boolean, default: false }
-  },
-  emits: ['close', 'download'],
-  methods: {
-    handleDownload() {
-      this.$emit('download', this.team)
-    }
-  }
+const ModalStub = {
+  template: '<div class="modal-stub"><slot /><slot name="footer" /></div>',
+  props: ['show', 'title', 'size', 'closeOnOverlay'],
+  emits: ['close']
 }
 
-// Mock dependencies
-vi.mock('@/api/team', () => ({
-  teamApi: {
-    updateTeam: vi.fn(),
-    createTeam: vi.fn(),
-    addMembersToTeam: vi.fn()
+const members = [
+  { id: 'm1', name: 'John Doe', email: 'john@example.com', role: 'agent', isActive: true },
+  { id: 'm2', name: 'Jane Smith', email: 'jane@example.com', role: 'agent', isActive: true }
+]
+
+const helpers = {
+  getInitials: (name: string) => name.substring(0, 2),
+  getRoleDisplayName: (role: string) => `role:${role}`
+}
+
+function mountEdit(overrides: Record<string, unknown> = {}) {
+  const form = {
+    id: 1,
+    name: 'Engineering Team',
+    description: 'Software development team',
+    isActive: true,
+    membersToAdd: [] as string[],
+    ...((overrides.form as object) ?? {})
   }
-}))
+  const wrapper = mount(EditTeamModal, {
+    props: {
+      visible: true,
+      loading: false,
+      currentMembers: [],
+      availableMembers: [],
+      isAllAvailableMembersSelected: false,
+      ...helpers,
+      ...overrides,
+      form
+    } as never,
+    global: { stubs: { Modal: ModalStub } }
+  })
+  return { wrapper, form }
+}
 
-vi.mock('@/composables/useConfirmDialog', () => ({
-  useConfirmDialog: vi.fn(() => ({
-    showWarning: vi.fn().mockResolvedValue(true),
-    showInfo: vi.fn().mockResolvedValue(true)
-  }))
-}))
+function mountAdd(overrides: Record<string, unknown> = {}) {
+  const form = { name: '', description: '', selectedMembers: [] as string[], ...((overrides.form as object) ?? {}) }
+  const wrapper = mount(AddTeamModal, {
+    props: {
+      visible: true,
+      loading: false,
+      availableMembers: members,
+      isAllMembersSelected: false,
+      ...helpers,
+      ...overrides,
+      form
+    } as never,
+    global: { stubs: { Modal: ModalStub } }
+  })
+  return { wrapper, form }
+}
 
-vi.mock('@/composables/useToast', () => ({
-  useToast: vi.fn(() => ({
-    showSuccess: vi.fn(),
-    showError: vi.fn()
-  }))
-}))
+describe('EditTeamModal workflow', () => {
+  it('pre-fills the form and writes edits back into the parent form object', async () => {
+    const { wrapper, form } = mountEdit()
 
-vi.mock('@/composables/team-management/useQRCodeDownloader', () => ({
-  useQRCodeDownloader: vi.fn(() => ({
-    isDownloading: { value: false },
-    downloadError: { value: null },
-    downloadQRCodeCard: vi.fn()
-  }))
-}))
+    const nameInput = wrapper.find('#edit-team-name')
+    expect((nameInput.element as HTMLInputElement).value).toBe('Engineering Team')
+    expect((wrapper.find('#edit-team-description').element as HTMLTextAreaElement).value).toBe(
+      'Software development team'
+    )
 
-import { teamApi } from '@/api/team'
-import { useConfirmDialog } from '@/composables/useConfirmDialog'
-import { useToast } from '@/composables/useToast'
-import { useQRCodeDownloader } from '@/composables/team-management/useQRCodeDownloader'
+    await nameInput.setValue('Engineering Team - Updated')
 
-describe('Team Modal Workflows - Integration Tests', () => {
-  let mockShowWarning: ReturnType<typeof vi.fn>
-  let mockShowSuccess: ReturnType<typeof vi.fn>
-  let mockShowError: ReturnType<typeof vi.fn>
-
-  beforeEach(() => {
-    // Setup Pinia
-    const pinia = createPinia()
-    setActivePinia(pinia)
-
-    // Clear all mocks
-    vi.clearAllMocks()
-
-    // Create fresh mock functions
-    mockShowWarning = vi.fn().mockResolvedValue(true)
-    mockShowSuccess = vi.fn()
-    mockShowError = vi.fn()
-
-    // Setup default mock responses
-    vi.mocked(useConfirmDialog).mockReturnValue({
-      showWarning: mockShowWarning,
-      showInfo: vi.fn().mockResolvedValue(true)
-    } as any)
-
-    vi.mocked(useToast).mockReturnValue({
-      showSuccess: mockShowSuccess,
-      showError: mockShowError
-    } as any)
-
-    vi.mocked(teamApi.updateTeam).mockResolvedValue({ success: true })
-    vi.mocked(teamApi.createTeam).mockResolvedValue({
-      success: true,
-      data: { id: 123, name: 'New Team' }
-    })
-    vi.mocked(teamApi.addMembersToTeam).mockResolvedValue({ success: true })
+    expect(form.name).toBe('Engineering Team - Updated')
   })
 
-  describe('EditTeamModal Workflow', () => {
-    const mockTeam = {
-      id: 1,
-      name: 'Engineering Team',
-      description: 'Software development team',
-      isActive: true,
-      createdAt: '2024-01-01',
-      updatedAt: '2024-01-01',
-      memberCount: 5
-    }
+  it('emits submit once when the form is submitted', async () => {
+    const { wrapper } = mountEdit()
 
-    it('should complete full edit workflow: open → edit → save → close', async () => {
-      const wrapper = mount(EditTeamModal, {
-        props: {
-          visible: true,
-          form: {
-            id: mockTeam.id,
-            name: mockTeam.name,
-            description: mockTeam.description,
-            isActive: mockTeam.isActive,
-            selectedMembers: []
-          },
-          loading: false,
-          currentMembers: [],
-          availableMembers: [],
-          isAllAvailableMembersSelected: false,
-          getInitials: (name: string) => name.substring(0, 2),
-          getRoleDisplayName: (role: string) => role
-        },
-        global: {
-          plugins: [createPinia()],
-          stubs: {
-            Modal: {
-              template: '<div class="modal-stub"><slot /></div>',
-              props: ['show', 'title', 'size'],
-              emits: ['close']
-            }
-          }
-        }
-      })
+    await wrapper.find('form').trigger('submit')
 
-      // 1. Modal should be visible
-      expect(wrapper.find('.modal-stub').exists()).toBe(true)
-
-      // 2. Form should be pre-filled with team data
-      const nameInput = wrapper.find('#edit-team-name')
-      expect((nameInput.element as HTMLInputElement).value).toBe('Engineering Team')
-
-      const descInput = wrapper.find('#edit-team-description')
-      expect((descInput.element as HTMLTextAreaElement).value).toBe('Software development team')
-
-      // 3. Edit the team name
-      await nameInput.setValue('Engineering Team - Updated')
-      await nextTick()
-
-      // 4. Submit the form - EditTeamModal emits 'submit' event, parent handles API
-      const form = wrapper.find('form')
-      await form.trigger('submit.prevent')
-      await nextTick()
-
-      // 5. Submit event should be emitted (parent component handles confirmation dialog, API calls, and success messages)
-      expect(wrapper.emitted('submit')).toBeTruthy()
-    })
-
-    it('should handle validation errors', async () => {
-      const wrapper = mount(EditTeamModal, {
-        props: {
-          visible: true,
-          form: {
-            id: 1,
-            name: '',
-            description: '',
-            isActive: true,
-            selectedMembers: []
-          },
-          loading: false,
-          currentMembers: [],
-          availableMembers: [],
-          isAllAvailableMembersSelected: false,
-          getInitials: (name: string) => name.substring(0, 2),
-          getRoleDisplayName: (role: string) => role
-        },
-        global: {
-          plugins: [createPinia()],
-          stubs: {
-            Modal: {
-              template: '<div class="modal-stub"><slot /></div>',
-              props: ['show', 'title', 'size'],
-              emits: ['close']
-            }
-          }
-        }
-      })
-
-      // Try to submit with empty name
-      const form = wrapper.find('form')
-      await form.trigger('submit.prevent')
-      await nextTick()
-
-      // Submit event is emitted (component doesn't validate - parent handles validation)
-      // The parent component should validate form data before making API calls
-      expect(wrapper.emitted('submit')).toBeTruthy()
-    })
-
-    it('should emit submit event on form submission', async () => {
-      // EditTeamModal is a presentational component - it emits events
-      // API calls are handled by the parent component
-      const wrapper = mount(EditTeamModal, {
-        props: {
-          visible: true,
-          form: {
-            id: 1,
-            name: 'Existing Team',
-            description: 'Test',
-            isActive: true,
-            selectedMembers: []
-          },
-          loading: false,
-          currentMembers: [],
-          availableMembers: [],
-          isAllAvailableMembersSelected: false,
-          getInitials: (name: string) => name.substring(0, 2),
-          getRoleDisplayName: (role: string) => role
-        },
-        global: {
-          plugins: [createPinia()],
-          stubs: {
-            Modal: {
-              template: '<div class="modal-stub"><slot /></div>',
-              props: ['show', 'title', 'size'],
-              emits: ['close']
-            }
-          }
-        }
-      })
-
-      const form = wrapper.find('form')
-      await form.trigger('submit.prevent')
-      await nextTick()
-
-      // Submit event should be emitted (parent handles API and error display)
-      expect(wrapper.emitted('submit')).toBeTruthy()
-    })
-
-    it('should emit close event when cancel button is clicked', async () => {
-      const wrapper = mount(EditTeamModal, {
-        props: {
-          visible: true,
-          form: {
-            id: 1,
-            name: 'Test Team',
-            description: 'Test',
-            isActive: true,
-            selectedMembers: []
-          },
-          loading: false,
-          currentMembers: [],
-          availableMembers: [],
-          isAllAvailableMembersSelected: false,
-          getInitials: (name: string) => name.substring(0, 2),
-          getRoleDisplayName: (role: string) => role
-        },
-        global: {
-          plugins: [createPinia()],
-          stubs: {
-            Modal: {
-              template: '<div class="modal-stub"><slot /><slot name="footer" /></div>',
-              props: ['show', 'title', 'size'],
-              emits: ['close']
-            }
-          }
-        }
-      })
-
-      // Find and click cancel button
-      const cancelBtn = wrapper.find('button.btn-secondary')
-      if (cancelBtn.exists()) {
-        await cancelBtn.trigger('click')
-        await nextTick()
-        // Close event should be emitted
-        expect(wrapper.emitted('close')).toBeTruthy()
-      }
-    })
+    expect(wrapper.emitted('submit')).toHaveLength(1)
   })
 
-  describe('AddTeamModal Workflow', () => {
-    const mockMembers = [
-      { id: '1', name: 'John Doe', email: 'john@example.com', role: 'agent', isActive: true },
-      { id: '2', name: 'Jane Smith', email: 'jane@example.com', role: 'agent', isActive: true }
-    ]
+  it('cancel emits close and does not submit', async () => {
+    const { wrapper } = mountEdit()
 
-    it('should complete full create workflow: open → fill form → add members → submit → success', async () => {
-      const wrapper = mount(AddTeamModal, {
-        props: {
-          visible: true,
-          form: {
-            name: '',
-            description: '',
-            selectedMembers: []
-          },
-          loading: false,
-          availableMembers: mockMembers,
-          isAllMembersSelected: false,
-          getInitials: (name: string) => name.substring(0, 2),
-          getRoleDisplayName: (role: string) => role
-        },
-        global: {
-          plugins: [createPinia()],
-          stubs: {
-            Modal: {
-              template: '<div class="modal-stub"><slot /></div>',
-              props: ['show', 'title', 'size'],
-              emits: ['close']
-            }
-          }
-        }
-      })
+    await wrapper.find('button.btn-secondary').trigger('click')
 
-      // 1. Fill in team name (AddTeamModal uses #team-name)
-      const nameInput = wrapper.find('#team-name')
-      await nameInput.setValue('New Team')
-      await nextTick()
-
-      // 2. Fill in description (AddTeamModal uses #team-description)
-      const descInput = wrapper.find('#team-description')
-      await descInput.setValue('New team description')
-      await nextTick()
-
-      // 3. Submit the form - AddTeamModal emits 'submit' event, parent handles API
-      const form = wrapper.find('form')
-      await form.trigger('submit.prevent')
-      await nextTick()
-
-      // 4. Submit event should be emitted (parent component handles API calls)
-      expect(wrapper.emitted('submit')).toBeTruthy()
-    })
+    expect(wrapper.emitted('close')).toHaveLength(1)
+    expect(wrapper.emitted('submit')).toBeUndefined()
   })
 
-  describe('QRCodeModal Workflow', () => {
-    const mockTeam = {
-      id: 1,
-      name: 'Test Team',
-      description: 'Test Description'
-    }
+  it('disables the primary action while loading', () => {
+    const { wrapper } = mountEdit({ loading: true })
 
-    const mockQRCode = {
-      id: 1,
-      qrCodeUrl: 'https://example.com/qr/code.png',
-      liffUrl: 'https://liff.line.me/test',
-      scanCount: 10,
-      assignmentCount: 5,
-      createdAt: '2024-01-01'
-    }
-
-    it('should display QR code and allow download', async () => {
-      const mockDownloadQRCode = vi.fn()
-      vi.mocked(useQRCodeDownloader).mockReturnValue({
-        isDownloading: { value: false },
-        downloadError: { value: null },
-        downloadQRCodeCard: mockDownloadQRCode
-      } as any)
-
-      const wrapper = mount(QRCodeModal, {
-        props: {
-          visible: true,
-          team: mockTeam,
-          qrCode: mockQRCode,
-          imageLoading: false
-        },
-        global: {
-          plugins: [createPinia()]
-        }
-      })
-
-      // 1. Modal should be visible (mock component uses .qr-code-modal class)
-      expect(wrapper.find('.qr-code-modal').exists()).toBe(true)
-
-      // 2. Find and click download button
-      const downloadBtn = wrapper.find('.download-button')
-      expect(downloadBtn.exists()).toBe(true)
-
-      await downloadBtn.trigger('click')
-      await nextTick()
-
-      // 3. Check that download event was emitted
-      expect(wrapper.emitted('download')).toBeTruthy()
-    })
+    expect(wrapper.find('button.btn-primary').attributes('disabled')).toBeDefined()
   })
 
-  describe('Cross-Modal Integration', () => {
-    it('should maintain state when switching between modals', async () => {
-      // This test verifies that opening one modal and then another
-      // doesn't corrupt state or cause memory leaks
+  it('lists current members and emits remove-member with the member id', async () => {
+    const { wrapper } = mountEdit({ currentMembers: members })
 
-      const teamModalWrapper = mount(EditTeamModal, {
-        props: {
-          visible: true,
-          form: {
-            id: 1,
-            name: 'Team 1',
-            description: 'Desc 1',
-            isActive: true,
-            selectedMembers: []
-          },
-          loading: false,
-          currentMembers: [],
-          availableMembers: [],
-          isAllAvailableMembersSelected: false,
-          getInitials: (name: string) => name.substring(0, 2),
-          getRoleDisplayName: (role: string) => role
-        },
-        global: {
-          plugins: [createPinia()],
-          stubs: {
-            Modal: {
-              template: '<div class="modal-stub"><slot /></div>',
-              props: ['show', 'title', 'size'],
-              emits: ['close']
-            }
-          }
-        }
-      })
+    const cards = wrapper.findAll('.member-card')
+    expect(cards).toHaveLength(2)
+    expect(cards[0]?.text()).toContain('John Doe')
+    expect(cards[0]?.text()).toContain('role:agent')
 
-      // Verify first modal is mounted
-      expect(teamModalWrapper.find('.modal-stub').exists()).toBe(true)
+    await cards[1]?.find('.btn-remove-member').trigger('click')
 
-      // Unmount first modal
-      teamModalWrapper.unmount()
+    expect(wrapper.emitted('remove-member')).toEqual([['m2']])
+  })
 
-      // Mount second modal
-      const addModalWrapper = mount(AddTeamModal, {
-        props: {
-          visible: true,
-          form: {
-            name: '',
-            description: '',
-            selectedMembers: []
-          },
-          loading: false,
-          availableMembers: [],
-          isAllMembersSelected: false,
-          getInitials: (name: string) => name.substring(0, 2),
-          getRoleDisplayName: (role: string) => role
-        },
-        global: {
-          plugins: [createPinia()],
-          stubs: {
-            Modal: {
-              template: '<div class="modal-stub"><slot /></div>',
-              props: ['show', 'title', 'size'],
-              emits: ['close']
-            }
-          }
-        }
-      })
+  it('shows the empty-state message when the team has no members', () => {
+    const { wrapper } = mountEdit()
 
-      // Second modal should work independently
-      expect(addModalWrapper.find('.modal-stub').exists()).toBe(true)
+    expect(wrapper.find('.no-members-message').exists()).toBe(true)
+    expect(wrapper.find('.member-card').exists()).toBe(false)
+  })
 
-      // Clean up
-      addModalWrapper.unmount()
+  it('reflects selected additions and emits toggle events for available members', async () => {
+    const { wrapper } = mountEdit({
+      availableMembers: members,
+      form: { membersToAdd: ['m1'] }
     })
+
+    const boxes = wrapper.findAll('.member-checkbox-item input[type="checkbox"]')
+    expect(boxes).toHaveLength(2)
+    expect((boxes[0]?.element as HTMLInputElement).checked).toBe(true)
+    expect((boxes[1]?.element as HTMLInputElement).checked).toBe(false)
+    expect(wrapper.find('.selection-count').text()).toContain('1')
+
+    await boxes[1]?.trigger('change')
+    await wrapper.find('.select-all-section input[type="checkbox"]').trigger('change')
+
+    expect(wrapper.emitted('toggle-available-member')).toEqual([['m2']])
+    expect(wrapper.emitted('toggle-select-all')).toHaveLength(1)
+  })
+})
+
+describe('AddTeamModal workflow', () => {
+  it('writes name and description into the parent form and emits submit', async () => {
+    const { wrapper, form } = mountAdd()
+
+    await wrapper.find('#team-name').setValue('New Team')
+    await wrapper.find('#team-description').setValue('New team description')
+    await wrapper.find('form').trigger('submit')
+
+    expect(form.name).toBe('New Team')
+    expect(form.description).toBe('New team description')
+    expect(wrapper.emitted('submit')).toHaveLength(1)
+  })
+
+  it('marks the name field required so an empty team cannot be submitted natively', () => {
+    const { wrapper } = mountAdd()
+
+    expect(wrapper.find('#team-name').attributes('required')).toBeDefined()
+  })
+
+  it('shows the selection count and emits toggle-member with the member id', async () => {
+    const { wrapper } = mountAdd({ form: { selectedMembers: ['m1'] } })
+
+    expect(wrapper.find('.member-count').text()).toBe('(1 / 2)')
+    const boxes = wrapper.findAll('.member-item input[type="checkbox"]')
+    expect((boxes[0]?.element as HTMLInputElement).checked).toBe(true)
+
+    await boxes[1]?.trigger('change')
+
+    expect(wrapper.emitted('toggle-member')).toEqual([['m2']])
+  })
+
+  it('shows the empty message when there are no available members', () => {
+    const { wrapper } = mountAdd({ availableMembers: [] })
+
+    expect(wrapper.find('.no-members').exists()).toBe(true)
+  })
+
+  it('labels the primary button by loading state', () => {
+    expect(mountAdd().wrapper.find('button.btn-primary').text()).toBe('新增團隊')
+    expect(mountAdd({ loading: true }).wrapper.find('button.btn-primary').text()).toBe('新增中...')
   })
 })

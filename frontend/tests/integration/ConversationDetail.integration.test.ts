@@ -150,17 +150,6 @@ describe('ConversationDetail Integration', () => {
       expect(wrapper.findComponent({ name: 'ConnectionStatusBar' }).exists()).toBe(true)
     })
 
-    it('should have all expected sub-components in the template', async () => {
-      router.push('/conversations/1')
-      await router.isReady()
-
-      const wrapper = mountComponent()
-      const html = wrapper.html()
-
-      // Verify sub-components that are always rendered are present
-      // Note: Some components use v-if and may not be in HTML initially
-      expect(html).toContain('quick-replies')
-    })
   })
 
   describe('Composable Integration', () => {
@@ -178,100 +167,6 @@ describe('ConversationDetail Integration', () => {
       expect(replies.length).toBeGreaterThan(0)
     })
 
-    it('should render ConnectionStatusBar', async () => {
-      router.push('/conversations/1')
-      await router.isReady()
-
-      const wrapper = mountComponent()
-      const statusBar = wrapper.findComponent({ name: 'ConnectionStatusBar' })
-
-      expect(statusBar.exists()).toBe(true)
-    })
-
-    it('should render NewMessageNotification', async () => {
-      router.push('/conversations/1')
-      await router.isReady()
-
-      const wrapper = mountComponent()
-      const notification = wrapper.findComponent({ name: 'NewMessageNotification' })
-
-      expect(notification.exists()).toBe(true)
-    })
-  })
-
-  describe('Layout and Styling', () => {
-    it('should have proper CSS classes for styling', async () => {
-      router.push('/conversations/1')
-      await router.isReady()
-
-      const wrapper = mountComponent()
-
-      // Check main container has correct class
-      expect(wrapper.find('.conversation-detail').classes()).toContain('conversation-detail')
-    })
-
-    it('should apply drag and drop event handlers', async () => {
-      router.push('/conversations/1')
-      await router.isReady()
-
-      const wrapper = mountComponent()
-      const container = wrapper.find('.conversation-detail')
-
-      // Verify drag/drop handlers are attached
-      expect(container.element).toBeTruthy()
-    })
-  })
-
-  describe('Refactoring Success Metrics', () => {
-    it('should have reduced template complexity through component extraction', async () => {
-      router.push('/conversations/1')
-      await router.isReady()
-
-      const wrapper = mountComponent()
-
-      // Verify we're using extracted components instead of inline HTML
-      // Before: ~320 lines of template code
-      // After: ~171 lines with component composition
-      expect(wrapper.findComponent({ name: 'DragDropOverlay' }).exists()).toBe(true)
-      // ClosedConversationBanner removed - closed status no longer supported
-      expect(wrapper.findComponent({ name: 'NewMessageNotification' }).exists()).toBe(true)
-      expect(wrapper.findComponent({ name: 'QuickReplies' }).exists()).toBe(true)
-      expect(wrapper.findComponent({ name: 'ConnectionStatusBar' }).exists()).toBe(true)
-    })
-
-    it('should demonstrate composable architecture benefits', async () => {
-      router.push('/conversations/1')
-      await router.isReady()
-
-      const wrapper = mountComponent()
-
-      // The component successfully integrated all composables:
-      // - useSearchPanel
-      // - useConversationActions
-      // - useNewMessageNotification
-      // - useDragAndDrop
-      // - useQuickReplies
-
-      // Verify component mounted successfully (integration succeeded)
-      expect(wrapper.exists()).toBe(true)
-      expect(wrapper.vm).toBeTruthy()
-    })
-  })
-
-  describe('Code Organization', () => {
-    it('should maintain clean component hierarchy', async () => {
-      router.push('/conversations/1')
-      await router.isReady()
-
-      const wrapper = mountComponent()
-
-      // Verify component has proper structure with main container
-      expect(wrapper.find('.conversation-detail').exists()).toBe(true)
-
-      // Verify all our custom components exist in the component tree
-      expect(wrapper.findComponent({ name: 'QuickReplies' }).exists()).toBe(true)
-      expect(wrapper.findComponent({ name: 'NewMessageNotification' }).exists()).toBe(true)
-    })
   })
 
   describe('Free-reply window', () => {
