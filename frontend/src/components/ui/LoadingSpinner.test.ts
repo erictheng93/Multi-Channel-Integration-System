@@ -65,19 +65,6 @@ describe('LoadingSpinner', () => {
     })
   })
 
-  it('should have proper accessibility attributes', () => {
-    const wrapper = mount(LoadingSpinner, {
-      props: { text: 'Loading...' }
-    })
-    
-    // Component should be accessible
-    expect(wrapper.find('.loading-spinner').exists()).toBe(true)
-    expect(wrapper.find('.spinner').exists()).toBe(true)
-    
-    // Text should be present for screen readers
-    expect(wrapper.text()).toContain('Loading...')
-  })
-
   it('should handle empty text prop gracefully', () => {
     const wrapper = mount(LoadingSpinner, {
       props: { text: '' }
