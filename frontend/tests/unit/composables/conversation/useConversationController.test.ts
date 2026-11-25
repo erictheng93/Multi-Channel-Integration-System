@@ -37,6 +37,8 @@ const mockHttpMessages = ref<Message[]>([])
 const mockHasMore = ref(false)
 const mockLoadMessages = vi.fn()
 const mockLoadMoreMessages = vi.fn()
+const mockHttpFetchMessages = vi.fn()
+const mockHttpRefreshMessages = vi.fn()
 
 vi.mock('@/composables/useCustomerMessages', () => ({
   useCustomerMessages: vi.fn(() => ({
@@ -46,8 +48,8 @@ vi.mock('@/composables/useCustomerMessages', () => ({
     error: ref(null),
     loadMessages: mockLoadMessages,
     loadMoreMessages: mockLoadMoreMessages,
-    refreshMessages: vi.fn(),
-    fetchMessages: vi.fn().mockResolvedValue(undefined),
+    refreshMessages: mockHttpRefreshMessages,
+    fetchMessages: mockHttpFetchMessages,
     addMessage: vi.fn((message) => {
       mockHttpMessages.value.push(message)
     })
@@ -134,6 +136,9 @@ describe('useConversationController', () => {
     mockUpdateConversationStatus.mockResolvedValue({ success: true })
     mockFetchMessages.mockResolvedValue({ data: [], total: 0 })
     mockFetchConversation.mockResolvedValue(mockCurrentConversation.value)
+    mockHttpFetchMessages.mockResolvedValue(undefined)
+    mockHttpRefreshMessages.mockResolvedValue(undefined)
+    mockLoadMoreMessages.mockResolvedValue(undefined)
 
     // Dynamically import to apply mocks
     const { useConversationController } = await import('@/composables/conversation')
@@ -153,9 +158,9 @@ describe('useConversationController', () => {
     it('should initialize successfully', async () => {
       await controller.initialize()
 
-      // 驗證初始化成功（不報錯即成功）
-      expect(controller).toBeDefined()
-      expect(controller.conversation).toBeDefined()
+      // Loads the conversation first, then its HTTP message history
+      expect(mockFetchConversation).toHaveBeenCalledWith(conversationId)
+      expect(mockHttpFetchMessages).toHaveBeenCalledTimes(1)
     })
 
     it('should cleanup resources on unmount', () => {
@@ -177,12 +182,18 @@ describe('useConversationController', () => {
         uploadProgress: 0
       }
 
-      // 執行前先確認消息列表為空
+      expect(mockHttpMessages.value).toHaveLength(0)
+
       controller.onMessagePending(pendingData)
 
-      // 驗證消息已添加（可能通過內部機制）
-      // 由於實際實現可能異步，我們只驗證方法被調用
-      expect(controller.onMessagePending).toBeDefined()
+      // The optimistic message is shown immediately under its temp id
+      expect(mockHttpMessages.value).toHaveLength(1)
+      expect(mockHttpMessages.value[0]).toMatchObject({
+        id: 'temp-123',
+        content: 'Test message',
+        status: 'pending',
+        senderType: 'agent'
+      })
     })
 
     it('should handle message confirmed (update tempId to realId)', () => {
@@ -258,27 +269,9 @@ describe('useConversationController', () => {
       expect(failedMessage).toBeDefined()
       expect(failedMessage?.status).toBe('failed')
     })
-
-    it('should track user activity when sending message', () => {
-      // 驗證方法存在且可調用
-      expect(controller.trackUserActivity).toBeDefined()
-      expect(typeof controller.trackUserActivity).toBe('function')
-
-      // 調用方法（不驗證內部實現）
-      controller.trackUserActivity()
-    })
   })
 
   describe('WebSocket 整合', () => {
-    it('should expose WebSocket connection state', () => {
-      // 驗證 WebSocket 狀態是否正確暴露
-      expect(controller.isWebSocketEnabled).toBeDefined()
-      expect(controller.isConnected).toBeDefined()
-      expect(controller.connectionState).toBeDefined()
-      expect(controller.connectionProtocol).toBeDefined()
-      expect(controller.connectionQuality).toBeDefined()
-    })
-
     it('should handle connection state changes', async () => {
       // Mock connection state change
       controller._internals.websocket.unifiedIsConnected.value = true
@@ -300,8 +293,8 @@ describe('useConversationController', () => {
 
       await controller.refreshMessages()
 
-      // 驗證方法存在且可調用
-      expect(controller.refreshMessages).toBeDefined()
+      // Not connected (WebSocket mock is idle) -> falls back to the HTTP refresh
+      expect(mockHttpRefreshMessages).toHaveBeenCalledTimes(1)
     })
 
     it('should load more messages', async () => {
@@ -311,8 +304,7 @@ describe('useConversationController', () => {
 
       await controller.loadMoreMessages()
 
-      // 驗證方法存在且可調用
-      expect(controller.loadMoreMessages).toBeDefined()
+      expect(mockLoadMoreMessages).toHaveBeenCalledTimes(1)
     })
   })
 
@@ -369,11 +361,6 @@ describe('useConversationController', () => {
   })
 
   describe('UI 操作', () => {
-    it('should expose scroll to bottom function', () => {
-      expect(controller.scrollToBottom).toBeDefined()
-      expect(typeof controller.scrollToBottom).toBe('function')
-    })
-
     it('should set scroll target', () => {
       const mockScrollTarget = {
         scrollToBottom: vi.fn()
