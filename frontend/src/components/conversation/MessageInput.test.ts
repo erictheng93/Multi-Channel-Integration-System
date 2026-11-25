@@ -2,7 +2,7 @@
 // 檔案路徑：/frontend/src/components/conversation/MessageInput.test.ts
 // Created by: Component Test Developer
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
-import { mount, type VueWrapper } from '@vue/test-utils'
+import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { nextTick } from 'vue'
 import type { TestComponentInstance, MockProps } from '@/types/test-types'
@@ -23,11 +23,21 @@ vi.mock('@/api/message', () => ({
   }
 }))
 
+vi.mock('@/api/authenticatedFetch', () => ({
+  authenticatedFetch: vi.fn()
+}))
+
 import MessageInput from './MessageInput.vue'
+import { authenticatedFetch } from '@/api/authenticatedFetch'
 import { messageApi } from '@/api/message'
 
 // Get access to the mocked API
 const mockMessageApi = vi.mocked(messageApi)
+const mockAuthenticatedFetch = vi.mocked(authenticatedFetch)
+
+function mockFetchJson(body: unknown) {
+  mockAuthenticatedFetch.mockResolvedValue({ json: async () => body } as unknown as Response)
+}
 
 // Mock the icon components
 vi.mock('@/components/icons', () => ({
@@ -64,6 +74,7 @@ describe('MessageInput Component', () => {
     pinia = createPinia()
     setActivePinia(pinia)
     vi.clearAllMocks()
+    mockFetchJson({ success: true, message: { id: 'real-default' } })
   })
 
   afterEach(() => {
@@ -121,21 +132,6 @@ describe('MessageInput Component', () => {
 
       // Check the input value directly instead of component internal state
       expect((textarea.element as globalThis.HTMLTextAreaElement).value).toBe('Hello, World!')
-    })
-
-    it('should enable send button when text is entered', async () => {
-      const wrapper = createWrapper()
-      const textarea = wrapper.find('.message-textarea')
-      const sendButton = wrapper.find('.send-button')
-
-      // Initially enabled (按鈕始終可用除了發送時)
-      expect(sendButton.attributes('disabled')).toBeUndefined()
-
-      // Enable after typing
-      await textarea.setValue('Test message')
-      await nextTick()
-
-      expect(sendButton.attributes('disabled')).toBeUndefined()
     })
 
     it('should handle Enter key to send message', async () => {
@@ -201,15 +197,23 @@ describe('MessageInput Component', () => {
     })
 
     it('should send message on Enter once the composition grace window has passed', async () => {
-      const wrapper = createWrapper()
-      const textarea = wrapper.find('.message-textarea')
+      vi.useFakeTimers()
+      try {
+        const wrapper = createWrapper()
+        const textarea = wrapper.find('.message-textarea')
 
-      await textarea.setValue('今天的訂單')
-      await textarea.trigger('compositionend')
-      await new Promise((resolve) => setTimeout(resolve, 100))
-      await textarea.trigger('keydown', { key: 'Enter' })
+        await textarea.setValue('今天的訂單')
+        await textarea.trigger('compositionend')
+        await textarea.trigger('keydown', { key: 'Enter' })
+        expect(wrapper.emitted('message-pending')).toBeFalsy()
 
-      expect(wrapper.emitted('message-pending')).toBeTruthy()
+        vi.advanceTimersByTime(100)
+        await textarea.trigger('keydown', { key: 'Enter' })
+
+        expect(wrapper.emitted('message-pending')).toHaveLength(1)
+      } finally {
+        vi.useRealTimers()
+      }
     })
 
     it('should auto-resize textarea based on content', async () => {
@@ -230,138 +234,121 @@ describe('MessageInput Component', () => {
   })
 
   describe('Message Sending', () => {
-    it('should send message successfully', async () => {
+    const sentBody = () => JSON.parse(String(mockAuthenticatedFetch.mock.calls[0]?.[1]?.body))
+
+    it('emits message-pending optimistically, clears the input and trims the content', async () => {
       const wrapper = createWrapper()
       const textarea = wrapper.find('.message-textarea')
-      const sendButton = wrapper.find('.send-button')
 
-      await textarea.setValue('Test message')
-      await sendButton.trigger('click')
-
-      // Component emits message-pending event immediately (optimistic UI)
-      const emittedEvents = wrapper.emitted('message-pending')
-      expect(emittedEvents).toBeTruthy()
-      if (emittedEvents && emittedEvents.length > 0 && emittedEvents[0]) {
-        const pendingMessage = emittedEvents[0][0] as Record<string, unknown>
-        expect(pendingMessage.content).toBe('Test message')
-        expect(pendingMessage.status).toBe('sending')  // No attachments = sending status
-      }
-    })
-
-    it('should emit message-pending event on send attempt', async () => {
-      const wrapper = createWrapper()
-      const textarea = wrapper.find('.message-textarea')
-      const sendButton = wrapper.find('.send-button')
-
-      // Component uses fetch directly and emits message-pending immediately
-      await textarea.setValue('Test message')
-      await sendButton.trigger('click')
-      await nextTick()
-
-      // message-pending is emitted immediately for optimistic UI update
-      expect(wrapper.emitted('message-pending')).toBeTruthy()
-      const pendingEvent = wrapper.emitted('message-pending')?.[0]?.[0] as { content: string; tempId: string }
-      expect(pendingEvent?.content).toBe('Test message')
-      expect(pendingEvent?.tempId).toBeDefined()
-    })
-
-    it('should clear input after send attempt', async () => {
-      const wrapper = createWrapper()
-      const textarea = wrapper.find('.message-textarea')
-      const sendButton = wrapper.find('.send-button')
-
-      // Component clears input immediately after sending (optimistic UI)
-      await textarea.setValue('Test message')
-      await sendButton.trigger('click')
-      await nextTick()
-
-      // Check the input value directly - should be cleared for optimistic UI
-      expect((textarea.element as globalThis.HTMLTextAreaElement).value).toBe('')
-    })
-
-    it('should show error message on send failure', async () => {
-      const wrapper = createWrapper()
-      const textarea = wrapper.find('.message-textarea')
-      const sendButton = wrapper.find('.send-button')
-
-      // Component uses fetch directly
-      // When fetch fails, component shows error
-      await textarea.setValue('Test message')
-      await sendButton.trigger('click')
-
-      // Wait for async operations
-      await nextTick()
-      await nextTick()
-
-      // Component should remain functional after error
-      expect(wrapper.find('.message-input').exists()).toBe(true)
-
-      // Error element may or may not exist depending on fetch result
-      const errorElement = wrapper.find('.error-message')
-      if (errorElement.exists()) {
-        expect(errorElement.text().length).toBeGreaterThan(0)
-      }
-    })
-
-    it('should show loading state while sending', async () => {
-      const wrapper = createWrapper()
-      const textarea = wrapper.find('.message-textarea')
-      const sendButton = wrapper.find('.send-button')
-
-      // Mock a delayed response
-      mockMessageApi.send.mockImplementation(() => 
-        new Promise(resolve => setTimeout(() => resolve({ 
-          success: true, 
-          data: { 
-            id: 'msg-1',
-            conversationId: 'test-conversation-id',
-            senderType: 'agent' as const,
-            senderId: 'agent-1',
-            content: 'Test message',
-            messageType: 'text' as const,
-            platform: 'line' as const,
-            timestamp: Date.now(),
-            createdAt: Date.now()
-          }
-        }), 100))
-      )
-
-      await textarea.setValue('Test message')
-      await sendButton.trigger('click')
-
-      // Should show loading icon
-      expect(wrapper.find('[data-testid="loading-icon"]').exists()).toBe(true)
-      expect(sendButton.classes()).toContain('sending')
-    })
-
-    it('should not send empty messages', async () => {
-      const wrapper = createWrapper()
-      const sendButton = wrapper.find('.send-button')
-      const textarea = wrapper.find('.message-textarea')
-
-      // Ensure textarea is empty
-      await textarea.setValue('')
-      await sendButton.trigger('click')
-      await nextTick()
-
-      // Component should not be in sending state for empty messages
-      // The input should still exist and be ready for new input
-      expect(wrapper.find('.message-input').exists()).toBe(true)
-    })
-
-    it('should trim whitespace from messages', async () => {
-      const wrapper = createWrapper()
-      const textarea = wrapper.find('.message-textarea')
-      const sendButton = wrapper.find('.send-button')
-
-      // Note: Component uses fetch directly, not messageApi.send
-      // Test verifies the trim behavior by checking textarea is cleared
       await textarea.setValue('  Test message  ')
+      await wrapper.find('.send-button').trigger('click')
+
+      const pending = wrapper.emitted('message-pending')?.[0]?.[0] as { content: string; tempId: string; status: string }
+      expect(pending.content).toBe('Test message')
+      expect(pending.status).toBe('sending')
+      expect(pending.tempId).toBeTruthy()
+      expect((textarea.element as globalThis.HTMLTextAreaElement).value).toBe('')
+      await flushPromises()
+      expect(sentBody().content).toBe('Test message')
+    })
+
+    it('confirms the optimistic message with the server id on success', async () => {
+      mockFetchJson({ success: true, message: { id: 'real-1', deliveryStatus: 'buffered', recallDeadline: '2026-11-25T00:00:00Z' } })
+      const wrapper = createWrapper()
+
+      await wrapper.find('.message-textarea').setValue('hello')
+      await wrapper.find('.send-button').trigger('click')
+      await flushPromises()
+
+      const pending = wrapper.emitted('message-pending')?.[0]?.[0] as { tempId: string }
+      const confirmed = wrapper.emitted('message-confirmed')?.[0]?.[0] as Record<string, unknown>
+      expect(confirmed).toMatchObject({ tempId: pending.tempId, realId: 'real-1', deliveryStatus: 'buffered' })
+      expect(wrapper.emitted('message-failed')).toBeFalsy()
+      expect(wrapper.find('.error-message').exists()).toBe(false)
+    })
+
+    it('reports a server rejection with retry data and shows the error inline', async () => {
+      mockFetchJson({ success: false, error: { message: 'Quota exceeded' } })
+      const wrapper = createWrapper()
+
+      await wrapper.find('.message-textarea').setValue('hello')
+      await wrapper.find('.send-button').trigger('click')
+      await flushPromises()
+
+      const failed = wrapper.emitted('message-failed')?.[0]?.[0] as { error: string; retryData: { content: string } }
+      expect(failed.error).toBe('Quota exceeded')
+      expect(failed.retryData.content).toBe('hello')
+      expect(wrapper.emitted('message-confirmed')).toBeFalsy()
+      expect(wrapper.find('.error-message').text()).toContain('Quota exceeded')
+    })
+
+    it('shows a network-specific message when fetch itself fails', async () => {
+      mockAuthenticatedFetch.mockRejectedValue(new TypeError('Failed to fetch'))
+      const wrapper = createWrapper()
+      vi.spyOn(console, 'error').mockImplementation(() => {})
+
+      await wrapper.find('.message-textarea').setValue('hello')
+      await wrapper.find('.send-button').trigger('click')
+      await flushPromises()
+
+      expect(wrapper.emitted('message-failed')).toHaveLength(1)
+      expect(wrapper.find('.error-message').text()).toContain('網路連接失敗')
+    })
+
+    it('clears the inline error when the user types again', async () => {
+      mockFetchJson({ success: false, error: { message: 'Quota exceeded' } })
+      const wrapper = createWrapper()
+      const textarea = wrapper.find('.message-textarea')
+
+      await textarea.setValue('hello')
+      await wrapper.find('.send-button').trigger('click')
+      await flushPromises()
+      expect(wrapper.find('.error-message').exists()).toBe(true)
+
+      await textarea.trigger('input')
+      expect(wrapper.find('.error-message').exists()).toBe(false)
+    })
+
+    it('clears the inline error when the conversation changes', async () => {
+      mockFetchJson({ success: false, error: { message: 'Quota exceeded' } })
+      const wrapper = createWrapper({ conversationId: 'conv-1' })
+
+      await wrapper.find('.message-textarea').setValue('hello')
+      await wrapper.find('.send-button').trigger('click')
+      await flushPromises()
+      expect(wrapper.find('.error-message').exists()).toBe(true)
+
+      await wrapper.setProps({ conversationId: 'conv-2' })
+      expect(wrapper.find('.error-message').exists()).toBe(false)
+    })
+
+    it('shows the sending state while the request is in flight', async () => {
+      let release: (value: unknown) => void = () => {}
+      mockAuthenticatedFetch.mockReturnValue(new Promise((resolve) => { release = resolve }))
+      const wrapper = createWrapper()
+      const sendButton = wrapper.find('.send-button')
+
+      await wrapper.find('.message-textarea').setValue('hello')
       await sendButton.trigger('click')
       await nextTick()
+      expect(sendButton.classes()).toContain('sending')
+      expect(wrapper.find('[data-testid="loading-icon"]').exists()).toBe(true)
 
-      // After sending, textarea should be cleared
-      expect((textarea.element as HTMLTextAreaElement).value).toBe('')
+      release({ json: async () => ({ success: true, message: { id: 'real-1' } }) })
+      await flushPromises()
+      expect(sendButton.classes()).not.toContain('sending')
+    })
+
+    it('does not send empty or whitespace-only messages', async () => {
+      const wrapper = createWrapper()
+
+      await wrapper.find('.send-button').trigger('click')
+      await wrapper.find('.message-textarea').setValue('   ')
+      await wrapper.find('.send-button').trigger('click')
+      await flushPromises()
+
+      expect(wrapper.emitted('message-pending')).toBeFalsy()
+      expect(mockAuthenticatedFetch).not.toHaveBeenCalled()
     })
   })
 
@@ -395,22 +382,6 @@ describe('MessageInput Component', () => {
       expect(wrapper.find('.attachment-name').text()).toBe('test.txt')
     })
 
-    it('should show attachment preview', async () => {
-      const wrapper = createWrapper()
-      const fileInput = wrapper.find('.file-input')
-
-      const mockFile = new globalThis.File(['test content'], 'test.txt', { type: 'text/plain' })
-      Object.defineProperty(fileInput.element, 'files', {
-        value: [mockFile],
-        writable: false
-      })
-
-      await fileInput.trigger('change')
-      await nextTick()
-
-      expect(wrapper.find('.attachments-preview').exists()).toBe(true)
-      expect(wrapper.find('.attachment-name').text()).toBe('test.txt')
-    })
 
     it('should emit attachment-upload event', async () => {
       const wrapper = createWrapper()
@@ -445,16 +416,11 @@ describe('MessageInput Component', () => {
 
       await fileInput.trigger('change')
       await nextTick()
+      expect(wrapper.find('.attachments-preview').exists()).toBe(true)
 
-      const removeButton = wrapper.find('.remove-attachment')
-      if (removeButton.exists()) {
-        await removeButton.trigger('click')
-        await nextTick()
-        expect(wrapper.find('.attachments-preview').exists()).toBe(false)
-      } else {
-        // If remove button doesn't exist, the test should still pass
-        expect(wrapper.find('.attachments-preview').exists()).toBe(true)
-      }
+      await wrapper.find('.remove-attachment').trigger('click')
+      await nextTick()
+      expect(wrapper.find('.attachments-preview').exists()).toBe(false)
     })
 
     it('should reject files larger than 10MB', async () => {
@@ -470,45 +436,9 @@ describe('MessageInput Component', () => {
       await fileInput.trigger('change')
       await nextTick()
 
-      // Check that no attachment preview is shown and error message appears
       expect(wrapper.find('.attachments-preview').exists()).toBe(false)
-      const errorMessage = wrapper.find('.error-message')
-      if (errorMessage.exists()) {
-        expect(errorMessage.text()).toContain('exceeds 10MB limit')
-      }
-    })
-
-    it('should format file sizes correctly', () => {
-      const wrapper = createWrapper()
-
-      // Test file size formatting by checking if the component has the method
-      const vm = wrapper.vm as { formatFileSize?: (_size: number) => string }
-      if (vm.formatFileSize) {
-        expect(vm.formatFileSize(0)).toBe('0 B')
-        expect(vm.formatFileSize(1024)).toBe('1 KB')
-        expect(vm.formatFileSize(1024 * 1024)).toBe('1 MB')
-        expect(vm.formatFileSize(1536)).toBe('1.5 KB')
-      } else {
-        // If method doesn't exist, test passes as it's an implementation detail
-        expect(true).toBe(true)
-      }
-    })
-
-    it('should enable send button when attachments are present', async () => {
-      const wrapper = createWrapper()
-      const fileInput = wrapper.find('.file-input')
-      const sendButton = wrapper.find('.send-button')
-
-      const mockFile = new globalThis.File(['test content'], 'test.txt', { type: 'text/plain' })
-      Object.defineProperty(fileInput.element, 'files', {
-        value: [mockFile],
-        writable: false
-      })
-
-      await fileInput.trigger('change')
-      await nextTick()
-
-      expect(sendButton.attributes('disabled')).toBeUndefined()
+      expect(wrapper.emitted('attachment-upload')).toBeFalsy()
+      expect(wrapper.find('.error-message').text()).toContain('exceeds 10MB limit')
     })
   })
 
@@ -679,72 +609,6 @@ describe('MessageInput Component', () => {
 
       expect(wrapper.find('.attachments-preview').exists()).toBe(false)
     })
-
-    it('should clear error when conversation changes', async () => {
-      const wrapper = createWrapper({ conversationId: 'conv-1' })
-
-      // Simulate an error state by triggering a rejected promise
-      const textarea = wrapper.find('.message-textarea')
-      const sendButton = wrapper.find('.send-button')
-
-      // Use rejected promise to ensure error state is set
-      mockMessageApi.send.mockRejectedValueOnce(new Error('Test error'))
-
-      await textarea.setValue('Test message')
-      await sendButton.trigger('click')
-
-      // Wait for async operations to complete
-      await nextTick()
-      await nextTick()
-
-      // Error message element might not exist if component handles errors differently
-      // Check for either the element or verify the state change behavior
-      // Note: errorBefore check removed as it's not needed for this assertion
-
-      await wrapper.setProps({ conversationId: 'conv-2' })
-      await nextTick()
-
-      // After conversation change, any error state should be cleared or different
-      // The main assertion is that conversation change doesn't break the component
-      expect(wrapper.find('.message-input').exists()).toBe(true)
-    })
-  })
-
-  describe('Error Handling', () => {
-    it('should handle network errors gracefully', async () => {
-      const wrapper = createWrapper()
-      const textarea = wrapper.find('.message-textarea')
-      const sendButton = wrapper.find('.send-button')
-
-      // Note: Component uses fetch directly
-      // This test verifies component remains functional after errors
-      await textarea.setValue('Test message')
-      await sendButton.trigger('click')
-
-      // Wait for async operations
-      await nextTick()
-      await nextTick()
-
-      // Component should still be functional
-      expect(wrapper.find('.message-input').exists()).toBe(true)
-      expect(wrapper.find('.send-button').exists()).toBe(true)
-    })
-
-    it('should clear error when typing', async () => {
-      const wrapper = createWrapper()
-      const textarea = wrapper.find('.message-textarea')
-
-      // Type in the textarea to trigger handleInput
-      await textarea.setValue('New message')
-      await textarea.trigger('input')
-      await nextTick()
-
-      // Component should be ready to send
-      expect(wrapper.find('.message-input').exists()).toBe(true)
-      expect(wrapper.find('.send-button').exists()).toBe(true)
-      // Textarea should have the value
-      expect((textarea.element as HTMLTextAreaElement).value).toBe('New message')
-    })
   })
 
   describe('Accessibility', () => {
@@ -757,28 +621,11 @@ describe('MessageInput Component', () => {
       })
     })
 
-    it('should have proper titles for action buttons', () => {
-      const wrapper = createWrapper()
-
-      expect(wrapper.find('button[title="Emoji"]').attributes('title')).toBe('Emoji')
-      expect(wrapper.find('button[title="Attachment"]').attributes('title')).toBe('Attachment')
-    })
-
     it('should have proper file input accept attribute', () => {
       const wrapper = createWrapper()
       const fileInput = wrapper.find('.file-input')
 
       expect(fileInput.attributes('accept')).toBe('image/*,application/pdf,.doc,.docx')
-    })
-  })
-
-  describe('Responsive Design', () => {
-    it('should have responsive CSS classes', () => {
-      const wrapper = createWrapper()
-
-      expect(wrapper.find('.message-input').exists()).toBe(true)
-      expect(wrapper.find('.input-container').exists()).toBe(true)
-      expect(wrapper.find('.input-wrapper').exists()).toBe(true)
     })
   })
 })

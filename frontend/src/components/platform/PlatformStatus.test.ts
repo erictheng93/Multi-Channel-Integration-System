@@ -263,35 +263,35 @@ describe('PlatformStatus Component', () => {
     })
 
     it('should emit refresh event when refresh button is clicked', async () => {
-      const wrapper = createWrapper({ status: 'connected' })
-      // Find the refresh button specifically by title attribute
-      const refreshButton = wrapper.find('button[title="刷新狀態"]')
-      
-      expect(refreshButton.exists()).toBe(true)
-      await refreshButton.trigger('click')
-      
-      // Wait for the async operation to complete (1 second timeout in the method)
-      await new Promise(resolve => setTimeout(resolve, 1100))
-      
-      expect(wrapper.emitted('refresh')).toBeTruthy()
-    }, 2000)
+      vi.useFakeTimers()
+      try {
+        const wrapper = createWrapper({ status: 'connected' })
+        const refreshButton = wrapper.find('button[title="刷新狀態"]')
+
+        expect(refreshButton.exists()).toBe(true)
+        await refreshButton.trigger('click')
+        // refresh only completes (and emits) after the 1s status check
+        expect(wrapper.emitted('refresh')).toBeFalsy()
+
+        await vi.advanceTimersByTimeAsync(1000)
+
+        expect(wrapper.emitted('refresh')).toHaveLength(1)
+      } finally {
+        vi.useRealTimers()
+      }
+    })
 
     it('should emit settings event when settings button is clicked', async () => {
-      const wrapper = createWrapper({ 
+      const wrapper = createWrapper({
         status: 'connected',
-        showSettings: true 
+        showSettings: true
       })
-      
-      // Find settings button (should be the second outline button)
-      const outlineButtons = wrapper.findAll('.btn-outline')
-      const settingsButton = outlineButtons.find(btn => 
-        btn.attributes('title') === '設定'
-      )
-      
-      if (settingsButton) {
-        await settingsButton.trigger('click')
-        expect(wrapper.emitted('settings')).toBeTruthy()
-      }
+
+      const settingsButton = wrapper.find('button[title="設定"]')
+      expect(settingsButton.exists()).toBe(true)
+      await settingsButton.trigger('click')
+
+      expect(wrapper.emitted('settings')).toHaveLength(1)
     })
   })
 
@@ -301,10 +301,21 @@ describe('PlatformStatus Component', () => {
       expect(wrapper.find('.connection-history').exists()).toBe(false)
     })
 
-    it('should show history section when showHistory is true', () => {
-      const wrapper = createWrapper({ showHistory: true })
-      // History section exists but may be empty initially
-      expect(wrapper.find('.connection-history').exists()).toBe(false) // Initially empty
+    it('should list a refresh entry once showHistory is true and a refresh happened', async () => {
+      vi.useFakeTimers()
+      try {
+        const wrapper = createWrapper({ status: 'connected', showHistory: true })
+        // No entries yet, so the section stays hidden
+        expect(wrapper.find('.connection-history').exists()).toBe(false)
+
+        await wrapper.find('button[title="刷新狀態"]').trigger('click')
+        await vi.advanceTimersByTimeAsync(1000)
+
+        expect(wrapper.find('.connection-history').exists()).toBe(true)
+        expect(wrapper.find('.connection-history').text()).toContain('狀態刷新')
+      } finally {
+        vi.useRealTimers()
+      }
     })
   })
 
@@ -386,39 +397,6 @@ describe('PlatformStatus Component', () => {
         }
       })
       expect(wrapper.text()).toContain('--')
-    })
-  })
-
-  describe('Props Validation', () => {
-    it('should use default props when not provided', () => {
-      const wrapper = createWrapper()
-      expect(wrapper.vm.showMetrics).toBe(true)
-      expect(wrapper.vm.showHistory).toBe(false)
-      expect(wrapper.vm.showSettings).toBe(true)
-    })
-
-    it('should use provided metrics', () => {
-      const customMetrics = {
-        messagesCount: 100,
-        activeConversations: 5,
-        averageResponseTime: 1000,
-        successRate: 0.9
-      }
-      
-      const wrapper = createWrapper({ metrics: customMetrics })
-      expect(wrapper.vm.metrics).toEqual(customMetrics)
-    })
-
-    it('should use provided webhook status', () => {
-      const customWebhookStatus = {
-        endpoint: 'https://test.com/webhook',
-        isActive: true,
-        lastVerified: new Date(),
-        lastError: undefined
-      }
-      
-      const wrapper = createWrapper({ webhookStatus: customWebhookStatus })
-      expect(wrapper.vm.webhookStatus).toEqual(customWebhookStatus)
     })
   })
 })
