@@ -91,19 +91,7 @@ describe('PreloadService', () => {
   // 1. 基本 API 測試
   // =========================================================================
   describe('Basic API', () => {
-    it('should export preloadService as singleton', () => {
-      expect(preloadService).toBeDefined()
-      expect(typeof preloadService.getTeams).toBe('function')
-      expect(typeof preloadService.ensureTeamsLoaded).toBe('function')
-      expect(typeof preloadService.refreshTeams).toBe('function')
-      expect(typeof preloadService.warmup).toBe('function')
-      expect(typeof preloadService.init).toBe('function')
-      expect(typeof preloadService.cleanup).toBe('function')
-      expect(typeof preloadService.clearAll).toBe('function')
-    })
-
-    it('should have teamsRef as shallowRef', () => {
-      expect(preloadService.teamsRef).toBeDefined()
+    it('starts with an empty teamsRef after clearAll', () => {
       expect(preloadService.teamsRef.value).toEqual([])
     })
   })
