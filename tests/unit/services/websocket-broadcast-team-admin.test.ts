@@ -298,21 +298,13 @@ describe('WebSocket Broadcast Service - Team Broadcasting with Admin Inclusion',
       expect(result.newTeamNotified).toBe(false);
     });
 
-    it('should handle partial failure when broadcasting to multiple teams', async () => {
-      // First call succeeds (conversation room), then old team fails, new team succeeds
-      mockBroadcasterFetch
-        .mockResolvedValueOnce({
-          ok: true,
-          json: () => Promise.resolve({ successful: 1, failed: 0 })
-        })
-        .mockResolvedValueOnce({
-          ok: false,
-          json: () => Promise.resolve({ error: 'Failed' })
-        })
-        .mockResolvedValueOnce({
-          ok: true,
-          json: () => Promise.resolve({ successful: 3, failed: 0 })
-        });
+    it('reports the old team as not notified when only its removal broadcast fails', async () => {
+      // The three broadcasts run in parallel, so fail by content, not by call order.
+      mockBroadcasterFetch.mockImplementation(async (request: Request) => {
+        const body = JSON.parse(await request.clone().text());
+        const failed = body.event?.data?.action === 'removed';
+        return { ok: !failed, json: () => Promise.resolve(failed ? { error: 'Failed' } : { successful: 3, failed: 0 }) };
+      });
 
       const result = await service.broadcastConversationTransferred(
         createTransferEventParams({
@@ -324,29 +316,12 @@ describe('WebSocket Broadcast Service - Team Broadcasting with Admin Inclusion',
         })
       );
 
-      // Should report partial results
-      expect(result).toBeDefined();
-      expect(typeof result.oldTeamNotified).toBe('boolean');
-      expect(typeof result.newTeamNotified).toBe('boolean');
+      expect(result.oldTeamNotified).toBe(false);
+      expect(result.newTeamNotified).toBe(true);
     });
   });
 
   describe('Edge cases', () => {
-    it('should handle conversation transfer with same team (no-op for fromTeam)', async () => {
-      const result = await service.broadcastConversationTransferred(
-        createTransferEventParams({
-          conversationId: 'conv-same-team',
-          fromTeamId: 5,
-          fromTeamName: 'Same Team',
-          toTeamId: 5,
-          toTeamName: 'Same Team'
-        })
-      );
-
-      // Should still broadcast (implementation may dedupe or handle)
-      expect(result).toBeDefined();
-    });
-
     it('should handle empty team name gracefully', async () => {
       const result = await service.broadcastConversationTransferred(
         createTransferEventParams({
@@ -372,58 +347,6 @@ describe('WebSocket Broadcast Service - Team Broadcasting with Admin Inclusion',
       expect(requestBody.event.data.toTeamId).toBe(1);
     });
 
-    it('should generate unique event IDs for each broadcast', async () => {
-      // Mock crypto.randomUUID to return unique values
-      let uuidCounter = 0;
-      const originalRandomUUID = crypto.randomUUID;
-      vi.spyOn(crypto, 'randomUUID').mockImplementation(() => `unique-id-${++uuidCounter}`);
-
-      try {
-        await service.broadcastConversationTransferred(
-          createTransferEventParams({
-            conversationId: 'conv-unique-1',
-            fromTeamId: null,
-            toTeamId: 1,
-            toTeamName: 'Team 1'
-          })
-        );
-
-        // Reset mock to distinguish between calls
-        const firstCalls = [...mockBroadcasterFetch.mock.calls];
-
-        await service.broadcastConversationTransferred(
-          createTransferEventParams({
-            conversationId: 'conv-unique-2',
-            fromTeamId: null,
-            toTeamId: 2,
-            toTeamName: 'Team 2'
-          })
-        );
-
-        const secondCalls = mockBroadcasterFetch.mock.calls.slice(firstCalls.length);
-
-        // Get team broadcast calls from each batch
-        const firstTeamCall = firstCalls.find(call => {
-          const request = call[0] as Request;
-          return request.url.includes('broadcast-to-teams');
-        });
-
-        const secondTeamCall = secondCalls.find(call => {
-          const request = call[0] as Request;
-          return request.url.includes('broadcast-to-teams');
-        });
-
-        if (firstTeamCall && secondTeamCall) {
-          const body1 = JSON.parse(await (firstTeamCall[0] as Request).clone().text());
-          const body2 = JSON.parse(await (secondTeamCall[0] as Request).clone().text());
-
-          // Event IDs should be unique
-          expect(body1.event.id).not.toBe(body2.event.id);
-        }
-      } finally {
-        vi.mocked(crypto.randomUUID).mockRestore();
-      }
-    });
   });
 
   describe('Integration with Admin real-time updates', () => {

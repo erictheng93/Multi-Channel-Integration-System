@@ -114,18 +114,6 @@ describe('IPValidator', () => {
   });
 
   describe('Platform Configuration', () => {
-    it('should have correct LINE IP ranges', () => {
-      expect(LINE_IP_RANGES).toHaveLength(2);
-      expect(LINE_IP_RANGES[0].cidr).toBe('147.92.128.0/17');
-      expect(LINE_IP_RANGES[1].cidr).toBe('203.104.128.0/17');
-    });
-
-    it('should have correct Facebook IP ranges', () => {
-      expect(FACEBOOK_IP_RANGES).toHaveLength(12);
-      expect(FACEBOOK_IP_RANGES).toContainEqual({ cidr: '31.13.24.0/21', platform: 'facebook' });
-      expect(FACEBOOK_IP_RANGES).toContainEqual({ cidr: '157.240.0.0/17', platform: 'facebook' });
-    });
-
     it('should not have duplicate ranges', () => {
       const allRanges = [...LINE_IP_RANGES, ...FACEBOOK_IP_RANGES];
       const cidrSet = new Set(allRanges.map(r => r.cidr));

@@ -11,6 +11,10 @@ vi.mock('../../../src/db/drizzle-factory', () => ({
   })
 }))
 vi.mock('@/services/websocket-broadcast-service', () => ({ WebSocketBroadcastService: vi.fn() }))
+// The target-user lookup imports the full schema and drizzle-orm on demand; the stubbed db above ignores
+// both, so stub them too instead of paying for the real module graph (most of this file's runtime).
+vi.mock('../../../src/db/schema', () => ({ agents: {}, agentTeams: {} }))
+vi.mock('drizzle-orm', () => ({ eq: () => ({}), and: () => ({}) }))
 
 import { triggerNewConversationNotification } from '@/utils/notification-trigger'
 
