@@ -1,4 +1,5 @@
-// Agent Validation Middleware 測試
+// Agent Validation Middleware 測試 (only the validators agent-main.ts mounts;
+// createAgent validation is not mounted anywhere, so it is not tested)
 // 測試所有驗證邏輯的正確性
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
@@ -38,177 +39,6 @@ const createTestContext = (method: string, path: string, body?: any, params?: Re
   };
 };
 
-// ======================== createAgent 驗證測試 ========================
-
-describe('AgentValidation - createAgent', () => {
-  it('should pass validation with all required fields', async () => {
-    const ctx = createTestContext('POST', '/agents', {
-      email: 'valid@example.com',
-      displayName: 'Valid Agent'
-    }) as any;
-
-    const next = vi.fn();
-
-    await agentValidationMiddleware.createAgent(ctx, next);
-
-    expect(next).toHaveBeenCalled();
-  });
-
-  it('should fail if email is missing', async () => {
-    const ctx = createTestContext('POST', '/agents', {
-      displayName: 'No Email Agent'
-    }) as any;
-
-    const next = vi.fn();
-
-    const result = await agentValidationMiddleware.createAgent(ctx, next);
-
-    expect(result).toBeInstanceOf(Response);
-    expect(next).not.toHaveBeenCalled();
-
-    const json = await (result as Response).json() as { error: string };
-    expect(json.error).toContain('Missing required fields');
-    expect(json.error).toContain('email');
-  });
-
-  it('should fail if displayName is missing', async () => {
-    const ctx = createTestContext('POST', '/agents', {
-      email: 'test@example.com'
-    }) as any;
-
-    const next = vi.fn();
-
-    const result = await agentValidationMiddleware.createAgent(ctx, next);
-
-    expect(result).toBeInstanceOf(Response);
-    const json = await (result as Response).json() as { error: string };
-    expect(json.error).toContain('displayName');
-  });
-
-  it('should fail with invalid email format', async () => {
-    const ctx = createTestContext('POST', '/agents', {
-      email: 'invalid-email',
-      displayName: 'Test Agent'
-    }) as any;
-
-    const next = vi.fn();
-
-    const result = await agentValidationMiddleware.createAgent(ctx, next);
-
-    expect(result).toBeInstanceOf(Response);
-    const json = await (result as Response).json() as { error: string };
-    expect(json.error).toBe('Invalid email format');
-  });
-
-  it('should fail if displayName is too short', async () => {
-    const ctx = createTestContext('POST', '/agents', {
-      email: 'test@example.com',
-      displayName: 'A' // Only 1 character
-    }) as any;
-
-    const next = vi.fn();
-
-    const result = await agentValidationMiddleware.createAgent(ctx, next);
-
-    expect(result).toBeInstanceOf(Response);
-    const json = await (result as Response).json() as { error: string };
-    expect(json.error).toContain('between 2 and 50 characters');
-  });
-
-  it('should fail if displayName is too long', async () => {
-    const ctx = createTestContext('POST', '/agents', {
-      email: 'test@example.com',
-      displayName: 'A'.repeat(51) // 51 characters
-    }) as any;
-
-    const next = vi.fn();
-
-    const result = await agentValidationMiddleware.createAgent(ctx, next);
-
-    expect(result).toBeInstanceOf(Response);
-    const json = await (result as Response).json() as { error: string };
-    expect(json.error).toContain('between 2 and 50 characters');
-  });
-
-  it('should accept valid role values', async () => {
-    for (const role of ['admin', 'team', 'agent']) {
-      const ctx = createTestContext('POST', '/agents', {
-        email: 'test@example.com',
-        displayName: 'Test Agent',
-        role
-      }) as any;
-
-      const next = vi.fn();
-
-      await agentValidationMiddleware.createAgent(ctx, next);
-
-      expect(next).toHaveBeenCalled();
-    }
-  });
-
-  it('should fail with invalid role', async () => {
-    const ctx = createTestContext('POST', '/agents', {
-      email: 'test@example.com',
-      displayName: 'Test Agent',
-      role: 'superuser' // Invalid role
-    }) as any;
-
-    const next = vi.fn();
-
-    const result = await agentValidationMiddleware.createAgent(ctx, next);
-
-    expect(result).toBeInstanceOf(Response);
-    const json = await (result as Response).json() as { error: string };
-    expect(json.error).toContain('Invalid role');
-  });
-
-  it('should fail with invalid teamId format', async () => {
-    const ctx = createTestContext('POST', '/agents', {
-      email: 'test@example.com',
-      displayName: 'Test Agent',
-      teamId: 'not-a-number'
-    }) as any;
-
-    const next = vi.fn();
-
-    const result = await agentValidationMiddleware.createAgent(ctx, next);
-
-    expect(result).toBeInstanceOf(Response);
-    const json = await (result as Response).json() as { error: string };
-    expect(json.error).toContain('Invalid team ID format');
-  });
-
-  it('should fail with teamId less than 1', async () => {
-    const ctx = createTestContext('POST', '/agents', {
-      email: 'test@example.com',
-      displayName: 'Test Agent',
-      teamId: 0
-    }) as any;
-
-    const next = vi.fn();
-
-    const result = await agentValidationMiddleware.createAgent(ctx, next);
-
-    expect(result).toBeInstanceOf(Response);
-    const json = await (result as Response).json() as { error: string };
-    expect(json.error).toContain('Invalid team ID format');
-  });
-
-  it('should accept null teamId', async () => {
-    const ctx = createTestContext('POST', '/agents', {
-      email: 'test@example.com',
-      displayName: 'Test Agent',
-      teamId: null
-    }) as any;
-
-    const next = vi.fn();
-
-    await agentValidationMiddleware.createAgent(ctx, next);
-
-    expect(next).toHaveBeenCalled();
-  });
-});
-
 // ======================== updateAgent 驗證測試 ========================
 
 describe('AgentValidation - updateAgent', () => {
@@ -232,6 +62,8 @@ describe('AgentValidation - updateAgent', () => {
     const result = await agentValidationMiddleware.updateAgent(ctx, next);
 
     expect(result).toBeInstanceOf(Response);
+    expect((result as Response).status).toBe(400);
+    expect(next).not.toHaveBeenCalled();
     const json = await (result as Response).json() as { error: string };
     expect(json.error).toBe('No update data provided');
   });
@@ -246,6 +78,8 @@ describe('AgentValidation - updateAgent', () => {
     const result = await agentValidationMiddleware.updateAgent(ctx, next);
 
     expect(result).toBeInstanceOf(Response);
+    expect((result as Response).status).toBe(400);
+    expect(next).not.toHaveBeenCalled();
     const json = await (result as Response).json() as { error: string };
     expect(json.error).toBe('Invalid email format');
   });
@@ -260,6 +94,8 @@ describe('AgentValidation - updateAgent', () => {
     const result = await agentValidationMiddleware.updateAgent(ctx, next);
 
     expect(result).toBeInstanceOf(Response);
+    expect((result as Response).status).toBe(400);
+    expect(next).not.toHaveBeenCalled();
     const json = await (result as Response).json() as { error: string };
     expect(json.error).toContain('between 2 and 50 characters');
   });
@@ -274,6 +110,8 @@ describe('AgentValidation - updateAgent', () => {
     const result = await agentValidationMiddleware.updateAgent(ctx, next);
 
     expect(result).toBeInstanceOf(Response);
+    expect((result as Response).status).toBe(400);
+    expect(next).not.toHaveBeenCalled();
     const json = await (result as Response).json() as { error: string };
     expect(json.error).toContain('Invalid role');
   });
@@ -288,6 +126,8 @@ describe('AgentValidation - updateAgent', () => {
     const result = await agentValidationMiddleware.updateAgent(ctx, next);
 
     expect(result).toBeInstanceOf(Response);
+    expect((result as Response).status).toBe(400);
+    expect(next).not.toHaveBeenCalled();
     const json = await (result as Response).json() as { error: string };
     expect(json.error).toContain('isActive must be a boolean');
   });
@@ -316,6 +156,8 @@ describe('AgentValidation - agentId', () => {
     const result = await agentValidationMiddleware.agentId(ctx, next);
 
     expect(result).toBeInstanceOf(Response);
+    expect((result as Response).status).toBe(400);
+    expect(next).not.toHaveBeenCalled();
     const json = await (result as Response).json() as { error: string };
     expect(json.error).toBe('Agent ID is required');
   });
@@ -330,6 +172,8 @@ describe('AgentValidation - agentId', () => {
     const result = await agentValidationMiddleware.agentId(ctx, next);
 
     expect(result).toBeInstanceOf(Response);
+    expect((result as Response).status).toBe(400);
+    expect(next).not.toHaveBeenCalled();
     const json = await (result as Response).json() as { error: string };
     expect(json.error).toBe('Invalid agent ID format');
   });
@@ -344,6 +188,8 @@ describe('AgentValidation - agentId', () => {
     const result = await agentValidationMiddleware.agentId(ctx, next);
 
     expect(result).toBeInstanceOf(Response);
+    expect((result as Response).status).toBe(400);
+    expect(next).not.toHaveBeenCalled();
     const json = await (result as Response).json() as { error: string };
     expect(json.error).toBe('Invalid agent ID format');
   });
@@ -377,6 +223,8 @@ describe('AgentValidation - skill', () => {
     const result = await agentValidationMiddleware.skill(ctx, next);
 
     expect(result).toBeInstanceOf(Response);
+    expect((result as Response).status).toBe(400);
+    expect(next).not.toHaveBeenCalled();
     const json = await (result as Response).json() as { error: string };
     expect(json.error).toContain('Missing required fields');
     expect(json.error).toContain('name');
@@ -394,6 +242,8 @@ describe('AgentValidation - skill', () => {
     const result = await agentValidationMiddleware.skill(ctx, next);
 
     expect(result).toBeInstanceOf(Response);
+    expect((result as Response).status).toBe(400);
+    expect(next).not.toHaveBeenCalled();
     const json = await (result as Response).json() as { error: string };
     expect(json.error).toContain('between 2 and 100 characters');
   });
@@ -428,6 +278,8 @@ describe('AgentValidation - skill', () => {
     const result = await agentValidationMiddleware.skill(ctx, next);
 
     expect(result).toBeInstanceOf(Response);
+    expect((result as Response).status).toBe(400);
+    expect(next).not.toHaveBeenCalled();
     const json = await (result as Response).json() as { error: string };
     expect(json.error).toContain('Invalid category');
   });
@@ -462,6 +314,8 @@ describe('AgentValidation - skill', () => {
     const result = await agentValidationMiddleware.skill(ctx, next);
 
     expect(result).toBeInstanceOf(Response);
+    expect((result as Response).status).toBe(400);
+    expect(next).not.toHaveBeenCalled();
     const json = await (result as Response).json() as { error: string };
     expect(json.error).toContain('Invalid level');
   });
@@ -479,6 +333,8 @@ describe('AgentValidation - skill', () => {
     const result = await agentValidationMiddleware.skill(ctx, next);
 
     expect(result).toBeInstanceOf(Response);
+    expect((result as Response).status).toBe(400);
+    expect(next).not.toHaveBeenCalled();
     const json = await (result as Response).json() as { error: string };
     expect(json.error).toContain('less than 500 characters');
   });
@@ -496,6 +352,8 @@ describe('AgentValidation - skill', () => {
     const result = await agentValidationMiddleware.skill(ctx, next);
 
     expect(result).toBeInstanceOf(Response);
+    expect((result as Response).status).toBe(400);
+    expect(next).not.toHaveBeenCalled();
     const json = await (result as Response).json() as { error: string };
     expect(json.error).toContain('certified must be a boolean');
   });
@@ -524,6 +382,8 @@ describe('AgentValidation - status', () => {
     const result = await agentValidationMiddleware.status(ctx, next);
 
     expect(result).toBeInstanceOf(Response);
+    expect((result as Response).status).toBe(400);
+    expect(next).not.toHaveBeenCalled();
     const json = await (result as Response).json() as { error: string };
     expect(json.error).toBe('Status is required');
   });
@@ -554,6 +414,8 @@ describe('AgentValidation - status', () => {
     const result = await agentValidationMiddleware.status(ctx, next);
 
     expect(result).toBeInstanceOf(Response);
+    expect((result as Response).status).toBe(400);
+    expect(next).not.toHaveBeenCalled();
     const json = await (result as Response).json() as { error: string };
     expect(json.error).toContain('Invalid status');
   });
@@ -571,6 +433,8 @@ describe('AgentValidation - status', () => {
     const result = await agentValidationMiddleware.status(ctx, next);
 
     expect(result).toBeInstanceOf(Response);
+    expect((result as Response).status).toBe(400);
+    expect(next).not.toHaveBeenCalled();
     const json = await (result as Response).json() as { error: string };
     expect(json.error).toContain('must be a future date');
   });
@@ -601,6 +465,8 @@ describe('AgentValidation - status', () => {
     const result = await agentValidationMiddleware.status(ctx, next);
 
     expect(result).toBeInstanceOf(Response);
+    expect((result as Response).status).toBe(400);
+    expect(next).not.toHaveBeenCalled();
     const json = await (result as Response).json() as { error: string };
     expect(json.error).toContain('Invalid availableUntil date format');
   });
@@ -616,6 +482,8 @@ describe('AgentValidation - status', () => {
     const result = await agentValidationMiddleware.status(ctx, next);
 
     expect(result).toBeInstanceOf(Response);
+    expect((result as Response).status).toBe(400);
+    expect(next).not.toHaveBeenCalled();
     const json = await (result as Response).json() as { error: string };
     expect(json.error).toContain('less than 200 characters');
   });
@@ -647,6 +515,8 @@ describe('AgentValidation - pagination', () => {
     const result = await agentValidationMiddleware.pagination(ctx, next);
 
     expect(result).toBeInstanceOf(Response);
+    expect((result as Response).status).toBe(400);
+    expect(next).not.toHaveBeenCalled();
     const json = await (result as Response).json() as { error: string };
     expect(json.error).toContain('Page must be a positive integer');
   });
@@ -661,6 +531,8 @@ describe('AgentValidation - pagination', () => {
     const result = await agentValidationMiddleware.pagination(ctx, next);
 
     expect(result).toBeInstanceOf(Response);
+    expect((result as Response).status).toBe(400);
+    expect(next).not.toHaveBeenCalled();
     const json = await (result as Response).json() as { error: string };
     expect(json.error).toContain('Page number too large');
   });
@@ -675,6 +547,8 @@ describe('AgentValidation - pagination', () => {
     const result = await agentValidationMiddleware.pagination(ctx, next);
 
     expect(result).toBeInstanceOf(Response);
+    expect((result as Response).status).toBe(400);
+    expect(next).not.toHaveBeenCalled();
     const json = await (result as Response).json() as { error: string };
     expect(json.error).toContain('Limit must be a positive integer');
   });
@@ -689,6 +563,8 @@ describe('AgentValidation - pagination', () => {
     const result = await agentValidationMiddleware.pagination(ctx, next);
 
     expect(result).toBeInstanceOf(Response);
+    expect((result as Response).status).toBe(400);
+    expect(next).not.toHaveBeenCalled();
     const json = await (result as Response).json() as { error: string };
     expect(json.error).toContain('Limit too large');
   });
@@ -731,6 +607,8 @@ describe('AgentValidation - batchOperation', () => {
     const result = await agentValidationMiddleware.batchOperation(ctx, next);
 
     expect(result).toBeInstanceOf(Response);
+    expect((result as Response).status).toBe(400);
+    expect(next).not.toHaveBeenCalled();
     const json = await (result as Response).json() as { error: string };
     expect(json.error).toBe('agentIds must be an array');
   });
@@ -746,6 +624,8 @@ describe('AgentValidation - batchOperation', () => {
     const result = await agentValidationMiddleware.batchOperation(ctx, next);
 
     expect(result).toBeInstanceOf(Response);
+    expect((result as Response).status).toBe(400);
+    expect(next).not.toHaveBeenCalled();
     const json = await (result as Response).json() as { error: string };
     expect(json.error).toBe('agentIds cannot be empty');
   });
@@ -761,6 +641,8 @@ describe('AgentValidation - batchOperation', () => {
     const result = await agentValidationMiddleware.batchOperation(ctx, next);
 
     expect(result).toBeInstanceOf(Response);
+    expect((result as Response).status).toBe(400);
+    expect(next).not.toHaveBeenCalled();
     const json = await (result as Response).json() as { error: string };
     expect(json.error).toContain('Cannot process more than 50 agents');
   });
@@ -776,6 +658,8 @@ describe('AgentValidation - batchOperation', () => {
     const result = await agentValidationMiddleware.batchOperation(ctx, next);
 
     expect(result).toBeInstanceOf(Response);
+    expect((result as Response).status).toBe(400);
+    expect(next).not.toHaveBeenCalled();
     const json = await (result as Response).json() as { error: string };
     expect(json.error).toContain('Invalid agent ID format');
   });
