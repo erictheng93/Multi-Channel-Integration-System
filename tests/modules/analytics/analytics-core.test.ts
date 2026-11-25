@@ -335,83 +335,52 @@ describe('AnalyticsService', () => {
   });
 
   describe('緩存功能', () => {
-    test('應該支持 KV 緩存', async () => {
-      if (!mockKV) return;
+    const query: ConversationAnalyticsQuery = {
+      timeRange: '7d',
+      metrics: ['total_conversations']
+    };
 
-      const query: ConversationAnalyticsQuery = {
-        timeRange: '7d',
-        metrics: ['total_conversations']
-      };
-
-      // Mock cache miss, then cache hit
-      mockKV.get.mockResolvedValueOnce(null);
-      mockDB.select.mockReturnValue({
-        from: vi.fn(() => ({
-          where: vi.fn(() => ({
-            get: vi.fn(() => Promise.resolve({ count: 50 })),
-            all: vi.fn(() => Promise.resolve([]))
-          }))
-        }))
+    // The cache service goes through the Workers Cache API; Node has no `caches`, so use an in-memory one.
+    beforeEach(() => {
+      const store = new Map<string, Response>();
+      vi.stubGlobal('caches', {
+        open: async () => ({
+          match: async (req: Request) => store.get(req.url)?.clone(),
+          put: async (req: Request, res: Response) => {
+            store.set(req.url, res);
+          },
+          delete: async (req: Request) => store.delete(req.url)
+        })
       });
+      const rows = {
+        get: vi.fn(() => Promise.resolve({ count: 50 })),
+        all: vi.fn(() => Promise.resolve([]))
+      };
+      const grouped = { ...rows, orderBy: vi.fn(() => rows), where: vi.fn(() => rows) };
+      mockDB.select.mockReset();
+      mockDB.select.mockImplementation((() => ({
+        from: vi.fn(() => ({
+          where: vi.fn(() => ({ ...grouped, groupBy: vi.fn(() => grouped) })),
+          groupBy: vi.fn(() => grouped)
+        }))
+      })) as never);
+    });
 
-      const result1 = await analyticsService.getConversationAnalytics(query);
-      expect(result1).toBeDefined();
+    afterEach(() => {
+      vi.unstubAllGlobals();
+    });
 
-      // Second call should potentially use cache
-      const result2 = await analyticsService.getConversationAnalytics(query);
-      expect(result2).toBeDefined();
+    test('快取未命中、寫入後，第二次呼叫直接命中快取而不再查詢資料庫', async () => {
+      const first = await analyticsService.getConversationAnalytics(query);
+      expect(first.success).toBe(true);
+      const dbCallsAfterFirst = mockDB.select.mock.calls.length;
+      expect(dbCallsAfterFirst).toBeGreaterThan(0);
+
+      const second = await analyticsService.getConversationAnalytics(query);
+
+      expect(second.success).toBe(true);
+      expect(second.data).toEqual(first.data);
+      expect(mockDB.select.mock.calls.length).toBe(dbCallsAfterFirst);
     });
   });
 });
-
-/**
- * Integration test helper
- */
-export function createTestAnalyticsService(): AnalyticsService {
-  const testConfig: AnalyticsServiceConfig = {
-    database: mockDB as any,
-    kv: mockKV,
-    env: mockEnv
-  };
-
-  return new AnalyticsService(testConfig);
-}
-
-/**
- * Test data generators
- */
-export const TestDataGenerators = {
-  conversationAnalyticsQuery: (overrides = {}): ConversationAnalyticsQuery => ({
-    timeRange: '7d',
-    metrics: ['total_conversations', 'active_conversations'],
-    filters: {
-      teamId: 1
-    },
-    ...overrides
-  }),
-
-  mockConversationSummary: () => ({
-    totalConversations: 100,
-    activeConversations: 25,
-    closedConversations: 75,
-    averageDuration: 45,
-    averageMessagesPerConversation: 8,
-    averageFirstResponseTime: 2.5,
-    averageResolutionTime: 15,
-    customerSatisfactionScore: 4.2,
-    period: {
-      start: '2024-01-01T00:00:00Z',
-      end: '2024-01-08T00:00:00Z'
-    }
-  }),
-
-  mockTimeSeriesData: () => [
-    { timestamp: '2024-01-01T00:00:00Z', value: 10, label: 'Day 1' },
-    { timestamp: '2024-01-02T00:00:00Z', value: 15, label: 'Day 2' },
-    { timestamp: '2024-01-03T00:00:00Z', value: 12, label: 'Day 3' },
-    { timestamp: '2024-01-04T00:00:00Z', value: 18, label: 'Day 4' },
-    { timestamp: '2024-01-05T00:00:00Z', value: 20, label: 'Day 5' },
-    { timestamp: '2024-01-06T00:00:00Z', value: 16, label: 'Day 6' },
-    { timestamp: '2024-01-07T00:00:00Z', value: 22, label: 'Day 7' }
-  ]
-};

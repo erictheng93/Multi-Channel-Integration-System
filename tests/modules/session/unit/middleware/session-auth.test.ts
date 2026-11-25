@@ -608,8 +608,6 @@ describe('Session Authentication Middleware', () => {
         c.set('jwtPayload', mockJwtPayloads.admin);
         return next();
       }, logSessionOperation, async (c) => {
-        // Add small delay to test duration measurement
-        await new Promise(resolve => setTimeout(resolve, 50));
         return c.json({ success: true });
       });
 

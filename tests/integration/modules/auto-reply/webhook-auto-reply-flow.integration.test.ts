@@ -391,32 +391,6 @@ describe('Webhook → Auto-Reply Full Flow', () => {
 
   // ───────────── KV Cache Scenarios ─────────────
 
-  describe('KV cache', () => {
-    it('should populate cache on first request and reuse on second', async () => {
-      const env = createMockEnv();
-      // No cache initially → engine will query D1 (mocked to return empty)
-      // Then cache the result
-
-      const result1 = await evaluate({
-        message: { content: 'test', messageType: 'text', platform: 'line' },
-        conversationId: 'conv-001',
-        teamId: 99,
-        replyToken: 'token',
-        customerId: 42,
-        platformUserId: 'U123',
-      }, env);
-
-      expect(result1.matched).toBe(false);
-
-      // KV should have been written
-      expect(mockKV.put).toHaveBeenCalledWith(
-        'auto-reply:rules:99',
-        expect.any(String),
-        expect.objectContaining({ expirationTtl: 300 })
-      );
-    });
-  });
-
   // ───────────── Welcome Rule (Follow Event) ─────────────
 
   describe('welcome rule (follow event)', () => {
