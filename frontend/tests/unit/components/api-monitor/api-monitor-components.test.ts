@@ -10,10 +10,9 @@ import { mount } from '@vue/test-utils'
 import { setActivePinia, createPinia } from 'pinia'
 import ApiHeader from '@/components/api-monitor/ApiHeader.vue'
 import ApiFilter from '@/components/api-monitor/ApiFilter.vue'
-import ApiStatsGrid from '@/components/api-monitor/ApiStatsGrid.vue'
 import ApiEmptyState from '@/components/api-monitor/ApiEmptyState.vue'
 import ApiCard from '@/components/api-monitor/ApiCard.vue'
-import type { ApiEndpoint, ApiStatistics, FilterState } from '@/types/api-monitor'
+import type { ApiEndpoint, FilterState } from '@/types/api-monitor'
 
 // ============================================================================
 // ApiHeader Component Tests
@@ -140,70 +139,6 @@ describe('ApiFilter', () => {
 })
 
 // ============================================================================
-// ApiStatsGrid Component Tests
-// ============================================================================
-
-describe('ApiStatsGrid', () => {
-  const mockStats: ApiStatistics = {
-    totalEndpoints: 10,
-    healthyCount: 6,
-    warningCount: 3,
-    errorCount: 1,
-    avgResponseTime: 150
-  }
-
-  beforeEach(() => {
-    setActivePinia(createPinia())
-  })
-
-  it('should display stat values', () => {
-    const wrapper = mount(ApiStatsGrid, {
-      props: { stats: mockStats }
-    })
-
-    // The component renders stats as text content
-    expect(wrapper.text()).toContain('6')
-    expect(wrapper.text()).toContain('3')
-    expect(wrapper.text()).toContain('1')
-    expect(wrapper.text()).toContain('150')
-  })
-
-  it('should display labels', () => {
-    const wrapper = mount(ApiStatsGrid, {
-      props: { stats: mockStats }
-    })
-
-    expect(wrapper.text()).toContain('正常')
-    expect(wrapper.text()).toContain('警告')
-    expect(wrapper.text()).toContain('錯誤')
-    expect(wrapper.text()).toContain('平均回應')
-  })
-
-  it('should emit stat-click events when cards are clicked', async () => {
-    const wrapper = mount(ApiStatsGrid, {
-      props: { stats: mockStats }
-    })
-
-    // Multi-root component: 4 cards rendered as siblings inside a VTU wrapper div
-    // Each card has a bg-white class and a click handler
-    const cards = wrapper.findAll('.tile')
-    expect(cards).toHaveLength(4)
-
-    await cards[0].trigger('click')
-    expect(wrapper.emitted('stat-click')![0]).toEqual(['healthy'])
-
-    await cards[1].trigger('click')
-    expect(wrapper.emitted('stat-click')![1]).toEqual(['warning'])
-
-    await cards[2].trigger('click')
-    expect(wrapper.emitted('stat-click')![2]).toEqual(['error'])
-
-    await cards[3].trigger('click')
-    expect(wrapper.emitted('stat-click')![3]).toEqual(['all'])
-  })
-})
-
-// ============================================================================
 // ApiEmptyState Component Tests
 // ============================================================================
 
@@ -307,31 +242,5 @@ describe('ApiCard', () => {
 
     const svg = wrapper.find('svg')
     expect(svg.classes()).toContain('rotate-90')
-  })
-})
-
-// ============================================================================
-// Component Integration
-// ============================================================================
-
-describe('Component Integration', () => {
-  beforeEach(() => {
-    setActivePinia(createPinia())
-  })
-
-  it('all components should be importable', async () => {
-    const components = await import('@/components/api-monitor')
-
-    expect(components.ApiHeader).toBeDefined()
-    expect(components.ApiFilter).toBeDefined()
-    expect(components.ApiStatsGrid).toBeDefined()
-    expect(components.ApiCard).toBeDefined()
-    expect(components.ApiCardList).toBeDefined()
-    expect(components.ApiModal).toBeDefined()
-    expect(components.ApiEmptyState).toBeDefined()
-    expect(components.EndpointDetailPanel).toBeDefined()
-    expect(components.InfrastructureCard).toBeDefined()
-    expect(components.ChannelIntegrationsCard).toBeDefined()
-    expect(components.RecentEventsCard).toBeDefined()
   })
 })

@@ -29,6 +29,7 @@ vi.mock('@/api/export', () => ({
   exportMessages: (...args: unknown[]) => mockExportMessages(...args),
   fetchExportData: (...args: unknown[]) => mockFetchExportData(...args),
   getExportCustomers: () => mockGetExportCustomers(),
+  getExportAgents: () => Promise.resolve({ success: true, data: [] }),
   getExportCount: (...args: unknown[]) => mockGetExportCount(...args)
 }))
 

@@ -7,7 +7,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { mount, flushPromises } from '@vue/test-utils'
 import MessageBubble from '@/components/conversation/MessageBubble.vue'
 import type { Message } from '@/types'
 
@@ -422,18 +422,17 @@ describe('MessageBubble Component Integration', () => {
         }
       })
 
-      // Show actions menu
+      // Show the hover toolbar
       await wrapper.trigger('mouseenter')
       await wrapper.vm.$nextTick()
 
-      // Find and click copy button
-      const copyButton = wrapper.find('[title="複製訊息"]')
-      if (copyButton.exists()) {
-        await copyButton.trigger('click')
-        await wrapper.vm.$nextTick()
+      const copyButton = wrapper.find('.action-btn[title="複製"]')
+      expect(copyButton.exists()).toBe(true)
+      await copyButton.trigger('click')
+      await flushPromises()
 
-        expect(wrapper.emitted('copy')).toBeTruthy()
-      }
+      expect(navigator.clipboard.writeText).toHaveBeenCalledWith('Copy this message')
+      expect(wrapper.emitted('copy')).toHaveLength(1)
     })
 
     it('should handle right-click context menu', async () => {
@@ -504,7 +503,8 @@ describe('MessageBubble Component Integration', () => {
         }
       })
 
-      expect(wrapper.exists()).toBe(true)
+      expect(wrapper.classes()).toContain('message-incoming')
+      expect(wrapper.find('.message-text').text()).toBe('')
     })
 
     it('should handle message with null metadata', () => {
@@ -528,7 +528,9 @@ describe('MessageBubble Component Integration', () => {
         }
       })
 
-      expect(wrapper.exists()).toBe(true)
+      // Unparseable metadata falls back to the declared messageType
+      expect(wrapper.vm.actualMessageType).toBe('text')
+      expect(wrapper.find('.message-text').exists()).toBe(true)
     })
 
     it('should handle missing attachmentUrl for file message', () => {
@@ -541,7 +543,8 @@ describe('MessageBubble Component Integration', () => {
         }
       })
 
-      expect(wrapper.exists()).toBe(true)
+      expect(wrapper.find('.message-file-attachments').exists()).toBe(false)
+      expect(wrapper.findComponent({ name: 'FileAttachmentCard' }).exists()).toBe(false)
     })
   })
 
@@ -567,17 +570,8 @@ describe('MessageBubble Component Integration', () => {
       expect(wrapper.vm.senderName).toBe('客戶')
       expect(wrapper.vm.senderInitials).toBe('客')
 
-      // Verify useMessageTime integration
-      expect(wrapper.vm.formatTime).toBeDefined()
-
       // Verify useMessageContent integration
       expect(wrapper.vm.actualMessageType).toBe('text')
-      expect(wrapper.vm.processedMessageContent).toBeDefined()
-
-      // Verify useMessageActions integration
-      expect(wrapper.vm.copyMessage).toBeDefined()
-      expect(wrapper.vm.replyToMessage).toBeDefined()
-      expect(wrapper.vm.forwardMessage).toBeDefined()
     })
 
     it('should handle message type detection from metadata', () => {

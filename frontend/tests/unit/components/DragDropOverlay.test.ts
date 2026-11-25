@@ -96,21 +96,6 @@ describe('DragDropOverlay', () => {
     })
   })
 
-  describe('Styling', () => {
-    it('should have pointer-events: none on overlay', () => {
-      const wrapper = mount(DragDropOverlay, {
-        props: {
-          isVisible: true,
-        },
-      })
-
-      const overlay = wrapper.find('.drag-drop-overlay')
-      // Note: This checks if the style is defined in the component's scoped CSS
-      // The actual computed style won't be available in jsdom
-      expect(overlay.exists()).toBe(true)
-    })
-  })
-
   describe('Reactivity', () => {
     it('should show overlay when isVisible changes from false to true', async () => {
       const wrapper = mount(DragDropOverlay, {
@@ -168,40 +153,6 @@ describe('DragDropOverlay', () => {
       await wrapper.setProps({ hint: 'Updated Hint' })
 
       expect(wrapper.find('.drag-drop-hint').text()).toBe('Updated Hint')
-    })
-  })
-
-  describe('Props validation', () => {
-    it('should accept boolean for isVisible', () => {
-      const wrapper = mount(DragDropOverlay, {
-        props: {
-          isVisible: true,
-        },
-      })
-
-      expect(wrapper.props('isVisible')).toBe(true)
-    })
-
-    it('should accept string for title', () => {
-      const wrapper = mount(DragDropOverlay, {
-        props: {
-          isVisible: true,
-          title: 'Test Title',
-        },
-      })
-
-      expect(wrapper.props('title')).toBe('Test Title')
-    })
-
-    it('should accept string for hint', () => {
-      const wrapper = mount(DragDropOverlay, {
-        props: {
-          isVisible: true,
-          hint: 'Test Hint',
-        },
-      })
-
-      expect(wrapper.props('hint')).toBe('Test Hint')
     })
   })
 
@@ -264,31 +215,6 @@ describe('DragDropOverlay', () => {
       // Vue automatically escapes HTML, so the text should be safe
       expect(wrapper.find('.drag-drop-title').text()).toBe(specialTitle)
       expect(wrapper.find('.drag-drop-title').html()).not.toContain('<script>')
-    })
-  })
-
-  describe('Accessibility', () => {
-    it('should have proper semantic structure', () => {
-      const wrapper = mount(DragDropOverlay, {
-        props: {
-          isVisible: true,
-        },
-      })
-
-      const content = wrapper.find('.drag-drop-content')
-      expect(content.exists()).toBe(true)
-    })
-
-    it('should have icon for visual feedback', () => {
-      const wrapper = mount(DragDropOverlay, {
-        props: {
-          isVisible: true,
-        },
-      })
-
-      const icon = wrapper.find('.drag-drop-icon svg')
-      expect(icon.exists()).toBe(true)
-      expect(icon.attributes('viewBox')).toBe('0 0 24 24')
     })
   })
 

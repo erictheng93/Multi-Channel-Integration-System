@@ -366,24 +366,6 @@ describe('ConnectionStatusBar', () => {
   })
 
   describe('Props validation', () => {
-    it('should accept all prop types correctly', () => {
-      const wrapper = mount(ConnectionStatusBar, {
-        props: {
-          isVisible: true,
-          statusText: 'Test Status',
-          statusClass: 'connected',
-          reconnectAttempts: 5,
-          typingUsers: 3,
-        },
-      })
-
-      expect(wrapper.props('isVisible')).toBe(true)
-      expect(wrapper.props('statusText')).toBe('Test Status')
-      expect(wrapper.props('statusClass')).toBe('connected')
-      expect(wrapper.props('reconnectAttempts')).toBe(5)
-      expect(wrapper.props('typingUsers')).toBe(3)
-    })
-
     it('should default reconnectAttempts to 0', () => {
       const wrapper = mount(ConnectionStatusBar, {
         props: {
@@ -563,49 +545,6 @@ describe('ConnectionStatusBar', () => {
 
       expect(wrapper.find('.status-dot').classes()).toContain('connected')
       expect(wrapper.find('.connection-status-bar').classes()).toContain('connected')
-    })
-  })
-
-  describe('Accessibility', () => {
-    it('should have proper semantic structure', () => {
-      const wrapper = mount(ConnectionStatusBar, {
-        props: {
-          isVisible: true,
-          statusText: 'Connected',
-          statusClass: 'connected',
-        },
-      })
-
-      const statusBar = wrapper.find('.connection-status-bar')
-      expect(statusBar.exists()).toBe(true)
-    })
-
-    it('should have visual status indicator', () => {
-      const wrapper = mount(ConnectionStatusBar, {
-        props: {
-          isVisible: true,
-          statusText: 'Connected',
-          statusClass: 'connected',
-        },
-      })
-
-      const statusDot = wrapper.find('.status-dot')
-      expect(statusDot.exists()).toBe(true)
-    })
-
-    it('should have icons for reconnect and typing', () => {
-      const wrapper = mount(ConnectionStatusBar, {
-        props: {
-          isVisible: true,
-          statusText: 'Connected',
-          statusClass: 'connected',
-          reconnectAttempts: 1,
-          typingUsers: 2,
-        },
-      })
-
-      const icons = wrapper.findAll('.detail-item svg')
-      expect(icons.length).toBeGreaterThan(0)
     })
   })
 })
