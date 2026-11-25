@@ -1,593 +1,151 @@
-// MessageService Unit Tests
-// Tests for src/modules/conversations/services/message-service.ts
-
+// MessageService: the live paths used by POST /api/conversations/:id/messages
+// (createPendingMessage, processBackgroundSending, MessageRequestService.validateAndParse).
+// createPendingMessage runs real Drizzle against in-memory SQLite, so the attachment
+// ownership filter and the buffered/pending decision are exercised as real SQL.
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { MessageService, MessageRequestService } from '@modules/conversations/services/message-service';
-
-// ======================== Mock External Dependencies ========================
+import Sqlite from 'better-sqlite3';
+import { getTableConfig, type SQLiteTable } from 'drizzle-orm/sqlite-core';
+import { conversations, customers, messages, fileAttachments } from '@/db/schema';
+import type { Bindings } from '@/types';
+import { d1Of } from '../../../../helpers/sqlite-d1';
 
 const mockDeliverMessage = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
 
-// Mock LINE utils
-vi.mock('@/utils/line', () => ({
-  pushLineMessage: vi.fn(async () => true),
-  createTextMessage: vi.fn((content: string) => ({ type: 'text', text: content })),
-  createImageMessage: vi.fn((url: string) => ({ type: 'image', originalContentUrl: url, previewImageUrl: url })),
-  createFileFlexMessage: vi.fn((url: string, name: string, mimeType: string, size: number) => ({
-    type: 'flex', altText: name, contents: { url, name, mimeType, size }
-  }))
-}));
-
-// Mock WebSocket broadcast service
-vi.mock('@/services/websocket-broadcast-service', () => ({
-  WebSocketBroadcastService: vi.fn().mockImplementation(() => ({
-    broadcastMessageEvent: vi.fn(async () => {})
-  }))
-}));
-
 vi.mock('@modules/conversations/services/message-delivery-service', () => ({
   MessageDeliveryService: vi.fn(function () {
-    return {
-      deliver: mockDeliverMessage
-    };
+    return { deliver: mockDeliverMessage };
   })
 }));
 
-// Mock drizzle-factory
-vi.mock('@/db/drizzle-factory', () => ({
-  createDbClient: vi.fn((db: any) => db)
+vi.mock('@/utils/timestamp', () => ({
+  nowISO: vi.fn(() => '2026-11-25T08:00:00.000Z'),
+  nowMs: vi.fn(() => Date.parse('2026-11-25T08:00:00.000Z'))
 }));
 
-// ======================== Mock Data ========================
+import { MessageService, MessageRequestService } from '@modules/conversations/services/message-service';
 
-const NOW = '2024-06-15T10:00:00.000Z';
+const NOW = '2026-11-25T08:00:00.000Z';
 
-const mockConversation = {
-  id: 'conv-1',
-  customerId: 1,
-  teamId: 1,
-  status: 'active',
-  lastMessageAt: NOW,
-  updatedAt: NOW,
-  createdAt: NOW
-};
+function createTable(sqlite: Sqlite.Database, table: SQLiteTable): void {
+  const config = getTableConfig(table);
+  sqlite.exec(`CREATE TABLE "${config.name}" (${config.columns.map(column =>
+    `"${column.name}" ${column.getSQLType()}${column.primary ? ' PRIMARY KEY' : ''}`).join(', ')})`);
+}
 
-const mockCustomer = {
-  id: 1,
-  platform: 'line',
-  platformUserId: 'U12345',
-  displayName: 'LINE User',
-  avatarUrl: null,
-  email: null,
-  phone: null,
-  sourceTeamId: 1,
-  metadata: null,
-  createdAt: NOW,
-  updatedAt: NOW
-};
+function setup(platform: 'line' | 'facebook' = 'line') {
+  const sqlite = new Sqlite(':memory:');
+  for (const table of [customers, conversations, messages, fileAttachments]) createTable(sqlite, table);
+  sqlite.prepare("INSERT INTO customers (id, platform, platform_user_id, display_name) VALUES (1, ?, 'U12345', 'Ann')").run(platform);
+  sqlite.prepare("INSERT INTO conversations (id, customer_id, status, last_message_at, updated_at) VALUES ('conv-1', 1, 'active', '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')").run();
+  sqlite.prepare("INSERT INTO conversations (id, customer_id, status) VALUES ('conv-2', 1, 'active')").run();
+  const service = new MessageService({ DB: d1Of(sqlite) } as unknown as Bindings);
+  const addUpload = (id: string, uploadedBy: string | null, conversationId: string | null, messageId: string | null = null) =>
+    sqlite.prepare("INSERT INTO file_attachments (id, message_id, conversation_id, filename, mime_type, file_size, r2_key, uploaded_by) VALUES (?, ?, ?, 'f.pdf', 'application/pdf', 10, 'k', ?)")
+      .run(id, messageId, conversationId, uploadedBy);
+  const message = (id: string) =>
+    sqlite.prepare('SELECT delivery_status AS deliveryStatus, is_sent AS isSent, sender_type AS senderType, agent_sender_id AS agentSenderId, metadata FROM messages WHERE id = ?')
+      .get(id) as { deliveryStatus: string; isSent: number; senderType: string; agentSenderId: string; metadata: string };
+  const linkedTo = (id: string) =>
+    (sqlite.prepare('SELECT message_id AS m FROM file_attachments WHERE id = ?').get(id) as { m: string | null }).m;
+  return { sqlite, service, addUpload, message, linkedTo };
+}
 
-const mockMessage = {
-  id: 'msg-1',
+const request = (extra: Record<string, unknown> = {}) => ({
   conversationId: 'conv-1',
-  content: 'Test message',
-  senderType: 'agent',
-  agentSenderId: 'agent-1',
-  customerSenderId: null,
-  messageType: 'text',
-  platformMessageId: null,
-  isRecalled: false,
-  recallDeadline: null,
-  recalledAt: null,
-  isSent: true,
-  sentAt: NOW,
-  deliveryStatus: 'sent',
-  replyToMessageId: null,
-  senderName: 'Agent Smith',
-  metadata: null,
-  createdAt: NOW,
-  updatedAt: NOW
-};
-
-const mockFileAttachment = {
-  id: 'file-1',
-  messageId: null,
-  filename: 'test.pdf',
-  mimeType: 'application/pdf',
-  fileSize: 1024,
-  fileUrl: 'https://storage.example.com/test.pdf',
-  r2Key: 'uploads/test.pdf',
-  createdAt: NOW
-};
-
-// ======================== Mock Database ========================
-
-const createMockDb = () => {
-  const messagesStore = new Map<string, typeof mockMessage>();
-  const conversationsStore = new Map<string, typeof mockConversation>();
-  const customersStore = new Map<number, typeof mockCustomer>();
-  const attachmentsStore = new Map<string, typeof mockFileAttachment>();
-
-  // Default data
-  conversationsStore.set('conv-1', { ...mockConversation });
-  customersStore.set(1, { ...mockCustomer });
-
-  /**
-   * Chain for conversation+customer JOIN queries:
-   * this.db.select({conversation, customer}).from(conversations).leftJoin(customers, ...)
-   */
-  const createConversationJoinChain = () => {
-    const getResults = async () => {
-      if (conversationsStore.size > 0 && customersStore.size > 0) {
-        const conv = Array.from(conversationsStore.values())[0];
-        const cust = Array.from(customersStore.values())[0];
-        return [{ conversation: conv, customer: cust }];
-      }
-      return [];
-    };
-    const chain: any = {
-      from: () => chain, select: () => chain, leftJoin: () => chain,
-      where: () => chain, orderBy: () => chain, limit: () => chain, offset: () => chain,
-      get: async () => { const r = await getResults(); return r[0] || null; },
-      all: getResults,
-      then: (resolve: any, reject?: any) => getResults().then(resolve, reject)
-    };
-    return chain;
-  };
-
-  /**
-   * Chain for plain message queries:
-   * this.db.select().from(messages).where(...)
-   */
-  const createMessageChain = () => {
-    let _limitValue: number | null = null;
-    let _offsetValue: number | null = null;
-    const getResults = async () => {
-      let results = Array.from(messagesStore.values());
-      if (_offsetValue !== null) results = results.slice(_offsetValue);
-      if (_limitValue !== null) results = results.slice(0, _limitValue);
-      return results;
-    };
-    const chain: any = {
-      from: () => chain, select: () => chain, leftJoin: () => chain,
-      innerJoin: () => chain, where: () => chain, orderBy: () => chain,
-      limit: (val: number) => { _limitValue = val; return chain; },
-      offset: (val: number) => { _offsetValue = val; return chain; },
-      get: async () => { const r = await getResults(); return r[0] || null; },
-      all: getResults,
-      then: (resolve: any, reject?: any) => getResults().then(resolve, reject)
-    };
-    return chain;
-  };
-
-  const mockDb: any = {
-    select: (fields?: any) => {
-      // Detect conversation+customer join queries by field names
-      if (fields && (fields.conversation !== undefined || fields.customer !== undefined)) {
-        return createConversationJoinChain();
-      }
-      // Default: message queries
-      return createMessageChain();
-    },
-    insert: (table: any) => ({
-      values: (data: any) => {
-        if (data.id && data.conversationId) {
-          messagesStore.set(data.id, { ...data });
-        }
-        return Promise.resolve();
-      }
-    }),
-    update: (table: any) => ({
-      set: (data: any) => ({
-        where: () => {
-          const firstMsgKey = Array.from(messagesStore.keys())[0];
-          if (firstMsgKey) {
-            const existing = messagesStore.get(firstMsgKey)!;
-            messagesStore.set(firstMsgKey, { ...existing, ...data });
-          }
-          return Promise.resolve();
-        }
-      })
-    }),
-    _messages: messagesStore,
-    _conversations: conversationsStore,
-    _customers: customersStore,
-    _attachments: attachmentsStore
-  };
-
-  return mockDb;
-};
-
-const createMockBindings = () => ({
-  DB: {} as any,
-  LINE_CHANNEL_ACCESS_TOKEN: 'test-token',
-  MESSAGE_BROADCASTER: {} as any,
-  CONVERSATION_ROOM: {} as any,
-  USER_CONNECTION: {} as any
+  content: 'Hello from agent',
+  senderId: 'agent-1',
+  ...extra
 });
 
-// ======================== Tests ========================
+describe('MessageService.createPendingMessage', () => {
+  beforeEach(() => vi.clearAllMocks());
 
-describe('MessageService - createPendingMessage', () => {
-  let mockDb: ReturnType<typeof createMockDb>;
-  let service: MessageService;
-  let bindings: ReturnType<typeof createMockBindings>;
+  it('inserts an unsent pending agent message with the customer platform in metadata and bumps only this conversation', async () => {
+    const { sqlite, service, message } = setup();
 
-  beforeEach(() => {
-    mockDb = createMockDb();
-    bindings = createMockBindings();
-    service = new MessageService(bindings as any);
-    (service as any).db = mockDb;
-    vi.clearAllMocks();
+    const result = await service.createPendingMessage(request({ metadata: { customField: 'value' } }));
+
+    expect(result).toMatchObject({ success: true, conversationId: 'conv-1', content: 'Hello from agent', timestamp: NOW });
+    const row = message(result.messageId!);
+    expect(row).toMatchObject({ deliveryStatus: 'pending', isSent: 0, senderType: 'agent', agentSenderId: 'agent-1' });
+    expect(JSON.parse(row.metadata)).toEqual({ customField: 'value', platform: 'line', platformUserId: 'U12345' });
+    expect(sqlite.prepare("SELECT last_message_at AS l, updated_at AS u FROM conversations WHERE id = 'conv-1'").get())
+      .toEqual({ l: NOW, u: NOW });
+    expect(sqlite.prepare("SELECT updated_at AS u FROM conversations WHERE id = 'conv-2'").get()).toEqual({ u: null });
   });
 
-  it('should create a pending message and return success response', async () => {
-    const request = {
-      conversationId: 'conv-1',
-      content: 'Hello from agent',
-      senderId: 'agent-1',
-      messageType: 'text' as const
-    };
+  it('buffers a LINE message when a recall window is configured', async () => {
+    const { service, message } = setup('line');
 
-    const result = await service.createPendingMessage(request);
+    const result = await service.createPendingMessage(request(), 30);
 
-    expect(result.success).toBe(true);
-    expect(result.messageId).toBeDefined();
-    expect(result.conversationId).toBe('conv-1');
-    expect(result.content).toBe('Hello from agent');
-    expect(result.timestamp).toBeDefined();
+    expect(message(result.messageId!).deliveryStatus).toBe('buffered');
   });
 
-  it('should insert message with pending delivery status', async () => {
-    const insertedValues: any[] = [];
-    const origInsert = mockDb.insert;
-    mockDb.insert = (table: any) => ({
-      values: (data: any) => {
-        insertedValues.push(data);
-        return origInsert(table).values(data);
-      }
-    });
+  it('never buffers a non-LINE message, even with a recall window', async () => {
+    const { service, message } = setup('facebook');
 
-    const request = {
-      conversationId: 'conv-1',
-      content: 'Test',
-      senderId: 'agent-1'
-    };
+    const result = await service.createPendingMessage(request(), 30);
 
-    await service.createPendingMessage(request);
-
-    expect(insertedValues.length).toBeGreaterThan(0);
-    const insertedData = insertedValues[0];
-    expect(insertedData.deliveryStatus).toBe('pending');
-    expect(insertedData.isSent).toBe(false);
-    expect(insertedData.senderType).toBe('agent');
+    expect(message(result.messageId!).deliveryStatus).toBe('pending');
   });
 
-  it('should generate a UUID for the message', async () => {
-    const result = await service.createPendingMessage({
-      conversationId: 'conv-1',
-      content: 'Test',
-      senderId: 'agent-1'
-    });
+  it('links only unlinked uploads by the sender for this conversation, and records them in metadata', async () => {
+    const { service, addUpload, message, linkedTo } = setup();
+    addUpload('own', 'agent-1', 'conv-1');
+    addUpload('own-legacy-no-conversation', 'agent-1', null);
+    addUpload('foreign', 'agent-2', 'conv-1');
+    addUpload('ownerless', null, 'conv-1');
+    addUpload('other-conversation', 'agent-1', 'conv-2');
+    addUpload('already-linked', 'agent-1', 'conv-1', 'older-message');
 
-    expect(result.messageId).toBeDefined();
-    expect(result.messageId!.length).toBeGreaterThan(0);
-    // UUID format check
-    expect(result.messageId).toMatch(/^[0-9a-f-]{36}$/i);
-  });
-
-  it('should update conversation timestamps', async () => {
-    const updateSetSpy = vi.fn(() => ({ where: vi.fn().mockResolvedValue(undefined) }));
-    let updateCallCount = 0;
-    mockDb.update = () => {
-      updateCallCount++;
-      return { set: updateSetSpy };
-    };
-
-    await service.createPendingMessage({
-      conversationId: 'conv-1',
-      content: 'Test',
-      senderId: 'agent-1'
-    });
-
-    // Should have at least one update call for conversation timestamps
-    expect(updateCallCount).toBeGreaterThan(0);
-  });
-
-  it('should throw when conversation not found', async () => {
-    mockDb._conversations.clear();
-    mockDb._customers.clear();
-
-    await expect(
-      service.createPendingMessage({
-        conversationId: 'non-existent',
-        content: 'Test',
-        senderId: 'agent-1'
-      })
-    ).rejects.toThrow();
-  });
-
-  it('should link attachments when attachmentIds provided', async () => {
-    const updateSetSpy = vi.fn(() => ({ where: vi.fn().mockResolvedValue(undefined) }));
-    mockDb.update = () => ({ set: updateSetSpy });
-
-    await service.createPendingMessage({
-      conversationId: 'conv-1',
-      content: 'With file',
-      senderId: 'agent-1',
-      attachmentIds: ['file-1', 'file-2']
-    });
-
-    // Should have been called to update attachments
-    expect(updateSetSpy).toHaveBeenCalled();
-  });
-
-  it('should include metadata in the message', async () => {
-    const insertedValues: any[] = [];
-    const origInsert = mockDb.insert;
-    mockDb.insert = (table: any) => ({
-      values: (data: any) => {
-        insertedValues.push(data);
-        return origInsert(table).values(data);
-      }
-    });
-
-    await service.createPendingMessage({
-      conversationId: 'conv-1',
-      content: 'Test',
-      senderId: 'agent-1',
-      metadata: { customField: 'value' }
-    });
-
-    expect(insertedValues.length).toBeGreaterThan(0);
-    const insertedData = insertedValues[0];
-    const metadata = JSON.parse(insertedData.metadata);
-    expect(metadata.customField).toBe('value');
-    expect(metadata.platform).toBe('line');
-    expect(metadata.platformUserId).toBe('U12345');
-  });
-});
-
-describe('MessageService - getMessages', () => {
-  let mockDb: ReturnType<typeof createMockDb>;
-  let service: MessageService;
-
-  beforeEach(() => {
-    mockDb = createMockDb();
-    service = new MessageService(createMockBindings() as any);
-    (service as any).db = mockDb;
-
-    // Add messages
-    for (let i = 1; i <= 10; i++) {
-      mockDb._messages.set(`msg-${i}`, {
-        ...mockMessage,
-        id: `msg-${i}`,
-        content: `Message ${i}`,
-        isRecalled: i === 10 // Last message is recalled
-      });
-    }
-    vi.clearAllMocks();
-  });
-
-  it('should return messages for a conversation', async () => {
-    const result = await service.getMessages('conv-1');
-
-    expect(result).toBeDefined();
-    expect(Array.isArray(result)).toBe(true);
-  });
-
-  it('should default to limit 50 and offset 0', async () => {
-    const result = await service.getMessages('conv-1');
-
-    expect(result).toBeDefined();
-  });
-
-  it('should cap limit at 100', async () => {
-    // Service uses Math.min(limit, 100)
-    const result = await service.getMessages('conv-1', 200);
-
-    expect(result).toBeDefined();
-  });
-
-  it('should return empty array on database error', async () => {
-    mockDb.select = () => {
-      throw new Error('DB error');
-    };
-
-    const result = await service.getMessages('conv-1');
-
-    expect(result).toEqual([]);
-  });
-
-  it('should support pagination with offset', async () => {
-    const result = await service.getMessages('conv-1', 5, 5);
-
-    expect(result).toBeDefined();
-  });
-});
-
-describe('MessageService - recallMessage', () => {
-  let mockDb: ReturnType<typeof createMockDb>;
-  let service: MessageService;
-
-  beforeEach(() => {
-    mockDb = createMockDb();
-    service = new MessageService(createMockBindings() as any);
-    (service as any).db = mockDb;
-    mockDb._messages.set('msg-1', { ...mockMessage });
-    vi.clearAllMocks();
-  });
-
-  it('should recall a message and return true', async () => {
-    const result = await service.recallMessage('msg-1', 'agent-1');
-
-    expect(result).toBe(true);
-  });
-
-  it('should set isRecalled to true', async () => {
-    const updateSetSpy = vi.fn(() => ({
-      where: vi.fn().mockResolvedValue(undefined)
+    const result = await service.createPendingMessage(request({
+      attachmentIds: ['own', 'own-legacy-no-conversation', 'foreign', 'ownerless', 'other-conversation', 'already-linked', 'missing']
     }));
-    mockDb.update = () => ({ set: updateSetSpy });
 
-    await service.recallMessage('msg-1', 'agent-1');
-
-    expect(updateSetSpy).toHaveBeenCalled();
-    const updateData = updateSetSpy.mock.calls[0][0];
-    expect(updateData.isRecalled).toBe(true);
-    expect(updateData.recalledAt).toBeDefined();
+    const id = result.messageId!;
+    expect(JSON.parse(message(id).metadata).attachmentIds.sort()).toEqual(['own', 'own-legacy-no-conversation']);
+    expect(linkedTo('own')).toBe(id);
+    expect(linkedTo('own-legacy-no-conversation')).toBe(id);
+    expect(linkedTo('foreign')).toBeNull();
+    expect(linkedTo('ownerless')).toBeNull();
+    expect(linkedTo('other-conversation')).toBeNull();
+    expect(linkedTo('already-linked')).toBe('older-message');
   });
 
-  it('should store recalledBy userId in metadata', async () => {
-    const updateSetSpy = vi.fn(() => ({
-      where: vi.fn().mockResolvedValue(undefined)
-    }));
-    mockDb.update = () => ({ set: updateSetSpy });
+  it('omits attachmentIds from metadata when none survive the ownership filter', async () => {
+    const { service, addUpload, message } = setup();
+    addUpload('foreign', 'agent-2', 'conv-1');
 
-    await service.recallMessage('msg-1', 'agent-1');
+    const result = await service.createPendingMessage(request({ attachmentIds: ['foreign'] }));
 
-    const updateData = updateSetSpy.mock.calls[0][0];
-    const metadata = JSON.parse(updateData.metadata);
-    expect(metadata.recalledBy).toBe('agent-1');
+    expect(JSON.parse(message(result.messageId!).metadata)).not.toHaveProperty('attachmentIds');
   });
 
-  it('should return false on database error', async () => {
-    mockDb.update = () => ({
-      set: () => ({
-        where: () => { throw new Error('DB failure'); }
-      })
-    });
+  it('throws and writes nothing when the conversation does not exist', async () => {
+    const { sqlite, service } = setup();
 
-    const result = await service.recallMessage('msg-1', 'agent-1');
-
-    expect(result).toBe(false);
+    await expect(service.createPendingMessage(request({ conversationId: 'missing' }))).rejects.toThrow('Conversation or customer not found');
+    expect(sqlite.prepare('SELECT COUNT(*) AS n FROM messages').get()).toEqual({ n: 0 });
   });
 });
 
-describe('MessageService - updateMessage', () => {
-  let mockDb: ReturnType<typeof createMockDb>;
-  let service: MessageService;
+describe('MessageService.processBackgroundSending', () => {
+  beforeEach(() => vi.clearAllMocks());
 
-  beforeEach(() => {
-    mockDb = createMockDb();
-    service = new MessageService(createMockBindings() as any);
-    (service as any).db = mockDb;
-    mockDb._messages.set('msg-1', { ...mockMessage });
-    vi.clearAllMocks();
-  });
+  it('delegates delivery of the stored message to MessageDeliveryService', async () => {
+    const { service } = setup();
 
-  it('should update message and return updated version', async () => {
-    const result = await service.updateMessage('msg-1', { content: 'Updated content' });
-
-    expect(result).toBeDefined();
-    // The mock stores and re-reads, content should be updated
-    expect(result.id).toBe('msg-1');
-  });
-
-  it('should set updatedAt timestamp', async () => {
-    const updateSetSpy = vi.fn(() => ({
-      where: vi.fn().mockResolvedValue(undefined)
-    }));
-    mockDb.update = () => ({ set: updateSetSpy });
-
-    await service.updateMessage('msg-1', { content: 'test' });
-
-    expect(updateSetSpy).toHaveBeenCalled();
-    const updateData = updateSetSpy.mock.calls[0][0];
-    expect(updateData.updatedAt).toBeDefined();
-  });
-
-  it('should throw when message not found after update', async () => {
-    mockDb._messages.clear();
-
-    await expect(
-      service.updateMessage('non-existent', { content: 'test' })
-    ).rejects.toThrow('not found after update');
-  });
-
-  it('should throw on database error', async () => {
-    mockDb.update = () => ({
-      set: () => ({
-        where: () => { throw new Error('DB error'); }
-      })
-    });
-
-    await expect(
-      service.updateMessage('msg-1', { content: 'fail' })
-    ).rejects.toThrow('DB error');
-  });
-});
-
-describe('MessageService - getRecentMessages', () => {
-  let mockDb: ReturnType<typeof createMockDb>;
-  let service: MessageService;
-
-  beforeEach(() => {
-    mockDb = createMockDb();
-    service = new MessageService(createMockBindings() as any);
-    (service as any).db = mockDb;
-
-    // Add messages in reverse chronological order
-    for (let i = 1; i <= 5; i++) {
-      mockDb._messages.set(`msg-${i}`, {
-        ...mockMessage,
-        id: `msg-${i}`,
-        content: `Message ${i}`,
-        createdAt: new Date(2024, 5, 15, 10, i).toISOString()
-      });
-    }
-    vi.clearAllMocks();
-  });
-
-  it('should return recent messages', async () => {
-    const result = await service.getRecentMessages('conv-1', 3);
-
-    expect(result).toBeDefined();
-    expect(Array.isArray(result)).toBe(true);
-  });
-
-  it('should return empty array on database error', async () => {
-    mockDb.select = () => {
-      throw new Error('DB error');
-    };
-
-    const result = await service.getRecentMessages('conv-1', 5);
-
-    expect(result).toEqual([]);
-  });
-});
-
-describe('MessageService - processBackgroundSending', () => {
-  let mockDb: ReturnType<typeof createMockDb>;
-  let service: MessageService;
-  let bindings: ReturnType<typeof createMockBindings>;
-
-  beforeEach(async () => {
-    mockDb = createMockDb();
-    bindings = createMockBindings();
-    service = new MessageService(bindings as any);
-    (service as any).db = mockDb;
-    mockDb._messages.set('msg-bg-1', { ...mockMessage, id: 'msg-bg-1', deliveryStatus: 'pending' });
-    vi.clearAllMocks();
-  });
-
-  it('should delegate background sending to MessageDeliveryService', async () => {
-    await service.processBackgroundSending('msg-bg-1', {
-      conversationId: 'conv-1',
-      content: 'Background message',
-      senderId: 'agent-1'
-    }, { id: 'agent-1' });
+    await service.processBackgroundSending('msg-bg-1', request(), { id: 'agent-1' });
 
     expect(mockDeliverMessage).toHaveBeenCalledWith('msg-bg-1');
   });
 
-  it('should propagate delivery failures to the waitUntil caller', async () => {
+  it('propagates delivery failures to the waitUntil caller', async () => {
+    const { service } = setup();
     mockDeliverMessage.mockRejectedValueOnce(new Error('delivery failed'));
 
-    await expect(service.processBackgroundSending('msg-bg-1', {
-      conversationId: 'conv-1',
-      content: 'Background message',
-      senderId: 'agent-1'
-    }, { id: 'agent-1' })).rejects.toThrow('delivery failed');
+    await expect(service.processBackgroundSending('msg-bg-1', request(), { id: 'agent-1' })).rejects.toThrow('delivery failed');
   });
 });
 
@@ -609,7 +167,7 @@ describe('MessageRequestService - validateAndParse', () => {
       }
     );
 
-    const result = await MessageRequestService.validateAndParse(ctx);
+    const result = await MessageRequestService.validateAndParse(ctx as never);
 
     expect(result.conversationId).toBe('conv-1');
     expect(result.content).toBe('Hello');
@@ -624,7 +182,7 @@ describe('MessageRequestService - validateAndParse', () => {
     );
 
     await expect(
-      MessageRequestService.validateAndParse(ctx)
+      MessageRequestService.validateAndParse(ctx as never)
     ).rejects.toThrow('Missing conversation ID');
   });
 
@@ -635,7 +193,7 @@ describe('MessageRequestService - validateAndParse', () => {
     );
 
     await expect(
-      MessageRequestService.validateAndParse(ctx)
+      MessageRequestService.validateAndParse(ctx as never)
     ).rejects.toThrow('Message content or attachments are required');
   });
 
@@ -646,7 +204,7 @@ describe('MessageRequestService - validateAndParse', () => {
     );
 
     await expect(
-      MessageRequestService.validateAndParse(ctx)
+      MessageRequestService.validateAndParse(ctx as never)
     ).rejects.toThrow('Sender ID is required');
   });
 
@@ -660,7 +218,7 @@ describe('MessageRequestService - validateAndParse', () => {
       }
     );
 
-    const result = await MessageRequestService.validateAndParse(ctx);
+    const result = await MessageRequestService.validateAndParse(ctx as never);
 
     expect(result.attachmentIds).toEqual(['file-1']);
     expect(result.content).toBe('');
@@ -672,7 +230,7 @@ describe('MessageRequestService - validateAndParse', () => {
       { content: 'Hello', senderId: 'agent-1' }
     );
 
-    const result = await MessageRequestService.validateAndParse(ctx);
+    const result = await MessageRequestService.validateAndParse(ctx as never);
 
     expect(result.messageType).toBe('text');
   });
@@ -683,7 +241,7 @@ describe('MessageRequestService - validateAndParse', () => {
       { content: '  Hello World  ', senderId: 'agent-1' }
     );
 
-    const result = await MessageRequestService.validateAndParse(ctx);
+    const result = await MessageRequestService.validateAndParse(ctx as never);
 
     expect(result.content).toBe('Hello World');
   });
@@ -694,7 +252,7 @@ describe('MessageRequestService - validateAndParse', () => {
       { content: 'Hello', senderId: 'agent-1' }
     );
 
-    const result = await MessageRequestService.validateAndParse(ctx);
+    const result = await MessageRequestService.validateAndParse(ctx as never);
 
     expect(result.metadata).toEqual({});
   });
@@ -705,7 +263,7 @@ describe('MessageRequestService - validateAndParse', () => {
       { content: 'Hello', senderId: 'agent-1' }
     );
 
-    const result = await MessageRequestService.validateAndParse(ctx);
+    const result = await MessageRequestService.validateAndParse(ctx as never);
 
     expect(result.attachmentIds).toEqual([]);
   });
@@ -720,7 +278,7 @@ describe('MessageRequestService - validateAndParse', () => {
       }
     );
 
-    const result = await MessageRequestService.validateAndParse(ctx);
+    const result = await MessageRequestService.validateAndParse(ctx as never);
 
     expect(result.metadata).toEqual({ source: 'web', priority: 'high' });
   });
@@ -732,80 +290,7 @@ describe('MessageRequestService - validateAndParse', () => {
     );
 
     await expect(
-      MessageRequestService.validateAndParse(ctx)
+      MessageRequestService.validateAndParse(ctx as never)
     ).rejects.toThrow('Message content or attachments are required');
-  });
-});
-
-describe('MessageService - sendMessage (Legacy)', () => {
-  let mockDb: ReturnType<typeof createMockDb>;
-  let service: MessageService;
-
-  beforeEach(() => {
-    mockDb = createMockDb();
-    service = new MessageService(createMockBindings() as any);
-    (service as any).db = mockDb;
-    vi.clearAllMocks();
-  });
-
-  it('should send a message and return success', async () => {
-    const result = await service.sendMessage({
-      conversationId: 'conv-1',
-      content: 'Hello via LINE',
-      senderId: 'agent-1'
-    });
-
-    expect(result.success).toBe(true);
-    expect(result.messageId).toBeDefined();
-    expect(result.conversationId).toBe('conv-1');
-  });
-
-  it('should return failure when conversation not found', async () => {
-    mockDb._conversations.clear();
-    mockDb._customers.clear();
-
-    const result = await service.sendMessage({
-      conversationId: 'conv-missing',
-      content: 'Test',
-      senderId: 'agent-1'
-    });
-
-    expect(result.success).toBe(false);
-    expect(result.error).toBeDefined();
-  });
-
-  it('should handle non-LINE platform', async () => {
-    mockDb._customers.clear();
-    mockDb._customers.set(2, {
-      ...mockCustomer,
-      id: 2,
-      platform: 'facebook',
-      platformUserId: 'FB123'
-    });
-
-    const result = await service.sendMessage({
-      conversationId: 'conv-1',
-      content: 'Facebook message',
-      senderId: 'agent-1'
-    });
-
-    // Facebook is not yet supported, should still insert but with appropriate status
-    expect(result).toBeDefined();
-    expect(result.messageId).toBeDefined();
-  });
-
-  it('should handle LINE API failure gracefully', async () => {
-    const { pushLineMessage } = await import('@/utils/line');
-    (pushLineMessage as any).mockResolvedValueOnce(false);
-
-    const result = await service.sendMessage({
-      conversationId: 'conv-1',
-      content: 'Will fail on LINE',
-      senderId: 'agent-1'
-    });
-
-    // Should still return a result with the message saved
-    expect(result).toBeDefined();
-    expect(result.messageId).toBeDefined();
   });
 });

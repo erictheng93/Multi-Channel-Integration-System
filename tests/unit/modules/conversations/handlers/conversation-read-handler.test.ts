@@ -146,6 +146,17 @@ describe('conversation unread handler', () => {
     const response = await markUnread();
 
     expect(response.status).toBe(403);
+    // mark-unread writes through the raw status-conditional upsert, not drizzle insert()
+    expect(handlerMocks.prepareRun).not.toHaveBeenCalled();
+    expect(handlerMocks.selectGet).not.toHaveBeenCalled();
+  });
+
+  it('mark-as-read returns 403 without writing read state when permission is denied', async () => {
+    handlerMocks.checkPermission.mockResolvedValueOnce(false);
+
+    const response = await markRead();
+
+    expect(response.status).toBe(403);
     expect(handlerMocks.insertValues).not.toHaveBeenCalled();
   });
 
@@ -155,7 +166,7 @@ describe('conversation unread handler', () => {
     const response = await markUnread();
 
     expect(response.status).toBe(404);
-    expect(handlerMocks.insertValues).not.toHaveBeenCalled();
+    expect(handlerMocks.prepareRun).not.toHaveBeenCalled();
   });
 
   it('returns 409 without mutating when the conversation is closed', async () => {

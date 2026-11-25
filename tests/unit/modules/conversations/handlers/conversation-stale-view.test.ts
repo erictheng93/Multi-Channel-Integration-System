@@ -63,10 +63,7 @@ describe('awaiting=stale list (逾期待回覆)', () => {
     h.conv('closed', 'closed', null, ago(60 * DAY));
     h.conv('deleted', 'active', null, ago(60 * DAY), ago(DAY));
     h.conv('answered', 'active', null, null);
-    expect(staleIds(h)).toEqual(['never-old', 'auto-reply-only', 'never-new', 'edge', 'replied-old'].sort((a, b) => order(a) - order(b)));
-    function order(id: string): number {
-      return ['never-old', 'auto-reply-only', 'never-new', 'edge', 'replied-old'].indexOf(id);
-    }
+    expect(staleIds(h)).toEqual(['never-old', 'auto-reply-only', 'never-new', 'edge', 'replied-old']);
   });
 
   it('is scoped by the existing visibility rule', () => {

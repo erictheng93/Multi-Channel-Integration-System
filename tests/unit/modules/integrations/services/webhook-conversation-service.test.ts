@@ -114,6 +114,13 @@ vi.mock('@/utils/notification-trigger', () => ({
   triggerNewConversationNotification: vi.fn().mockResolvedValue(undefined),
 }));
 
+const mockBroadcastConversationEvent = vi.fn();
+vi.mock('@/services/websocket-broadcast-service', () => ({
+  WebSocketBroadcastService: vi.fn(function () {
+    return { broadcastConversationEvent: mockBroadcastConversationEvent };
+  }),
+}));
+
 vi.mock('@/workers/latest-message-worker', () => ({
   LatestMessageJobQueue: vi.fn().mockImplementation(() => ({
     updateLatestMessage: vi.fn().mockResolvedValue(undefined),
@@ -206,6 +213,12 @@ describe('webhook-conversation-service', () => {
       );
       expect(result.status).toBe('assigned');
       expect(mockDb.insert).not.toHaveBeenCalled();
+      // clients learn about the reopen from the status-changed event
+      expect(mockBroadcastConversationEvent).toHaveBeenCalledWith(expect.objectContaining({
+        type: 'conversation_status_changed',
+        conversationId: 'conv-123',
+        data: expect.objectContaining({ status: 'assigned' }),
+      }));
     });
 
     it('should reopen a closed unassigned conversation to active', async () => {
@@ -218,6 +231,16 @@ describe('webhook-conversation-service', () => {
       );
       expect(result.status).toBe('active');
       expect(mockDb.insert).not.toHaveBeenCalled();
+    });
+
+    it('does not reopen or broadcast for a conversation that is already open', async () => {
+      mockGet.mockResolvedValueOnce({ id: 'conv-123', customerId: 1, status: 'assigned', assignedTeamId: 3 });
+
+      const result = await findOrCreateConversation(mockEnv, 1, 'line');
+
+      expect(result.status).toBe('assigned');
+      expect(mockDb.update).not.toHaveBeenCalled();
+      expect(mockBroadcastConversationEvent).not.toHaveBeenCalled();
     });
 
     it('should NOT overwrite existing team assignment', async () => {

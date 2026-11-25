@@ -111,4 +111,32 @@ describe('MessageRecallService recall-window platform branches', () => {
       })
     );
   });
+
+  const expired = {
+    id: 'msg-2',
+    conversationId: 'conv-1',
+    platformMessageId: null,
+    senderType: 'agent',
+    isRecalled: false,
+    recallDeadline: '2020-01-01T00:00:00Z',
+  };
+
+  it('refuses a recall past its deadline without touching the row', async () => {
+    serviceMocks.selectResults = [expired];
+
+    const result = await new MessageRecallService(makeEnv().DB, makeEnv()).recallMessage('msg-2', 'agent-1');
+
+    expect(result).toMatchObject({ success: false, error: 'Recall deadline exceeded' });
+    expect(serviceMocks.updateSet).not.toHaveBeenCalled();
+    expect(serviceMocks.insertValues).not.toHaveBeenCalled();
+  });
+
+  it('skips the deadline check when the scheduler DO already cancelled the send', async () => {
+    serviceMocks.selectResults = [expired, { customerId: 'customer-1', assignedTeamId: 7 }, { platform: 'line', platformUserId: 'U1' }];
+
+    const result = await new MessageRecallService(makeEnv().DB, makeEnv()).recallMessage('msg-2', 'agent-1', undefined, { deadlineAlreadyEnforced: true });
+
+    expect(result.success).toBe(true);
+    expect(serviceMocks.updateSet).toHaveBeenCalledWith(expect.objectContaining({ isRecalled: true }));
+  });
 });
