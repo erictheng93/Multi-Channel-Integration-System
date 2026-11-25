@@ -8,7 +8,8 @@ describe('useConfirmDialog', () => {
 
   beforeEach(() => {
     cleanup = []
-    // DO NOT clear document.body - let composables handle their own DOM cleanup
+    // The manager removes dialogs through a 300ms setTimeout; drive it with a fake clock.
+    vi.useFakeTimers()
   })
 
   afterEach(async () => {
@@ -20,14 +21,13 @@ describe('useConfirmDialog', () => {
     clearDialogs()
 
     // Wait for composable's setTimeout (300ms) + transitions (200-250ms) to complete
-    await new Promise(resolve => setTimeout(resolve, 600))
+    await vi.advanceTimersByTimeAsync(600)
 
     // Final flush to ensure all Vue updates complete
     await nextTick()
     await flushPromises()
 
-    // Clear timers
-    vi.clearAllTimers()
+    vi.useRealTimers()
 
     // DO NOT clear document.body - let composables handle their own DOM cleanup
   })
@@ -253,13 +253,13 @@ describe('useConfirmDialog', () => {
 
       // 验证对话框存在
       let dialogs = document.querySelectorAll('.dialog-overlay')
-      expect(dialogs.length).toBeGreaterThan(0)
+      expect(dialogs.length).toBe(2)
 
       // 清理所有对话框 (这会自动 resolve 所有 promises)
       clearDialogs()
 
       // Wait for composable's setTimeout (300ms) + transitions (200-250ms) to complete
-      await new Promise(resolve => setTimeout(resolve, 700))
+      await vi.advanceTimersByTimeAsync(700)
 
       // Final flush to ensure all Vue updates complete
       await nextTick()
@@ -299,7 +299,7 @@ describe('useConfirmDialog', () => {
       await flushPromises()
 
       const overlays = document.querySelectorAll('.dialog-overlay')
-      expect(overlays.length).toBeGreaterThanOrEqual(1)
+      expect(overlays.length).toBe(2)
 
       // 清理 (自动 resolve 所有 promises)
       clearDialogs()
@@ -307,7 +307,7 @@ describe('useConfirmDialog', () => {
       await nextTick()
       await flushPromises()
 
-      await new Promise(resolve => setTimeout(resolve, 600))
+      await vi.advanceTimersByTimeAsync(600)
     }, 10000)
   })
 
@@ -363,7 +363,7 @@ describe('useConfirmDialog', () => {
       await nextTick()
       await flushPromises()
 
-      await new Promise(resolve => setTimeout(resolve, 600))
+      await vi.advanceTimersByTimeAsync(600)
     }, 10000)
   })
 
@@ -386,7 +386,9 @@ describe('useConfirmDialog', () => {
       await promise
 
       // 等待清理动画完成
-      await new Promise(resolve => setTimeout(resolve, 400))
+      // Not removed before the 300ms exit-animation delay has elapsed
+      expect(document.querySelector('.dialog-overlay')).toBeTruthy()
+      await vi.advanceTimersByTimeAsync(400)
 
       // 验证 DOM 已清理
       overlay = document.querySelector('.dialog-overlay')

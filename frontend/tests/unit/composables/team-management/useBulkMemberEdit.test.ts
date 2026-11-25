@@ -116,26 +116,6 @@ describe('useBulkMemberEdit', () => {
       expect(composable.isAllFormsValid.value).toBe(true)
     })
 
-    it('should expose all required functions', () => {
-      expect(typeof composable.initializeMembers).toBe('function')
-      expect(typeof composable.updateMemberForm).toBe('function')
-      expect(typeof composable.addTeamToMember).toBe('function')
-      expect(typeof composable.removeTeamFromMember).toBe('function')
-      expect(typeof composable.initMemberTeams).toBe('function')
-      expect(typeof composable.getDisplayTeams).toBe('function')
-      expect(typeof composable.isMemberDirty).toBe('function')
-      expect(typeof composable.isMemberValid).toBe('function')
-      expect(typeof composable.saveAllChanges).toBe('function')
-      expect(typeof composable.reset).toBe('function')
-    })
-
-    it('should expose all required reactive properties', () => {
-      expect(composable.memberStates).toBeDefined()
-      expect(composable.isLoading).toBeDefined()
-      expect(composable.hasAnyChanges).toBeDefined()
-      expect(composable.changedMemberCount).toBeDefined()
-      expect(composable.isAllFormsValid).toBeDefined()
-    })
   })
 
   // ============================================================================

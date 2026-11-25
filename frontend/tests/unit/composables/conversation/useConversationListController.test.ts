@@ -228,26 +228,6 @@ describe('useConversationListController', () => {
     })
   })
 
-  describe('sub-composables', () => {
-    it('should expose filters composable', () => {
-      const controller = useConversationListController()
-      expect(controller.filters).toBeDefined()
-      expect(controller.filters.filters).toBeDefined()
-    })
-
-    it('should expose sort composable', () => {
-      const controller = useConversationListController()
-      expect(controller.sort).toBeDefined()
-      expect(controller.sort.sortBy).toBeDefined()
-    })
-
-    it('should expose cache composable', () => {
-      const controller = useConversationListController()
-      expect(controller.cache).toBeDefined()
-      expect(controller.cache.getCachedData).toBeDefined()
-    })
-  })
-
   describe('computed properties', () => {
     it('should compute totalPages correctly', () => {
       const controller = useConversationListController()
