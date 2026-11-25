@@ -33,11 +33,12 @@ test.describe('Login Flow (P0)', () => {
     await login(page, ADMIN_CREDENTIALS)
     await assertOnDashboard(page)
 
-    // Verify auth tokens stored in localStorage
-    const token = await page.evaluate(() => localStorage.getItem('token'))
+    // Auth items live in sessionStorage (utils/authStorage.ts), never in localStorage
+    const token = await page.evaluate(() => sessionStorage.getItem('token'))
     expect(token).toBeTruthy()
+    expect(await page.evaluate(() => localStorage.getItem('token'))).toBeNull()
 
-    const currentAgent = await page.evaluate(() => localStorage.getItem('currentAgent'))
+    const currentAgent = await page.evaluate(() => sessionStorage.getItem('currentAgent'))
     expect(currentAgent).toBeTruthy()
 
     const agent = JSON.parse(currentAgent!)
@@ -51,11 +52,13 @@ test.describe('Login Flow (P0)', () => {
     await page.getByRole('textbox', { name: '電子郵件' }).fill('wrong@example.com')
     await page.getByRole('textbox', { name: '密碼' }).fill('wrongpassword')
 
+    const loginResponse = page.waitForResponse((r) => r.url().includes('/auth/login'))
     await page.getByRole('button', { name: '登入', exact: true }).click()
 
-    // Should stay on login page (wait for the API call to complete)
-    await page.waitForTimeout(3000)
+    // The server rejected the credentials and the user stays on the login page
+    expect((await loginResponse).ok()).toBe(false)
     await expect(page).toHaveURL(/\/login/)
+    expect(await page.evaluate(() => sessionStorage.getItem('token'))).toBeNull()
   })
 
   test('should redirect unauthenticated users to login', async ({ page }) => {

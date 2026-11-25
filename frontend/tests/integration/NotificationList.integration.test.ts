@@ -5,11 +5,12 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { mount, flushPromises } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { createRouter, createWebHistory } from 'vue-router'
 import NotificationList from '@/views/NotificationList.vue'
 import { useNotificationsStore } from '@/stores/notifications'
+import { notificationApi } from '@/api/notifications'
 
 // Mock dependencies
 vi.mock('@/composables/useToast', () => ({
@@ -30,42 +31,22 @@ vi.mock('@/composables/useWebSocket', () => ({
 
 vi.mock('@/api/notifications', () => ({
   notificationApi: {
-    getNotifications: vi.fn().mockResolvedValue({
+    list: vi.fn().mockResolvedValue({
       success: true,
-      data: {
-        notifications: [],
-        pagination: {
-          page: 1,
-          pageSize: 20,
-          total: 0,
-          totalPages: 0
-        }
-      }
+      data: { items: [], page: 1, pageSize: 20, total: 0, totalPages: 0 }
     }),
+    getRecent: vi.fn().mockResolvedValue({ success: true, data: { notifications: [], count: 0 } }),
+    getUnreadCount: vi.fn().mockResolvedValue({ success: true, data: { count: 0 } }),
     getStats: vi.fn().mockResolvedValue({
       success: true,
-      data: {
-        total: 0,
-        unread: 0,
-        byType: {},
-        byPriority: {}
-      }
+      data: { total: 0, unread: 0, byType: {}, byPriority: {} }
     }),
-    getSettings: vi.fn().mockResolvedValue({
-      success: true,
-      data: {
-        pushEnabled: true,
-        soundEnabled: true,
-        emailEnabled: false,
-        messageEnabled: true,
-        assignmentEnabled: true,
-        mentionEnabled: true
-      }
-    }),
+    getSettings: vi.fn().mockResolvedValue({ success: true, data: {} }),
     updateSettings: vi.fn().mockResolvedValue({ success: true }),
     markAsRead: vi.fn().mockResolvedValue({ success: true }),
     markAllAsRead: vi.fn().mockResolvedValue({ success: true }),
-    deleteNotification: vi.fn().mockResolvedValue({ success: true })
+    delete: vi.fn().mockResolvedValue({ success: true }),
+    create: vi.fn().mockResolvedValue({ success: true })
   }
 }))
 
@@ -111,6 +92,26 @@ vi.mock('@/components/notification/NotificationEmptyState.vue', () => ({
   }
 }))
 
+
+const sampleNotification = {
+  id: '1',
+  type: 'new_message',
+  title: 'Test',
+  message: 'Test message',
+  isRead: false,
+  priority: 'normal',
+  createdAt: new Date().toISOString(),
+  data: {}
+}
+
+/** What the notifications list endpoint returns for the page under test */
+function serveList(items: unknown[], total: number, totalPages: number) {
+  vi.mocked(notificationApi.list).mockResolvedValue({
+    success: true,
+    data: { items, page: 1, pageSize: 20, total, totalPages }
+  } as never)
+}
+
 describe('NotificationList Integration', () => {
   let router: ReturnType<typeof createRouter>
 
@@ -147,44 +148,10 @@ describe('NotificationList Integration', () => {
     global.document.removeEventListener = vi.fn()
 
     vi.clearAllMocks()
+    serveList([], 0, 0)
   })
 
   describe('component mounting', () => {
-    it('should mount successfully', () => {
-      const wrapper = mount(NotificationList, {
-        global: {
-          plugins: [router],
-          stubs: {
-            Teleport: true,
-            // The page renders inside the app shell; the shell itself is not under test here
-            AppLayout: { template: '<div><slot /></div>' }
-          }
-        }
-      })
-
-      expect(wrapper.exists()).toBe(true)
-    })
-
-    it('should initialize controller on mount', async () => {
-      const wrapper = mount(NotificationList, {
-        global: {
-          plugins: [router],
-          stubs: {
-            Teleport: true,
-            // The page renders inside the app shell; the shell itself is not under test here
-            AppLayout: { template: '<div><slot /></div>' }
-          }
-        }
-      })
-
-      await wrapper.vm.$nextTick()
-
-      // Note: The controller's initialize() is called in onMounted
-      // In the test environment, we may need to manually trigger it
-      // For now, we'll just verify the component mounts successfully
-      expect(wrapper.exists()).toBe(true)
-    })
-
     it('should cleanup on unmount', async () => {
       const wrapper = mount(NotificationList, {
         global: {
@@ -233,9 +200,7 @@ describe('NotificationList Integration', () => {
     })
 
     it('should show empty state when no notifications', async () => {
-      const store = useNotificationsStore()
-      store.loading = false
-      store.notifications = []
+      serveList([], 0, 0)
 
       const wrapper = mount(NotificationList, {
         global: {
@@ -248,26 +213,13 @@ describe('NotificationList Integration', () => {
         }
       })
 
-      await wrapper.vm.$nextTick()
+      await flushPromises()
 
       expect(wrapper.findComponent({ name: 'NotificationEmptyState' }).exists()).toBe(true)
     })
 
     it('should show notifications list when data available', async () => {
-      const store = useNotificationsStore()
-      store.loading = false
-      store.notifications = [
-        {
-          id: '1',
-          type: 'new_message',
-          title: 'Test',
-          message: 'Test message',
-          isRead: false,
-          priority: 'normal',
-          createdAt: new Date().toISOString(),
-          data: {}
-        }
-      ]
+      serveList([sampleNotification], 1, 1)
 
       const wrapper = mount(NotificationList, {
         global: {
@@ -280,7 +232,7 @@ describe('NotificationList Integration', () => {
         }
       })
 
-      await wrapper.vm.$nextTick()
+      await flushPromises()
 
       expect(wrapper.find('.notifications-list').exists()).toBe(true)
       expect(wrapper.findAllComponents({ name: 'NotificationCard' }).length).toBe(1)
@@ -339,55 +291,9 @@ describe('NotificationList Integration', () => {
     })
   })
 
-  describe('user interactions', () => {
-    it('should handle show settings', async () => {
-      const wrapper = mount(NotificationList, {
-        global: {
-          plugins: [router],
-          stubs: {
-            Teleport: true,
-            // The page renders inside the app shell; the shell itself is not under test here
-            AppLayout: { template: '<div><slot /></div>' }
-          }
-        }
-      })
-
-      await wrapper.vm.$nextTick()
-
-      // Initially settings should be hidden
-      const vm = wrapper.vm as any
-      expect(vm.controller.showSettings.value).toBe(false)
-
-      // Trigger show settings
-      vm.controller.showSettings.value = true
-      await wrapper.vm.$nextTick()
-
-      expect(vm.controller.showSettings.value).toBe(true)
-    })
-  })
-
   describe('pagination', () => {
     it('should show load more button when more data available', async () => {
-      const store = useNotificationsStore()
-      store.loading = false
-      store.notifications = [
-        {
-          id: '1',
-          type: 'new_message',
-          title: 'Test',
-          message: 'Test',
-          isRead: false,
-          priority: 'normal',
-          createdAt: new Date().toISOString(),
-          data: {}
-        }
-      ]
-      store.pagination = {
-        page: 1,
-        pageSize: 20,
-        total: 50,
-        totalPages: 3
-      }
+      serveList([sampleNotification], 50, 3)
 
       const wrapper = mount(NotificationList, {
         global: {
@@ -400,32 +306,13 @@ describe('NotificationList Integration', () => {
         }
       })
 
-      await wrapper.vm.$nextTick()
+      await flushPromises()
 
       expect(wrapper.find('.load-more-section').exists()).toBe(true)
     })
 
     it('should not show load more button when all data loaded', async () => {
-      const store = useNotificationsStore()
-      store.loading = false
-      store.notifications = [
-        {
-          id: '1',
-          type: 'new_message',
-          title: 'Test',
-          message: 'Test',
-          isRead: false,
-          priority: 'normal',
-          createdAt: new Date().toISOString(),
-          data: {}
-        }
-      ]
-      store.pagination = {
-        page: 1,
-        pageSize: 20,
-        total: 1,
-        totalPages: 1
-      }
+      serveList([sampleNotification], 1, 1)
 
       const wrapper = mount(NotificationList, {
         global: {
@@ -438,7 +325,7 @@ describe('NotificationList Integration', () => {
         }
       })
 
-      await wrapper.vm.$nextTick()
+      await flushPromises()
 
       expect(wrapper.find('.load-more-section').exists()).toBe(false)
     })

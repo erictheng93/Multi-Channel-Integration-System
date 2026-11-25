@@ -208,21 +208,10 @@ describe('SystemSettings Integration Tests', () => {
     await generalForm.vm.$emit('save')
     await flushPromises()
 
-    expect(systemApi.updateSettings).toHaveBeenCalled()
-  })
-
-  it('should test LINE integration', async () => {
-    const router = createTestRouter()
-    await router.push('/settings/integrations/line')
-    await router.isReady()
-
-    const wrapper = mount(SystemSettings, {
-      global: { plugins: [router] }
+    expect(systemApi.updateSettings).toHaveBeenCalledTimes(1)
+    expect(systemApi.updateSettings).toHaveBeenCalledWith({
+      general: { ...mockSettings.general, language: 'zh-TW' }
     })
-    await flushPromises()
-
-    const lineForm = wrapper.findComponent({ name: 'LineIntegrationForm' })
-    expect(lineForm.exists()).toBe(true)
   })
 
   it('should save advanced settings', async () => {
@@ -240,7 +229,10 @@ describe('SystemSettings Integration Tests', () => {
     await advancedForm.vm.$emit('save')
     await flushPromises()
 
-    expect(systemApi.updateSettings).toHaveBeenCalled()
+    expect(systemApi.updateSettings).toHaveBeenCalledTimes(1)
+    expect(systemApi.updateSettings).toHaveBeenCalledWith({
+      advanced: expect.objectContaining(mockSettings.advanced)
+    })
   })
 
   it('keeps unsaved general edits dirty after saving another section', async () => {

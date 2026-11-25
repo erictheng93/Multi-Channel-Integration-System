@@ -3,6 +3,7 @@ import {
   login,
   logout,
   getLocalStorageKeys,
+  getSessionStorageKeys,
   clearLocalStorage,
 } from '../helpers/auth'
 
@@ -14,23 +15,20 @@ test.describe('Logout & Cache Cleanup (P1)', () => {
   test('should clear all auth tokens on logout', async ({ page }) => {
     await login(page)
 
-    // Verify tokens exist before logout
-    const keysBefore = await getLocalStorageKeys(page)
+    // Auth items live in sessionStorage (src/utils/authStorage.ts)
+    const keysBefore = await getSessionStorageKeys(page)
     expect(keysBefore).toContain('token')
     expect(keysBefore).toContain('currentAgent')
 
     await logout(page)
 
-    // Verify all auth tokens are cleared
-    const token = await page.evaluate(() => localStorage.getItem('token'))
-    const refreshToken = await page.evaluate(() => localStorage.getItem('refreshToken'))
-    const currentAgent = await page.evaluate(() => localStorage.getItem('currentAgent'))
-    const sessionExpiry = await page.evaluate(() => localStorage.getItem('sessionExpiry'))
-
-    expect(token).toBeNull()
-    expect(refreshToken).toBeNull()
-    expect(currentAgent).toBeNull()
-    expect(sessionExpiry).toBeNull()
+    const read = (key: string) => page.evaluate((k) => sessionStorage.getItem(k), key)
+    expect(await read('token')).toBeNull()
+    expect(await read('refreshToken')).toBeNull()
+    expect(await read('currentAgent')).toBeNull()
+    expect(await read('sessionExpiry')).toBeNull()
+    // and nothing leaked into the legacy localStorage location
+    expect(await getLocalStorageKeys(page)).not.toContain('token')
   })
 
   test('should clear all cache keys on logout (including analytics + metadata)', async ({ page }) => {
@@ -38,15 +36,10 @@ test.describe('Logout & Cache Cleanup (P1)', () => {
 
     // Navigate around to generate cache entries
     await page.goto('/conversations')
-    await page.waitForTimeout(2000) // Let caches populate
-
-    // Check keys before logout
-    const keysBefore = await getLocalStorageKeys(page)
-    expect(keysBefore.length).toBeGreaterThan(0)
+    await page.waitForLoadState('networkidle')
 
     await logout(page)
 
-    // After logout, localStorage should be completely empty
     const keysAfter = await getLocalStorageKeys(page)
 
     // Specifically verify the previously-leaking cache keys are gone

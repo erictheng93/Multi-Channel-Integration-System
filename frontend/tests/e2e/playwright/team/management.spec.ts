@@ -16,7 +16,7 @@ test.describe('Team Management (P1)', () => {
 
   test('should display team members list', async ({ page }) => {
     await page.goto('/team')
-    await page.waitForTimeout(2000)
+    await page.waitForLoadState('networkidle')
 
     // Should show the team management heading or member count
     const heading = page.getByRole('heading').filter({ hasText: /團隊|成員/ })
@@ -25,7 +25,7 @@ test.describe('Team Management (P1)', () => {
 
   test('should show correct admin user in team list', async ({ page }) => {
     await page.goto('/team')
-    await page.waitForTimeout(2000)
+    await page.waitForLoadState('networkidle')
 
     // The admin user should be visible in the team member list (not the sidebar)
     await expect(page.getByRole('heading', { name: 'System Administrator' })).toBeVisible()
@@ -45,7 +45,7 @@ test.describe('Team Management (P1)', () => {
     })
 
     await page.goto('/team')
-    await page.waitForTimeout(2000)
+    await page.waitForLoadState('networkidle')
 
     // No import/module resolution errors should appear
     const importErrors = consoleErrors.filter(
