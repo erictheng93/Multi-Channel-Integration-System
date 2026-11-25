@@ -83,4 +83,20 @@ describe('processLineMedia', () => {
     expect(mockProcessLineMediaMessage).not.toHaveBeenCalled();
     expect(mockInsertValues).not.toHaveBeenCalled();
   });
+
+  it('downloads once and stores exactly one attachment row on first delivery', async () => {
+    const result = await processLineMedia({ DB: {} } as any, 'msg-1', 'line-msg-1', 'image');
+
+    expect(mockProcessLineMediaMessage).toHaveBeenCalledTimes(1);
+    expect(mockInsertValues).toHaveBeenCalledTimes(1);
+    expect(mockInsertValues).toHaveBeenCalledWith(expect.objectContaining({ id: 'new-att-1', messageId: 'msg-1', r2Key: 'media/line/2026/6/new-att-1.jpg' }));
+    expect(result).toEqual([expect.objectContaining({ id: 'new-att-1', messageId: 'msg-1' })]);
+  });
+
+  it('returns no attachment and writes no row when the download fails', async () => {
+    mockProcessLineMediaMessage.mockResolvedValue(null);
+
+    await expect(processLineMedia({ DB: {} } as any, 'msg-1', 'line-msg-1', 'image')).resolves.toEqual([]);
+    expect(mockInsertValues).not.toHaveBeenCalled();
+  });
 });

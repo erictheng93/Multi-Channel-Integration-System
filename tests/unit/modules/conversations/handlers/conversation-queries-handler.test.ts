@@ -190,7 +190,7 @@ function unreadRows(db: Database.Database, ids: string[], agentId = 'agent-1') {
 }
 
 describe('conversation unread count SQL', () => {
-  it('covers unread threshold edge cases and chunks larger than 90 ids', () => {
+  it('covers unread threshold edge cases and returns a row for every id in the chunk', () => {
     const db = createSqliteDb();
 
     insertConversation(db, 'no-agent');
@@ -417,6 +417,23 @@ describe('conversation list pagination', () => {
     const nullCount = (q: string) => (q.match(/"assigned_team_id" is null/gi) ?? []).length;
     expect(nullCount(unassigned)).toBe(nullCount(plain) + 1);
     expect(await whereSql('scope=open&unassigned=false')).toBe(plain);
+  });
+
+  // D1 rejects a statement with more than 100 bound parameters: an unpaginated list larger than
+  // one chunk must be split, and every conversation still enriched.
+  it('splits the per-conversation lookups into chunks of at most 90 ids', async () => {
+    const mockDrizzle = createMockDrizzle([createConversationRows(185)]);
+    handlerMocks.createDbClient.mockReturnValue(mockDrizzle);
+
+    const d1 = createMockD1();
+    const response = await makeApp({ DB: d1.db } as unknown as Bindings).request('/api/conversations');
+
+    expect(response.status).toBe(200);
+    const latest = d1.calls.filter(call => call.query.includes('MAX(created_at) as max_created_at'));
+    const unread = d1.calls.filter(call => call.query.includes('WITH ids(id) AS'));
+    expect(latest.map(call => call.params.length)).toEqual([90, 90, 5]);
+    expect(unread.map(call => call.params.length)).toEqual([91, 91, 6]);
+    expect(new Set(latest.flatMap(call => call.params)).size).toBe(185);
   });
 
   it('does not limit the query when the caller sends no pagination params', async () => {
