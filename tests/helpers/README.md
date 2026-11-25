@@ -60,9 +60,8 @@ afterEach(() => {
 |------|---------|---------|
 | `mockDrizzle.ts` | Drizzle ORM mock utilities | customer-crud, message-crud tests |
 | `mockKV.ts` | Cloudflare KV mock | analytics, webhook-security tests |
-| `testUtils.ts` | General test utilities | e2e tests |
+| `sqlite-d1.ts` | In-memory SQLite D1 with real migrations | dashboard, unread, race tests |
 | `AUTH_MOCK_PATTERN.md` | Guide for mocking jwtAuth middleware | Reference doc |
-| `websocket/` | WebSocket test client and helpers | WebSocket tests |
 
 ## Archived (Do Not Use)
 

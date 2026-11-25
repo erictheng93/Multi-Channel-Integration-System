@@ -312,8 +312,8 @@ bun run validate:routes
 # Test endpoints
 curl https://your-domain.com/api/myendpoint
 
-# Run E2E tests
-bun run test:api
+# Run the backend test suite
+bun run test:backend:ci
 ```
 
 #### Step 6: Clean Up
@@ -586,8 +586,8 @@ bun run validate:all
 curl https://your-domain.com/api/cors/health
 curl https://your-domain.com/api/cors/config
 
-# Run E2E tests
-bun run test:api
+# Run the backend test suite
+bun run test:backend:ci
 ```
 
 ### Key Files

@@ -134,10 +134,8 @@ docs/
 │ └── (监控相关文档)
 │
 ├── optimization/ # 优化文档
-│ └── README-PERFORMANCE.md # 性能优化说明
 │
 ├── performance/ # 性能文档
-│ ├── LOAD_TESTING_GUIDE.md # 负载测试指南
 │ ├── PERFORMANCE_ANALYSIS_REPORT.md # 性能分析报告
 │ ├── performance_baseline_report.md # 性能基线报告
 │ ├── PERFORMANCE_BASELINE_REPORT.md # 性能基线报告
@@ -202,7 +200,6 @@ docs/
 │
 ├── testing/ # 测试文档
 │ ├── security-testing.md # 安全测试
-│ ├── WEBSOCKET_TESTING_GUIDE.md # WebSocket 测试指南
 │ ├── DOM_EVENT_INTERFACE_SOLUTION.md # DOM 事件接口解决方案
 │ ├── TEST_INFRASTRUCTURE_FIXES.md  # 测试基础设施修复
 │ ├── ULTIMATE_PINIA_SOLUTION.md # Pinia 终极解决方案
@@ -348,8 +345,6 @@ docs/
 3. [guides/CLOUDFLARE_PAGES_DEPLOYMENT.md](./guides/CLOUDFLARE_PAGES_DEPLOYMENT.md) - Cloudflare Pages 部署
 
 ### 测试相关
-1. [testing/WEBSOCKET_TESTING_GUIDE.md](./testing/WEBSOCKET_TESTING_GUIDE.md) - WebSocket 测试指南
-2. [performance/LOAD_TESTING_GUIDE.md](./performance/LOAD_TESTING_GUIDE.md) - 负载测试指南
 3. [testing/TEST_EXECUTION_REPORT.md](./testing/TEST_EXECUTION_REPORT.md) - 测试执行报告
 
 ### 架构设计

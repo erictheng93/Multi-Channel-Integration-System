@@ -190,8 +190,8 @@ curl http://localhost:8787/health
 # 測試前端應用
 # 打開瀏覽器訪問 http://localhost:3000
 
-# 測試檔案上傳功能
-bun run test:upload
+# 執行後端測試套件（含檔案上傳相關測試）
+bun run test:backend:ci
 ```
 
 ##  下一步：設置 LINE Webhook
@@ -359,8 +359,8 @@ bun run cf-typegen
 # 檢查 R2 儲存桶是否存在
 wrangler r2 bucket list
 
-# 測試檔案上傳功能
-bun run test:upload
+# 執行後端測試套件（含檔案上傳相關測試）
+bun run test:backend:ci
 bun run verify:upload
 
 # 執行完整測試套件 (前端)
