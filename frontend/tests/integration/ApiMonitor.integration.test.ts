@@ -7,7 +7,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { mount, flushPromises } from '@vue/test-utils'
 import { nextTick, defineComponent } from 'vue'
 import { setActivePinia, createPinia } from 'pinia'
 import ApiMonitor from '@/views/ApiMonitor.vue'
@@ -166,16 +166,6 @@ const childStubs = {
   InfrastructureCard: InfrastructureCardStub,
   ChannelIntegrationsCard: ChannelIntegrationsCardStub,
   RecentEventsCard: RecentEventsCardStub
-}
-
-/** Flush promises by waiting a short real-time delay + nextTick */
-function flushPromises(): Promise<void> {
-  return new Promise(resolve => {
-    setTimeout(async () => {
-      await nextTick()
-      resolve()
-    }, 50)
-  })
 }
 
 function mountApiMonitor() {

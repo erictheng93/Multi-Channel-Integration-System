@@ -13,7 +13,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { mount, flushPromises } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { nextTick, ref, computed } from 'vue'
 import MemberEditModal from '@/components/team/member-edit/MemberEditModal.vue'
@@ -204,313 +204,150 @@ describe('Member Modal Workflows - Integration Tests', () => {
     })
   })
 
-  describe('MultiTeamSelector - Integration with MemberEditModal', () => {
-    it('should load and display member teams on mount', async () => {
-      const wrapper = mount(MultiTeamSelector, {
-        props: {
-          memberId: mockMember.id,
-          allTeams: mockAllTeams
-        },
-        global: {
-          plugins: [createPinia()]
-        }
+  describe('MultiTeamSelector - immediate mode', () => {
+    const mountSelector = (props: Record<string, unknown> = {}) =>
+      mount(MultiTeamSelector, {
+        props: { memberId: mockMember.id, allTeams: mockAllTeams, ...props },
+        global: { plugins: [createPinia()] }
       })
 
-      await nextTick()
-      await nextTick() // Wait for async load
+    it('loads the member teams on mount and shows them as chips', async () => {
+      const wrapper = mountSelector()
+      await flushPromises()
 
-      // Composable should be called to load teams
       expect(mockLoadMemberTeams).toHaveBeenCalledWith(mockMember.id)
-
-      // Should display the team chip
-      expect(wrapper.text()).toContain('Team Alpha')
+      const chips = wrapper.findAll('.team-chip')
+      expect(chips).toHaveLength(1)
+      expect(chips[0]?.text()).toContain('Team Alpha')
     })
 
-    it('should complete add team workflow', async () => {
-      const wrapper = mount(MultiTeamSelector, {
-        props: {
-          memberId: mockMember.id,
-          allTeams: mockAllTeams
-        },
-        global: {
-          plugins: [createPinia()]
-        }
-      })
+    it('offers only teams the member has not joined', async () => {
+      const wrapper = mountSelector()
+      await flushPromises()
 
-      await nextTick()
-      await nextTick()
-
-      // Find the dropdown/select for adding teams
-      const addDropdown = wrapper.find('select, [data-testid="team-add-dropdown"]')
-
-      if (addDropdown.exists()) {
-        // Select Team Beta (id: 2)
-        await addDropdown.setValue('2')
-        await nextTick()
-
-        // Composable addToTeam should be called
-        expect(mockAddToTeam).toHaveBeenCalledWith(mockMember.id, 2)
-      }
+      const options = wrapper.findAll('select.team-add-select option').map(o => o.text())
+      expect(options.some(t => t.includes('Beta'))).toBe(true)
+      expect(options.some(t => t.includes('Gamma'))).toBe(true)
+      expect(options.some(t => t.includes('Alpha'))).toBe(false)
     })
 
-    it('should complete remove team workflow with confirmation', async () => {
-      const wrapper = mount(MultiTeamSelector, {
-        props: {
-          memberId: mockMember.id,
-          allTeams: mockAllTeams
-        },
-        global: {
-          plugins: [createPinia()]
-        }
-      })
+    it('adds the chosen team through the composable', async () => {
+      const wrapper = mountSelector()
+      await flushPromises()
 
-      await nextTick()
-      await nextTick()
+      await wrapper.find('select.team-add-select').setValue(2)
+      await flushPromises()
 
-      // Find remove button (usually marked with × or remove class)
-      const removeBtn = wrapper.find('[class*="remove"], [class*="chip-remove"]')
-
-      if (removeBtn.exists()) {
-        await removeBtn.trigger('click')
-        await nextTick()
-
-        // Composable removeFromTeam should be called (which handles confirmation internally)
-        expect(mockRemoveFromTeam).toHaveBeenCalled()
-      }
+      expect(mockAddToTeam).toHaveBeenCalledWith(mockMember.id, 2)
     })
 
-    it('should handle remove team cancellation', async () => {
-      // Setup mock to return false (user cancels)
-      mockRemoveFromTeam.mockResolvedValue(false)
+    it('removes a team through the composable (which confirms internally)', async () => {
+      const wrapper = mountSelector()
+      await flushPromises()
 
-      const wrapper = mount(MultiTeamSelector, {
-        props: {
-          memberId: mockMember.id,
-          allTeams: mockAllTeams
-        },
-        global: {
-          plugins: [createPinia()]
-        }
-      })
+      await wrapper.find('.team-chip .chip-remove').trigger('click')
 
-      await nextTick()
-      await nextTick()
-
-      const removeBtn = wrapper.find('[class*="remove"], [class*="chip-remove"]')
-
-      if (removeBtn.exists()) {
-        await removeBtn.trigger('click')
-        await nextTick()
-
-        // Composable removeFromTeam should be called
-        expect(mockRemoveFromTeam).toHaveBeenCalled()
-      }
+      expect(mockRemoveFromTeam).toHaveBeenCalledWith(mockMember.id, 1)
     })
 
-    it('should set team as primary', async () => {
-      // Setup with multiple teams using proper Vue refs
+    it('shows the operation status message with its type class', async () => {
       vi.mocked(useMemberTeams).mockReturnValue({
-        memberTeams: ref([
-          { teamId: 1, teamName: 'Team Alpha', roleInTeam: 'member', isPrimary: true, joinedAt: '2024-01-01' },
-          { teamId: 2, teamName: 'Team Beta', roleInTeam: 'member', isPrimary: false, joinedAt: '2024-01-02' }
-        ]),
-        availableTeamsToJoin: computed(() => [mockAllTeams[2]]), // Only Team Gamma available
-        teamOperationLoading: ref(false),
-        teamOperationStatus: ref(null),
-        loadMemberTeams: mockLoadMemberTeams,
-        addToTeam: mockAddToTeam,
-        removeFromTeam: mockRemoveFromTeam,
-        setPrimaryTeam: mockSetPrimaryTeam
-      })
+        ...vi.mocked(useMemberTeams)({} as never),
+        teamOperationStatus: ref({ type: 'error', message: 'Join failed' })
+      } as never)
 
-      const wrapper = mount(MultiTeamSelector, {
-        props: {
-          memberId: mockMember.id,
-          allTeams: mockAllTeams
-        },
-        global: {
-          plugins: [createPinia()]
-        }
-      })
+      const wrapper = mountSelector()
+      await flushPromises()
 
-      await nextTick()
-      await nextTick()
-
-      // Find set-primary button (usually marked with star )
-      const setPrimaryBtn = wrapper.find('[class*="chip-star"], [class*="set-primary"]')
-
-      if (setPrimaryBtn.exists()) {
-        await setPrimaryBtn.trigger('click')
-        await nextTick()
-
-        // Composable setPrimaryTeam should be called
-        expect(mockSetPrimaryTeam).toHaveBeenCalled()
-      }
+      const status = wrapper.find('.status-message')
+      expect(status.text()).toBe('Join failed')
+      expect(status.classes()).toContain('error')
     })
 
-    it('should display available teams for selection', async () => {
-      const wrapper = mount(MultiTeamSelector, {
-        props: {
-          memberId: mockMember.id,
-          allTeams: mockAllTeams
-        },
-        global: {
-          plugins: [createPinia()]
-        }
-      })
+    it('disables chip removal while an operation is running', async () => {
+      vi.mocked(useMemberTeams).mockReturnValue({
+        ...vi.mocked(useMemberTeams)({} as never),
+        teamOperationLoading: ref(true)
+      } as never)
 
-      await nextTick()
-      await nextTick()
+      const wrapper = mountSelector()
+      await flushPromises()
 
-      // Member is in Team Alpha, so Beta and Gamma should be available
-      const dropdown = wrapper.find('select, [data-testid="team-add-dropdown"]')
-
-      if (dropdown.exists()) {
-        const options = dropdown.findAll('option')
-        const optionTexts = options.map(o => o.text())
-
-        // Should show available teams (not already joined)
-        expect(optionTexts.some(t => t.includes('Beta'))).toBe(true)
-        expect(optionTexts.some(t => t.includes('Gamma'))).toBe(true)
-      }
+      expect(wrapper.find('.chip-remove').attributes('disabled')).toBeDefined()
+      expect(wrapper.find('select.team-add-select').attributes('disabled')).toBeDefined()
     })
   })
 
-  describe('Error Handling in Multi-Team Operations', () => {
-    it('should handle API failure when adding team', async () => {
-      // Mock addToTeam to return false (failure)
-      mockAddToTeam.mockResolvedValue(false)
+  describe('MultiTeamSelector - deferred mode', () => {
+    const alpha = { teamId: 1, teamName: 'Team Alpha', roleInTeam: 'member', isPrimary: true, joinedAt: '2024-01-01' }
 
-      const wrapper = mount(MultiTeamSelector, {
+    const mountDeferred = (props: Record<string, unknown> = {}) =>
+      mount(MultiTeamSelector, {
         props: {
           memberId: mockMember.id,
-          allTeams: mockAllTeams
-        },
-        global: {
-          plugins: [createPinia()]
-        }
+          allTeams: mockAllTeams,
+          deferredMode: true,
+          teams: [alpha],
+          ...props
+        } as never,
+        global: { plugins: [createPinia()] }
       })
 
-      await nextTick()
-      await nextTick()
+    it('stages an add as an event and never calls the API', async () => {
+      const wrapper = mountDeferred()
+      await flushPromises()
 
-      const addDropdown = wrapper.find('select, [data-testid="team-add-dropdown"]')
+      await wrapper.find('select.team-add-select').setValue(2)
 
-      if (addDropdown.exists()) {
-        await addDropdown.setValue('2')
-        await nextTick()
-
-        // addToTeam should be called even if it fails
-        expect(mockAddToTeam).toHaveBeenCalledWith(mockMember.id, 2)
-      }
+      expect(wrapper.emitted('add-team')).toEqual([[2, 'Team Beta']])
+      expect(mockAddToTeam).not.toHaveBeenCalled()
     })
 
-    it('should rollback optimistic update on network error', async () => {
-      // Mock addToTeam to reject with error
-      mockAddToTeam.mockRejectedValue(new Error('Network error'))
+    it('stages a remove as an event and never calls the API', async () => {
+      const wrapper = mountDeferred()
+      await flushPromises()
 
-      const wrapper = mount(MultiTeamSelector, {
-        props: {
-          memberId: mockMember.id,
-          allTeams: mockAllTeams
-        },
-        global: {
-          plugins: [createPinia()]
-        }
-      })
+      await wrapper.find('.chip-remove').trigger('click')
 
-      await nextTick()
-      await nextTick()
-
-      // Get initial team count
-      const initialTeams = wrapper.findAll('[class*="team-chip"], [class*="chip"]')
-      const initialCount = initialTeams.length
-
-      const addDropdown = wrapper.find('select, [data-testid="team-add-dropdown"]')
-
-      if (addDropdown.exists()) {
-        await addDropdown.setValue('2')
-        await nextTick()
-        await nextTick()
-
-        // Team count should remain the same (since we're mocking)
-        const currentTeams = wrapper.findAll('[class*="team-chip"], [class*="chip"]')
-        expect(currentTeams.length).toBe(initialCount)
-
-        // addToTeam was called
-        expect(mockAddToTeam).toHaveBeenCalled()
-      }
-    })
-  })
-
-  describe('Status Messages and User Feedback', () => {
-    it('should display success status after adding team', async () => {
-      const wrapper = mount(MultiTeamSelector, {
-        props: {
-          memberId: mockMember.id,
-          allTeams: mockAllTeams
-        },
-        global: {
-          plugins: [createPinia()]
-        }
-      })
-
-      await nextTick()
-      await nextTick()
-
-      const addDropdown = wrapper.find('select, [data-testid="team-add-dropdown"]')
-
-      if (addDropdown.exists()) {
-        await addDropdown.setValue('2')
-        await nextTick()
-
-        // Status message should appear
-        const statusMsg = wrapper.find('[class*="status-message"]')
-        if (statusMsg.exists()) {
-          expect(statusMsg.text()).toContain('Beta')
-          expect(statusMsg.classes()).toContain('success')
-        }
-      }
+      expect(wrapper.emitted('remove-team')).toEqual([[1]])
+      expect(mockRemoveFromTeam).not.toHaveBeenCalled()
     })
 
-    it('should auto-clear status message after 3 seconds', async () => {
-      vi.useFakeTimers()
+    it('computes the dropdown from allTeams minus the supplied teams', async () => {
+      const wrapper = mountDeferred()
+      await flushPromises()
 
-      const wrapper = mount(MultiTeamSelector, {
-        props: {
-          memberId: mockMember.id,
-          allTeams: mockAllTeams
-        },
-        global: {
-          plugins: [createPinia()]
-        }
+      const options = wrapper.findAll('select.team-add-select option').map(o => o.text())
+      expect(options.some(t => t.includes('Alpha'))).toBe(false)
+      expect(options.some(t => t.includes('Beta'))).toBe(true)
+    })
+
+    it('reports loaded teams to the parent so it can initialize its staging state', async () => {
+      const wrapper = mountDeferred()
+      await flushPromises()
+
+      expect(mockLoadMemberTeams).toHaveBeenCalledWith(mockMember.id)
+      expect(wrapper.emitted('teams-loaded')).toHaveLength(1)
+    })
+
+    it('flags unsaved changes and marks pending chips', async () => {
+      const wrapper = mountDeferred({
+        pendingChanges: [{ type: 'remove', teamId: 1, teamName: 'Team Alpha' }]
       })
+      await flushPromises()
 
-      await nextTick()
-      await nextTick()
+      expect(wrapper.find('.status-message.pending').text()).toBe('有未儲存的變更')
+      expect(wrapper.find('.team-chip').classes()).toContain('is-pending-remove')
+    })
 
-      const addDropdown = wrapper.find('select, [data-testid="team-add-dropdown"]')
+    it('hides the unsaved-changes message when the parent shows it instead', async () => {
+      const wrapper = mountDeferred({
+        hideStatusMessage: true,
+        pendingChanges: [{ type: 'remove', teamId: 1, teamName: 'Team Alpha' }]
+      })
+      await flushPromises()
 
-      if (addDropdown.exists()) {
-        await addDropdown.setValue('2')
-        await nextTick()
-
-        // Status message exists
-        let statusMsg = wrapper.find('[class*="status-message"]')
-        const statusExists = statusMsg.exists()
-
-        if (statusExists) {
-          // Fast-forward 3 seconds
-          vi.advanceTimersByTime(3000)
-          await nextTick()
-
-          // Status message should be cleared
-          statusMsg = wrapper.find('[class*="status-message"]')
-          expect(statusMsg.exists()).toBe(false)
-        }
-      }
-
-      vi.useRealTimers()
+      expect(wrapper.find('.status-message').exists()).toBe(false)
     })
   })
 })

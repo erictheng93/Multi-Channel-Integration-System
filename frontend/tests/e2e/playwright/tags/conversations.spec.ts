@@ -9,8 +9,10 @@
  * 5. Pagination controls appear when there are multiple pages
  * 6. Modal closes via X button, overlay click, and Escape key
  *
- * Data resilience: tests that depend on tags with conversations gracefully
- * skip when the production DB has no such tags, rather than failing.
+ * Read-only: nothing here creates, edits or deletes data.
+ *
+ * Data resilience: the "with tags" block skips as a whole (one guard in its
+ * beforeEach) when the environment has no tags, rather than failing.
  */
 
 import { test, expect, type Page } from '@playwright/test'
@@ -20,31 +22,32 @@ import { login, clearLocalStorage } from '../helpers/auth'
 // Helpers
 // ---------------------------------------------------------------------------
 
-/** Navigate to the tags page and wait for it to finish loading */
+/** Navigate to the tags page and wait until its loading state is gone */
 async function goToTagsPage(page: Page) {
   await page.goto('/customers/tags')
-  // Wait for the loading overlay to disappear and at least one element to render
-  await page.waitForTimeout(2500)
+  await page.waitForLoadState('networkidle')
+  await page.locator('.loading-state').waitFor({ state: 'hidden', timeout: 10000 })
 }
 
-/** Find the first conversation-count button (always clickable now) */
-function conversationBtn(page: Page) {
-  return page.locator('button.stat-item-clickable').first()
+/** Open the conversations modal from the first tag card and wait for it to settle */
+async function openFirstTagModal(page: Page) {
+  await page.locator('button.stat-item-clickable').first().click()
+  await expect(page.locator('.modal-overlay')).toBeVisible({ timeout: 5000 })
+  // Settled = loading spinner gone (either the list or the empty state is shown)
+  await expect(page.locator('.modal-body .state-container p', { hasText: '載入對話中' })).toBeHidden({
+    timeout: 10000,
+  })
 }
 
 // ===========================================================================
 // Tests
 // ===========================================================================
 
-test.describe('Tags — Conversation Drilldown (P1)', () => {
+test.describe('Tags - Conversation Drilldown (P1)', () => {
   test.beforeEach(async ({ page }) => {
     await clearLocalStorage(page)
     await login(page)
   })
-
-  // =========================================================================
-  // Page navigation
-  // =========================================================================
 
   test('navigates to /customers/tags successfully', async ({ page }) => {
     await page.goto('/customers/tags')
@@ -53,259 +56,111 @@ test.describe('Tags — Conversation Drilldown (P1)', () => {
 
   test('page title or heading is visible', async ({ page }) => {
     await goToTagsPage(page)
-    // The page should contain a heading-level element related to tags
-    const heading = page
-      .getByRole('heading')
-      .filter({ hasText: /標籤|Tags/i })
+    const heading = page.getByRole('heading').filter({ hasText: /標籤|Tags/i })
     await expect(heading.first()).toBeVisible({ timeout: 10000 })
   })
 
-  // =========================================================================
-  // Tag card structure
-  // =========================================================================
+  test.describe('with tags', () => {
+    // One guard for the whole block: every test below needs at least one tag card.
+    test.beforeEach(async ({ page }) => {
+      await goToTagsPage(page)
+      test.skip((await page.locator('.tag-card').count()) === 0, 'No tags found in this environment')
+    })
 
-  test('tag cards are rendered on the page', async ({ page }) => {
-    await goToTagsPage(page)
+    test('tag cards show their name', async ({ page }) => {
+      const first = page.locator('.tag-card').first()
+      await expect(first).toBeVisible()
+      await expect(first.locator('.tag-name')).toBeVisible()
+    })
 
-    const cards = page.locator('.tag-card')
-    const count = await cards.count()
+    test('every tag card has an enabled conversation count button, even at zero', async ({ page }) => {
+      const cards = page.locator('.tag-card')
+      const count = await cards.count()
+      for (let i = 0; i < count; i++) {
+        await expect(cards.nth(i).locator('button.stat-item-clickable')).toBeEnabled()
+      }
+    })
 
-    // The test environment may have 0 or more tags — either is acceptable.
-    // We just verify that if cards ARE present, they have the expected structure.
-    if (count > 0) {
-      await expect(cards.first()).toBeVisible()
-      await expect(cards.first().locator('.tag-name')).toBeVisible()
-    }
-  })
+    test('clicking a tag name opens the conversations modal', async ({ page }) => {
+      await page.locator('.tag-card').first().locator('.tag-name').click()
 
-  test('each tag card has a conversation count button', async ({ page }) => {
-    await goToTagsPage(page)
+      await expect(page.locator('.modal-overlay')).toBeVisible({ timeout: 5000 })
+      await expect(page.locator('.modal-title')).toBeVisible()
+    })
 
-    const cards = page.locator('.tag-card')
-    const cardCount = await cards.count()
-    if (cardCount === 0) { return }
+    test('clicking a conversation count button opens the modal', async ({ page }) => {
+      await page.locator('button.stat-item-clickable').first().click()
 
-    // Every tag card should have exactly one .stat-item-clickable button
-    const firstCard = cards.first()
-    const btn = firstCard.locator('button.stat-item-clickable')
-    await expect(btn).toBeVisible()
-  })
+      await expect(page.locator('.modal-overlay')).toBeVisible({ timeout: 5000 })
+      await expect(page.locator('.modal-title')).toBeVisible()
+    })
 
-  test('conversation count button is always clickable (even when count is zero)', async ({ page }) => {
-    await goToTagsPage(page)
+    test('modal title matches the tag name that was clicked', async ({ page }) => {
+      const card = page.locator('.tag-card').first()
+      const tagName = ((await card.locator('.tag-name').textContent()) ?? '').trim()
+      expect(tagName).not.toBe('')
 
-    // All conversation buttons should be enabled regardless of count
-    const allBtns = page.locator('button.stat-item-clickable')
-    const count = await allBtns.count()
-    if (count === 0) { return } // No tags at all — valid state
+      await card.locator('button.stat-item-clickable').click()
 
-    for (let i = 0; i < count; i++) {
-      await expect(allBtns.nth(i)).toBeEnabled()
-    }
-  })
+      await expect(page.locator('.modal-overlay')).toBeVisible({ timeout: 5000 })
+      await expect(page.locator('.modal-title')).toHaveText(tagName)
+    })
 
-  test('clicking a tag card opens the conversations modal', async ({ page }) => {
-    await goToTagsPage(page)
+    test('modal shows conversation list or empty state', async ({ page }) => {
+      await openFirstTagModal(page)
 
-    const cards = page.locator('.tag-card')
-    if (await cards.count() === 0) { return }
+      const items = page.locator('.conversation-item')
+      const empty = page.getByText('此標籤尚未被應用到任何對話')
+      await expect(items.first().or(empty)).toBeVisible()
+    })
 
-    // Click the card content area (not the actions)
-    await cards.first().locator('.tag-name').click()
+    test('conversation items show customer name and status badge', async ({ page }) => {
+      await openFirstTagModal(page)
 
-    await expect(page.locator('.modal-overlay')).toBeVisible({ timeout: 5000 })
-    await expect(page.locator('.modal-title')).toBeVisible()
-  })
+      const items = page.locator('.conversation-item')
+      test.skip((await items.count()) === 0, 'The first tag has no conversations')
 
-  // =========================================================================
-  // Modal open
-  // =========================================================================
+      await expect(items.first().locator('.customer-name')).toBeVisible()
+      await expect(items.first().locator('.status-badge')).toBeVisible()
+    })
 
-  test('clicking a conversation count button opens the modal', async ({ page }) => {
-    await goToTagsPage(page)
+    test('conversation-count badge in modal header shows a number', async ({ page }) => {
+      await openFirstTagModal(page)
 
-    const btn = conversationBtn(page)
-    const isVisible = await btn.isVisible()
+      const badge = page.locator('.conversation-count-badge')
+      await expect(badge).toBeVisible()
+      await expect(badge).toHaveText(/\d+/)
+    })
 
-    if (!isVisible) {
-      test.skip(true, 'No tags found in this environment')
-      return
-    }
+    test('modal closes when the X button is clicked', async ({ page }) => {
+      await openFirstTagModal(page)
 
-    await btn.click()
+      await page.locator('.close-btn').click()
+      await expect(page.locator('.modal-overlay')).not.toBeVisible({ timeout: 3000 })
+    })
 
-    await expect(page.locator('.modal-overlay')).toBeVisible({ timeout: 5000 })
-    await expect(page.locator('.modal-title')).toBeVisible()
-  })
+    test('modal closes when Escape is pressed', async ({ page }) => {
+      await openFirstTagModal(page)
 
-  test('modal title matches the tag name that was clicked', async ({ page }) => {
-    await goToTagsPage(page)
+      await page.keyboard.press('Escape')
+      await expect(page.locator('.modal-overlay')).not.toBeVisible({ timeout: 3000 })
+    })
 
-    const btn = conversationBtn(page)
-    if (!(await btn.isVisible())) {
-      test.skip(true, 'No tags found in this environment')
-      return
-    }
+    test('modal closes when the backdrop overlay is clicked', async ({ page }) => {
+      await openFirstTagModal(page)
 
-    // Capture the tag name from the card before clicking
-    const card = btn.locator('xpath=ancestor::*[contains(@class,"tag-card")]')
-    const tagName = await card.locator('.tag-name').textContent()
+      // Click the overlay itself (not its children) by clicking a corner
+      await page.locator('.modal-overlay').click({ position: { x: 5, y: 5 } })
+      await expect(page.locator('.modal-overlay')).not.toBeVisible({ timeout: 3000 })
+    })
 
-    await btn.click()
-    await expect(page.locator('.modal-overlay')).toBeVisible({ timeout: 5000 })
+    test('pagination, when shown, has previous and next buttons', async ({ page }) => {
+      await openFirstTagModal(page)
 
-    if (tagName) {
-      await expect(page.locator('.modal-title')).toHaveText(tagName.trim())
-    }
-  })
+      const pagination = page.locator('.pagination')
+      test.skip(!(await pagination.isVisible()), 'The first tag fits on a single page')
 
-  // =========================================================================
-  // Modal content
-  // =========================================================================
-
-  test('modal shows conversation list or empty state', async ({ page }) => {
-    await goToTagsPage(page)
-
-    const btn = conversationBtn(page)
-    if (!(await btn.isVisible())) {
-      test.skip(true, 'No tags found in this environment')
-      return
-    }
-
-    await btn.click()
-    await expect(page.locator('.modal-overlay')).toBeVisible({ timeout: 5000 })
-
-    // After loading, either conversation items or an empty state message
-    await page.waitForTimeout(2000) // allow API call to resolve
-
-    const hasConversations = await page.locator('.conversation-item').count() > 0
-    const hasEmptyState = await page.locator('text=此標籤尚未被應用到任何對話').isVisible()
-
-    expect(hasConversations || hasEmptyState).toBe(true)
-  })
-
-  test('conversation items show customer name and status badge', async ({ page }) => {
-    await goToTagsPage(page)
-
-    const btn = conversationBtn(page)
-    if (!(await btn.isVisible())) {
-      test.skip(true, 'No tags found in this environment')
-      return
-    }
-
-    await btn.click()
-    await page.waitForTimeout(2000)
-
-    const items = page.locator('.conversation-item')
-    if (await items.count() === 0) { return } // empty state — already covered
-
-    const first = items.first()
-    await expect(first.locator('.customer-name')).toBeVisible()
-    await expect(first.locator('.status-badge')).toBeVisible()
-  })
-
-  test('conversation-count badge in modal header shows a number', async ({ page }) => {
-    await goToTagsPage(page)
-
-    const btn = conversationBtn(page)
-    if (!(await btn.isVisible())) {
-      test.skip(true, 'No tags found in this environment')
-      return
-    }
-
-    await btn.click()
-    await page.waitForTimeout(2000)
-
-    const badge = page.locator('.conversation-count-badge')
-    await expect(badge).toBeVisible()
-    const text = await badge.textContent()
-    expect(text).toMatch(/\d+/)
-  })
-
-  // =========================================================================
-  // Modal close — X button
-  // =========================================================================
-
-  test('modal closes when the X button is clicked', async ({ page }) => {
-    await goToTagsPage(page)
-
-    const btn = conversationBtn(page)
-    if (!(await btn.isVisible())) {
-      test.skip(true, 'No tags found in this environment')
-      return
-    }
-
-    await btn.click()
-    await expect(page.locator('.modal-overlay')).toBeVisible({ timeout: 5000 })
-
-    await page.locator('.close-btn').click()
-    await expect(page.locator('.modal-overlay')).not.toBeVisible({ timeout: 3000 })
-  })
-
-  // =========================================================================
-  // Modal close — Escape key
-  // =========================================================================
-
-  test('modal closes when Escape is pressed', async ({ page }) => {
-    await goToTagsPage(page)
-
-    const btn = conversationBtn(page)
-    if (!(await btn.isVisible())) {
-      test.skip(true, 'No tags found in this environment')
-      return
-    }
-
-    await btn.click()
-    await expect(page.locator('.modal-overlay')).toBeVisible({ timeout: 5000 })
-
-    await page.keyboard.press('Escape')
-    await expect(page.locator('.modal-overlay')).not.toBeVisible({ timeout: 3000 })
-  })
-
-  // =========================================================================
-  // Modal close — overlay backdrop click
-  // =========================================================================
-
-  test('modal closes when the backdrop overlay is clicked', async ({ page }) => {
-    await goToTagsPage(page)
-
-    const btn = conversationBtn(page)
-    if (!(await btn.isVisible())) {
-      test.skip(true, 'No tags found in this environment')
-      return
-    }
-
-    await btn.click()
-    await expect(page.locator('.modal-overlay')).toBeVisible({ timeout: 5000 })
-
-    // Click the overlay itself (not its children) by clicking a corner
-    await page.locator('.modal-overlay').click({ position: { x: 5, y: 5 } })
-    await expect(page.locator('.modal-overlay')).not.toBeVisible({ timeout: 3000 })
-  })
-
-  // =========================================================================
-  // Pagination controls (conditionally present)
-  // =========================================================================
-
-  test('pagination controls appear when there are multiple pages', async ({ page }) => {
-    await goToTagsPage(page)
-
-    const btn = conversationBtn(page)
-    if (!(await btn.isVisible())) {
-      test.skip(true, 'No tags found in this environment')
-      return
-    }
-
-    await btn.click()
-    await page.waitForTimeout(2000)
-
-    // Pagination only shows when totalPages > 1.
-    // We verify that IF it appears, it contains two buttons (prev + next).
-    const pagination = page.locator('.pagination')
-    const hasPagination = await pagination.isVisible()
-    if (!hasPagination) { return } // single page result — valid
-
-    const paginationBtns = pagination.locator('.pagination-btn')
-    await expect(paginationBtns).toHaveCount(2)
+      await expect(pagination.locator('.pagination-btn')).toHaveCount(2)
+    })
   })
 })

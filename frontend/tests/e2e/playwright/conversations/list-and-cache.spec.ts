@@ -21,40 +21,44 @@ test.describe('Conversation List & Cache (P0)', () => {
 
   test('should include userId in cache keys for security isolation', async ({ page }) => {
     await page.goto('/conversations')
-    await page.waitForTimeout(3000) // Wait for data load + cache write
+    await page.waitForLoadState('networkidle')
 
-    const keys = await getLocalStorageKeys(page)
+    const agentId = await page.evaluate(() => {
+      const raw = sessionStorage.getItem('currentAgent')
+      return raw ? (JSON.parse(raw) as { id?: string }).id ?? null : null
+    })
+    expect(agentId).toBeTruthy()
 
-    // Find conversation cache keys
-    const cachKeys = keys.filter(
-      (k) => k.startsWith('cache_conversations') || k.startsWith('conversation-list')
-    )
+    const cacheKeys = async () =>
+      (await getLocalStorageKeys(page)).filter((k) => k.startsWith('conversation-list'))
 
-    // At least one conversation cache key should contain the userId
-    if (cachKeys.length > 0) {
-      const hasUserIdInKey = cachKeys.some(
-        (k) => k.includes(ADMIN_CREDENTIALS.id) || k.includes('userId')
-      )
-      expect(hasUserIdInKey).toBe(true)
+    // The list cache is written once data has loaded; an account with no visible
+    // conversations never writes one, which is not a failure of the isolation rule.
+    await page
+      .waitForFunction(() => Object.keys(localStorage).some((k) => k.startsWith('conversation-list')), null, { timeout: 8000 })
+      .catch(() => undefined)
+    const keys = await cacheKeys()
+    test.skip(keys.length === 0, 'No conversation list cache was written for this account')
+
+    // Every cache key must be scoped to the current user
+    for (const key of keys) {
+      expect(key).toContain(`user=${agentId}`)
     }
   })
 
   test('should display conversation page content', async ({ page }) => {
     await page.goto('/conversations')
-    await page.waitForTimeout(3000)
 
-    // The conversations page should have main content area loaded
-    // (either conversation list or empty state message)
-    const mainContent = page.getByRole('main')
-    await expect(mainContent).toBeVisible()
+    // Main content area is present (either the list or the empty state)
+    await expect(page.getByRole('main')).toBeVisible()
   })
 
   test('should show sidebar navigation with correct items', async ({ page }) => {
     await page.goto('/conversations')
 
     // Verify key navigation items are present
-    await expect(page.getByRole('link', { name: '儀表板' })).toBeVisible()
-    await expect(page.getByRole('link', { name: '對話' })).toBeVisible()
-    await expect(page.getByRole('link', { name: '團隊成員' })).toBeVisible()
+    await expect(page.getByRole('link', { name: '儀表板', exact: true })).toBeVisible()
+    await expect(page.getByRole('link', { name: '對話', exact: true })).toBeVisible()
+    await expect(page.getByRole('link', { name: '團隊成員', exact: true })).toBeVisible()
   })
 })
