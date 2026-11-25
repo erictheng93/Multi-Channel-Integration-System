@@ -12,19 +12,6 @@ describe('API Base Client', () => {
     document.cookie = 'mcis_csrf=; Max-Age=0; Path=/'
   })
 
-  it('should exist and have required methods', () => {
-    expect(apiClient).toBeDefined()
-    expect(typeof apiClient.get).toBe('function')
-    expect(typeof apiClient.post).toBe('function')
-    expect(typeof apiClient.put).toBe('function')
-    expect(typeof apiClient.delete).toBe('function')
-  })
-
-  it('should have auth header methods', () => {
-    expect(typeof apiClient.setAuthHeader).toBe('function')
-    expect(typeof apiClient.removeAuthHeader).toBe('function')
-  })
-
   it('can return a 401 response without redirecting when requested', async () => {
     apiClient.setAuthHeader('expired-token')
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue({

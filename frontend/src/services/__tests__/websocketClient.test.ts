@@ -711,9 +711,9 @@ describe('WebSocketClient', () => {
       await vi.advanceTimersByTimeAsync(10)
       await Promise.resolve()
 
-      // 應該不會崩潰，客戶端仍然連接
-      // Client should still be functional (might be connected or have error logged)
-      expect(client.connectionState.value).toBeDefined()
+      // A malformed frame must not tear down the connection
+      expect(client.isConnected.value).toBe(true)
+      expect(client.connectionState.value).toBe('connected')
     })
 
     it('應該處理認證失敗的情況', async () => {

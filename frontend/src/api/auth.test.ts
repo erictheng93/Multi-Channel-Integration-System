@@ -1,171 +1,83 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-// Use vi.hoisted to ensure mocks are available
-const { mockLogin, mockLogout, mockMe, mockSetAuthHeader, mockRemoveAuthHeader } = vi.hoisted(() => ({
-  mockLogin: vi.fn(),
-  mockLogout: vi.fn(),
-  mockMe: vi.fn(),
+const { mockGet, mockPost, mockSetAuthHeader, mockRemoveAuthHeader } = vi.hoisted(() => ({
+  mockGet: vi.fn(),
+  mockPost: vi.fn(),
   mockSetAuthHeader: vi.fn(),
   mockRemoveAuthHeader: vi.fn()
 }))
 
-// Mock the auth module directly
-vi.mock('./auth', () => ({
-  authApi: {
+// Mock only the transport; authApi and callApiContract are the real modules.
+vi.mock('./base', () => ({
+  apiClient: {
+    get: mockGet,
+    post: mockPost,
     setAuthHeader: mockSetAuthHeader,
-    removeAuthHeader: mockRemoveAuthHeader,
-    login: mockLogin,
-    me: mockMe,
-    logout: mockLogout
+    removeAuthHeader: mockRemoveAuthHeader
   }
 }))
 
-// Import after mocking
 import { authApi } from './auth'
 
-describe('Auth API', () => {
+describe('authApi', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
 
-  describe('Header Management', () => {
-    it('should set auth header', () => {
-      const token = 'test-token'
-      const refreshToken = 'test-refresh-token'
-      
-      authApi.setAuthHeader(token, refreshToken)
-      
-      expect(mockSetAuthHeader).toHaveBeenCalledWith(token, refreshToken)
-    })
-
-    it('should set auth header without refresh token', () => {
-      const token = 'test-token'
-      
-      authApi.setAuthHeader(token)
-      
-      expect(mockSetAuthHeader).toHaveBeenCalledWith(token)
-    })
-
-    it('should remove auth header', () => {
-      authApi.removeAuthHeader()
-      
-      expect(mockRemoveAuthHeader).toHaveBeenCalled()
-    })
+  it('forwards the token and refresh token to the transport', () => {
+    authApi.setAuthHeader('t', 'r')
+    expect(mockSetAuthHeader).toHaveBeenCalledWith('t', 'r')
   })
 
-  describe('Authentication', () => {
-    it('should login successfully', async () => {
-      const credentials = { email: 'test@example.com', password: 'password123' }
-      const mockResponse = {
-        success: true,
-        data: {
-          token: 'auth-token',
-          refreshToken: 'refresh-token',
-          agent: { id: '1', name: 'Test Agent', email: 'test@example.com' }
-        }
-      }
-      
-      mockLogin.mockResolvedValue(mockResponse)
-      
-      const result = await authApi.login(credentials)
-      
-      expect(mockLogin).toHaveBeenCalledWith(credentials)
-      expect(result).toEqual(mockResponse)
-    })
-
-    it('should handle login failure', async () => {
-      const credentials = { email: 'wrong@example.com', password: 'wrongpassword' }
-      const mockResponse = {
-        success: false,
-        error: 'Invalid credentials'
-      }
-      
-      mockLogin.mockResolvedValue(mockResponse)
-      
-      const result = await authApi.login(credentials)
-      
-      expect(mockLogin).toHaveBeenCalledWith(credentials)
-      expect(result).toEqual(mockResponse)
-    })
-
-    it('should logout successfully', async () => {
-      const mockResponse = { success: true }
-      
-      mockLogout.mockResolvedValue(mockResponse)
-      
-      const result = await authApi.logout()
-      
-      expect(mockLogout).toHaveBeenCalled()
-      expect(result).toEqual(mockResponse)
-    })
+  it('removes the auth header on the transport', () => {
+    authApi.removeAuthHeader()
+    expect(mockRemoveAuthHeader).toHaveBeenCalledTimes(1)
   })
 
-  describe('User Information', () => {
-    it('should get current user info', async () => {
-      const mockAgent = {
-        id: '1',
-        name: 'Test Agent',
-        email: 'test@example.com',
-        role: 'agent',
-        isOnline: true,
-        platforms: ['line']
-      }
-      const mockResponse = { success: true, data: mockAgent }
-      
-      mockMe.mockResolvedValue(mockResponse)
-      
-      const result = await authApi.me()
-      
-      expect(mockMe).toHaveBeenCalled()
-      expect(result).toEqual(mockResponse)
-    })
+  it('posts credentials to /auth/login and returns the response untouched', async () => {
+    const response = { success: false, error: 'Invalid credentials' }
+    mockPost.mockResolvedValue(response)
 
-    it('should handle unauthorized error', async () => {
-      const mockResponse = { 
-        success: false, 
-        error: 'Unauthorized',
-        statusCode: 401
-      }
-      
-      mockMe.mockResolvedValue(mockResponse)
-      
-      const result = await authApi.me()
-      
-      expect(mockMe).toHaveBeenCalled()
-      expect(result).toEqual(mockResponse)
-    })
+    const result = await authApi.login({ email: 'a@example.com', password: 'pw' })
+
+    expect(mockPost).toHaveBeenCalledWith('/auth/login', { email: 'a@example.com', password: 'pw' })
+    expect(result).toBe(response)
   })
 
-  describe('Error Handling', () => {
-    it('should handle network errors', async () => {
-      const mockResponse = {
-        success: false,
-        error: 'Network error',
-        status: 0
-      }
-      mockLogin.mockResolvedValue(mockResponse)
-      
-      const result = await authApi.login({ email: 'test@example.com', password: 'password' })
-      
-      expect(result).toEqual(mockResponse)
-      expect(mockLogin).toHaveBeenCalledWith({ 
-        email: 'test@example.com', 
-        password: 'password' 
+  it('gets /auth/me, passing request options only when given', async () => {
+    mockGet.mockResolvedValue({ success: true })
+
+    await authApi.me()
+    expect(mockGet).toHaveBeenLastCalledWith('/auth/me')
+
+    await authApi.me({ redirectOnUnauthorized: false })
+    expect(mockGet).toHaveBeenLastCalledWith('/auth/me', { redirectOnUnauthorized: false })
+  })
+
+  it('posts /auth/logout without a body', async () => {
+    mockPost.mockResolvedValue({ success: true })
+    await authApi.logout()
+    expect(mockPost).toHaveBeenCalledWith('/auth/logout')
+  })
+
+  describe('changePassword', () => {
+    const data = { currentPassword: 'old', newPassword: 'new' } as never
+
+    it('uses the temp token as a Bearer header when forced to change password', async () => {
+      mockPost.mockResolvedValue({ success: true })
+      await authApi.changePassword(data, 'temp-token')
+      expect(mockPost).toHaveBeenCalledWith('/auth/change-password', data, {
+        redirectOnUnauthorized: false,
+        headers: { Authorization: 'Bearer temp-token' }
       })
     })
 
-    it('should handle timeout errors', async () => {
-      const mockResponse = {
-        success: false,
-        error: 'Request timeout',
-        status: 0
-      }
-      mockMe.mockResolvedValue(mockResponse)
-      
-      const result = await authApi.me()
-      
-      expect(result).toEqual(mockResponse)
-      expect(mockMe).toHaveBeenCalled()
+    it('does not set an Authorization header without a temp token', async () => {
+      mockPost.mockResolvedValue({ success: true })
+      await authApi.changePassword(data)
+      expect(mockPost).toHaveBeenCalledWith('/auth/change-password', data, {
+        redirectOnUnauthorized: false
+      })
     })
   })
 })
