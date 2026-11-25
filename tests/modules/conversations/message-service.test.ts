@@ -142,9 +142,11 @@ vi.mock('@modules/integrations/services/line-integration-service', () => ({
 
 function createMockDb() {
   const selectResults: any[][] = [];
+  const selectChains: Record<string, any>[] = [];
 
   function createSelectChain() {
     const chain: Record<string, any> = {};
+    selectChains.push(chain);
     const methods = ['from', 'where', 'leftJoin', 'innerJoin', 'orderBy', 'limit', 'offset', 'groupBy'];
     for (const m of methods) {
       chain[m] = vi.fn().mockReturnValue(chain);
@@ -184,6 +186,8 @@ function createMockDb() {
     insert: vi.fn().mockImplementation(() => createInsertChain()),
     update: vi.fn().mockImplementation(() => createUpdateChain()),
     delete: vi.fn().mockImplementation(() => createDeleteChain()),
+    /** Every select() chain created so far, so tests can inspect where/limit/offset args */
+    _selectChains: selectChains,
     _queueResults(...results: any[][]) {
       selectResults.length = 0;
       selectResults.push(...results);
@@ -519,12 +523,14 @@ describe('MessageService', () => {
       expect(result[0].content).toBe('Hello');
     });
 
-    it('should use default limit of 50 when not specified', async () => {
+    it('should use default limit of 50 and offset 0 when not specified', async () => {
       mockDb._queueResults([]);
 
       await service.getMessages('conv-1');
 
-      expect(mockDb.select).toHaveBeenCalled();
+      const [chain] = mockDb._selectChains;
+      expect(chain.limit).toHaveBeenCalledWith(50);
+      expect(chain.offset).toHaveBeenCalledWith(0);
     });
 
     it('should cap limit at 100', async () => {
@@ -532,16 +538,20 @@ describe('MessageService', () => {
 
       await service.getMessages('conv-1', 500, 0);
 
-      expect(mockDb.select).toHaveBeenCalled();
+      expect(mockDb._selectChains[0].limit).toHaveBeenCalledWith(100);
     });
 
-    it('should filter out recalled messages', async () => {
-      // The service uses `eq(messages.isRecalled, false)` in the WHERE clause
+    it('should filter out recalled messages and scope to the conversation', async () => {
       mockDb._queueResults([]);
 
       await service.getMessages('conv-1', 50, 0);
 
-      expect(mockDb.select).toHaveBeenCalled();
+      const [whereClause] = mockDb._selectChains[0].where.mock.calls[0];
+      expect(whereClause.type).toBe('and');
+      expect(whereClause.args).toEqual([
+        { type: 'eq', args: [{ name: 'conversationId' }, 'conv-1'] },
+        { type: 'eq', args: [{ name: 'isRecalled' }, false] }
+      ]);
     });
 
     it('should return empty array on error', async () => {
@@ -559,7 +569,9 @@ describe('MessageService', () => {
 
       await service.getMessages('conv-1', 20, 40);
 
-      expect(mockDb.select).toHaveBeenCalled();
+      const [chain] = mockDb._selectChains;
+      expect(chain.limit).toHaveBeenCalledWith(20);
+      expect(chain.offset).toHaveBeenCalledWith(40);
     });
   });
 

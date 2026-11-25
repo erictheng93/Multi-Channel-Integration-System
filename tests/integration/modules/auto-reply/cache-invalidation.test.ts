@@ -171,7 +171,7 @@ describe('cache-invalidation', () => {
       );
     });
 
-    it('should use cached rules on second evaluate() (no additional D1 query)', async () => {
+    it('serves rules from KV on a cache hit (no D1 rule query)', async () => {
       const env = createMockEnv();
 
       // Pre-populate cache for both team and global
@@ -179,12 +179,10 @@ describe('cache-invalidation', () => {
       kvStore.set('auto-reply:rules:1', JSON.stringify([rule]));
       kvStore.set('auto-reply:rules:global', JSON.stringify([]));
 
-      const countBefore = dbQueryCount;
       await evaluate(createInput(), env);
 
-      // D1 should NOT have been called since cache had data
-      // (createDbClient might be invoked for message/log inserts, but not for rule loading)
-      // Verify by checking KV.get was called (cache hit path)
+      // Rule loading must not go to D1 (createDbClient is still used for the message/log inserts)
+      expect(mockKV.put).not.toHaveBeenCalledWith('auto-reply:rules:1', expect.anything(), expect.anything());
       expect(mockKV.get).toHaveBeenCalledWith('auto-reply:rules:1', 'json');
       expect(mockKV.get).toHaveBeenCalledWith('auto-reply:rules:global', 'json');
     });
@@ -304,13 +302,6 @@ describe('cache-invalidation', () => {
 
       const result2 = await evaluate(createInput(), env);
       expect(result2.matched).toBe(false);
-    });
-
-    it('POST /schedules -> schedule cache is refreshed via invalidateScheduleCache', async () => {
-      // This test verifies the contract: schedule handler calls invalidateScheduleCache
-      // The actual schedule-service.ts has this function exported
-      const { invalidateScheduleCache } = await import('@modules/auto-reply/services/schedule-service');
-      expect(typeof invalidateScheduleCache).toBe('function');
     });
   });
 });
