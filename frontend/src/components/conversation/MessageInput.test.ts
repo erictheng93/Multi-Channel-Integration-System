@@ -29,10 +29,7 @@ vi.mock('@/api/authenticatedFetch', () => ({
 
 import MessageInput from './MessageInput.vue'
 import { authenticatedFetch } from '@/api/authenticatedFetch'
-import { messageApi } from '@/api/message'
 
-// Get access to the mocked API
-const mockMessageApi = vi.mocked(messageApi)
 const mockAuthenticatedFetch = vi.mocked(authenticatedFetch)
 
 function mockFetchJson(body: unknown) {
@@ -323,7 +320,7 @@ describe('MessageInput Component', () => {
     })
 
     it('shows the sending state while the request is in flight', async () => {
-      let release: (value: unknown) => void = () => {}
+      let release: (_value: Response) => void = () => {}
       mockAuthenticatedFetch.mockReturnValue(new Promise((resolve) => { release = resolve }))
       const wrapper = createWrapper()
       const sendButton = wrapper.find('.send-button')
@@ -334,7 +331,7 @@ describe('MessageInput Component', () => {
       expect(sendButton.classes()).toContain('sending')
       expect(wrapper.find('[data-testid="loading-icon"]').exists()).toBe(true)
 
-      release({ json: async () => ({ success: true, message: { id: 'real-1' } }) })
+      release({ json: async () => ({ success: true, message: { id: 'real-1' } }) } as unknown as Response)
       await flushPromises()
       expect(sendButton.classes()).not.toContain('sending')
     })
