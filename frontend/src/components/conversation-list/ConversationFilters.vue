@@ -98,10 +98,12 @@
 
       <div class="trigger-right">
         <!-- Active filter badge -->
-        <span
+        <button
           v-if="activeFilterCount > 0"
+          type="button"
           class="filter-badge"
           title="清除所有篩選"
+          :aria-label="`清除所有篩選（${activeFilterCount} 項）`"
           @click.stop="clearAll"
         >
           {{ activeFilterCount }}
@@ -114,7 +116,7 @@
           >
             <path d="M18 6 6 18M6 6l12 12" />
           </svg>
-        </span>
+        </button>
 
         <!-- Stats -->
         <div
@@ -132,26 +134,35 @@
           <span class="stat-label">未讀</span>
         </div>
 
-        <span class="trigger-filter-label">篩選</span>
-
-        <!-- Expand chevron -->
-        <svg
-          class="trigger-chevron"
-          :class="{ rotated: isExpanded }"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
+        <!-- No handler of its own: its click (mouse, Enter, Space) bubbles to .filter-trigger -->
+        <button
+          type="button"
+          class="trigger-toggle"
+          :aria-expanded="isExpanded"
+          aria-controls="conversation-filter-panel"
         >
-          <path d="m6 9 6 6 6-6" />
-        </svg>
+          <span class="trigger-filter-label">篩選</span>
+          <svg
+            class="trigger-chevron"
+            :class="{ rotated: isExpanded }"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            aria-hidden="true"
+          >
+            <path d="m6 9 6 6 6-6" />
+          </svg>
+        </button>
       </div>
     </div>
 
     <!-- Expandable Filter Panel -->
     <div
+      id="conversation-filter-panel"
       class="filter-panel-wrapper"
       :class="{ expanded: isExpanded }"
+      :inert="!isExpanded"
     >
       <div class="filter-panel">
         <!-- Row 1: Search + Dropdowns -->
@@ -729,6 +740,29 @@ function clearAll() {
   color: var(--ui-accent);
   font-size: 11.5px;
   font-weight: 600;
+  cursor: pointer;
+}
+
+.filter-badge,
+.trigger-toggle {
+  border: 0;
+  font-family: inherit;
+}
+
+.filter-badge:focus-visible,
+.trigger-toggle:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ui-accent) 35%, transparent);
+}
+
+.trigger-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0;
+  border-radius: 999px;
+  background: none;
+  color: inherit;
   cursor: pointer;
 }
 
