@@ -332,6 +332,10 @@ conversationMessagesHandler.post('/:id/messages', jwtAuth, async (c) => {
     // 1. Validate and parse request
     log.debug('PARSE starting request validation');
     const request = await MessageRequestService.validateAndParse(c);
+    // The sender is always the authenticated agent. The body's senderId is client-controlled:
+    // trusting it let an agent send as another agent and attach that agent's unlinked uploads
+    // (createPendingMessage scopes attachments by uploadedBy = senderId).
+    request.senderId = String(user.id);
     log.debug('PARSE request validated', { contentLength: request.content?.length, senderId: request.senderId });
 
     // 2. Check permissions
