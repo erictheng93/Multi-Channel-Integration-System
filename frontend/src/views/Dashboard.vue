@@ -1334,12 +1334,28 @@ onBeforeUnmount(() => {
   .lead {
     grid-template-columns: minmax(0, 1fr);
     justify-content: stretch;
-    padding: 20px;
+    gap: 16px;
+    padding: 18px 20px;
   }
 
+  /* Phone: a smaller graphic keeps the legend beside it (96 + 16 + 140 fits a 375px screen)
+     instead of wrapping under it and doubling the lead's height */
   .lead-rings {
     justify-content: flex-start;
-    --sr-fit: 136px;
+    --sr-fit: 96px;
+  }
+
+  .lead-rings :deep(.service-rings) {
+    gap: 16px;
+  }
+
+  .lead-rings :deep(.sr-legend) {
+    gap: 10px;
+  }
+
+  .sk-ring {
+    width: 96px;
+    height: 96px;
   }
 
   .lead-rings::before {
