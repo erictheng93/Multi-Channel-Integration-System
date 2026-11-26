@@ -1,8 +1,8 @@
 import { type Page, expect } from '@playwright/test'
 
-/** Admin account credentials for E2E tests */
+/** Admin account credentials for E2E tests (the real address is not kept in this public repo). */
 export const ADMIN_CREDENTIALS = {
-  email: 'admin@example.com',
+  email: process.env.ADMIN_EMAIL ?? 'admin@example.com',
   password: process.env.ADMIN_PASSWORD ?? '',
   displayName: 'System Administrator',
   role: 'admin',
