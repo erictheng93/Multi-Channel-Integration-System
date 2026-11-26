@@ -57,6 +57,9 @@ export type {
 
 const frontendLogger = createLogger('useMemberEditForm')
 
+/** Production id of the built-in System Administration agent (agents.id). */
+export const SYSTEM_ADMIN_AGENT_ID = 'admin-dacit-001'
+
 /**
  * Member Edit Form Composable
  *
@@ -184,11 +187,14 @@ export function useMemberEditForm(
   // ==================== Computed Properties ====================
 
   /**
-   * Check if the member is the System Administration account
+   * Check if the member is the System Administration account.
+   * Matched by its stable agent id: loginId is the displayName on some API paths
+   * ("System Administrator" in production) and the email on others.
    */
   const isSystemAdmin = computed(() => {
     if (!member.value) {return false}
     return (
+      member.value.id === SYSTEM_ADMIN_AGENT_ID ||
       member.value.loginId === 'System Administration' ||
       member.value.email === 'admin@example.com'
     )
