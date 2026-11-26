@@ -50,7 +50,10 @@ export default [
       '**/node_modules/**',
       '**/*.d.ts',
       // Local-only scratch files (gitignored; tsconfig.scripts.json excludes them too).
+      // Mirrors .gitignore (test-*.ts / .js / .cjs).
       '**/test-*.ts',
+      '**/test-*.js',
+      '**/test-*.cjs',
     ],
   },
 
