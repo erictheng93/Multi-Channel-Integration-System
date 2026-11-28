@@ -10,6 +10,7 @@ import { createDbClient, type Database } from '@/db/drizzle-factory';
 import { and, eq, gt, isNotNull, inArray } from 'drizzle-orm';
 import { messages, conversations, customers, fileAttachments } from '@/db/schema';
 import type { Bindings } from '@/types';
+import { SHOPEE_SEND_NOT_ENABLED_ERROR } from '@/modules/integrations/services/shopee/shopee-types';
 import type { LineReplyMessage } from '@/types';
 import { WebSocketBroadcastService } from '@/services/websocket-broadcast-service';
 import { nowISO, nowMs } from '@/utils/timestamp';
@@ -371,6 +372,10 @@ export class MessageDeliveryService {
           errorMessage = lineError instanceof Error ? lineError.message : 'LINE API error';
           log.error('LINE API error', {}, lineError instanceof Error ? lineError : String(lineError));
         }
+      } else if (customer.platform === 'shopee') {
+        // Shopee Chat API send permission not granted yet: fail visibly, never retried.
+        errorMessage = SHOPEE_SEND_NOT_ENABLED_ERROR;
+        log.warn('Shopee send not enabled', { messageId });
       } else {
         // ponytail: LINE is the only outbound sender; add a branch here when Facebook sending lands.
         errorMessage = `尚未支援發送到此平台（${customer.platform}）`;

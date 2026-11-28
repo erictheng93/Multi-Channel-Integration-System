@@ -29,10 +29,27 @@
             <span class="detail-label">建立時間：</span>
             <span class="detail-value">{{ formatDate(channel.createdAt) }}</span>
           </div>
+          <template v-if="channel.platform === 'shopee'">
+            <div class="detail-item">
+              <span class="detail-label">商店：</span>
+              <span class="detail-value">{{ shopee(channel).shopName || '未命名商店' }}（{{ shopee(channel).shopId }}）</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">環境：</span>
+              <span class="detail-value">{{ shopee(channel).env }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">授權狀態：</span>
+              <span class="detail-value">{{ shopee(channel).statusLabel }}</span>
+            </div>
+          </template>
         </div>
       </div>
 
-      <div class="detail-section">
+      <div
+        v-if="channel.platform !== 'shopee'"
+        class="detail-section"
+      >
         <h4>Webhook 設定</h4>
         <div class="webhook-url-container">
           <input
@@ -76,6 +93,7 @@
 </template>
 
 <script setup lang="ts">
+import { shopeeInfo } from '@/composables/useShopeeChannel'
 import { parseStats, parseWebhookConfig } from '@/api/channels'
 import type { ChannelIntegration, ChannelPlatform } from '@/api/channels'
 import Modal from '@/components/ui/Modal.vue'
@@ -95,10 +113,13 @@ const getPlatformName = (platform: ChannelPlatform): string => {
   const names = {
     line: 'LINE',
     facebook: 'Facebook',
-    whatsapp: 'WhatsApp'
+    whatsapp: 'WhatsApp',
+    shopee: '蝦皮'
   }
   return names[platform] || platform
 }
+
+const shopee = shopeeInfo
 
 const getWebhookUrl = (channel: ChannelIntegration): string => {
   const webhookCfg = parseWebhookConfig(channel)

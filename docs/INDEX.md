@@ -31,6 +31,8 @@ docs/
 - [WebSocket API](reference/api/modules/WEBSOCKET_API.md) - Real-time communication
 
 ### Specifications (`reference/specifications/`)
+- [蝦皮聊聊 Phase 1](specs/shopee-chat-phase-1.md) - 呼叫查核、Console 現況、Chat API 申請路徑、準備度評估、驗收步驟
+- [蝦皮聊聊申請草稿](specs/shopee-chat-applications.md) - Go-Live 表單與 Chat API 工單草稿
 - [BRD](reference/specifications/BRD.md) - Business Requirements Document
 - [FRS](reference/specifications/FRS.md) - Functional Requirements Specification
 - [NFR](reference/specifications/NFR.md) - Non-Functional Requirements

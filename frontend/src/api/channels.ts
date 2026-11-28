@@ -3,6 +3,8 @@
 // Created by: Channel Management Feature
 
 import { callApiContract } from './contract-client'
+import { authenticatedFetch } from './authenticatedFetch'
+import { getBackendUrl } from '@/config/runtime'
 import { channelContracts } from '@shared/api-contracts'
 import type { ApiResponse } from '@/types'
 import type {
@@ -115,6 +117,17 @@ export const channelsApi = {
   checkHealth: async (channelId: number): Promise<ApiResponse<ChannelHealthStatus>> => {
     return callApiContract(channelContracts.checkHealth, { channelId })
   }
+}
+
+/** Shopee shop authorization: the backend builds the signed Shopee URL; the admin opens it to authorize the shop. */
+export async function getShopeeAuthorizeUrl(teamId: number): Promise<string> {
+  const base = import.meta.env.DEV ? '' : getBackendUrl()
+  const response = await authenticatedFetch(`${base}/api/integrations/shopee/authorize-url?teamId=${encodeURIComponent(String(teamId))}`)
+  const body = (await response.json().catch(() => null)) as { success?: boolean; data?: { url?: string }; error?: string } | null
+  if (!response.ok || !body?.success || !body.data?.url) {
+    throw new Error(body?.error || '無法取得蝦皮授權連結')
+  }
+  return body.data.url
 }
 
 /**

@@ -120,11 +120,11 @@
             >
               {{ dot.initial }}
               <span
-                v-if="dot.channel"
+                v-if="channelGlyph(dot.channel)"
                 class="ui-ch dot-ch"
-                :class="dot.channel === 'line' ? 'ui-ch-line' : 'ui-ch-fb'"
+                :class="channelGlyph(dot.channel)?.cls"
                 aria-hidden="true"
-              ><svg viewBox="0 0 24 24"><path d="M12 3C6.5 3 2 6.6 2 11c0 2.5 1.4 4.7 3.7 6.2L5 21l4.1-2.3c.9.2 1.9.3 2.9.3 5.5 0 10-3.6 10-8s-4.5-8-10-8Z" /></svg></span>
+              ><svg viewBox="0 0 24 24"><path :d="channelGlyph(dot.channel)?.path" /></svg></span>
             </button>
           </div>
         </div>
@@ -174,7 +174,7 @@
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import type { WaitingConversation } from '@shared/api-contracts'
 import { formatWaitText } from '@/composables/dashboard/useDashboardOverview'
-import { UNREAD_HINT, WAITING_HINT, avatarToneOf, initialOf, platformName } from '@/composables/conversation/useConversationRowMeta'
+import { UNREAD_HINT, WAITING_HINT, avatarToneOf, channelGlyph, initialOf, platformName } from '@/composables/conversation/useConversationRowMeta'
 
 const props = defineProps<{
   items: readonly WaitingConversation[]

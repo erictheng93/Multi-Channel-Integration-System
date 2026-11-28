@@ -161,6 +161,14 @@
             免費回覆 {{ replyWindow.secondsLeft.value }} 秒
           </div>
 
+          <p
+            v-if="conversation?.platform === 'shopee'"
+            class="shopee-reply-note"
+            role="note"
+          >
+            蝦皮聊聊的回覆功能尚未開通，目前僅能接收客戶訊息。
+          </p>
+
           <MessageInput
             ref="messageInputRef"
             :conversation-id="conversationId"
@@ -1072,5 +1080,13 @@ defineExpose({
     font-size: 13px;
     gap: 8px;
   }
+}
+.shopee-reply-note {
+  margin: 0;
+  padding: 6px 16px;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--ui-shopee-ink);
+  background: var(--ui-shopee-soft);
 }
 </style>

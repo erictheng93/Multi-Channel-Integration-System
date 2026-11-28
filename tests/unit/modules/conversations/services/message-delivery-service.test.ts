@@ -198,6 +198,28 @@ describe('MessageDeliveryService.deliver', () => {
     }));
   });
 
+  it('fails a Shopee reply with the not-enabled message and makes no platform call', async () => {
+    dbMocks.selectResults = [
+      makeMessage({ deliveryStatus: 'pending' }),
+      [{ conversation: { id: 'conv-1', customerId: 'customer-1' }, customer: { id: 'customer-1', platform: 'shopee', platformUserId: 'shopee-user-1' } }],
+    ];
+    const fetchSpy = vi.spyOn(globalThis, 'fetch');
+
+    await new MessageDeliveryService(makeEnv()).deliver('msg-1');
+
+    expect(dbMocks.pushLineMessage).not.toHaveBeenCalled();
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(dbMocks.updateSet).toHaveBeenCalledWith(expect.objectContaining({
+      isSent: false,
+      deliveryStatus: 'failed',
+      metadata: expect.stringContaining('尚未開通 Shopee Chat API 發訊權限'),
+    }));
+    expect(dbMocks.broadcastMessageEvent).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ deliveryStatus: 'failed', isSent: false }),
+    }));
+    fetchSpy.mockRestore();
+  });
+
   it('stamps first_response_at with the message time once the platform accepted the reply', async () => {
     dbMocks.selectResults = [
       makeMessage({ deliveryStatus: 'buffered', createdAt: '2026-01-15T11:59:50Z' }),

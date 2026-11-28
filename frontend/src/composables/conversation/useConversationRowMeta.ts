@@ -145,7 +145,7 @@ export function freeReplySeconds(conversation: Conversation, nowMs: number): num
 }
 
 export function platformName(platform?: string): string {
-  const map: Record<string, string> = { line: 'LINE', facebook: 'Messenger', instagram: 'Instagram', whatsapp: 'WhatsApp' }
+  const map: Record<string, string> = { line: 'LINE', facebook: 'Messenger', instagram: 'Instagram', whatsapp: 'WhatsApp', shopee: '蝦皮' }
   return platform ? (map[platform] ?? platform) : ''
 }
 
@@ -193,4 +193,18 @@ export function useRowClock(conversations: Ref<Conversation[]>) {
   onUnmounted(() => { if (timer) { clearInterval(timer) } })
 
   return { now }
+}
+
+const BUBBLE_PATH = 'M12 3C6.5 3 2 6.6 2 11c0 2.5 1.4 4.7 3.7 6.2L5 21l4.1-2.3c.9.2 1.9.3 2.9.3 5.5 0 10-3.6 10-8s-4.5-8-10-8Z'
+// Shopping bag (own drawing, not the Shopee logo); the inner curve is an even-odd cut-out
+const BAG_PATH = 'M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Zm2 7.5a4 4 0 0 0 8 0h-2a2 2 0 0 1-4 0Z'
+const CHANNEL_GLYPHS: Record<string, { cls: string; path: string }> = {
+  line: { cls: 'ui-ch-line', path: BUBBLE_PATH },
+  facebook: { cls: 'ui-ch-fb', path: BUBBLE_PATH },
+  shopee: { cls: 'ui-ch-shopee', path: BAG_PATH }
+}
+
+/** Channel glyph tile (`ui-ch-*` class + svg path) for the platforms that have one */
+export function channelGlyph(platform?: string | null): { cls: string; path: string } | null {
+  return platform ? (CHANNEL_GLYPHS[platform] ?? null) : null
 }

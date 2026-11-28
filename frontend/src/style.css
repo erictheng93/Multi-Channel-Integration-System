@@ -116,6 +116,9 @@
 
     --ui-line: #06c755;
     --ui-messenger: #0866ff;
+    --ui-shopee: #ee4d2d; /* fill / glyph tile only (white glyph 3.7:1); text uses --ui-shopee-ink */
+    --ui-shopee-soft: rgba(238, 77, 45, 0.12);
+    --ui-shopee-ink: #a83117; /* 5.8:1 on --ui-shopee-soft over white, 5.2:1 over #f2f2f7 */
 
     --ui-p-lavender: #eee8fb;
     --ui-p-lavender-ink: #473b66; /* 8.4:1 on --ui-p-lavender */
@@ -209,6 +212,8 @@
     --ui-red: #ff453a;
     --ui-red-soft: rgba(255, 69, 58, 0.18);
     --ui-red-ink: #ff6961;
+    --ui-shopee-soft: rgba(238, 77, 45, 0.18);
+    --ui-shopee-ink: #ff8a70; /* 6:1 on the dark soft fill */
     --ui-teal: #40c8e0;
     --ui-teal-soft: rgba(64, 200, 224, 0.18);
     --ui-indigo: #5e5ce6;
@@ -1188,6 +1193,12 @@
   }
   .ui-ch-fb {
     background: var(--ui-messenger);
+  }
+  .ui-ch-shopee {
+    background: var(--ui-shopee);
+  }
+  .ui-ch-shopee svg {
+    fill-rule: evenodd;
   }
 
   /* Form controls */

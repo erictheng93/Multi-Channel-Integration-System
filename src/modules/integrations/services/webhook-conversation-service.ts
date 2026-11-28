@@ -20,7 +20,7 @@ import {
 
 const log = createContextLogger('WebhookConversation');
 
-type Platform = 'line' | 'facebook';
+type Platform = 'line' | 'facebook' | 'shopee';
 type WebhookConversation = ReturnType<typeof convertConversation>;
 
 /** Column of messages_platform_message_id_unique (migration 0050), as SQLite names it. */

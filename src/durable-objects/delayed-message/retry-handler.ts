@@ -8,6 +8,7 @@
 
 import type { Bindings } from '../../types';
 import { nowISO, nowMs } from '@/utils/timestamp';
+import { SHOPEE_SEND_NOT_ENABLED_ERROR } from '@/modules/integrations/services/shopee/shopee-types';
 import type { PendingMessage, SendResult, SchedulerLogger, SchedulerMetrics } from './types';
 
 // ---------------------------------------------------------------------------
@@ -25,6 +26,9 @@ export const API_TIMEOUT_MS = 10_000; // 10s
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
+
+/** A failure that no retry can fix: sendWithRetry skips backoff and fails permanently. */
+export class NonRetryableSendError extends Error {}
 
 // ---------------------------------------------------------------------------
 // Dependencies passed from the DO class
@@ -168,6 +172,9 @@ export async function sendToPlatform(
   if (message.platform === 'facebook') {
     return sendFacebookMessage(message, env, logger);
   }
+  if (message.platform === 'shopee') {
+    throw new NonRetryableSendError(SHOPEE_SEND_NOT_ENABLED_ERROR);
+  }
   throw new Error(`Unsupported platform: ${message.platform}`);
 }
 
@@ -267,6 +274,7 @@ export async function sendWithRetry(
         attempt: attempt + 1,
         platform: message.platform,
       });
+      if (error instanceof NonRetryableSendError) break;
     }
 
     if (attempt < MAX_RETRY_ATTEMPTS) {

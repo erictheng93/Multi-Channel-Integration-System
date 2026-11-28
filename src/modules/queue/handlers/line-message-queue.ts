@@ -25,6 +25,7 @@ import { eq } from 'drizzle-orm';
 import { nowMs } from '@/utils/timestamp'
 import { createContextLogger } from '@/utils/logger'
 import { processLineMedia } from '@/modules/integrations/services/webhook-media-service';
+import { processShopeePush } from '@/modules/integrations/handlers/shopee-event-processor';
 
 const log = createContextLogger('LineMessageQueue')
 
@@ -60,6 +61,9 @@ export class LineMessageQueueConsumer {
           await this.processWebhookEvent(payload);
           message.ack();
           log.info('LINE webhook event processed', { eventType: payload.event.type });
+        } else if (payload.type === 'shopee_webhook_event') {
+          await processShopeePush(this.env, payload.rawBody);
+          message.ack();
         } else if (payload.type === 'media_processing') {
           await this.processMediaMessage(payload as MediaProcessingPayload);
           message.ack();

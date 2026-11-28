@@ -41,6 +41,7 @@ import { apiMetricsMiddleware } from './middleware/api-metrics';
 import { globalErrorHandler } from './middleware/error-handler';
 import { registerPreRegistryRoutes } from './routes/pre-registry-routes';
 import { registerProtectedAdminRoutes } from './routes/protected-admin-routes';
+import { shopeeOAuthRouter } from '@modules/integrations/handlers/shopee-oauth';
 
 const app = new Hono<{ Bindings: Bindings }>();
 
@@ -98,6 +99,9 @@ if (!routeValidation.valid) {
   log.error('Route configuration validation failed', { issues: routeValidation.issues });
   throw new Error('Invalid route configuration');
 }
+
+// Shopee OAuth: P1 public callback + P2 admin authorize-url (jwtAuth + requireAdmin inside the router)
+app.route('/api/integrations/shopee', shopeeOAuthRouter);
 
 registerPreRegistryRoutes(app);
 

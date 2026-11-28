@@ -67,9 +67,9 @@
         >
           <span
             class="ui-ch"
-            :class="platform === 'line' ? 'ui-ch-line' : 'ui-ch-fb'"
+            :class="channelGlyph(platform)?.cls"
             aria-hidden="true"
-          ><svg viewBox="0 0 24 24"><path d="M12 3C6.5 3 2 6.6 2 11c0 2.5 1.4 4.7 3.7 6.2L5 21l4.1-2.3c.9.2 1.9.3 2.9.3 5.5 0 10-3.6 10-8s-4.5-8-10-8Z" /></svg></span>{{ platform === 'line' ? 'LINE' : 'Messenger' }}
+          ><svg viewBox="0 0 24 24"><path :d="channelGlyph(platform)?.path" /></svg></span>{{ platformName(platform) }}
         </span>
       </div>
     </div>
@@ -191,6 +191,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import type { Notification, NotificationType } from '@/stores/notifications'
+import { channelGlyph, platformName } from '@/composables/conversation/useConversationRowMeta'
 import {
   CheckIcon,
   TrashIcon,
@@ -304,9 +305,9 @@ const typeLabelMap: Record<NotificationType, string> = {
 const typeLabel = computed(() => typeLabelMap[props.notification.type] || props.notification.type)
 
 // Channel glyph only when the notification really carries a platform
-const platform = computed<'line' | 'facebook' | null>(() => {
+const platform = computed<'line' | 'facebook' | 'shopee' | null>(() => {
   const value = props.notification.data?.platform
-  return value === 'line' || value === 'facebook' ? value : null
+  return value === 'line' || value === 'facebook' || value === 'shopee' ? value : null
 })
 
 // Time formatting

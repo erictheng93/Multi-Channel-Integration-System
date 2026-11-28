@@ -4,7 +4,7 @@
  */
 
 // 基礎枚舉型別
-export type Platform = 'line' | 'facebook'
+export type Platform = 'line' | 'facebook' | 'shopee'
 export type UserRole = 'admin' | 'agent' // Simplified from 3-tier (admin/team/agent) to 2-tier (admin/agent)
 export type ConversationStatus = 'active' | 'pending' | 'in-progress' | 'assigned' | 'waiting' | 'closed'
 export type MessageType = 'text' | 'image' | 'video' | 'audio' | 'file' | 'location' | 'sticker'

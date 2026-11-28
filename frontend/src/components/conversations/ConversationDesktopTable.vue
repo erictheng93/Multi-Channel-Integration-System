@@ -65,10 +65,10 @@
           >
             {{ initialOf(getCustomerName(conversation)) }}
             <span
-              v-if="platformOf(conversation) === 'line' || platformOf(conversation) === 'facebook'"
+              v-if="channelGlyph(platformOf(conversation))"
               class="ui-ch ch"
-              :class="platformOf(conversation) === 'line' ? 'ui-ch-line' : 'ui-ch-fb'"
-            ><svg viewBox="0 0 24 24"><path d="M12 3C6.5 3 2 6.6 2 11c0 2.5 1.4 4.7 3.7 6.2L5 21l4.1-2.3c.9.2 1.9.3 2.9.3 5.5 0 10-3.6 10-8s-4.5-8-10-8Z" /></svg></span>
+              :class="channelGlyph(platformOf(conversation))?.cls"
+            ><svg viewBox="0 0 24 24"><path :d="channelGlyph(platformOf(conversation))?.path" /></svg></span>
           </div>
           <div class="customer-text">
             <div class="customer-name">
@@ -168,6 +168,7 @@ import {
   freeReplySeconds,
   initialOf,
   avatarToneOf,
+  channelGlyph,
   STALE_HINT,
   replyStateOf,
   platformName,

@@ -65,6 +65,11 @@ const platformConfig: Record<string, { text: string; icon: unknown; color: strin
     icon: FacebookIcon,
     color: 'blue'
   },
+  shopee: {
+    text: '蝦皮',
+    icon: MessageCircleIcon,
+    color: 'orange'
+  },
   instagram: {
     text: 'Instagram',
     icon: MessageCircleIcon,
@@ -184,6 +189,11 @@ const handleClick = () => {
   color: #0b5cc4; /* 5.6:1 on the tint; white on #1877F2 was 4.0:1 */
 }
 
+.platform-shopee {
+  background: var(--ui-shopee-soft);
+  color: var(--ui-shopee-ink);
+}
+
 .platform-instagram {
   background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);
   color: white;
@@ -205,7 +215,7 @@ const handleClick = () => {
 }
 
 /* Fallback for unknown platforms */
-.platform-badge:not(.platform-line):not(.platform-facebook):not(.platform-instagram):not(.platform-whatsapp):not(.platform-telegram):not(.platform-unknown) {
+.platform-badge:not(.platform-line):not(.platform-facebook):not(.platform-shopee):not(.platform-instagram):not(.platform-whatsapp):not(.platform-telegram):not(.platform-unknown) {
   background: var(--gray-100);
   color: var(--gray-700);
 }

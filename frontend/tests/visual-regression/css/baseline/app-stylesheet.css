@@ -1714,6 +1714,12 @@
 .ui-ch-line {
   background: var(--ui-line);
 }
+.ui-ch-shopee svg {
+  fill-rule: evenodd;
+}
+.ui-ch-shopee {
+  background: var(--ui-shopee);
+}
 .ui-chip {
   display: inline-flex;
   align-items: center;
@@ -2530,6 +2536,9 @@
   --ui-blue: #007aff;
   --ui-line: #06c755;
   --ui-messenger: #0866ff;
+  --ui-shopee: #ee4d2d;
+  --ui-shopee-soft: rgba(238, 77, 45, 0.12);
+  --ui-shopee-ink: #a83117;
   --ui-p-lavender: #eee8fb;
   --ui-p-lavender-ink: #473b66;
   --ui-p-peach: #fff1e0;
@@ -3505,6 +3514,8 @@
   --ui-red: #ff453a;
   --ui-red-soft: rgba(255, 69, 58, 0.18);
   --ui-red-ink: #ff6961;
+  --ui-shopee-soft: rgba(238, 77, 45, 0.18);
+  --ui-shopee-ink: #ff8a70;
   --ui-teal: #40c8e0;
   --ui-teal-soft: rgba(64, 200, 224, 0.18);
   --ui-indigo: #5e5ce6;

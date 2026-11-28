@@ -204,6 +204,9 @@
               <option value="whatsapp">
                 WhatsApp
               </option>
+              <option value="shopee">
+                蝦皮
+              </option>
             </select>
           </div>
 
@@ -466,7 +469,8 @@ const platformLabels: Record<string, string> = {
   line: 'LINE',
   facebook: 'Facebook',
   instagram: 'Instagram',
-  whatsapp: 'WhatsApp'
+  whatsapp: 'WhatsApp',
+  shopee: '蝦皮'
 }
 
 const statusLabels: Record<string, string> = {

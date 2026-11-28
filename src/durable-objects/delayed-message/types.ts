@@ -14,7 +14,7 @@ export interface PendingMessage {
   agentId: string;
   content: string;
   messageType: 'text' | 'image' | 'video' | 'audio' | 'file';
-  platform: 'line' | 'facebook';
+  platform: 'line' | 'facebook' | 'shopee';
   recipientPlatformId: string;
   scheduledAt: number; // timestamp ms
   status: 'pending' | 'sent' | 'cancelled' | 'failed';
@@ -93,10 +93,12 @@ export interface SchedulerMetrics {
   platformSuccesses: {
     line: number;
     facebook: number;
+    shopee: number;
   };
   platformFailures: {
     line: number;
     facebook: number;
+    shopee: number;
   };
 
   // Histogram data
