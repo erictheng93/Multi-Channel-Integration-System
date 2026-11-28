@@ -9,7 +9,7 @@ import { nowISO } from '@/utils/timestamp';
 const log = createContextLogger('WebhookAlert');
 
 interface WebhookFailureDetails {
-  platform: 'line' | 'facebook';
+  platform: 'line' | 'facebook' | 'shopee';
   failedEvents: number;
   totalEvents: number;
   lastError: string;
@@ -40,7 +40,7 @@ const claimedSignatureBucket = new Map<string, number>();
  */
 export async function recordWebhookSignatureFailure(
   env: Bindings,
-  platform: 'line' | 'facebook',
+  platform: 'line' | 'facebook' | 'shopee',
   reason: string
 ): Promise<void> {
   try {

@@ -4,6 +4,7 @@ import type { Database } from '@/db/drizzle-factory';
 import { BroadcastService } from '@/modules/broadcast/services/broadcast-service';
 import { broadcasts } from '@/db/schema';
 import { eq } from 'drizzle-orm';
+import { BroadcastSenderService } from '@modules/broadcast/services/broadcast-sender-service';
 import { createBroadcastFixture } from './broadcast-fixture';
 
 describe('BroadcastService pagination ordering', () => {
@@ -20,6 +21,21 @@ describe('BroadcastService pagination ordering', () => {
       expect(await service.findTitle('missing', null)).toBeNull();
       await db.update(broadcasts).set({ deletedAt: '2026-10-13T00:00:00Z' }).where(eq(broadcasts.id, 'b-1'));
       expect(await service.findTitle('b-1', null)).toBeNull();
+    } finally {sqlite.close();}
+  });
+  it('excludes Shopee members from the deliverable audience (platform policy forbids broadcasts)', async () => {
+    const { sqlite, db } = createBroadcastFixture();
+    try {
+      const service = new BroadcastService(db, {} as Bindings);
+      const members = [
+        { customerId: 1, platform: 'line', platformUserId: 'U1', resolvedTeamId: null },
+        { customerId: 2, platform: 'shopee', platformUserId: 'S1', resolvedTeamId: null },
+      ];
+      (service as unknown as { audienceService: unknown }).audienceService = { resolveSingleTagAudience: async () => members };
+      const previewDelivery = vi.spyOn(BroadcastSenderService.prototype, 'previewDelivery').mockResolvedValue({} as never);
+      await service.preview(1, {} as never);
+      expect(previewDelivery.mock.calls[0][0]).toEqual([members[0]]);
+      previewDelivery.mockRestore();
     } finally {sqlite.close();}
   });
   it('uses a stable id tiebreaker for broadcast history pagination', async () => {

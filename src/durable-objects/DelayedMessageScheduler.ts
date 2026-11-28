@@ -98,8 +98,8 @@ export class DelayedMessageScheduler implements DurableObject {
     alarmTriggersTotal: 0,
     idempotencyPreventionsTotal: 0,
 
-    platformSuccesses: { line: 0, facebook: 0 },
-    platformFailures: { line: 0, facebook: 0 },
+    platformSuccesses: { line: 0, facebook: 0, shopee: 0 },
+    platformFailures: { line: 0, facebook: 0, shopee: 0 },
 
     sendDurations: [],
     retryCounts: [],

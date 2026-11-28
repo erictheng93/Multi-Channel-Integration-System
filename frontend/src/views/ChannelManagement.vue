@@ -26,6 +26,14 @@
           </button>
           <button
             type="button"
+            class="btn btn-secondary btn-sm"
+            :aria-expanded="showShopeeConnect"
+            @click="toggleShopeeConnect"
+          >
+            連結蝦皮商店
+          </button>
+          <button
+            type="button"
             class="btn btn-primary"
             @click="openAddChannelDialog"
           >
@@ -82,6 +90,42 @@
           各頻道長條同一比例，滿格 = {{ formatCount(volumeMax) }} 則
         </p>
       </div>
+
+      <!-- Shopee: no credential form (partner keys are server-side); pick the team, then authorize on Shopee -->
+      <section
+        v-if="showShopeeConnect"
+        class="ui-card shopee-connect"
+        aria-labelledby="shopee-connect-title"
+      >
+        <h3 id="shopee-connect-title">
+          連結蝦皮商店
+        </h3>
+        <p>選擇要接收這家商店訊息的團隊，接著會前往蝦皮完成授權。</p>
+        <div class="ui-field">
+          <label for="shopee-team">團隊</label>
+          <select
+            id="shopee-team"
+            v-model.number="shopeeTeamId"
+            class="field-select"
+          >
+            <option
+              v-for="t in teamStore.teams"
+              :key="t.id"
+              :value="t.id"
+            >
+              {{ t.name }}
+            </option>
+          </select>
+        </div>
+        <button
+          type="button"
+          class="btn btn-primary"
+          :disabled="!shopeeTeamId || shopeeBusy"
+          @click="authorizeShopee(shopeeTeamId)"
+        >
+          前往蝦皮授權
+        </button>
+      </section>
 
       <!-- Loading State -->
       <UiEmptyState
@@ -172,6 +216,12 @@
                 aria-hidden="true"
               ><path d="M12 2C6.4 2 2 6.1 2 11.7c0 2.9 1.2 5.4 3.2 7.2V22l3-1.6c1.2.3 2.4.5 3.8.5 5.6 0 10-4.1 10-9.7S17.6 2 12 2Zm1 12.4-2.6-2.7-5 2.7 5.5-5.8 2.6 2.7 4.9-2.7Z" /></svg>
               <svg
+                v-else-if="channel.platform === 'shopee'"
+                class="bag"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              ><path :d="channelGlyph('shopee')?.path" /></svg>
+              <svg
                 v-else
                 viewBox="0 0 24 24"
                 aria-hidden="true"
@@ -229,18 +279,20 @@
                 >
                   查看詳情
                 </button>
-                <button
-                  role="menuitem"
-                  @click="copyWebhookUrl(channel)"
-                >
-                  複製 Webhook URL
-                </button>
-                <button
-                  role="menuitem"
-                  @click="verifyChannel(channel)"
-                >
-                  驗證配置
-                </button>
+                <template v-if="channel.platform !== 'shopee'">
+                  <button
+                    role="menuitem"
+                    @click="copyWebhookUrl(channel)"
+                  >
+                    複製 Webhook URL
+                  </button>
+                  <button
+                    role="menuitem"
+                    @click="verifyChannel(channel)"
+                  >
+                    驗證配置
+                  </button>
+                </template>
                 <button
                   role="menuitem"
                   @click="viewStats(channel)"
@@ -248,6 +300,7 @@
                   查看統計
                 </button>
                 <button
+                  v-if="channel.platform !== 'shopee'"
                   role="menuitem"
                   @click="editChannel(channel)"
                 >
@@ -365,6 +418,11 @@
               class="ui-pill"
               :class="channel.isVerified ? 'ui-pill-green' : 'ui-pill-orange'"
             >{{ channel.isVerified ? '已驗證' : '未驗證' }}</span>
+            <span
+              v-if="channel.platform === 'shopee'"
+              class="ui-pill"
+              :class="`ui-pill-${SHOPEE_AUTH_TONES[shopeeInfo(channel).status]}`"
+            >{{ shopeeInfo(channel).statusLabel }}</span>
           </div>
 
           <!-- Card Body -->
@@ -380,11 +438,31 @@
                 :class="{ none: !channelDescription(channel) }"
               >{{ channelDescription(channel) || '尚未填寫' }}</span>
             </div>
+            <template v-if="channel.platform === 'shopee'">
+              <div class="meta-row">
+                <span class="k">商店</span>
+                <span class="v">{{ shopeeInfo(channel).shopName || '未命名商店' }} · {{ shopeeInfo(channel).env }}</span>
+              </div>
+              <div class="meta-row">
+                <span class="k">授權狀態</span>
+                <span class="v">{{ shopeeInfo(channel).statusLabel }}</span>
+              </div>
+            </template>
           </div>
+
 
 
           <!-- Card Footer: the on/off switch with its label, and the one action -->
           <div class="chfoot">
+            <button
+              v-if="channel.platform === 'shopee' && shopeeInfo(channel).needsReauth"
+              type="button"
+              class="btn btn-secondary btn-sm"
+              :disabled="shopeeBusy"
+              @click="authorizeShopee(channel.teamId)"
+            >
+              重新授權
+            </button>
             <label class="toggle">
               <button
                 type="button"
@@ -431,6 +509,12 @@ import ChannelBalance from '@/components/channels/ChannelBalance.vue'
 import { formatLastLogin } from '@/utils/team-tone'
 import { platformVolume24h } from '@/utils/channel-volume'
 import { useChannelManagement } from '@/composables/useChannelManagement'
+import { SHOPEE_AUTH_TONES, shopeeInfo, shopeeRedirectNotice, startShopeeAuthorization } from '@/composables/useShopeeChannel'
+import { channelGlyph } from '@/composables/conversation/useConversationRowMeta'
+import { useTeamStore } from '@/stores/team'
+import toast from '@/composables/useToast'
+import { onMounted, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import type { ChannelIntegration, ChannelPlatform } from '@/api/channels'
 
 const {
@@ -464,18 +548,52 @@ const {
 const PLATFORM_KIND: Record<ChannelPlatform, string> = {
   line: 'LINE 官方帳號',
   facebook: 'Facebook 粉絲專頁',
-  whatsapp: 'WhatsApp Business'
+  whatsapp: 'WhatsApp Business',
+  shopee: '蝦皮購物商店'
 }
 
 const PLATFORM_FILTERS: Array<{ id: ChannelPlatform; label: string }> = [
   { id: 'line', label: 'LINE' },
   { id: 'facebook', label: 'Facebook' },
-  { id: 'whatsapp', label: 'WhatsApp' }
+  { id: 'whatsapp', label: 'WhatsApp' },
+  { id: 'shopee', label: '蝦皮' }
 ]
 
 /** A platform with no channel is not a tab (an empty WhatsApp tab read as an unavailable feature) */
 const visiblePlatformFilters = computed(() =>
   PLATFORM_FILTERS.filter(p => getChannelCount(p.id) > 0 || selectedPlatform.value === p.id))
+
+const route = useRoute()
+const router = useRouter()
+const teamStore = useTeamStore()
+const showShopeeConnect = ref(false)
+const shopeeTeamId = ref<number>(0)
+const shopeeBusy = ref(false)
+
+async function toggleShopeeConnect(): Promise<void> {
+  showShopeeConnect.value = !showShopeeConnect.value
+  if (showShopeeConnect.value && teamStore.teams.length === 0) { await teamStore.loadTeams() }
+  if (!shopeeTeamId.value) { shopeeTeamId.value = teamStore.teams[0]?.id ?? 0 }
+}
+
+async function authorizeShopee(teamId: number): Promise<void> {
+  shopeeBusy.value = true
+  try {
+    await startShopeeAuthorization(teamId)
+  } catch (error) {
+    shopeeBusy.value = false
+    toast.error('無法前往蝦皮授權', error instanceof Error ? error.message : undefined)
+  }
+}
+
+// Shopee redirects back to /channels?shopee=connected|error&reason=...: tell the admin, then clean the URL
+onMounted(() => {
+  const notice = shopeeRedirectNotice(route.query)
+  if (!notice) { return }
+  if (notice.type === 'success') { toast.success(notice.title) } else { toast.error(notice.title, notice.description) }
+  const { shopee: _s, reason: _r, ...rest } = route.query
+  void router.replace({ query: rest })
+})
 
 const problemIds = computed(() => new Set(problemChannels.value.map(c => c.id)))
 
@@ -503,6 +621,7 @@ function channelDescription(channel: ChannelIntegration): string {
 function idLabel(platform: ChannelPlatform): string {
   if (platform === 'facebook') { return 'Page ID' }
   if (platform === 'whatsapp') { return '電話號碼' }
+  if (platform === 'shopee') { return '店鋪 ID' }
   return 'Channel ID'
 }
 
@@ -699,6 +818,24 @@ const selectedPlatformLabel = computed(() =>
   align-content: center;
 }
 
+.tile svg.bag {
+  fill-rule: evenodd;
+}
+.shopee-connect {
+  display: grid;
+  gap: 12px;
+  justify-items: start;
+  padding: 20px;
+}
+.shopee-connect h3,
+.shopee-connect p {
+  margin: 0;
+}
+.shopee-connect p {
+  color: var(--ui-ink-2);
+  font-size: 14px;
+}
+
 /* Every card has the same parts in the same order, so rows line up without any grid trickery */
 .chgrid {
   display: grid;
@@ -740,6 +877,9 @@ const selectedPlatformLabel = computed(() =>
 }
 .tile-facebook {
   background: var(--ui-messenger);
+}
+.tile-shopee {
+  background: var(--ui-shopee);
 }
 .tile-whatsapp {
   background: var(--ui-faint);

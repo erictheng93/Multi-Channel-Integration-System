@@ -260,7 +260,7 @@ function statusLabel(status: string): string {
 }
 
 function platformLabel(platform: string): string {
-  return platform === 'line' ? 'LINE' : platform === 'facebook' ? 'Facebook' : platform
+  return platform === 'line' ? 'LINE' : platform === 'facebook' ? 'Facebook' : platform === 'shopee' ? '蝦皮' : platform
 }
 
 function formatDate(dateStr: string): string {

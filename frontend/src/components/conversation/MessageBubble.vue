@@ -487,6 +487,10 @@
             class="status-failed"
             title="发送失败"
           />
+          <span
+            v-if="failedReason"
+            class="failed-reason"
+          >{{ failedReason }}</span>
           <button
             class="retry-btn"
             title="重试发送"
@@ -927,9 +931,22 @@
   // - replyToMessage(), forwardMessage(), recallMessage(), selectMessage()
   // - handleRetry()
   // - showActions, showActionsMenu state
+
+// Server-provided send error (stored in metadata.error by handleMessageFailed), e.g. Shopee's 「尚未開通…發訊權限」
+const failedReason = computed(() => {
+  const err = (props.message.metadata as Record<string, unknown> | null | undefined)?.error
+  return typeof err === 'string' ? err : ''
+})
 </script>
 
 <style scoped>
+.failed-reason {
+  max-width: 240px;
+  font-size: 12px;
+  line-height: 1.35;
+  color: var(--ui-red-ink);
+}
+
   /* Import extracted CSS modules */
   @import '@/styles/components/message-bubble/index.css';
 

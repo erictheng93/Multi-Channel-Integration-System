@@ -46,6 +46,7 @@ import {
   processLineUnfollowEvent
 } from './line-event-processor';
 import { processFacebookMessage } from './facebook-event-processor';
+import { verifyShopeePush } from '../services/shopee/shopee-push-signature';
 
 /** Callback to defer a promise via executionCtx.waitUntil */
 export type DeferFn = (promise: Promise<unknown>) => void;
@@ -265,6 +266,59 @@ export const webhookHandler = {
     } catch (error) {
       return handleApiError(error, c);
     }
+  },
+
+  /**
+   * Shopee Push (spec §5). Shopee disables pushes when the success rate drops, so the only
+   * non-2xx answers are misconfiguration (503), bad signature (401), oversize (413) and enqueue failure (500).
+   * Success is 200 with an EMPTY body. Never log the body: it carries buyer chat content.
+   */
+  async shopee(c: Context<{ Bindings: Bindings }>) {
+    const pushKey = c.env.SHOPEE_PUSH_PARTNER_KEY;
+    const callbackUrl = c.env.SHOPEE_PUSH_CALLBACK_URL;
+    if (!pushKey || !callbackUrl) {
+      log.error('Shopee Webhook: SHOPEE_PUSH_PARTNER_KEY or SHOPEE_PUSH_CALLBACK_URL not configured');
+      return c.body(null, 503);
+    }
+
+    const body = await c.req.text();
+    if (!validatePayloadSize(body, 1024 * 1024).valid) {
+      log.error('Shopee Webhook: Payload too large', { size: body.length });
+      return c.body(null, 413);
+    }
+
+    if (!(await verifyShopeePush(callbackUrl, body, c.req.header('Authorization'), pushKey))) {
+      log.warn('Shopee Webhook: Signature verification failed', { bodyLength: body.length });
+      c.executionCtx.waitUntil(recordWebhookSignatureFailure(c.env, 'shopee', 'Invalid signature'));
+      return c.body(null, 401);
+    }
+
+    // The Console "Verify and Save" request has an unknown shape: any signed body without a
+    // numeric code is acked and dropped. Code filtering is left to the consumer.
+    let code: unknown;
+    try {
+      code = (JSON.parse(body) as { code?: unknown } | null)?.code;
+    } catch {
+      code = undefined;
+    }
+    if (typeof code !== 'number') {
+      log.info('Shopee Webhook: signed request without push code acked', { bodyLength: body.length });
+      return c.body(null, 200);
+    }
+
+    try {
+      await c.env.LINE_MESSAGE_QUEUE.send({ type: 'shopee_webhook_event', rawBody: body, enqueuedAt: Date.now() });
+    } catch (queueError) {
+      const message = queueError instanceof Error ? queueError.message : String(queueError);
+      log.error('Shopee Webhook: Failed to enqueue push', { code, error: message });
+      c.executionCtx.waitUntil(
+        alertWebhookFailure(c.env, { platform: 'shopee', failedEvents: 1, totalEvents: 1, lastError: message })
+      );
+      return c.body(null, 500);
+    }
+
+    log.info('Shopee Webhook: push enqueued', { code });
+    return c.body(null, 200);
   }
 };
 
@@ -278,7 +332,9 @@ import { nowISO } from '@/utils/timestamp'
  */
 export const webhookRouter = new Hono<{ Bindings: Bindings }>();
 
-// Health check endpoint (only route on webhookRouter — LINE/Facebook are registered directly in index.ts)
+// Mounted at /api/webhook by the route registry. LINE/Facebook are pre-registered in routes/pre-registry-routes.ts.
+webhookRouter.post('/shopee', (c) => webhookHandler.shopee(c));
+
 webhookRouter.get('/health', (c) => {
   return c.json({
     status: 'healthy',

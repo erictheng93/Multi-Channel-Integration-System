@@ -154,6 +154,7 @@ const platformConfig: Record<string, { name: string; key: string }> = {
   facebook: { name: 'Facebook', key: 'facebook' },
   instagram: { name: 'Instagram', key: 'instagram' },
   whatsapp: { name: 'WhatsApp', key: 'whatsapp' },
+  shopee: { name: '蝦皮', key: 'shopee' },
   telegram: { name: 'Telegram', key: 'telegram' }
 }
 
@@ -444,6 +445,10 @@ const formatTime = (date: Date | string | number) => {
 
 .platform-indicator.platform-facebook {
   background: #1877f2;
+}
+
+.platform-indicator.platform-shopee {
+  background: var(--ui-shopee);
 }
 
 .platform-indicator.platform-instagram {

@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  sendWithRetry,
   sendFacebookMessage,
   sendLineMessage,
   sendToPlatform,
@@ -105,5 +106,29 @@ describe('DelayedMessageScheduler platform delivery', () => {
       )
     ).rejects.toThrow('Unsupported platform: whatsapp');
     expect(mockFetch).not.toHaveBeenCalled();
+  });
+
+  it('fails a Shopee delayed message permanently on the first attempt: no HTTP, no backoff', async () => {
+    vi.useFakeTimers();
+    const message = makeMessage({ platform: 'shopee' });
+    const put = vi.fn();
+    const deps = {
+      env: makeEnv(),
+      storage: { put, delete: vi.fn() },
+      doId: 'do-1',
+      pendingMessages: new Map(),
+      metrics: { retryAttemptsTotal: 0 },
+      logger,
+    } as unknown as Parameters<typeof sendWithRetry>[1];
+
+    const result = await sendWithRetry(message, deps);
+
+    expect(result.success).toBe(false);
+    expect((result.error as Error).message).toBe('尚未開通 Shopee Chat API 發訊權限');
+    expect(mockFetch).not.toHaveBeenCalled();
+    expect(put).not.toHaveBeenCalled(); // waitBeforeRetry persists state; never reached
+    expect(deps.metrics.retryAttemptsTotal).toBe(0);
+    expect(vi.getTimerCount()).toBe(0);
+    vi.useRealTimers();
   });
 });

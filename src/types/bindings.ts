@@ -68,6 +68,12 @@ export interface Bindings {
   LINE_CHANNEL_ACCESS_TOKEN: string;
   LINE_CHANNEL_SECRET: string;
   LINE_BOT_BASIC_ID: string;
+  // Shopee Open Platform (one in-house App; per-shop tokens live in channel_integrations)
+  SHOPEE_ENV?: 'sandbox' | 'live';
+  SHOPEE_PARTNER_ID?: string;
+  SHOPEE_PARTNER_KEY?: string; // signs Open API calls
+  SHOPEE_PUSH_PARTNER_KEY?: string; // verifies Push (webhook) Authorization header
+  SHOPEE_PUSH_CALLBACK_URL?: string; // exact URL registered in Console; part of the push signature base string
   LINE_BOT_ID?: string; // LINE OA Basic ID for QR Code generation (e.g., @110xsqef)
   AUTO_CLOSE_IDLE_DAYS?: string; // nightly auto-close idle days (default 14, 0 disables); see auto-close-service.ts
   BROADCAST_DAILY_RECIPIENT_LIMIT_PER_AGENT?: string; // overrides src/constants/limits.ts
@@ -311,10 +317,21 @@ export interface HealthProbePayload {
  * The queue consumer uses the `type` field to route to the correct handler.
  * Messages without a `type` field are treated as outbound messages (backward compat).
  */
+/**
+ * Shopee Push (webhook) event, verified by the webhook route and processed by the queue consumer.
+ * `rawBody` is kept verbatim so the consumer parses exactly what was signed.
+ */
+export interface ShopeeWebhookEventPayload {
+  type: 'shopee_webhook_event';
+  rawBody: string;
+  enqueuedAt: number;
+}
+
 export type LineQueuePayload =
   | (LineMessageQueuePayload & { type?: 'outbound_message' })
   | MediaProcessingPayload
   | LineWebhookEventPayload
+  | ShopeeWebhookEventPayload
   | HealthProbePayload;
 
 /**

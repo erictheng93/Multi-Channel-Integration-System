@@ -59,7 +59,8 @@ export function useChannelManagement() {
     const icons = {
       line: '',
       facebook: '',
-      whatsapp: ''
+      whatsapp: '',
+      shopee: ''
     }
     return icons[platform] || ''
   }
@@ -68,7 +69,8 @@ export function useChannelManagement() {
     const names = {
       line: 'LINE',
       facebook: 'Facebook',
-      whatsapp: 'WhatsApp'
+      whatsapp: 'WhatsApp',
+      shopee: '蝦皮'
     }
     return names[platform] || platform
   }
@@ -78,6 +80,7 @@ export function useChannelManagement() {
     if (channel.platform === 'line') { return config.channelId || 'N/A' }
     if (channel.platform === 'facebook') { return config.pageId || 'N/A' }
     if (channel.platform === 'whatsapp') { return config.phoneNumber || 'N/A' }
+    if (channel.platform === 'shopee') { return config.shopId === undefined ? 'N/A' : String(config.shopId) }
     return 'N/A'
   }
 

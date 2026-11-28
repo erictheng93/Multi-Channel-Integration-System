@@ -65,7 +65,7 @@ const draft = ref('')
 const inputRef = ref<HTMLInputElement | null>(null)
 
 const platformLabel = computed(() =>
-  props.platform === 'facebook' ? 'Facebook 名稱' : props.platform === 'line' ? 'LINE 名稱' : '平台名稱'
+  props.platform === 'facebook' ? 'Facebook 名稱' : props.platform === 'line' ? 'LINE 名稱' : props.platform === 'shopee' ? '蝦皮名稱' : '平台名稱'
 )
 
 const startEdit = async () => {

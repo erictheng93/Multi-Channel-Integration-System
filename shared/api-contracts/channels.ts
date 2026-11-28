@@ -1,6 +1,6 @@
 import { defineApiContract } from './core'
 
-export type ChannelPlatform = 'line' | 'facebook' | 'whatsapp'
+export type ChannelPlatform = 'line' | 'facebook' | 'whatsapp' | 'shopee'
 
 export interface LineChannelConfig {
   channelId: string

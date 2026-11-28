@@ -14,7 +14,9 @@ import { nowISO } from '@/utils/timestamp';
 
 const log = createContextLogger('WebhookCustomer');
 
-type Platform = 'line' | 'facebook';
+type Platform = 'line' | 'facebook' | 'shopee';
+/** Platforms with a profile API that UserSyncService can call. */
+type SyncablePlatform = Exclude<Platform, 'shopee'>;
 
 /**
  * Typed interface for customer profile updates.
@@ -65,6 +67,8 @@ async function withProfileTimeout<T>(run: (signal: AbortSignal) => Promise<T>, m
 interface FindOrCreateOpts {
   groupId?: string;
   sourceTeamId?: number;
+  /** Name taken from the webhook itself; used as-is for platforms with no profile API (Shopee). */
+  displayName?: string;
 }
 
 /**
@@ -118,15 +122,17 @@ export async function findOrCreateCustomer(
         return existing;
       }
 
-      // Fetch profile via UserSyncService
-      let displayName = platform === 'line' ? 'LINE User' : 'Facebook User';
+      // Fetch profile via UserSyncService (Shopee has no profile API: the push carries the name)
+      let displayName = platform === 'shopee'
+        ? opts?.displayName || 'Shopee 買家'
+        : platform === 'line' ? 'LINE User' : 'Facebook User';
       let avatarUrl: string | null = null;
 
       try {
         const { createUserSyncService } = await import('@/services/user-sync');
         const userSyncService = createUserSyncService(env);
 
-        const profile = await withProfileTimeout(
+        const profile = platform === 'shopee' ? null : await withProfileTimeout(
           signal => platform === 'line'
             ? userSyncService.syncLineUser(platformUserId, undefined, { signal })
             : userSyncService.syncFacebookUser(platformUserId, { signal }),
@@ -289,7 +295,7 @@ export async function updateCustomerProfile(
 export async function triggerBackgroundSyncIfNeeded(
   env: Bindings,
   platformUserId: string,
-  platform: Platform,
+  platform: SyncablePlatform,
   groupId?: string
 ): Promise<void> {
   try {
